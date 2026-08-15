@@ -1,0 +1,19 @@
+# Backend
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend
+ui/node_modules/
+ui/dist/
+ui/.vite/
+ui/storybook-static/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Env
+.env
+.env.local
