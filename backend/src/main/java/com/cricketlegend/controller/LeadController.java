@@ -5,6 +5,7 @@ import com.cricketlegend.dto.CreateLeadRequest;
 import com.cricketlegend.dto.LeadDto;
 import com.cricketlegend.dto.UpdateLeadStatusRequest;
 import com.cricketlegend.service.LeadService;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,7 @@ public class LeadController {
     }
 
     @PostMapping("/api/v1/leads")
+    @ApiResponse(responseCode = "201", description = "Lead created")
     public ResponseEntity<LeadDto> create(@Valid @RequestBody CreateLeadRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(leadService.create(request));
     }
