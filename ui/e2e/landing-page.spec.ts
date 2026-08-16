@@ -50,7 +50,10 @@ test.describe('Landing page golden paths', () => {
     const resultItem = page.getByText(CLUB_NAME, { exact: true });
     await expect(resultItem).toBeVisible();
 
-    const expectedUrl = `https://${CLUB_SLUG}.${ROOT_DOMAIN}/login`;
+    // Same scheme as the current page, matching FindYourClubLogin.tsx's use of
+    // window.location.protocol — HTTP in this dev/CI environment, HTTPS in prod.
+    const protocol = new URL(page.url()).protocol;
+    const expectedUrl = `${protocol}//${CLUB_SLUG}.${ROOT_DOMAIN}/login`;
 
     // The redirect is a real top-level navigation (window.location.href) to another club's
     // subdomain, which this SPA never actually serves in this test environment — intercept and
