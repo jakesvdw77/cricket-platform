@@ -11,6 +11,8 @@ Cricket Legend Platform — a multi-club cricket management system: Spring Boot 
 2. `docs/specs/002-realm-subdomain-auth.md` — Keycloak realm strategy and per-club subdomain auth
 3. `docs/specs/003-club-onboarding.md` — the first feature spec, and the template every future spec follows
 
+**Building a feature? Follow `docs/workflow.md`.** It's the validated spec → design → plan → build → test → review → PR cycle, step by step with which agent/skill/command runs each part — not a one-off, the default way every feature gets built here.
+
 ## Principles
 
 1. **Spec before code, always.** No implementation starts without an approved spec in `docs/specs/`. Plan mode consumes the spec file, not a one-line ticket title.
@@ -43,6 +45,7 @@ Cricket Legend Platform — a multi-club cricket management system: Spring Boot 
 project-root/
 ├── CLAUDE.md
 ├── docs/
+│   ├── workflow.md                  # the spec → design → plan → build → test → review → PR cycle, step by step
 │   ├── specs/                       # one file per feature, numbered — docs/specs/000-template.md is the shape
 │   └── standards/
 │       ├── backend.md
