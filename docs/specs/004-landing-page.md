@@ -91,7 +91,7 @@ No other data model changes. The "find your club" login step (below) is a read-o
 | Endpoint | Access | Purpose |
 |---|---|---|
 | `POST /api/v1/leads` | public, unauthenticated | `{name, email, clubName, phone?, message?}` → creates `Lead` (status `NEW`) |
-| `GET /api/v1/platform/leads` | `platform_admin` | Lists leads, optional `?status=` filter, newest first — the admin's follow-up queue |
+| `GET /api/v1/platform/leads` | `platform_admin` | Paginated (`?page=&size=&status=`), newest first — the admin's follow-up queue. Backend-driven per `docs/standards/backend.md`'s pagination rule, not a full-table fetch |
 | `POST /api/v1/platform/leads/{id}/status` | `platform_admin` | `{status, convertedClubId?}` → transitions `Lead.status` per the allowed-transition table above; `convertedClubId` is recorded once `003`'s vendor-assisted flow has created the real `Club` |
 | `GET /api/v1/public/clubs?query=` | public, unauthenticated | Typeahead search over `Club` rows with `status = ACTIVE` only (per `003`'s `Club.status`) by name/slug → `{name, slug}[]`, used by the "find your club" login step. Excludes `ONBOARDING`/`SUSPENDED` clubs — same reasoning `003` used to keep those off the public subdomain |
 
@@ -117,7 +117,7 @@ Root-domain page, `ui/src/pages/view/` (public, unauthenticated — the folder's
 
 **Login CTA — "find your club" resolution (the real wrinkle `002-realm-subdomain-auth.md` leaves open at the root domain):** `002` scopes the entire login flow — Keycloak redirect, session cookie, everything — to a specific club subdomain; there is no generic login on the root domain because there is no `Club` to resolve there. Clicking "Log in" opens a small step, not a login form:
 1. An `Input`-based search field calls `GET /api/v1/public/clubs?query=` as the visitor types (typeahead).
-2. Matches render as a simple list; selecting one redirects the browser to `https://{slug}.{rootDomain}/login` — a new, minimal route within *that club's own SPA* (not this spec's backend) that immediately triggers the existing Keycloak redirect from `002`'s login sequence on mount, so the visitor lands on the real login screen in one extra click rather than two. `{rootDomain}` is a new frontend config value (`VITE_ROOT_DOMAIN`), following the same env-overridable pattern as `VITE_KEYCLOAK_URL` in `002`.
+2. Matches render as a simple list; selecting one redirects the browser to `{protocol}//{slug}.{rootDomain}/login` — same scheme as the current page (HTTPS in prod, HTTP for local dev, since Vite's dev server doesn't serve HTTPS) — a new, minimal route within *that club's own SPA* (not this spec's backend) that immediately triggers the existing Keycloak redirect from `002`'s login sequence on mount, so the visitor lands on the real login screen in one extra click rather than two. `{rootDomain}` is a new frontend config value (`VITE_ROOT_DOMAIN`), following the same env-overridable pattern as `VITE_KEYCLOAK_URL` in `002`.
 3. No matches → the `EmptyState` reuse above, directing the visitor to the contact form instead of a dead end.
 
 This page never embeds Keycloak's login form itself and never calls `/api/v1/me/access` — it only ever resolves *which subdomain* to send someone to, then hands off entirely to the flow `002` already defines there.
