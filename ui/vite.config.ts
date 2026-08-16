@@ -14,6 +14,9 @@ export default defineConfig({
     }
   },
   test: {
+    // Playwright's e2e specs (ui/e2e/**) are run via `playwright test`, not Vitest — exclude them
+    // here so Vitest's unit project doesn't also try to collect and run them.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     projects: [{
       extends: true,
       test: {

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run --project=unit",
     "test:storybook": "vitest run --project=storybook",
+    "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -26,6 +27,7 @@
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@storybook/addon-a11y": "^10.5.8",
     "@storybook/addon-docs": "^10.5.8",
     "@storybook/addon-mcp": "latest",
@@ -42,7 +44,6 @@
     "@vitest/coverage-v8": "3.2.7",
     "jsdom": "^25.0.1",
     "oxlint": "^1.0.0",
-    "playwright": "latest",
     "storybook": "^10.5.8",
     "typescript": "~5.7.2",
     "vite": "^6.0.7",
