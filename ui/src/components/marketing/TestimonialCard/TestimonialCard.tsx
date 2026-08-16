@@ -29,7 +29,6 @@ export function TestimonialCard({ quote, name, role, avatarUrl }: TestimonialCar
             fontSize: '2rem',
             lineHeight: 1,
             color: 'primary.main',
-            fontFamily: 'Georgia, serif',
           }}
         >
           &ldquo;
