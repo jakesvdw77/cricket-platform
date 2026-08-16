@@ -10,7 +10,8 @@ import com.cricketlegend.domain.LeadStatus;
 import com.cricketlegend.dto.CreateLeadRequest;
 import com.cricketlegend.dto.LeadDto;
 import com.cricketlegend.dto.UpdateLeadStatusRequest;
-import com.cricketlegend.exception.ConflictException;
+import com.cricketlegend.exception.InvalidLeadFieldException;
+import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.mapper.LeadMapper;
 import com.cricketlegend.repository.LeadRepository;
@@ -176,7 +177,7 @@ class LeadServiceImplTest {
 
         assertThatThrownBy(() ->
                 leadService.transitionStatus(id, new UpdateLeadStatusRequest(LeadStatus.CONVERTED, null)))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
     @Test
@@ -188,7 +189,7 @@ class LeadServiceImplTest {
 
         assertThatThrownBy(() ->
                 leadService.transitionStatus(id, new UpdateLeadStatusRequest(LeadStatus.CONTACTED, null)))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
     @Test
@@ -200,7 +201,7 @@ class LeadServiceImplTest {
 
         assertThatThrownBy(() ->
                 leadService.transitionStatus(id, new UpdateLeadStatusRequest(LeadStatus.CONTACTED, null)))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
     @Test
@@ -212,7 +213,7 @@ class LeadServiceImplTest {
 
         assertThatThrownBy(() -> leadService.transitionStatus(
                 id, new UpdateLeadStatusRequest(LeadStatus.CONTACTED, UUID.randomUUID())))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(InvalidLeadFieldException.class);
     }
 
     @Test

@@ -5,7 +5,8 @@ import com.cricketlegend.domain.LeadStatus;
 import com.cricketlegend.dto.CreateLeadRequest;
 import com.cricketlegend.dto.LeadDto;
 import com.cricketlegend.dto.UpdateLeadStatusRequest;
-import com.cricketlegend.exception.ConflictException;
+import com.cricketlegend.exception.InvalidLeadFieldException;
+import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.mapper.LeadMapper;
 import com.cricketlegend.repository.LeadRepository;
@@ -75,12 +76,12 @@ public class LeadServiceImpl implements LeadService {
         LeadStatus target = request.status();
         Set<LeadStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(current, Set.of());
         if (!allowed.contains(target)) {
-            throw new ConflictException(
+            throw new InvalidStatusTransitionException(
                     "Cannot transition lead from " + current + " to " + target);
         }
 
         if (request.convertedClubId() != null && target != LeadStatus.CONVERTED) {
-            throw new ConflictException(
+            throw new InvalidLeadFieldException(
                     "convertedClubId can only be set when transitioning to CONVERTED");
         }
 
