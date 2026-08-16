@@ -59,6 +59,8 @@ Run `/plan-feature NNN` — enters plan mode, reads the spec fully plus `CLAUDE.
 
 Only call `ExitPlanMode` once you're not guessing about scope.
 
+Once approved, the plan is copied into `docs/plans/NNN-feature-name.md` — a git-tracked permanent record alongside the spec it implements. The working copy Claude Code keeps under `~/.claude/plans/` is a scratch file, not part of the repo's history.
+
 ### 6. Build it
 
 Dispatch `backend-builder` and `frontend-builder` (in that order if the frontend depends on real backend endpoint shapes) via the `Agent` tool, each with a **self-contained prompt** — they start with zero conversation context, so restate exactly which files to touch, the relevant DTO/endpoint shapes, and any constraints the plan settled (e.g. "don't build the full scope-walk auth model, only the flat role check").

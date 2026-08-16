@@ -47,6 +47,7 @@ project-root/
 ├── docs/
 │   ├── workflow.md                  # the spec → design → plan → build → test → review → PR cycle, step by step
 │   ├── specs/                       # one file per feature, numbered — docs/specs/000-template.md is the shape
+│   ├── plans/                       # approved /plan-feature output, one per spec, numbered to match
 │   └── standards/
 │       ├── backend.md
 │       ├── frontend.md
