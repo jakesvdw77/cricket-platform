@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Enforces the Conventional Commits format documented in CLAUDE.md's "Commit Convention" section.
+# Installed via: git config core.hooksPath .githooks
+
+commit_msg_file="$1"
+first_line=$(head -n1 "$commit_msg_file")
+
+# Merge commits and fixup/squash commits are exempt.
+if [[ "$first_line" =~ ^(Merge|fixup!|squash!) ]]; then
+  exit 0
+fi
+
+pattern='^(feat|fix|refactor|test|docs|chore|build|ci)(\([a-z0-9.-]+\))?: .{1,88}$'
+
+if [[ ! "$first_line" =~ $pattern ]]; then
+  echo "error: commit message doesn't follow the Conventional Commits format required by this repo." >&2
+  echo "" >&2
+  echo "  type(scope): summary" >&2
+  echo "" >&2
+  echo "  type  = feat | fix | refactor | test | docs | chore | build | ci" >&2
+  echo "  scope = optional, the area touched: backend, ui, docs, spec, ci" >&2
+  echo "" >&2
+  echo "  example: feat(ui): add landing page hero section" >&2
+  echo "" >&2
+  echo "Got:" >&2
+  echo "  $first_line" >&2
+  exit 1
+fi
+
+exit 0
