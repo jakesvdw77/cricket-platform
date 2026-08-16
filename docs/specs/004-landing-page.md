@@ -58,9 +58,11 @@ Lead {
 
 Allowed status transitions (enforced the same informal way `003` enforces `Invitation.status`): `NEW → CONTACTED`, `NEW → DISMISSED`, `CONTACTED → CONVERTED`, `CONTACTED → DISMISSED`. No transition out of `CONVERTED` or `DISMISSED` — a wrong call gets a new `Lead`, not a reopened one, mirroring how `003` never reopens an accepted/expired `Invitation`.
 
-No changes to `Person`, `Club`, `ClubMembership`, or any entity from `001-tenancy-identity-model.md`. `Lead` deliberately does not reuse `Invitation` — an `Invitation` targets a specific existing `Club`/scope and a specific role; a `Lead` exists before any of that is decided, and converting one into the other is a manual, human judgement call (qualifying a prospect), not a state machine transition.
+No changes to the *design* of `Person`, `Club`, `ClubMembership`, or any entity from `001-tenancy-identity-model.md` — this spec doesn't redefine anything `001` already decided. `Lead` deliberately does not reuse `Invitation` — an `Invitation` targets a specific existing `Club`/scope and a specific role; a `Lead` exists before any of that is decided, and converting one into the other is a manual, human judgement call (qualifying a prospect), not a state machine transition.
 
-Migration sketch — `backend/src/main/resources/db/changelog/v1/004-add-lead.sql`:
+**Implementation-time addendum (human-approved during `/plan-feature`, not a re-derivation):** at the time this spec was built, `001`/`002`/`003` existed only as specs — no `Club`/`Person` entity, migration, or Keycloak-backed auth had actually been implemented in code yet, despite this spec's Data Model and API Contract assuming they had (FK references, `platform_admin`-gated endpoints). Rather than block this feature on fully implementing `001`/`002`/`003` first, a deliberately minimal prerequisite slice was added alongside `Lead`: a `club` table (`id`, `name`, `slug`, `status`) and a `person` table (`id`, `keycloak_user_id`, `full_name`) — just the columns this spec's FKs need — plus a flat `platform_admin` Keycloak realm-role check (`SecurityConfig`), which is `002`'s own documented exception to its scope-walk authorization model, not a new mechanism. Explicitly **not** built: `Section`, `Team`, `ClubMembership`, `RoleAssignment`, or `002`'s full `KeycloakJwtConverter`/scope-walk `AccessService` — those remain `001`/`002`'s to implement in full when a feature actually needs them.
+
+Migration sketch — `backend/src/main/resources/db/changelog/v1/002-add-lead.sql` (numbered `002` in the actual repo, after the `001` prerequisite migration from the addendum above — sequential migration order, not this spec's number):
 
 ```sql
 CREATE TABLE lead (
@@ -84,7 +86,7 @@ CREATE INDEX idx_lead_status ON lead (status);
 |---|---|---|---|
 | Lead | Platform-global | id, name, email, club_name, status, converted_club_id? | Vendor's follow-up queue for prospects; not tenant-scoped because no tenant exists yet |
 
-No other data model changes. The "find your club" login step (below) is a read-only query over the existing `Club`/`Club.status` fields from `001`/`003` — no new entity required.
+No other data model changes. The "find your club" login step (below) is a read-only query over the `club`/`status` columns from the prerequisite slice above (standing in for `001`'s full `Club` entity and `003`'s `Club.status` field until those specs are implemented in full) — no new entity required.
 
 ## API Contract
 
