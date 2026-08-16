@@ -58,9 +58,11 @@ Lead {
 
 Allowed status transitions (enforced the same informal way `003` enforces `Invitation.status`): `NEW → CONTACTED`, `NEW → DISMISSED`, `CONTACTED → CONVERTED`, `CONTACTED → DISMISSED`. No transition out of `CONVERTED` or `DISMISSED` — a wrong call gets a new `Lead`, not a reopened one, mirroring how `003` never reopens an accepted/expired `Invitation`.
 
-No changes to `Person`, `Club`, `ClubMembership`, or any entity from `001-tenancy-identity-model.md`. `Lead` deliberately does not reuse `Invitation` — an `Invitation` targets a specific existing `Club`/scope and a specific role; a `Lead` exists before any of that is decided, and converting one into the other is a manual, human judgement call (qualifying a prospect), not a state machine transition.
+No changes to the *design* of `Person`, `Club`, `ClubMembership`, or any entity from `001-tenancy-identity-model.md` — this spec doesn't redefine anything `001` already decided. `Lead` deliberately does not reuse `Invitation` — an `Invitation` targets a specific existing `Club`/scope and a specific role; a `Lead` exists before any of that is decided, and converting one into the other is a manual, human judgement call (qualifying a prospect), not a state machine transition.
 
-Migration sketch — `backend/src/main/resources/db/changelog/v1/004-add-lead.sql`:
+**Implementation-time addendum (human-approved during `/plan-feature`, not a re-derivation):** at the time this spec was built, `001`/`002`/`003` existed only as specs — no `Club`/`Person` entity, migration, or Keycloak-backed auth had actually been implemented in code yet, despite this spec's Data Model and API Contract assuming they had (FK references, `platform_admin`-gated endpoints). Rather than block this feature on fully implementing `001`/`002`/`003` first, a deliberately minimal prerequisite slice was added alongside `Lead`: a `club` table (`id`, `name`, `slug`, `status`) and a `person` table (`id`, `keycloak_user_id`, `full_name`) — just the columns this spec's FKs need — plus a flat `platform_admin` Keycloak realm-role check (`SecurityConfig`), which is `002`'s own documented exception to its scope-walk authorization model, not a new mechanism. Explicitly **not** built: `Section`, `Team`, `ClubMembership`, `RoleAssignment`, or `002`'s full `KeycloakJwtConverter`/scope-walk `AccessService` — those remain `001`/`002`'s to implement in full when a feature actually needs them.
+
+Migration sketch — `backend/src/main/resources/db/changelog/v1/002-add-lead.sql` (numbered `002` in the actual repo, after the `001` prerequisite migration from the addendum above — sequential migration order, not this spec's number):
 
 ```sql
 CREATE TABLE lead (
@@ -84,14 +86,14 @@ CREATE INDEX idx_lead_status ON lead (status);
 |---|---|---|---|
 | Lead | Platform-global | id, name, email, club_name, status, converted_club_id? | Vendor's follow-up queue for prospects; not tenant-scoped because no tenant exists yet |
 
-No other data model changes. The "find your club" login step (below) is a read-only query over the existing `Club`/`Club.status` fields from `001`/`003` — no new entity required.
+No other data model changes. The "find your club" login step (below) is a read-only query over the `club`/`status` columns from the prerequisite slice above (standing in for `001`'s full `Club` entity and `003`'s `Club.status` field until those specs are implemented in full) — no new entity required.
 
 ## API Contract
 
 | Endpoint | Access | Purpose |
 |---|---|---|
 | `POST /api/v1/leads` | public, unauthenticated | `{name, email, clubName, phone?, message?}` → creates `Lead` (status `NEW`) |
-| `GET /api/v1/platform/leads` | `platform_admin` | Lists leads, optional `?status=` filter, newest first — the admin's follow-up queue |
+| `GET /api/v1/platform/leads` | `platform_admin` | Paginated (`?page=&size=&status=`), newest first — the admin's follow-up queue. Backend-driven per `docs/standards/backend.md`'s pagination rule, not a full-table fetch |
 | `POST /api/v1/platform/leads/{id}/status` | `platform_admin` | `{status, convertedClubId?}` → transitions `Lead.status` per the allowed-transition table above; `convertedClubId` is recorded once `003`'s vendor-assisted flow has created the real `Club` |
 | `GET /api/v1/public/clubs?query=` | public, unauthenticated | Typeahead search over `Club` rows with `status = ACTIVE` only (per `003`'s `Club.status`) by name/slug → `{name, slug}[]`, used by the "find your club" login step. Excludes `ONBOARDING`/`SUSPENDED` clubs — same reasoning `003` used to keep those off the public subdomain |
 
@@ -117,7 +119,7 @@ Root-domain page, `ui/src/pages/view/` (public, unauthenticated — the folder's
 
 **Login CTA — "find your club" resolution (the real wrinkle `002-realm-subdomain-auth.md` leaves open at the root domain):** `002` scopes the entire login flow — Keycloak redirect, session cookie, everything — to a specific club subdomain; there is no generic login on the root domain because there is no `Club` to resolve there. Clicking "Log in" opens a small step, not a login form:
 1. An `Input`-based search field calls `GET /api/v1/public/clubs?query=` as the visitor types (typeahead).
-2. Matches render as a simple list; selecting one redirects the browser to `https://{slug}.{rootDomain}/login` — a new, minimal route within *that club's own SPA* (not this spec's backend) that immediately triggers the existing Keycloak redirect from `002`'s login sequence on mount, so the visitor lands on the real login screen in one extra click rather than two. `{rootDomain}` is a new frontend config value (`VITE_ROOT_DOMAIN`), following the same env-overridable pattern as `VITE_KEYCLOAK_URL` in `002`.
+2. Matches render as a simple list; selecting one redirects the browser to `{protocol}//{slug}.{rootDomain}/login` — same scheme as the current page (HTTPS in prod, HTTP for local dev, since Vite's dev server doesn't serve HTTPS) — a new, minimal route within *that club's own SPA* (not this spec's backend) that immediately triggers the existing Keycloak redirect from `002`'s login sequence on mount, so the visitor lands on the real login screen in one extra click rather than two. `{rootDomain}` is a new frontend config value (`VITE_ROOT_DOMAIN`), following the same env-overridable pattern as `VITE_KEYCLOAK_URL` in `002`.
 3. No matches → the `EmptyState` reuse above, directing the visitor to the contact form instead of a dead end.
 
 This page never embeds Keycloak's login form itself and never calls `/api/v1/me/access` — it only ever resolves *which subdomain* to send someone to, then hands off entirely to the flow `002` already defines there.
