@@ -109,3 +109,28 @@ test.describe('Admin login golden paths', () => {
     await expectAdminIdentityVisible(page);
   });
 });
+
+/**
+ * Golden path for docs/specs/006-post-login-home-shells.md's System Admin shell — the one E2E
+ * case its Test Plan calls for in this spec (Manager/Player E2E is explicitly deferred there).
+ * Reuses this file's login helpers rather than duplicating the Keycloak flow.
+ */
+test.describe('Admin home shell golden path (006-post-login-home-shells.md)', () => {
+  test.beforeEach(() => {
+    test.skip(!!process.env.CI, 'requires local Keycloak — not wired into CI yet, see docs/plans/005-admin-login.md Flag #2');
+  });
+
+  test('navigates a placeholder sidebar section, then logs out via the avatar menu', async ({ page }) => {
+    await loginBySelectingClub(page, CLUB_NAME);
+    await expectAdminIdentityVisible(page);
+
+    await page.getByRole('link', { name: 'Club Onboarding' }).click();
+    await expect(page).toHaveURL(/\/admin\/onboarding$/);
+    await expect(page.getByText('Coming soon.')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Account menu' }).click();
+    await page.getByRole('menuitem', { name: 'Log out' }).click();
+
+    await expect(page).not.toHaveURL(/\/admin/);
+  });
+});
