@@ -67,3 +67,16 @@ Compared against the spec's Test Plan table; nothing here is already covered els
 - `cd ui && npm run lint && npm run test && npm run build` — frontend unit/component tests + build.
 - Manual smoke test (`CLAUDE.md`'s step 8, via `claude-in-chrome`): start both dev servers, hit `riverside.localhost:5173` (or whichever club is seeded), go through "find your club" → `/login` → real Keycloak login with the `cricketlegend` realm's admin user → confirm landing on `/admin` showing the identity. Then repeat starting from a *different* seeded club to confirm the selected club has no bearing on the outcome (spec's acceptance criteria).
 - `cd ui && npm run test:e2e` locally (not CI) once a `platform_admin` test user exists in the local realm — confirms `admin-login.spec.ts` passes end-to-end.
+
+## Post-build additions (from manual smoke-testing, after this plan was approved)
+
+Manual browser testing (`CLAUDE.md` step 8) surfaced two real bugs and prompted a login-UX redesign from direct product feedback. Full detail lives in `docs/specs/005-admin-login.md`'s "Implementation-time addendum" — summary here for whoever picks up the `test-writer` pass, since these files/behaviors aren't in the original file list above:
+
+1. **`ui/src/auth/keycloak.ts`** — dropped `onLoad: 'check-sso'`/`silentCheckSsoRedirectUri` (structurally broken cross-origin, per the addendum), added `checkLoginIframe: false`. Realm/client defaults are `'cricketlegend'`, not `'platform-dev'`/`'platform-web'` as originally planned.
+2. **`ui/src/api/axiosConfig.ts`** — interceptor now does `await keycloakInitPromise.catch(() => undefined)` instead of a bare `await`, so a Keycloak init failure can't silently break unauthenticated requests. Worth a test asserting a request still gets sent (unauthenticated) when the init promise rejects.
+3. **`ui/src/pages/view/LandingPage/LandingPage.tsx`** — "Log in" now opens a MUI `Dialog` (`onClick={() => setLoginDialogOpen(true)}`) instead of anchor-scrolling to a page section. `LandingPage.test.tsx` currently only covers the lead-capture form; it has no coverage yet for the dialog opening/closing or its contents.
+4. **`ui/src/pages/view/LandingPage/FindYourClubLogin.tsx`** — gained a "No club? Log in as admin" button (`useNavigate()` → `/login`), in addition to its original search-and-select behavior. No test file exists for this component yet.
+5. **`ui/src/App.tsx`** — `/login` and `/admin` routes now mount unconditionally (both root domain and club subdomains), not gated behind `!isRootDomain` as originally planned.
+6. **`ui/e2e/landing-page.spec.ts`** (`004`'s existing E2E test, not `005`'s new one) — already updated in this pass: `getByRole('link', { name: 'Log in' })` → `getByRole('button', ...)`. Sanity-check this still passes once `test-writer` finishes, since it wasn't re-run against a real server after the edit.
+
+`admin-login.spec.ts` (the new E2E test this plan already calls for) should exercise **both** entry points — club selection via the dialog, and the "No club? Log in as admin" button — per the spec's revised Acceptance Criteria, not just the club-based path originally planned.
