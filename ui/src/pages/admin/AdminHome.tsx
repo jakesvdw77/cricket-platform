@@ -1,9 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { Box } from '@mui/material'
-import Typography from '@mui/material/Typography'
+import { Outlet } from 'react-router-dom'
 import { getAdminIdentity } from '../../api/adminApi'
-import { Card } from '../../components/Card'
+import { AppShell } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
+import { keycloak } from '../../auth/keycloak'
+
+const NAV_ITEMS = [
+  { label: 'Dashboard', to: '/admin' },
+  { label: 'Club Onboarding', to: '/admin/onboarding' },
+  { label: 'Whitelisting', to: '/admin/whitelisting' },
+  { label: 'Subscriptions & Invoices', to: '/admin/invoices' },
+  { label: 'Leagues', to: '/admin/leagues' },
+  { label: 'Configuration', to: '/admin/configuration' },
+]
 
 export default function AdminHome() {
   const { data, isError } = useQuery({
@@ -11,29 +21,26 @@ export default function AdminHome() {
     queryFn: getAdminIdentity,
   })
 
+  if (isError) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', px: 2, py: 5 }}>
+        <EmptyState title="Not authorized" description="You are not recognized as a platform admin." />
+      </Box>
+    )
+  }
+
+  if (!data) {
+    return null
+  }
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        px: 2,
-        py: 5,
-      }}
+    <AppShell
+      brand="Cricket Legend Platform"
+      navItems={NAV_ITEMS}
+      user={{ name: data.username, email: data.email }}
+      onLogout={() => keycloak.logout()}
     >
-      {isError && (
-        <EmptyState
-          title="Not authorized"
-          description="You are not recognized as a platform admin."
-        />
-      )}
-      {!isError && data && (
-        <Card title="You are logged in as an admin" sx={{ width: '100%', maxWidth: 400 }}>
-          <Typography variant="body1">{data.username}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {data.email}
-          </Typography>
-        </Card>
-      )}
-    </Box>
+      <Outlet context={data} />
+    </AppShell>
   )
 }

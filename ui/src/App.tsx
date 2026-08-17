@@ -7,6 +7,12 @@ import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
 import AdminHome from './pages/admin/AdminHome'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import ManagerHome from './pages/manage/ManagerHome'
+import ManagerDashboard from './pages/manage/ManagerDashboard'
+import PlayerHome from './pages/view/PlayerHome'
+import PlayerProfile from './pages/view/PlayerProfile'
+import { EmptyState } from './components/EmptyState'
 
 const queryClient = new QueryClient()
 
@@ -27,7 +33,44 @@ function App() {
                 club scope (docs/specs/001), so these run on the root domain directly as well as
                 every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<AdminHome />} />
+
+            {/* System Admin shell — docs/specs/006-post-login-home-shells.md. Dashboard is
+                real (005's platform_admin identity check); every other section is a
+                placeholder pending its own future spec. */}
+            <Route path="/admin" element={<AdminHome />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="onboarding" element={<EmptyState title="Club Onboarding" description="Coming soon." />} />
+              <Route path="whitelisting" element={<EmptyState title="Whitelisting" description="Coming soon." />} />
+              <Route path="invoices" element={<EmptyState title="Subscriptions & Invoices" description="Coming soon." />} />
+              <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
+              <Route path="configuration" element={<EmptyState title="Configuration" description="Coming soon." />} />
+            </Route>
+
+            {/* Club/Team Manager shell — visual scaffolding only until 001's role model
+                lands (006's Non-goals); no real auth gate yet. */}
+            <Route path="/manage" element={<ManagerHome />}>
+              <Route index element={<ManagerDashboard />} />
+              <Route path="sections" element={<EmptyState title="Sections & Age Groups" description="Coming soon." />} />
+              <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
+              <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />
+              <Route path="fixtures" element={<EmptyState title="Fixtures & Results" description="Coming soon." />} />
+              <Route
+                path="permissions"
+                element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}
+              />
+              <Route path="squads" element={<EmptyState title="Squads" description="Coming soon." />} />
+              <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
+              <Route path="availability" element={<EmptyState title="Availability Polls" description="Coming soon." />} />
+            </Route>
+
+            {/* Player shell — mobile-first bottom tabs; same no-real-auth-yet caveat as
+                Manager above. */}
+            <Route path="/player" element={<PlayerHome />}>
+              <Route index element={<EmptyState title="Fixtures" description="Coming soon." />} />
+              <Route path="results" element={<EmptyState title="Results" description="Coming soon." />} />
+              <Route path="availability" element={<EmptyState title="Availability" description="Coming soon." />} />
+              <Route path="profile" element={<PlayerProfile />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
