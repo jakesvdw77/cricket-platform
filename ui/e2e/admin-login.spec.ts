@@ -5,7 +5,10 @@ import { test, expect } from '@playwright/test';
  * Criteria:
  *   1. Open the login dialog, select a known ACTIVE club, complete real Keycloak login as a
  *      platform_admin user, and land on /admin showing that user's identity.
- *   2. Use the "No club? Log in as admin" button instead — no club selection at all — and reach
+ *   2. Select a *different* ACTIVE club and confirm the same admin outcome — proving club
+ *      selection has no bearing on it, per the spec's "verified against at least two different
+ *      clubs" acceptance criterion.
+ *   3. Use the "No club? Log in as admin" button instead — no club selection at all — and reach
  *      the same /admin outcome.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
@@ -15,12 +18,15 @@ import { test, expect } from '@playwright/test';
  *   - Keycloak: `auth.localhost:8180`, realm `cricketlegend`, client `cricketlegend`
  *     (docs/specs/005-admin-login.md's Implementation-time addendum)
  *
- * PREREQUISITE 1 (shared with ui/e2e/landing-page.spec.ts): at least one Club row with
- * status = 'ACTIVE' must exist in the dev `cricketlegend_platform` database. Seed one manually,
- * e.g.:
+ * PREREQUISITE 1: at least *two* Club rows with status = 'ACTIVE' must exist in the dev
+ * `cricketlegend_platform` database (one is shared with ui/e2e/landing-page.spec.ts; the second
+ * is new for this spec's "club selection doesn't matter" case). Seed both manually, e.g.:
  *
  *   docker exec <postgres-container> psql -U cricket -d cricketlegend_platform -c \
  *     "INSERT INTO club (name, slug, status) VALUES ('Riverside CC', 'riverside', 'ACTIVE') \
+ *      ON CONFLICT (slug) DO NOTHING;"
+ *   docker exec <postgres-container> psql -U cricket -d cricketlegend_platform -c \
+ *     "INSERT INTO club (name, slug, status) VALUES ('Oakfield CC', 'oakfield', 'ACTIVE') \
  *      ON CONFLICT (slug) DO NOTHING;"
  *
  * PREREQUISITE 2 (new for this spec): a Keycloak user carrying the platform_admin realm role must
@@ -40,9 +46,22 @@ import { test, expect } from '@playwright/test';
  */
 
 const CLUB_NAME = process.env.E2E_CLUB_NAME ?? 'Riverside CC';
+const CLUB_NAME_2 = process.env.E2E_CLUB_NAME_2 ?? 'Oakfield CC';
 const ROOT_DOMAIN = process.env.E2E_ROOT_DOMAIN ?? 'localhost:5173';
 const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? 'platform-admin';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'platform-admin';
+
+async function loginBySelectingClub(page: import('@playwright/test').Page, clubName: string) {
+  await page.goto(`http://${ROOT_DOMAIN}/`);
+
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByLabel('Search for your club').fill(clubName);
+  await page.getByText(clubName, { exact: true }).click();
+
+  // Real cross-subdomain top-level navigation to the selected club's /login, which immediately
+  // redirects to real Keycloak.
+  await completeKeycloakLogin(page);
+}
 
 async function completeKeycloakLogin(page: import('@playwright/test').Page) {
   // Keycloak's own login form — not part of this app, so no shared component/selector to reuse.
@@ -62,18 +81,16 @@ test.describe('Admin login golden paths', () => {
     test.skip(!!process.env.CI, 'requires local Keycloak — not wired into CI yet, see docs/plans/005-admin-login.md Flag #2');
   });
 
-  test('platform admin logs in after selecting a club, and club selection has no bearing on the outcome', async ({
+  test('platform admin logs in after selecting a club', async ({ page }) => {
+    await loginBySelectingClub(page, CLUB_NAME);
+
+    await expectAdminIdentityVisible(page);
+  });
+
+  test('platform admin logs in after selecting a different club, and the outcome is identical', async ({
     page,
   }) => {
-    await page.goto(`http://${ROOT_DOMAIN}/`);
-
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await page.getByLabel('Search for your club').fill(CLUB_NAME);
-    await page.getByText(CLUB_NAME, { exact: true }).click();
-
-    // Real cross-subdomain top-level navigation to the selected club's /login, which immediately
-    // redirects to real Keycloak.
-    await completeKeycloakLogin(page);
+    await loginBySelectingClub(page, CLUB_NAME_2);
 
     await expectAdminIdentityVisible(page);
   });
