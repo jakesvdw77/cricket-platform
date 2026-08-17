@@ -1,19 +1,18 @@
 package com.cricketlegend.controller;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
+import static com.cricketlegend.PlatformRoleJwtPostProcessors.withRole;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cricketlegend.AbstractIntegrationTest;
-import java.util.List;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,11 +33,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class AdminIdentityControllerIntegrationTest {
 
-    private static final String PLATFORM_ADMIN_ROLE = "platform_admin";
-
     private static final String SUBJECT = "a1b2c3d4-0000-0000-0000-000000000000";
     private static final String USERNAME = "ada.lovelace";
     private static final String EMAIL = "ada@example.com";
+
+    // sub/preferred_username/email are set regardless of role, since AdminIdentityController
+    // reads them unconditionally — see PlatformRoleJwtPostProcessors for why the granted
+    // authority still has to be set explicitly rather than relying on the realm_access claim
+    // alone.
+    private static final UnaryOperator<Jwt.Builder> IDENTITY_CLAIMS = builder -> builder
+            .subject(SUBJECT)
+            .claim("preferred_username", USERNAME)
+            .claim("email", EMAIL);
 
     @org.springframework.beans.factory.annotation.Autowired
     private MockMvc mockMvc;
@@ -50,45 +56,16 @@ class AdminIdentityControllerIntegrationTest {
 
     @Test
     void meWithNonAdminJwtReturns403() throws Exception {
-        mockMvc.perform(get("/api/v1/platform/me").with(nonAdmin())).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/platform/me").with(withRole("someone_else", IDENTITY_CLAIMS)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void meWithPlatformAdminJwtReturnsIdentity() throws Exception {
-        mockMvc.perform(get("/api/v1/platform/me").with(platformAdmin()))
+        mockMvc.perform(get("/api/v1/platform/me").with(platformAdmin(IDENTITY_CLAIMS)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.keycloakUserId").value(SUBJECT))
                 .andExpect(jsonPath("$.username").value(USERNAME))
                 .andExpect(jsonPath("$.email").value(EMAIL));
-    }
-
-    /**
-     * The {@code jwt()} post-processor doesn't invoke SecurityConfig's custom
-     * jwtAuthenticationConverter() (it isn't exposed as a bean), so the realm_access claim alone
-     * isn't enough to satisfy hasRole("platform_admin") here — the granted authority has to be
-     * set explicitly to match what that converter would have produced at runtime
-     * (ROLE_platform_admin). The realm_access claim is still set too, so the mock JWT's shape
-     * matches what SecurityConfig actually reads. sub/preferred_username/email are set since
-     * AdminIdentityController reads them.
-     */
-    private JwtRequestPostProcessor platformAdmin() {
-        return jwt()
-                .jwt((Jwt.Builder builder) -> builder
-                        .subject(SUBJECT)
-                        .claim("preferred_username", USERNAME)
-                        .claim("email", EMAIL)
-                        .claim("realm_access", java.util.Map.of("roles", List.of(PLATFORM_ADMIN_ROLE))))
-                .authorities(new SimpleGrantedAuthority("ROLE_" + PLATFORM_ADMIN_ROLE));
-    }
-
-    /** Authenticated, but missing the platform_admin role — exercises SecurityConfig's 403 path. */
-    private JwtRequestPostProcessor nonAdmin() {
-        return jwt()
-                .jwt((Jwt.Builder builder) -> builder
-                        .subject(SUBJECT)
-                        .claim("preferred_username", USERNAME)
-                        .claim("email", EMAIL)
-                        .claim("realm_access", java.util.Map.of("roles", List.of("someone_else"))))
-                .authorities(new SimpleGrantedAuthority("ROLE_someone_else"));
     }
 }

@@ -1,8 +1,8 @@
 package com.cricketlegend.controller;
 
+import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,8 +22,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,8 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Import(AbstractIntegrationTest.class)
 @Transactional
 class LeadControllerIntegrationTest {
-
-    private static final String PLATFORM_ADMIN_ROLE = "platform_admin";
 
     @Autowired
     private MockMvc mockMvc;
@@ -163,22 +159,6 @@ class LeadControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\": \"CONTACTED\"}"))
                 .andExpect(status().isUnauthorized());
-    }
-
-    /**
-     * The {@code jwt()} post-processor doesn't invoke SecurityConfig's custom
-     * jwtAuthenticationConverter() (it isn't exposed as a bean), so the realm_access claim alone
-     * isn't enough to satisfy hasRole("platform_admin") here — the granted authority has to be
-     * set explicitly to match what that converter would have produced at runtime
-     * (ROLE_platform_admin). The realm_access claim is still set too, so the mock JWT's shape
-     * matches what SecurityConfig actually reads.
-     */
-    private JwtRequestPostProcessor platformAdmin() {
-        return jwt()
-                .jwt((Jwt.Builder builder) -> builder
-                        .claim("realm_access", java.util.Map.of("roles", List.of(PLATFORM_ADMIN_ROLE))))
-                .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                        "ROLE_" + PLATFORM_ADMIN_ROLE));
     }
 
     private Lead newLead(String name, LeadStatus status, Instant createdAt) {
