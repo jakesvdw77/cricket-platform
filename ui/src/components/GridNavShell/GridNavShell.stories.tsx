@@ -36,12 +36,18 @@ const args = {
   brand: 'Riverside CC',
   user: { name: 'Sam Manager', email: 'sam@riverside.cc' },
   onLogout: () => {},
+  profileTo: '/manage/profile',
   children: sampleGrid,
 }
 
 export const Mobile: Story = {
   args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const Tablet: Story = {
+  args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
 }
 
 export const Desktop: Story = {

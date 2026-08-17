@@ -12,7 +12,13 @@ const NAV_ITEMS = [
 
 export default function PlayerHome() {
   return (
-    <BottomTabShell brand="Cricket Legend Platform" navItems={NAV_ITEMS} user={MOCK_PLAYER} onLogout={() => keycloak.logout()}>
+    <BottomTabShell
+      brand="Cricket Legend Platform"
+      navItems={NAV_ITEMS}
+      user={MOCK_PLAYER}
+      onLogout={() => keycloak.logout()}
+      profileTo="/player/profile"
+    >
       <Outlet />
     </BottomTabShell>
   )

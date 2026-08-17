@@ -44,6 +44,7 @@ function App() {
               <Route path="invoices" element={<EmptyState title="Subscriptions & Invoices" description="Coming soon." />} />
               <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
               <Route path="configuration" element={<EmptyState title="Configuration" description="Coming soon." />} />
+              <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 
             {/* Club/Team Manager shell — visual scaffolding only until 001's role model
@@ -61,6 +62,7 @@ function App() {
               <Route path="squads" element={<EmptyState title="Squads" description="Coming soon." />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
               <Route path="availability" element={<EmptyState title="Availability Polls" description="Coming soon." />} />
+              <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 
             {/* Player shell — mobile-first bottom tabs; same no-real-auth-yet caveat as

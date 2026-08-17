@@ -25,12 +25,18 @@ const args = {
   navItems,
   user: { name: 'Ada Lovelace', email: 'ada@example.com' },
   onLogout: () => {},
+  profileTo: '/admin/profile',
   children: <Typography variant="body2">Page content</Typography>,
 }
 
 export const Mobile: Story = {
   args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const Tablet: Story = {
+  args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
 }
 
 export const Desktop: Story = {

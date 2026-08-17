@@ -24,6 +24,7 @@ const args = {
   navItems,
   user: { name: 'Alex Player' },
   onLogout: () => {},
+  profileTo: '/player/profile',
   children: (
     <Card title="Next match">
       <Typography variant="body2" color="text.secondary">
@@ -36,6 +37,11 @@ const args = {
 export const Mobile: Story = {
   args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const Tablet: Story = {
+  args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
 }
 
 export const Desktop: Story = {

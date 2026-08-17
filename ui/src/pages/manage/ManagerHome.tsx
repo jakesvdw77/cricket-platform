@@ -10,7 +10,7 @@ const MOCK_MANAGER = { name: 'Sam Manager' }
 
 export default function ManagerHome() {
   return (
-    <GridNavShell brand="Riverside CC" user={MOCK_MANAGER} onLogout={() => keycloak.logout()}>
+    <GridNavShell brand="Riverside CC" user={MOCK_MANAGER} onLogout={() => keycloak.logout()} profileTo="/manage/profile">
       <Outlet />
     </GridNavShell>
   )

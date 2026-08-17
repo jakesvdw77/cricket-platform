@@ -21,6 +21,7 @@ function renderShell(initialPath = '/admin', onLogout = vi.fn()) {
               navItems={navItems}
               user={{ name: 'Ada Lovelace', email: 'ada@example.com' }}
               onLogout={onLogout}
+              profileTo="/admin/profile"
             >
               <div>Page content</div>
             </AppShell>
@@ -66,5 +67,13 @@ describe('AppShell', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'Log out' }))
 
     expect(onLogout).toHaveBeenCalledOnce()
+  })
+
+  it('links the avatar menu Profile item to the given profileTo route', async () => {
+    renderShell()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
+
+    expect(screen.getByRole('menuitem', { name: 'Profile' })).toHaveAttribute('href', '/admin/profile')
   })
 })

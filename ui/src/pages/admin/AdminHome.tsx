@@ -39,6 +39,7 @@ export default function AdminHome() {
       navItems={NAV_ITEMS}
       user={{ name: data.username, email: data.email }}
       onLogout={() => keycloak.logout()}
+      profileTo="/admin/profile"
     >
       <Outlet context={data} />
     </AppShell>

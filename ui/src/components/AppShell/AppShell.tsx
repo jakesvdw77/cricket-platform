@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { AppBar, Box, Drawer, IconButton, List, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material'
+import { Box, Drawer, IconButton, List, ListItemButton, ListItemText } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { AvatarMenu } from '../AvatarMenu'
 import { Footer } from '../Footer'
+import { ShellHeader } from '../ShellHeader'
 
 const DRAWER_WIDTH = 232
 
@@ -18,13 +18,14 @@ export interface AppShellProps {
   navItems: AppShellNavItem[]
   user: { name: string; email?: string }
   onLogout: () => void
+  profileTo: string
   children: ReactNode
 }
 
 // Desktop-console layout: persistent sidebar + top bar. Below `md`, the sidebar becomes a
 // temporary drawer behind a menu button rather than a bottom-tab bar — see
 // docs/specs/006-post-login-home-shells.md's System Admin nav decision.
-export function AppShell({ brand, navItems, user, onLogout, children }: AppShellProps) {
+export function AppShell({ brand, navItems, user, onLogout, profileTo, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
 
@@ -46,24 +47,22 @@ export function AppShell({ brand, navItems, user, onLogout, children }: AppShell
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton
-              aria-label="Open navigation"
-              edge="start"
-              onClick={() => setMobileOpen(true)}
-              sx={{ display: { xs: 'inline-flex', md: 'none' } }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="subtitle1" fontWeight={700}>
-              {brand}
-            </Typography>
-          </Box>
-          <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} />
-        </Toolbar>
-      </AppBar>
+      <ShellHeader
+        brand={brand}
+        user={user}
+        onLogout={onLogout}
+        profileTo={profileTo}
+        leading={
+          <IconButton
+            aria-label="Open navigation"
+            edge="start"
+            onClick={() => setMobileOpen(true)}
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+        }
+      />
 
       <Box sx={{ display: 'flex', flex: 1 }}>
         <Drawer
