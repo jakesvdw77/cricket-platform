@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Box, List, ListItemButton, ListItemText, Typography } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
 import { EmptyState } from '../../../components/EmptyState'
@@ -15,6 +16,7 @@ function goToClubLogin(slug: string) {
 }
 
 export default function FindYourClubLogin() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const trimmedQuery = query.trim()
 
@@ -36,6 +38,14 @@ export default function FindYourClubLogin() {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
+
+      {/* Platform admins aren't a member of any club (docs/specs/005-admin-login.md) — this is
+          the club-free path straight to Keycloak login, separate from the club search above. */}
+      <Box>
+        <Button onClick={() => navigate('/login')} variant="ghost" size="sm">
+          No club? Log in as admin
+        </Button>
+      </Box>
 
       {hasSearched && !isFetching && results.length > 0 && (
         <List sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>

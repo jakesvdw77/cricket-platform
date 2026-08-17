@@ -44,7 +44,9 @@ test.describe('Landing page golden paths', () => {
   test('visitor searches for a known active club and is redirected to its subdomain login', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('link', { name: 'Log in' }).click();
+    // "Log in" opens a dialog (docs/specs/005-admin-login.md) rather than scrolling to a page
+    // section — it's a <button>, not an anchor link.
+    await page.getByRole('button', { name: 'Log in' }).click();
     await page.getByLabel('Search for your club').fill(CLUB_NAME);
 
     const resultItem = page.getByText(CLUB_NAME, { exact: true });

@@ -70,6 +70,18 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ClubSummaryDto"
+  /api/v1/platform/me:
+    get:
+      tags:
+      - admin-identity-controller
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AdminIdentityDto"
   /api/v1/platform/leads:
     get:
       tags:
@@ -173,6 +185,15 @@ components:
         name:
           type: string
         slug:
+          type: string
+    AdminIdentityDto:
+      type: object
+      properties:
+        keycloakUserId:
+          type: string
+        username:
+          type: string
+        email:
           type: string
     Pageable:
       type: object

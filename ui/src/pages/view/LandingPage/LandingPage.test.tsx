@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import LandingPage from './LandingPage'
 
@@ -15,7 +16,9 @@ function renderLandingPage() {
   const queryClient = new QueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <LandingPage />
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -67,5 +70,23 @@ describe('LandingPage lead-capture form', () => {
     }))
 
     expect(await screen.findByText("Thanks — we'll be in touch")).toBeInTheDocument()
+  })
+})
+
+describe('LandingPage login dialog', () => {
+  it('opens the login dialog when "Log in" is clicked, and closes it via the close icon', async () => {
+    const user = userEvent.setup()
+    renderLandingPage()
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Log in' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(screen.getByText('Log in to your club')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
 })
