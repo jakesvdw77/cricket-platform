@@ -1,4 +1,6 @@
-import { AppBar, Box, Container, Stack, Toolbar, Typography } from '@mui/material'
+import { useState } from 'react'
+import { AppBar, Box, Container, Dialog, DialogContent, DialogTitle, IconButton, Stack, Toolbar, Typography } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import { Card } from '../../../components/Card'
 import { Button } from '../../../components/Button'
 import { TestimonialCard } from '../../../components/marketing/TestimonialCard'
@@ -34,6 +36,8 @@ const SOCIAL_LINKS = [
 ]
 
 export default function LandingPage() {
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false)
+
   return (
     <Box>
       <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
@@ -63,7 +67,7 @@ export default function LandingPage() {
           </Stack>
 
           <Stack direction="row" spacing={1}>
-            <Button component="a" href="#find-your-club" variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={() => setLoginDialogOpen(true)}>
               Log in
             </Button>
             <Button component="a" href="#lead-capture" variant="primary" size="sm">
@@ -72,6 +76,29 @@ export default function LandingPage() {
           </Stack>
         </Toolbar>
       </AppBar>
+
+      {/* A dialog, not an anchor-scroll to a page section — the previous #find-your-club
+          section sat right next to "Get started" and was easy to confuse with it. This makes
+          "Log in" a single, unambiguous action every time, holding both the club search and the
+          club-free admin path (docs/specs/005-admin-login.md) in one contained interaction. */}
+      <Dialog open={loginDialogOpen} onClose={() => setLoginDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ pr: 6 }}>
+          Log in to your club
+          <IconButton
+            aria-label="Close"
+            onClick={() => setLoginDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Find your club below to be taken to its own login page.
+          </Typography>
+          <FindYourClubLogin />
+        </DialogContent>
+      </Dialog>
 
       <Container maxWidth="md" sx={{ py: { xs: 5, md: 8 } }} id="product">
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1.5 }}>
@@ -128,18 +155,6 @@ export default function LandingPage() {
         </Typography>
         <LeadCaptureForm />
       </Container>
-
-      <Box sx={{ bgcolor: 'action.hover', borderTop: 1, borderColor: 'divider' }} id="find-your-club">
-        <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1 }}>
-            Log in to your club
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Find your club below to be taken to its own login page.
-          </Typography>
-          <FindYourClubLogin />
-        </Container>
-      </Box>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider' }}>
         <Container

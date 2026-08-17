@@ -5,6 +5,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { baseTheme } from './theme'
 import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
+import Login from './pages/view/Login'
+import AdminHome from './pages/admin/AdminHome'
 
 const queryClient = new QueryClient()
 
@@ -21,6 +23,11 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={isRootDomain ? <LandingPage /> : <UpcomingMatches />} />
+            {/* /login and /admin are club-agnostic — a platform admin's RoleAssignment has no
+                club scope (docs/specs/001), so these run on the root domain directly as well as
+                every club subdomain, without resolving any Club. */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/admin" element={<AdminHome />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
