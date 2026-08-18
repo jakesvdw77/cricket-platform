@@ -121,6 +121,15 @@ paths:
         required: false
         schema:
           type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - RETIRED
       - name: pageable
         in: query
         required: true
@@ -212,6 +221,108 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProductDto"
+  /api/v1/platform/subscriptions:
+    get:
+      tags:
+      - subscription-controller
+      operationId: list
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageSubscriptionDto"
+    post:
+      tags:
+      - subscription-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionRequest"
+        required: true
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
+  /api/v1/platform/subscriptions/{id}:
+    get:
+      tags:
+      - subscription-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
+    put:
+      tags:
+      - subscription-controller
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubscriptionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
+  /api/v1/platform/subscriptions/{id}/cancel:
+    post:
+      tags:
+      - subscription-controller
+      operationId: cancel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
 components:
   schemas:
     UpdateLeadStatusRequest:
@@ -444,10 +555,99 @@ components:
     ClubSummaryDto:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         name:
           type: string
         slug:
           type: string
+    ProductSummaryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+    SubscriptionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SECTION
+        ownerId:
+          type: string
+          format: uuid
+        club:
+          $ref: "#/components/schemas/ClubSummaryDto"
+        product:
+          $ref: "#/components/schemas/ProductSummaryDto"
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - CANCELLED
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateSubscriptionRequest:
+      type: object
+      properties:
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SECTION
+        ownerId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - ownerId
+      - ownerType
+      - productId
+    UpdateSubscriptionRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - productId
     AdminIdentityDto:
       type: object
       properties:
@@ -520,6 +720,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PageSubscriptionDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubscriptionDto"
         number:
           type: integer
           format: int32

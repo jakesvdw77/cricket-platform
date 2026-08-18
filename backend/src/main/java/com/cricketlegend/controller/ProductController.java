@@ -1,5 +1,6 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.dto.CreateProductRequest;
 import com.cricketlegend.dto.ProductDto;
 import com.cricketlegend.dto.UpdateProductRequest;
@@ -36,8 +37,10 @@ public class ProductController {
 
     @GetMapping("/api/v1/platform/products")
     public ResponseEntity<Page<ProductDto>> list(
-            @RequestParam(required = false) String search, Pageable pageable) {
-        return ResponseEntity.ok(productService.list(search, pageable));
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ProductStatus status,
+            Pageable pageable) {
+        return ResponseEntity.ok(productService.list(search, status, pageable));
     }
 
     @GetMapping("/api/v1/platform/products/{id}")

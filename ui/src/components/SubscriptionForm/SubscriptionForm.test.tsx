@@ -1,0 +1,260 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SubscriptionForm, SUBSCRIPTION_FORM_ID } from './SubscriptionForm'
+import type { SubscriptionFormProps } from './SubscriptionForm'
+import type { ListProductsParams } from '../../api/productApi'
+
+const searchClubs = vi.fn()
+const listProducts = vi.fn()
+
+vi.mock('../../api/leadApi', () => ({
+  searchClubs: (query: string) => searchClubs(query),
+}))
+
+vi.mock('../../api/productApi', () => ({
+  listProducts: (params: ListProductsParams) => listProducts(params),
+}))
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  listProducts.mockResolvedValue({
+    content: [
+      { id: 'prod-1', name: 'Club Standard', code: 'CLUB_STANDARD' },
+      { id: 'prod-2', name: 'Club Pro', code: 'CLUB_PRO' },
+    ],
+    totalElements: 2,
+    totalPages: 1,
+    number: 0,
+    size: 100,
+  })
+  searchClubs.mockResolvedValue([{ id: 'club-1', name: 'Riverside CC', slug: 'riverside-cc' }])
+})
+
+// SubscriptionForm's own submit button lives outside it (RecordFormScreen's actions bar, see
+// SubscriptionFormPage) and targets the form via the native `form="…"` attribute — this mirrors
+// that wiring, same convention as ProductForm.test.tsx's renderProductForm helper.
+function renderSubscriptionForm(props: SubscriptionFormProps, submitLabel = 'Submit') {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SubscriptionForm {...props} />
+      <button type="submit" form={SUBSCRIPTION_FORM_ID}>
+        {submitLabel}
+      </button>
+    </QueryClientProvider>,
+  )
+}
+
+async function waitForDebounce() {
+  // SubscriptionForm debounces the Club search into the query key ~300ms — see
+  // CLUB_SEARCH_DEBOUNCE_MS.
+  await new Promise((resolve) => setTimeout(resolve, 350))
+}
+
+function todayIso(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+// Mirrors SubscriptionForm's own addMonths() so expectations aren't hand-computed.
+function addMonths(isoDate: string, months: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCMonth(date.getUTCMonth() + months)
+  return date.toISOString().slice(0, 10)
+}
+
+describe('SubscriptionForm', () => {
+  it('renders the Club/Product pickers and date fields', async () => {
+    renderSubscriptionForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByLabelText('Club')).toBeInTheDocument()
+    expect(screen.getByLabelText('Product')).toBeInTheDocument()
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument()
+    expect(screen.getByLabelText('End date (optional)')).toBeInTheDocument()
+
+    // Only ACTIVE products are ever requested for the picker, per
+    // docs/specs/009-subscriptions.md's UI Requirements.
+    expect(listProducts).toHaveBeenCalledWith({ page: 0, size: 100, status: 'ACTIVE' })
+  })
+
+  it('renders inline validation errors when required fields are missing and does not submit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Select a club')).toBeInTheDocument()
+    expect(screen.getByText('Select a product')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('rejects an end date before the start date with an inline error and does not submit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    // clubId/productId are left unset here — this test only exercises the date-ordering rule in
+    // isolation; validate() still reports those as separate errors, which is fine since this
+    // assertion only checks the endDate error is present and submit is blocked.
+    const startDate = screen.getByLabelText('Start date')
+    const endDate = screen.getByLabelText('End date (optional)')
+    await user.clear(startDate)
+    await user.type(startDate, '2026-06-01')
+    await user.clear(endDate)
+    await user.type(endDate, '2026-01-01')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('End date must be on or after the start date')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it(
+    'submits a correctly-shaped payload after selecting a club and product',
+    async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderSubscriptionForm({ onSubmit })
+
+      await user.type(screen.getByLabelText('Club'), 'Riverside')
+      await waitForDebounce()
+      await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      // startDate defaults to today (see SubscriptionForm's local-date todayIso()) rather than
+      // null — computed the same local-date way, not toISOString()'s UTC, to avoid a spurious
+      // mismatch near midnight in timezones offset from UTC.
+      const today = new Date()
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+      expect(onSubmit).toHaveBeenCalledTimes(1)
+      expect(onSubmit).toHaveBeenCalledWith({
+        clubId: 'club-1',
+        productId: 'prod-1',
+        startDate: todayIso,
+        endDate: null,
+      })
+    },
+    15000,
+  )
+
+  it('disables the Club Autocomplete in edit mode and never fires its search query', async () => {
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+      },
+    })
+
+    const clubField = screen.getByLabelText('Club')
+    expect(clubField).toBeDisabled()
+    expect(clubField).toHaveValue('Riverside CC')
+    expect(screen.getByText('The owning Club cannot be changed after creation')).toBeInTheDocument()
+
+    // Give any stray debounce timer a chance to fire before asserting — the query must never be
+    // requested at all while editing, not merely be starved of user input.
+    await waitForDebounce()
+
+    expect(searchClubs).not.toHaveBeenCalled()
+  })
+
+  it('edit mode pre-fills the Product select and date fields from initialValues', () => {
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-2',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+      },
+    })
+
+    expect(screen.getByDisplayValue('2026-01-01')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('2026-12-31')).toBeInTheDocument()
+  })
+
+  it(
+    "create mode suggests an end date from the selected product's max term, labelled as a suggestion",
+    async () => {
+      const user = userEvent.setup()
+      listProducts.mockResolvedValue({
+        content: [{ id: 'prod-1', name: 'Club Standard', code: 'CLUB_STANDARD', maxPeriodMonths: 12 }],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 100,
+      })
+      renderSubscriptionForm({ onSubmit: vi.fn() })
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      const expectedEnd = addMonths(todayIso(), 12)
+      expect(await screen.findByDisplayValue(expectedEnd)).toBeInTheDocument()
+      expect(
+        screen.getByText("Suggested from the product's 12-month max term — edit to override"),
+      ).toBeInTheDocument()
+    },
+    15000,
+  )
+
+  it('edit mode never auto-suggests an end date, even for an ongoing subscription on a term-limited product', async () => {
+    listProducts.mockResolvedValue({
+      content: [{ id: 'prod-1', name: 'Club Standard', code: 'CLUB_STANDARD', maxPeriodMonths: 12 }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        productLabel: 'Club Standard (CLUB_STANDARD)',
+        startDate: '2026-01-01',
+        endDate: null,
+      },
+    })
+
+    // Wait for the product data to actually load before asserting the negative — otherwise the
+    // assertion could pass trivially before the effect even had a chance to run.
+    expect(await screen.findByText('Max term: 12 months')).toBeInTheDocument()
+    expect(screen.getByLabelText('End date (optional)')).toHaveValue('')
+  })
+
+  it('edit mode shows a synthetic option and dedicated helper text when the subscription\'s product has since been retired', async () => {
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-9',
+        productLabel: 'Legacy Plan (LEGACY)',
+        startDate: '2026-01-01',
+        endDate: null,
+      },
+    })
+
+    expect(await screen.findByText('Legacy Plan (LEGACY)')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'This product has since been retired — dates can still be edited, but only a different active product can be selected',
+      ),
+    ).toBeInTheDocument()
+  })
+})

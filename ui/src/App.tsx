@@ -15,6 +15,8 @@ import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
 import ProductList from './pages/admin/ProductList'
 import ProductFormPage from './pages/admin/ProductFormPage'
+import SubscriptionList from './pages/admin/SubscriptionList'
+import SubscriptionFormPage from './pages/admin/SubscriptionFormPage'
 import { EmptyState } from './components/EmptyState'
 
 const queryClient = new QueryClient()
@@ -51,7 +53,9 @@ function App() {
                 <Route path="products" element={<ProductList />} />
                 <Route path="products/new" element={<ProductFormPage />} />
                 <Route path="products/:id/edit" element={<ProductFormPage />} />
-                <Route path="subscriptions" element={<EmptyState title="Subscriptions" description="Coming soon." />} />
+                <Route path="subscriptions" element={<SubscriptionList />} />
+                <Route path="subscriptions/new" element={<SubscriptionFormPage />} />
+                <Route path="subscriptions/:id/edit" element={<SubscriptionFormPage />} />
                 <Route path="discounts" element={<EmptyState title="Discounts & Promotions" description="Coming soon." />} />
                 <Route path="invoicing" element={<EmptyState title="Invoicing" description="Coming soon." />} />
                 <Route path="settings" element={<EmptyState title="System Settings" description="Coming soon." />} />

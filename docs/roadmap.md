@@ -8,7 +8,7 @@ Update this file whenever a spec's own forward-references change (a new "Flag fo
 
 | # | Spec | Status |
 |---|---|---|
-| 009 | [Subscriptions](specs/009-subscriptions.md) | Draft — links `Club` to `Product`, admin-driven, `CLUB`-owner-only this pass. |
+| 009 | [Subscriptions](specs/009-subscriptions.md) | Built, on `feature/009-subscriptions`, pending review/PR — links `Club` to `Product`, admin-driven, `CLUB`-owner-only this pass. |
 
 ## Next up — Configuration hub modules
 
@@ -17,9 +17,9 @@ Sequenced by `007-configuration-hub-overview.md`'s own Rollout Notes. Each is a 
 | Module | Status | Notes |
 |---|---|---|
 | Products | ✅ Shipped (`008`) | Subscription-tier catalog: pricing, usage limits, capability toggles. |
-| Subscriptions | 🔶 In progress (`009`) | Links a `Club` to a `Product`. |
+| Subscriptions | 🔶 Built, pending review (`009`) | Links a `Club` to a `Product`. |
 | Discounts & Promotions | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals) — no spec yet. |
-| Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Also the spec that should decide whether `AdminHome.tsx`'s top-level `Subscriptions & Invoices` nav item becomes real or narrows to `Invoices` only (`009` Rollout Notes). |
+| Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Also the spec that should decide whether `AdminHome.tsx`'s top-level `Subscriptions & Invoices` nav item becomes real or narrows to `Invoices` only (`009` Rollout Notes), and owns the billing-mechanics decisions below. |
 | System Settings | Unscoped | Named for roadmap visibility only (`007`). |
 
 ## Next up — self-serve signup (Free tier only)
@@ -34,6 +34,14 @@ Depends on:
 
 Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/callback purposes — this doesn't replace it, it adds a second, Free-tier-only path that doesn't need a human.
 
+## Next up — billing mechanics (for the future Invoicing spec)
+
+Discussed during `009`'s planning, deliberately not implemented there — `009`'s `Subscription.startDate`/`endDate` are entitlement markers only, no charge is ever computed from them. Decisions recorded here so the Invoicing spec doesn't re-litigate them from scratch:
+
+- **Anniversary billing, not calendar-month billing.** A billing period should run from the Subscription's own `startDate` in `billingInterval`-sized increments (subscribe on the 15th → billed the 15th of every following month), not aligned to the 1st of the calendar month. Avoids proration for the common case — calendar-aligned billing would require prorating almost every first invoice, since `003`'s vendor-assisted onboarding can happen any day of the month.
+- **Proration for mid-cycle Product changes** — `009`'s `PUT /api/v1/platform/subscriptions/{id}` already lets an admin change a Club's Product at any point; whether/how that's prorated on the next invoice is real, unresolved billing logic.
+- **Enforcing `Product.maxPeriodMonths`** against a Subscription's date range (`009` Non-goals) — `009`'s `SubscriptionForm` only suggests `endDate = startDate + maxPeriodMonths` as a UI convenience, nothing rejects a mismatch server-side.
+
 ## Blocked on the full tenancy model (`001`)
 
 `Section`, `Team`, `ClubMembership`, and `RoleAssignment` don't exist in code yet — only a minimal `Club` stub does (built for `004`'s public search). Everything below is blocked on that model actually being built, which is its own, larger spec (or several) before any of these can start:
@@ -47,6 +55,8 @@ Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/ca
 ## `003` — Club Onboarding (vendor-assisted)
 
 Spec'd, not yet built. Stays vendor-assisted — a human sets a club up by hand, matching the landing page's own "Vendor-assisted onboarding" pitch. Self-serve (above) is a second, Free-tier-only path added alongside this, not a replacement for it.
+
+**Noted during `009` planning, not yet actioned:** `Club` is used as the umbrella term throughout the product and code, but a real "club" in this system can be a School, Academy, or Cricket Club (or similar) — `001`'s `Club` entity (and its current minimal code stub, `id`/`name`/`slug`/`status` only) has no field capturing which. Needs an "organization type" field, set during onboarding (`003`) — the term `Club` stays as the internal/technical name either way (same resolution as the `Section`/"Age Group" naming decision), this is about adding a real data field, not a rename. Update `001`'s `Club` Field Reference and this entry once actually spec'd.
 
 ## Other deferred items (`001`/`002`, unscheduled)
 

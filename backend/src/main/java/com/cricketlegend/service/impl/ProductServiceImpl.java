@@ -57,9 +57,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductDto> list(String search, Pageable pageable) {
+    public Page<ProductDto> list(String search, ProductStatus status, Pageable pageable) {
         Pageable effectivePageable = withDefaultSort(pageable);
-        return productRepository.search(search, effectivePageable).map(productMapper::toDto);
+        return productRepository.search(search, status, effectivePageable).map(productMapper::toDto);
     }
 
     private Pageable withDefaultSort(Pageable pageable) {

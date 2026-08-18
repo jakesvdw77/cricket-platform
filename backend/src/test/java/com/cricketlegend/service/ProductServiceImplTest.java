@@ -321,11 +321,11 @@ class ProductServiceImplTest {
     void listWithNoCallerSortDefaultsToDisplayOrderAscending() {
         Pageable requested = PageRequest.of(0, 20);
         Pageable expectedEffective = PageRequest.of(0, 20, Sort.by("displayOrder").ascending());
-        when(productRepository.search(null, expectedEffective))
+        when(productRepository.search(null, null, expectedEffective))
                 .thenReturn(new PageImpl<>(List.of(new Product())));
         when(productMapper.toDto(any(Product.class))).thenReturn(dummyDto());
 
-        Page<ProductDto> result = productService.list(null, requested);
+        Page<ProductDto> result = productService.list(null, null, requested);
 
         assertThat(result.getContent()).hasSize(1);
     }
@@ -333,10 +333,10 @@ class ProductServiceImplTest {
     @Test
     void listPreservesCallerSuppliedSort() {
         Pageable requested = PageRequest.of(0, 20, Sort.by("name").ascending());
-        when(productRepository.search(null, requested)).thenReturn(new PageImpl<>(List.of(new Product())));
+        when(productRepository.search(null, null, requested)).thenReturn(new PageImpl<>(List.of(new Product())));
         when(productMapper.toDto(any(Product.class))).thenReturn(dummyDto());
 
-        Page<ProductDto> result = productService.list(null, requested);
+        Page<ProductDto> result = productService.list(null, null, requested);
 
         assertThat(result.getContent()).hasSize(1);
     }
