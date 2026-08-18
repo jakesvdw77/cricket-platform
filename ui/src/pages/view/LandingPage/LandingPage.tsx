@@ -15,8 +15,8 @@ const NAV_LINKS = [
 
 const FEATURE_TILES = [
   {
-    title: 'Section-scoped scoring',
-    body: 'Every section — seniors, juniors, veterans — sees only the fixtures and scorecards that belong to it, without extra admin overhead.',
+    title: 'Age group and grade-scoped scoring',
+    body: 'Every age group and grade — seniors, juniors, veterans — sees only the fixtures and scorecards that belong to it, without extra admin overhead.',
   },
   {
     title: 'One codebase, your brand',
@@ -105,8 +105,8 @@ export default function LandingPage() {
           Cricket club management, built for how clubs actually run
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 640 }}>
-          Fixtures, scorecards, and membership for every section of your club — white-labelled to your
-          colours, hosted on your own subdomain.
+          Fixtures, scorecards, and membership for every age group and grade in your club — white-labelled to
+          your colours, hosted on your own subdomain.
         </Typography>
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -127,12 +127,12 @@ export default function LandingPage() {
           </Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TestimonialCard
-              quote="Onboarding our club took one afternoon instead of the two weeks we budgeted for. The section admins were self-sufficient within a day."
+              quote="Onboarding our club took one afternoon instead of the two weeks we budgeted for. The age group admins were self-sufficient within a day."
               name="Riaan Coetzee"
               role="Chairman, Riverside CC"
             />
             <TestimonialCard
-              quote="Every section sees exactly the fixtures relevant to them, nothing else."
+              quote="Every age group and grade sees exactly the fixtures relevant to them, nothing else."
               name="Devan Pillay"
               role="Juniors Convenor, Oakfield CC"
             />

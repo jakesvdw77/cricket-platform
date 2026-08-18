@@ -14,7 +14,7 @@ type Story = StoryObj<typeof TestimonialCard>
 export const Default: Story = {
   args: {
     quote:
-      'Onboarding our club took one afternoon instead of the two weeks we budgeted for. The section admins were self-sufficient within a day.',
+      'Onboarding our club took one afternoon instead of the two weeks we budgeted for. The age group admins were self-sufficient within a day.',
     name: 'Riaan Coetzee',
     role: 'Chairman, Riverside CC',
   },
@@ -38,7 +38,7 @@ export const Row: Story = {
         role="Chairman, Riverside CC"
       />
       <TestimonialCard
-        quote="Every section sees exactly the fixtures relevant to them, nothing else."
+        quote="Every age group and grade sees exactly the fixtures relevant to them, nothing else."
         name="Devan Pillay"
         role="Juniors Convenor, Oakfield CC"
       />

@@ -107,6 +107,8 @@ erDiagram
 
 > **Why `Section` is self-referential, not a fixed Section/Division split:** every club structures its age groups differently — some split Juniors into U11/U13/U15, others also split a single age group into A/B grades. A self-referential `Section` (each row can have a `parent_section_id`) supports "Juniors → U13 → U13A" or just "Open" with no children, using one table and one recursive rule, instead of hard-coding how many levels deep a club is allowed to go.
 
+> **Naming: `Section` is the internal/technical term only.** User testing (a club committee member walking through an early design) found "Section" confusing on its own — they understood it instantly once described as "Age Groups." But the entity covers more than age groups (`Open`, `Vets`, and grade splits like `U13A`/`U13B` aren't age groups), so renaming the entity itself to `AgeGroup` would make the model *less* accurate, not more. The fix is at the UI-copy layer, not the model: user-facing screens and marketing copy should say "Age Group" or "Grade" (whichever fits the specific node), never bare "Section," while the entity/table/API name stays `Section` everywhere in code and specs. `006-post-login-home-shells.md`'s Manager nav card already does this — it's labelled "Sections & Age Groups," not "Sections."
+
 ## Scope Hierarchy & Access
 
 A `RoleAssignment` binds a role to a scope — `PLATFORM`, `CLUB`, `SECTION`, or `TEAM` — and covers everything nested beneath that scope node. A juniors administrator's assignment sits on the Juniors `Section`; it automatically covers every age group under it and nothing outside it, with no "juniors" special case written anywhere in code.
