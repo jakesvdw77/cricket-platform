@@ -46,6 +46,7 @@ project-root/
 ├── CLAUDE.md
 ├── docs/
 │   ├── workflow.md                  # the spec → design → plan → build → test → review → PR cycle, step by step
+│   ├── roadmap.md                   # forward-looking backlog — indexes each spec's own deferred/future items, doesn't duplicate their reasoning
 │   ├── specs/                       # one file per feature, numbered — docs/specs/000-template.md is the shape
 │   ├── plans/                       # approved /plan-feature output, one per spec, numbered to match
 │   └── standards/
