@@ -12,6 +12,18 @@ Screens are composed from a library, not invented per page — the mechanical fi
 
 *(Tokens and the first five components are done — see below and `ui/src/components/`. Table, Modal, and loading states are next.)*
 
+## Record list / create-edit pattern
+
+**Every screen that lists records and/or creates/edits one uses this pattern — not a per-screen layout.** Established via `docs/specs/008-product-catalog.md`'s Products screens (the reference implementation) after manual review found ad-hoc list screens inconsistent (no search/sort, inline "add" tiles cluttering record grids, no Back action, forms stuck at mobile width on desktop). Three components, `ui/src/components/`:
+
+| Component | Use |
+|---|---|
+| `ListToolbar` | Header above any record list/grid: search (debounced into a backend query, never client-filtered), a sort control (backend-driven — selecting an option re-fetches with a new `sort` param, never client-side re-order), and the primary "Add `<Record>`" action. The create action lives here, never as a tile inside the record grid. |
+| `RecordCard` | Grid unit for a record list. Fixed slot order: title + status badge, a required description (2-line clamp), a row of key fields, an optional row of attribute chips, then a footer edit action. |
+| `RecordFormScreen` | Wrapper for any create/edit screen: a visible Back action above the title, a responsive field grid (single column at `xs`, two columns from `md`, long-form fields spanning both), and an actions bar below a divider. Desktop uses the available width instead of staying a centered mobile-width column. |
+
+Sorting/search are backend-driven, consistent with pagination's existing rule below — a list screen never filters or sorts a fetched page client-side. New list/CRUD screens (Subscriptions, Discounts & Promotions, Invoicing, System Settings, and manager-side screens) compose from these three directly; a genuinely new visual need gets a library addition first, per the Workflow step above — not a fork of this pattern.
+
 ## Two token layers
 
 Per-club white-labelling means the token system has two layers, not one:
