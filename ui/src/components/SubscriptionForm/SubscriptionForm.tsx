@@ -56,6 +56,18 @@ function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): Fo
   }
 }
 
+// Informational only — the product's max term is suggested, never enforced client- or
+// server-side (see docs/roadmap.md's enforcement-deferred note). Plain Date arithmetic, not a
+// date library (none exists in this codebase yet): month-length overflow (e.g. Jan 31 + 1
+// month) can roll into the following month, which is an acceptable rough edge for a suggestion
+// the admin can freely overwrite.
+function addMonths(isoDate: string, months: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCMonth(date.getUTCMonth() + months)
+  return date.toISOString().slice(0, 10)
+}
+
 function validate(values: FormState, isEdit: boolean): FormErrors {
   const errors: FormErrors = {}
 
@@ -83,6 +95,9 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
 
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
+  // Once the admin has explicitly set an end date (typed one in, or it arrived from
+  // initialValues on edit), stop auto-suggesting — never clobber a deliberate value.
+  const [endDateTouched, setEndDateTouched] = useState(Boolean(initialValues?.endDate))
 
   const [clubInputValue, setClubInputValue] = useState(initialValues?.clubLabel ?? '')
   const [debouncedClubQuery, setDebouncedClubQuery] = useState('')
@@ -113,8 +128,22 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
     queryFn: () => listProducts({ page: 0, size: 100, status: 'ACTIVE' }),
   })
   const productOptions = productPage?.content ?? []
+  const selectedProduct = productOptions.find((product) => product.id === values.productId) ?? null
+
+  // Suggests endDate = startDate + the selected product's maxPeriodMonths whenever the admin
+  // hasn't set one themselves — informational, not enforced (Product.maxPeriodMonths has no
+  // corresponding backend validation on Subscription in this spec, see docs/roadmap.md).
+  useEffect(() => {
+    if (endDateTouched || !selectedProduct?.maxPeriodMonths || !values.startDate) {
+      return
+    }
+    setValues((prev) => ({ ...prev, endDate: addMonths(prev.startDate, selectedProduct.maxPeriodMonths as number) }))
+  }, [endDateTouched, selectedProduct, values.startDate])
 
   const handleChange = (field: 'startDate' | 'endDate') => (event: ChangeEvent<HTMLInputElement>) => {
+    if (field === 'endDate') {
+      setEndDateTouched(true)
+    }
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
@@ -184,7 +213,14 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
         value={values.productId}
         onChange={handleProductChange}
         error={Boolean(errors.productId)}
-        helperText={errors.productId}
+        helperText={
+          errors.productId ??
+          (selectedProduct
+            ? selectedProduct.maxPeriodMonths
+              ? `Max term: ${selectedProduct.maxPeriodMonths} month${selectedProduct.maxPeriodMonths === 1 ? '' : 's'}`
+              : 'No fixed term limit'
+            : undefined)
+        }
       >
         {productOptions.map((product) => (
           <MenuItem key={product.id} value={product.id}>
@@ -208,7 +244,12 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
         value={values.endDate}
         onChange={handleChange('endDate')}
         error={Boolean(errors.endDate)}
-        helperText={errors.endDate ?? 'Leave blank for an ongoing subscription'}
+        helperText={
+          errors.endDate ??
+          (!endDateTouched && selectedProduct?.maxPeriodMonths
+            ? `Suggested from the product's ${selectedProduct.maxPeriodMonths}-month max term — edit to override`
+            : 'Leave blank for an ongoing subscription')
+        }
         InputLabelProps={{ shrink: true }}
       />
     </Box>
