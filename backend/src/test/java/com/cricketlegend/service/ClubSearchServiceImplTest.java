@@ -57,10 +57,11 @@ class ClubSearchServiceImplTest {
     void nonBlankQueryDelegatesToRepositoryAndMapsResults() {
         Club club = Club.builder().name("Riverside CC").slug("riverside").status(ClubStatus.ACTIVE).build();
         when(clubRepository.searchActiveByNameOrSlug("river")).thenReturn(List.of(club));
-        when(clubMapper.toSummaryDto(club)).thenReturn(new ClubSummaryDto("Riverside CC", "riverside"));
+        when(clubMapper.toSummaryDto(club))
+                .thenReturn(new ClubSummaryDto(club.getId(), "Riverside CC", "riverside"));
 
         List<ClubSummaryDto> result = clubSearchService.search("river");
 
-        assertThat(result).containsExactly(new ClubSummaryDto("Riverside CC", "riverside"));
+        assertThat(result).containsExactly(new ClubSummaryDto(club.getId(), "Riverside CC", "riverside"));
     }
 }
