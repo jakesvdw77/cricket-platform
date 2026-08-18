@@ -14,3 +14,8 @@ CREATE TABLE subscription (
 CREATE UNIQUE INDEX ux_subscription_active_owner
     ON subscription (owner_type, owner_id)
     WHERE status = 'ACTIVE';
+
+-- Supports the Club join in SubscriptionRepository.search/searchOrderByClubNameAsc, and the
+-- list endpoint's default sort — both hot paths on every admin list request.
+CREATE INDEX ix_subscription_owner_id ON subscription (owner_id);
+CREATE INDEX ix_subscription_start_date ON subscription (start_date);

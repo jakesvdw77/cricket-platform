@@ -125,6 +125,27 @@ class SubscriptionRepositoryTest {
     }
 
     @Test
+    void searchOrderByClubNameAscOrdersByTheJoinedClubsNameAndStillFiltersBySearch() {
+        Club riverside = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club acacia = clubRepository.save(newClub("Acacia Cricket Club", "acacia-cc"));
+        Club oakwood = clubRepository.save(newClub("Oakwood Cricket Club", "oakwood-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD"));
+        subscriptionRepository.save(newSubscription(riverside.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+        subscriptionRepository.save(newSubscription(acacia.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+        subscriptionRepository.save(newSubscription(oakwood.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+
+        Pageable pageable = PageRequest.of(0, 20);
+
+        Page<Subscription> all = subscriptionRepository.searchOrderByClubNameAsc(null, pageable);
+        assertThat(all.getContent()).extracting(Subscription::getOwnerId)
+                .containsExactly(acacia.getId(), oakwood.getId(), riverside.getId());
+
+        Page<Subscription> filtered = subscriptionRepository.searchOrderByClubNameAsc("cricket club", pageable);
+        assertThat(filtered.getContent()).extracting(Subscription::getOwnerId)
+                .containsExactly(acacia.getId(), oakwood.getId());
+    }
+
+    @Test
     void searchWithNullOrBlankReturnsEveryClubOwnedSubscription() {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Product product = productRepository.save(newProduct("CLUB_STANDARD"));

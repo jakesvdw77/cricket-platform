@@ -95,8 +95,21 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     public Page<SubscriptionDto> list(String search, Pageable pageable) {
-        Pageable effectivePageable = withDefaultSort(pageable);
-        Page<Subscription> page = subscriptionRepository.search(search, effectivePageable);
+        Page<Subscription> page = isSortedByClubName(pageable)
+                // Ordering is baked into this query's JPQL (see its Javadoc) — pass an unsorted
+                // Pageable so Spring Data doesn't also try to translate "club.name" against
+                // Subscription's own attributes, which would fail (it isn't a JPA relationship).
+                ? subscriptionRepository.searchOrderByClubNameAsc(
+                        search, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()))
+                : subscriptionRepository.search(search, withDefaultSort(pageable));
+        return mapToDtoPage(page);
+    }
+
+    private boolean isSortedByClubName(Pageable pageable) {
+        return pageable.getSort().stream().anyMatch(order -> "club.name".equalsIgnoreCase(order.getProperty()));
+    }
+
+    private Page<SubscriptionDto> mapToDtoPage(Page<Subscription> page) {
         List<Subscription> subscriptions = page.getContent();
 
         Map<UUID, Club> clubsById =
@@ -127,6 +140,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     public SubscriptionDto update(UUID id, UpdateSubscriptionRequest request) {
         Subscription subscription = findOrThrow(id);
+        if (subscription.getStatus() == SubscriptionStatus.CANCELLED) {
+            throw new InvalidStatusTransitionException("Cannot update a cancelled subscription: " + id);
+        }
         Product product = findActiveProductOrThrow(request.productId());
 
         subscription.setProductId(request.productId());

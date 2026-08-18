@@ -324,6 +324,21 @@ class SubscriptionServiceImplTest {
     }
 
     @Test
+    void updateOnCancelledSubscriptionThrowsInvalidStatusTransitionException() {
+        UUID id = UUID.randomUUID();
+        Subscription existing =
+                subscription(id, UUID.randomUUID(), UUID.randomUUID(), SubscriptionStatus.CANCELLED);
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(UUID.randomUUID(), null, null);
+
+        assertThatThrownBy(() -> subscriptionService.update(id, request))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+
+        verify(subscriptionRepository, never()).save(any());
+    }
+
+    @Test
     void cancelOnActiveSubscriptionTransitionsToCancelled() {
         UUID id = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
@@ -381,6 +396,24 @@ class SubscriptionServiceImplTest {
         subscriptionService.list(null, requested);
 
         verify(subscriptionRepository).search(null, requested);
+    }
+
+    @Test
+    void listSortedByClubNameRoutesToTheDedicatedQueryWithNoPageableSort() {
+        // "club.name" isn't a Subscription attribute (ownerId is a plain UUID column, not a JPA
+        // relationship — see SubscriptionRepository's Javadoc), so this must route to
+        // searchOrderByClubNameAsc with the ORDER BY baked into its JPQL, not to search() with a
+        // Pageable sort Spring Data couldn't resolve against Subscription's own metamodel.
+        Pageable requested = PageRequest.of(0, 20, Sort.by("club.name").ascending());
+        Pageable expectedUnsorted = PageRequest.of(0, 20);
+        Page<Subscription> emptyPage = new PageImpl<>(List.of());
+        when(subscriptionRepository.searchOrderByClubNameAsc(null, expectedUnsorted)).thenReturn(emptyPage);
+
+        Page<SubscriptionDto> result = subscriptionService.list(null, requested);
+
+        assertThat(result.getContent()).isEmpty();
+        verify(subscriptionRepository).searchOrderByClubNameAsc(null, expectedUnsorted);
+        verify(subscriptionRepository, never()).search(any(), any());
     }
 
     @Test

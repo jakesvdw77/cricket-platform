@@ -30,4 +30,17 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
     @Query("SELECT s FROM Subscription s JOIN Club c ON s.ownerId = c.id WHERE s.ownerType = 'CLUB' "
             + "AND (:search IS NULL OR :search = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Subscription> search(@Param("search") String search, Pageable pageable);
+
+    /**
+     * Same filter as {@link #search}, ordered by the joined Club's name ascending. A separate
+     * query, not a {@code Pageable} sort on {@link #search}: {@code ownerId} is a plain UUID
+     * column, not a JPA relationship (see {@code Subscription}'s Javadoc), so Spring Data has no
+     * "club.name" property path to resolve against the {@code Subscription} entity — the ORDER BY
+     * has to be baked into the JPQL itself. Callers must pass a {@code Pageable} with no sort of
+     * its own (page/size only) — see {@code SubscriptionServiceImpl.list}.
+     */
+    @Query("SELECT s FROM Subscription s JOIN Club c ON s.ownerId = c.id WHERE s.ownerType = 'CLUB' "
+            + "AND (:search IS NULL OR :search = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "ORDER BY c.name ASC")
+    Page<Subscription> searchOrderByClubNameAsc(@Param("search") String search, Pageable pageable);
 }
