@@ -53,6 +53,19 @@ async function waitForDebounce() {
   await new Promise((resolve) => setTimeout(resolve, 350))
 }
 
+function todayIso(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+// Mirrors SubscriptionForm's own addMonths() so expectations aren't hand-computed.
+function addMonths(isoDate: string, months: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCMonth(date.getUTCMonth() + months)
+  return date.toISOString().slice(0, 10)
+}
+
 describe('SubscriptionForm', () => {
   it('renders the Club/Product pickers and date fields', async () => {
     renderSubscriptionForm({ onSubmit: vi.fn() })
@@ -171,5 +184,77 @@ describe('SubscriptionForm', () => {
 
     expect(screen.getByDisplayValue('2026-01-01')).toBeInTheDocument()
     expect(screen.getByDisplayValue('2026-12-31')).toBeInTheDocument()
+  })
+
+  it(
+    "create mode suggests an end date from the selected product's max term, labelled as a suggestion",
+    async () => {
+      const user = userEvent.setup()
+      listProducts.mockResolvedValue({
+        content: [{ id: 'prod-1', name: 'Club Standard', code: 'CLUB_STANDARD', maxPeriodMonths: 12 }],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 100,
+      })
+      renderSubscriptionForm({ onSubmit: vi.fn() })
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      const expectedEnd = addMonths(todayIso(), 12)
+      expect(await screen.findByDisplayValue(expectedEnd)).toBeInTheDocument()
+      expect(
+        screen.getByText("Suggested from the product's 12-month max term — edit to override"),
+      ).toBeInTheDocument()
+    },
+    15000,
+  )
+
+  it('edit mode never auto-suggests an end date, even for an ongoing subscription on a term-limited product', async () => {
+    listProducts.mockResolvedValue({
+      content: [{ id: 'prod-1', name: 'Club Standard', code: 'CLUB_STANDARD', maxPeriodMonths: 12 }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        productLabel: 'Club Standard (CLUB_STANDARD)',
+        startDate: '2026-01-01',
+        endDate: null,
+      },
+    })
+
+    // Wait for the product data to actually load before asserting the negative — otherwise the
+    // assertion could pass trivially before the effect even had a chance to run.
+    expect(await screen.findByText('Max term: 12 months')).toBeInTheDocument()
+    expect(screen.getByLabelText('End date (optional)')).toHaveValue('')
+  })
+
+  it('edit mode shows a synthetic option and dedicated helper text when the subscription\'s product has since been retired', async () => {
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-9',
+        productLabel: 'Legacy Plan (LEGACY)',
+        startDate: '2026-01-01',
+        endDate: null,
+      },
+    })
+
+    expect(await screen.findByText('Legacy Plan (LEGACY)')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'This product has since been retired — dates can still be edited, but only a different active product can be selected',
+      ),
+    ).toBeInTheDocument()
   })
 })

@@ -2,12 +2,25 @@ import { useState } from 'react'
 import { Stack, Typography } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { SubscriptionForm, SUBSCRIPTION_FORM_ID } from '../../components/SubscriptionForm'
 import type { SubscriptionFormValues } from '../../components/SubscriptionForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { getSubscription, createSubscription, updateSubscription, cancelSubscription } from '../../api/subscriptionApi'
+
+// The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
+// carries the specific reason (e.g. "Club already has an active subscription", "Product is not
+// active"). Falls back to a generic message when the response isn't shaped that way (a network
+// error, a non-JSON 5xx, etc.) — first use of this pattern in the frontend, so kept local rather
+// than a new shared utility for a single consumer.
+function errorDetail(error: unknown, fallback: string): string {
+  if (isAxiosError(error) && typeof error.response?.data?.detail === 'string') {
+    return error.response.data.detail
+  }
+  return fallback
+}
 
 export default function SubscriptionFormPage() {
   const { id } = useParams<{ id?: string }>()
@@ -93,7 +106,7 @@ export default function SubscriptionFormPage() {
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
           {saveMutation.isError && (
             <Typography variant="body2" color="error.main">
-              Something went wrong saving this subscription. Please try again.
+              {errorDetail(saveMutation.error, 'Something went wrong saving this subscription. Please try again.')}
             </Typography>
           )}
 
@@ -137,7 +150,10 @@ export default function SubscriptionFormPage() {
 
           {cancelSubscriptionMutation.isError && (
             <Typography variant="body2" color="error.main">
-              Something went wrong cancelling this subscription. Please try again.
+              {errorDetail(
+                cancelSubscriptionMutation.error,
+                'Something went wrong cancelling this subscription. Please try again.',
+              )}
             </Typography>
           )}
         </Stack>
@@ -150,6 +166,7 @@ export default function SubscriptionFormPage() {
                 clubId: subscription.club.id,
                 clubLabel: subscription.club.name,
                 productId: subscription.product.id,
+                productLabel: `${subscription.product.name} (${subscription.product.code})`,
                 startDate: subscription.startDate,
                 endDate: subscription.endDate,
               }

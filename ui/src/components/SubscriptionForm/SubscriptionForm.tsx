@@ -6,6 +6,13 @@ import { Input } from '../Input'
 import { searchClubs } from '../../api/leadApi'
 import type { ClubSummary } from '../../api/leadApi'
 import { listProducts } from '../../api/productApi'
+import type { Product } from '../../api/productApi'
+
+// Only the fields this picker actually renders — lets the synthetic "current, possibly retired
+// product" entry below satisfy the type without fabricating the rest of a full Product.
+// unavailable marks that synthetic entry specifically, so rendering/helper-text can tell "no
+// term limit" (a real Product fact) apart from "we don't actually know" (this entry's fact).
+type ProductOption = Pick<Product, 'id' | 'name' | 'code' | 'maxPeriodMonths'> & { unavailable?: boolean }
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside
 // this component (see SubscriptionFormPage), so its Save button targets this form via the
@@ -27,6 +34,11 @@ export interface SubscriptionFormInitialValues {
   // once editing, so it never needs to be re-resolved via search.
   clubLabel: string
   productId: string
+  // Display label for the pre-selected Product (edit mode only) — the Product picker only
+  // fetches ACTIVE products, so a subscription's current product must be re-added by hand if
+  // it's since been retired, or the select would render blank/out-of-range for an id it can't
+  // find among its fetched options. See the synthetic-option merge below.
+  productLabel: string
   startDate: string | null
   endDate: string | null
 }
@@ -141,18 +153,40 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
     queryFn: () => listProducts({ page: 0, size: 100, status: 'ACTIVE' }),
     staleTime: 60_000,
   })
-  const productOptions = productPage?.content ?? []
+  const activeProductOptions: ProductOption[] = productPage?.content ?? []
+  // In edit mode, the ACTIVE-only fetch above can be missing the subscription's own product if
+  // it's since been retired — merge in a synthetic entry for it so the select has something
+  // valid to display and re-submit unchanged (the backend now permits that even though the
+  // product isn't ACTIVE — it only re-validates on an actual product change). maxPeriodMonths
+  // is unknown for it, so the "Max term" helper text below simply won't show for this one case.
+  const currentProductMissing =
+    isEdit && initialValues?.productId && !activeProductOptions.some((product) => product.id === initialValues.productId)
+  const productOptions: ProductOption[] = currentProductMissing
+    ? [
+        {
+          id: initialValues.productId as string,
+          name: initialValues?.productLabel ?? 'Current product',
+          code: '',
+          maxPeriodMonths: null,
+          unavailable: true,
+        },
+        ...activeProductOptions,
+      ]
+    : activeProductOptions
   const selectedProduct = productOptions.find((product) => product.id === values.productId) ?? null
 
   // Suggests endDate = startDate + the selected product's maxPeriodMonths whenever the admin
   // hasn't set one themselves — informational, not enforced (Product.maxPeriodMonths has no
   // corresponding backend validation on Subscription in this spec, see docs/roadmap.md).
+  // Create mode only: in edit mode this must never run, even for a subscription with no end
+  // date yet (an "ongoing" subscription) — simply opening the form to change something else
+  // must not silently convert it to a term-limited one the moment the product data loads.
   useEffect(() => {
-    if (endDateTouched || !selectedProduct?.maxPeriodMonths || !values.startDate) {
+    if (isEdit || endDateTouched || !selectedProduct?.maxPeriodMonths || !values.startDate) {
       return
     }
     setValues((prev) => ({ ...prev, endDate: addMonths(prev.startDate, selectedProduct.maxPeriodMonths as number) }))
-  }, [endDateTouched, selectedProduct, values.startDate])
+  }, [isEdit, endDateTouched, selectedProduct, values.startDate])
 
   const handleChange = (field: 'startDate' | 'endDate') => (event: ChangeEvent<HTMLInputElement>) => {
     if (field === 'endDate') {
@@ -230,15 +264,17 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
         helperText={
           errors.productId ??
           (selectedProduct
-            ? selectedProduct.maxPeriodMonths
-              ? `Max term: ${selectedProduct.maxPeriodMonths} month${selectedProduct.maxPeriodMonths === 1 ? '' : 's'}`
-              : 'No fixed term limit'
+            ? selectedProduct.unavailable
+              ? 'This product has since been retired — dates can still be edited, but only a different active product can be selected'
+              : selectedProduct.maxPeriodMonths
+                ? `Max term: ${selectedProduct.maxPeriodMonths} month${selectedProduct.maxPeriodMonths === 1 ? '' : 's'}`
+                : 'No fixed term limit'
             : undefined)
         }
       >
         {productOptions.map((product) => (
           <MenuItem key={product.id} value={product.id}>
-            {product.name} ({product.code})
+            {product.code ? `${product.name} (${product.code})` : product.name}
           </MenuItem>
         ))}
       </Input>

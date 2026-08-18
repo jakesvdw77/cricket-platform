@@ -203,4 +203,62 @@ describe('SubscriptionFormPage', () => {
       screen.getByText('Something went wrong loading this subscription. Please try again.'),
     ).toBeInTheDocument()
   })
+
+  it(
+    "surfaces the backend's specific detail message in the save-error banner instead of a generic one",
+    async () => {
+      const user = userEvent.setup()
+      createSubscription.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { data: { detail: 'Club already has an active subscription' } },
+      })
+
+      renderPage('/admin/configuration/subscriptions/new')
+
+      await user.type(screen.getByLabelText('Club'), 'Riverside')
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+      await user.click(screen.getByRole('button', { name: 'Create subscription' }))
+
+      expect(await screen.findByText('Club already has an active subscription')).toBeInTheDocument()
+    },
+    15000,
+  )
+
+  it('falls back to a generic save-error message when the failure is not a ProblemDetail response', async () => {
+    const user = userEvent.setup()
+    createSubscription.mockRejectedValueOnce(new Error('network error'))
+
+    renderPage('/admin/configuration/subscriptions/new')
+
+    await user.type(screen.getByLabelText('Club'), 'Riverside')
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+    await user.click(screen.getByLabelText('Product'))
+    await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+    await user.click(screen.getByRole('button', { name: 'Create subscription' }))
+
+    expect(
+      await screen.findByText('Something went wrong saving this subscription. Please try again.'),
+    ).toBeInTheDocument()
+  })
+
+  it("surfaces the backend's specific detail message in the cancel-error banner instead of a generic one", async () => {
+    const user = userEvent.setup()
+    getSubscription.mockResolvedValueOnce(activeSubscription())
+    cancelSubscription.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { data: { detail: 'Subscription is already cancelled' } },
+    })
+
+    renderPage('/admin/configuration/subscriptions/s-1/edit')
+
+    await screen.findByText('Edit Subscription')
+    await user.click(screen.getByRole('button', { name: 'Cancel Subscription' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm cancel' }))
+
+    expect(await screen.findByText('Subscription is already cancelled')).toBeInTheDocument()
+  })
 })
