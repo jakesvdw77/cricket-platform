@@ -75,3 +75,20 @@ export const Retired: Story = {
     },
   },
 }
+
+// docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 — the
+// decorator above already reflows the field grid single/two-column at md, same as RecordFormScreen.
+export const MobileViewport: Story = {
+  args: EditDraft.args,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const TabletViewport: Story = {
+  args: EditDraft.args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+}
+
+export const DesktopViewport: Story = {
+  args: EditDraft.args,
+  parameters: { viewport: { defaultViewport: 'desktop' } },
+}

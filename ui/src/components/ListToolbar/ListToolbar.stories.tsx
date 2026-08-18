@@ -51,3 +51,20 @@ export const WithSearchValue: Story = {
     onCreate: () => undefined,
   },
 }
+
+// docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
+// mobile stacks search full-width above sort + create sharing a row, desktop is a single row.
+export const MobileViewport: Story = {
+  render: () => <Controlled />,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const TabletViewport: Story = {
+  render: () => <Controlled />,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+}
+
+export const DesktopViewport: Story = {
+  render: () => <Controlled />,
+  parameters: { viewport: { defaultViewport: 'desktop' } },
+}

@@ -1,18 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MemoryRouter } from 'react-router-dom'
 import { RecordCard } from './RecordCard'
 
+// No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
+// globally; adding a second nested <MemoryRouter> throws ("You cannot render a <Router> inside
+// another <Router>") and was breaking every story (including pre-existing ones) under Storybook's
+// interaction-test runner.
 const meta: Meta<typeof RecordCard> = {
   title: 'Components/RecordCard',
   component: RecordCard,
   parameters: { layout: 'padded' },
-  decorators: [
-    (Story) => (
-      <MemoryRouter>
-        <Story />
-      </MemoryRouter>
-    ),
-  ],
 }
 export default meta
 
@@ -65,4 +61,20 @@ export const MinimalSlots: Story = {
     editLabel: 'Edit',
     onEdit: () => undefined,
   },
+}
+
+// docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280.
+export const MobileViewport: Story = {
+  args: Active.args,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const TabletViewport: Story = {
+  args: Active.args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+}
+
+export const DesktopViewport: Story = {
+  args: Active.args,
+  parameters: { viewport: { defaultViewport: 'desktop' } },
 }

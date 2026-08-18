@@ -1,21 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box, Typography } from '@mui/material'
-import { MemoryRouter } from 'react-router-dom'
 import { Input } from '../Input'
 import { Button } from '../Button'
 import { RecordFormScreen } from './RecordFormScreen'
 
+// No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
+// globally; adding a second nested <MemoryRouter> throws ("You cannot render a <Router> inside
+// another <Router>") and was breaking every story (including pre-existing ones) under Storybook's
+// interaction-test runner.
 const meta: Meta<typeof RecordFormScreen> = {
   title: 'Components/RecordFormScreen',
   component: RecordFormScreen,
   parameters: { layout: 'padded' },
-  decorators: [
-    (Story) => (
-      <MemoryRouter>
-        <Story />
-      </MemoryRouter>
-    ),
-  ],
 }
 export default meta
 
@@ -49,4 +45,21 @@ export const Default: Story = {
       </>
     ),
   },
+}
+
+// docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
+// proves the single-column-at-xs / two-column-from-md field grid reflow described in the spec.
+export const MobileViewport: Story = {
+  args: Default.args,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const TabletViewport: Story = {
+  args: Default.args,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+}
+
+export const DesktopViewport: Story = {
+  args: Default.args,
+  parameters: { viewport: { defaultViewport: 'desktop' } },
 }
