@@ -134,9 +134,12 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
 
   // Products are admin-curated, never paginated in this picker — a plain select over the
   // first page of ACTIVE products is enough (see docs/plans/009-subscriptions.md item 4).
+  // staleTime avoids a refetch on every mount (e.g. an admin creating several subscriptions in
+  // a row) for data that changes rarely.
   const { data: productPage } = useQuery({
     queryKey: ['subscription-form-products'],
     queryFn: () => listProducts({ page: 0, size: 100, status: 'ACTIVE' }),
+    staleTime: 60_000,
   })
   const productOptions = productPage?.content ?? []
   const selectedProduct = productOptions.find((product) => product.id === values.productId) ?? null

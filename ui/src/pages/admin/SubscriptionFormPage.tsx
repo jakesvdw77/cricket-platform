@@ -57,7 +57,10 @@ export default function SubscriptionFormPage() {
     mutationFn: () => cancelSubscription(id as string),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
-      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      // Drop the cached single-subscription entry rather than invalidating it — the immediate
+      // navigate() below unmounts the only observer, so an invalidate-triggered refetch would
+      // fire and be thrown away. A later re-visit to this same edit page fetches fresh anyway.
+      queryClient.removeQueries({ queryKey: ['subscription', id] })
       navigate('/admin/configuration/subscriptions')
     },
   })

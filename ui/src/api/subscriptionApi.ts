@@ -1,5 +1,10 @@
 import api from './axiosConfig'
 import type { ClubSummary } from './leadApi'
+import type { Page } from './productApi'
+
+// Re-exported for existing consumers that import Page from this file (same reasoning as the
+// ClubSummary re-export below) — not redefined here, see the Page<T> note further down.
+export type { Page }
 
 export type SubscriptionOwnerType = 'CLUB' | 'SECTION'
 export type SubscriptionStatus = 'ACTIVE' | 'CANCELLED'
@@ -48,14 +53,8 @@ export interface UpdateSubscriptionPayload {
   endDate?: string | null
 }
 
-// Matches Spring Data's standard Page<T> JSON envelope, same shape as productApi.ts's Page<T>.
-export interface Page<T> {
-  content: T[]
-  totalElements: number
-  totalPages: number
-  number: number
-  size: number
-}
+// Page<T> is imported from productApi.ts (see above) rather than redefined here — same Spring
+// Data Page<T> JSON envelope, no reason for a second copy of the shape.
 
 export interface ListSubscriptionsParams {
   page: number

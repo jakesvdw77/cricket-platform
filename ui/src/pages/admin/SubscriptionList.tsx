@@ -20,13 +20,15 @@ const STATUS_BADGE_TONE: Record<SubscriptionStatus, RecordCardBadgeTone> = {
   CANCELLED: 'muted',
 }
 
-// Start date only — Subscription's search/sort query joins Club via a plain UUID column, not
-// a JPA relationship (see SubscriptionRepository.search's Javadoc), so there's no stable
-// "club.name" sort property Spring Data can resolve against the Subscription entity itself.
-// Offering it here would either 500 or require leaking the query's internal JPQL alias into
-// this frontend's sort param — not part of the documented API contract. See
-// docs/plans/009-subscriptions.md item 5.
-const SORT_OPTIONS = [{ value: 'startDate,desc', label: 'Start date' }]
+// "club.name" is a real, backend-supported sort value — SubscriptionRepository exposes a
+// dedicated searchOrderByClubNameAsc query for it (Subscription.ownerId is a plain UUID column,
+// not a JPA relationship, so a generic Pageable sort can't resolve "club.name" against the
+// Subscription entity the way "startDate" can — see that query's Javadoc for why a separate
+// query, not a Sort translation, was the fix).
+const SORT_OPTIONS = [
+  { value: 'startDate,desc', label: 'Start date' },
+  { value: 'club.name,asc', label: 'Club name' },
+]
 
 const SEARCH_DEBOUNCE_MS = 300
 

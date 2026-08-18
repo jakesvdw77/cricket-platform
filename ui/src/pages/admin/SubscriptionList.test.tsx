@@ -118,6 +118,21 @@ describe('SubscriptionList', () => {
     expect(listSubscriptions).toHaveBeenLastCalledWith({ page: 0, search: 'zzz', sort: 'startDate,desc' })
   })
 
+  it('re-queries with the selected sort value', async () => {
+    const user = userEvent.setup()
+    listSubscriptions.mockResolvedValueOnce(pageOf([makeSubscription()]))
+
+    renderSubscriptionList()
+    await screen.findByText('Riverside CC')
+
+    listSubscriptions.mockResolvedValueOnce(pageOf([makeSubscription()]))
+    await user.click(screen.getByLabelText('Sort by'))
+    await user.click(await screen.findByRole('option', { name: 'Club name' }))
+
+    expect(await screen.findByText('Riverside CC')).toBeInTheDocument()
+    expect(listSubscriptions).toHaveBeenLastCalledWith({ page: 0, search: undefined, sort: 'club.name,asc' })
+  })
+
   it('navigates to the create route via "Add Subscription"', async () => {
     const user = userEvent.setup()
     listSubscriptions.mockResolvedValueOnce(pageOf([makeSubscription()]))
