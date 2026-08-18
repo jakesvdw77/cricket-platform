@@ -1,6 +1,7 @@
 package com.cricketlegend.controller;
 
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
+import static com.cricketlegend.PlatformRoleJwtPostProcessors.withRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,6 +17,7 @@ import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.repository.ProductRepository;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -143,6 +145,13 @@ class ProductControllerIntegrationTest {
     @Test
     void listWithoutAuthenticationReturns401() throws Exception {
         mockMvc.perform(get("/api/v1/platform/products")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listWithNonPlatformAdminJwtReturns403() throws Exception {
+        mockMvc.perform(get("/api/v1/platform/products")
+                        .with(withRole("someone_else", UnaryOperator.identity())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

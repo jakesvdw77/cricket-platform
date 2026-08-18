@@ -213,6 +213,22 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void updateOnRetiredProductThrowsInvalidStatusTransitionEvenWithStatusUnchanged() {
+        UUID id = UUID.randomUUID();
+        Product existing = existingProduct(id, "CODE", ProductStatus.RETIRED);
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        UpdateProductRequest request = new UpdateProductRequest(
+                "CODE", "Renamed", null, true, null, null, null, null, null, null, null, 0,
+                ProductStatus.RETIRED, false, false, false);
+
+        assertThatThrownBy(() -> productService.update(id, request))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+
+        assertThat(existing.getName()).isEqualTo("Existing");
+    }
+
+    @Test
     void updateTransitioningActiveToDraftThrowsInvalidStatusTransitionException() {
         UUID id = UUID.randomUUID();
         Product existing = existingProduct(id, "CODE", ProductStatus.ACTIVE);

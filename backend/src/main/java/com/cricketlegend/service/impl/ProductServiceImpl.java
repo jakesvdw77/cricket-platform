@@ -74,6 +74,10 @@ public class ProductServiceImpl implements ProductService {
     public ProductDto update(UUID id, UpdateProductRequest request) {
         Product product = findOrThrow(id);
 
+        if (product.getStatus() == ProductStatus.RETIRED) {
+            throw new InvalidStatusTransitionException("Cannot update a retired product: " + id);
+        }
+
         if (productRepository.existsByCodeIgnoreCaseAndIdNot(request.code(), id)) {
             throw new DuplicateProductCodeException("Product code already in use: " + request.code());
         }
