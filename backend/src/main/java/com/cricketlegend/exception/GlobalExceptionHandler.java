@@ -1,6 +1,7 @@
 package com.cricketlegend.exception;
 
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,5 +36,18 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    /**
+     * Defense-in-depth for unique-constraint races (TOCTOU) across any entity — a pre-check like
+     * {@code existsByCodeIgnoreCase} narrows the window but can't close it under concurrency, so
+     * this is the safety net that turns the resulting {@code DataIntegrityViolationException} into
+     * a 409 instead of an unhandled 500. Generic on purpose: this handler is app-wide, not specific
+     * to any one entity, so it doesn't guess which column/constraint was violated.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "A conflicting record already exists");
     }
 }

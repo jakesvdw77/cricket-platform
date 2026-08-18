@@ -9,6 +9,13 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Fail loudly if 5173 is already taken instead of silently picking 5174+ —
+    // Keycloak's local dev client only trusts http://localhost:5173/* as a redirect
+    // URI, so a second `npm run dev` landing on a different port produces a confusing
+    // "Invalid parameter: redirect_uri" error at login time instead of an obvious
+    // "port already in use" at startup time.
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:8082'
     }
