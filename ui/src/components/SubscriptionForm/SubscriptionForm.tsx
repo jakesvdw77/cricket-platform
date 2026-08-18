@@ -46,12 +46,23 @@ interface FormState {
 
 type FormErrors = Partial<Record<'clubId' | 'productId' | 'startDate' | 'endDate', string>>
 
+// Local date, not UTC — a start date is a calendar-day concept from the admin's own
+// perspective, not a timestamp; toISOString() would shift near midnight in some timezones.
+function todayIso(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
 function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): FormState {
   return {
     clubId: initialValues?.clubId ?? '',
     clubLabel: initialValues?.clubLabel ?? '',
     productId: initialValues?.productId ?? '',
-    startDate: initialValues?.startDate ?? '',
+    // Defaults to today — the overwhelming common case, so the admin only needs to touch this
+    // when backdating/scheduling a subscription rather than every single time.
+    startDate: initialValues?.startDate ?? todayIso(),
     endDate: initialValues?.endDate ?? '',
   }
 }
@@ -235,7 +246,7 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
         value={values.startDate}
         onChange={handleChange('startDate')}
         error={Boolean(errors.startDate)}
-        helperText={errors.startDate ?? 'Leave blank to start today'}
+        helperText={errors.startDate ?? 'Defaults to today — change only to backdate or schedule ahead'}
         InputLabelProps={{ shrink: true }}
       />
       <Input

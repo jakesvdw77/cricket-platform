@@ -96,12 +96,17 @@ describe('SubscriptionFormPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
+      // startDate defaults to today (SubscriptionForm's local-date todayIso()) rather than
+      // null — computed the same local-date way to avoid a UTC/local mismatch near midnight.
+      const today = new Date()
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
       expect(createSubscription).toHaveBeenCalledTimes(1)
       expect(createSubscription).toHaveBeenCalledWith({
         ownerType: 'CLUB',
         ownerId: 'club-1',
         productId: 'prod-1',
-        startDate: null,
+        startDate: todayIso,
         endDate: null,
       })
 
