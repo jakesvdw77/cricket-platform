@@ -48,6 +48,8 @@ Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/ca
 
 Spec'd, not yet built. Stays vendor-assisted — a human sets a club up by hand, matching the landing page's own "Vendor-assisted onboarding" pitch. Self-serve (above) is a second, Free-tier-only path added alongside this, not a replacement for it.
 
+**Noted during `009` planning, not yet actioned:** `Club` is used as the umbrella term throughout the product and code, but a real "club" in this system can be a School, Academy, or Cricket Club (or similar) — `001`'s `Club` entity (and its current minimal code stub, `id`/`name`/`slug`/`status` only) has no field capturing which. Needs an "organization type" field, set during onboarding (`003`) — the term `Club` stays as the internal/technical name either way (same resolution as the `Section`/"Age Group" naming decision), this is about adding a real data field, not a rename. Update `001`'s `Club` Field Reference and this entry once actually spec'd.
+
 ## Other deferred items (`001`/`002`, unscheduled)
 
 Named for completeness — none of these are next, none have a target spec number yet:
