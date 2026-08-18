@@ -255,6 +255,37 @@ class SubscriptionServiceImplTest {
     }
 
     @Test
+    void updateWithProductIdUnchangedSucceedsEvenIfThatProductHasSinceBeenRetired() {
+        // Per the spec, the ACTIVE check applies to changing a Subscription onto a product —
+        // not to a subscription whose already-assigned product has since been retired. Without
+        // this, an admin could never edit dates on a subscription after its product is retired.
+        UUID id = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Subscription existing = subscription(id, ownerId, productId, SubscriptionStatus.ACTIVE);
+        Club club = activeClub(ownerId);
+        Product retiredProduct = product(productId, ProductStatus.RETIRED);
+
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(retiredProduct));
+        when(subscriptionRepository.save(existing)).thenReturn(existing);
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(clubMapper.toSummaryDto(club)).thenReturn(new ClubSummaryDto(ownerId, "Riverside CC", "riverside-cc"));
+        when(productMapper.toSummaryDto(retiredProduct))
+                .thenReturn(new ProductSummaryDto(productId, "Club Standard", "CLUB_STANDARD"));
+        when(subscriptionMapper.toDto(any(), any(), any())).thenReturn(dummyDto());
+
+        UpdateSubscriptionRequest request =
+                new UpdateSubscriptionRequest(productId, LocalDate.of(2027, 1, 1), null);
+
+        SubscriptionDto result = subscriptionService.update(id, request);
+
+        assertThat(result).isNotNull();
+        assertThat(existing.getStartDate()).isEqualTo(LocalDate.of(2027, 1, 1));
+        verify(subscriptionRepository).save(existing);
+    }
+
+    @Test
     void updateOnMissingSubscriptionThrowsNotFoundException() {
         UUID id = UUID.randomUUID();
         when(subscriptionRepository.findById(id)).thenReturn(Optional.empty());

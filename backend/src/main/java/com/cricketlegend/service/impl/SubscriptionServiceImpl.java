@@ -143,7 +143,14 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         if (subscription.getStatus() == SubscriptionStatus.CANCELLED) {
             throw new InvalidStatusTransitionException("Cannot update a cancelled subscription: " + id);
         }
-        Product product = findActiveProductOrThrow(request.productId());
+        // The ACTIVE check only applies to an actual product *change* — per the spec, "you can't
+        // move a Club onto a non-active product," not "you can't touch a subscription whose
+        // current product has since been retired." Re-validating an unchanged productId would
+        // permanently block editing dates on any subscription after its product is retired.
+        boolean productUnchanged = request.productId().equals(subscription.getProductId());
+        Product product = productUnchanged
+                ? findProductOrThrow(request.productId())
+                : findActiveProductOrThrow(request.productId());
 
         subscription.setProductId(request.productId());
         // startDate is NOT NULL at the DB level; a null request value means "leave unchanged"
