@@ -52,6 +52,27 @@ class ProductRepositoryTest {
     }
 
     @Test
+    void showAdsAllowSubdomainAllowWhitelistingDefaultToFalseWhenOmittedOnPersist() {
+        // Per docs/specs/008-product-catalog.md's Test Plan, showAds/allowSubdomain/
+        // allowWhitelisting must each default to false when omitted on create. That defaulting is
+        // Product's @PrePersist hook's job (see Product.prePersist()), not ProductServiceImpl's —
+        // ProductServiceImplTest's mocked-repository style never actually invokes JPA lifecycle
+        // callbacks, so it can only prove the service passes a null through untouched. Only a real
+        // persist (Testcontainers Postgres, here) exercises @PrePersist and proves the false
+        // default itself. newProduct() below deliberately leaves all three fields unset (null).
+        Product product = newProduct("NO_TOGGLES_SET", ProductStatus.DRAFT, 0);
+        assertThat(product.getShowAds()).isNull();
+        assertThat(product.getAllowSubdomain()).isNull();
+        assertThat(product.getAllowWhitelisting()).isNull();
+
+        Product saved = productRepository.save(product);
+
+        assertThat(saved.getShowAds()).isFalse();
+        assertThat(saved.getAllowSubdomain()).isFalse();
+        assertThat(saved.getAllowWhitelisting()).isFalse();
+    }
+
+    @Test
     void findAllOrdersByDisplayOrderAscendingWhenRequested() {
         productRepository.save(newProduct("THIRD", ProductStatus.DRAFT, 3));
         productRepository.save(newProduct("FIRST", ProductStatus.DRAFT, 1));

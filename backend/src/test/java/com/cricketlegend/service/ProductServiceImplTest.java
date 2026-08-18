@@ -129,6 +129,31 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createWithShowAdsAllowSubdomainAllowWhitelistingOmittedPassesNullThroughUntouched() {
+        // ProductServiceImpl.create() never touches showAds/allowSubdomain/allowWhitelisting itself
+        // (see the method body) — it relies on ProductMapper.toEntity() to map the boxed Boolean
+        // request fields straight across, and on Product's @PrePersist hook to resolve a null to
+        // false at actual JPA persist time. That hook can't fire against a mocked repository/plain
+        // constructed entity, so the "defaults to false when omitted" assertion itself lives in
+        // ProductRepositoryTest (Testcontainers-backed, so @PrePersist genuinely runs) instead of
+        // here. This test only proves the service layer doesn't clobber a null with something else
+        // before handing the entity to productRepository.save().
+        CreateProductRequest request = new CreateProductRequest(
+                "FREE", "Free Tier", null, true, null, null, null, null, null, null, null, null,
+                null, null, null);
+        Product entity = new Product();
+        when(productMapper.toEntity(request)).thenReturn(entity);
+        when(productRepository.save(entity)).thenReturn(entity);
+        when(productMapper.toDto(entity)).thenReturn(dummyDto());
+
+        productService.create(request);
+
+        assertThat(entity.getShowAds()).isNull();
+        assertThat(entity.getAllowSubdomain()).isNull();
+        assertThat(entity.getAllowWhitelisting()).isNull();
+    }
+
+    @Test
     void updateWithDuplicateCodeExcludingSelfThrowsDuplicateProductCodeException() {
         UUID id = UUID.randomUUID();
         Product existing = existingProduct(id, "OLD", ProductStatus.DRAFT);
@@ -241,6 +266,32 @@ class ProductServiceImplTest {
 
         assertThatThrownBy(() -> productService.update(id, request))
                 .isInstanceOf(InvalidStatusTransitionException.class);
+    }
+
+    @Test
+    void updateSetsShowAdsAllowSubdomainAllowWhitelistingToExactlyWhatRequestSends() {
+        UUID id = UUID.randomUUID();
+        Product existing = existingProduct(id, "CODE", ProductStatus.DRAFT);
+        existing.setShowAds(false);
+        existing.setAllowSubdomain(false);
+        existing.setAllowWhitelisting(false);
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.existsByCodeIgnoreCaseAndIdNot("CODE", id)).thenReturn(false);
+        when(productRepository.save(existing)).thenReturn(existing);
+        when(productMapper.toDto(existing)).thenReturn(dummyDto());
+
+        // UpdateProductRequest's three fields are @NotNull, so always explicitly present — this
+        // asserts the service sets the entity to exactly the (mixed true/false) values sent,
+        // overwriting whatever was there before.
+        UpdateProductRequest request = new UpdateProductRequest(
+                "CODE", "Name", null, true, null, null, null, null, null, null, null, 0, ProductStatus.DRAFT,
+                true, false, true);
+
+        productService.update(id, request);
+
+        assertThat(existing.getShowAds()).isTrue();
+        assertThat(existing.getAllowSubdomain()).isFalse();
+        assertThat(existing.getAllowWhitelisting()).isTrue();
     }
 
     @Test
