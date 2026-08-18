@@ -93,6 +93,17 @@ describe('ProductList', () => {
     expect(await screen.findByText('No products yet')).toBeInTheDocument()
   })
 
+  it('renders an error state instead of a blank page when the fetch fails', async () => {
+    listProducts.mockRejectedValueOnce(new Error('network error'))
+
+    renderProductList()
+
+    expect(await screen.findByText("Couldn't load products")).toBeInTheDocument()
+    expect(
+      screen.getByText('Something went wrong loading the product list. Please try again.'),
+    ).toBeInTheDocument()
+  })
+
   it('debounces search input into the query as the search param', async () => {
     listProducts.mockResolvedValueOnce(pageOf([makeProduct()]))
 

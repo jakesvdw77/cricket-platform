@@ -4,7 +4,7 @@ import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../Button'
 
-export type RecordCardBadgeTone = 'positive' | 'neutral'
+export type RecordCardBadgeTone = 'positive' | 'neutral' | 'muted'
 
 export interface RecordCardBadge {
   label: string
@@ -45,7 +45,7 @@ export function RecordCard({ title, badge, description, fields, chips, editLabel
             <Chip
               size="small"
               label={badge.label}
-              variant={badge.tone === 'positive' ? 'filled' : 'outlined'}
+              variant={badge.tone === 'neutral' ? 'outlined' : 'filled'}
               sx={
                 badge.tone === 'positive'
                   ? {
@@ -53,7 +53,17 @@ export function RecordCard({ title, badge, description, fields, chips, editLabel
                       color: 'primary.dark',
                       fontWeight: 600,
                     }
-                  : undefined
+                  : badge.tone === 'muted'
+                    ? {
+                        // Visually distinct from both 'positive' (solid primary-tinted) and
+                        // 'neutral' (bordered, full-opacity) — a faded grey fill with reduced
+                        // overall opacity, reading as "inactive/archived" at a glance (e.g.
+                        // RETIRED vs DRAFT's 'neutral' outline).
+                        bgcolor: (theme) => alpha(theme.palette.text.secondary, 0.12),
+                        color: 'text.secondary',
+                        opacity: 0.7,
+                      }
+                    : undefined
               }
             />
           )}

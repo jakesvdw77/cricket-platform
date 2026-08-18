@@ -51,7 +51,7 @@ export const Draft: Story = {
 export const RetiredWithLink: Story = {
   args: {
     title: 'League Operator',
-    badge: { label: 'Retired', tone: 'neutral' },
+    badge: { label: 'Retired', tone: 'muted' },
     description: 'No longer offered to new subscribers.',
     fields: [{ label: 'Price', value: 'Free' }, { label: 'Code', value: 'LEAGUE_OPERATOR' }],
     editLabel: 'Edit',

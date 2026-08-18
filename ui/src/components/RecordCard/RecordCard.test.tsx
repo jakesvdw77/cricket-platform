@@ -51,6 +51,20 @@ describe('RecordCard', () => {
     expect(onEdit).toHaveBeenCalledTimes(1)
   })
 
+  it('renders the muted badge tone distinctly from the neutral tone', () => {
+    const { unmount } = render(
+      <RecordCard title="Neutral Product" badge={{ label: 'Draft', tone: 'neutral' }} editLabel="Edit" onEdit={vi.fn()} />,
+    )
+    const neutralChip = screen.getByText('Draft').closest('.MuiChip-root')
+    expect(neutralChip).toHaveClass('MuiChip-outlined')
+    unmount()
+
+    render(<RecordCard title="Muted Product" badge={{ label: 'Retired', tone: 'muted' }} editLabel="Edit" onEdit={vi.fn()} />)
+    const mutedChip = screen.getByText('Retired').closest('.MuiChip-root')
+    expect(mutedChip).toHaveClass('MuiChip-filled')
+    expect(mutedChip).not.toHaveClass('MuiChip-outlined')
+  })
+
   it('renders the Edit action as a router link when editTo is provided', () => {
     render(
       <MemoryRouter initialEntries={['/products']}>

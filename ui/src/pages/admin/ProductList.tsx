@@ -3,6 +3,7 @@ import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
+import type { RecordCardBadgeTone } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
@@ -13,6 +14,15 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
   DRAFT: 'Draft',
   ACTIVE: 'Active',
   RETIRED: 'Retired',
+}
+
+// DRAFT and RETIRED both use RecordCard's non-'positive' tones, but must remain visually
+// distinct from each other — a still-being-defined product isn't the same state as a
+// no-longer-offered one.
+const STATUS_BADGE_TONE: Record<ProductStatus, RecordCardBadgeTone> = {
+  DRAFT: 'neutral',
+  ACTIVE: 'positive',
+  RETIRED: 'muted',
 }
 
 // Display order first and default-selected — matches ProductServiceImpl.list()'s own
@@ -67,13 +77,22 @@ export default function ProductList() {
     setPage(0)
   }, [debouncedSearch, sort])
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['products', page, debouncedSearch, sort],
     queryFn: () => listProducts({ page, search: debouncedSearch || undefined, sort }),
   })
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return null
+  }
+
+  if (isError || !data) {
+    return (
+      <EmptyState
+        title="Couldn't load products"
+        description="Something went wrong loading the product list. Please try again."
+      />
+    )
   }
 
   const hasProducts = data.content.length > 0
@@ -106,7 +125,7 @@ export default function ProductList() {
               title={product.name}
               badge={{
                 label: STATUS_LABEL[product.status],
-                tone: product.status === 'ACTIVE' ? 'positive' : 'neutral',
+                tone: STATUS_BADGE_TONE[product.status],
               }}
               description={product.description}
               fields={[

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ProductForm, PRODUCT_FORM_ID } from '../../components/ProductForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
+import { EmptyState } from '../../components/EmptyState'
 import { getProduct, createProduct, updateProduct, retireProduct } from '../../api/productApi'
 import type { ProductPayload, UpdateProductPayload } from '../../api/productApi'
 
@@ -15,7 +16,11 @@ export default function ProductFormPage() {
   const queryClient = useQueryClient()
   const [confirmingRetire, setConfirmingRetire] = useState(false)
 
-  const { data: product, isLoading } = useQuery({
+  const {
+    data: product,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['product', id],
     queryFn: () => getProduct(id as string),
     enabled: isEdit,
@@ -58,6 +63,15 @@ export default function ProductFormPage() {
 
   if (isEdit && isLoading) {
     return null
+  }
+
+  if (isEdit && isError) {
+    return (
+      <EmptyState
+        title="Couldn't load this product"
+        description="Something went wrong loading this product. Please try again."
+      />
+    )
   }
 
   if (isEdit && !product) {

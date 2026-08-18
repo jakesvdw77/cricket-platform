@@ -156,4 +156,13 @@ describe('ProductFormPage', () => {
     await screen.findByText('Edit Product')
     expect(screen.queryByRole('button', { name: 'Retire' })).not.toBeInTheDocument()
   })
+
+  it('renders an error state instead of a blank page when fetching the product fails', async () => {
+    getProduct.mockRejectedValueOnce(new Error('not found'))
+
+    renderPage('/admin/configuration/products/p-1/edit')
+
+    expect(await screen.findByText("Couldn't load this product")).toBeInTheDocument()
+    expect(screen.getByText('Something went wrong loading this product. Please try again.')).toBeInTheDocument()
+  })
 })
