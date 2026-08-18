@@ -9,6 +9,7 @@ export interface SubmitLeadPayload {
 }
 
 export interface ClubSummary {
+  id: string
   name: string
   slug: string
 }

@@ -78,15 +78,25 @@ export interface ListProductsParams {
   search?: string
   // Spring Data's native Pageable sort format, e.g. 'name,asc'.
   sort?: string
+  // Omitted returns Products in any status — set to 'ACTIVE' for pickers that should only
+  // offer subscribable Products (see docs/specs/009-subscriptions.md).
+  status?: ProductStatus
 }
 
-export async function listProducts({ page, size = 20, search, sort }: ListProductsParams): Promise<Page<Product>> {
+export async function listProducts({
+  page,
+  size = 20,
+  search,
+  sort,
+  status,
+}: ListProductsParams): Promise<Page<Product>> {
   const { data } = await api.get<Page<Product>>('/platform/products', {
     params: {
       page,
       size,
       ...(search ? { search } : {}),
       ...(sort ? { sort } : {}),
+      ...(status ? { status } : {}),
     },
   })
   return data
