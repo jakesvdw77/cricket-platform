@@ -7,5 +7,6 @@
 
     <include file="db/changelog/v1/001-prerequisite-club-person.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/002-add-lead.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/003-add-product.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
