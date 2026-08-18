@@ -15,10 +15,13 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
   RETIRED: 'Retired',
 }
 
+// Display order first and default-selected — matches ProductServiceImpl.list()'s own
+// fallback sort, so a fresh page load shows the curated tier ranking (Free → Standard →
+// Pro), not an arbitrary alphabetical order.
 const SORT_OPTIONS = [
+  { value: 'displayOrder,asc', label: 'Display order' },
   { value: 'name,asc', label: 'Name' },
   { value: 'price,asc', label: 'Price' },
-  { value: 'displayOrder,asc', label: 'Display order' },
 ]
 
 const SEARCH_DEBOUNCE_MS = 300

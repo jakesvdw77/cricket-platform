@@ -82,7 +82,7 @@ describe('ProductList', () => {
     expect(screen.getByText('CLUB_STANDARD')).toBeInTheDocument()
     expect(screen.getByText('Draft')).toBeInTheDocument()
     expect(screen.getByText('5 sections')).toBeInTheDocument()
-    expect(listProducts).toHaveBeenLastCalledWith({ page: 0, search: undefined, sort: 'name,asc' })
+    expect(listProducts).toHaveBeenLastCalledWith({ page: 0, search: undefined, sort: 'displayOrder,asc' })
   })
 
   it('renders the empty state when there are no products', async () => {
@@ -110,7 +110,7 @@ describe('ProductList', () => {
     await waitForDebounce()
 
     expect(await screen.findByText('No matching products')).toBeInTheDocument()
-    expect(listProducts).toHaveBeenLastCalledWith({ page: 0, search: 'zzz', sort: 'name,asc' })
+    expect(listProducts).toHaveBeenLastCalledWith({ page: 0, search: 'zzz', sort: 'displayOrder,asc' })
   })
 
   it('re-queries with the selected sort value', async () => {
@@ -156,7 +156,7 @@ describe('ProductList', () => {
     await user.click(nextButton)
 
     expect(await screen.findByText('Page Two Product')).toBeInTheDocument()
-    expect(listProducts).toHaveBeenLastCalledWith({ page: 1, search: undefined, sort: 'name,asc' })
+    expect(listProducts).toHaveBeenLastCalledWith({ page: 1, search: undefined, sort: 'displayOrder,asc' })
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
   })
 })

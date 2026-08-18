@@ -81,9 +81,18 @@ export default function ProductFormPage() {
           )}
 
           {!readOnly && (
-            <Button type="submit" form={PRODUCT_FORM_ID} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving…' : submitLabel}
-            </Button>
+            <>
+              <Button type="submit" form={PRODUCT_FORM_ID} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Saving…' : submitLabel}
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={saveMutation.isPending}
+                onClick={() => navigate('/admin/configuration/products')}
+              >
+                Cancel
+              </Button>
+            </>
           )}
 
           {isEdit && product && product.status !== 'RETIRED' && (
@@ -100,7 +109,7 @@ export default function ProductFormPage() {
                     {retireMutation.isPending ? 'Retiring…' : 'Confirm retire'}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmingRetire(false)}>
-                    Cancel
+                    Don't retire
                   </Button>
                 </>
               ) : (

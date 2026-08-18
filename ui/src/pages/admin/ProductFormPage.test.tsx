@@ -142,7 +142,7 @@ describe('ProductFormPage', () => {
     renderPage('/admin/configuration/products/p-1/edit')
 
     await user.click(await screen.findByRole('button', { name: 'Retire' }))
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: "Don't retire" }))
 
     expect(screen.queryByText('Retire this product?')).not.toBeInTheDocument()
     expect(retireProduct).not.toHaveBeenCalled()
