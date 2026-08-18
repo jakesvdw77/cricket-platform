@@ -3,6 +3,7 @@ package com.cricketlegend.mapper;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.dto.CreateProductRequest;
 import com.cricketlegend.dto.ProductDto;
+import com.cricketlegend.dto.ProductSummaryDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -34,4 +35,9 @@ public interface ProductMapper {
 
     @Mapping(target = "isFree", source = "free")
     ProductDto toDto(Product product);
+
+    // id/name/code all exist with matching names on both sides — MapStruct maps all three by
+    // convention, no explicit @Mapping needed (this method doesn't touch isFree, so the
+    // free/isFree bean-naming quirk documented above doesn't apply here).
+    ProductSummaryDto toSummaryDto(Product product);
 }
