@@ -12,6 +12,9 @@ import ManagerHome from './pages/manage/ManagerHome'
 import ManagerDashboard from './pages/manage/ManagerDashboard'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
+import ConfigurationHome from './pages/admin/ConfigurationHome'
+import ProductList from './pages/admin/ProductList'
+import ProductFormPage from './pages/admin/ProductFormPage'
 import { EmptyState } from './components/EmptyState'
 
 const queryClient = new QueryClient()
@@ -43,7 +46,16 @@ function App() {
               <Route path="whitelisting" element={<EmptyState title="Whitelisting" description="Coming soon." />} />
               <Route path="invoices" element={<EmptyState title="Subscriptions & Invoices" description="Coming soon." />} />
               <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
-              <Route path="configuration" element={<EmptyState title="Configuration" description="Coming soon." />} />
+              <Route path="configuration">
+                <Route index element={<ConfigurationHome />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="products/new" element={<ProductFormPage />} />
+                <Route path="products/:id/edit" element={<ProductFormPage />} />
+                <Route path="subscriptions" element={<EmptyState title="Subscriptions" description="Coming soon." />} />
+                <Route path="discounts" element={<EmptyState title="Discounts & Promotions" description="Coming soon." />} />
+                <Route path="invoicing" element={<EmptyState title="Invoicing" description="Coming soon." />} />
+                <Route path="settings" element={<EmptyState title="System Settings" description="Coming soon." />} />
+              </Route>
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 
