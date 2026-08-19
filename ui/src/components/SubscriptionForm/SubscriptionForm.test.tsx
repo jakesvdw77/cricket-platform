@@ -5,12 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SubscriptionForm, SUBSCRIPTION_FORM_ID } from './SubscriptionForm'
 import type { SubscriptionFormProps } from './SubscriptionForm'
 import type { ListProductsParams } from '../../api/productApi'
+import type { ListClubsParams } from '../../api/clubApi'
 
-const searchClubs = vi.fn()
+const listClubs = vi.fn()
 const listProducts = vi.fn()
 
-vi.mock('../../api/leadApi', () => ({
-  searchClubs: (query: string) => searchClubs(query),
+vi.mock('../../api/clubApi', () => ({
+  listClubs: (params: ListClubsParams) => listClubs(params),
 }))
 
 vi.mock('../../api/productApi', () => ({
@@ -29,7 +30,22 @@ beforeEach(() => {
     number: 0,
     size: 100,
   })
-  searchClubs.mockResolvedValue([{ id: 'club-1', name: 'Riverside CC', slug: 'riverside-cc' }])
+  // Default on-focus list shows one ACTIVE club; any typed search (this suite's create-mode
+  // tests all search for a name deliberately absent from this list) returns no matches, which is
+  // what drives ClubPicker's "+ Add" affordance.
+  listClubs.mockImplementation((params: ListClubsParams) =>
+    Promise.resolve(
+      params.search
+        ? { content: [], totalElements: 0, totalPages: 1, number: 0, size: 10 }
+        : {
+            content: [{ id: 'club-1', name: 'Riverside CC', slug: 'riverside-cc', status: 'ACTIVE' }],
+            totalElements: 1,
+            totalPages: 1,
+            number: 0,
+            size: 10,
+          },
+    ),
+  )
 })
 
 // SubscriptionForm's own submit button lives outside it (RecordFormScreen's actions bar, see
@@ -48,7 +64,7 @@ function renderSubscriptionForm(props: SubscriptionFormProps, submitLabel = 'Sub
 }
 
 async function waitForDebounce() {
-  // SubscriptionForm debounces the Club search into the query key ~300ms — see
+  // ClubPicker debounces the Club search into the query key ~300ms — see its own
   // CLUB_SEARCH_DEBOUNCE_MS.
   await new Promise((resolve) => setTimeout(resolve, 350))
 }
@@ -97,9 +113,9 @@ describe('SubscriptionForm', () => {
     const onSubmit = vi.fn()
     renderSubscriptionForm({ onSubmit })
 
-    // clubId/productId are left unset here — this test only exercises the date-ordering rule in
-    // isolation; validate() still reports those as separate errors, which is fine since this
-    // assertion only checks the endDate error is present and submit is blocked.
+    // clubSelection/productId are left unset here — this test only exercises the date-ordering
+    // rule in isolation; validate() still reports those as separate errors, which is fine since
+    // this assertion only checks the endDate error is present and submit is blocked.
     const startDate = screen.getByLabelText('Start date')
     const endDate = screen.getByLabelText('End date (optional)')
     await user.clear(startDate)
@@ -114,14 +130,13 @@ describe('SubscriptionForm', () => {
   })
 
   it(
-    'submits a correctly-shaped payload after selecting a club and product',
+    'submits an existing-club selection (picked from the on-focus default list) with a correctly-shaped payload',
     async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderSubscriptionForm({ onSubmit })
 
-      await user.type(screen.getByLabelText('Club'), 'Riverside')
-      await waitForDebounce()
+      await user.click(screen.getByLabelText('Club'))
       await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
 
       await user.click(screen.getByLabelText('Product'))
@@ -129,24 +144,82 @@ describe('SubscriptionForm', () => {
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-      // startDate defaults to today (see SubscriptionForm's local-date todayIso()) rather than
-      // null — computed the same local-date way, not toISOString()'s UTC, to avoid a spurious
-      // mismatch near midnight in timezones offset from UTC.
-      const today = new Date()
-      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const today = todayIso()
 
       expect(onSubmit).toHaveBeenCalledTimes(1)
       expect(onSubmit).toHaveBeenCalledWith({
-        clubId: 'club-1',
+        club: { mode: 'existing', id: 'club-1', name: 'Riverside CC' },
         productId: 'prod-1',
-        startDate: todayIso,
+        startDate: today,
         endDate: null,
       })
     },
     15000,
   )
 
-  it('disables the Club Autocomplete in edit mode and never fires its search query', async () => {
+  it(
+    'submits a pending new-club draft (built via the "+ Add" flow) with a correctly-shaped payload',
+    async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderSubscriptionForm({ onSubmit })
+
+      // Captured once and reused below — once the dropdown is open, MUI's Autocomplete listbox
+      // also carries an aria-labelledby pointing at the same "Club" label, so a second
+      // getByLabelText('Club') call becomes ambiguous (matches both the input and the listbox).
+      const clubField = screen.getByLabelText('Club')
+      await user.click(clubField)
+      await user.type(clubField, 'Meadowbrook CC')
+      await waitForDebounce()
+      await user.click(await screen.findByRole('button', { name: '+ Add "Meadowbrook CC" as a new club' }))
+
+      expect(screen.getByLabelText('Name')).toHaveValue('Meadowbrook CC')
+      expect(screen.getByLabelText('Slug')).toHaveValue('meadowbrook-cc')
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      const today = todayIso()
+
+      expect(onSubmit).toHaveBeenCalledTimes(1)
+      expect(onSubmit).toHaveBeenCalledWith({
+        club: { mode: 'new', name: 'Meadowbrook CC', slug: 'meadowbrook-cc' },
+        productId: 'prod-1',
+        startDate: today,
+        endDate: null,
+      })
+    },
+    15000,
+  )
+
+  it('blocks submit and reports Name/Slug errors for an incomplete new-club draft (blank fields), without ever calling onSubmit', async () => {
+    // Overrides this suite's default (non-empty) on-focus list — this test needs the blank-query
+    // "+ Add a new club" affordance specifically, unlike the other new-club test above which
+    // types a query first.
+    listClubs.mockResolvedValue({ content: [], totalElements: 0, totalPages: 1, number: 0, size: 10 })
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    // "+ Add a new club" from the blank on-focus default list leaves both fields empty —
+    // exercised here without typing a query first, unlike the other new-club test above.
+    const clubField = screen.getByLabelText('Club')
+    await user.click(clubField)
+    await user.click(await screen.findByRole('button', { name: '+ Add a new club' }))
+
+    await user.click(screen.getByLabelText('Product'))
+    await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Name is required')).toBeInTheDocument()
+    expect(screen.getByText('Slug is required')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('disables the Club field in edit mode and never renders ClubPicker (no club search query ever fires)', async () => {
     renderSubscriptionForm({
       onSubmit: vi.fn(),
       initialValues: {
@@ -167,7 +240,7 @@ describe('SubscriptionForm', () => {
     // requested at all while editing, not merely be starved of user input.
     await waitForDebounce()
 
-    expect(searchClubs).not.toHaveBeenCalled()
+    expect(listClubs).not.toHaveBeenCalled()
   })
 
   it('edit mode pre-fills the Product select and date fields from initialValues', () => {

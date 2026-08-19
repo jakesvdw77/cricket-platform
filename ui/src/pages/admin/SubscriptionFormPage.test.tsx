@@ -5,12 +5,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubscriptionFormPage from './SubscriptionFormPage'
 import type { Subscription } from '../../api/subscriptionApi'
+import type { ListClubsParams } from '../../api/clubApi'
 
 const getSubscription = vi.fn()
 const createSubscription = vi.fn()
 const updateSubscription = vi.fn()
 const cancelSubscription = vi.fn()
-const searchClubs = vi.fn()
+const listClubs = vi.fn()
+const createClub = vi.fn()
 const listProducts = vi.fn()
 
 vi.mock('../../api/subscriptionApi', () => ({
@@ -20,8 +22,9 @@ vi.mock('../../api/subscriptionApi', () => ({
   cancelSubscription: (id: string) => cancelSubscription(id),
 }))
 
-vi.mock('../../api/leadApi', () => ({
-  searchClubs: (query: string) => searchClubs(query),
+vi.mock('../../api/clubApi', () => ({
+  listClubs: (params: ListClubsParams) => listClubs(params),
+  createClub: (payload: unknown) => createClub(payload),
 }))
 
 vi.mock('../../api/productApi', () => ({
@@ -40,7 +43,22 @@ beforeEach(() => {
     number: 0,
     size: 100,
   })
-  searchClubs.mockResolvedValue([{ id: 'club-1', name: 'Riverside CC', slug: 'riverside-cc' }])
+  // Default on-focus list shows one ACTIVE club; any typed search (this suite's new-club tests
+  // all search for a name deliberately absent from this list) returns no matches, driving
+  // ClubPicker's "+ Add" affordance.
+  listClubs.mockImplementation((params: ListClubsParams) =>
+    Promise.resolve(
+      params.search
+        ? { content: [], totalElements: 0, totalPages: 1, number: 0, size: 10 }
+        : {
+            content: [{ id: 'club-1', name: 'Riverside CC', slug: 'riverside-cc', status: 'ACTIVE' }],
+            totalElements: 1,
+            totalPages: 1,
+            number: 0,
+            size: 10,
+          },
+    ),
+  )
 })
 
 function activeSubscription(overrides: Partial<Subscription> = {}): Subscription {
@@ -75,9 +93,18 @@ function renderPage(initialPath: string) {
   )
 }
 
+async function waitForDebounce() {
+  await new Promise((resolve) => setTimeout(resolve, 350))
+}
+
+function todayIso(): string {
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+}
+
 describe('SubscriptionFormPage', () => {
   it(
-    'create mode: does not fetch a subscription, and submit calls createSubscription then navigates to the list',
+    'create mode, existing club (regression): submit calls createSubscription with no createClub call, then navigates to the list',
     async () => {
       const user = userEvent.setup()
       createSubscription.mockResolvedValueOnce(activeSubscription())
@@ -87,8 +114,7 @@ describe('SubscriptionFormPage', () => {
       expect(screen.getByText('Add Subscription')).toBeInTheDocument()
       expect(getSubscription).not.toHaveBeenCalled()
 
-      await user.type(screen.getByLabelText('Club'), 'Riverside')
-      await new Promise((resolve) => setTimeout(resolve, 350))
+      await user.click(screen.getByLabelText('Club'))
       await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
 
       await user.click(screen.getByLabelText('Product'))
@@ -96,21 +122,140 @@ describe('SubscriptionFormPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
-      // startDate defaults to today (SubscriptionForm's local-date todayIso()) rather than
-      // null — computed the same local-date way to avoid a UTC/local mismatch near midnight.
-      const today = new Date()
-      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      expect(await screen.findByText('Subscription List Page')).toBeInTheDocument()
 
+      expect(createClub).not.toHaveBeenCalled()
       expect(createSubscription).toHaveBeenCalledTimes(1)
       expect(createSubscription).toHaveBeenCalledWith({
         ownerType: 'CLUB',
         ownerId: 'club-1',
         productId: 'prod-1',
-        startDate: todayIso,
+        startDate: todayIso(),
+        endDate: null,
+      })
+    },
+    15000,
+  )
+
+  it(
+    'create mode, new club: calls createClub then createSubscription in order, using the created club id as ownerId',
+    async () => {
+      const user = userEvent.setup()
+      createClub.mockResolvedValueOnce({
+        id: 'club-new',
+        name: 'Meadowbrook CC',
+        slug: 'meadowbrook-cc',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        updatedBy: null,
+      })
+      createSubscription.mockResolvedValueOnce(activeSubscription({ ownerId: 'club-new' }))
+
+      renderPage('/admin/configuration/subscriptions/new')
+
+      // Captured once and reused below — once the dropdown is open, MUI's Autocomplete listbox
+      // also carries an aria-labelledby pointing at the same "Club" label, so a second
+      // getByLabelText('Club') call becomes ambiguous (matches both the input and the listbox).
+      const clubField = screen.getByLabelText('Club')
+      await user.click(clubField)
+      await user.type(clubField, 'Meadowbrook CC')
+      await waitForDebounce()
+      await user.click(await screen.findByRole('button', { name: '+ Add "Meadowbrook CC" as a new club' }))
+
+      expect(screen.getByLabelText('Name')).toHaveValue('Meadowbrook CC')
+      expect(screen.getByLabelText('Slug')).toHaveValue('meadowbrook-cc')
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Create subscription' }))
+
+      expect(await screen.findByText('Subscription List Page')).toBeInTheDocument()
+
+      expect(createClub).toHaveBeenCalledTimes(1)
+      expect(createClub).toHaveBeenCalledWith({ name: 'Meadowbrook CC', slug: 'meadowbrook-cc' })
+      expect(createSubscription).toHaveBeenCalledTimes(1)
+      expect(createSubscription).toHaveBeenCalledWith({
+        ownerType: 'CLUB',
+        ownerId: 'club-new',
+        productId: 'prod-1',
+        startDate: todayIso(),
         endDate: null,
       })
 
-      expect(await screen.findByText('Subscription List Page')).toBeInTheDocument()
+      // createClub must resolve before createSubscription is ever invoked.
+      const createClubOrder = createClub.mock.invocationCallOrder[0]
+      const createSubscriptionOrder = createSubscription.mock.invocationCallOrder[0]
+      expect(createClubOrder).toBeLessThan(createSubscriptionOrder)
+    },
+    15000,
+  )
+
+  it(
+    'a createClub rejection blocks createSubscription entirely and surfaces the detail message against the Slug field, not the generic banner',
+    async () => {
+      const user = userEvent.setup()
+      createClub.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { data: { detail: 'Club slug is reserved: meadowbrook-cc' } },
+      })
+
+      renderPage('/admin/configuration/subscriptions/new')
+
+      const clubField = screen.getByLabelText('Club')
+      await user.click(clubField)
+      await user.type(clubField, 'Meadowbrook CC')
+      await waitForDebounce()
+      await user.click(await screen.findByRole('button', { name: '+ Add "Meadowbrook CC" as a new club' }))
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Create subscription' }))
+
+      expect(await screen.findByText('Club slug is reserved: meadowbrook-cc')).toBeInTheDocument()
+      expect(createSubscription).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('Something went wrong saving this subscription. Please try again.'),
+      ).not.toBeInTheDocument()
+    },
+    15000,
+  )
+
+  it(
+    'a createClub success followed by a createSubscription rejection still shows the existing generic banner',
+    async () => {
+      const user = userEvent.setup()
+      createClub.mockResolvedValueOnce({
+        id: 'club-new',
+        name: 'Meadowbrook CC',
+        slug: 'meadowbrook-cc',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        updatedBy: null,
+      })
+      createSubscription.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { data: { detail: 'Club already has an active subscription' } },
+      })
+
+      renderPage('/admin/configuration/subscriptions/new')
+
+      const clubField = screen.getByLabelText('Club')
+      await user.click(clubField)
+      await user.type(clubField, 'Meadowbrook CC')
+      await waitForDebounce()
+      await user.click(await screen.findByRole('button', { name: '+ Add "Meadowbrook CC" as a new club' }))
+
+      await user.click(screen.getByLabelText('Product'))
+      await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Create subscription' }))
+
+      expect(await screen.findByText('Club already has an active subscription')).toBeInTheDocument()
+      expect(createClub).toHaveBeenCalledTimes(1)
     },
     15000,
   )
@@ -133,10 +278,11 @@ describe('SubscriptionFormPage', () => {
     expect(id).toBe('s-1')
     expect(payload).toMatchObject({ productId: 'prod-1', startDate: '2026-01-01', endDate: null })
 
+    expect(createClub).not.toHaveBeenCalled()
     expect(await screen.findByText('Subscription List Page')).toBeInTheDocument()
   })
 
-  it('edit mode disables the Club field and never fires its search query', async () => {
+  it('edit mode disables the Club field and never fires a club search query', async () => {
     getSubscription.mockResolvedValueOnce(activeSubscription())
 
     renderPage('/admin/configuration/subscriptions/s-1/edit')
@@ -144,8 +290,8 @@ describe('SubscriptionFormPage', () => {
     const clubField = await screen.findByDisplayValue('Riverside CC')
     expect(clubField).toBeDisabled()
 
-    await new Promise((resolve) => setTimeout(resolve, 350))
-    expect(searchClubs).not.toHaveBeenCalled()
+    await waitForDebounce()
+    expect(listClubs).not.toHaveBeenCalled()
   })
 
   it(
@@ -215,8 +361,7 @@ describe('SubscriptionFormPage', () => {
 
       renderPage('/admin/configuration/subscriptions/new')
 
-      await user.type(screen.getByLabelText('Club'), 'Riverside')
-      await new Promise((resolve) => setTimeout(resolve, 350))
+      await user.click(screen.getByLabelText('Club'))
       await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
@@ -233,8 +378,7 @@ describe('SubscriptionFormPage', () => {
 
     renderPage('/admin/configuration/subscriptions/new')
 
-    await user.type(screen.getByLabelText('Club'), 'Riverside')
-    await new Promise((resolve) => setTimeout(resolve, 350))
+    await user.click(screen.getByLabelText('Club'))
     await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
     await user.click(screen.getByLabelText('Product'))
     await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
