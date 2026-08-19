@@ -149,4 +149,73 @@ test.describe('Admin Subscriptions golden path (009)', () => {
     await expect(page.getByLabel('Club')).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Cancel Subscription' })).toHaveCount(0);
   });
+
+  test('platform admin creates a Subscription for a brand-new Club, added inline from the Club picker (011)', async ({
+    page,
+  }) => {
+    const uniqueSuffix = Date.now();
+    const productCode = `E2E_SUB_INLINE_${uniqueSuffix}`;
+    const productName = `E2E Sub Inline ${uniqueSuffix}`;
+    const newClubName = `E2E Meadowbrook CC ${uniqueSuffix}`;
+    const newClubSlug = `e2e-meadowbrook-cc-${uniqueSuffix}`;
+
+    await loginBySelectingClub(page, CLUB_NAME);
+
+    // Seed one ACTIVE Product via Configuration -> Products (008's own screen, already covered
+    // end-to-end by its own spec — used here only as fixture data for this spec).
+    await page.getByRole('link', { name: 'Configuration' }).click();
+    await page.getByRole('link', { name: /^Products/ }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    await page.getByRole('button', { name: 'Add Product' }).click();
+    await page.getByLabel('Code').fill(productCode);
+    await page.getByLabel('Name').fill(productName);
+    await page.getByRole('button', { name: 'Create product' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    const productCard = page.locator('.MuiCard-root').filter({ hasText: productName });
+    await productCard.getByRole('link', { name: 'Edit' }).click();
+    await page.getByLabel('Publish (set Active)').click();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    // Configuration -> Subscriptions -> Add Subscription.
+    await page.getByRole('link', { name: 'Configuration' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration$/);
+    await page.getByRole('link', { name: /^Subscriptions/ }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+
+    await page.getByRole('button', { name: 'Add Subscription' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions\/new$/);
+
+    // Search a club name with no existing match, then use "+ Add ... as a new club".
+    await page.getByLabel('Club').fill(newClubName);
+    const addAffordance = page.getByRole('button', { name: `+ Add "${newClubName}" as a new club` });
+    await expect(addAffordance).toBeVisible();
+    await addAffordance.click();
+
+    // Name pre-fills from the search query; Slug auto-derives — override it with a
+    // collision-proof, run-unique value so repeat local runs don't hit a duplicate-slug 409.
+    await expect(page.getByLabel('Name')).toHaveValue(newClubName);
+    await page.getByLabel('Slug').fill(newClubSlug);
+
+    await page.getByLabel('Product').click();
+    await page.getByRole('option', { name: new RegExp(productName) }).click();
+    await page.getByRole('button', { name: 'Create subscription' }).click();
+
+    // The new Subscription appears in the list against the newly-created Club.
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+    const newSubscriptionCard = page.locator('.MuiCard-root').filter({ hasText: newClubName });
+    await expect(newSubscriptionCard).toBeVisible();
+    await expect(newSubscriptionCard.getByText(productName)).toBeVisible();
+    await expect(newSubscriptionCard.getByText('Active')).toBeVisible();
+
+    // The Club itself was actually created (not just referenced) — visible in 010's own Club
+    // Onboarding list as Active.
+    await page.getByRole('link', { name: 'Club Onboarding' }).click();
+    await expect(page).toHaveURL(/\/admin\/onboarding$/);
+    const newClubCard = page.locator('.MuiCard-root').filter({ hasText: newClubName });
+    await expect(newClubCard).toBeVisible();
+    await expect(newClubCard.getByText('Active')).toBeVisible();
+  });
 });
