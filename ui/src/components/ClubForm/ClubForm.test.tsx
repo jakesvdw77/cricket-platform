@@ -45,6 +45,9 @@ describe('ClubForm', () => {
     renderClubForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Name'), 'Riverside CC')
+    // Slug auto-fills from Name (see the auto-derive tests below) — clear it first to exercise
+    // an explicit, deliberately malformed manual entry rather than appending to the derived value.
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'Riverside CC')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -60,6 +63,7 @@ describe('ClubForm', () => {
     renderClubForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Name'), 'AB Club')
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'ab')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -73,6 +77,7 @@ describe('ClubForm', () => {
     renderClubForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Name'), 'Riverside CC')
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'riverside-cc')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -88,6 +93,35 @@ describe('ClubForm', () => {
     })
 
     expect(screen.getByLabelText('Name')).toHaveValue('Riverside Cricket Club')
+    expect(screen.getByLabelText('Slug')).toHaveValue('riverside-cc')
+  })
+
+  it('auto-derives the slug from the name as the admin types, until the slug is manually edited', async () => {
+    const user = userEvent.setup()
+    renderClubForm({ onSubmit: vi.fn() })
+
+    await user.type(screen.getByLabelText('Name'), 'Riverside Cricket Club!')
+
+    expect(screen.getByLabelText('Slug')).toHaveValue('riverside-cricket-club')
+    expect(screen.getByText('Auto-filled from name — edit to override')).toBeInTheDocument()
+
+    // Once the admin edits the slug directly, further Name edits must not clobber it.
+    await user.clear(screen.getByLabelText('Slug'))
+    await user.type(screen.getByLabelText('Slug'), 'my-custom-slug')
+    await user.type(screen.getByLabelText('Name'), ' Extra')
+
+    expect(screen.getByLabelText('Slug')).toHaveValue('my-custom-slug')
+  })
+
+  it('edit mode never auto-derives the slug from the name, since a club already has one', async () => {
+    const user = userEvent.setup()
+    renderClubForm({
+      onSubmit: vi.fn(),
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+    })
+
+    await user.type(screen.getByLabelText('Name'), ' Renamed')
+
     expect(screen.getByLabelText('Slug')).toHaveValue('riverside-cc')
   })
 })

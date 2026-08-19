@@ -25,6 +25,17 @@ type FormErrors = Partial<Record<keyof FormState, string>>
 // segments joined by single hyphens, no leading/trailing/doubled hyphens.
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
+// Best-effort derivation for the auto-suggest below — always produces something matching
+// SLUG_PATTERN's shape (or an empty string), though the backend's reserved-word/uniqueness
+// rules still apply and the admin can freely overwrite the result.
+function deriveSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 function toFormState(initialValues?: Partial<ClubPayload>): FormState {
   return {
     name: initialValues?.name ?? '',
@@ -54,9 +65,19 @@ function validate(values: FormState): FormErrors {
 export function ClubForm({ initialValues, onSubmit }: ClubFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
+  // Once the admin has explicitly edited the slug (typed one in, or it arrived from
+  // initialValues on edit — Club.slug is required, so an edit-mode club always has one already),
+  // stop auto-deriving it from the name — never clobber a deliberate value.
+  const [slugTouched, setSlugTouched] = useState(Boolean(initialValues?.slug))
 
-  const handleChange = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
-    setValues((prev) => ({ ...prev, [field]: event.target.value }))
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const name = event.target.value
+    setValues((prev) => ({ ...prev, name, slug: slugTouched ? prev.slug : deriveSlug(name) }))
+  }
+
+  const handleSlugChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSlugTouched(true)
+    setValues((prev) => ({ ...prev, slug: event.target.value }))
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -84,16 +105,21 @@ export function ClubForm({ initialValues, onSubmit }: ClubFormProps) {
       <Input
         label="Name"
         value={values.name}
-        onChange={handleChange('name')}
+        onChange={handleNameChange}
         error={Boolean(errors.name)}
         helperText={errors.name}
       />
       <Input
         label="Slug"
         value={values.slug}
-        onChange={handleChange('slug')}
+        onChange={handleSlugChange}
         error={Boolean(errors.slug)}
-        helperText={errors.slug ?? 'Lowercase letters, numbers, and hyphens, e.g. riverside-cc'}
+        helperText={
+          errors.slug ??
+          (!slugTouched && values.slug
+            ? 'Auto-filled from name — edit to override'
+            : 'Lowercase letters, numbers, and hyphens, e.g. riverside-cc')
+        }
       />
     </Box>
   )

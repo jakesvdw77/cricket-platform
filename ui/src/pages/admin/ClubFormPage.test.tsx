@@ -63,6 +63,9 @@ describe('ClubFormPage', () => {
     expect(getClub).not.toHaveBeenCalled()
 
     await user.type(screen.getByLabelText('Name'), 'Riverside Cricket Club')
+    // Slug auto-fills from Name — clear it first so the explicit entry below isn't appended
+    // to the derived value (see ClubForm.test.tsx's dedicated auto-derive coverage).
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'riverside-cc')
     await user.click(screen.getByRole('button', { name: 'Create club' }))
 
@@ -169,6 +172,7 @@ describe('ClubFormPage', () => {
     renderPage('/admin/onboarding/new')
 
     await user.type(screen.getByLabelText('Name'), 'Admin Club')
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'admin-club')
     await user.click(screen.getByRole('button', { name: 'Create club' }))
 
@@ -182,6 +186,9 @@ describe('ClubFormPage', () => {
     renderPage('/admin/onboarding/new')
 
     await user.type(screen.getByLabelText('Name'), 'Riverside Cricket Club')
+    // Slug auto-fills from Name — clear it first so the explicit entry below isn't appended
+    // to the derived value (see ClubForm.test.tsx's dedicated auto-derive coverage).
+    await user.clear(screen.getByLabelText('Slug'))
     await user.type(screen.getByLabelText('Slug'), 'riverside-cc')
     await user.click(screen.getByRole('button', { name: 'Create club' }))
 
