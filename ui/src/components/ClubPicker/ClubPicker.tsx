@@ -66,6 +66,12 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
 
   const showAddAffordance = hasFocused && mode === 'search' && !isFetching && clubOptions.length === 0
   const trimmedQuery = query.trim()
+  // MUI's own dropdown popper is absolutely positioned, so leaving it open with nothing useful
+  // inside (its "No clubs found" noOptionsText) visually overlaps the "+ Add" affordance
+  // rendered right below it in normal flow — a real admin can't see or click the button until
+  // the popper closes. Closing it explicitly the moment there's nothing to show hands that
+  // space to the affordance instead, rather than fighting z-index/positioning to work around it.
+  const autocompleteOpen = hasFocused && (isFetching || clubOptions.length > 0)
 
   const handleStartCreate = () => {
     setSlugTouched(false)
@@ -102,7 +108,9 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
       {mode === 'search' && (
         <>
           <Autocomplete<ClubOption>
-            openOnFocus
+            open={autocompleteOpen}
+            onOpen={() => setHasFocused(true)}
+            onClose={() => {}}
             options={clubOptions}
             loading={isFetching}
             value={selectedOption}
@@ -119,7 +127,6 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
             getOptionLabel={(option) => option.name}
             isOptionEqualToValue={(option, optionValue) => option.id === optionValue.id}
             filterOptions={(options) => options}
-            noOptionsText="No clubs found"
             renderInput={(params) => (
               <Input
                 {...params}
