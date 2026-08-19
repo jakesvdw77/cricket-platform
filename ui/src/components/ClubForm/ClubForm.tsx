@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { Box } from '@mui/material'
-import { Input } from '../Input'
+import { ClubNameSlugFields } from '../ClubNameSlugFields'
 import type { ClubPayload } from '../../api/clubApi'
-import { deriveSlug, SLUG_PATTERN } from '../../utils/slug'
+import { deriveSlug, validateSlug } from '../../utils/slug'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside
 // this component (see ClubFormPage), so its Save button targets this form via the native
@@ -36,13 +36,9 @@ function validate(values: FormState): FormErrors {
     errors.name = 'Name is required'
   }
 
-  const slug = values.slug.trim()
-  if (!slug) {
-    errors.slug = 'Slug is required'
-  } else if (slug.length < 3 || slug.length > 63) {
-    errors.slug = 'Slug must be between 3 and 63 characters'
-  } else if (!SLUG_PATTERN.test(slug)) {
-    errors.slug = 'Use lowercase letters, numbers, and single hyphens, e.g. riverside-cc'
+  const slugError = validateSlug(values.slug)
+  if (slugError) {
+    errors.slug = slugError
   }
 
   return errors
@@ -56,14 +52,13 @@ export function ClubForm({ initialValues, onSubmit }: ClubFormProps) {
   // stop auto-deriving it from the name — never clobber a deliberate value.
   const [slugTouched, setSlugTouched] = useState(Boolean(initialValues?.slug))
 
-  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const name = event.target.value
+  const handleNameChange = (name: string) => {
     setValues((prev) => ({ ...prev, name, slug: slugTouched ? prev.slug : deriveSlug(name) }))
   }
 
-  const handleSlugChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleSlugChange = (slug: string) => {
     setSlugTouched(true)
-    setValues((prev) => ({ ...prev, slug: event.target.value }))
+    setValues((prev) => ({ ...prev, slug }))
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -88,24 +83,14 @@ export function ClubForm({ initialValues, onSubmit }: ClubFormProps) {
     // items of RecordFormScreen's field grid (see ClubFormPage) — the native <form>/onSubmit
     // wiring still works, submission is just triggered from outside via CLUB_FORM_ID.
     <Box component="form" id={CLUB_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
-      <Input
-        label="Name"
-        value={values.name}
-        onChange={handleNameChange}
-        error={Boolean(errors.name)}
-        helperText={errors.name}
-      />
-      <Input
-        label="Slug"
-        value={values.slug}
-        onChange={handleSlugChange}
-        error={Boolean(errors.slug)}
-        helperText={
-          errors.slug ??
-          (!slugTouched && values.slug
-            ? 'Auto-filled from name — edit to override'
-            : 'Lowercase letters, numbers, and hyphens, e.g. riverside-cc')
-        }
+      <ClubNameSlugFields
+        name={values.name}
+        slug={values.slug}
+        slugTouched={slugTouched}
+        nameError={errors.name}
+        slugError={errors.slug}
+        onNameChange={handleNameChange}
+        onSlugChange={handleSlugChange}
       />
     </Box>
   )

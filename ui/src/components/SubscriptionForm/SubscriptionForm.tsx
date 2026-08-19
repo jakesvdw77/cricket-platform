@@ -7,6 +7,7 @@ import { ClubPicker } from '../ClubPicker'
 import type { ClubPickerValue } from '../ClubPicker'
 import { listProducts } from '../../api/productApi'
 import type { Product } from '../../api/productApi'
+import { validateSlug } from '../../utils/slug'
 
 // Only the fields this picker actually renders — lets the synthetic "current, possibly retired
 // product" entry below satisfy the type without fabricating the rest of a full Product.
@@ -68,7 +69,9 @@ interface FormState {
   endDate: string
 }
 
-type FormErrors = Partial<Record<'club' | 'productId' | 'startDate' | 'endDate', string>>
+type FormErrors = Partial<
+  Record<'club' | 'clubName' | 'clubSlug' | 'productId' | 'startDate' | 'endDate', string>
+>
 
 // Local date, not UTC — a start date is a calendar-day concept from the admin's own
 // perspective, not a timestamp; toISOString() would shift near midnight in some timezones.
@@ -111,6 +114,21 @@ function validate(values: FormState, isEdit: boolean): FormErrors {
   // it can't be cleared) — only create mode needs this checked.
   if (!isEdit && !values.clubSelection) {
     errors.club = 'Select a club'
+  }
+
+  // A pending inline-created club draft can exist (clubSelection is truthy) while still being
+  // incomplete — e.g. "+ Add a new club" clicked from the blank on-focus default list leaves
+  // both fields empty. The `club` check above only catches "nothing selected at all", not "an
+  // incomplete draft selected" — mirrors ClubForm.validate()'s exact checks, since this draft
+  // becomes a real POST /platform/clubs request on submit and must pass the same rules.
+  if (!isEdit && values.clubSelection?.mode === 'new') {
+    if (!values.clubSelection.name.trim()) {
+      errors.clubName = 'Name is required'
+    }
+    const slugError = validateSlug(values.clubSelection.slug)
+    if (slugError) {
+      errors.clubSlug = slugError
+    }
   }
 
   if (!values.productId) {
@@ -231,7 +249,8 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
         <ClubPicker
           value={values.clubSelection}
           onChange={(next) => setValues((prev) => ({ ...prev, clubSelection: next }))}
-          error={clubCreationError}
+          nameError={errors.clubName}
+          slugError={errors.clubSlug ?? clubCreationError}
           requiredError={errors.club}
         />
       )}

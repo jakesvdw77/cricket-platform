@@ -42,12 +42,14 @@ async function waitForDebounce() {
 function Harness({
   initialValue = null,
   onChangeSpy,
-  error,
+  nameError,
+  slugError,
   requiredError,
 }: {
   initialValue?: ClubPickerValue
   onChangeSpy?: (value: ClubPickerValue) => void
-  error?: ClubPickerProps['error']
+  nameError?: ClubPickerProps['nameError']
+  slugError?: ClubPickerProps['slugError']
   requiredError?: ClubPickerProps['requiredError']
 }) {
   const [value, setValue] = useState<ClubPickerValue>(initialValue)
@@ -58,7 +60,8 @@ function Harness({
         setValue(next)
         onChangeSpy?.(next)
       }}
-      error={error}
+      nameError={nameError}
+      slugError={slugError}
       requiredError={requiredError}
     />
   )
@@ -165,6 +168,17 @@ describe('ClubPicker', () => {
     expect(await screen.findByRole('button', { name: '+ Add a new club' })).toBeInTheDocument()
   })
 
+  it('does not show the "+ Add" affordance on a fetch failure, and shows a distinct error instead — never treats an error as "no matching clubs"', async () => {
+    listClubs.mockRejectedValueOnce(new Error('network error'))
+    const user = userEvent.setup()
+    renderClubPicker()
+
+    await user.click(screen.getByLabelText('Club'))
+
+    expect(await screen.findByText("Couldn't load clubs. Please try again.")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument()
+  })
+
   it('shows a generic "+ Add a new club" label when the empty result is the on-focus default list', async () => {
     listClubs.mockResolvedValueOnce(page([]))
     const user = userEvent.setup()
@@ -256,15 +270,36 @@ describe('ClubPicker', () => {
     expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
   })
 
-  it('renders the error prop against the Slug field in create mode', () => {
+  it('renders the slugError prop against the Slug field in create mode', () => {
     renderClubPicker({
       initialValue: { mode: 'new', name: 'Meadowbrook CC', slug: 'meadowbrook-cc' },
-      error: 'Club slug is reserved: meadowbrook-cc',
+      slugError: 'Club slug is reserved: meadowbrook-cc',
     })
 
     const slugField = screen.getByLabelText('Slug')
     expect(slugField).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByText('Club slug is reserved: meadowbrook-cc')).toBeInTheDocument()
+  })
+
+  it('renders the nameError prop against the Name field in create mode', () => {
+    renderClubPicker({
+      initialValue: { mode: 'new', name: '', slug: '' },
+      nameError: 'Name is required',
+    })
+
+    const nameField = screen.getByLabelText('Name')
+    expect(nameField).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Name is required')).toBeInTheDocument()
+  })
+
+  it('prefers the live format check over slugError while typing a malformed slug, but slugError wins once set', () => {
+    renderClubPicker({
+      initialValue: { mode: 'new', name: 'Meadowbrook CC', slug: 'Meadowbrook CC' },
+    })
+
+    expect(
+      screen.getByText('Use lowercase letters, numbers, and single hyphens, e.g. riverside-cc'),
+    ).toBeInTheDocument()
   })
 
   it('renders the requiredError prop against the search input when nothing is selected', () => {

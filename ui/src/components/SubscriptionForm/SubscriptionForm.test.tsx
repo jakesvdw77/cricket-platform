@@ -194,6 +194,31 @@ describe('SubscriptionForm', () => {
     15000,
   )
 
+  it('blocks submit and reports Name/Slug errors for an incomplete new-club draft (blank fields), without ever calling onSubmit', async () => {
+    // Overrides this suite's default (non-empty) on-focus list — this test needs the blank-query
+    // "+ Add a new club" affordance specifically, unlike the other new-club test above which
+    // types a query first.
+    listClubs.mockResolvedValue({ content: [], totalElements: 0, totalPages: 1, number: 0, size: 10 })
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    // "+ Add a new club" from the blank on-focus default list leaves both fields empty —
+    // exercised here without typing a query first, unlike the other new-club test above.
+    const clubField = screen.getByLabelText('Club')
+    await user.click(clubField)
+    await user.click(await screen.findByRole('button', { name: '+ Add a new club' }))
+
+    await user.click(screen.getByLabelText('Product'))
+    await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Name is required')).toBeInTheDocument()
+    expect(screen.getByText('Slug is required')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('disables the Club field in edit mode and never renders ClubPicker (no club search query ever fires)', async () => {
     renderSubscriptionForm({
       onSubmit: vi.fn(),

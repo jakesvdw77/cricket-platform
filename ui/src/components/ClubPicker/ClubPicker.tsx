@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { ChangeEvent } from 'react'
 import { Autocomplete, Box, CircularProgress } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '../Input'
 import { Button } from '../Button'
+import { ClubNameSlugFields } from '../ClubNameSlugFields'
 import { listClubs } from '../../api/clubApi'
 import type { Club } from '../../api/clubApi'
-import { deriveSlug, SLUG_PATTERN } from '../../utils/slug'
+import { deriveSlug, validateSlug } from '../../utils/slug'
 
 // Same debounce timing SubscriptionForm's old inline Club Autocomplete used before this
 // component absorbed it — see docs/plans/011-inline-club-creation-in-subscription-form.md item 3.
@@ -24,18 +24,22 @@ type ClubOption = Pick<Club, 'id' | 'name'>
 export interface ClubPickerProps {
   value: ClubPickerValue
   onChange: (value: ClubPickerValue) => void
-  // Surfaces a server-side club-creation failure (reserved slug, duplicate slug) against the
-  // Slug field — only ever relevant while already in create mode, see
-  // docs/specs/011-inline-club-creation-in-subscription-form.md's UI Requirements.
-  error?: string
+  // Submit-time "Name is required" validation from the consuming form, only ever relevant while
+  // already in create mode — see docs/specs/011-inline-club-creation-in-subscription-form.md's
+  // UI Requirements ("reusing 010's ClubForm-shaped fields and validation").
+  nameError?: string
+  // Either a submit-time slug validation error from the consuming form, or a server-side
+  // club-creation failure (reserved slug, duplicate slug) surfaced after a failed submit — both
+  // render against the Slug field, only ever relevant while already in create mode.
+  slugError?: string
   // Surfaces the consuming form's own "a club selection is required" validation error against
   // the search field — only ever relevant while nothing has been selected yet (search mode),
-  // kept separate from `error` above since that one only makes sense once already in create mode
-  // and the two can never be relevant at the same time.
+  // kept separate from the two above since those only make sense once already in create mode
+  // and none of the three can ever be relevant at the same time.
   requiredError?: string
 }
 
-export function ClubPicker({ value, onChange, error, requiredError }: ClubPickerProps) {
+export function ClubPicker({ value, onChange, nameError, slugError, requiredError }: ClubPickerProps) {
   const mode: 'search' | 'create' = value?.mode === 'new' ? 'create' : 'search'
 
   // Gates the search query behind the admin's first interaction — nothing fetches before the
@@ -52,7 +56,7 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
     return () => clearTimeout(handle)
   }, [query])
 
-  const { data: clubPage, isFetching } = useQuery({
+  const { data: clubPage, isFetching, isError } = useQuery({
     queryKey: ['club-picker-clubs', debouncedQuery],
     queryFn: () => listClubs({ page: 0, size: 10, search: debouncedQuery || undefined, sort: 'name,asc' }),
     enabled: hasFocused && mode === 'search',
@@ -64,7 +68,10 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
 
   const selectedOption: ClubOption | null = value?.mode === 'existing' ? { id: value.id, name: value.name } : null
 
-  const showAddAffordance = hasFocused && mode === 'search' && !isFetching && clubOptions.length === 0
+  // A genuine fetch failure must never be silently treated as "no matching clubs" — that would
+  // offer to create a new (possibly duplicate) Club off a transient network/auth error instead
+  // of surfacing the failure. Found during standards review of the initial implementation.
+  const showAddAffordance = hasFocused && mode === 'search' && !isFetching && !isError && clubOptions.length === 0
   const trimmedQuery = query.trim()
   // MUI's own dropdown popper is absolutely positioned, so leaving it open with nothing useful
   // inside (its "No clubs found" noOptionsText) visually overlaps the "+ Add" affordance
@@ -83,20 +90,19 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
     onChange(null)
   }
 
-  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleNameChange = (name: string) => {
     if (value?.mode !== 'new') {
       return
     }
-    const name = event.target.value
     onChange({ mode: 'new', name, slug: slugTouched ? value.slug : deriveSlug(name) })
   }
 
-  const handleSlugChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleSlugChange = (slug: string) => {
     if (value?.mode !== 'new') {
       return
     }
     setSlugTouched(true)
-    onChange({ mode: 'new', name: value.name, slug: event.target.value })
+    onChange({ mode: 'new', name: value.name, slug })
   }
 
   // Root spans the full grid row (see RecordFormScreen's "full-width fields" convention) — this
@@ -143,8 +149,8 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
                 {...params}
                 label="Club"
                 placeholder="Search by club name"
-                error={Boolean(requiredError)}
-                helperText={requiredError}
+                error={Boolean(requiredError) || isError}
+                helperText={isError ? "Couldn't load clubs. Please try again." : requiredError}
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -169,19 +175,19 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
       {mode === 'create' && value?.mode === 'new' && (
         <>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-            <Input label="Name" value={value.name} onChange={handleNameChange} />
-            <Input
-              label="Slug"
-              value={value.slug}
-              onChange={handleSlugChange}
-              error={Boolean(error) || Boolean(slugFormatError(value.slug))}
-              helperText={
-                error ??
-                slugFormatError(value.slug) ??
-                (!slugTouched && value.slug
-                  ? 'Auto-filled from name — edit to override'
-                  : 'Lowercase letters, numbers, and hyphens, e.g. riverside-cc')
-              }
+            <ClubNameSlugFields
+              name={value.name}
+              slug={value.slug}
+              slugTouched={slugTouched}
+              nameError={nameError}
+              // Prefers the consuming form's own error (a submit-time "required" check, or a
+              // server-side reserved/duplicate-slug rejection) over the live format check below
+              // — once the form has actually tried to submit, that's the more authoritative,
+              // specific message. The live check still runs meanwhile so a malformed (but
+              // non-blank) slug gets immediate feedback while typing, same as ClubForm.
+              slugError={slugError ?? liveSlugError(value.slug)}
+              onNameChange={handleNameChange}
+              onSlugChange={handleSlugChange}
             />
           </Box>
           <Button variant="ghost" size="sm" onClick={handleBackToSearch} sx={{ alignSelf: 'flex-start' }}>
@@ -193,19 +199,10 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
   )
 }
 
-// Immediate client-side feedback only (mirrors ClubForm's own validate()'s slug checks) —
-// independent of the `error` prop, which is reserved for the server-side rejection surfaced on
-// actual Subscription-form submit.
-function slugFormatError(slug: string): string | undefined {
-  const trimmed = slug.trim()
-  if (!trimmed) {
-    return undefined
-  }
-  if (trimmed.length < 3 || trimmed.length > 63) {
-    return 'Slug must be between 3 and 63 characters'
-  }
-  if (!SLUG_PATTERN.test(trimmed)) {
-    return 'Use lowercase letters, numbers, and single hyphens, e.g. riverside-cc'
-  }
-  return undefined
+// Live-while-typing feedback only, deliberately blank-inert — same "don't nag before the admin
+// has even started" convention as the rest of this codebase's submit-triggered validate()
+// functions, which is why this doesn't just call validateSlug() directly (that flags blank as
+// "required", which belongs to the submit-time `slugError` prop above, not live typing).
+function liveSlugError(slug: string): string | undefined {
+  return slug.trim() ? validateSlug(slug) : undefined
 }
