@@ -121,7 +121,7 @@ describe('ClubPicker', () => {
     )
   })
 
-  it('selecting an existing club calls onChange with an existing-mode selection', async () => {
+  it('selecting an existing club calls onChange with an existing-mode selection, and displays its name in the field', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()
     renderClubPicker({ onChangeSpy })
@@ -130,6 +130,10 @@ describe('ClubPicker', () => {
     await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
 
     expect(onChangeSpy).toHaveBeenCalledWith({ mode: 'existing', id: 'club-1', name: 'Riverside CC' })
+    // Regression coverage: the field previously stayed blank after a selection because
+    // onInputChange ignored MUI's post-selection 'reset' event entirely. getByRole
+    // disambiguates from the (still-open) listbox, which shares the same accessible name.
+    expect(screen.getByRole('combobox', { name: 'Club' })).toHaveValue('Riverside CC')
   })
 
   it('does not show the "+ Add" affordance while results are present', async () => {

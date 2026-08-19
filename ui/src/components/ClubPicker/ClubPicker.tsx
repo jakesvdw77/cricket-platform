@@ -122,6 +122,17 @@ export function ClubPicker({ value, onChange, error, requiredError }: ClubPicker
             onInputChange={(_event, newInputValue, reason) => {
               if (reason === 'input') {
                 setQuery(newInputValue)
+                return
+              }
+              // 'reset' fires both after a real selection (newInputValue is the selected
+              // club's name — sync it so the field actually shows what got picked, a real bug
+              // found during manual browser verification) and whenever the popper closes with
+              // nothing selected, including our own controlled `open` closing itself once
+              // there are zero results (newInputValue is '' there) — syncing that case would
+              // wipe out a typed search query the "+ Add" affordance still needs to show. Only
+              // 'clear' (the field's own clear button) should still commit an empty value.
+              if (reason === 'clear' || newInputValue) {
+                setQuery(newInputValue)
               }
             }}
             getOptionLabel={(option) => option.name}
