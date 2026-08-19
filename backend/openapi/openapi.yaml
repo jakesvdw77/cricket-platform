@@ -221,6 +221,127 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProductDto"
+  /api/v1/platform/clubs:
+    get:
+      tags:
+      - club-controller
+      operationId: list
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageClubDto"
+    post:
+      tags:
+      - club-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubRequest"
+        required: true
+      responses:
+        "201":
+          description: Club created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}:
+    get:
+      tags:
+      - club-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+    put:
+      tags:
+      - club-controller
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/suspend:
+    post:
+      tags:
+      - club-controller
+      operationId: suspend
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/reactivate:
+    post:
+      tags:
+      - club-controller
+      operationId: reactivate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -562,6 +683,51 @@ components:
           type: string
         slug:
           type: string
+    ClubDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+          enum:
+          - ONBOARDING
+          - ACTIVE
+          - SUSPENDED
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateClubRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+      required:
+      - name
+      - slug
+    UpdateClubRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+      required:
+      - name
+      - slug
     ProductSummaryDto:
       type: object
       properties:
@@ -720,6 +886,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PageClubDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubDto"
         number:
           type: integer
           format: int32

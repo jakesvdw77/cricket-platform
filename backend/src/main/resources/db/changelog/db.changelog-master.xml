@@ -9,5 +9,6 @@
     <include file="db/changelog/v1/002-add-lead.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/003-add-product.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/004-add-subscription.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/005-add-club-audit-columns.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

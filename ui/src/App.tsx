@@ -13,6 +13,8 @@ import ManagerDashboard from './pages/manage/ManagerDashboard'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
+import ClubList from './pages/admin/ClubList'
+import ClubFormPage from './pages/admin/ClubFormPage'
 import ProductList from './pages/admin/ProductList'
 import ProductFormPage from './pages/admin/ProductFormPage'
 import SubscriptionList from './pages/admin/SubscriptionList'
@@ -44,7 +46,9 @@ function App() {
                 placeholder pending its own future spec. */}
             <Route path="/admin" element={<AdminHome />}>
               <Route index element={<AdminDashboard />} />
-              <Route path="onboarding" element={<EmptyState title="Club Onboarding" description="Coming soon." />} />
+              <Route path="onboarding" element={<ClubList />} />
+              <Route path="onboarding/new" element={<ClubFormPage />} />
+              <Route path="onboarding/:id/edit" element={<ClubFormPage />} />
               <Route path="whitelisting" element={<EmptyState title="Whitelisting" description="Coming soon." />} />
               <Route path="invoices" element={<EmptyState title="Subscriptions & Invoices" description="Coming soon." />} />
               <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
