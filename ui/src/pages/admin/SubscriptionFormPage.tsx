@@ -9,6 +9,7 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { getSubscription, createSubscription, updateSubscription, cancelSubscription } from '../../api/subscriptionApi'
+import { createClub } from '../../api/clubApi'
 
 // The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
 // carries the specific reason (e.g. "Club already has an active subscription", "Product is not
@@ -21,6 +22,11 @@ function errorDetail(error: unknown, fallback: string): string {
   }
   return fallback
 }
+
+// Distinguishes a POST /clubs rejection (routed to ClubPicker's Slug field) from a
+// POST /subscriptions rejection (the existing generic banner below) — see
+// docs/plans/011-inline-club-creation-in-subscription-form.md item 5.
+class ClubCreationError extends Error {}
 
 export default function SubscriptionFormPage() {
   const { id } = useParams<{ id?: string }>()
@@ -40,7 +46,7 @@ export default function SubscriptionFormPage() {
   })
 
   const saveMutation = useMutation({
-    mutationFn: (values: SubscriptionFormValues) => {
+    mutationFn: async (values: SubscriptionFormValues) => {
       if (isEdit && id) {
         return updateSubscription(id, {
           productId: values.productId,
@@ -49,9 +55,26 @@ export default function SubscriptionFormPage() {
         })
       }
 
+      // Deferred creation: a pending "new" Club draft is only ever actually created here, on
+      // Subscription-form submit — not as ClubPicker's own selection changes — so an abandoned
+      // form leaves no orphan Club row (see docs/specs/011-inline-club-creation-in-subscription
+      // -form.md's Goals). A rejection here (reserved/duplicate slug) must block subscription
+      // creation entirely and surface against ClubPicker's Slug field, not the generic banner.
+      let ownerId: string
+      if (values.club.mode === 'new') {
+        try {
+          const club = await createClub({ name: values.club.name, slug: values.club.slug })
+          ownerId = club.id
+        } catch (err) {
+          throw new ClubCreationError(errorDetail(err, 'Something went wrong adding this club. Please try again.'))
+        }
+      } else {
+        ownerId = values.club.id
+      }
+
       return createSubscription({
         ownerType: 'CLUB',
-        ownerId: values.clubId,
+        ownerId,
         productId: values.productId,
         startDate: values.startDate,
         endDate: values.endDate,
@@ -96,6 +119,7 @@ export default function SubscriptionFormPage() {
   }
 
   const submitLabel = isEdit ? 'Save changes' : 'Create subscription'
+  const clubCreationError = saveMutation.error instanceof ClubCreationError ? saveMutation.error.message : undefined
 
   return (
     <RecordFormScreen
@@ -104,7 +128,9 @@ export default function SubscriptionFormPage() {
       backLabel="Back to Subscriptions"
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {saveMutation.isError && (
+          {/* Mutually exclusive with ClubPicker's own inline Slug-field error below — a
+              club-creation failure is routed there instead of this generic banner. */}
+          {saveMutation.isError && !(saveMutation.error instanceof ClubCreationError) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(saveMutation.error, 'Something went wrong saving this subscription. Please try again.')}
             </Typography>
@@ -173,6 +199,7 @@ export default function SubscriptionFormPage() {
             : undefined
         }
         onSubmit={(values) => saveMutation.mutate(values)}
+        clubCreationError={clubCreationError}
       />
     </RecordFormScreen>
   )

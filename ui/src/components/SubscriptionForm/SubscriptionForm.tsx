@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Autocomplete, Box, CircularProgress, MenuItem } from '@mui/material'
+import { Box, MenuItem } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '../Input'
-import { searchClubs } from '../../api/leadApi'
-import type { ClubSummary } from '../../api/leadApi'
+import { ClubPicker } from '../ClubPicker'
+import type { ClubPickerValue } from '../ClubPicker'
 import { listProducts } from '../../api/productApi'
 import type { Product } from '../../api/productApi'
 
@@ -19,10 +19,13 @@ type ProductOption = Pick<Product, 'id' | 'name' | 'code' | 'maxPeriodMonths'> &
 // native HTML `form="…"` attribute, same convention as ProductForm/PRODUCT_FORM_ID.
 export const SUBSCRIPTION_FORM_ID = 'subscription-form'
 
-const CLUB_SEARCH_DEBOUNCE_MS = 300
+// Same discriminated union as ClubPickerValue, minus the null case — submission requires a
+// resolved Club selection (either an existing club or a not-yet-created draft one), see
+// docs/plans/011-inline-club-creation-in-subscription-form.md item 4.
+export type SubscriptionClubSelection = Exclude<ClubPickerValue, null>
 
 export interface SubscriptionFormValues {
-  clubId: string
+  club: SubscriptionClubSelection
   productId: string
   startDate: string | null
   endDate: string | null
@@ -46,17 +49,26 @@ export interface SubscriptionFormInitialValues {
 export interface SubscriptionFormProps {
   initialValues?: Partial<SubscriptionFormInitialValues>
   onSubmit: (values: SubscriptionFormValues) => void
+  // Surfaces a POST /clubs failure (reserved/duplicate slug) from the page above, once a pending
+  // new-club draft's creation has actually been attempted on submit — threaded straight through
+  // to ClubPicker's own error prop.
+  clubCreationError?: string
 }
 
 interface FormState {
+  // Edit mode's disabled display only — the Club field is immutable once a Subscription exists
+  // (see the disabled Input below), so this is never re-resolved via ClubPicker.
   clubId: string
   clubLabel: string
+  // Create mode only — ClubPicker's own controlled value. Stays null until the admin picks an
+  // existing club or starts an inline draft.
+  clubSelection: ClubPickerValue
   productId: string
   startDate: string
   endDate: string
 }
 
-type FormErrors = Partial<Record<'clubId' | 'productId' | 'startDate' | 'endDate', string>>
+type FormErrors = Partial<Record<'club' | 'productId' | 'startDate' | 'endDate', string>>
 
 // Local date, not UTC — a start date is a calendar-day concept from the admin's own
 // perspective, not a timestamp; toISOString() would shift near midnight in some timezones.
@@ -71,6 +83,7 @@ function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): Fo
   return {
     clubId: initialValues?.clubId ?? '',
     clubLabel: initialValues?.clubLabel ?? '',
+    clubSelection: null,
     productId: initialValues?.productId ?? '',
     // Defaults to today — the overwhelming common case, so the admin only needs to touch this
     // when backdating/scheduling a subscription rather than every single time.
@@ -96,8 +109,8 @@ function validate(values: FormState, isEdit: boolean): FormErrors {
 
   // Edit mode always carries a clubId forward from initialValues (the picker is disabled, so
   // it can't be cleared) — only create mode needs this checked.
-  if (!isEdit && !values.clubId) {
-    errors.clubId = 'Select a club'
+  if (!isEdit && !values.clubSelection) {
+    errors.club = 'Select a club'
   }
 
   if (!values.productId) {
@@ -111,7 +124,7 @@ function validate(values: FormState, isEdit: boolean): FormErrors {
   return errors
 }
 
-export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormProps) {
+export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }: SubscriptionFormProps) {
   // Presence of initialValues signals edit mode, same convention ProductForm uses for its own
   // originalStatus-derived checks rather than a separate isEdit prop.
   const isEdit = Boolean(initialValues)
@@ -121,28 +134,6 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
   // Once the admin has explicitly set an end date (typed one in, or it arrived from
   // initialValues on edit), stop auto-suggesting — never clobber a deliberate value.
   const [endDateTouched, setEndDateTouched] = useState(Boolean(initialValues?.endDate))
-
-  const [clubInputValue, setClubInputValue] = useState(initialValues?.clubLabel ?? '')
-  const [debouncedClubQuery, setDebouncedClubQuery] = useState('')
-  const [selectedClub, setSelectedClub] = useState<ClubSummary | null>(
-    initialValues?.clubId && initialValues?.clubLabel
-      ? { id: initialValues.clubId, name: initialValues.clubLabel, slug: '' }
-      : null,
-  )
-
-  useEffect(() => {
-    if (isEdit) {
-      return
-    }
-    const handle = setTimeout(() => setDebouncedClubQuery(clubInputValue.trim()), CLUB_SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-  }, [clubInputValue, isEdit])
-
-  const { data: clubOptions = [], isFetching: isSearchingClubs } = useQuery({
-    queryKey: ['subscription-form-clubs', debouncedClubQuery],
-    queryFn: () => searchClubs(debouncedClubQuery),
-    enabled: !isEdit && debouncedClubQuery.length > 0,
-  })
 
   // Products are admin-curated, never paginated in this picker — a plain select over the
   // first page of ACTIVE products is enough (see docs/plans/009-subscriptions.md item 4).
@@ -208,8 +199,16 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
       return
     }
 
+    // Edit mode never renders ClubPicker (the owning Club is immutable once a Subscription
+    // exists — see docs/specs/009-subscriptions.md), so clubSelection is always null there;
+    // this reconstructs the existing selection from initialValues for type-completeness only —
+    // SubscriptionFormPage's updateSubscription call ignores it entirely.
+    const club: SubscriptionClubSelection = isEdit
+      ? { mode: 'existing', id: values.clubId, name: values.clubLabel }
+      : (values.clubSelection as SubscriptionClubSelection)
+
     onSubmit({
-      clubId: values.clubId,
+      club,
       productId: values.productId,
       startDate: values.startDate || null,
       endDate: values.endDate || null,
@@ -221,39 +220,21 @@ export function SubscriptionForm({ initialValues, onSubmit }: SubscriptionFormPr
     // items of RecordFormScreen's field grid (see SubscriptionFormPage) — same convention as
     // ProductForm; submission is triggered from outside via SUBSCRIPTION_FORM_ID.
     <Box component="form" id={SUBSCRIPTION_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
-      <Autocomplete
-        disabled={isEdit}
-        options={clubOptions}
-        loading={isSearchingClubs}
-        value={selectedClub}
-        onChange={(_event, newValue) => {
-          setSelectedClub(newValue)
-          setValues((prev) => ({ ...prev, clubId: newValue?.id ?? '' }))
-        }}
-        inputValue={clubInputValue}
-        onInputChange={(_event, newInputValue) => setClubInputValue(newInputValue)}
-        getOptionLabel={(option) => option.name}
-        isOptionEqualToValue={(option, value) => option.id === value.id}
-        filterOptions={(options) => options}
-        renderInput={(params) => (
-          <Input
-            {...params}
-            label="Club"
-            placeholder="Search by club name"
-            error={Boolean(errors.clubId)}
-            helperText={errors.clubId ?? (isEdit ? 'The owning Club cannot be changed after creation' : undefined)}
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {isSearchingClubs && <CircularProgress color="inherit" size={16} />}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-      />
+      {isEdit ? (
+        <Input
+          label="Club"
+          value={values.clubLabel}
+          disabled
+          helperText="The owning Club cannot be changed after creation"
+        />
+      ) : (
+        <ClubPicker
+          value={values.clubSelection}
+          onChange={(next) => setValues((prev) => ({ ...prev, clubSelection: next }))}
+          error={clubCreationError}
+          requiredError={errors.club}
+        />
+      )}
 
       <Input
         select
