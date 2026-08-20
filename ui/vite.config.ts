@@ -17,7 +17,11 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8082'
+      '/api': 'http://localhost:8082',
+      // Uploaded media (logos/banners, docs/specs/012-club-profile.md) is served back by the
+      // backend at /media/** — without this, an <img src="/media/..."> resolves against the
+      // Vite dev server itself, which has nothing there, and fails to load with no console error.
+      '/media': 'http://localhost:8082'
     }
   },
   test: {
