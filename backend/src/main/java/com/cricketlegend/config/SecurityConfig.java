@@ -15,6 +15,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -28,6 +29,14 @@ import org.springframework.security.web.SecurityFilterChain;
  * <p>{@code @EnableMethodSecurity} is on since docs/specs/012-club-profile.md's {@code PUT
  * /profile} endpoint — the first {@code @PreAuthorize} usage in the codebase, evaluated against
  * {@link com.cricketlegend.config.AccessService} (bean name {@code "access"}).
+ *
+ * <p>Since docs/specs/013-centralized-logging.md, {@code filterChain(HttpSecurity)} also wires in
+ * {@link RequestCorrelationFilter} via {@code addFilterAfter(...,
+ * BearerTokenAuthenticationFilter.class)} — placed after Spring Security's own resource-server
+ * filter so {@code Authentication} is already resolved when it runs, stamping
+ * {@code requestId}/{@code username}/{@code clubId} into MDC for every downstream log line.
+ * Constructed with plain {@code new}, deliberately not a {@code @Component} — see that class's
+ * Javadoc for why registering it as a Spring bean would double-run it per request.
  */
 @Configuration
 @EnableMethodSecurity
@@ -51,7 +60,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/platform/**").hasRole("platform_admin")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                // 013-centralized-logging.md — must run after BearerTokenAuthenticationFilter so
+                // Authentication is already populated; plain `new`, not an injected bean, see
+                // RequestCorrelationFilter's Javadoc.
+                .addFilterAfter(new RequestCorrelationFilter(), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 

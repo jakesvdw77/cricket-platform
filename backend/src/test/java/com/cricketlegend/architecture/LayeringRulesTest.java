@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
 
 /**
  * Enforces backend.md's non-negotiables mechanically — see docs/standards/backend.md.
@@ -42,5 +43,10 @@ class LayeringRulesTest {
                 .andShould().beAnnotatedWith(org.springframework.stereotype.Service.class)
                 .allowEmptyShould(true);
         rule.check(CLASSES);
+    }
+
+    @Test
+    void noClassesAccessStandardStreams() {
+        NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS.check(CLASSES);
     }
 }
