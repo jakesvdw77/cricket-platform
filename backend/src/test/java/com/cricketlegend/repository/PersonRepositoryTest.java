@@ -89,6 +89,22 @@ class PersonRepositoryTest {
     }
 
     @Test
+    void findByKeycloakUserIdFindsTheMatchingPersonAndReturnsEmptyForAnUnknownId() {
+        // The lookup AccessService.canAdministerClub's RoleAssignment branch depends on
+        // (docs/specs/015-person-status-and-role-assignment.md) — a derived query method that
+        // compiles regardless of whether it actually matches the right column, so it needs its own
+        // real-Postgres proof per docs/standards/backend.md, not just the Mockito stub coverage
+        // AccessServiceTest already has.
+        Person person = person("Jaco", "van der Walt", "jaco@example.com", null);
+        person.setKeycloakUserId("11111111-1111-1111-1111-111111111111");
+        Person saved = personRepository.save(person);
+
+        assertThat(personRepository.findByKeycloakUserId("11111111-1111-1111-1111-111111111111"))
+                .contains(saved);
+        assertThat(personRepository.findByKeycloakUserId("22222222-2222-2222-2222-222222222222")).isEmpty();
+    }
+
+    @Test
     void searchMatchesByPartialFirstNameLastNameOrEmailCaseInsensitively() {
         personRepository.save(person("Jane", "Doe", "jane.doe@example.com", null));
         personRepository.save(person("John", "Smith", "john.smith@example.com", null));
