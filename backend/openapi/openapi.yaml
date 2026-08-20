@@ -342,6 +342,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/profile:
+    get:
+      tags:
+      - club-profile-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
+    put:
+      tags:
+      - club-profile-controller
+      operationId: upsert
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -444,6 +487,29 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SubscriptionDto"
+  /api/v1/platform/media:
+    post:
+      tags:
+      - media-controller
+      operationId: upload
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MediaUploadResponse"
 components:
   schemas:
     UpdateLeadStatusRequest:
@@ -993,3 +1059,80 @@ components:
           type: boolean
         sorted:
           type: boolean
+    AddressDto:
+      type: object
+      properties:
+        number:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        provinceState:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+    UpdateClubProfileRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - CLUB
+          - ACADEMY
+          - SCHOOL
+          - OTHER
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        address:
+          $ref: "#/components/schemas/AddressDto"
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+          pattern: ^https?://.+
+    ClubProfileDto:
+      type: object
+      properties:
+        clubId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - CLUB
+          - ACADEMY
+          - SCHOOL
+          - OTHER
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        address:
+          $ref: "#/components/schemas/AddressDto"
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    MediaUploadResponse:
+      type: object
+      properties:
+        url:
+          type: string

@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,8 +24,13 @@ import org.springframework.security.web.SecurityFilterChain;
  * {@code @access.canAdminister(...)} pattern that governs club/section/team-scoped permissions
  * once 001's RoleAssignment model exists — that model isn't built yet, and platform_admin is the
  * one documented exception to it.
+ *
+ * <p>{@code @EnableMethodSecurity} is on since docs/specs/012-club-profile.md's {@code PUT
+ * /profile} endpoint — the first {@code @PreAuthorize} usage in the codebase, evaluated against
+ * {@link com.cricketlegend.config.AccessService} (bean name {@code "access"}).
  */
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -35,6 +41,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/leads").permitAll()
                         .requestMatchers("/api/v1/public/**").permitAll()
+                        // Uploaded media (logos, banners) — public, club-facing assets meant to
+                        // be visible pre-login, per docs/specs/012-club-profile.md. Serving is
+                        // gated by WebConfig's resource handler location, not by URL role check.
+                        .requestMatchers("/media/**").permitAll()
                         // Springdoc/OpenAPI docs — not part of the secured API surface itself.
                         .requestMatchers("/v3/api-docs**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()

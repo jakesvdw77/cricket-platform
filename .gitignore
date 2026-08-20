@@ -1,6 +1,8 @@
 # Backend
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
+# Local dev media uploads (app.media.storage-path, default ./data/media — see docs/specs/012-club-profile.md)
+backend/data/
 
 # Frontend
 ui/node_modules/
