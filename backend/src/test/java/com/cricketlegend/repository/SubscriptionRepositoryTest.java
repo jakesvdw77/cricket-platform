@@ -7,7 +7,7 @@ import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.BillingInterval;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
-import com.cricketlegend.domain.Contact;
+import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
@@ -49,6 +49,9 @@ class SubscriptionRepositoryTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -158,50 +161,6 @@ class SubscriptionRepositoryTest {
         assertThat(subscriptionRepository.search("", pageable).getContent()).hasSize(1);
     }
 
-    @Test
-    void responsibleContactRoundTripsThroughTheResponsibleContactPrefixedColumns() {
-        // Proves 007-add-subscription-responsible-contact.sql applies cleanly against the
-        // existing subscription table (alongside 006-add-club-profile.sql, both applied on
-        // context boot) and that Contact's @AttributeOverride column mapping on Subscription
-        // actually round-trips through Postgres, not just in-memory.
-        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
-        Product product = productRepository.save(newProduct("CLUB_STANDARD"));
-        Subscription subscription = newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE);
-        subscription.setResponsibleContact(Contact.builder()
-                .firstName("Jane")
-                .lastName("Doe")
-                .email("jane.doe@example.com")
-                .phone("+27821234567")
-                .build());
-        subscriptionRepository.saveAndFlush(subscription);
-        entityManager.clear();
-
-        Subscription reloaded = subscriptionRepository.findById(subscription.getId()).orElseThrow();
-
-        assertThat(reloaded.getResponsibleContact()).isNotNull();
-        assertThat(reloaded.getResponsibleContact().getFirstName()).isEqualTo("Jane");
-        assertThat(reloaded.getResponsibleContact().getLastName()).isEqualTo("Doe");
-        assertThat(reloaded.getResponsibleContact().getEmail()).isEqualTo("jane.doe@example.com");
-        assertThat(reloaded.getResponsibleContact().getPhone()).isEqualTo("+27821234567");
-    }
-
-    @Test
-    void aPreExistingRowWithNoResponsibleContactStillReadsBackCorrectlyAfterTheMigration() {
-        // Simulates a Subscription row that existed before 007 shipped — all four new columns
-        // left NULL, no backfill (per the spec's own Non-goals) — and confirms it's still fully
-        // readable, not just non-throwing.
-        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
-        Product product = productRepository.save(newProduct("CLUB_STANDARD"));
-        Subscription legacy = newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE);
-        subscriptionRepository.saveAndFlush(legacy);
-        entityManager.clear();
-
-        Subscription reloaded = subscriptionRepository.findById(legacy.getId()).orElseThrow();
-
-        assertThat(reloaded.getResponsibleContact()).isNull();
-        assertThat(reloaded.getOwnerId()).isEqualTo(club.getId());
-    }
-
     private Club newClub(String name, String slug) {
         Club club = new Club();
         club.setName(name);
@@ -222,11 +181,22 @@ class SubscriptionRepositoryTest {
     }
 
     private Subscription newSubscription(UUID ownerId, UUID productId, SubscriptionStatus status) {
+        // responsible_person_id is NOT NULL (and FK-constrained) since
+        // 009-subscription-responsible-person.sql — every Subscription needs a real, persisted
+        // Person to point at, per docs/specs/014-subscription-responsible-contact.md.
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jane")
+                .lastName("Doe")
+                .email("jane.doe+" + UUID.randomUUID() + "@example.com")
+                .phone("+27821234567")
+                .build());
+
         Subscription subscription = new Subscription();
         subscription.setOwnerType(SubscriptionOwnerType.CLUB);
         subscription.setOwnerId(ownerId);
         subscription.setProductId(productId);
         subscription.setStatus(status);
+        subscription.setResponsiblePersonId(person.getId());
         return subscription;
     }
 }
