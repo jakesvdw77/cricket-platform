@@ -27,7 +27,7 @@ function makeSubscription(overrides: Partial<Subscription> = {}): Subscription {
     status: 'ACTIVE',
     startDate: '2026-01-01',
     endDate: null,
-    responsibleContact: null,
+    responsiblePerson: { id: 'person-1', firstName: 'Jane', lastName: 'Doe', email: 'jane.doe@example.com', phone: null },
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,

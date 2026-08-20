@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubscriptionFormPage from './SubscriptionFormPage'
 import type { Subscription } from '../../api/subscriptionApi'
 import type { ListClubsParams } from '../../api/clubApi'
+import type { ListPersonsParams } from '../../api/personApi'
 
 const getSubscription = vi.fn()
 const createSubscription = vi.fn()
@@ -14,6 +15,7 @@ const cancelSubscription = vi.fn()
 const listClubs = vi.fn()
 const createClub = vi.fn()
 const listProducts = vi.fn()
+const listPersons = vi.fn()
 
 vi.mock('../../api/subscriptionApi', () => ({
   getSubscription: (id: string) => getSubscription(id),
@@ -29,6 +31,10 @@ vi.mock('../../api/clubApi', () => ({
 
 vi.mock('../../api/productApi', () => ({
   listProducts: (params: unknown) => listProducts(params),
+}))
+
+vi.mock('../../api/personApi', () => ({
+  listPersons: (params: ListPersonsParams) => listPersons(params),
 }))
 
 beforeEach(() => {
@@ -59,7 +65,18 @@ beforeEach(() => {
           },
     ),
   )
+  // PersonPicker's on-focus default list is empty by default, driving its own "+ Add" affordance
+  // in every create-mode test below that adds a person inline.
+  listPersons.mockResolvedValue({ content: [], totalElements: 0, totalPages: 1, number: 0, size: 10 })
 })
+
+const RESPONSIBLE_PERSON = {
+  id: 'person-1',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  email: 'jane.doe@example.com',
+  phone: '021 555 0100',
+}
 
 function activeSubscription(overrides: Partial<Subscription> = {}): Subscription {
   return {
@@ -71,7 +88,7 @@ function activeSubscription(overrides: Partial<Subscription> = {}): Subscription
     status: 'ACTIVE',
     startDate: '2026-01-01',
     endDate: null,
-    responsibleContact: null,
+    responsiblePerson: RESPONSIBLE_PERSON,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -79,16 +96,18 @@ function activeSubscription(overrides: Partial<Subscription> = {}): Subscription
   }
 }
 
-// Fills the four Responsible Contact fields with valid values — used by every create-mode
-// submit test below, since 014 makes the full group required on create.
-async function fillContactFields(user: ReturnType<typeof userEvent.setup>) {
+// Adds a new responsible person inline via PersonPicker's "+ Add" flow — used by every
+// create-mode submit test below, since 014 makes a resolved selection required on create.
+async function fillNewResponsiblePerson(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText('Responsible person'))
+  await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
   await user.type(screen.getByLabelText('First name'), 'Jane')
   await user.type(screen.getByLabelText('Last name'), 'Doe')
   await user.type(screen.getByLabelText('Email'), 'jane.doe@example.com')
   await user.type(screen.getByLabelText('Phone'), '021 555 0100')
 }
 
-const CONTACT_PAYLOAD = {
+const RESPONSIBLE_PERSON_PAYLOAD = {
   firstName: 'Jane',
   lastName: 'Doe',
   email: 'jane.doe@example.com',
@@ -137,7 +156,7 @@ describe('SubscriptionFormPage', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await fillContactFields(user)
+      await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
@@ -151,7 +170,7 @@ describe('SubscriptionFormPage', () => {
         productId: 'prod-1',
         startDate: todayIso(),
         endDate: null,
-        responsibleContact: CONTACT_PAYLOAD,
+        responsiblePerson: RESPONSIBLE_PERSON_PAYLOAD,
       })
     },
     15000,
@@ -189,7 +208,7 @@ describe('SubscriptionFormPage', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await fillContactFields(user)
+      await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
@@ -204,7 +223,7 @@ describe('SubscriptionFormPage', () => {
         productId: 'prod-1',
         startDate: todayIso(),
         endDate: null,
-        responsibleContact: CONTACT_PAYLOAD,
+        responsiblePerson: RESPONSIBLE_PERSON_PAYLOAD,
       })
 
       // createClub must resolve before createSubscription is ever invoked.
@@ -235,7 +254,7 @@ describe('SubscriptionFormPage', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await fillContactFields(user)
+      await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
@@ -277,7 +296,7 @@ describe('SubscriptionFormPage', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await fillContactFields(user)
+      await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
@@ -287,7 +306,7 @@ describe('SubscriptionFormPage', () => {
     15000,
   )
 
-  it('edit mode: fetches and pre-fills the subscription, and submit calls updateSubscription then navigates to the list', async () => {
+  it('edit mode: fetches and pre-fills the subscription, and submit calls updateSubscription (with no person-related field) then navigates to the list', async () => {
     const user = userEvent.setup()
     getSubscription.mockResolvedValueOnce(activeSubscription())
     updateSubscription.mockResolvedValueOnce(activeSubscription())
@@ -297,70 +316,34 @@ describe('SubscriptionFormPage', () => {
     expect(await screen.findByText('Edit Subscription')).toBeInTheDocument()
     expect(getSubscription).toHaveBeenCalledWith('s-1')
     expect(await screen.findByDisplayValue('Riverside CC')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Jane Doe — jane.doe@example.com')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     expect(updateSubscription).toHaveBeenCalledTimes(1)
     const [id, payload] = updateSubscription.mock.calls[0]
     expect(id).toBe('s-1')
-    // The loaded subscription has no responsibleContact and the admin never touched the group —
-    // left exactly as loaded, which submits null (docs/specs/014-subscription-responsible
-    // -contact.md's "leave it exactly as loaded" case), not an omitted field.
-    expect(payload).toMatchObject({ productId: 'prod-1', startDate: '2026-01-01', endDate: null, responsibleContact: null })
+    // UpdateSubscriptionPayload carries no person-related field at all — who's responsible for a
+    // Subscription cannot be changed through this endpoint.
+    expect(payload).toEqual({ productId: 'prod-1', startDate: '2026-01-01', endDate: null })
 
     expect(createClub).not.toHaveBeenCalled()
     expect(await screen.findByText('Subscription List Page')).toBeInTheDocument()
   })
 
-  it('edit mode: filling in a previously-blank contact threads the full responsibleContact into updateSubscription', async () => {
-    const user = userEvent.setup()
-    getSubscription.mockResolvedValueOnce(activeSubscription())
-    updateSubscription.mockResolvedValueOnce(activeSubscription())
-
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
-
-    await screen.findByText('Edit Subscription')
-    await fillContactFields(user)
-
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
-
-    expect(updateSubscription).toHaveBeenCalledTimes(1)
-    const [id, payload] = updateSubscription.mock.calls[0]
-    expect(id).toBe('s-1')
-    expect(payload).toMatchObject({ responsibleContact: CONTACT_PAYLOAD })
-  })
-
-  it('edit mode: an existing contact pre-fills the four fields and is resubmitted unchanged', async () => {
-    const user = userEvent.setup()
-    getSubscription.mockResolvedValueOnce(
-      activeSubscription({ responsibleContact: CONTACT_PAYLOAD }),
-    )
-    updateSubscription.mockResolvedValueOnce(activeSubscription())
-
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
-
-    expect(await screen.findByDisplayValue('Jane')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Doe')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('jane.doe@example.com')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('021 555 0100')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
-
-    expect(updateSubscription).toHaveBeenCalledTimes(1)
-    const [, payload] = updateSubscription.mock.calls[0]
-    expect(payload).toMatchObject({ responsibleContact: CONTACT_PAYLOAD })
-  })
-
-  it('edit mode disables the Club field and never fires a club search query', async () => {
+  it('edit mode disables the Club and Responsible person fields, and never fires a club or person search query', async () => {
     getSubscription.mockResolvedValueOnce(activeSubscription())
 
     renderPage('/admin/configuration/subscriptions/s-1/edit')
 
     const clubField = await screen.findByDisplayValue('Riverside CC')
     expect(clubField).toBeDisabled()
+    const responsibleField = screen.getByDisplayValue('Jane Doe — jane.doe@example.com')
+    expect(responsibleField).toBeDisabled()
 
     await waitForDebounce()
     expect(listClubs).not.toHaveBeenCalled()
+    expect(listPersons).not.toHaveBeenCalled()
   })
 
   it(
@@ -434,7 +417,7 @@ describe('SubscriptionFormPage', () => {
       await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
-      await fillContactFields(user)
+      await fillNewResponsiblePerson(user)
       await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
       expect(await screen.findByText('Club already has an active subscription')).toBeInTheDocument()
@@ -452,7 +435,7 @@ describe('SubscriptionFormPage', () => {
     await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
     await user.click(screen.getByLabelText('Product'))
     await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
-    await fillContactFields(user)
+    await fillNewResponsiblePerson(user)
     await user.click(screen.getByRole('button', { name: 'Create subscription' }))
 
     expect(
