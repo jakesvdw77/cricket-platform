@@ -384,6 +384,35 @@ describe('SubscriptionForm', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ responsibleContact: CONTACT_PAYLOAD }))
   })
 
+  it('edit mode allows clearing a previously-set contact by blanking out all four fields, submitting responsibleContact: null', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({
+      onSubmit,
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+        responsibleContact: CONTACT_PAYLOAD,
+      },
+    })
+
+    // Blanking out every pre-filled field flips contactTouched, but since the group ends up
+    // entirely blank (not a partial mix), this must still be a valid submit that clears the
+    // contact — not the "all four now required" case a partial touch would trigger.
+    await user.clear(screen.getByLabelText('First name'))
+    await user.clear(screen.getByLabelText('Last name'))
+    await user.clear(screen.getByLabelText('Email'))
+    await user.clear(screen.getByLabelText('Phone'))
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ responsibleContact: null }))
+  })
+
   it('edit mode rejects a partial contact mix once any one of the four fields is touched, and does not submit', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()

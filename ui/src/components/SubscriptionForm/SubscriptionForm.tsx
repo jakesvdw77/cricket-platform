@@ -176,23 +176,32 @@ function validate(values: FormState, isEdit: boolean, contactTouched: boolean): 
   // Create mode: all four contact fields are always required, matching the backend's
   // @NotNull/@Valid on CreateSubscriptionRequest. Edit mode: the four fields are optional as a
   // set — an admin can leave them all blank (clearing/never setting a contact) or leave them
-  // exactly as loaded — but the moment any one of the four is touched, all four become required
-  // before submit, mirroring the backend's "complete or absent" ContactDto validation rather
-  // than silently submitting a partial contact the backend would reject. See
+  // exactly as loaded — but a *partial* mix (touched, and some but not all filled) is rejected,
+  // mirroring the backend's "complete or absent" ContactDto validation rather than silently
+  // submitting a partial contact the backend would reject. Blanking out every field of a
+  // previously-set contact (contactTouched true, all four now blank) must stay valid — that's
+  // the "clear an existing contact" path the spec's own User Stories call out — so completeness
+  // is only enforced when touched AND not all-blank, not on "touched" alone. See
   // docs/specs/014-subscription-responsible-contact.md's UI Requirements.
-  if (!isEdit || contactTouched) {
-    if (!values.contactFirstName.trim()) {
+  const contactFirstName = values.contactFirstName.trim()
+  const contactLastName = values.contactLastName.trim()
+  const contactEmail = values.contactEmail.trim()
+  const contactPhone = values.contactPhone.trim()
+  const allContactFieldsBlank = !contactFirstName && !contactLastName && !contactEmail && !contactPhone
+
+  if (!isEdit || (contactTouched && !allContactFieldsBlank)) {
+    if (!contactFirstName) {
       errors.contactFirstName = 'First name is required'
     }
-    if (!values.contactLastName.trim()) {
+    if (!contactLastName) {
       errors.contactLastName = 'Last name is required'
     }
-    if (!values.contactEmail.trim()) {
+    if (!contactEmail) {
       errors.contactEmail = 'Email is required'
-    } else if (!EMAIL_PATTERN.test(values.contactEmail.trim())) {
+    } else if (!EMAIL_PATTERN.test(contactEmail)) {
       errors.contactEmail = 'Enter a valid email address'
     }
-    if (!values.contactPhone.trim()) {
+    if (!contactPhone) {
       errors.contactPhone = 'Phone is required'
     }
   }
