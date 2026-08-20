@@ -88,6 +88,14 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
+        <!-- Ships logs to Grafana Loki — 013-centralized-logging.md -->
+        <dependency>
+            <groupId>com.github.loki4j</groupId>
+            <artifactId>loki-logback-appender</artifactId>
+            <version>1.5.2</version> <!-- confirmed compatible with logback-classic resolved by
+                                            spring-boot-starter-parent 3.4.3, see docs/plans/013 -->
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -1,0 +1,38 @@
+<configuration>
+
+    <springProperty name="lokiUrl" source="app.logging.loki-url" defaultValue="http://localhost:3100"/>
+    <springProperty name="activeProfile" source="spring.profiles.active" defaultValue="default"/>
+
+    <property name="LOG_PATTERN"
+        value="%d{ISO8601} %-5level [reqId=%X{requestId:-none}] [user=%X{username:-anonymous}] [club=%X{clubId:-none}] %logger{36} - %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${lokiUrl}/loki/api/v1/push</url>
+        </http>
+        <format>
+            <!-- Loki indexes labels — keep these low-cardinality (app/environment/level/logger).
+                 requestId, username, and clubId all go in the rendered message line instead,
+                 queried via LogQL line filters, never as labels — high-cardinality labels are a
+                 known Loki anti-pattern that degrades query performance badly at scale. -->
+            <label>
+                <pattern>app=cricketlegend,environment=${activeProfile},level=%level,logger=%logger{20}</pattern>
+            </label>
+            <message>
+                <pattern>${LOG_PATTERN}</pattern>
+            </message>
+        </format>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="LOKI"/>
+    </root>
+
+</configuration>
