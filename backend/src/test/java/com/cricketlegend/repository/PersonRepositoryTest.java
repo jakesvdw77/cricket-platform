@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonStatus;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +36,9 @@ class PersonRepositoryTest {
 
     @Autowired
     private PersonRepository personRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private Person person(String firstName, String lastName, String email, String phone) {
         return Person.builder().firstName(firstName).lastName(lastName).email(email).phone(phone).build();
@@ -110,5 +117,44 @@ class PersonRepositoryTest {
 
         assertThat(personRepository.search(null, pageable).getContent()).hasSize(2);
         assertThat(personRepository.search("", pageable).getContent()).hasSize(2);
+    }
+
+    @Test
+    void personSavedWithNoExplicitStatusIsBackfilledToActiveByPrePersistAndTheColumnsOwnNotNullDefault() {
+        // 010-add-person-status.sql adds `status` as `NOT NULL DEFAULT 'ACTIVE'` — a single,
+        // metadata-only column add that backfills every existing row to ACTIVE with no separate
+        // UPDATE step. This context boots against the full migration chain (001-011) from an empty
+        // schema, so there's no pre-010 data to observe the backfill against directly here (see
+        // PersonSubscriptionMigrationBackfillTest's com.cricketlegend.migration package for that
+        // seed-before-migration style, used for 009's backfill). What's verifiable in this
+        // Spring-context style of test is the column's own default actually taking effect for any
+        // row saved without an explicit status — proving no NULL ever lands in this column, whether
+        // via JPA's own @PrePersist default or (if that were ever bypassed) the column's own default.
+        Person person = person("Jane", "Doe", "jane.doe@example.com", null);
+        assertThat(person.getStatus()).isNull(); // not set by the builder — @PrePersist must default it
+
+        Person saved = personRepository.save(person);
+        entityManager.flush();
+        entityManager.clear();
+
+        Person reloaded = personRepository.findById(saved.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(PersonStatus.ACTIVE);
+    }
+
+    @Test
+    void nullStatusIsRejectedAtTheDbLevelEvenBypassingPrePersist() {
+        // Proves status's NOT NULL constraint is a real, enforced DB-level invariant, not merely an
+        // artifact of @PrePersist always filling it in — a native insert bypasses the entity
+        // lifecycle callback entirely.
+        UUID id = UUID.randomUUID();
+
+        assertThatThrownBy(() -> {
+            entityManager
+                    .createNativeQuery("insert into person (id, first_name, last_name, email, status) "
+                            + "values (:id, 'Jane', 'Doe', 'jane.doe@example.com', null)")
+                    .setParameter("id", id)
+                    .executeUpdate();
+            entityManager.flush();
+        }).isInstanceOf(RuntimeException.class);
     }
 }
