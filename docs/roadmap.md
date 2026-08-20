@@ -70,3 +70,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Per-club redirect URI allowlist** — fallback if `002` ADR-03's wildcard doesn't hold up in production (`002` Deliberately Deferred).
 - **External identity providers** (Google/Microsoft SSO) — no requirement yet (`002` Deliberately Deferred).
 - **Mobile app redirect URIs** — out of scope until a mobile client exists (`002` Deliberately Deferred).
+
+## Known tech debt (unscheduled, no owning spec)
+
+- **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.
