@@ -13,6 +13,11 @@
     </appender>
 
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <!-- No explicit error-handling config here — verified (013-centralized-logging.md's PR
+             review; decompiled the loki4j 1.5.2 jar to confirm) that its default behaviour is
+             already what's needed: async AsyncBufferPipeline batching never blocks the calling
+             thread, and after maxRetries=2 with backoff it silently drops the batch rather than
+             throwing. A Loki instance being unreachable never fails a request or a test. -->
         <http>
             <url>${lokiUrl}/loki/api/v1/push</url>
         </http>
