@@ -34,6 +34,22 @@ export const Edit: Story = {
       name: 'Riverside Cricket Club',
       slug: 'riverside-cc',
     },
+    profileInitialValues: {
+      type: 'CLUB',
+      logoUrl: '/media/riverside-logo.png',
+      bannerUrl: '/media/riverside-banner.png',
+      address: {
+        number: '12',
+        street: 'Main Road',
+        city: 'Cape Town',
+        provinceState: 'Western Cape',
+        country: 'South Africa',
+        postalCode: '8001',
+      },
+      email: 'club@riverside.example.com',
+      phone: '+27 21 555 0100',
+      website: 'https://riverside-cc.example.com',
+    },
   },
 }
 

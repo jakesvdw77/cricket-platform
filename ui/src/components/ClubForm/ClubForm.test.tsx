@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ClubForm, CLUB_FORM_ID } from './ClubForm'
 import type { ClubFormProps } from './ClubForm'
-import type { ClubPayload } from '../../api/clubApi'
+import type { ClubPayload, ClubProfilePayload } from '../../api/clubApi'
 
 // ClubForm's own submit button lives outside it (RecordFormScreen's actions bar, see
 // ClubFormPage) and targets the form via the native `form="…"` attribute — this mirrors that
@@ -19,12 +19,78 @@ function renderClubForm(props: ClubFormProps, submitLabel = 'Submit') {
   )
 }
 
+const filledProfile: ClubProfilePayload = {
+  type: 'CLUB',
+  logoUrl: '/media/logo.png',
+  bannerUrl: '/media/banner.png',
+  address: {
+    number: '12',
+    street: 'Main Road',
+    city: 'Cape Town',
+    provinceState: 'Western Cape',
+    country: 'South Africa',
+    postalCode: '8001',
+  },
+  email: 'club@riverside.example.com',
+  phone: '+27 21 555 0100',
+  website: 'https://riverside-cc.example.com',
+}
+
 describe('ClubForm', () => {
-  it('renders the name and slug fields', () => {
+  it('renders the name and slug fields, on the default Basic Info tab', () => {
     renderClubForm({ onSubmit: vi.fn() })
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument()
     expect(screen.getByLabelText('Slug')).toBeInTheDocument()
+  })
+
+  it('renders all four tabs', () => {
+    renderClubForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByRole('tab', { name: 'Basic Info' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Contact' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Address' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Branding' })).toBeInTheDocument()
+  })
+
+  it('disables the Contact, Address, and Branding tabs, and the Type field, when profileInitialValues is undefined (create mode)', () => {
+    renderClubForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByRole('tab', { name: 'Contact' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: 'Address' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: 'Branding' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: 'Basic Info' })).not.toBeDisabled()
+
+    // MUI's select renders a div[role="combobox"], not a native disableable form control —
+    // aria-disabled is the correct assertion here, matching ProductForm.test.tsx's own
+    // precedent for its Billing interval select.
+    expect(screen.getByLabelText('Type')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Save the club first to set this.')).toBeInTheDocument()
+  })
+
+  it('enables the Contact, Address, and Branding tabs, and the Type field, once profileInitialValues is provided (edit mode)', async () => {
+    const user = userEvent.setup()
+    renderClubForm({
+      onSubmit: vi.fn(),
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    expect(screen.getByRole('tab', { name: 'Contact' })).not.toBeDisabled()
+    expect(screen.getByLabelText('Type')).not.toBeDisabled()
+
+    await user.click(screen.getByRole('tab', { name: 'Contact' }))
+    expect(screen.getByLabelText('Email')).toHaveValue('club@riverside.example.com')
+    expect(screen.getByLabelText('Phone')).toHaveValue('+27 21 555 0100')
+    expect(screen.getByLabelText('Website')).toHaveValue('https://riverside-cc.example.com')
+
+    await user.click(screen.getByRole('tab', { name: 'Address' }))
+    expect(screen.getByLabelText('Street')).toHaveValue('Main Road')
+
+    await user.click(screen.getByRole('tab', { name: 'Branding' }))
+    // Both Logo and Banner already have a value in filledProfile, so each renders its own
+    // "Replace" button.
+    expect(screen.getAllByRole('button', { name: 'Replace' })).toHaveLength(2)
   })
 
   it('renders inline validation errors for missing name and slug, and does not submit', async () => {
@@ -71,7 +137,7 @@ describe('ClubForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('submits a correctly-shaped {name, slug} payload when valid', async () => {
+  it('submits a { club } payload, with no profile key, in create mode', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderClubForm({ onSubmit })
@@ -82,8 +148,103 @@ describe('ClubForm', () => {
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    const payload = onSubmit.mock.calls[0][0] as ClubPayload
-    expect(payload).toEqual({ name: 'Riverside CC', slug: 'riverside-cc' })
+    const payload = onSubmit.mock.calls[0][0] as { club: ClubPayload; profile?: ClubProfilePayload }
+    expect(payload).toEqual({ club: { name: 'Riverside CC', slug: 'riverside-cc' } })
+  })
+
+  it('submits a { club, profile } payload in edit mode, with an untouched email/phone/website normalized to null', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: {
+        type: null,
+        logoUrl: null,
+        bannerUrl: null,
+        address: { number: null, street: null, city: null, provinceState: null, country: null, postalCode: null },
+        email: null,
+        phone: null,
+        website: null,
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const payload = onSubmit.mock.calls[0][0] as { club: ClubPayload; profile?: ClubProfilePayload }
+    expect(payload.club).toEqual({ name: 'Riverside Cricket Club', slug: 'riverside-cc' })
+    expect(payload.profile).toEqual({
+      type: null,
+      logoUrl: null,
+      bannerUrl: null,
+      address: { number: null, street: null, city: null, provinceState: null, country: null, postalCode: null },
+      email: null,
+      phone: null,
+      website: null,
+    })
+  })
+
+  it('renders a validation error for a malformed email, and switches to the Contact tab to surface it', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Contact' }))
+    await user.clear(screen.getByLabelText('Email'))
+    await user.type(screen.getByLabelText('Email'), 'not-an-email')
+    await user.click(screen.getByRole('tab', { name: 'Basic Info' }))
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Contact' })).toHaveAttribute('aria-selected', 'true')
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('renders a validation error for a malformed website submitted before the field is blurred (so WebsiteInput has not yet normalized it)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Contact' }))
+    await user.clear(screen.getByLabelText('Website'))
+    await user.type(screen.getByLabelText('Website'), 'not a url')
+    // Submitted via the form directly (not a button click, which would blur Website first and
+    // let its own https:// normalization run) — exercises validate()'s own check independently.
+    fireEvent.submit(screen.getByLabelText('Website').closest('form') as HTMLFormElement)
+
+    expect(
+      await screen.findByText('Enter a valid website URL, e.g. https://example.com'),
+    ).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('lets the admin pick an organisation type once the Type field is enabled', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    const typeField = screen.getByLabelText('Type')
+    await user.click(typeField)
+    await user.click(await screen.findByRole('option', { name: 'Academy' }))
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as { club: ClubPayload; profile?: ClubProfilePayload }
+    expect(payload.profile?.type).toBe('ACADEMY')
   })
 
   it('pre-fills the fields from initialValues in edit mode', () => {
