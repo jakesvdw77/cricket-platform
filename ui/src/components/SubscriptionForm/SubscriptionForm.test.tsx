@@ -69,6 +69,22 @@ async function waitForDebounce() {
   await new Promise((resolve) => setTimeout(resolve, 350))
 }
 
+// Fills the four Responsible Contact fields with valid values — used by every create-mode
+// submit test below, since 014 makes the full group required on create.
+async function fillContactFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('First name'), 'Jane')
+  await user.type(screen.getByLabelText('Last name'), 'Doe')
+  await user.type(screen.getByLabelText('Email'), 'jane.doe@example.com')
+  await user.type(screen.getByLabelText('Phone'), '021 555 0100')
+}
+
+const CONTACT_PAYLOAD = {
+  firstName: 'Jane',
+  lastName: 'Doe',
+  email: 'jane.doe@example.com',
+  phone: '021 555 0100',
+}
+
 function todayIso(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -108,6 +124,48 @@ describe('SubscriptionForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('create mode rejects submit with any of the four contact fields blank', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    await user.click(screen.getByLabelText('Club'))
+    await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+    await user.click(screen.getByLabelText('Product'))
+    await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+    // Only three of the four contact fields filled — Phone left blank.
+    await user.type(screen.getByLabelText('First name'), 'Jane')
+    await user.type(screen.getByLabelText('Last name'), 'Doe')
+    await user.type(screen.getByLabelText('Email'), 'jane.doe@example.com')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Phone is required')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('create mode rejects a malformed contact email with an inline error and does not submit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({ onSubmit })
+
+    await user.click(screen.getByLabelText('Club'))
+    await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+    await user.click(screen.getByLabelText('Product'))
+    await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
+
+    await user.type(screen.getByLabelText('First name'), 'Jane')
+    await user.type(screen.getByLabelText('Last name'), 'Doe')
+    await user.type(screen.getByLabelText('Email'), 'not-an-email')
+    await user.type(screen.getByLabelText('Phone'), '021 555 0100')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('rejects an end date before the start date with an inline error and does not submit', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
@@ -142,6 +200,8 @@ describe('SubscriptionForm', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
+      await fillContactFields(user)
+
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       const today = todayIso()
@@ -152,6 +212,7 @@ describe('SubscriptionForm', () => {
         productId: 'prod-1',
         startDate: today,
         endDate: null,
+        responsibleContact: CONTACT_PAYLOAD,
       })
     },
     15000,
@@ -179,6 +240,8 @@ describe('SubscriptionForm', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
+      await fillContactFields(user)
+
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       const today = todayIso()
@@ -189,6 +252,7 @@ describe('SubscriptionForm', () => {
         productId: 'prod-1',
         startDate: today,
         endDate: null,
+        responsibleContact: CONTACT_PAYLOAD,
       })
     },
     15000,
@@ -257,6 +321,94 @@ describe('SubscriptionForm', () => {
 
     expect(screen.getByDisplayValue('2026-01-01')).toBeInTheDocument()
     expect(screen.getByDisplayValue('2026-12-31')).toBeInTheDocument()
+  })
+
+  it('edit mode pre-fills the four contact fields from initialValues.responsibleContact', () => {
+    renderSubscriptionForm({
+      onSubmit: vi.fn(),
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+        responsibleContact: CONTACT_PAYLOAD,
+      },
+    })
+
+    expect(screen.getByLabelText('First name')).toHaveValue('Jane')
+    expect(screen.getByLabelText('Last name')).toHaveValue('Doe')
+    expect(screen.getByLabelText('Email')).toHaveValue('jane.doe@example.com')
+    expect(screen.getByLabelText('Phone')).toHaveValue('021 555 0100')
+  })
+
+  it('edit mode allows submitting with all four contact fields left blank (a null/never-set contact), clearing responsibleContact', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({
+      onSubmit,
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+        responsibleContact: null,
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ responsibleContact: null }))
+  })
+
+  it('edit mode allows submitting with all four contact fields left exactly as loaded (fully-filled, untouched)', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({
+      onSubmit,
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+        responsibleContact: CONTACT_PAYLOAD,
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ responsibleContact: CONTACT_PAYLOAD }))
+  })
+
+  it('edit mode rejects a partial contact mix once any one of the four fields is touched, and does not submit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderSubscriptionForm({
+      onSubmit,
+      initialValues: {
+        clubId: 'club-1',
+        clubLabel: 'Riverside CC',
+        productId: 'prod-1',
+        startDate: '2026-01-01',
+        endDate: null,
+        responsibleContact: null,
+      },
+    })
+
+    // Touching just one of the four fields flips contactTouched — the other three, still blank,
+    // must now be required before submit.
+    await user.type(screen.getByLabelText('First name'), 'Jane')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Last name is required')).toBeInTheDocument()
+    expect(screen.getByText('Email is required')).toBeInTheDocument()
+    expect(screen.getByText('Phone is required')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it(
