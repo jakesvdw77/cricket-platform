@@ -160,6 +160,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             subscription.setStartDate(request.startDate());
         }
         subscription.setEndDate(request.endDate());
+        // Unconditional, matching 012's ClubProfileServiceImpl.upsert() full-resource-replace
+        // posture applied to this one field — a null request.responsibleContact() clears a
+        // previously-set contact, it doesn't leave it untouched.
+        subscription.setResponsibleContact(subscriptionMapper.toContact(request.responsibleContact()));
         subscription = subscriptionRepository.save(subscription);
 
         Club club = findClubOrThrow(subscription.getOwnerId());

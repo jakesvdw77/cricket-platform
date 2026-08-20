@@ -1,7 +1,9 @@
 package com.cricketlegend.mapper;
 
+import com.cricketlegend.domain.Contact;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.dto.ClubSummaryDto;
+import com.cricketlegend.dto.ContactDto;
 import com.cricketlegend.dto.CreateSubscriptionRequest;
 import com.cricketlegend.dto.ProductSummaryDto;
 import com.cricketlegend.dto.SubscriptionDto;
@@ -34,4 +36,15 @@ public interface SubscriptionMapper {
 
     @Mapping(target = "id", source = "subscription.id")
     SubscriptionDto toDto(Subscription subscription, ClubSummaryDto club, ProductSummaryDto product);
+
+    /**
+     * Explicit conversion for {@link com.cricketlegend.service.impl.SubscriptionServiceImpl#update}
+     * — that method doesn't go through a MapStruct {@code toEntity} call at all, it mutates the
+     * retrieved entity's fields directly with manual setters, so it needs this method to set
+     * {@code responsibleContact} the same "full replace" way. A {@code null} {@code dto} produces
+     * a {@code null} {@link Contact} (MapStruct's default for a null source), which is exactly the
+     * "omitting it clears any previously-set contact" behavior
+     * docs/specs/014-subscription-responsible-contact.md requires.
+     */
+    Contact toContact(ContactDto dto);
 }

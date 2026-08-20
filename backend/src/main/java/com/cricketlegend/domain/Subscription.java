@@ -1,6 +1,9 @@
 package com.cricketlegend.domain;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -58,6 +61,15 @@ public class Subscription {
 
     @Column(name = "end_date")
     private LocalDate endDate;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "firstName", column = @Column(name = "responsible_contact_first_name")),
+        @AttributeOverride(name = "lastName", column = @Column(name = "responsible_contact_last_name")),
+        @AttributeOverride(name = "email", column = @Column(name = "responsible_contact_email")),
+        @AttributeOverride(name = "phone", column = @Column(name = "responsible_contact_phone")),
+    })
+    private Contact responsibleContact;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

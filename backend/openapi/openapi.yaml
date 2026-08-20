@@ -833,6 +833,8 @@ components:
         endDate:
           type: string
           format: date
+        responsibleContact:
+          $ref: "#/components/schemas/ContactDto"
         createdAt:
           type: string
           format: date-time
@@ -862,10 +864,13 @@ components:
         endDate:
           type: string
           format: date
+        responsibleContact:
+          $ref: "#/components/schemas/ContactDto"
       required:
       - ownerId
       - ownerType
       - productId
+      - responsibleContact
     UpdateSubscriptionRequest:
       type: object
       properties:
@@ -878,6 +883,8 @@ components:
         endDate:
           type: string
           format: date
+        responsibleContact:
+          $ref: "#/components/schemas/ContactDto"
       required:
       - productId
     AdminIdentityDto:
@@ -1074,6 +1081,22 @@ components:
           type: string
         postalCode:
           type: string
+    ContactDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
+      - phone
     UpdateClubProfileRequest:
       type: object
       properties:

@@ -20,6 +20,7 @@ public record SubscriptionDto(
         SubscriptionStatus status,
         LocalDate startDate,
         LocalDate endDate,
+        ContactDto responsibleContact,
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy) {
