@@ -1,0 +1,1 @@
+This is a plain text file, deliberately not an image, for MediaUpload rejection e2e coverage (docs/specs/012-club-profile.md).
