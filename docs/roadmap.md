@@ -9,6 +9,7 @@ Update this file whenever a spec's own forward-references change (a new "Flag fo
 | # | Spec | Status |
 |---|---|---|
 | 009 | [Subscriptions](specs/009-subscriptions.md) | Built, on `feature/009-subscriptions`, pending review/PR — links `Club` to `Product`, admin-driven, `CLUB`-owner-only this pass. |
+| 014 | [Subscription Responsible Contact](specs/014-subscription-responsible-contact.md) | Draft — amends `009`'s `Subscription`/endpoints with a required-on-create `responsibleContact` (`Contact`/`ContactDto`, mirroring `012`'s `Address`/`AddressDto` reuse precedent). Not yet built. |
 
 ## Next up — Configuration hub modules
 
@@ -17,7 +18,7 @@ Sequenced by `007-configuration-hub-overview.md`'s own Rollout Notes. Each is a 
 | Module | Status | Notes |
 |---|---|---|
 | Products | ✅ Shipped (`008`) | Subscription-tier catalog: pricing, usage limits, capability toggles. |
-| Subscriptions | 🔶 Built, pending review (`009`) | Links a `Club` to a `Product`. |
+| Subscriptions | 🔶 Built, pending review (`009`); `014` (draft) amends it with a required responsible contact | Links a `Club` to a `Product`. |
 | Discounts & Promotions | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals) — no spec yet. |
 | Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Also the spec that should decide whether `AdminHome.tsx`'s top-level `Subscriptions & Invoices` nav item becomes real or narrows to `Invoices` only (`009` Rollout Notes), and owns the billing-mechanics decisions below. |
 | System Settings | Unscoped | Named for roadmap visibility only (`007`). |
@@ -31,8 +32,16 @@ Depends on:
 - A real self-registration auth path — `005`'s login is platform-admin-only by design; this needs something new, not a variant of it.
 - `002`'s "Self-service slug selection" Deliberately Deferred item (currently vendor-controlled per ADR-04) — this is exactly what would need to become real.
 - `008`'s `allowSubdomain`/`showAds` toggles become load-bearing here for the first time — they gate what a self-signed-up Free club actually gets.
+- The OTP-verification step this flow needs is itself blocked on the notifications/email-infrastructure spec below — no mechanism to actually send a code exists yet.
 
 Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/callback purposes — this doesn't replace it, it adds a second, Free-tier-only path that doesn't need a human.
+
+## Next up — notifications / email infrastructure
+
+Named for roadmap visibility only — no spec yet. No SMTP config, mail provider integration (SendGrid/Postmark/SES/etc.), or template mechanism exists anywhere in this codebase today, confirmed by grep in `014-subscription-responsible-contact.md`'s Non-goals. Motivated by two separate, already-named use cases that both need this before they can be finished:
+
+- **Notifying a Subscription's responsible contact when onboarding completes** — `014`'s whole reason for existing (`Subscription.responsibleContact` / `Contact` / `ContactDto`) was to have this data ready; `014` deliberately stops at capturing it, doesn't send anything. Whenever this spec is written, it should reuse `014`'s `Contact`/`ContactDto` directly as its first real send-to address rather than redefining the shape.
+- **The self-serve signup flow's OTP-verification step** (above) — needs a real send mechanism to exist first.
 
 ## Next up — billing mechanics (for the future Invoicing spec)
 
@@ -58,7 +67,7 @@ Spec'd, still not built as a whole — `010`/`011`/`012` are each explicit, deli
 
 **Resolved by `012-club-profile.md`:** the "organisation type" field noted below shipped as `ClubProfile.type` (`CLUB | ACADEMY | SCHOOL | OTHER`) — see `012`'s Rollout Notes. Originally noted during `009` planning: `Club` is used as the umbrella term throughout the product and code, but a real "club" in this system can be a School, Academy, or Cricket Club (or similar); `001`'s `Club` entity had no field capturing which. Resolved on the `ClubProfile` side entity per `012`'s own data-model call, not as a new column on `Club` itself — `001`'s `Club` Field Reference intentionally wasn't changed.
 
-**Next up, not yet spec'd:** the "Club Contacts" (named people at a club — name, role, phone, email, mobile, one flagged primary) and "Sponsors" (name, website, icon, banner, social links) specs discussed alongside `012` — both intended to reuse `012`'s `Address`/`MediaUpload`/`AddressFields` components directly. Not started; no spec number claimed yet (`013` went to `013-centralized-logging.md` instead).
+**Next up, not yet spec'd:** the "Club Contacts" (named people at a club — name, role, phone, email, mobile, one flagged primary) and "Sponsors" (name, website, icon, banner, social links) specs discussed alongside `012` — both intended to reuse `012`'s `Address`/`MediaUpload`/`AddressFields` components directly. Club Contacts should additionally reuse `014-subscription-responsible-contact.md`'s `Contact`/`ContactDto` for its own people-list entries' name/email/phone (adding only `role` and a "flagged primary" bit alongside it), per `014`'s own Rollout Notes flag — not redefine an equivalent shape a second time. Not started; no spec number claimed yet (`013` went to `013-centralized-logging.md` instead).
 
 ## Other deferred items (`001`/`002`, unscheduled)
 
@@ -76,3 +85,4 @@ Named for completeness — none of these are next, none have a target spec numbe
 ## Known tech debt (unscheduled, no owning spec)
 
 - **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.
+- **`ClubForm`'s inline `Input type="email"` should be swapped to the new `EmailInput`** once `014-subscription-responsible-contact.md` builds it — a small drive-by cleanup `014` flags but doesn't action itself (its own scope doesn't touch `ClubForm`), so it isn't forgotten and doesn't quietly become a second, slightly-different "email input" pattern.
