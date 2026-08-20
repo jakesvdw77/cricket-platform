@@ -76,22 +76,31 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo' }: Medi
         sx={{
           width: dimensions.width,
           height: dimensions.height,
-          border: '2px dashed',
+          border: '2px',
+          borderStyle: value || uploading || error ? 'solid' : 'dashed',
           borderColor: error ? 'error.main' : 'divider',
           borderRadius: 2,
+          overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: showPreview ? 'primary.main' : 'transparent',
+          bgcolor: uploading ? 'primary.main' : 'transparent',
         }}
       >
         {uploading ? (
           <CircularProgress size={28} sx={{ color: 'common.white' }} aria-label="Uploading" />
         ) : error ? (
           <CloseIcon color="error" />
-        ) : !value ? (
+        ) : showPreview ? (
+          <Box
+            component="img"
+            src={value ?? undefined}
+            alt={`${label} preview`}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
           <ImageOutlinedIcon sx={{ color: 'text.secondary' }} fontSize="large" />
-        ) : null}
+        )}
       </Box>
 
       <Button

@@ -170,14 +170,16 @@ class ClubProfileControllerIntegrationTest {
     }
 
     /**
-     * Confirms the method-level {@code @PreAuthorize("@access.canAdministerClub(...)")} on PUT
-     * is actually wired and enforced — not merely the flat {@code /api/v1/platform/**}
-     * URL-matcher gate that GET relies on alone. A non-platform_admin JWT is rejected here too
-     * (403), same outward result as the URL matcher would already produce, but this proves
-     * method security is active: if {@code @EnableMethodSecurity}/{@code AccessService} were
-     * missing or misconfigured, this endpoint would still 200 for an authenticated
-     * non-platform_admin caller once past the URL gate — it doesn't, confirming the
-     * method-security layer is the one actually blocking it here alongside the URL gate.
+     * A non-platform_admin JWT is rejected (403). Note this does NOT by itself distinguish the
+     * method-level {@code @PreAuthorize("@access.canAdministerClub(...)")} from the flat
+     * {@code /api/v1/platform/**} URL-matcher gate {@link com.cricketlegend.config.SecurityConfig}
+     * already applies to every {@code platform} endpoint — a "someone_else" role never gets past
+     * that URL gate either, so this test would pass identically even if
+     * {@code @EnableMethodSecurity}/{@link com.cricketlegend.config.AccessService} were deleted.
+     * It exists to catch a regression in the URL gate itself, not to prove the method-security
+     * layer works — see {@code AccessServiceTest} for direct coverage of
+     * {@code canAdministerClub}'s own logic, which is the only place this SpEL wiring's actual
+     * behaviour lives.
      */
     @Test
     void putWithNonPlatformAdminJwtReturns403() throws Exception {

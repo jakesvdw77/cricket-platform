@@ -28,6 +28,12 @@ describe('MediaUpload', () => {
     expect(screen.queryByRole('button', { name: 'Upload Logo' })).not.toBeInTheDocument()
   })
 
+  it('renders the actual uploaded image, not just a placeholder, once a value is set', () => {
+    render(<MediaUpload label="Logo" value="/media/logo.png" onUploaded={vi.fn()} />)
+
+    expect(screen.getByRole('img', { name: 'Logo preview' })).toHaveAttribute('src', '/media/logo.png')
+  })
+
   it('uploads a selected image file and calls onUploaded with the resulting URL', async () => {
     const user = userEvent.setup()
     const onUploaded = vi.fn()
