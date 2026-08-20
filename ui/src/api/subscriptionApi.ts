@@ -20,6 +20,17 @@ export interface ProductSummary {
   code: string
 }
 
+// The generic, unscoped four-field contact shape — mirrors ContactDto on the backend. Canonical
+// home is here (this spec's first consumer); a future clubContactApi.ts imports `type { Contact }
+// from './subscriptionApi'` rather than redefining it, per
+// docs/specs/014-subscription-responsible-contact.md's UI Requirements.
+export interface Contact {
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+}
+
 export interface Subscription {
   id: string
   ownerType: SubscriptionOwnerType
@@ -29,6 +40,8 @@ export interface Subscription {
   status: SubscriptionStatus
   startDate: string
   endDate: string | null
+  // null for Subscriptions created before 014 shipped — no backfill, see that spec's Non-goals.
+  responsibleContact: Contact | null
   createdAt: string
   updatedAt: string
   updatedBy: string | null
@@ -43,6 +56,9 @@ export interface SubscriptionPayload {
   productId: string
   startDate?: string | null
   endDate?: string | null
+  // Required, matching CreateSubscriptionRequest's @NotNull @Valid — every new Subscription must
+  // record who's accountable for it.
+  responsibleContact: Contact
 }
 
 // Update shape — mirrors UpdateSubscriptionRequest. No ownerId/ownerType: the owning Club
@@ -51,6 +67,10 @@ export interface UpdateSubscriptionPayload {
   productId: string
   startDate?: string | null
   endDate?: string | null
+  // Optional, full-replace-when-provided — omitted/null clears any previously-set contact, per
+  // UpdateSubscriptionRequest's posture. The frontend must always submit the Subscription's
+  // current full contact state, not a sparse diff (see the backend DTO's own doc comment).
+  responsibleContact?: Contact | null
 }
 
 // Page<T> is imported from productApi.ts (see above) rather than redefined here — same Spring

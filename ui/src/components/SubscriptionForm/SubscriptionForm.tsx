@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Box, MenuItem } from '@mui/material'
+import { Box, MenuItem, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '../Input'
 import { ClubPicker } from '../ClubPicker'
 import type { ClubPickerValue } from '../ClubPicker'
+import { EmailInput } from '../EmailInput'
+import { PhoneInput } from '../PhoneInput'
 import { listProducts } from '../../api/productApi'
 import type { Product } from '../../api/productApi'
+import type { Contact } from '../../api/subscriptionApi'
 import { validateSlug } from '../../utils/slug'
 
 // Only the fields this picker actually renders — lets the synthetic "current, possibly retired
@@ -30,6 +33,10 @@ export interface SubscriptionFormValues {
   productId: string
   startDate: string | null
   endDate: string | null
+  // null only in edit mode, when the admin leaves all four contact fields blank (clearing a
+  // previously-set contact, or never having one) — create mode's validation guarantees this is
+  // always a complete Contact by the time onSubmit fires, see validate() below.
+  responsibleContact: Contact | null
 }
 
 export interface SubscriptionFormInitialValues {
@@ -45,6 +52,10 @@ export interface SubscriptionFormInitialValues {
   productLabel: string
   startDate: string | null
   endDate: string | null
+  // null for a pre-014 Subscription, or one whose contact was since cleared — the four fields
+  // simply render blank rather than erroring, per docs/specs/014-subscription-responsible
+  // -contact.md's User Stories.
+  responsibleContact?: Contact | null
 }
 
 export interface SubscriptionFormProps {
@@ -67,11 +78,29 @@ interface FormState {
   productId: string
   startDate: string
   endDate: string
+  contactFirstName: string
+  contactLastName: string
+  contactEmail: string
+  contactPhone: string
 }
 
 type FormErrors = Partial<
-  Record<'club' | 'clubName' | 'clubSlug' | 'productId' | 'startDate' | 'endDate', string>
+  Record<
+    | 'club'
+    | 'clubName'
+    | 'clubSlug'
+    | 'productId'
+    | 'startDate'
+    | 'endDate'
+    | 'contactFirstName'
+    | 'contactLastName'
+    | 'contactEmail'
+    | 'contactPhone',
+    string
+  >
 >
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Local date, not UTC — a start date is a calendar-day concept from the admin's own
 // perspective, not a timestamp; toISOString() would shift near midnight in some timezones.
@@ -83,6 +112,7 @@ function todayIso(): string {
 }
 
 function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): FormState {
+  const contact = initialValues?.responsibleContact
   return {
     clubId: initialValues?.clubId ?? '',
     clubLabel: initialValues?.clubLabel ?? '',
@@ -92,6 +122,10 @@ function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): Fo
     // when backdating/scheduling a subscription rather than every single time.
     startDate: initialValues?.startDate ?? todayIso(),
     endDate: initialValues?.endDate ?? '',
+    contactFirstName: contact?.firstName ?? '',
+    contactLastName: contact?.lastName ?? '',
+    contactEmail: contact?.email ?? '',
+    contactPhone: contact?.phone ?? '',
   }
 }
 
@@ -107,7 +141,7 @@ function addMonths(isoDate: string, months: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-function validate(values: FormState, isEdit: boolean): FormErrors {
+function validate(values: FormState, isEdit: boolean, contactTouched: boolean): FormErrors {
   const errors: FormErrors = {}
 
   // Edit mode always carries a clubId forward from initialValues (the picker is disabled, so
@@ -139,6 +173,30 @@ function validate(values: FormState, isEdit: boolean): FormErrors {
     errors.endDate = 'End date must be on or after the start date'
   }
 
+  // Create mode: all four contact fields are always required, matching the backend's
+  // @NotNull/@Valid on CreateSubscriptionRequest. Edit mode: the four fields are optional as a
+  // set — an admin can leave them all blank (clearing/never setting a contact) or leave them
+  // exactly as loaded — but the moment any one of the four is touched, all four become required
+  // before submit, mirroring the backend's "complete or absent" ContactDto validation rather
+  // than silently submitting a partial contact the backend would reject. See
+  // docs/specs/014-subscription-responsible-contact.md's UI Requirements.
+  if (!isEdit || contactTouched) {
+    if (!values.contactFirstName.trim()) {
+      errors.contactFirstName = 'First name is required'
+    }
+    if (!values.contactLastName.trim()) {
+      errors.contactLastName = 'Last name is required'
+    }
+    if (!values.contactEmail.trim()) {
+      errors.contactEmail = 'Email is required'
+    } else if (!EMAIL_PATTERN.test(values.contactEmail.trim())) {
+      errors.contactEmail = 'Enter a valid email address'
+    }
+    if (!values.contactPhone.trim()) {
+      errors.contactPhone = 'Phone is required'
+    }
+  }
+
   return errors
 }
 
@@ -152,6 +210,11 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
   // Once the admin has explicitly set an end date (typed one in, or it arrived from
   // initialValues on edit), stop auto-suggesting — never clobber a deliberate value.
   const [endDateTouched, setEndDateTouched] = useState(Boolean(initialValues?.endDate))
+  // Flips true the first time any of the four contact fields changes — never true just because
+  // a contact arrived pre-filled from initialValues, unlike endDateTouched above (that pattern
+  // gates an auto-suggest, this one gates "all four required", so a pre-filled-but-otherwise-
+  // untouched contact must stay optional-as-a-set on edit). See validate() above.
+  const [contactTouched, setContactTouched] = useState(false)
 
   // Products are admin-curated, never paginated in this picker — a plain select over the
   // first page of ACTIVE products is enough (see docs/plans/009-subscriptions.md item 4).
@@ -208,9 +271,25 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
     setValues((prev) => ({ ...prev, productId: event.target.value }))
   }
 
+  const handleContactTextChange =
+    (field: 'contactFirstName' | 'contactLastName') => (event: ChangeEvent<HTMLInputElement>) => {
+      setContactTouched(true)
+      setValues((prev) => ({ ...prev, [field]: event.target.value }))
+    }
+
+  const handleContactEmailChange = (email: string) => {
+    setContactTouched(true)
+    setValues((prev) => ({ ...prev, contactEmail: email }))
+  }
+
+  const handleContactPhoneChange = (phone: string) => {
+    setContactTouched(true)
+    setValues((prev) => ({ ...prev, contactPhone: phone }))
+  }
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const validationErrors = validate(values, isEdit)
+    const validationErrors = validate(values, isEdit, contactTouched)
     setErrors(validationErrors)
 
     if (Object.keys(validationErrors).length > 0) {
@@ -225,11 +304,25 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
       ? { mode: 'existing', id: values.clubId, name: values.clubLabel }
       : (values.clubSelection as SubscriptionClubSelection)
 
+    // Building the payload from the form's current field values (not just the touched delta)
+    // naturally satisfies UpdateSubscriptionRequest's "always submit the current full contact
+    // state" posture — whether the admin touched the group or left it exactly as loaded. Null
+    // only when every field is blank (create mode's validation above guarantees that can't
+    // happen there), which is exactly the signal that clears a previously-set contact on PUT.
+    const trimmedContact: Contact = {
+      firstName: values.contactFirstName.trim(),
+      lastName: values.contactLastName.trim(),
+      email: values.contactEmail.trim(),
+      phone: values.contactPhone.trim(),
+    }
+    const hasAnyContactValue = Object.values(trimmedContact).some((fieldValue) => fieldValue !== '')
+
     onSubmit({
       club,
       productId: values.productId,
       startDate: values.startDate || null,
       endDate: values.endDate || null,
+      responsibleContact: hasAnyContactValue ? trimmedContact : null,
     })
   }
 
@@ -302,6 +395,33 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
         }
         InputLabelProps={{ shrink: true }}
       />
+
+      {/* Grouped visually beneath the Club/Product/date fields above — this form's total field
+          count doesn't cross ClubForm's tab-introduction threshold, so it stays a single flat
+          field list rather than gaining its own tab, per docs/specs/014-subscription-responsible
+          -contact.md's UI Requirements. */}
+      <Box sx={{ gridColumn: '1 / -1' }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Responsible Contact
+        </Typography>
+      </Box>
+
+      <Input
+        label="First name"
+        value={values.contactFirstName}
+        onChange={handleContactTextChange('contactFirstName')}
+        error={Boolean(errors.contactFirstName)}
+        helperText={errors.contactFirstName}
+      />
+      <Input
+        label="Last name"
+        value={values.contactLastName}
+        onChange={handleContactTextChange('contactLastName')}
+        error={Boolean(errors.contactLastName)}
+        helperText={errors.contactLastName}
+      />
+      <EmailInput value={values.contactEmail} onChange={handleContactEmailChange} error={errors.contactEmail} />
+      <PhoneInput value={values.contactPhone} onChange={handleContactPhoneChange} error={errors.contactPhone} />
     </Box>
   )
 }

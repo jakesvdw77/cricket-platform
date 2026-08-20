@@ -9,6 +9,7 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { getSubscription, createSubscription, updateSubscription, cancelSubscription } from '../../api/subscriptionApi'
+import type { Contact } from '../../api/subscriptionApi'
 import { createClub } from '../../api/clubApi'
 
 // The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
@@ -52,6 +53,7 @@ export default function SubscriptionFormPage() {
           productId: values.productId,
           startDate: values.startDate,
           endDate: values.endDate,
+          responsibleContact: values.responsibleContact,
         })
       }
 
@@ -78,6 +80,9 @@ export default function SubscriptionFormPage() {
         productId: values.productId,
         startDate: values.startDate,
         endDate: values.endDate,
+        // Non-null by construction: SubscriptionForm's create-mode validation requires all four
+        // contact fields before onSubmit ever fires, see SubscriptionForm.tsx's validate().
+        responsibleContact: values.responsibleContact as Contact,
       })
     },
     onSuccess: () => {
@@ -195,6 +200,7 @@ export default function SubscriptionFormPage() {
                 productLabel: `${subscription.product.name} (${subscription.product.code})`,
                 startDate: subscription.startDate,
                 endDate: subscription.endDate,
+                responsibleContact: subscription.responsibleContact,
               }
             : undefined
         }
