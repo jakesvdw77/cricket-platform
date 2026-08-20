@@ -218,7 +218,7 @@ Writing `ClubBranding` reuses the scope check above: a `RoleAssignment` with `sc
 
 | Entity | Scope | Key fields | Purpose |
 |---|---|---|---|
-| Person | Global | id, full_name, date_of_birth, keycloak_user_id? | One row per human, forever |
+| Person | Global | id, first_name, last_name, email, phone?, keycloak_user_id? | One row per human, forever |
 | Club | Root tenant | id, name, slug | Billing/admin boundary, isolated by RLS; slug drives subdomain resolution |
 | Section | Club | id, club_id, parent_section_id?, name | Self-referential age-group / grade tree |
 | Team | Club | id, club_id, section_id, name | Where a squad currently sits in the tree |
@@ -230,6 +230,8 @@ Writing `ClubBranding` reuses the scope check above: a `RoleAssignment` with `sc
 | LeagueAffiliation | League ↔ Team ↔ Season | league_id, team_id, season_id | Explicit per-season opt-in, the only club-crossing join |
 | Subscription | Club or Section | id, owner_type, owner_id, plan, status | Billing unit resolution (ADR-03) |
 | ClubBranding | Club (1:1) | club_id, display_name, logo_url, favicon_url, primary_color, updated_by | The fixed token set a club's admins can self-edit (ADR-05, ADR-06) |
+
+*`Person`'s row above reflects `014-subscription-responsible-contact.md`, which grew it from a bare `id`/`full_name`/`keycloak_user_id?` stub into this shape — `full_name` split into `first_name`/`last_name`, `email` added — because that spec needed `Person` to be a real, eventually login-capable identity for a Subscription's responsible party (already-confirmed to log in later via a future self-serve signup flow), not speculative scope. `phone?` was added alongside for the same reason, optional. `date_of_birth`, listed in this row's original draft, was never actually built in code and still isn't added by `014` either — left off as unneeded scope for that spec, not ruled out for good; add it if/when a real consumer needs it.*
 
 ## White-Labelling
 

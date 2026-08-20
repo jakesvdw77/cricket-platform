@@ -9,7 +9,7 @@ Update this file whenever a spec's own forward-references change (a new "Flag fo
 | # | Spec | Status |
 |---|---|---|
 | 009 | [Subscriptions](specs/009-subscriptions.md) | Built, on `feature/009-subscriptions`, pending review/PR — links `Club` to `Product`, admin-driven, `CLUB`-owner-only this pass. |
-| 014 | [Subscription Responsible Contact](specs/014-subscription-responsible-contact.md) | Draft — amends `009`'s `Subscription`/endpoints with a required-on-create `responsibleContact` (`Contact`/`ContactDto`, mirroring `012`'s `Address`/`AddressDto` reuse precedent). Not yet built. |
+| 014 | [Subscription Responsible Contact](specs/014-subscription-responsible-contact.md) | Rewritten draft — amends `009`'s `Subscription`/endpoints with a required-on-create `responsiblePersonId`, resolved via a new `PersonService` find-or-create-by-email against `001`'s `Person` (grown from a bare stub into a real `first_name`/`last_name`/`email`/`phone?` identity shape). Replaces an earlier, partially-implemented draft that embedded a bespoke `Contact` directly on `Subscription` — see `014`'s own Rollout Notes for exactly what's superseded. Not yet (re)built against this version. |
 
 ## Next up — Configuration hub modules
 
@@ -18,7 +18,7 @@ Sequenced by `007-configuration-hub-overview.md`'s own Rollout Notes. Each is a 
 | Module | Status | Notes |
 |---|---|---|
 | Products | ✅ Shipped (`008`) | Subscription-tier catalog: pricing, usage limits, capability toggles. |
-| Subscriptions | 🔶 Built, pending review (`009`); `014` (draft) amends it with a required responsible contact | Links a `Club` to a `Product`. |
+| Subscriptions | 🔶 Built, pending review (`009`); `014` (rewritten draft) amends it with a required responsible person | Links a `Club` to a `Product`. |
 | Discounts & Promotions | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals) — no spec yet. |
 | Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Also the spec that should decide whether `AdminHome.tsx`'s top-level `Subscriptions & Invoices` nav item becomes real or narrows to `Invoices` only (`009` Rollout Notes), and owns the billing-mechanics decisions below. |
 | System Settings | Unscoped | Named for roadmap visibility only (`007`). |
@@ -33,6 +33,7 @@ Depends on:
 - `002`'s "Self-service slug selection" Deliberately Deferred item (currently vendor-controlled per ADR-04) — this is exactly what would need to become real.
 - `008`'s `allowSubdomain`/`showAds` toggles become load-bearing here for the first time — they gate what a self-signed-up Free club actually gets.
 - The OTP-verification step this flow needs is itself blocked on the notifications/email-infrastructure spec below — no mechanism to actually send a code exists yet.
+- `014`'s `PersonService.findOrCreatePerson`/`Person.email` resolution — this flow's own "register, then log back in" path should resolve to the *same* `Person` a Subscription's responsible party already links to for that email, not a second identity. `014`'s Rollout Notes flags this explicitly.
 
 Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/callback purposes — this doesn't replace it, it adds a second, Free-tier-only path that doesn't need a human.
 
@@ -40,7 +41,7 @@ Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/ca
 
 Named for roadmap visibility only — no spec yet. No SMTP config, mail provider integration (SendGrid/Postmark/SES/etc.), or template mechanism exists anywhere in this codebase today, confirmed by grep in `014-subscription-responsible-contact.md`'s Non-goals. Motivated by two separate, already-named use cases that both need this before they can be finished:
 
-- **Notifying a Subscription's responsible contact when onboarding completes** — `014`'s whole reason for existing (`Subscription.responsibleContact` / `Contact` / `ContactDto`) was to have this data ready; `014` deliberately stops at capturing it, doesn't send anything. Whenever this spec is written, it should reuse `014`'s `Contact`/`ContactDto` directly as its first real send-to address rather than redefining the shape.
+- **Notifying a Subscription's responsible party when onboarding completes** — `014`'s whole reason for existing (`Subscription.responsiblePersonId` / `Person.firstName`/`email`) was to have this data ready, anchored to a real identity rather than a throwaway contact fact; `014` deliberately stops at capturing it, doesn't send anything. Whenever this spec is written, it should reuse `014`'s `Person` directly as its first real send-to address (and `firstName` for personalization, e.g. "Hi Jaco...") rather than redefining the shape.
 - **The self-serve signup flow's OTP-verification step** (above) — needs a real send mechanism to exist first.
 
 ## Next up — billing mechanics (for the future Invoicing spec)
@@ -59,15 +60,18 @@ Discussed during `009`'s planning, deliberately not implemented there — `009`'
 - **"Section subscription lapse behaviour"** — what a team sees if its section's own subscription lapses while the club's stays active (`001` Deliberately Deferred; `009` confirms it's still blocked, not resolved).
 - **Enforcing `Product`'s usage limits** (`maxSections`/`maxTeams`/`maxPlayers`) when a club tries to exceed its plan (`008` Non-goals, `009` Non-goals).
 - **Vendor-run league administration** — fixture scheduling, standings, a `LEAGUE` scope type (`001` ADR-02, Deliberately Deferred).
+- **Any `RoleAssignment`/administrative capability arising from a `Person` existing** — `014`'s `PersonService.findOrCreatePerson` (and any future Keycloak account it eventually links to) grants zero admin capability by itself; `014`'s own Non-goals says so explicitly, deferring entirely to this section.
 - Everything `006` named and hasn't built: club onboarding's real screen (see `003` below), whitelisting, sections/teams/players management, results capture, communication, availability polls, player profile/results/fixtures views.
 
 ## `003` — Club Onboarding (vendor-assisted)
 
 Spec'd, still not built as a whole — `010`/`011`/`012` are each explicit, deliberate minimal slices of it (bare `Club` CRUD, inline creation from the Subscription form, then a real `ClubProfile`), not a replacement for it. What `003` itself still owns and remains entirely unbuilt: the `Invitation` entity, admin-invite-by-email (and the club-admin-delegates-further-invites reuse of the same mechanism), and Section/Season bootstrapping during onboarding. Stays vendor-assisted — a human sets a club up by hand, matching the landing page's own "Vendor-assisted onboarding" pitch. Self-serve (above) is a second, Free-tier-only path added alongside this, not a replacement for it.
 
+`003`'s own `Invitation` design ("an invited person who already has an account attaches to their existing `Person`") is now backed by a real, reusable primitive — `014`'s `PersonService.findOrCreatePerson` — built ahead of `Invitation` itself. Whoever implements `003`'s `Invitation` should reuse that service rather than writing its own email-resolution logic a second time.
+
 **Resolved by `012-club-profile.md`:** the "organisation type" field noted below shipped as `ClubProfile.type` (`CLUB | ACADEMY | SCHOOL | OTHER`) — see `012`'s Rollout Notes. Originally noted during `009` planning: `Club` is used as the umbrella term throughout the product and code, but a real "club" in this system can be a School, Academy, or Cricket Club (or similar); `001`'s `Club` entity had no field capturing which. Resolved on the `ClubProfile` side entity per `012`'s own data-model call, not as a new column on `Club` itself — `001`'s `Club` Field Reference intentionally wasn't changed.
 
-**Next up, not yet spec'd:** the "Club Contacts" (named people at a club — name, role, phone, email, mobile, one flagged primary) and "Sponsors" (name, website, icon, banner, social links) specs discussed alongside `012` — both intended to reuse `012`'s `Address`/`MediaUpload`/`AddressFields` components directly. Club Contacts should additionally reuse `014-subscription-responsible-contact.md`'s `Contact`/`ContactDto` for its own people-list entries' name/email/phone (adding only `role` and a "flagged primary" bit alongside it), per `014`'s own Rollout Notes flag — not redefine an equivalent shape a second time. Not started; no spec number claimed yet (`013` went to `013-centralized-logging.md` instead).
+**Next up, not yet spec'd:** the "Club Contacts" (named people at a club — name, role, phone, email, mobile, one flagged primary) and "Sponsors" (name, website, icon, banner, social links) specs discussed alongside `012` — both intended to reuse `012`'s `Address`/`MediaUpload`/`AddressFields` components directly. Club Contacts should additionally reuse `backend/src/main/java/com/cricketlegend/domain/Contact.java`/`ContactDto` for its own people-list entries' name/email/phone (adding only `role` and a "flagged primary" bit alongside it) — those types were built for, but are no longer used by, `014` after its rewrite; they remain reserved for Club Contacts, per `014`'s current Rollout Notes. If a Club Contact entry ever needs to become login-capable, that upgrade path should resolve the contact's email through `014`'s `PersonService.findOrCreatePerson` rather than adding a schema-level link from `Contact` to `Person` — see `014`'s Rollout Notes for the full "bridge by email, not by FK" reasoning. Not started; no spec number claimed yet (`013` went to `013-centralized-logging.md` instead).
 
 ## Other deferred items (`001`/`002`, unscheduled)
 
@@ -81,8 +85,10 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Per-club redirect URI allowlist** — fallback if `002` ADR-03's wildcard doesn't hold up in production (`002` Deliberately Deferred).
 - **External identity providers** (Google/Microsoft SSO) — no requirement yet (`002` Deliberately Deferred).
 - **Mobile app redirect URIs** — out of scope until a mobile client exists (`002` Deliberately Deferred).
+- **Reassigning a Subscription's responsible person after creation** — `014`'s `PUT /api/v1/platform/subscriptions/{id}` deliberately has no way to do this; if it turns out to be a real recurring need, it should be its own explicit action/endpoint, not a side effect of an unrelated field edit (`014` Non-goals, flagged as a judgment call).
 
 ## Known tech debt (unscheduled, no owning spec)
 
 - **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.
-- **`ClubForm`'s inline `Input type="email"` should be swapped to the new `EmailInput`** once `014-subscription-responsible-contact.md` builds it — a small drive-by cleanup `014` flags but doesn't action itself (its own scope doesn't touch `ClubForm`), so it isn't forgotten and doesn't quietly become a second, slightly-different "email input" pattern.
+- **`ClubForm`'s inline `Input type="email"` should be swapped to the existing `EmailInput`** (`ui/src/components/EmailInput/`, built alongside the earlier draft of `014` and still reused as-is by its rewritten UI) — a small drive-by cleanup flagged but not actioned by `014` itself (its own scope doesn't touch `ClubForm`), so it isn't forgotten and doesn't quietly become a second, slightly-different "email input" pattern.
+- **`Contact.java`/`ContactDto.java`'s own Javadoc still cites `014-subscription-responsible-contact.md`** as their origin/reasoning — accurate for the discarded embedded-`Contact`-on-`Subscription` draft, not for the rewritten spec, which doesn't use either type. Should be updated (by whoever next touches either file — likely the future Club Contacts spec) to describe themselves purely as reserved for that future spec, per `014`'s own Rollout Notes flag. Harmless as-is — a stale doc comment, not a behavioral bug — but worth fixing opportunistically rather than compounding.
