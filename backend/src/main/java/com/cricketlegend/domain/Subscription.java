@@ -1,9 +1,6 @@
 package com.cricketlegend.domain;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -62,14 +59,12 @@ public class Subscription {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "firstName", column = @Column(name = "responsible_contact_first_name")),
-        @AttributeOverride(name = "lastName", column = @Column(name = "responsible_contact_last_name")),
-        @AttributeOverride(name = "email", column = @Column(name = "responsible_contact_email")),
-        @AttributeOverride(name = "phone", column = @Column(name = "responsible_contact_phone")),
-    })
-    private Contact responsibleContact;
+    // Plain FK column, no @ManyToOne — matches this codebase's existing convention
+    // (ownerId/productId are the same shape). Required 1:1 to a real Person, resolved via
+    // PersonService.findOrCreatePerson before a Subscription is ever saved — see
+    // docs/specs/014-subscription-responsible-contact.md.
+    @Column(name = "responsible_person_id", nullable = false)
+    private UUID responsiblePersonId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

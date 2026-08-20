@@ -5,10 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 
 /**
  * The generic, unscoped four-field contact shape — mirrors {@link com.cricketlegend.domain.Contact}
- * on the DTO side. Reused directly by {@link SubscriptionDto} (read shape),
- * {@link CreateSubscriptionRequest} (required), and {@link UpdateSubscriptionRequest} (optional) —
- * a future {@code ClubContactDto} reuses this record directly rather than getting its own copy —
- * see docs/specs/014-subscription-responsible-contact.md.
+ * on the DTO side. Currently unused — reserved for a future "Club Contacts" spec, whose entries
+ * genuinely never need login (unlike {@link PersonDto}, the read shape for the identity/auth
+ * anchor {@link com.cricketlegend.domain.Person} backs) — see docs/specs/012-club-profile.md's
+ * Rollout Notes for that follow-up. A future {@code ClubContactDto} reuses this record directly
+ * rather than getting its own copy.
  *
  * <p>Unlike {@link AddressDto} (no validation annotations at all — every address field is
  * genuinely optional free text), {@code ContactDto} carries {@code @NotBlank}/{@code @Email}

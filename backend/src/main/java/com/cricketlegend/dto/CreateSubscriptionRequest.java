@@ -10,10 +10,11 @@ import java.util.UUID;
  * POST /api/v1/platform/subscriptions payload. {@code startDate} is left un-annotated for
  * null-ness — {@code null} means "use today", applied by {@code Subscription}'s
  * {@code @PrePersist} hook. {@code endDate} is optional; {@code null} means ongoing.
- * {@code responsibleContact} is required — per docs/specs/014-subscription-responsible-contact.md,
- * every new Subscription must record who's accountable for it; {@code @Valid} cascades into
- * {@link ContactDto}'s own {@code @NotBlank}/{@code @Email} checks. See
- * docs/specs/009-subscriptions.md.
+ * {@code responsiblePerson} is required — per docs/specs/014-subscription-responsible-contact.md,
+ * every new Subscription must record who's accountable for it, resolved via
+ * {@code PersonService.findOrCreatePerson} before the Subscription is saved; {@code @Valid}
+ * cascades into {@link ResponsiblePersonRequest}'s own {@code @NotBlank}/{@code @Email} checks.
+ * See docs/specs/009-subscriptions.md.
  */
 public record CreateSubscriptionRequest(
         @NotNull SubscriptionOwnerType ownerType,
@@ -21,5 +22,5 @@ public record CreateSubscriptionRequest(
         @NotNull UUID productId,
         LocalDate startDate,
         LocalDate endDate,
-        @NotNull @Valid ContactDto responsibleContact) {
+        @NotNull @Valid ResponsiblePersonRequest responsiblePerson) {
 }

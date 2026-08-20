@@ -12,5 +12,7 @@
     <include file="db/changelog/v1/005-add-club-audit-columns.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/006-add-club-profile.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/007-add-subscription-responsible-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/008-restructure-person-identity.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/009-subscription-responsible-person.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
