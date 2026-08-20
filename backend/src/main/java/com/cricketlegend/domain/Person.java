@@ -2,9 +2,12 @@ package com.cricketlegend.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -50,4 +53,15 @@ public class Person {
 
     @Column(name = "keycloak_user_id", unique = true)
     private String keycloakUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PersonStatus status;
+
+    @PrePersist
+    void prePersist() {
+        if (status == null) {
+            status = PersonStatus.ACTIVE;
+        }
+    }
 }

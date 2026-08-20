@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonStatus;
 import com.cricketlegend.dto.PersonDto;
 import com.cricketlegend.mapper.PersonMapper;
 import com.cricketlegend.repository.PersonRepository;
@@ -36,6 +37,7 @@ public class PersonServiceImpl implements PersonService {
                         .lastName(lastName)
                         .email(email)
                         .phone(phone)
+                        .status(PersonStatus.ACTIVE)
                         .build()));
     }
 
