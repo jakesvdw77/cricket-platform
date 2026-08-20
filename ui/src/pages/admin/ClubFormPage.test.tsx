@@ -4,13 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ClubFormPage from './ClubFormPage'
-import type { Club } from '../../api/clubApi'
+import type { Club, ClubProfile } from '../../api/clubApi'
 
 const getClub = vi.fn()
 const createClub = vi.fn()
 const updateClub = vi.fn()
 const suspendClub = vi.fn()
 const reactivateClub = vi.fn()
+const getClubProfile = vi.fn()
+const updateClubProfile = vi.fn()
 
 vi.mock('../../api/clubApi', () => ({
   getClub: (id: string) => getClub(id),
@@ -18,10 +20,15 @@ vi.mock('../../api/clubApi', () => ({
   updateClub: (id: string, payload: unknown) => updateClub(id, payload),
   suspendClub: (id: string) => suspendClub(id),
   reactivateClub: (id: string) => reactivateClub(id),
+  getClubProfile: (id: string) => getClubProfile(id),
+  updateClubProfile: (id: string, payload: unknown) => updateClubProfile(id, payload),
 }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Every edit-mode test fetches this alongside the club itself — default to the
+  // default-shaped, all-null profile a club with no saved profile data returns.
+  getClubProfile.mockResolvedValue(emptyProfile())
 })
 
 function activeClub(overrides: Partial<Club> = {}): Club {
@@ -32,6 +39,23 @@ function activeClub(overrides: Partial<Club> = {}): Club {
     status: 'ACTIVE',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+function emptyProfile(overrides: Partial<ClubProfile> = {}): ClubProfile {
+  return {
+    clubId: 'c-1',
+    type: null,
+    logoUrl: null,
+    bannerUrl: null,
+    address: null,
+    email: null,
+    phone: null,
+    website: null,
+    createdAt: null,
+    updatedAt: null,
     updatedBy: null,
     ...overrides,
   }
@@ -53,14 +77,17 @@ function renderPage(initialPath: string) {
 }
 
 describe('ClubFormPage', () => {
-  it('create mode: does not fetch a club, and submit calls createClub then navigates to the list', async () => {
+  it('create mode: does not fetch a club or profile, and submit calls createClub then navigates to the new club\'s edit route (not the list)', async () => {
     const user = userEvent.setup()
     createClub.mockResolvedValueOnce(activeClub())
+    // The redirect below lands back on ClubFormPage in edit mode, which fetches both.
+    getClub.mockResolvedValueOnce(activeClub())
 
     renderPage('/admin/onboarding/new')
 
     expect(screen.getByText('Add Club')).toBeInTheDocument()
     expect(getClub).not.toHaveBeenCalled()
+    expect(getClubProfile).not.toHaveBeenCalled()
 
     await user.type(screen.getByLabelText('Name'), 'Riverside Cricket Club')
     // Slug auto-fills from Name — clear it first so the explicit entry below isn't appended
@@ -71,19 +98,28 @@ describe('ClubFormPage', () => {
 
     expect(createClub).toHaveBeenCalledTimes(1)
     expect(createClub).toHaveBeenCalledWith({ name: 'Riverside Cricket Club', slug: 'riverside-cc' })
+    // Create mode never threads a `profile` key through — profileInitialValues is undefined
+    // until a club exists, per docs/specs/012-club-profile.md.
+    expect(updateClubProfile).not.toHaveBeenCalled()
 
-    expect(await screen.findByText('Club List Page')).toBeInTheDocument()
+    expect(await screen.findByText('Edit Club')).toBeInTheDocument()
+    expect(screen.queryByText('Club List Page')).not.toBeInTheDocument()
   })
 
-  it('edit mode: fetches and pre-fills the club, and submit calls updateClub then navigates to the list', async () => {
+  it('edit mode: fetches and pre-fills the club and profile, and submit calls updateClub then updateClubProfile, then navigates to the list', async () => {
     const user = userEvent.setup()
     getClub.mockResolvedValueOnce(activeClub())
     updateClub.mockResolvedValueOnce(activeClub())
+    getClubProfile.mockResolvedValueOnce(
+      emptyProfile({ email: 'club@riverside.example.com' }),
+    )
+    updateClubProfile.mockResolvedValueOnce(emptyProfile({ email: 'club@riverside.example.com' }))
 
     renderPage('/admin/onboarding/c-1/edit')
 
     expect(await screen.findByText('Edit Club')).toBeInTheDocument()
     expect(getClub).toHaveBeenCalledWith('c-1')
+    expect(getClubProfile).toHaveBeenCalledWith('c-1')
     expect(await screen.findByDisplayValue('Riverside Cricket Club')).toBeInTheDocument()
     expect(screen.getByDisplayValue('riverside-cc')).toBeInTheDocument()
 
@@ -93,6 +129,11 @@ describe('ClubFormPage', () => {
     const [id, payload] = updateClub.mock.calls[0]
     expect(id).toBe('c-1')
     expect(payload).toEqual({ name: 'Riverside Cricket Club', slug: 'riverside-cc' })
+
+    expect(updateClubProfile).toHaveBeenCalledTimes(1)
+    const [profileId, profilePayload] = updateClubProfile.mock.calls[0]
+    expect(profileId).toBe('c-1')
+    expect(profilePayload).toMatchObject({ email: 'club@riverside.example.com' })
 
     expect(await screen.findByText('Club List Page')).toBeInTheDocument()
   })

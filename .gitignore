@@ -1,6 +1,11 @@
 # Backend
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
+# Local dev media uploads (app.media.storage-path, default ./data/media — see docs/specs/012-club-profile.md).
+# Relative to wherever the backend is actually launched from — cover both the intended
+# `cd backend && ./mvnw spring-boot:run` location and a repo-root launch.
+backend/data/
+/data/
 
 # Frontend
 ui/node_modules/
