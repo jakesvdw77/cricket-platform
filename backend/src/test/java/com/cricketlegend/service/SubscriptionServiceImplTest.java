@@ -14,7 +14,9 @@ import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
+import com.cricketlegend.domain.Contact;
 import com.cricketlegend.dto.ClubSummaryDto;
+import com.cricketlegend.dto.ContactDto;
 import com.cricketlegend.dto.CreateSubscriptionRequest;
 import com.cricketlegend.dto.ProductSummaryDto;
 import com.cricketlegend.dto.SubscriptionDto;
@@ -118,14 +120,18 @@ class SubscriptionServiceImplTest {
     private SubscriptionDto dummyDto() {
         return new SubscriptionDto(
                 UUID.randomUUID(), SubscriptionOwnerType.CLUB, UUID.randomUUID(), null, null,
-                SubscriptionStatus.ACTIVE, LocalDate.now(), null, null, null, null);
+                SubscriptionStatus.ACTIVE, LocalDate.now(), null, null, null, null, null);
+    }
+
+    private ContactDto validContactDto() {
+        return new ContactDto("Jane", "Doe", "jane.doe@example.com", "+27821234567");
     }
 
     @Test
     void createWithOwnerTypeOtherThanClubThrowsValidationException() {
         CreateSubscriptionRequest request =
                 new CreateSubscriptionRequest(SubscriptionOwnerType.SECTION, UUID.randomUUID(), UUID.randomUUID(),
-                        null, null);
+                        null, null, validContactDto());
 
         assertThatThrownBy(() -> subscriptionService.create(request)).isInstanceOf(ValidationException.class);
 
@@ -137,7 +143,8 @@ class SubscriptionServiceImplTest {
     void createWithMissingClubThrowsNotFoundException() {
         UUID ownerId = UUID.randomUUID();
         CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, ownerId, UUID.randomUUID(), null, null);
+                new CreateSubscriptionRequest(
+                        SubscriptionOwnerType.CLUB, ownerId, UUID.randomUUID(), null, null, validContactDto());
         when(clubRepository.findById(ownerId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> subscriptionService.create(request)).isInstanceOf(NotFoundException.class);
@@ -150,7 +157,8 @@ class SubscriptionServiceImplTest {
         UUID ownerId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, ownerId, productId, null, null);
+                new CreateSubscriptionRequest(
+                        SubscriptionOwnerType.CLUB, ownerId, productId, null, null, validContactDto());
         when(clubRepository.findById(ownerId)).thenReturn(Optional.of(activeClub(ownerId)));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product(productId, ProductStatus.DRAFT)));
 
@@ -164,7 +172,8 @@ class SubscriptionServiceImplTest {
         UUID ownerId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, ownerId, productId, null, null);
+                new CreateSubscriptionRequest(
+                        SubscriptionOwnerType.CLUB, ownerId, productId, null, null, validContactDto());
         when(clubRepository.findById(ownerId)).thenReturn(Optional.of(activeClub(ownerId)));
         when(productRepository.findById(productId))
                 .thenReturn(Optional.of(product(productId, ProductStatus.ACTIVE)));
@@ -183,7 +192,8 @@ class SubscriptionServiceImplTest {
         UUID ownerId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, ownerId, productId, null, null);
+                new CreateSubscriptionRequest(
+                        SubscriptionOwnerType.CLUB, ownerId, productId, null, null, validContactDto());
         Club club = activeClub(ownerId);
         Product product = product(productId, ProductStatus.ACTIVE);
         Subscription entity = subscription(UUID.randomUUID(), ownerId, productId, SubscriptionStatus.ACTIVE);
@@ -224,13 +234,81 @@ class SubscriptionServiceImplTest {
                 .thenReturn(new ProductSummaryDto(newProductId, "Club Standard", "CLUB_STANDARD"));
         when(subscriptionMapper.toDto(any(), any(), any())).thenReturn(dummyDto());
 
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(newProductId, null, null);
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(newProductId, null, null, null);
 
         subscriptionService.update(id, request);
 
         assertThat(existing.getId()).isEqualTo(id);
         assertThat(existing.getProductId()).isEqualTo(newProductId);
         verify(subscriptionRepository).save(existing);
+    }
+
+    @Test
+    void updateWithAProvidedResponsibleContactFullyReplacesThePreviousOne() {
+        UUID id = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Subscription existing = subscription(id, ownerId, productId, SubscriptionStatus.ACTIVE);
+        existing.setResponsibleContact(
+                Contact.builder().firstName("Old").lastName("Contact").email("old@example.com").phone("000")
+                        .build());
+        Club club = activeClub(ownerId);
+        Product product = product(productId, ProductStatus.ACTIVE);
+        ContactDto newContactDto = validContactDto();
+        Contact newContact = Contact.builder()
+                .firstName(newContactDto.firstName())
+                .lastName(newContactDto.lastName())
+                .email(newContactDto.email())
+                .phone(newContactDto.phone())
+                .build();
+
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(subscriptionRepository.save(existing)).thenReturn(existing);
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(clubMapper.toSummaryDto(club)).thenReturn(new ClubSummaryDto(ownerId, "Riverside CC", "riverside-cc"));
+        when(productMapper.toSummaryDto(product))
+                .thenReturn(new ProductSummaryDto(productId, "Club Standard", "CLUB_STANDARD"));
+        when(subscriptionMapper.toContact(newContactDto)).thenReturn(newContact);
+        when(subscriptionMapper.toDto(any(), any(), any())).thenReturn(dummyDto());
+
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(productId, null, null, newContactDto);
+
+        subscriptionService.update(id, request);
+
+        assertThat(existing.getResponsibleContact()).isEqualTo(newContact);
+        assertThat(existing.getResponsibleContact().getFirstName()).isEqualTo(newContactDto.firstName());
+    }
+
+    @Test
+    void updateWithResponsibleContactOmittedClearsAPreviouslySetOne() {
+        UUID id = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Subscription existing = subscription(id, ownerId, productId, SubscriptionStatus.ACTIVE);
+        existing.setResponsibleContact(
+                Contact.builder().firstName("Old").lastName("Contact").email("old@example.com").phone("000")
+                        .build());
+        Club club = activeClub(ownerId);
+        Product product = product(productId, ProductStatus.ACTIVE);
+
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(subscriptionRepository.save(existing)).thenReturn(existing);
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(clubMapper.toSummaryDto(club)).thenReturn(new ClubSummaryDto(ownerId, "Riverside CC", "riverside-cc"));
+        when(productMapper.toSummaryDto(product))
+                .thenReturn(new ProductSummaryDto(productId, "Club Standard", "CLUB_STANDARD"));
+        when(subscriptionMapper.toContact(null)).thenReturn(null);
+        when(subscriptionMapper.toDto(any(), any(), any())).thenReturn(dummyDto());
+
+        // responsibleContact omitted (null) on the request — full-replace-when-provided posture
+        // means this clears the previously-set contact, it doesn't leave it untouched.
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(productId, null, null, null);
+
+        subscriptionService.update(id, request);
+
+        assertThat(existing.getResponsibleContact()).isNull();
     }
 
     @Test
@@ -245,7 +323,7 @@ class SubscriptionServiceImplTest {
         when(productRepository.findById(newProductId))
                 .thenReturn(Optional.of(product(newProductId, ProductStatus.RETIRED)));
 
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(newProductId, null, null);
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(newProductId, null, null, null);
 
         assertThatThrownBy(() -> subscriptionService.update(id, request))
                 .isInstanceOf(ProductNotActiveException.class);
@@ -276,7 +354,7 @@ class SubscriptionServiceImplTest {
         when(subscriptionMapper.toDto(any(), any(), any())).thenReturn(dummyDto());
 
         UpdateSubscriptionRequest request =
-                new UpdateSubscriptionRequest(productId, LocalDate.of(2027, 1, 1), null);
+                new UpdateSubscriptionRequest(productId, LocalDate.of(2027, 1, 1), null, null);
 
         SubscriptionDto result = subscriptionService.update(id, request);
 
@@ -290,7 +368,7 @@ class SubscriptionServiceImplTest {
         UUID id = UUID.randomUUID();
         when(subscriptionRepository.findById(id)).thenReturn(Optional.empty());
 
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(UUID.randomUUID(), null, null);
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(UUID.randomUUID(), null, null, null);
 
         assertThatThrownBy(() -> subscriptionService.update(id, request)).isInstanceOf(NotFoundException.class);
     }
@@ -316,7 +394,8 @@ class SubscriptionServiceImplTest {
 
         // startDate omitted (null) — per SubscriptionServiceImpl.update()'s comment, a NOT NULL
         // DB column can't be nulled out, so a null request value means "leave unchanged".
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(productId, null, LocalDate.of(2027, 6, 1));
+        UpdateSubscriptionRequest request =
+                new UpdateSubscriptionRequest(productId, null, LocalDate.of(2027, 6, 1), null);
 
         subscriptionService.update(id, request);
 
@@ -346,7 +425,8 @@ class SubscriptionServiceImplTest {
 
         // endDate explicitly null in the request: unlike startDate, this IS applied (null means
         // "ongoing", a meaningful value for the nullable column) — see the service's own comment.
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(productId, LocalDate.of(2026, 2, 1), null);
+        UpdateSubscriptionRequest request =
+                new UpdateSubscriptionRequest(productId, LocalDate.of(2026, 2, 1), null, null);
 
         subscriptionService.update(id, request);
 
@@ -361,7 +441,7 @@ class SubscriptionServiceImplTest {
                 subscription(id, UUID.randomUUID(), UUID.randomUUID(), SubscriptionStatus.CANCELLED);
         when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
 
-        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(UUID.randomUUID(), null, null);
+        UpdateSubscriptionRequest request = new UpdateSubscriptionRequest(UUID.randomUUID(), null, null, null);
 
         assertThatThrownBy(() -> subscriptionService.update(id, request))
                 .isInstanceOf(InvalidStatusTransitionException.class);

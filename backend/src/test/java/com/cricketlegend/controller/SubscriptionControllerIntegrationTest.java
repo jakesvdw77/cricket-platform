@@ -51,6 +51,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class SubscriptionControllerIntegrationTest {
 
+    private static final String VALID_CONTACT_JSON = """
+            {
+                "firstName": "Jane",
+                "lastName": "Doe",
+                "email": "jane.doe@example.com",
+                "phone": "+27821234567"
+            }""";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -72,9 +80,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsibleContact": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_CONTACT_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -85,7 +94,9 @@ class SubscriptionControllerIntegrationTest {
                 .andExpect(jsonPath("$.club.id").value(club.getId().toString()))
                 .andExpect(jsonPath("$.club.name").value("Riverside CC"))
                 .andExpect(jsonPath("$.product.id").value(product.getId().toString()))
-                .andExpect(jsonPath("$.product.code").value("CLUB_STANDARD"));
+                .andExpect(jsonPath("$.product.code").value("CLUB_STANDARD"))
+                .andExpect(jsonPath("$.responsibleContact.firstName").value("Jane"))
+                .andExpect(jsonPath("$.responsibleContact.email").value("jane.doe@example.com"));
 
         assertThat(subscriptionRepository.findAll()).hasSize(1);
     }
@@ -99,9 +110,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "SECTION",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsibleContact": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_CONTACT_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -131,9 +143,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsibleContact": %s
                 }
-                """.formatted(UUID.randomUUID(), product.getId());
+                """.formatted(UUID.randomUUID(), product.getId(), VALID_CONTACT_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -151,9 +164,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsibleContact": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_CONTACT_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -174,9 +188,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsibleContact": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_CONTACT_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -204,7 +219,8 @@ class SubscriptionControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ownerType\": \"CLUB\", \"ownerId\": \"" + UUID.randomUUID()
-                                + "\", \"productId\": \"" + UUID.randomUUID() + "\"}"))
+                                + "\", \"productId\": \"" + UUID.randomUUID() + "\", \"responsibleContact\": "
+                                + VALID_CONTACT_JSON + "}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -214,7 +230,8 @@ class SubscriptionControllerIntegrationTest {
                         .with(withRole("someone_else", UnaryOperator.identity()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ownerType\": \"CLUB\", \"ownerId\": \"" + UUID.randomUUID()
-                                + "\", \"productId\": \"" + UUID.randomUUID() + "\"}"))
+                                + "\", \"productId\": \"" + UUID.randomUUID() + "\", \"responsibleContact\": "
+                                + VALID_CONTACT_JSON + "}"))
                 .andExpect(status().isForbidden());
     }
 
