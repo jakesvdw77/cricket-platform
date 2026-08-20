@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PersonStatus;
 import com.cricketlegend.dto.PersonDto;
 import com.cricketlegend.mapper.PersonMapper;
 import com.cricketlegend.repository.PersonRepository;
@@ -69,6 +70,49 @@ class PersonServiceImplTest {
         assertThat(captor.getValue().getLastName()).isEqualTo("Doe");
         assertThat(captor.getValue().getEmail()).isEqualTo("jane.doe@example.com");
         assertThat(captor.getValue().getPhone()).isEqualTo("+27821234567");
+    }
+
+    @Test
+    void findOrCreatePersonSetsStatusActiveOnANewlyCreatedPerson() {
+        // Per docs/specs/015-person-status-and-role-assignment.md's Data Model Changes: every
+        // Person created through this flow (today, only reachable behind the platform_admin-gated
+        // POST /subscriptions) is admin-vouched, so it defaults straight to ACTIVE rather than the
+        // reserved, unbuilt PENDING.
+        when(personRepository.findByEmailIgnoreCase("jane.doe@example.com")).thenReturn(Optional.empty());
+        ArgumentCaptor<Person> captor = ArgumentCaptor.forClass(Person.class);
+        when(personRepository.save(captor.capture())).thenAnswer(invocation -> {
+            Person saved = captor.getValue();
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        Person result = personService.findOrCreatePerson("Jane", "Doe", "jane.doe@example.com", "+27821234567");
+
+        assertThat(captor.getValue().getStatus()).isEqualTo(PersonStatus.ACTIVE);
+        assertThat(result.getStatus()).isEqualTo(PersonStatus.ACTIVE);
+    }
+
+    @Test
+    void findOrCreatePersonWithAnExistingSuspendedPersonKeepsItsStatusSuspendedRatherThanOverwritingItToActive() {
+        // "Link, don't overwrite" (014's own rule) extends to status without any dedicated
+        // overwrite-guarding code — the found-by-email branch simply never touches status. This is
+        // the concrete proof: a SUSPENDED Person re-linked as a new Subscription's responsible party
+        // must stay SUSPENDED, per 015's own flagged judgment call.
+        Person stored = new Person();
+        stored.setId(UUID.randomUUID());
+        stored.setFirstName("Jaco");
+        stored.setLastName("van der Walt");
+        stored.setEmail("jaco@example.com");
+        stored.setPhone("+27821110000");
+        stored.setStatus(PersonStatus.SUSPENDED);
+        when(personRepository.findByEmailIgnoreCase("Jaco@Example.com")).thenReturn(Optional.of(stored));
+
+        Person result = personService.findOrCreatePerson(
+                "Jacob", "Vanderwalt", "Jaco@Example.com", "+27829999999");
+
+        assertThat(result).isSameAs(stored);
+        assertThat(result.getStatus()).isEqualTo(PersonStatus.SUSPENDED);
+        verify(personRepository, never()).save(any());
     }
 
     @Test
