@@ -5,6 +5,7 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 ## Non-negotiables
 
 - Controllers never touch repositories directly; services never return JPA entities across the controller boundary — DTOs only, mapped via MapStruct, never by hand.
+- No `System.out`/`System.err` — use the injected SLF4J `Logger`; enforced by ArchUnit's `NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS` (`LayeringRulesTest.noClassesAccessStandardStreams`).
 - `ddl-auto=validate`, always. Schema changes are a numbered Liquibase migration (`backend/src/main/resources/db/changelog/v1/NNN-description.sql`) in the same PR as the entity change — never split, never Hibernate auto-DDL.
 - Business exceptions live in `com.cricketlegend.exception` and extend a fixed, documented set of HTTP-status base classes — `NotFoundException`, `ConflictException`, `ValidationException` — caught centrally by a `GlobalExceptionHandler` (`@RestControllerAdvice`). Exception → HTTP status matrix:
 
