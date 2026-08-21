@@ -96,11 +96,9 @@ function activeSubscription(overrides: Partial<Subscription> = {}): Subscription
   }
 }
 
-// Adds a new responsible person inline via PersonPicker's "+ Add" flow — used by every
-// create-mode submit test below, since 014 makes a resolved selection required on create.
+// Fills PersonPicker's create-mode fields, visible by default — used by every create-mode
+// submit test below, since 014 makes a resolved selection required on create.
 async function fillNewResponsiblePerson(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByLabelText('Responsible person'))
-  await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
   await user.type(screen.getByLabelText('First name'), 'Jane')
   await user.type(screen.getByLabelText('Last name'), 'Doe')
   await user.type(screen.getByLabelText('Email'), 'jane.doe@example.com')
