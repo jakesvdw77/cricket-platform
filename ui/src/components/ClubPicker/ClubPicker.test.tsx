@@ -139,6 +139,39 @@ describe('ClubPicker', () => {
     expect(screen.getByRole('combobox', { name: 'Club' })).toHaveValue('Riverside CC')
   })
 
+  it('closes the dropdown after selecting an existing club, instead of leaving it open on the selected option', async () => {
+    // Regression coverage: selecting re-syncs the input's query to the chosen club's own name
+    // (the fix for the blank-field bug above), which re-triggers the same search and gets the
+    // same single match back — without suppressOpen, clubOptions.length staying > 0 after
+    // selection kept the popper visibly open on top of the now-selected field indefinitely.
+    const user = userEvent.setup()
+    renderClubPicker()
+
+    await user.click(screen.getByLabelText('Club'))
+    await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+
+    expect(screen.getByRole('combobox', { name: 'Club' })).toHaveValue('Riverside CC')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Riverside CC' })).not.toBeInTheDocument()
+  })
+
+  it('reopens the dropdown and searches again once the admin types over an already-selected club', async () => {
+    const user = userEvent.setup()
+    renderClubPicker()
+
+    const clubField = screen.getByLabelText('Club')
+    await user.click(clubField)
+    await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    listClubs.mockResolvedValueOnce(page([{ id: 'club-2', name: 'Hillside CC', status: 'ACTIVE' }]))
+    await user.clear(clubField)
+    await user.type(clubField, 'Hillside')
+    await waitForDebounce()
+
+    expect(await screen.findByRole('option', { name: 'Hillside CC' })).toBeInTheDocument()
+  })
+
   it('does not show the "+ Add" affordance while results are present', async () => {
     const user = userEvent.setup()
     renderClubPicker()
