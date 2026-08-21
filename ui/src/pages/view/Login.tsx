@@ -4,7 +4,7 @@ import { keycloak } from '../../auth/keycloak'
 
 export default function Login() {
   useEffect(() => {
-    keycloak.login({ redirectUri: `${window.location.origin}/admin` })
+    keycloak.login({ redirectUri: `${window.location.origin}/post-login` })
   }, [])
 
   return (

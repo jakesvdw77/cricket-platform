@@ -6,6 +6,7 @@ import { baseTheme } from './theme'
 import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
 import Login from './pages/view/Login'
+import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
@@ -36,10 +37,12 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={isRootDomain ? <LandingPage /> : <UpcomingMatches />} />
-            {/* /login and /admin are club-agnostic — a platform admin's RoleAssignment has no
-                club scope (docs/specs/001), so these run on the root domain directly as well as
-                every club subdomain, without resolving any Club. */}
+            {/* /login, /post-login, and /admin are club-agnostic — a platform admin's (and,
+                as of docs/specs/016, a CLUB_ADMIN's) RoleAssignment has no club scope resolved
+                from the URL (docs/specs/001), so these run on the root domain directly as well
+                as every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
+            <Route path="/post-login" element={<PostLoginRedirect />} />
 
             {/* System Admin shell — docs/specs/006-post-login-home-shells.md. Dashboard is
                 real (005's platform_admin identity check); every other section is a
