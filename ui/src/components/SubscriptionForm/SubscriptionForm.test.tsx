@@ -52,8 +52,8 @@ beforeEach(() => {
           },
     ),
   )
-  // Same shape — PersonPicker's on-focus default list is empty by default, driving its own
-  // "+ Add" affordance in every create-mode test below that adds a person inline.
+  // Same shape — only consulted by the tests below that explicitly switch PersonPicker into
+  // search mode; create mode's fields are visible by default and never call this at all.
   listPersons.mockImplementation((params: ListPersonsParams) =>
     Promise.resolve(
       params.search
@@ -84,11 +84,9 @@ async function waitForDebounce() {
   await new Promise((resolve) => setTimeout(resolve, 350))
 }
 
-// Adds a new responsible person inline via PersonPicker's "+ Add" flow, filling all four fields
-// — used by every create-mode submit test below, since 014 makes a resolved selection required
-// on create.
+// Fills PersonPicker's create-mode fields, visible by default — used by every create-mode
+// submit test below, since 014 makes a resolved selection required on create.
 async function fillNewResponsiblePerson(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
   await user.type(screen.getByLabelText('First name'), 'Jane')
   await user.type(screen.getByLabelText('Last name'), 'Doe')
   await user.type(screen.getByLabelText('Email'), 'jane.doe@example.com')
@@ -132,7 +130,11 @@ describe('SubscriptionForm', () => {
     expect(screen.getByLabelText('Product')).toBeInTheDocument()
     expect(screen.getByLabelText('Start date')).toBeInTheDocument()
     expect(screen.getByLabelText('End date (optional)')).toBeInTheDocument()
-    expect(screen.getByLabelText('Responsible person')).toBeInTheDocument()
+    // PersonPicker defaults to create mode — its fields are visible immediately, no search step.
+    expect(screen.getByLabelText('First name')).toBeInTheDocument()
+    expect(screen.getByLabelText('Last name')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Phone')).toBeInTheDocument()
 
     // Only ACTIVE products are ever requested for the picker, per
     // docs/specs/009-subscriptions.md's UI Requirements.
@@ -162,11 +164,8 @@ describe('SubscriptionForm', () => {
     await user.click(screen.getByLabelText('Product'))
     await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-    await user.click(screen.getByLabelText('Responsible person'))
-    await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
-
     // Only three of the four fields filled — Phone left blank (optional, but First/Last/Email
-    // required as a set here).
+    // required as a set here). PersonPicker's fields are visible by default, no search step.
     await user.type(screen.getByLabelText('First name'), 'Jane')
     await user.type(screen.getByLabelText('Last name'), 'Doe')
 
@@ -186,8 +185,6 @@ describe('SubscriptionForm', () => {
     await user.click(screen.getByLabelText('Product'))
     await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-    await user.click(screen.getByLabelText('Responsible person'))
-    await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
     await user.type(screen.getByLabelText('First name'), 'Jane')
     await user.type(screen.getByLabelText('Last name'), 'Doe')
     await user.type(screen.getByLabelText('Email'), 'not-an-email')
@@ -233,7 +230,6 @@ describe('SubscriptionForm', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await user.click(screen.getByLabelText('Responsible person'))
       await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -272,7 +268,8 @@ describe('SubscriptionForm', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await user.click(screen.getByLabelText('Responsible person'))
+      await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+      await user.click(screen.getByLabelText('Search for an existing person'))
       await user.click(await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' }))
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -313,7 +310,6 @@ describe('SubscriptionForm', () => {
       await user.click(screen.getByLabelText('Product'))
       await user.click(await screen.findByRole('option', { name: /Club Standard/ }))
 
-      await user.click(screen.getByLabelText('Responsible person'))
       await fillNewResponsiblePerson(user)
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))

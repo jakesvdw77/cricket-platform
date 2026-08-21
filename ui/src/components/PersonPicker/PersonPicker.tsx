@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Autocomplete, Box, CircularProgress } from '@mui/material'
+import { Autocomplete, Box, CircularProgress, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '../Input'
 import { Button } from '../Button'
@@ -10,8 +10,7 @@ import { listPersons } from '../../api/personApi'
 import type { Person } from '../../api/personApi'
 
 // Same debounce timing ClubPicker established for its own search — see
-// docs/plans/011-inline-club-creation-in-subscription-form.md item 3, mirrored here per
-// docs/specs/014-subscription-responsible-contact.md's UI Requirements.
+// docs/plans/011-inline-club-creation-in-subscription-form.md item 3.
 const PERSON_SEARCH_DEBOUNCE_MS = 300
 
 export type PersonPickerValue =
@@ -22,16 +21,16 @@ export type PersonPickerValue =
 export interface PersonPickerProps {
   value: PersonPickerValue
   onChange: (value: PersonPickerValue) => void
-  // Surfaces the consuming form's own "a responsible person is required" validation error
-  // against the search field — only ever relevant while nothing has been selected yet (search
-  // mode). Mirrors ClubPicker's requiredError prop exactly.
+  // Shown against the create-mode fields when nothing has been entered at all (value is still
+  // null) — only ever relevant in that state, since a partial 'new' draft instead surfaces the
+  // three field-level errors below. Mirrors ClubPicker's requiredError prop in spirit, not shape.
   requiredError?: string
-  // Submit-time completeness errors from the consuming form, only ever relevant while already in
-  // create mode — mirrors ClubPicker's nameError/slugError props.
   firstNameError?: string
   lastNameError?: string
   emailError?: string
 }
+
+const BLANK_DRAFT = { mode: 'new' as const, firstName: '', lastName: '', email: '', phone: '' }
 
 export function PersonPicker({
   value,
@@ -41,10 +40,16 @@ export function PersonPicker({
   lastNameError,
   emailError,
 }: PersonPickerProps) {
-  // Three states, unlike ClubPicker's two — an existing selection renders its own disabled
-  // display (spec's UI Requirements) rather than staying inside the search Autocomplete.
+  // Defaults to create mode — creating a Subscription almost always means a brand-new
+  // responsible person, not one who already exists. The original search-first design (mirroring
+  // ClubPicker) made the common case the awkward one: real-world use surfaced that admins were
+  // never offered a "+ Add" option because the on-focus default list is rarely empty. "Link to
+  // an existing person instead" is now the deliberately secondary path, for the rarer case where
+  // the same person already manages another club — see docs/specs/014-subscription-responsible-
+  // contact.md's UI Requirements for the full reasoning behind this reversal.
+  const [showSearch, setShowSearch] = useState(false)
   const mode: 'search' | 'create' | 'selected' =
-    value?.mode === 'new' ? 'create' : value?.mode === 'existing' ? 'selected' : 'search'
+    value?.mode === 'existing' ? 'selected' : showSearch ? 'search' : 'create'
 
   // Gates the search query behind the admin's first interaction — nothing fetches before the
   // field is ever focused, same as ClubPicker's own hasFocused.
@@ -64,55 +69,53 @@ export function PersonPicker({
   })
   const personOptions: Person[] = personPage?.content ?? []
 
-  // A genuine fetch failure must never be silently treated as "no matching people" — that would
-  // offer to create a new (possibly duplicate) Person off a transient network/auth error instead
-  // of surfacing the failure. Copied verbatim from ClubPicker's own fix, per plan Flag 7.
-  const showAddAffordance = hasFocused && mode === 'search' && !isFetching && !isError && personOptions.length === 0
   const trimmedQuery = query.trim()
-  // Same rationale as ClubPicker's own autocompleteOpen — the popper's "No people found" text
-  // would otherwise visually overlap the "+ Add" affordance rendered right below it.
   const autocompleteOpen = hasFocused && (isFetching || personOptions.length > 0)
 
-  const handleStartCreate = () => {
-    // Email pre-fills from the query only if it looks like one (contains '@') — otherwise the
-    // query is treated as a name hint and email starts blank, per spec's UI Requirements.
-    const looksLikeEmail = trimmedQuery.includes('@')
-    onChange({
-      mode: 'new',
-      firstName: looksLikeEmail ? '' : trimmedQuery,
-      lastName: '',
-      email: looksLikeEmail ? trimmedQuery : '',
-      phone: '',
-    })
+  const startSearch = () => {
+    setShowSearch(true)
   }
 
-  // Discards the draft/selection with no side effects — nothing was ever created, so there's
-  // nothing to undo server-side. Reused for both create mode's "Back to search" and selected
-  // mode's "Change" affordance.
-  const handleBackToSearch = () => {
+  // Leaves search mode. If the admin had typed something before giving up on finding an existing
+  // match, carry it into the new draft — email-shaped text becomes the email, anything else
+  // becomes a name hint — same heuristic the old "+ Add" affordance used. An empty query leaves
+  // whatever draft (or blank state) already existed untouched, so a detour into search-and-back
+  // never silently discards fields the admin had already filled in.
+  const startCreate = () => {
+    setShowSearch(false)
+    if (trimmedQuery) {
+      const looksLikeEmail = trimmedQuery.includes('@')
+      onChange({
+        mode: 'new',
+        firstName: looksLikeEmail ? '' : trimmedQuery,
+        lastName: '',
+        email: looksLikeEmail ? trimmedQuery : '',
+        phone: '',
+      })
+    }
+    setQuery('')
+  }
+
+  // Discards an existing selection with no side effects — nothing was ever created, so there's
+  // nothing to undo server-side. Returns to create mode (the default), not search.
+  const handleChangeSelection = () => {
+    setShowSearch(false)
     setQuery('')
     onChange(null)
   }
 
+  const currentDraft = value?.mode === 'new' ? value : BLANK_DRAFT
+
   const handleFieldChange = (field: 'firstName' | 'lastName') => (event: ChangeEvent<HTMLInputElement>) => {
-    if (value?.mode !== 'new') {
-      return
-    }
-    onChange({ ...value, [field]: event.target.value })
+    onChange({ ...currentDraft, [field]: event.target.value })
   }
 
   const handleEmailChange = (email: string) => {
-    if (value?.mode !== 'new') {
-      return
-    }
-    onChange({ ...value, email })
+    onChange({ ...currentDraft, email })
   }
 
   const handlePhoneChange = (phone: string) => {
-    if (value?.mode !== 'new') {
-      return
-    }
-    onChange({ ...value, phone })
+    onChange({ ...currentDraft, phone })
   }
 
   // Root spans the full grid row (see RecordFormScreen's "full-width fields" convention) — this
@@ -122,6 +125,14 @@ export function PersonPicker({
     <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
       {mode === 'search' && (
         <>
+          {/* Rendered above the Autocomplete, not below — this button is always visible now
+              (not just when results are empty, per the reasoning above), and MUI's dropdown
+              popper is absolutely positioned below the field, so placing the button underneath
+              would let an open popper full of real results visually cover it. */}
+          <Button variant="ghost" size="sm" onClick={startCreate} sx={{ alignSelf: 'flex-start' }}>
+            {trimmedQuery ? `Create "${trimmedQuery}" as a new person instead` : 'Create a new person instead'}
+          </Button>
+
           <Autocomplete<Person>
             open={autocompleteOpen}
             onOpen={() => setHasFocused(true)}
@@ -132,6 +143,7 @@ export function PersonPicker({
             onFocus={() => setHasFocused(true)}
             onChange={(_event, newValue) => {
               if (newValue) {
+                setShowSearch(false)
                 onChange({
                   mode: 'existing',
                   id: newValue.id,
@@ -148,11 +160,6 @@ export function PersonPicker({
                 setQuery(newInputValue)
                 return
               }
-              // Same reasoning as ClubPicker's own onInputChange — 'reset' fires both after a
-              // real selection (handled by switching to 'selected' mode above, which unmounts
-              // this Autocomplete entirely) and whenever the popper closes with nothing
-              // selected; only sync the typed query back in the latter case, or on an explicit
-              // 'clear', so a zero-result search query used by the "+ Add" affordance survives.
               if (reason === 'clear' || newInputValue) {
                 setQuery(newInputValue)
               }
@@ -163,10 +170,10 @@ export function PersonPicker({
             renderInput={(params) => (
               <Input
                 {...params}
-                label="Responsible person"
+                label="Search for an existing person"
                 placeholder="Search by name or email"
-                error={Boolean(requiredError) || isError}
-                helperText={isError ? "Couldn't load people. Please try again." : requiredError}
+                error={isError}
+                helperText={isError ? "Couldn't load people. Please try again." : undefined}
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
@@ -179,37 +186,36 @@ export function PersonPicker({
               />
             )}
           />
-
-          {showAddAffordance && (
-            <Button variant="ghost" size="sm" onClick={handleStartCreate} sx={{ alignSelf: 'flex-start' }}>
-              {trimmedQuery ? `+ Add "${trimmedQuery}" as a new person` : '+ Add a new person'}
-            </Button>
-          )}
         </>
       )}
 
-      {mode === 'create' && value?.mode === 'new' && (
+      {mode === 'create' && (
         <>
+          {requiredError && (
+            <Typography variant="body2" color="error.main">
+              {requiredError}
+            </Typography>
+          )}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
             <Input
               label="First name"
-              value={value.firstName}
+              value={currentDraft.firstName}
               onChange={handleFieldChange('firstName')}
               error={Boolean(firstNameError)}
               helperText={firstNameError}
             />
             <Input
               label="Last name"
-              value={value.lastName}
+              value={currentDraft.lastName}
               onChange={handleFieldChange('lastName')}
               error={Boolean(lastNameError)}
               helperText={lastNameError}
             />
-            <EmailInput value={value.email} onChange={handleEmailChange} error={emailError} />
-            <PhoneInput value={value.phone} onChange={handlePhoneChange} />
+            <EmailInput value={currentDraft.email} onChange={handleEmailChange} error={emailError} />
+            <PhoneInput value={currentDraft.phone} onChange={handlePhoneChange} />
           </Box>
-          <Button variant="ghost" size="sm" onClick={handleBackToSearch} sx={{ alignSelf: 'flex-start' }}>
-            Back to search
+          <Button variant="ghost" size="sm" onClick={startSearch} sx={{ alignSelf: 'flex-start' }}>
+            Link to an existing person instead
           </Button>
         </>
       )}
@@ -217,14 +223,16 @@ export function PersonPicker({
       {mode === 'selected' && value?.mode === 'existing' && (
         <>
           {/* Disabled/read-only display — the UI's own visible reinforcement of the backend's
-              "link, don't overwrite" rule, never editable from this component. */}
+              "link, don't overwrite" rule, never editable from this component. Also the visible
+              confirmation that this Subscription is about to link an *existing* identity — e.g.
+              one already responsible for another Club — before the admin submits. */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
             <Input label="First name" value={value.firstName} disabled />
             <Input label="Last name" value={value.lastName} disabled />
             <Input label="Email" value={value.email} disabled />
             <Input label="Phone" value={value.phone ?? ''} disabled />
           </Box>
-          <Button variant="ghost" size="sm" onClick={handleBackToSearch} sx={{ alignSelf: 'flex-start' }}>
+          <Button variant="ghost" size="sm" onClick={handleChangeSelection} sx={{ alignSelf: 'flex-start' }}>
             Change
           </Button>
         </>
