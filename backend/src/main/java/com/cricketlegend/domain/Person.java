@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -57,6 +58,9 @@ public class Person {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PersonStatus status;
+
+    @Column(name = "keycloak_provisioned_at")
+    private Instant keycloakProvisionedAt;
 
     @PrePersist
     void prePersist() {

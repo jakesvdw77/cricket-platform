@@ -37,7 +37,9 @@ public class PersonServiceImpl implements PersonService {
                         .lastName(lastName)
                         .email(email)
                         .phone(phone)
-                        .status(PersonStatus.ACTIVE)
+                        .status(PersonStatus.PENDING) // was ACTIVE as of 015 — see
+                                                       // 016-keycloak-account-provisioning.md
+                                                       // judgment call #4
                         .build()));
     }
 

@@ -8,6 +8,8 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -155,6 +157,38 @@ class PersonRepositoryTest {
 
         Person reloaded = personRepository.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(PersonStatus.ACTIVE);
+    }
+
+    @Test
+    void keycloakProvisionedAtDefaultsToNullForAFreshlySavedPersonThatNeverSetsIt() {
+        // Proves 012-add-person-keycloak-provisioned-at.sql applied cleanly on top of 001-011
+        // (implicit via context boot) and that the new column has no NOT NULL/default — a Person
+        // saved without ever touching keycloakProvisionedAt (the everyday case for every existing
+        // Person until docs/specs/016-keycloak-account-provisioning.md's first login) round-trips
+        // as NULL, not backfilled to some other value.
+        Person person = person("Jane", "Doe", "jane.doe@example.com", null);
+        assertThat(person.getKeycloakProvisionedAt()).isNull();
+
+        Person saved = personRepository.save(person);
+        entityManager.flush();
+        entityManager.clear();
+
+        Person reloaded = personRepository.findById(saved.getId()).orElseThrow();
+        assertThat(reloaded.getKeycloakProvisionedAt()).isNull();
+    }
+
+    @Test
+    void keycloakProvisionedAtRoundTripsWhenExplicitlySet() {
+        Person person = person("Jane", "Doe", "jane.doe@example.com", null);
+        Instant provisionedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        person.setKeycloakProvisionedAt(provisionedAt);
+
+        Person saved = personRepository.save(person);
+        entityManager.flush();
+        entityManager.clear();
+
+        Person reloaded = personRepository.findById(saved.getId()).orElseThrow();
+        assertThat(reloaded.getKeycloakProvisionedAt()).isEqualTo(provisionedAt);
     }
 
     @Test

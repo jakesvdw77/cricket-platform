@@ -101,6 +101,30 @@ class RoleAssignmentRepositoryTest {
     }
 
     @Test
+    void aPersonCanHoldTwoClubAdminGrantsForTwoDifferentClubsSimultaneously() {
+        // The specific multi-grant shape docs/specs/016-keycloak-account-provisioning.md's judgment
+        // call #3 relies on: SubscriptionServiceImpl.create() grants a second, independently-scoped
+        // CLUB_ADMIN RoleAssignment when the same responsible Person is granted access to a second
+        // Club — same role, same scopeType, different scopeId. Distinct from
+        // aPersonCanHoldMultipleDifferentRoleAssignmentsSimultaneously above, which only proves two
+        // *different* roles/scopeTypes coexist, not two CLUB_ADMIN rows at two different scopeIds.
+        Person person = savedPerson("jane.doe@example.com");
+        UUID firstClubId = UUID.randomUUID();
+        UUID secondClubId = UUID.randomUUID();
+
+        RoleAssignment firstClubGrant = roleAssignmentRepository.save(
+                grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, firstClubId));
+        RoleAssignment secondClubGrant = roleAssignmentRepository.save(
+                grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, secondClubId));
+
+        assertThat(firstClubGrant.getId()).isNotNull();
+        assertThat(secondClubGrant.getId()).isNotNull();
+        assertThat(roleAssignmentRepository.findByPersonId(person.getId()))
+                .extracting(RoleAssignment::getScopeId)
+                .containsExactlyInAnyOrder(firstClubId, secondClubId);
+    }
+
+    @Test
     void chkRoleAssignmentScopeIdRejectsANonPlatformRowWithANullScopeId() {
         Person person = savedPerson("jane.doe@example.com");
         RoleAssignment invalid = grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, null);

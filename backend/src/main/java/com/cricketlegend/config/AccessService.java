@@ -19,13 +19,12 @@ import org.springframework.stereotype.Component;
  * precedent docs/specs/013-centralized-logging.md's {@code RequestCorrelationFilter} already
  * relies on) and checking for a {@code CLUB_ADMIN} grant scoped to this {@code clubId}.
  *
- * <p><b>Known, honest limitation as of this spec:</b> {@link com.cricketlegend.domain.Person#
- * getKeycloakUserId()} is still nullable and unset everywhere in this codebase (deliberately, per
- * docs/specs/014-subscription-responsible-contact.md's own Non-goals) — no Person row carries one
- * yet. The RoleAssignment branch below is correct but effectively unreachable in production until
- * the next spec (Keycloak account provisioning) starts setting that column on first login. Until
- * then, {@code platform_admin} remains what's actually load-bearing for every existing
- * {@code @PreAuthorize}-guarded call site, exactly as it was before this spec.
+ * <p>As of docs/specs/016-keycloak-account-provisioning.md, the {@code RoleAssignment} branch
+ * below is genuinely reachable in production: {@code SubscriptionServiceImpl.create()} now
+ * provisions a real Keycloak account and grants a {@code CLUB_ADMIN} {@code RoleAssignment} for a
+ * Subscription's responsible {@link com.cricketlegend.domain.Person}, and {@code MeServiceImpl}
+ * sets {@link com.cricketlegend.domain.Person#getKeycloakUserId()} on that person's first login —
+ * closing the gap this class's Javadoc previously flagged as "correct but effectively unreachable."
  */
 @Component("access")
 public class AccessService {
@@ -39,14 +38,20 @@ public class AccessService {
         this.roleAssignmentRepository = roleAssignmentRepository;
     }
 
+    public boolean isPlatformAdmin(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_platform_admin"::equals);
+    }
+
     public boolean canAdministerClub(Authentication authentication, UUID clubId) {
         if (authentication == null) {
             return false;
         }
-        boolean isPlatformAdmin = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch("ROLE_platform_admin"::equals);
-        if (isPlatformAdmin) {
+        if (isPlatformAdmin(authentication)) {
             return true; // superset/override — platform_admin is untouched by this spec
         }
         return personRepository
