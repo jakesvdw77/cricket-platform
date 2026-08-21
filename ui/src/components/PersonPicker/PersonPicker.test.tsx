@@ -80,18 +80,34 @@ function renderPersonPicker(props: Parameters<typeof Harness>[0] = {}) {
 }
 
 describe('PersonPicker', () => {
-  it('renders the search field in search mode without fetching before focus', () => {
+  it('defaults to create mode with blank fields, and fetches nothing before the admin links to an existing person', () => {
     renderPersonPicker()
 
-    expect(screen.getByLabelText('Responsible person')).toBeInTheDocument()
+    expect(screen.getByLabelText('First name')).toHaveValue('')
+    expect(screen.getByLabelText('Last name')).toHaveValue('')
+    expect(screen.getByLabelText('Email')).toHaveValue('')
+    expect(screen.getByLabelText('Phone')).toHaveValue('')
     expect(listPersons).not.toHaveBeenCalled()
   })
 
-  it('requests and renders up to 10 people on focus with no query', async () => {
+  it('editing the create-mode fields from a blank start updates the draft', async () => {
+    const onChangeSpy = vi.fn()
+    const user = userEvent.setup()
+    renderPersonPicker({ onChangeSpy })
+
+    await user.type(screen.getByLabelText('First name'), 'Jane')
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith({ mode: 'new', firstName: 'Jane', lastName: '', email: '', phone: '' })
+  })
+
+  it('"Link to an existing person instead" switches to search mode and fetches on focus', async () => {
     const user = userEvent.setup()
     renderPersonPicker()
 
-    await user.click(screen.getByLabelText('Responsible person'))
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Search for an existing person'))
 
     expect(listPersons).toHaveBeenCalledWith({ page: 0, size: 10, search: undefined })
     expect(await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' })).toBeInTheDocument()
@@ -101,10 +117,11 @@ describe('PersonPicker', () => {
     const user = userEvent.setup()
     renderPersonPicker()
 
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
     // Captured once and reused below — once the dropdown is open, MUI's Autocomplete listbox
     // also carries an aria-labelledby pointing at the same label, so a second getByLabelText
     // call becomes ambiguous (matches both the input and the listbox).
-    const personField = screen.getByLabelText('Responsible person')
+    const personField = screen.getByLabelText('Search for an existing person')
     await user.click(personField)
     listPersons.mockClear()
     await user.type(personField, 'Jane')
@@ -125,7 +142,8 @@ describe('PersonPicker', () => {
     const user = userEvent.setup()
     renderPersonPicker({ onChangeSpy })
 
-    await user.click(screen.getByLabelText('Responsible person'))
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    await user.click(screen.getByLabelText('Search for an existing person'))
     await user.click(await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' }))
 
     expect(onChangeSpy).toHaveBeenCalledWith({
@@ -147,7 +165,7 @@ describe('PersonPicker', () => {
     expect(screen.getByLabelText('Phone')).toBeDisabled()
   })
 
-  it('"Change" on a selected person clears back to search mode with no side effects', async () => {
+  it('"Change" on a selected person clears back to create mode with blank fields, not search', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()
     renderPersonPicker({
@@ -165,87 +183,45 @@ describe('PersonPicker', () => {
     await user.click(screen.getByRole('button', { name: 'Change' }))
 
     expect(onChangeSpy).toHaveBeenCalledWith(null)
-    expect(screen.getByLabelText('Responsible person')).toBeInTheDocument()
-    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('First name')).toHaveValue('')
+    expect(screen.getByLabelText('First name')).not.toBeDisabled()
+    expect(screen.queryByLabelText('Search for an existing person')).not.toBeInTheDocument()
   })
 
-  it('does not show the "+ Add" affordance while results are present', async () => {
+  it('"Create a new person instead" stays visible in search mode even while matching results are shown — the bug this redesign fixes', async () => {
     const user = userEvent.setup()
     renderPersonPicker()
 
-    await user.click(screen.getByLabelText('Responsible person'))
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    await user.click(screen.getByLabelText('Search for an existing person'))
     await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' })
 
-    expect(screen.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create a new person instead' })).toBeInTheDocument()
   })
 
-  it('does not show the "+ Add" affordance while the query is still loading', async () => {
-    let resolvePersons: (value: Page<Person>) => void = () => {}
-    listPersons.mockReturnValueOnce(
-      new Promise<Page<Person>>((resolve) => {
-        resolvePersons = resolve
-      }),
-    )
+  it('shows the typed query in the button label while searching', async () => {
     const user = userEvent.setup()
     renderPersonPicker()
 
-    await user.click(screen.getByLabelText('Responsible person'))
-
-    expect(screen.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument()
-
-    resolvePersons(page([]))
-
-    expect(await screen.findByRole('button', { name: '+ Add a new person' })).toBeInTheDocument()
-  })
-
-  it('does not show the "+ Add" affordance on a fetch failure, and shows a distinct error instead — never treats an error as "no matching people"', async () => {
-    listPersons.mockRejectedValueOnce(new Error('network error'))
-    const user = userEvent.setup()
-    renderPersonPicker()
-
-    await user.click(screen.getByLabelText('Responsible person'))
-
-    expect(await screen.findByText("Couldn't load people. Please try again.")).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument()
-  })
-
-  it('shows a generic "+ Add a new person" label when the empty result is the on-focus default list', async () => {
-    listPersons.mockResolvedValueOnce(page([]))
-    const user = userEvent.setup()
-    renderPersonPicker()
-
-    await user.click(screen.getByLabelText('Responsible person'))
-
-    expect(await screen.findByRole('button', { name: '+ Add a new person' })).toBeInTheDocument()
-  })
-
-  it('shows the typed query in the "+ Add" label when a search returns no matches', async () => {
-    listPersons.mockResolvedValueOnce(janeOnly())
-    listPersons.mockResolvedValueOnce(page([]))
-    const user = userEvent.setup()
-    renderPersonPicker()
-
-    const personField = screen.getByLabelText('Responsible person')
-    await user.click(personField)
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    const personField = screen.getByLabelText('Search for an existing person')
     await user.type(personField, 'Meadow')
     await waitForDebounce()
 
-    expect(await screen.findByRole('button', { name: '+ Add "Meadow" as a new person' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create "Meadow" as a new person instead' })).toBeInTheDocument()
   })
 
-  it('selecting "+ Add" with an email-shaped query pre-fills Email, leaving the name fields blank', async () => {
-    listPersons.mockResolvedValueOnce(janeOnly())
-    listPersons.mockResolvedValueOnce(page([]))
+  it('leaving search with an email-shaped query prefills Email, leaving the name fields blank', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()
     renderPersonPicker({ onChangeSpy })
 
-    const personField = screen.getByLabelText('Responsible person')
-    await user.click(personField)
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    const personField = screen.getByLabelText('Search for an existing person')
     await user.type(personField, 'new.person@example.com')
     await waitForDebounce()
 
-    await user.click(await screen.findByRole('button', { name: '+ Add "new.person@example.com" as a new person' }))
+    await user.click(screen.getByRole('button', { name: 'Create "new.person@example.com" as a new person instead' }))
 
     expect(screen.getByLabelText('First name')).toHaveValue('')
     expect(screen.getByLabelText('Email')).toHaveValue('new.person@example.com')
@@ -258,19 +234,17 @@ describe('PersonPicker', () => {
     })
   })
 
-  it('selecting "+ Add" with a non-email query treats it as a name hint, leaving Email blank', async () => {
-    listPersons.mockResolvedValueOnce(janeOnly())
-    listPersons.mockResolvedValueOnce(page([]))
+  it('leaving search with a non-email query treats it as a name hint, leaving Email blank', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()
     renderPersonPicker({ onChangeSpy })
 
-    const personField = screen.getByLabelText('Responsible person')
-    await user.click(personField)
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    const personField = screen.getByLabelText('Search for an existing person')
     await user.type(personField, 'John Smith')
     await waitForDebounce()
 
-    await user.click(await screen.findByRole('button', { name: '+ Add "John Smith" as a new person' }))
+    await user.click(screen.getByRole('button', { name: 'Create "John Smith" as a new person instead' }))
 
     expect(screen.getByLabelText('First name')).toHaveValue('John Smith')
     expect(screen.getByLabelText('Email')).toHaveValue('')
@@ -283,50 +257,22 @@ describe('PersonPicker', () => {
     })
   })
 
-  it('selecting "+ Add" from the blank on-focus default list switches to create mode with all fields blank', async () => {
-    listPersons.mockResolvedValueOnce(page([]))
+  it('leaving search with no query typed preserves whatever draft already existed, rather than blanking it', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()
     renderPersonPicker({ onChangeSpy })
 
-    await user.click(screen.getByLabelText('Responsible person'))
-    await user.click(await screen.findByRole('button', { name: '+ Add a new person' }))
+    await user.type(screen.getByLabelText('First name'), 'John')
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    await user.click(screen.getByRole('button', { name: 'Create a new person instead' }))
 
-    expect(screen.getByLabelText('First name')).toHaveValue('')
-    expect(screen.getByLabelText('Last name')).toHaveValue('')
-    expect(screen.getByLabelText('Email')).toHaveValue('')
-    expect(screen.getByLabelText('Phone')).toHaveValue('')
+    expect(screen.getByLabelText('First name')).toHaveValue('John')
   })
 
-  it('editing the create-mode fields updates the draft', async () => {
-    const onChangeSpy = vi.fn()
-    const user = userEvent.setup()
-    renderPersonPicker({
-      initialValue: { mode: 'new', firstName: '', lastName: '', email: '', phone: '' },
-      onChangeSpy,
-    })
+  it('renders the requiredError prop against create mode when nothing has been entered', () => {
+    renderPersonPicker({ requiredError: 'Select or add a responsible person' })
 
-    await user.type(screen.getByLabelText('First name'), 'Jane')
-    await user.type(screen.getByLabelText('Last name'), 'Doe')
-
-    expect(onChangeSpy).toHaveBeenLastCalledWith({ mode: 'new', firstName: 'Jane', lastName: 'Doe', email: '', phone: '' })
-  })
-
-  it('"Back to search" discards the draft, calling onChange(null) and returning to search mode', async () => {
-    const onChangeSpy = vi.fn()
-    const user = userEvent.setup()
-    renderPersonPicker({
-      initialValue: { mode: 'new', firstName: 'John', lastName: 'Smith', email: '', phone: '' },
-      onChangeSpy,
-    })
-
-    expect(screen.getByLabelText('First name')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Back to search' }))
-
-    expect(onChangeSpy).toHaveBeenCalledWith(null)
-    expect(screen.getByLabelText('Responsible person')).toBeInTheDocument()
-    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
+    expect(screen.getByText('Select or add a responsible person')).toBeInTheDocument()
   })
 
   it('renders firstNameError/lastNameError/emailError props against their fields in create mode', () => {
@@ -345,11 +291,18 @@ describe('PersonPicker', () => {
     expect(screen.getByText('Email is required')).toBeInTheDocument()
   })
 
-  it('renders the requiredError prop against the search input when nothing is selected', () => {
-    renderPersonPicker({ requiredError: 'Select or add a responsible person' })
+  it('does not show a "+ Add"-style affordance on a fetch failure while searching, and shows a distinct error instead', async () => {
+    listPersons.mockRejectedValueOnce(new Error('network error'))
+    const user = userEvent.setup()
+    renderPersonPicker()
 
-    const personField = screen.getByLabelText('Responsible person')
-    expect(personField).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByText('Select or add a responsible person')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    await user.click(screen.getByLabelText('Search for an existing person'))
+
+    expect(await screen.findByText("Couldn't load people. Please try again.")).toBeInTheDocument()
+    // "Create a new person instead" is still there — it's unconditional now, not gated on the
+    // fetch outcome — but the point of this test is the error message itself renders correctly
+    // and isn't silently swallowed into "no matches found".
+    expect(screen.getByRole('button', { name: 'Create a new person instead' })).toBeInTheDocument()
   })
 })
