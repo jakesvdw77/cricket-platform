@@ -47,6 +47,12 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
   const [hasFocused, setHasFocused] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  // Suppresses the dropdown immediately after a real selection. Without this, picking an option
+  // never visibly closes the popper: selecting re-syncs `query` to the chosen club's name (see
+  // onInputChange below), which re-triggers the same search and gets the same single match back
+  // — so `clubOptions.length > 0` stays true and `autocompleteOpen` never drops to false. Cleared
+  // the moment the admin actually types again, so searching for a different club still works.
+  const [suppressOpen, setSuppressOpen] = useState(false)
   // Once the admin has explicitly edited the slug directly, stop auto-deriving it from the name
   // — same "suggest until touched" convention as ClubForm's own slugTouched.
   const [slugTouched, setSlugTouched] = useState(false)
@@ -78,7 +84,7 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
   // rendered right below it in normal flow — a real admin can't see or click the button until
   // the popper closes. Closing it explicitly the moment there's nothing to show hands that
   // space to the affordance instead, rather than fighting z-index/positioning to work around it.
-  const autocompleteOpen = hasFocused && (isFetching || clubOptions.length > 0)
+  const autocompleteOpen = hasFocused && !suppressOpen && (isFetching || clubOptions.length > 0)
 
   const handleStartCreate = () => {
     setSlugTouched(false)
@@ -120,13 +126,20 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
             options={clubOptions}
             loading={isFetching}
             value={selectedOption}
-            onFocus={() => setHasFocused(true)}
+            onFocus={() => {
+              setHasFocused(true)
+              setSuppressOpen(false)
+            }}
             onChange={(_event, newValue) => {
+              if (newValue) {
+                setSuppressOpen(true)
+              }
               onChange(newValue ? { mode: 'existing', id: newValue.id, name: newValue.name } : null)
             }}
             inputValue={query}
             onInputChange={(_event, newInputValue, reason) => {
               if (reason === 'input') {
+                setSuppressOpen(false)
                 setQuery(newInputValue)
                 return
               }
