@@ -13,14 +13,18 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.exception.KeycloakProvisioningException;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 
 /**
@@ -42,6 +46,8 @@ class KeycloakProvisioningServiceImplTest {
     private RealmResource realmResource;
     private UsersResource usersResource;
     private UserResource userResource;
+    private ClientsResource clientsResource;
+    private ClientResource clientResource;
 
     private KeycloakProvisioningServiceImpl service;
 
@@ -51,9 +57,12 @@ class KeycloakProvisioningServiceImplTest {
         realmResource = mock(RealmResource.class);
         usersResource = mock(UsersResource.class);
         userResource = mock(UserResource.class);
+        clientsResource = mock(ClientsResource.class);
+        clientResource = mock(ClientResource.class);
 
         when(keycloakAdminClient.realm(REALM)).thenReturn(realmResource);
         when(realmResource.users()).thenReturn(usersResource);
+        when(realmResource.clients()).thenReturn(clientsResource);
 
         service = new KeycloakProvisioningServiceImpl(
                 keycloakAdminClient, REALM, PUBLIC_CLIENT_ID, FRONTEND_BASE_URL);
@@ -150,6 +159,62 @@ class KeycloakProvisioningServiceImplTest {
                 .executeActionsEmail(any(), any(), any());
 
         assertThatThrownBy(() -> service.provisionAccount(person))
+                .isInstanceOf(KeycloakProvisioningException.class)
+                .hasCause(underlying);
+    }
+
+    private ClientRepresentation clientRepresentation(List<String> redirectUris, List<String> webOrigins) {
+        ClientRepresentation client = new ClientRepresentation();
+        client.setId("internal-client-id");
+        client.setClientId(PUBLIC_CLIENT_ID);
+        client.setRedirectUris(new ArrayList<>(redirectUris));
+        client.setWebOrigins(new ArrayList<>(webOrigins));
+        return client;
+    }
+
+    @Test
+    void registerClubRedirectAccessAddsTheNewSlugsRedirectUriAndWebOriginAlongsideWhatAlreadyExists() {
+        ClientRepresentation client = clientRepresentation(
+                List.of("http://localhost:5173/*"), List.of("http://localhost:5173"));
+        when(clientsResource.findByClientId(PUBLIC_CLIENT_ID)).thenReturn(List.of(client));
+        when(clientsResource.get("internal-client-id")).thenReturn(clientResource);
+
+        service.registerClubRedirectAccess("riverside");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ClientRepresentation.class);
+        verify(clientResource).update(captor.capture());
+        ClientRepresentation updated = captor.getValue();
+        assertThat(updated.getRedirectUris())
+                .containsExactlyInAnyOrder("http://localhost:5173/*", "http://riverside.localhost:5173/*");
+        assertThat(updated.getWebOrigins())
+                .containsExactlyInAnyOrder("http://localhost:5173", "http://riverside.localhost:5173");
+    }
+
+    @Test
+    void registerClubRedirectAccessIsIdempotentAndSkipsTheUpdateCallWhenAlreadyRegistered() {
+        ClientRepresentation client = clientRepresentation(
+                List.of("http://riverside.localhost:5173/*"), List.of("http://riverside.localhost:5173"));
+        when(clientsResource.findByClientId(PUBLIC_CLIENT_ID)).thenReturn(List.of(client));
+
+        service.registerClubRedirectAccess("riverside");
+
+        verify(clientsResource, never()).get(any());
+    }
+
+    @Test
+    void registerClubRedirectAccessThrowsWhenNoClientMatchesThePublicClientId() {
+        when(clientsResource.findByClientId(PUBLIC_CLIENT_ID)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.registerClubRedirectAccess("riverside"))
+                .isInstanceOf(KeycloakProvisioningException.class);
+    }
+
+    @Test
+    void registerClubRedirectAccessWrapsAnyThrownExceptionInKeycloakProvisioningException() {
+        RuntimeException underlying = new RuntimeException("Keycloak is unreachable");
+        when(clientsResource.findByClientId(PUBLIC_CLIENT_ID)).thenThrow(underlying);
+
+        assertThatThrownBy(() -> service.registerClubRedirectAccess("riverside"))
                 .isInstanceOf(KeycloakProvisioningException.class)
                 .hasCause(underlying);
     }

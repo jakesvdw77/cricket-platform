@@ -98,7 +98,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Custom domains per club** — beyond the subdomain-only model (`001` ADR-04, Deliberately Deferred).
 - **Per-section branding** — branding stays Club-scoped only until a real club asks otherwise (`001` Deliberately Deferred).
 - **Multi-club subscriptions** — one `Subscription` spanning several `Club`s; deliberately ruled out for now, see the full security-boundary reasoning in `001` Deliberately Deferred.
-- **Per-club redirect URI allowlist** — fallback if `002` ADR-03's wildcard doesn't hold up in production (`002` Deliberately Deferred).
+- ~~**Per-club redirect URI allowlist**~~ — no longer deferred: `002` ADR-03's wildcard was tested and confirmed not to work at all (not a production-only risk), and the fallback is now implemented via `ClubServiceImpl` + `KeycloakProvisioningService.registerClubRedirectAccess` (see `002` ADR-03's update and `016`'s Rollout Notes).
 - **External identity providers** (Google/Microsoft SSO) — no requirement yet (`002` Deliberately Deferred).
 - **Mobile app redirect URIs** — out of scope until a mobile client exists (`002` Deliberately Deferred).
 - **Reassigning a Subscription's responsible person after creation** — `014`'s `PUT /api/v1/platform/subscriptions/{id}` deliberately has no way to do this; if it turns out to be a real recurring need, it should be its own explicit action/endpoint, not a side effect of an unrelated field edit (`014` Non-goals, flagged as a judgment call).

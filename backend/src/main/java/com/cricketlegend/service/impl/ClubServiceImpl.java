@@ -7,14 +7,18 @@ import com.cricketlegend.dto.CreateClubRequest;
 import com.cricketlegend.dto.UpdateClubRequest;
 import com.cricketlegend.exception.DuplicateSlugException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ReservedSlugException;
 import com.cricketlegend.mapper.ClubMapper;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.service.ClubService;
+import com.cricketlegend.service.KeycloakProvisioningService;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,9 +31,15 @@ import org.springframework.stereotype.Service;
  * (case-insensitive) are enforced here; create always lands ACTIVE (bypassing Club's own
  * @PrePersist default of ONBOARDING, which stays unchanged for any other future code path); and
  * suspend/reactivate are a one-way-per-call ACTIVE <-> SUSPENDED transition pair.
+ *
+ * <p>Since docs/specs/016-keycloak-account-provisioning.md's ADR-03 follow-up: create and update
+ * (on a slug rename) also register the club's own subdomain as a trusted Keycloak redirect
+ * URI/web origin, best-effort — see {@link #registerKeycloakRedirectAccessIfPossible}.
  */
 @Service
 public class ClubServiceImpl implements ClubService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClubServiceImpl.class);
 
     /**
      * docs/specs/002-realm-subdomain-auth.md ADR-04's reserved subdomain word list. Lives here for
@@ -41,10 +51,15 @@ public class ClubServiceImpl implements ClubService {
 
     private final ClubRepository clubRepository;
     private final ClubMapper clubMapper;
+    private final KeycloakProvisioningService keycloakProvisioningService;
 
-    public ClubServiceImpl(ClubRepository clubRepository, ClubMapper clubMapper) {
+    public ClubServiceImpl(
+            ClubRepository clubRepository,
+            ClubMapper clubMapper,
+            KeycloakProvisioningService keycloakProvisioningService) {
         this.clubRepository = clubRepository;
         this.clubMapper = clubMapper;
+        this.keycloakProvisioningService = keycloakProvisioningService;
     }
 
     @Override
@@ -55,8 +70,10 @@ public class ClubServiceImpl implements ClubService {
         }
 
         Club club = Club.builder().name(request.name()).slug(request.slug()).status(ClubStatus.ACTIVE).build();
+        club = clubRepository.save(club);
+        registerKeycloakRedirectAccessIfPossible(club.getSlug());
 
-        return clubMapper.toDto(clubRepository.save(club));
+        return clubMapper.toDto(club);
     }
 
     @Override
@@ -88,8 +105,10 @@ public class ClubServiceImpl implements ClubService {
 
         club.setName(request.name());
         club.setSlug(request.slug());
+        club = clubRepository.save(club);
+        registerKeycloakRedirectAccessIfPossible(club.getSlug());
 
-        return clubMapper.toDto(clubRepository.save(club));
+        return clubMapper.toDto(club);
     }
 
     @Override
@@ -119,6 +138,22 @@ public class ClubServiceImpl implements ClubService {
     private void validateSlug(String slug) {
         if (RESERVED_SLUGS.contains(slug.toLowerCase(Locale.ROOT))) {
             throw new ReservedSlugException("Club slug is reserved: " + slug);
+        }
+    }
+
+    // Best-effort, mirroring SubscriptionServiceImpl's own Keycloak-provisioning judgment call
+    // (docs/specs/016-keycloak-account-provisioning.md) — a Keycloak outage must never fail Club
+    // creation or a slug rename. Registers this slug's subdomain as a trusted OIDC redirect URI
+    // and CORS web origin on the platform's public SPA client; see
+    // KeycloakProvisioningService.registerClubRedirectAccess's own Javadoc for why a wildcard
+    // registration doesn't work here instead. Called on both create and update (a slug rename
+    // needs the new slug registered too) — the old slug's now-orphaned entry is deliberately left
+    // in place rather than removed, since it grants no access beyond the platform's own domain.
+    private void registerKeycloakRedirectAccessIfPossible(String slug) {
+        try {
+            keycloakProvisioningService.registerClubRedirectAccess(slug);
+        } catch (KeycloakProvisioningException e) {
+            log.error("Keycloak redirect-access registration failed for club slug {}: {}", slug, e.getMessage(), e);
         }
     }
 }
