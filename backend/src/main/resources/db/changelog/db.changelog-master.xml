@@ -14,5 +14,7 @@
     <include file="db/changelog/v1/007-add-subscription-responsible-contact.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/008-restructure-person-identity.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/009-subscription-responsible-person.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/010-add-person-status.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/011-add-role-assignment.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

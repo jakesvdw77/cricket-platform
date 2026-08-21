@@ -19,6 +19,14 @@ public interface PersonRepository extends JpaRepository<Person, UUID> {
     Optional<Person> findByEmailIgnoreCase(String email);
 
     /**
+     * The lookup {@link com.cricketlegend.config.AccessService#canAdministerClub} relies on,
+     * matching docs/specs/002-realm-subdomain-auth.md's original {@code KeycloakJwtConverter}
+     * sketch — resolves the JWT {@code sub} claim to a {@link Person}. Per
+     * docs/specs/015-person-status-and-role-assignment.md.
+     */
+    Optional<Person> findByKeycloakUserId(String keycloakUserId);
+
+    /**
      * Case-insensitive substring match against first name, last name, or email, for
      * {@code GET /api/v1/platform/persons} (backs {@code PersonPicker}'s search). Mirrors
      * {@link ClubRepository#search}'s exact shape. A null or blank search returns every Person.

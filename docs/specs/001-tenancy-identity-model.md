@@ -218,20 +218,22 @@ Writing `ClubBranding` reuses the scope check above: a `RoleAssignment` with `sc
 
 | Entity | Scope | Key fields | Purpose |
 |---|---|---|---|
-| Person | Global | id, first_name, last_name, email, phone?, keycloak_user_id? | One row per human, forever |
+| Person | Global | id, first_name, last_name, email, phone?, keycloak_user_id?, status | One row per human, forever |
 | Club | Root tenant | id, name, slug | Billing/admin boundary, isolated by RLS; slug drives subdomain resolution |
 | Section | Club | id, club_id, parent_section_id?, name | Self-referential age-group / grade tree |
 | Team | Club | id, club_id, section_id, name | Where a squad currently sits in the tree |
 | Season | Club | id, club_id, label, start_date, end_date | Scopes registrations and league affiliation |
 | ClubMembership | Club ↔ Person | person_id, club_id, valid_from, valid_to? | One active row per person (ADR-01) |
 | TeamRegistration | Team ↔ Person ↔ Season | person_id, team_id, season_id, role | The row that changes every time a player moves group |
-| RoleAssignment | Person | person_id, role, scope_type, scope_id? | One mechanism for club/section/team admin |
+| RoleAssignment | Person | id, person_id, role, scope_type, scope_id? | One mechanism for club/section/team admin |
 | League | Global | id, name | Cross-club stat/fixture aggregation target |
 | LeagueAffiliation | League ↔ Team ↔ Season | league_id, team_id, season_id | Explicit per-season opt-in, the only club-crossing join |
 | Subscription | Club or Section | id, owner_type, owner_id, plan, status | Billing unit resolution (ADR-03) |
 | ClubBranding | Club (1:1) | club_id, display_name, logo_url, favicon_url, primary_color, updated_by | The fixed token set a club's admins can self-edit (ADR-05, ADR-06) |
 
-*`Person`'s row above reflects `014-subscription-responsible-contact.md`, which grew it from a bare `id`/`full_name`/`keycloak_user_id?` stub into this shape — `full_name` split into `first_name`/`last_name`, `email` added — because that spec needed `Person` to be a real, eventually login-capable identity for a Subscription's responsible party (already-confirmed to log in later via a future self-serve signup flow), not speculative scope. `phone?` was added alongside for the same reason, optional. `date_of_birth`, listed in this row's original draft, was never actually built in code and still isn't added by `014` either — left off as unneeded scope for that spec, not ruled out for good; add it if/when a real consumer needs it.*
+*`Person`'s row above reflects `014-subscription-responsible-contact.md`, which grew it from a bare `id`/`full_name`/`keycloak_user_id?` stub into this shape — `full_name` split into `first_name`/`last_name`, `email` added — because that spec needed `Person` to be a real, eventually login-capable identity for a Subscription's responsible party (already-confirmed to log in later via a future self-serve signup flow), not speculative scope. `phone?` was added alongside for the same reason, optional. `date_of_birth`, listed in this row's original draft, was never actually built in code and still isn't added by `014` either — left off as unneeded scope for that spec, not ruled out for good; add it if/when a real consumer needs it. `status` was added by `015-person-status-and-role-assignment.md` — a `PENDING | ACTIVE | SUSPENDED` lifecycle field; see `015` for why every `Person` resolved by `014`'s own `PersonService.findOrCreatePerson` defaults to `ACTIVE`, and why `PENDING` is reserved rather than built.*
+
+*`RoleAssignment`'s row above reflects `015-person-status-and-role-assignment.md`, which turned this originally named-but-unbuilt concept into a real entity/table for the first time — `id` (UUID PK) was added as the ordinary implementation-level primary key every other entity in this codebase already carries; the `person_id`/`role`/`scope_type`/`scope_id?` shape itself is exactly this row's original design, unchanged. `role` is a fixed, code-level enum (`CLUB_ADMIN`, `MANAGER`, `PLAYER`) rather than a free string — `015`'s own Non-goals is explicit that this isn't a role-hierarchy/permission-matrix system, just named flat roles for known, real consumers. `scope_type` is likewise a fixed enum matching this file's four scope levels (`PLATFORM`, `CLUB`, `SECTION`, `TEAM`), but as of `015`, only `CLUB` is actually created, validated, or resolved by anything built — `SECTION`/`TEAM` remain blocked on those entities not existing in code yet, the same gap `009-subscriptions.md` already identified for `Subscription.owner_type`. A `Person` can and does hold multiple `RoleAssignment` rows simultaneously (e.g. `PLAYER` in one Section and `CLUB_ADMIN` for the whole Club) — this was always this row's design (one row per grant, no cardinality limit); `015` is the first spec to actually build and test that, not the spec that decided it.*
 
 ## White-Labelling
 
