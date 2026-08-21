@@ -1,6 +1,7 @@
 import api from './axiosConfig'
 import type { ClubSummary } from './leadApi'
 import type { Page } from './productApi'
+import type { Person, ResponsiblePersonInput } from './personApi'
 
 // Re-exported for existing consumers that import Page from this file (same reasoning as the
 // ClubSummary re-export below) — not redefined here, see the Page<T> note further down.
@@ -29,6 +30,9 @@ export interface Subscription {
   status: SubscriptionStatus
   startDate: string
   endDate: string | null
+  // Always populated post-014-migration — a real Person, never null, for a Subscription created
+  // before or after this spec shipped. See docs/specs/014-subscription-responsible-contact.md.
+  responsiblePerson: Person
   createdAt: string
   updatedAt: string
   updatedBy: string | null
@@ -43,10 +47,16 @@ export interface SubscriptionPayload {
   productId: string
   startDate?: string | null
   endDate?: string | null
+  // Required, matching CreateSubscriptionRequest's @NotNull @Valid — every new Subscription must
+  // record who's accountable for it. The backend resolves/dedupes this by email regardless of
+  // whether the UI's PersonPicker was searching or creating ("link, don't overwrite").
+  responsiblePerson: ResponsiblePersonInput
 }
 
-// Update shape — mirrors UpdateSubscriptionRequest. No ownerId/ownerType: the owning Club
-// can't change after creation, only the Product/dates can.
+// Update shape — mirrors UpdateSubscriptionRequest. No ownerId/ownerType: the owning Club can't
+// change after creation, only the Product/dates can. No person-related field at all — who's
+// responsible for a Subscription cannot be changed through this endpoint, a deliberate judgment
+// call (see docs/specs/014-subscription-responsible-contact.md's Data Model Changes).
 export interface UpdateSubscriptionPayload {
   productId: string
   startDate?: string | null

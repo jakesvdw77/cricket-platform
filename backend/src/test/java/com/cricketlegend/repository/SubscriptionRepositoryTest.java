@@ -7,6 +7,7 @@ import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.BillingInterval;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
+import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
@@ -48,6 +49,9 @@ class SubscriptionRepositoryTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -177,11 +181,22 @@ class SubscriptionRepositoryTest {
     }
 
     private Subscription newSubscription(UUID ownerId, UUID productId, SubscriptionStatus status) {
+        // responsible_person_id is NOT NULL (and FK-constrained) since
+        // 009-subscription-responsible-person.sql — every Subscription needs a real, persisted
+        // Person to point at, per docs/specs/014-subscription-responsible-contact.md.
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jane")
+                .lastName("Doe")
+                .email("jane.doe+" + UUID.randomUUID() + "@example.com")
+                .phone("+27821234567")
+                .build());
+
         Subscription subscription = new Subscription();
         subscription.setOwnerType(SubscriptionOwnerType.CLUB);
         subscription.setOwnerId(ownerId);
         subscription.setProductId(productId);
         subscription.setStatus(status);
+        subscription.setResponsiblePersonId(person.getId());
         return subscription;
     }
 }

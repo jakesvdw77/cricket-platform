@@ -1,11 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * E2E golden path for docs/specs/009-subscriptions.md: log in as the seeded platform_admin test
- * user, navigate Configuration -> Subscriptions, create a Subscription linking a seeded Club to a
- * seeded ACTIVE Product, confirm it appears in the list, open it and change it to a different
- * Product, cancel it, confirm it stays visible with a Cancelled status badge, then re-open it and
- * confirm it renders the disabled-Club-picker edit state.
+ * E2E golden path for docs/specs/009-subscriptions.md (extended by
+ * docs/specs/011-inline-club-creation-in-subscription-form.md's inline-Club creation and
+ * docs/specs/014-subscription-responsible-contact.md's inline-Person creation): log in as the
+ * seeded platform_admin test user, navigate Configuration -> Subscriptions, create a Subscription
+ * linking a seeded Club to a seeded ACTIVE Product, confirm it appears in the list, open it and
+ * change it to a different Product, cancel it, confirm it stays visible with a Cancelled status
+ * badge, then re-open it and confirm it renders the disabled-Club-picker edit state. A dedicated
+ * third test covers 014's own golden path: adding a brand-new responsible person inline via
+ * PersonPicker (search finds no match, "+ Add" reveals the create-mode fields), confirming the
+ * created Subscription's edit view shows that person as responsible, then a second Subscription
+ * reusing that same person's email confirms PersonPicker surfaces them as an existing, selectable
+ * match rather than offering to create a duplicate.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no
  * mocking) — start all of these before running:
@@ -53,6 +60,23 @@ async function loginBySelectingClub(page: import('@playwright/test').Page, clubN
 
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByText('You are logged in as an admin')).toBeVisible();
+}
+
+// docs/specs/014-subscription-responsible-contact.md: the Subscription form's create mode always
+// requires a resolved responsible person (existing selection or complete new draft) before
+// submit — every "Add Subscription" flow in this file needs to drive PersonPicker one way or the
+// other. Searches with `query` first (no match expected), then adds the four fields inline via
+// the "+ Add ... as a new person" affordance.
+async function addNewResponsiblePersonInline(
+  page: import('@playwright/test').Page,
+  { query, firstName, lastName, email, phone }: { query: string; firstName: string; lastName: string; email: string; phone: string },
+) {
+  await page.getByLabel('Responsible person').fill(query);
+  await page.getByRole('button', { name: `+ Add "${query}" as a new person` }).click();
+  await page.getByLabel('First name').fill(firstName);
+  await page.getByLabel('Last name').fill(lastName);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Phone').fill(phone);
 }
 
 test.describe('Admin Subscriptions golden path (009)', () => {
@@ -106,6 +130,20 @@ test.describe('Admin Subscriptions golden path (009)', () => {
     await page.getByText(CLUB_NAME, { exact: true }).click();
     await page.getByLabel('Product').click();
     await page.getByRole('option', { name: new RegExp(productAName) }).click();
+
+    // 014: a responsible person (existing selection or complete new draft) is required before
+    // this form can submit — added inline here since this test's own focus is the
+    // create/view/change/cancel lifecycle, not PersonPicker itself (see the dedicated 014 test
+    // below for that).
+    const responsibleEmail = `e2e.responsible.${uniqueSuffix}@example.com`;
+    await addNewResponsiblePersonInline(page, {
+      query: responsibleEmail,
+      firstName: 'Riley',
+      lastName: 'Responsible',
+      email: responsibleEmail,
+      phone: '0215550100',
+    });
+
     await page.getByRole('button', { name: 'Create subscription' }).click();
 
     // Confirm it in the list.
@@ -201,6 +239,18 @@ test.describe('Admin Subscriptions golden path (009)', () => {
 
     await page.getByLabel('Product').click();
     await page.getByRole('option', { name: new RegExp(productName) }).click();
+
+    // 014: a responsible person is required before this form can submit — see
+    // addNewResponsiblePersonInline's own comment.
+    const responsibleEmail = `e2e.responsible.inline-club.${uniqueSuffix}@example.com`;
+    await addNewResponsiblePersonInline(page, {
+      query: responsibleEmail,
+      firstName: 'Riley',
+      lastName: 'Responsible',
+      email: responsibleEmail,
+      phone: '0215550100',
+    });
+
     await page.getByRole('button', { name: 'Create subscription' }).click();
 
     // The new Subscription appears in the list against the newly-created Club.
@@ -217,5 +267,119 @@ test.describe('Admin Subscriptions golden path (009)', () => {
     const newClubCard = page.locator('.MuiCard-root').filter({ hasText: newClubName });
     await expect(newClubCard).toBeVisible();
     await expect(newClubCard.getByText('Active')).toBeVisible();
+  });
+
+  test('platform admin adds a new responsible person inline via PersonPicker (014), then a second Subscription reuses that person as an existing match rather than offering a duplicate', async ({
+    page,
+  }) => {
+    const uniqueSuffix = Date.now();
+    const productCode = `E2E_SUB_PERSON_${uniqueSuffix}`;
+    const productName = `E2E Sub Person ${uniqueSuffix}`;
+    const clubOneName = `E2E Kingsmead CC ${uniqueSuffix}`;
+    const clubOneSlug = `e2e-kingsmead-cc-${uniqueSuffix}`;
+    const clubTwoName = `E2E Newlands CC ${uniqueSuffix}`;
+    const clubTwoSlug = `e2e-newlands-cc-${uniqueSuffix}`;
+    const responsibleEmail = `e2e.responsible.person.${uniqueSuffix}@example.com`;
+    const responsibleLabel = `Riley Responsible — ${responsibleEmail}`;
+
+    await loginBySelectingClub(page, CLUB_NAME);
+
+    // Seed one ACTIVE Product — fixture data only, already covered end-to-end by 008's own spec.
+    await page.getByRole('link', { name: 'Configuration' }).click();
+    await page.getByRole('link', { name: /^Products/ }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    await page.getByRole('button', { name: 'Add Product' }).click();
+    await page.getByLabel('Code').fill(productCode);
+    await page.getByLabel('Name').fill(productName);
+    await page.getByRole('button', { name: 'Create product' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    const productCard = page.locator('.MuiCard-root').filter({ hasText: productName });
+    await productCard.getByRole('link', { name: 'Edit' }).click();
+    await page.getByLabel('Publish (set Active)').click();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/products$/);
+
+    // First Subscription: a brand-new Club (inline, 011) and a brand-new responsible person
+    // (inline, 014) — search for the person's email finds no match, so the "+ Add" affordance is
+    // used, not a selection from the results.
+    await page.getByRole('link', { name: 'Configuration' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration$/);
+    await page.getByRole('link', { name: /^Subscriptions/ }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+
+    await page.getByRole('button', { name: 'Add Subscription' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions\/new$/);
+
+    await page.getByLabel('Club').fill(clubOneName);
+    await page.getByRole('button', { name: `+ Add "${clubOneName}" as a new club` }).click();
+    await expect(page.getByLabel('Name')).toHaveValue(clubOneName);
+    await page.getByLabel('Slug').fill(clubOneSlug);
+
+    await page.getByLabel('Product').click();
+    await page.getByRole('option', { name: new RegExp(productName) }).click();
+
+    await page.getByLabel('Responsible person').fill(responsibleEmail);
+    const addPersonAffordance = page.getByRole('button', { name: `+ Add "${responsibleEmail}" as a new person` });
+    await expect(addPersonAffordance).toBeVisible();
+    await addPersonAffordance.click();
+    await page.getByLabel('First name').fill('Riley');
+    await page.getByLabel('Last name').fill('Responsible');
+    // Email pre-filled from the search query since it looked like one — confirm, then fill Phone.
+    await expect(page.getByLabel('Email')).toHaveValue(responsibleEmail);
+    await page.getByLabel('Phone').fill('0215550100');
+
+    await page.getByRole('button', { name: 'Create subscription' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+
+    // The created Subscription's edit view shows the new person as responsible.
+    const firstSubscriptionCard = page.locator('.MuiCard-root').filter({ hasText: clubOneName });
+    await expect(firstSubscriptionCard).toBeVisible();
+    await firstSubscriptionCard.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions\/.+\/edit$/);
+    await expect(page.getByLabel('Responsible person')).toBeDisabled();
+    await expect(page.getByLabel('Responsible person')).toHaveValue(responsibleLabel);
+
+    // Second Subscription, a different (inline-created) Club, reusing the same person's email —
+    // searched and selected this time, confirming PersonPicker surfaces them as an existing match
+    // rather than offering to create a duplicate.
+    await page.getByRole('link', { name: 'Configuration' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration$/);
+    await page.getByRole('link', { name: /^Subscriptions/ }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+
+    await page.getByRole('button', { name: 'Add Subscription' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions\/new$/);
+
+    await page.getByLabel('Club').fill(clubTwoName);
+    await page.getByRole('button', { name: `+ Add "${clubTwoName}" as a new club` }).click();
+    await expect(page.getByLabel('Name')).toHaveValue(clubTwoName);
+    await page.getByLabel('Slug').fill(clubTwoSlug);
+
+    await page.getByLabel('Product').click();
+    await page.getByRole('option', { name: new RegExp(productName) }).click();
+
+    await page.getByLabel('Responsible person').fill(responsibleEmail);
+    const existingPersonOption = page.getByRole('option', { name: responsibleLabel });
+    await expect(existingPersonOption).toBeVisible();
+    // No "+ Add" affordance offered — the exact match is presented as a selectable existing
+    // person instead of a duplicate-create prompt.
+    await expect(page.getByRole('button', { name: `+ Add "${responsibleEmail}" as a new person` })).toHaveCount(0);
+    await existingPersonOption.click();
+
+    // Selecting an existing person renders their fields read-only/disabled, never editable —
+    // the UI's own reinforcement of the backend's "link, don't overwrite" rule.
+    await expect(page.getByLabel('First name')).toHaveValue('Riley');
+    await expect(page.getByLabel('First name')).toBeDisabled();
+
+    await page.getByRole('button', { name: 'Create subscription' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions$/);
+
+    const secondSubscriptionCard = page.locator('.MuiCard-root').filter({ hasText: clubTwoName });
+    await expect(secondSubscriptionCard).toBeVisible();
+    await secondSubscriptionCard.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/admin\/configuration\/subscriptions\/.+\/edit$/);
+    await expect(page.getByLabel('Responsible person')).toHaveValue(responsibleLabel);
   });
 });
