@@ -59,6 +59,13 @@ public class Subscription {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    // Plain FK column, no @ManyToOne — matches this codebase's existing convention
+    // (ownerId/productId are the same shape). Required 1:1 to a real Person, resolved via
+    // PersonService.findOrCreatePerson before a Subscription is ever saved — see
+    // docs/specs/014-subscription-responsible-contact.md.
+    @Column(name = "responsible_person_id", nullable = false)
+    private UUID responsiblePersonId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

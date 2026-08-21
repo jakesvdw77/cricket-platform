@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Test-only fixture for PersonSubscriptionMigrationBackfillTest — mirrors
+         db/changelog/db.changelog-master.xml's own <include> entries verbatim, but stops at
+         007-add-subscription-responsible-contact.sql, one changeset short of
+         008-restructure-person-identity.sql/009-subscription-responsible-person.sql (the two
+         changesets docs/specs/014-subscription-responsible-contact.md adds and this test exists to
+         exercise). Applying this first lets the test seed raw responsible_contact_* data exactly
+         as it would exist in an already-running database on the eve of 008/009 landing, something
+         no other Testcontainers test in this repo needs since all of them boot with the schema
+         already fully migrated by the time @SpringBootTest's context comes up. The include file
+         paths below are copied character-for-character from the real master changelog so that
+         Liquibase's DATABASECHANGELOG bookkeeping (keyed by filename) lines up when the test then
+         re-points Liquibase at the real db.changelog-master.xml resource for the second pass —
+         Liquibase recognizes 001-007 as already applied and only executes 008/009. -->
+    <include file="db/changelog/v1/001-prerequisite-club-person.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/002-add-lead.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/003-add-product.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/004-add-subscription.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/005-add-club-audit-columns.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/006-add-club-profile.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/007-add-subscription-responsible-contact.sql" relativeToChangelogFile="false"/>
+
+</databaseChangeLog>

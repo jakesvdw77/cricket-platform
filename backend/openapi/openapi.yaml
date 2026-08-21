@@ -385,6 +385,29 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubProfileDto"
+  /api/v1/platform/persons:
+    get:
+      tags:
+      - person-controller
+      operationId: list
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagePersonDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -804,6 +827,20 @@ components:
           type: string
         code:
           type: string
+    PersonDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
     SubscriptionDto:
       type: object
       properties:
@@ -833,6 +870,8 @@ components:
         endDate:
           type: string
           format: date
+        responsiblePerson:
+          $ref: "#/components/schemas/PersonDto"
         createdAt:
           type: string
           format: date-time
@@ -862,10 +901,28 @@ components:
         endDate:
           type: string
           format: date
+        responsiblePerson:
+          $ref: "#/components/schemas/ResponsiblePersonRequest"
       required:
       - ownerId
       - ownerType
       - productId
+      - responsiblePerson
+    ResponsiblePersonRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
     UpdateSubscriptionRequest:
       type: object
       properties:
@@ -1032,6 +1089,38 @@ components:
           type: boolean
         empty:
           type: boolean
+    PagePersonDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
     PageableObject:
       type: object
       properties:
@@ -1074,6 +1163,22 @@ components:
           type: string
         postalCode:
           type: string
+    ContactDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
+      - phone
     UpdateClubProfileRequest:
       type: object
       properties:

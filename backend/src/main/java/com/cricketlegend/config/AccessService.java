@@ -1,32 +1,58 @@
 package com.cricketlegend.config;
 
+import com.cricketlegend.domain.RoleAssignmentRole;
+import com.cricketlegend.domain.ScopeType;
+import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.RoleAssignmentRepository;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 /**
- * First use of {@code docs/standards/backend.md}'s documented future {@code @access.canAdminister(...)}
- * convention — see docs/plans/012-club-profile.md's Flag #2. Nothing in {@link
- * com.cricketlegend.domain.Club}'s tenancy model has {@code Section}/{@code Team}/
- * {@code ClubMembership}/{@code RoleAssignment} yet (docs/specs/001-tenancy-identity-model.md,
- * still not built — see docs/roadmap.md's "Blocked on the full tenancy model" section), so
- * {@code clubId} is currently unused: this just re-checks the flat {@code platform_admin}
- * authority everyone who reaches a {@code @PreAuthorize}-guarded method already carries, having
- * passed the {@code /api/v1/platform/**} URL gate first. The call-site shape
- * ({@code @PreAuthorize("@access.canAdministerClub(authentication, #id)")}) already matches what
- * real scoped resolution will look like, so swapping in {@code RoleAssignment} walking later only
- * touches this method's body.
+ * Per docs/specs/015-person-status-and-role-assignment.md: the flat {@code platform_admin} check
+ * this method has carried since docs/specs/012-club-profile.md stays exactly as-is — it's the
+ * vendor/system-operator persona, still checked directly against a Keycloak realm role, still a
+ * superset/override of everything else this method checks. What's new is the second branch: a real
+ * {@code RoleAssignment} lookup, resolving the caller's {@link com.cricketlegend.domain.Person} by
+ * the JWT's {@code sub} claim (via {@code Authentication.getName()}, the same JWT-subject-as-name
+ * precedent docs/specs/013-centralized-logging.md's {@code RequestCorrelationFilter} already
+ * relies on) and checking for a {@code CLUB_ADMIN} grant scoped to this {@code clubId}.
+ *
+ * <p><b>Known, honest limitation as of this spec:</b> {@link com.cricketlegend.domain.Person#
+ * getKeycloakUserId()} is still nullable and unset everywhere in this codebase (deliberately, per
+ * docs/specs/014-subscription-responsible-contact.md's own Non-goals) — no Person row carries one
+ * yet. The RoleAssignment branch below is correct but effectively unreachable in production until
+ * the next spec (Keycloak account provisioning) starts setting that column on first login. Until
+ * then, {@code platform_admin} remains what's actually load-bearing for every existing
+ * {@code @PreAuthorize}-guarded call site, exactly as it was before this spec.
  */
 @Component("access")
 public class AccessService {
+
+    private final PersonRepository personRepository;
+    private final RoleAssignmentRepository roleAssignmentRepository;
+
+    public AccessService(
+            PersonRepository personRepository, RoleAssignmentRepository roleAssignmentRepository) {
+        this.personRepository = personRepository;
+        this.roleAssignmentRepository = roleAssignmentRepository;
+    }
 
     public boolean canAdministerClub(Authentication authentication, UUID clubId) {
         if (authentication == null) {
             return false;
         }
-        return authentication.getAuthorities().stream()
+        boolean isPlatformAdmin = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch("ROLE_platform_admin"::equals);
+        if (isPlatformAdmin) {
+            return true; // superset/override — platform_admin is untouched by this spec
+        }
+        return personRepository
+                .findByKeycloakUserId(authentication.getName())
+                .map(person -> roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                        person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, clubId))
+                .orElse(false);
     }
 }

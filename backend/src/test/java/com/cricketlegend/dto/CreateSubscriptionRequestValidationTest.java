@@ -16,10 +16,12 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for CreateSubscriptionRequest's bean validation annotations — per
- * docs/specs/009-subscriptions.md's Data Model table. ownerType is validated to be CLUB (not
- * merely non-null) in SubscriptionServiceImpl instead — see SubscriptionServiceImplTest — so this
- * test only exercises the annotations actually on the record (@NotNull on
- * ownerType/ownerId/productId; startDate/endDate are un-annotated, optional). Plain
+ * docs/specs/009-subscriptions.md's Data Model table and
+ * docs/specs/014-subscription-responsible-contact.md's added {@code responsiblePerson}.
+ * ownerType is validated to be CLUB (not merely non-null) in SubscriptionServiceImpl instead —
+ * see SubscriptionServiceImplTest — so this test only exercises the annotations actually on the
+ * record (@NotNull on ownerType/ownerId/productId/responsiblePerson, @Valid cascading into
+ * ResponsiblePersonRequest; startDate/endDate are un-annotated, optional). Plain
  * jakarta.validation, no Spring context — fast, pure unit tier per docs/standards/testing.md.
  */
 class CreateSubscriptionRequestValidationTest {
@@ -38,10 +40,14 @@ class CreateSubscriptionRequestValidationTest {
         validatorFactory.close();
     }
 
+    private ResponsiblePersonRequest validResponsiblePersonRequest() {
+        return new ResponsiblePersonRequest("Jane", "Doe", "jane.doe@example.com", "+27821234567");
+    }
+
     private CreateSubscriptionRequest fullyValidRequest() {
         return new CreateSubscriptionRequest(
                 SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(),
-                LocalDate.now().plusYears(1));
+                LocalDate.now().plusYears(1), validResponsiblePersonRequest());
     }
 
     @Test
@@ -53,9 +59,9 @@ class CreateSubscriptionRequestValidationTest {
 
     @Test
     void validRequestWithOnlyRequiredFieldsHasNoViolations() {
-        CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), null,
-                        null);
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), null, null,
+                validResponsiblePersonRequest());
 
         Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
 
@@ -64,8 +70,8 @@ class CreateSubscriptionRequestValidationTest {
 
     @Test
     void missingOwnerTypeProducesViolation() {
-        CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(null, UUID.randomUUID(), UUID.randomUUID(), null, null);
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                null, UUID.randomUUID(), UUID.randomUUID(), null, null, validResponsiblePersonRequest());
 
         Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
 
@@ -74,8 +80,9 @@ class CreateSubscriptionRequestValidationTest {
 
     @Test
     void missingOwnerIdProducesViolation() {
-        CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, null, UUID.randomUUID(), null, null);
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, null, UUID.randomUUID(), null, null,
+                validResponsiblePersonRequest());
 
         Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
 
@@ -84,8 +91,9 @@ class CreateSubscriptionRequestValidationTest {
 
     @Test
     void missingProductIdProducesViolation() {
-        CreateSubscriptionRequest request =
-                new CreateSubscriptionRequest(SubscriptionOwnerType.CLUB, UUID.randomUUID(), null, null, null);
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, UUID.randomUUID(), null, null, null,
+                validResponsiblePersonRequest());
 
         Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
 
@@ -99,10 +107,49 @@ class CreateSubscriptionRequestValidationTest {
         // (SubscriptionServiceImplTest), not something @NotNull or any other bean-validation
         // annotation on this record enforces.
         CreateSubscriptionRequest request = new CreateSubscriptionRequest(
-                SubscriptionOwnerType.SECTION, UUID.randomUUID(), UUID.randomUUID(), null, null);
+                SubscriptionOwnerType.SECTION, UUID.randomUUID(), UUID.randomUUID(), null, null,
+                validResponsiblePersonRequest());
 
         Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
 
         assertThat(violations).isEmpty();
+    }
+
+    @Test
+    void missingResponsiblePersonProducesViolation() {
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), null, null, null);
+
+        Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
+
+        assertThat(violations).extracting(v -> v.getPropertyPath().toString()).contains("responsiblePerson");
+    }
+
+    @Test
+    void blankResponsiblePersonSubFieldProducesViolationCascadedFromResponsiblePersonRequest() {
+        ResponsiblePersonRequest blankFirstName =
+                new ResponsiblePersonRequest("", "Doe", "jane.doe@example.com", "+27821234567");
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), null, null, blankFirstName);
+
+        Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("responsiblePerson.firstName");
+    }
+
+    @Test
+    void malformedResponsiblePersonEmailProducesViolationCascadedFromResponsiblePersonRequest() {
+        ResponsiblePersonRequest malformedEmail =
+                new ResponsiblePersonRequest("Jane", "Doe", "not-an-email", "+27821234567");
+        CreateSubscriptionRequest request = new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, UUID.randomUUID(), UUID.randomUUID(), null, null, malformedEmail);
+
+        Set<ConstraintViolation<CreateSubscriptionRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("responsiblePerson.email");
     }
 }

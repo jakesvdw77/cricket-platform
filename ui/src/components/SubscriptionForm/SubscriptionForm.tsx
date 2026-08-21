@@ -5,8 +5,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Input } from '../Input'
 import { ClubPicker } from '../ClubPicker'
 import type { ClubPickerValue } from '../ClubPicker'
+import { PersonPicker } from '../PersonPicker'
+import type { PersonPickerValue } from '../PersonPicker'
 import { listProducts } from '../../api/productApi'
 import type { Product } from '../../api/productApi'
+import type { Person } from '../../api/personApi'
 import { validateSlug } from '../../utils/slug'
 
 // Only the fields this picker actually renders — lets the synthetic "current, possibly retired
@@ -25,11 +28,19 @@ export const SUBSCRIPTION_FORM_ID = 'subscription-form'
 // docs/plans/011-inline-club-creation-in-subscription-form.md item 4.
 export type SubscriptionClubSelection = Exclude<ClubPickerValue, null>
 
+// Create-mode-only, non-nullable by validation — mirrors how `club` excludes `null` from
+// ClubPickerValue's union above. Edit mode's submitted values have no person-related field at
+// all, since PUT /subscriptions/{id} can never touch who's responsible (see plan Flag 8).
+export type SubscriptionResponsiblePersonSelection = Exclude<PersonPickerValue, null>
+
 export interface SubscriptionFormValues {
   club: SubscriptionClubSelection
   productId: string
   startDate: string | null
   endDate: string | null
+  // Create mode only — validate() guarantees this is always a resolved selection (existing or a
+  // complete new draft) by the time onSubmit fires. Absent/unused in edit mode.
+  responsiblePerson: SubscriptionResponsiblePersonSelection
 }
 
 export interface SubscriptionFormInitialValues {
@@ -45,6 +56,10 @@ export interface SubscriptionFormInitialValues {
   productLabel: string
   startDate: string | null
   endDate: string | null
+  // Always present post-014-migration — a real Person, never null, for a Subscription created
+  // before or after this spec shipped. Rendered as a disabled display only; PUT can never touch
+  // it (see docs/specs/014-subscription-responsible-contact.md's Data Model Changes).
+  responsiblePerson?: Person
 }
 
 export interface SubscriptionFormProps {
@@ -67,11 +82,28 @@ interface FormState {
   productId: string
   startDate: string
   endDate: string
+  // Create mode only — PersonPicker's own controlled value. Stays null until the admin picks an
+  // existing person or starts an inline draft.
+  responsiblePersonSelection: PersonPickerValue
 }
 
 type FormErrors = Partial<
-  Record<'club' | 'clubName' | 'clubSlug' | 'productId' | 'startDate' | 'endDate', string>
+  Record<
+    | 'club'
+    | 'clubName'
+    | 'clubSlug'
+    | 'productId'
+    | 'startDate'
+    | 'endDate'
+    | 'responsiblePerson'
+    | 'responsiblePersonFirstName'
+    | 'responsiblePersonLastName'
+    | 'responsiblePersonEmail',
+    string
+  >
 >
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Local date, not UTC — a start date is a calendar-day concept from the admin's own
 // perspective, not a timestamp; toISOString() would shift near midnight in some timezones.
@@ -92,6 +124,7 @@ function toFormState(initialValues?: Partial<SubscriptionFormInitialValues>): Fo
     // when backdating/scheduling a subscription rather than every single time.
     startDate: initialValues?.startDate ?? todayIso(),
     endDate: initialValues?.endDate ?? '',
+    responsiblePersonSelection: null,
   }
 }
 
@@ -137,6 +170,31 @@ function validate(values: FormState, isEdit: boolean): FormErrors {
 
   if (values.startDate && values.endDate && values.endDate < values.startDate) {
     errors.endDate = 'End date must be on or after the start date'
+  }
+
+  // Create mode only — PUT can never touch who's responsible (see API Contract), so edit mode
+  // has no responsible-person validation branch at all. Requires either an `existing` selection
+  // or a complete `new` draft (firstName/lastName/email non-blank + email-shaped, phone
+  // optional), matching the backend's @NotNull @Valid on ResponsiblePersonRequest and mirroring
+  // ClubPicker's own required-selection (errors.club) + draft-completeness check pattern above.
+  if (!isEdit) {
+    if (!values.responsiblePersonSelection) {
+      errors.responsiblePerson = 'Select or add a responsible person'
+    } else if (values.responsiblePersonSelection.mode === 'new') {
+      const draft = values.responsiblePersonSelection
+      if (!draft.firstName.trim()) {
+        errors.responsiblePersonFirstName = 'First name is required'
+      }
+      if (!draft.lastName.trim()) {
+        errors.responsiblePersonLastName = 'Last name is required'
+      }
+      const email = draft.email.trim()
+      if (!email) {
+        errors.responsiblePersonEmail = 'Email is required'
+      } else if (!EMAIL_PATTERN.test(email)) {
+        errors.responsiblePersonEmail = 'Enter a valid email address'
+      }
+    }
   }
 
   return errors
@@ -230,6 +288,11 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
       productId: values.productId,
       startDate: values.startDate || null,
       endDate: values.endDate || null,
+      // Non-null by construction: create mode's validation above requires either an existing
+      // selection or a complete new draft before onSubmit ever fires. Edit mode never renders
+      // PersonPicker, so this is unused there — SubscriptionFormPage's updateSubscription call
+      // ignores it entirely (matching UpdateSubscriptionPayload's fieldless shape).
+      responsiblePerson: values.responsiblePersonSelection as SubscriptionResponsiblePersonSelection,
     })
   }
 
@@ -302,6 +365,31 @@ export function SubscriptionForm({ initialValues, onSubmit, clubCreationError }:
         }
         InputLabelProps={{ shrink: true }}
       />
+
+      {isEdit ? (
+        // PUT can never touch who's responsible for a Subscription (see API Contract) — no
+        // interactive element at all, mirrors the disabled-Club-field pattern above for the
+        // immutable owning Club.
+        <Input
+          label="Responsible person"
+          value={
+            initialValues?.responsiblePerson
+              ? `${initialValues.responsiblePerson.firstName} ${initialValues.responsiblePerson.lastName} — ${initialValues.responsiblePerson.email}`
+              : ''
+          }
+          disabled
+          helperText="The responsible person cannot be changed after creation"
+        />
+      ) : (
+        <PersonPicker
+          value={values.responsiblePersonSelection}
+          onChange={(next) => setValues((prev) => ({ ...prev, responsiblePersonSelection: next }))}
+          requiredError={errors.responsiblePerson}
+          firstNameError={errors.responsiblePersonFirstName}
+          lastNameError={errors.responsiblePersonLastName}
+          emailError={errors.responsiblePersonEmail}
+        />
+      )}
     </Box>
   )
 }

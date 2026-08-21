@@ -9,6 +9,7 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { getSubscription, createSubscription, updateSubscription, cancelSubscription } from '../../api/subscriptionApi'
+import type { ResponsiblePersonInput } from '../../api/personApi'
 import { createClub } from '../../api/clubApi'
 
 // The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
@@ -72,12 +73,25 @@ export default function SubscriptionFormPage() {
         ownerId = values.club.id
       }
 
+      // Both an `existing` and a `new` selection send the full 4 fields — the backend resolves/
+      // dedupes by email regardless and discards the other 3 for an existing match ("link, don't
+      // overwrite"), so it's safe, if slightly redundant, to always send all 4. One
+      // createSubscription call either way — no separate network call for the person at all, see
+      // docs/specs/014-subscription-responsible-contact.md's UI Requirements.
+      const responsiblePerson: ResponsiblePersonInput = {
+        firstName: values.responsiblePerson.firstName,
+        lastName: values.responsiblePerson.lastName,
+        email: values.responsiblePerson.email,
+        phone: values.responsiblePerson.phone ?? '',
+      }
+
       return createSubscription({
         ownerType: 'CLUB',
         ownerId,
         productId: values.productId,
         startDate: values.startDate,
         endDate: values.endDate,
+        responsiblePerson,
       })
     },
     onSuccess: () => {
@@ -195,6 +209,7 @@ export default function SubscriptionFormPage() {
                 productLabel: `${subscription.product.name} (${subscription.product.code})`,
                 startDate: subscription.startDate,
                 endDate: subscription.endDate,
+                responsiblePerson: subscription.responsiblePerson,
               }
             : undefined
         }

@@ -15,12 +15,14 @@ import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.BillingInterval;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
+import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
 import com.cricketlegend.repository.ClubRepository;
+import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.ProductRepository;
 import com.cricketlegend.repository.SubscriptionRepository;
 import java.time.LocalDate;
@@ -51,6 +53,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class SubscriptionControllerIntegrationTest {
 
+    private static final String VALID_RESPONSIBLE_PERSON_JSON = """
+            {
+                "firstName": "Jane",
+                "lastName": "Doe",
+                "email": "jane.doe@example.com",
+                "phone": "+27821234567"
+            }""";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -63,6 +73,9 @@ class SubscriptionControllerIntegrationTest {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private PersonRepository personRepository;
+
     @Test
     void createValidSubscriptionPersistsAsActiveWithStatus201() throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
@@ -72,9 +85,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsiblePerson": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -85,7 +99,10 @@ class SubscriptionControllerIntegrationTest {
                 .andExpect(jsonPath("$.club.id").value(club.getId().toString()))
                 .andExpect(jsonPath("$.club.name").value("Riverside CC"))
                 .andExpect(jsonPath("$.product.id").value(product.getId().toString()))
-                .andExpect(jsonPath("$.product.code").value("CLUB_STANDARD"));
+                .andExpect(jsonPath("$.product.code").value("CLUB_STANDARD"))
+                .andExpect(jsonPath("$.responsiblePerson.id").isNotEmpty())
+                .andExpect(jsonPath("$.responsiblePerson.firstName").value("Jane"))
+                .andExpect(jsonPath("$.responsiblePerson.email").value("jane.doe@example.com"));
 
         assertThat(subscriptionRepository.findAll()).hasSize(1);
     }
@@ -99,9 +116,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "SECTION",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsiblePerson": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -131,9 +149,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsiblePerson": %s
                 }
-                """.formatted(UUID.randomUUID(), product.getId());
+                """.formatted(UUID.randomUUID(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -151,9 +170,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsiblePerson": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -174,9 +194,10 @@ class SubscriptionControllerIntegrationTest {
                 {
                     "ownerType": "CLUB",
                     "ownerId": "%s",
-                    "productId": "%s"
+                    "productId": "%s",
+                    "responsiblePerson": %s
                 }
-                """.formatted(club.getId(), product.getId());
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
 
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .with(platformAdmin())
@@ -204,7 +225,8 @@ class SubscriptionControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/platform/subscriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ownerType\": \"CLUB\", \"ownerId\": \"" + UUID.randomUUID()
-                                + "\", \"productId\": \"" + UUID.randomUUID() + "\"}"))
+                                + "\", \"productId\": \"" + UUID.randomUUID() + "\", \"responsiblePerson\": "
+                                + VALID_RESPONSIBLE_PERSON_JSON + "}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -214,7 +236,8 @@ class SubscriptionControllerIntegrationTest {
                         .with(withRole("someone_else", UnaryOperator.identity()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"ownerType\": \"CLUB\", \"ownerId\": \"" + UUID.randomUUID()
-                                + "\", \"productId\": \"" + UUID.randomUUID() + "\"}"))
+                                + "\", \"productId\": \"" + UUID.randomUUID() + "\", \"responsiblePerson\": "
+                                + VALID_RESPONSIBLE_PERSON_JSON + "}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -280,6 +303,36 @@ class SubscriptionControllerIntegrationTest {
         assertThat(subscriptionRepository.findAll()).hasSize(1);
         Subscription reloaded = subscriptionRepository.findById(subscription.getId()).orElseThrow();
         assertThat(reloaded.getProductId()).isEqualTo(upgraded.getId());
+    }
+
+    @Test
+    void updateSilentlyIgnoresAnIllegallyIncludedResponsiblePersonField() throws Exception {
+        // UpdateSubscriptionRequest has no responsiblePerson field at all — per
+        // docs/specs/014-subscription-responsible-contact.md, who's responsible cannot be changed
+        // through PUT. Jackson's default behavior (FAIL_ON_UNKNOWN_PROPERTIES isn't enabled here)
+        // silently drops an unmapped property rather than rejecting the request.
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+        Subscription subscription = subscriptionRepository.save(
+                newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+        UUID originalResponsiblePersonId = subscription.getResponsiblePersonId();
+
+        String body = """
+                {
+                    "productId": "%s",
+                    "responsiblePerson": %s
+                }
+                """.formatted(product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
+
+        mockMvc.perform(put("/api/v1/platform/subscriptions/{id}", subscription.getId())
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responsiblePerson.id").value(originalResponsiblePersonId.toString()));
+
+        Subscription reloaded = subscriptionRepository.findById(subscription.getId()).orElseThrow();
+        assertThat(reloaded.getResponsiblePersonId()).isEqualTo(originalResponsiblePersonId);
     }
 
     @Test
@@ -367,11 +420,22 @@ class SubscriptionControllerIntegrationTest {
     }
 
     private Subscription newSubscription(UUID ownerId, UUID productId, SubscriptionStatus status) {
+        // responsible_person_id is NOT NULL (and FK-constrained) since
+        // 009-subscription-responsible-person.sql — every Subscription needs a real, persisted
+        // Person to point at, per docs/specs/014-subscription-responsible-contact.md.
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jane")
+                .lastName("Doe")
+                .email("jane.doe+" + UUID.randomUUID() + "@example.com")
+                .phone("+27821234567")
+                .build());
+
         Subscription subscription = new Subscription();
         subscription.setOwnerType(SubscriptionOwnerType.CLUB);
         subscription.setOwnerId(ownerId);
         subscription.setProductId(productId);
         subscription.setStatus(status);
+        subscription.setResponsiblePersonId(person.getId());
         return subscription;
     }
 }
