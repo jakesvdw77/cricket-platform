@@ -118,9 +118,9 @@ function renderPage(initialPath: string) {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
-          <Route path="/admin/configuration/subscriptions" element={<div>Subscription List Page</div>} />
-          <Route path="/admin/configuration/subscriptions/new" element={<SubscriptionFormPage />} />
-          <Route path="/admin/configuration/subscriptions/:id/edit" element={<SubscriptionFormPage />} />
+          <Route path="/admin/billing" element={<div>Subscription List Page</div>} />
+          <Route path="/admin/billing/new" element={<SubscriptionFormPage />} />
+          <Route path="/admin/billing/:id/edit" element={<SubscriptionFormPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -143,7 +143,7 @@ describe('SubscriptionFormPage', () => {
       const user = userEvent.setup()
       createSubscription.mockResolvedValueOnce(activeSubscription())
 
-      renderPage('/admin/configuration/subscriptions/new')
+      renderPage('/admin/billing/new')
 
       expect(screen.getByText('Add Subscription')).toBeInTheDocument()
       expect(getSubscription).not.toHaveBeenCalled()
@@ -189,7 +189,7 @@ describe('SubscriptionFormPage', () => {
       })
       createSubscription.mockResolvedValueOnce(activeSubscription({ ownerId: 'club-new' }))
 
-      renderPage('/admin/configuration/subscriptions/new')
+      renderPage('/admin/billing/new')
 
       // Captured once and reused below — once the dropdown is open, MUI's Autocomplete listbox
       // also carries an aria-labelledby pointing at the same "Club" label, so a second
@@ -241,7 +241,7 @@ describe('SubscriptionFormPage', () => {
         response: { data: { detail: 'Club slug is reserved: meadowbrook-cc' } },
       })
 
-      renderPage('/admin/configuration/subscriptions/new')
+      renderPage('/admin/billing/new')
 
       const clubField = screen.getByLabelText('Club')
       await user.click(clubField)
@@ -283,7 +283,7 @@ describe('SubscriptionFormPage', () => {
         response: { data: { detail: 'Club already has an active subscription' } },
       })
 
-      renderPage('/admin/configuration/subscriptions/new')
+      renderPage('/admin/billing/new')
 
       const clubField = screen.getByLabelText('Club')
       await user.click(clubField)
@@ -309,7 +309,7 @@ describe('SubscriptionFormPage', () => {
     getSubscription.mockResolvedValueOnce(activeSubscription())
     updateSubscription.mockResolvedValueOnce(activeSubscription())
 
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
+    renderPage('/admin/billing/s-1/edit')
 
     expect(await screen.findByText('Edit Subscription')).toBeInTheDocument()
     expect(getSubscription).toHaveBeenCalledWith('s-1')
@@ -332,7 +332,7 @@ describe('SubscriptionFormPage', () => {
   it('edit mode disables the Club and Responsible person fields, and never fires a club or person search query', async () => {
     getSubscription.mockResolvedValueOnce(activeSubscription())
 
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
+    renderPage('/admin/billing/s-1/edit')
 
     const clubField = await screen.findByDisplayValue('Riverside CC')
     expect(clubField).toBeDisabled()
@@ -351,7 +351,7 @@ describe('SubscriptionFormPage', () => {
       getSubscription.mockResolvedValueOnce(activeSubscription({ status: 'ACTIVE' }))
       cancelSubscription.mockResolvedValueOnce(activeSubscription({ status: 'CANCELLED' }))
 
-      renderPage('/admin/configuration/subscriptions/s-1/edit')
+      renderPage('/admin/billing/s-1/edit')
 
       await screen.findByText('Edit Subscription')
 
@@ -381,7 +381,7 @@ describe('SubscriptionFormPage', () => {
   it('does not show a "Cancel Subscription" action for an already-cancelled subscription', async () => {
     getSubscription.mockResolvedValueOnce(activeSubscription({ status: 'CANCELLED' }))
 
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
+    renderPage('/admin/billing/s-1/edit')
 
     await screen.findByText('Edit Subscription')
     expect(screen.queryByRole('button', { name: 'Cancel Subscription' })).not.toBeInTheDocument()
@@ -392,7 +392,7 @@ describe('SubscriptionFormPage', () => {
   it('renders an error state instead of a blank page when fetching the subscription fails', async () => {
     getSubscription.mockRejectedValueOnce(new Error('not found'))
 
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
+    renderPage('/admin/billing/s-1/edit')
 
     expect(await screen.findByText("Couldn't load this subscription")).toBeInTheDocument()
     expect(
@@ -409,7 +409,7 @@ describe('SubscriptionFormPage', () => {
         response: { data: { detail: 'Club already has an active subscription' } },
       })
 
-      renderPage('/admin/configuration/subscriptions/new')
+      renderPage('/admin/billing/new')
 
       await user.click(screen.getByLabelText('Club'))
       await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
@@ -427,7 +427,7 @@ describe('SubscriptionFormPage', () => {
     const user = userEvent.setup()
     createSubscription.mockRejectedValueOnce(new Error('network error'))
 
-    renderPage('/admin/configuration/subscriptions/new')
+    renderPage('/admin/billing/new')
 
     await user.click(screen.getByLabelText('Club'))
     await user.click(await screen.findByRole('option', { name: 'Riverside CC' }))
@@ -449,7 +449,7 @@ describe('SubscriptionFormPage', () => {
       response: { data: { detail: 'Subscription is already cancelled' } },
     })
 
-    renderPage('/admin/configuration/subscriptions/s-1/edit')
+    renderPage('/admin/billing/s-1/edit')
 
     await screen.findByText('Edit Subscription')
     await user.click(screen.getByRole('button', { name: 'Cancel Subscription' }))

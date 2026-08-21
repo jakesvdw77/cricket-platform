@@ -15,7 +15,7 @@ const navItems = [
   { label: 'Dashboard', to: '/admin' },
   { label: 'Club Onboarding', to: '/admin/onboarding' },
   { label: 'Whitelisting', to: '/admin/whitelisting' },
-  { label: 'Subscriptions & Invoices', to: '/admin/invoices' },
+  { label: 'Subscriptions', to: '/admin/billing' },
   { label: 'Leagues', to: '/admin/leagues' },
   { label: 'Configuration', to: '/admin/configuration' },
 ]

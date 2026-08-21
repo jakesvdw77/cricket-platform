@@ -74,16 +74,16 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
 
   const selectedOption: ClubOption | null = value?.mode === 'existing' ? { id: value.id, name: value.name } : null
 
-  // A genuine fetch failure must never be silently treated as "no matching clubs" — that would
-  // offer to create a new (possibly duplicate) Club off a transient network/auth error instead
-  // of surfacing the failure. Found during standards review of the initial implementation.
-  const showAddAffordance = hasFocused && mode === 'search' && !isFetching && !isError && clubOptions.length === 0
+  // Always offered once search has actually run — not just when there are zero matches. Gating
+  // this on an empty result list meant an admin could never add a new club whenever the existing
+  // club list happened to be non-empty, which is the common case — see docs/specs/011-inline-
+  // club-creation-in-subscription-form.md's Rollout Notes for the real-world report this fixes.
+  // A genuine fetch failure must still never be silently treated as "safe to offer create" —
+  // that would offer to create a new (possibly duplicate) Club off a transient network/auth
+  // error instead of surfacing the failure. Found during standards review of the initial
+  // implementation.
+  const showAddAffordance = hasFocused && mode === 'search' && !isFetching && !isError
   const trimmedQuery = query.trim()
-  // MUI's own dropdown popper is absolutely positioned, so leaving it open with nothing useful
-  // inside (its "No clubs found" noOptionsText) visually overlaps the "+ Add" affordance
-  // rendered right below it in normal flow — a real admin can't see or click the button until
-  // the popper closes. Closing it explicitly the moment there's nothing to show hands that
-  // space to the affordance instead, rather than fighting z-index/positioning to work around it.
   const autocompleteOpen = hasFocused && !suppressOpen && (isFetching || clubOptions.length > 0)
 
   const handleStartCreate = () => {
@@ -119,10 +119,29 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
     <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
       {mode === 'search' && (
         <>
+          {/* Rendered above the Autocomplete, not below — this button is always visible now
+              (not just when results are empty, per the reasoning above), and MUI's dropdown
+              popper is absolutely positioned below the field, so placing the button underneath
+              would let an open popper full of real results visually cover it. Same fix already
+              applied to PersonPicker. */}
+          {showAddAffordance && (
+            <Button variant="ghost" size="sm" onClick={handleStartCreate} sx={{ alignSelf: 'flex-start' }}>
+              {trimmedQuery ? `+ Add "${trimmedQuery}" as a new club` : '+ Add a new club'}
+            </Button>
+          )}
+
           <Autocomplete<ClubOption>
             open={autocompleteOpen}
-            onOpen={() => setHasFocused(true)}
-            onClose={() => {}}
+            onOpen={() => {
+              setHasFocused(true)
+              setSuppressOpen(false)
+            }}
+            // A controlled `open` prop means MUI never closes the popper on its own — every one
+            // of its own close triggers (click-away, Escape, the dropdown arrow) calls this
+            // instead of touching `open` directly. Without actually reacting to it here, none of
+            // those ever worked: the popper stayed open until a real selection was made, the only
+            // path that touched suppressOpen. Real bug reported after this shipped.
+            onClose={() => setSuppressOpen(true)}
             options={clubOptions}
             loading={isFetching}
             value={selectedOption}
@@ -176,12 +195,6 @@ export function ClubPicker({ value, onChange, nameError, slugError, requiredErro
               />
             )}
           />
-
-          {showAddAffordance && (
-            <Button variant="ghost" size="sm" onClick={handleStartCreate} sx={{ alignSelf: 'flex-start' }}>
-              {trimmedQuery ? `+ Add "${trimmedQuery}" as a new club` : '+ Add a new club'}
-            </Button>
-          )}
         </>
       )}
 
