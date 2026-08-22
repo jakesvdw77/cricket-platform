@@ -18,7 +18,21 @@ export const keycloak = new Keycloak({
 // on page load. Confirmed the hard way: enabling check-sso unconditionally added a real,
 // measurable delay to the landing page too, from the iframe below hanging until its own internal
 // timeout — broke unrelated, timing-sensitive e2e assertions there.
-const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/login', '/post-login']
+//
+// Deliberately just /admin, not /login or /post-login too:
+// - /login never needs it — Login.tsx fires an explicit keycloak.login() redirect immediately on
+//   mount, without waiting for keycloakInitPromise at all, so a resolved session here is never
+//   even read.
+// - /post-login must NOT run check-sso — every single load of this page already has a real,
+//   pending OAuth callback (code+state) to process; that's its entire purpose. Running check-sso's
+//   own iframe-based silent-SSO attempt at the same time raced against that real callback exchange
+//   and broke it outright (confirmed the hard way: a fresh login landed on a permanently blank
+//   page, activateSession() 401ing forever, even though the callback itself was valid) — not just
+//   a slowdown like the landing-page case above, an outright regression. /admin, by contrast, is
+//   only ever loaded fresh via a direct navigation/refresh/bookmark — never via a pending OAuth
+//   callback (Login.tsx's redirectUri points at /post-login, never straight to /admin) — so it's
+//   the one path that's actually safe to run check-sso on.
+const AUTH_AWARE_PATH_PREFIXES = ['/admin']
 const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix))
 
 // Fires once, automatically, the first time anything imports this module
