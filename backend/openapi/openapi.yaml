@@ -353,6 +353,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeadDto"
+  /api/v1/platform/email/test-send:
+    post:
+      tags:
+      - email-config-controller
+      operationId: testSend
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EmailTestSendResultDto"
   /api/v1/platform/clubs:
     get:
       tags:
@@ -545,6 +557,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageLeadDto"
+  /api/v1/platform/email/settings:
+    get:
+      tags:
+      - email-config-controller
+      operationId: getSettings
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EmailSettingsDto"
 components:
   schemas:
     UpdateSubscriptionRequest:
@@ -1006,6 +1030,15 @@ components:
         createdAt:
           type: string
           format: date-time
+    EmailTestSendResultDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        sentTo:
+          type: string
     CreateClubRequest:
       type: object
       properties:
@@ -1091,11 +1124,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -1150,11 +1183,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -1182,11 +1215,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -1223,17 +1256,35 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
           type: boolean
         empty:
           type: boolean
+    EmailSettingsDto:
+      type: object
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+          format: int32
+        authEnabled:
+          type: boolean
+        starttlsEnabled:
+          type: boolean
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+        supportAddress:
+          type: string
     PageClubDto:
       type: object
       properties:
@@ -1255,11 +1306,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:

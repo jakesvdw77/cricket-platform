@@ -20,6 +20,7 @@ import ProductList from './pages/admin/ProductList'
 import ProductFormPage from './pages/admin/ProductFormPage'
 import SubscriptionList from './pages/admin/SubscriptionList'
 import SubscriptionFormPage from './pages/admin/SubscriptionFormPage'
+import EmailSettings from './pages/admin/EmailSettings'
 import { EmptyState } from './components/EmptyState'
 
 const queryClient = new QueryClient()
@@ -66,6 +67,7 @@ function App() {
                 <Route path="products" element={<ProductList />} />
                 <Route path="products/new" element={<ProductFormPage />} />
                 <Route path="products/:id/edit" element={<ProductFormPage />} />
+                <Route path="email" element={<EmailSettings />} />
                 <Route path="discounts" element={<EmptyState title="Discounts & Promotions" description="Coming soon." />} />
                 <Route path="invoicing" element={<EmptyState title="Invoicing" description="Coming soon." />} />
                 <Route path="settings" element={<EmptyState title="System Settings" description="Coming soon." />} />

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+    <p style="margin:0 0 16px;">This is a test email, not a real notification.</p>
+    <p style="margin:0 0 20px;">
+        Triggered from <strong>Configuration &rarr; Email</strong> in the Cricket Legend admin
+        console, to confirm this platform's outbound email settings are actually working end to
+        end, not just configured.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background-color:#f4f6f5; border-radius:8px; margin:0 0 24px;">
+        <tr>
+            <td style="padding:16px;">
+                <table role="presentation" width="100%" cellpadding="4" cellspacing="0"
+                       style="color:#14231c; font-size:14px;">
+                    <tr>
+                        <td style="color:#52655c;">Sent at</td>
+                        <td style="text-align:right;" th:text="${sentAt}">22 August 2026, 14:32</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#52655c;">Sent from</td>
+                        <td style="text-align:right;" th:text="${fromAddress}">no-reply@cricketlegend.co.za</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#52655c;">This backend serves</td>
+                        <td style="text-align:right;" th:text="${frontendBaseUrl}">http://localhost:5173</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0; color:#52655c; font-size:13px;">
+        If you weren't expecting this, no action is needed - nobody else was sent a copy.
+    </p>
+</div>
+</body>
+</html>
