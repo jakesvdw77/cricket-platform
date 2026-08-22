@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardBadgeTone } from '../../components/RecordCard'
+import type { RecordCardBadgeTone, RecordCardFeedback } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
-import { listSubscriptions } from '../../api/subscriptionApi'
-import type { SubscriptionStatus } from '../../api/subscriptionApi'
+import { listSubscriptions, resendWelcomeEmail } from '../../api/subscriptionApi'
+import type { Subscription, SubscriptionStatus } from '../../api/subscriptionApi'
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   ACTIVE: 'Active',
@@ -31,6 +31,61 @@ const SORT_OPTIONS = [
 ]
 
 const SEARCH_DEBOUNCE_MS = 300
+
+// One RecordCard per Subscription, each with its own resend mutation and pending/feedback
+// state — a page-level component, not a shared one, so it doesn't need the four-file anatomy
+// (docs/standards/frontend.md: "pages/** compose from components/** and don't need this
+// anatomy themselves"). Scoping the mutation here, rather than a single shared useMutation in
+// the parent keyed by id, is what guarantees one card's pending/outcome state never leaks onto
+// another's — two cards' mutations are two independent hook instances (docs/specs/019-resend-
+// subscription-welcome-email.md's UI Requirements).
+function SubscriptionCard({ subscription }: { subscription: Subscription }) {
+  const [feedback, setFeedback] = useState<RecordCardFeedback | null>(null)
+
+  // No invalidation of ['subscriptions', ...] on success — a resend changes no Subscription
+  // field, so the list's own data is already correct (spec's UI Requirements).
+  const resend = useMutation({
+    mutationFn: () => resendWelcomeEmail(subscription.id),
+    onSuccess: (result) =>
+      setFeedback({ message: result.message, tone: result.success ? 'success' : 'error' }),
+    onError: () =>
+      setFeedback({
+        message: 'Something went wrong resending the welcome email. Please try again.',
+        tone: 'error',
+      }),
+  })
+
+  return (
+    <RecordCard
+      title={subscription.club.name}
+      badge={{
+        label: STATUS_LABEL[subscription.status],
+        tone: STATUS_BADGE_TONE[subscription.status],
+      }}
+      description={subscription.product.name}
+      fields={[
+        { label: 'Product code', value: subscription.product.code },
+        { label: 'Start date', value: subscription.startDate },
+      ]}
+      editLabel="Edit"
+      editTo={`/admin/billing/${subscription.id}/edit`}
+      {...(subscription.status === 'ACTIVE'
+        ? {
+            secondaryAction: {
+              label: 'Resend welcome email',
+              pendingLabel: 'Sending…',
+              pending: resend.isPending,
+              onClick: () => {
+                setFeedback(null)
+                resend.mutate()
+              },
+            },
+            feedback,
+          }
+        : {})}
+    />
+  )
+}
 
 export default function SubscriptionList() {
   const navigate = useNavigate()
@@ -93,21 +148,7 @@ export default function SubscriptionList() {
           }}
         >
           {data.content.map((subscription) => (
-            <RecordCard
-              key={subscription.id}
-              title={subscription.club.name}
-              badge={{
-                label: STATUS_LABEL[subscription.status],
-                tone: STATUS_BADGE_TONE[subscription.status],
-              }}
-              description={subscription.product.name}
-              fields={[
-                { label: 'Product code', value: subscription.product.code },
-                { label: 'Start date', value: subscription.startDate },
-              ]}
-              editLabel="Edit"
-              editTo={`/admin/billing/${subscription.id}/edit`}
-            />
+            <SubscriptionCard key={subscription.id} subscription={subscription} />
           ))}
         </Box>
       )}

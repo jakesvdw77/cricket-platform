@@ -115,3 +115,20 @@ export async function cancelSubscription(id: string): Promise<Subscription> {
   const { data } = await api.post<Subscription>(`/platform/subscriptions/${id}/cancel`)
   return data
 }
+
+// docs/specs/019-resend-subscription-welcome-email.md — always 200 with success/message/sentTo
+// (a downstream EmailDeliveryException is caught and reported server-side, never a 5xx); only
+// a CANCELLED subscription yields a 409, which the UI never reaches since the action isn't
+// rendered for a CANCELLED card.
+export interface ResendWelcomeEmailResult {
+  success: boolean
+  message: string
+  sentTo: string
+}
+
+export async function resendWelcomeEmail(id: string): Promise<ResendWelcomeEmailResult> {
+  const { data } = await api.post<ResendWelcomeEmailResult>(
+    `/platform/subscriptions/${id}/resend-welcome-email`,
+  )
+  return data
+}
