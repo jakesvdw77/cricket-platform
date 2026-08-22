@@ -15,6 +15,7 @@ interface ConfigurationCard {
 // since it's a day-to-day billing workflow, not a system config.
 const CARDS: ConfigurationCard[] = [
   { title: 'Products', description: 'Define subscription tiers, pricing, and usage limits', to: '/admin/configuration/products' },
+  { title: 'Email', description: 'View outbound email settings and send a test message', to: '/admin/configuration/email' },
   { title: 'Discounts & Promotions', description: 'Coupons and per-club pricing overrides', to: '/admin/configuration/discounts' },
   { title: 'Invoicing', description: 'Billing cycles and invoice history', to: '/admin/configuration/invoicing' },
   { title: 'System Settings', description: 'Platform-wide configuration', to: '/admin/configuration/settings' },
