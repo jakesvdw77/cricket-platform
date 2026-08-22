@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+    <p style="margin:0 0 16px;">
+        Hi <span th:text="${firstName}">Jaco</span>, welcome to the crease!
+    </p>
+    <p style="margin:0 0 20px;">
+        Your subscription for <strong th:text="${clubName}">Riverside CC</strong> is all set and ready
+        to open the batting.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background-color:#f4f6f5; border-radius:8px; margin:0 0 24px;">
+        <tr>
+            <td style="padding:16px;">
+                <table role="presentation" width="100%" cellpadding="4" cellspacing="0"
+                       style="color:#14231c; font-size:14px;">
+                    <tr>
+                        <td style="color:#52655c;">Club</td>
+                        <td style="text-align:right;" th:text="${clubName}">Riverside CC</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#52655c;">Product</td>
+                        <td style="text-align:right;" th:text="${productName}">Club Standard</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#52655c;">Start date</td>
+                        <td style="text-align:right;" th:text="${startDate}">1 March 2026</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#52655c;">End date</td>
+                        <td style="text-align:right;" th:text="${endDate}">Ongoing - no fixed end date</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="border-radius:8px; background-color:#2f6e4f;">
+                <a th:href="${loginUrl}" href="#"
+                   style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:15px;
+                          font-weight:600; text-decoration:none;">
+                    Log in to your club
+                </a>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:24px 0 0; color:#52655c; font-size:13px;">
+        Questions about your subscription? Drop us a line at
+        <a th:href="'mailto:' + ${supportAddress}" th:text="${supportAddress}"
+           style="color:#2f6e4f;">support@cricketlegend.co.za</a> - we're always happy to help,
+        even off-season.
+    </p>
+</div>
+</body>
+</html>

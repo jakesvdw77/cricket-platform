@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="layout(content)">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${subject}">Cricket Legend</title>
+</head>
+<body style="margin:0; padding:24px; background-color:#f4f6f5;
+             font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0"
+                   style="background-color:#ffffff; border:1px solid #dee6e1; border-radius:8px; overflow:hidden;">
+                <!-- Header: primary.main background, contrastText foreground - ui/src/theme.ts -->
+                <tr>
+                    <td style="background-color:#2f6e4f; padding:20px 24px;">
+                        <span style="color:#ffffff; font-size:18px; font-weight:600;">Cricket Legend</span>
+                    </td>
+                </tr>
+                <!-- Per-email content, passed in as a fragment argument - see subscription-welcome.html -->
+                <tr>
+                    <td style="padding:24px; color:#14231c; font-size:15px; line-height:1.5;"
+                        th:replace="${content}">
+                        Content goes here.
+                    </td>
+                </tr>
+                <!-- Footer: text.secondary, divider hairline - ui/src/theme.ts -->
+                <tr>
+                    <td style="padding:16px 24px; border-top:1px solid #dee6e1; color:#52655c; font-size:12px;">
+                        Cricket Legend Platform &middot; Multi-club cricket management
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

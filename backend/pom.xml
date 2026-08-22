@@ -107,6 +107,24 @@
                                             spec's own 26.0.7 placeholder, see docs/plans/016. -->
         </dependency>
 
+        <!-- Outbound transactional email for this application's own backend — separate from
+             Keycloak's own realm SMTP settings (016-keycloak-account-provisioning.md's
+             execute-actions-email uses Keycloak's own transport, configured in its admin
+             console, not here). 017-subscription-welcome-email.md -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Server-rendered HTML email templates — a reusable base layout plus per-email content
+             fragments, rendered standalone to a String via TemplateEngine.process(...), never
+             through Spring MVC's ViewResolver (this app has no server-rendered web views to
+             resolve). 017-subscription-welcome-email.md -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

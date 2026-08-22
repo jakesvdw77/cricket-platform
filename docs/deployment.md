@@ -103,6 +103,16 @@ company mail relay, etc.) needs to be chosen and configured per environment befo
 can go out for real** — not solved here, and blocks `016` actually working end-to-end outside a
 dev machine.
 
+`017-subscription-welcome-email.md` adds a second, entirely separate SMTP client: this
+application's own `spring.mail.*` properties, used to send the Subscription welcome email through
+`EmailService`/Thymeleaf, independent of Keycloak's realm-level Email settings above. Locally,
+both consumers can share a single Mailpit/MailHog sink (`docker run -p 1025:1025 -p 8025:8025
+axllent/mailpit`) — `spring.mail.host`/`port` already default to `localhost:1025`, matching that
+sink's own SMTP listener out of the box, no override needed. **A real SMTP provider plus SPF/DKIM/
+DMARC DNS records for `cricketlegend.co.za` remain an open, unresolved decision for either
+consumer** — this application's own emails and Keycloak's invite email both need it configured
+per environment before either works end-to-end outside a dev machine.
+
 ### Known local-only caveat, not applicable to a real server
 
 The local dev Keycloak container (`cricketlegend-keycloak-dev`) was started via a bare `docker run`
