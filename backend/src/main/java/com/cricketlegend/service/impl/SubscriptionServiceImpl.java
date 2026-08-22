@@ -17,6 +17,7 @@ import com.cricketlegend.dto.ProductSummaryDto;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.exception.DuplicateActiveSubscriptionException;
+import com.cricketlegend.exception.EmailDeliveryException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.NotFoundException;
@@ -34,6 +35,7 @@ import com.cricketlegend.repository.SubscriptionRepository;
 import com.cricketlegend.service.KeycloakProvisioningService;
 import com.cricketlegend.service.PersonService;
 import com.cricketlegend.service.SubscriptionService;
+import com.cricketlegend.service.SubscriptionWelcomeEmailService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +73,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final PersonMapper personMapper;
     private final RoleAssignmentRepository roleAssignmentRepository;
     private final KeycloakProvisioningService keycloakProvisioningService;
+    private final SubscriptionWelcomeEmailService subscriptionWelcomeEmailService;
 
     public SubscriptionServiceImpl(
             SubscriptionRepository subscriptionRepository,
@@ -83,7 +86,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             ProductMapper productMapper,
             PersonMapper personMapper,
             RoleAssignmentRepository roleAssignmentRepository,
-            KeycloakProvisioningService keycloakProvisioningService) {
+            KeycloakProvisioningService keycloakProvisioningService,
+            SubscriptionWelcomeEmailService subscriptionWelcomeEmailService) {
         this.subscriptionRepository = subscriptionRepository;
         this.clubRepository = clubRepository;
         this.productRepository = productRepository;
@@ -95,6 +99,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         this.personMapper = personMapper;
         this.roleAssignmentRepository = roleAssignmentRepository;
         this.keycloakProvisioningService = keycloakProvisioningService;
+        this.subscriptionWelcomeEmailService = subscriptionWelcomeEmailService;
     }
 
     @Override
@@ -124,6 +129,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         grantClubAdminAccess(responsiblePerson, subscription.getOwnerId());
         provisionKeycloakAccountIfNeeded(responsiblePerson, subscription);
+        sendWelcomeEmailBestEffort(responsiblePerson, subscription, club, product);
 
         return toDto(subscription, club, product, responsiblePerson);
     }
@@ -155,6 +161,24 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             // the one honest "not yet provisioned" signal for a future retry mechanism (not built).
             log.error(
                     "Keycloak provisioning failed for person {} (subscription {}, club {}): {}",
+                    person.getId(), subscription.getId(), subscription.getOwnerId(), e.getMessage(), e);
+        }
+    }
+
+    private void sendWelcomeEmailBestEffort(Person person, Subscription subscription, Club club, Product product) {
+        // Fires on every create() call, unlike provisionKeycloakAccountIfNeeded's one-time guard -
+        // this email's content (product, dates, club) is specific to THIS Subscription. A person
+        // responsible for a second Club's Subscription gets a second, differently-scoped welcome
+        // email, not silently none - see judgment call #2.
+        try {
+            subscriptionWelcomeEmailService.sendWelcomeEmail(person, subscription, club, product);
+        } catch (EmailDeliveryException e) {
+            // Same best-effort posture 016 already established for Keycloak provisioning (judgment
+            // call #2 there) - an SMTP outage never fails Subscription creation. No retry mechanism,
+            // no admin-visible "email failed" indicator - logged only, same accepted gap (see
+            // judgment call #3 / Non-goals / Rollout Notes).
+            log.error(
+                    "Welcome email failed to send for person {} (subscription {}, club {}): {}",
                     person.getId(), subscription.getId(), subscription.getOwnerId(), e.getMessage(), e);
         }
     }

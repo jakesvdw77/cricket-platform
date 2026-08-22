@@ -53,10 +53,16 @@ Existing lead-capture flow (`004`'s "Get started" form) stays as-is for sales/ca
 
 ## Next up — notifications / email infrastructure
 
-Named for roadmap visibility only — no spec yet. No SMTP config, mail provider integration (SendGrid/Postmark/SES/etc.), or template mechanism exists anywhere in this codebase's own application code today, confirmed by grep in `014-subscription-responsible-contact.md`'s Non-goals. `016-keycloak-account-provisioning.md` configures Keycloak's *own* realm-level SMTP for its password-reset invite email — a separate, narrower mechanism that doesn't touch or substitute for this item; see `016`'s Non-goals. Motivated by two remaining, already-named use cases that still need this before they can be finished:
+`017-subscription-welcome-email.md` resolves this item's first named use case below — the
+Subscription responsible party's welcome email — and, in doing so, stands up the reusable
+mechanism (`EmailService`, the `email/base-layout.html` Thymeleaf fragment, `spring.mail.*`/
+`app.mail.*` config) the second named use case still needs. `016-keycloak-account-provisioning.md`
+configures Keycloak's *own* realm-level SMTP for its password-reset invite email — a separate,
+narrower mechanism that doesn't touch or substitute for this item; see `016`'s Non-goals.
 
-- **Notifying a Subscription's responsible party when onboarding completes** — `014`'s whole reason for existing (`Subscription.responsiblePersonId` / `Person.firstName`/`email`) was to have this data ready, anchored to a real identity rather than a throwaway contact fact; `014` deliberately stops at capturing it, doesn't send anything. Whenever this spec is written, it should reuse `014`'s `Person` directly as its first real send-to address (and `firstName` for personalization, e.g. "Hi Jaco...") rather than redefining the shape.
-- **The self-serve signup flow's OTP-verification step** (above) — needs a real send mechanism to exist first.
+- ~~**Notifying a Subscription's responsible party when onboarding completes**~~ — done, `017-subscription-welcome-email.md`.
+- **The self-serve signup flow's OTP-verification step** (above) — the send mechanism it needs now exists (`017`'s `EmailService`/base layout); still needs its own spec to actually build the OTP flow and its email content.
+- **`003`'s still-unbuilt `Invitation` admin-invite email** — also a named, real future consumer of `017`'s `EmailService`/base-layout primitive, reusable unmodified once that spec is written.
 
 ## Next up — billing mechanics (for the future Invoicing spec)
 

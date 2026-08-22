@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import com.cricketlegend.dto.ResponsiblePersonRequest;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.exception.DuplicateActiveSubscriptionException;
+import com.cricketlegend.exception.EmailDeliveryException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.NotFoundException;
@@ -108,6 +110,9 @@ class SubscriptionServiceImplTest {
     @Mock
     private KeycloakProvisioningService keycloakProvisioningService;
 
+    @Mock
+    private SubscriptionWelcomeEmailService subscriptionWelcomeEmailService;
+
     private SubscriptionServiceImpl subscriptionService;
 
     @BeforeEach
@@ -115,7 +120,7 @@ class SubscriptionServiceImplTest {
         subscriptionService = new SubscriptionServiceImpl(
                 subscriptionRepository, clubRepository, productRepository, personRepository, personService,
                 subscriptionMapper, clubMapper, productMapper, personMapper, roleAssignmentRepository,
-                keycloakProvisioningService);
+                keycloakProvisioningService, subscriptionWelcomeEmailService);
     }
 
     private Club activeClub(UUID id) {
@@ -408,6 +413,60 @@ class SubscriptionServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(responsiblePerson.getKeycloakProvisionedAt()).isNull();
         verify(personRepository, never()).save(any());
+    }
+
+    @Test
+    void createCallsSubscriptionWelcomeEmailServiceExactlyOnceWithThePersonSubscriptionClubAndProduct() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(any(), any(), any(), any()))
+                .thenReturn(true);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verify(subscriptionWelcomeEmailService).sendWelcomeEmail(eq(responsiblePerson), any(), any(), any());
+    }
+
+    @Test
+    void createCallsSubscriptionWelcomeEmailServiceAgainOnASecondCreateForAPersonAlreadyKeycloakProvisioned() {
+        // Judgment call #2 (docs/specs/017-subscription-welcome-email.md) — this send is
+        // deliberately NOT gated by keycloakUserId/keycloakProvisionedAt the way
+        // provisionKeycloakAccountIfNeeded is: a person responsible for a second Subscription
+        // still gets a second, differently-scoped welcome email, not silently none.
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        responsiblePerson.setKeycloakProvisionedAt(Instant.now());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(any(), any(), any(), any()))
+                .thenReturn(true);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verify(subscriptionWelcomeEmailService).sendWelcomeEmail(eq(responsiblePerson), any(), any(), any());
+        verifyNoInteractions(keycloakProvisioningService);
+    }
+
+    @Test
+    void createCatchesAnEmailDeliveryExceptionWithoutPropagatingItAndStillReturnsASubscriptionDto() {
+        // Judgment call #3 (docs/specs/017-subscription-welcome-email.md) — the same best-effort
+        // posture 016 already established for a Keycloak outage, applied a second time in create().
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        responsiblePerson.setKeycloakProvisionedAt(Instant.now());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(any(), any(), any(), any()))
+                .thenReturn(true);
+        doThrow(new EmailDeliveryException("SMTP is unreachable", null))
+                .when(subscriptionWelcomeEmailService)
+                .sendWelcomeEmail(any(), any(), any(), any());
+
+        SubscriptionDto result = subscriptionService.create(createRequest(ownerId, productId));
+
+        assertThat(result).isNotNull();
     }
 
     @Test

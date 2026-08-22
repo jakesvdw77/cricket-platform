@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -23,16 +24,19 @@ import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
+import com.cricketlegend.exception.EmailDeliveryException;
 import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.ProductRepository;
 import com.cricketlegend.repository.SubscriptionRepository;
 import com.cricketlegend.service.KeycloakProvisioningService;
+import com.cricketlegend.service.SubscriptionWelcomeEmailService;
 import java.time.LocalDate;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -60,6 +64,14 @@ import org.springframework.transaction.annotation.Transactional;
  * Keycloak reachable to be exercised — provisioning's own behavior is covered by
  * {@code SubscriptionServiceImplTest}'s mocked-service unit coverage and
  * {@code KeycloakProvisioningServiceImplTest}'s own unit coverage, not here.
+ *
+ * <p>{@code SubscriptionWelcomeEmailService} is {@code @MockitoBean}'d for the identical reason —
+ * per docs/specs/017-subscription-welcome-email.md, {@code SubscriptionServiceImpl.create()} also
+ * calls it, and without a mock this test class would attempt a real SMTP connection to whatever
+ * {@code spring.mail.host}/{@code port} resolves to (a local Mailpit/Mailhog sink that isn't
+ * running in CI) on every test hitting {@code create()}. The real HTTP/DB layers under test here
+ * don't need SMTP reachable to be exercised — the welcome email's own content/rendering is covered
+ * by {@code SubscriptionWelcomeEmailServiceImplTest}'s own unit coverage, not here.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,6 +81,9 @@ class SubscriptionControllerIntegrationTest {
 
     @MockitoBean
     private KeycloakProvisioningService keycloakProvisioningService;
+
+    @MockitoBean
+    private SubscriptionWelcomeEmailService subscriptionWelcomeEmailService;
 
     private static final String VALID_RESPONSIBLE_PERSON_JSON = """
             {
@@ -122,6 +137,22 @@ class SubscriptionControllerIntegrationTest {
                 .andExpect(jsonPath("$.responsiblePerson.email").value("jane.doe@example.com"));
 
         assertThat(subscriptionRepository.findAll()).hasSize(1);
+        Subscription persisted = subscriptionRepository.findAll().get(0);
+        Person persistedResponsiblePerson = personRepository.findById(persisted.getResponsiblePersonId())
+                .orElseThrow();
+
+        ArgumentCaptor<Person> personCaptor = ArgumentCaptor.forClass(Person.class);
+        ArgumentCaptor<Subscription> subscriptionCaptor = ArgumentCaptor.forClass(Subscription.class);
+        ArgumentCaptor<Club> clubCaptor = ArgumentCaptor.forClass(Club.class);
+        ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(subscriptionWelcomeEmailService)
+                .sendWelcomeEmail(
+                        personCaptor.capture(), subscriptionCaptor.capture(), clubCaptor.capture(),
+                        productCaptor.capture());
+        assertThat(personCaptor.getValue().getId()).isEqualTo(persistedResponsiblePerson.getId());
+        assertThat(subscriptionCaptor.getValue().getId()).isEqualTo(persisted.getId());
+        assertThat(clubCaptor.getValue().getId()).isEqualTo(club.getId());
+        assertThat(productCaptor.getValue().getId()).isEqualTo(product.getId());
     }
 
     @Test
@@ -134,6 +165,40 @@ class SubscriptionControllerIntegrationTest {
         doThrow(new KeycloakProvisioningException("Keycloak is unreachable", null))
                 .when(keycloakProvisioningService)
                 .provisionAccount(any());
+
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+
+        String body = """
+                {
+                    "ownerType": "CLUB",
+                    "ownerId": "%s",
+                    "productId": "%s",
+                    "responsiblePerson": %s
+                }
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions")
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.club.id").value(club.getId().toString()));
+
+        assertThat(subscriptionRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void createStillReturns201WhenSubscriptionWelcomeEmailServiceThrows() throws Exception {
+        // Strongest, end-to-end proof of judgment call #3
+        // (docs/specs/017-subscription-welcome-email.md): an SMTP outage during Subscription
+        // creation never fails the HTTP request. SubscriptionServiceImplTest already covers this
+        // at the unit layer with a mocked SubscriptionWelcomeEmailService; this proves it one
+        // layer up, through the real controller/service/repository stack.
+        doThrow(new EmailDeliveryException("SMTP is unreachable", null))
+                .when(subscriptionWelcomeEmailService)
+                .sendWelcomeEmail(any(), any(), any(), any());
 
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
