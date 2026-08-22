@@ -45,7 +45,15 @@ public class SubscriptionWelcomeEmailServiceImpl implements SubscriptionWelcomeE
         // was initially missing its th:fragment declaration, and the resulting TemplateInputException
         // was not an EmailDeliveryException, so it propagated straight out of create().
         try {
+            String subject = "Welcome to " + club.getName() + " on Cricket Legend, " + person.getFirstName() + "!";
+
             Context context = new Context();
+            // "subject" is read by base-layout.html's own <title th:text="${subject}"> — must be
+            // set here before process(...), not left to the local Java variable alone, or the
+            // rendered email's <title> silently comes out empty (found during standards review;
+            // Thymeleaf resolves a missing context variable to null rather than throwing, so this
+            // never surfaced as a bug, just a silently-empty <title>).
+            context.setVariable("subject", subject);
             context.setVariable("firstName", person.getFirstName());
             context.setVariable("clubName", club.getName());
             context.setVariable("productName", product.getName());
@@ -57,7 +65,6 @@ public class SubscriptionWelcomeEmailServiceImpl implements SubscriptionWelcomeE
             context.setVariable("supportAddress", supportAddress);
 
             String htmlBody = templateEngine.process("email/subscription-welcome", context);
-            String subject = "Welcome to " + club.getName() + " on Cricket Legend, " + person.getFirstName() + "!";
 
             emailService.send(person.getEmail(), person.getFirstName() + " " + person.getLastName(), subject, htmlBody);
         } catch (EmailDeliveryException e) {

@@ -176,6 +176,27 @@ class SubscriptionWelcomeEmailServiceImplTest {
     }
 
     @Test
+    void sendWelcomeEmailPropagatesTheSameSubjectIntoTheRenderedHtmlsTitleTag() {
+        // Regression coverage: base-layout.html's <title th:text="${subject}"> reads a Thymeleaf
+        // context variable that the implementation initially never set — Thymeleaf silently
+        // resolves a missing variable to null rather than throwing, so the <title> rendered empty
+        // with no test catching it until a standards review. Confirms the fix propagates through
+        // the fragment call from subscription-welcome.html into base-layout.html, not just that
+        // the variable is set somewhere.
+        Person person = person();
+        Club club = club("riverside-cc");
+        Product product = product();
+        Subscription subscription = subscription(LocalDate.of(2026, 3, 1), null);
+
+        service.sendWelcomeEmail(person, subscription, club, product);
+
+        ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).send(any(), any(), subjectCaptor.capture(), any());
+        String htmlBody = captureSentHtmlBody();
+        assertThat(htmlBody).contains("<title>" + subjectCaptor.getValue() + "</title>");
+    }
+
+    @Test
     void sendWelcomeEmailCallsEmailServiceSendWithThePersonsOwnEmailAsTheToAddress() {
         Person person = person();
         Club club = club("riverside-cc");
