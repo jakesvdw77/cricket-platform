@@ -43,10 +43,8 @@ Two, matching the local setup:
    (`backend/src/main/java/com/cricketlegend/config/KeycloakAdminClientConfig.java`'s
    `client_credentials` grant). Client authentication **on**, Standard flow **off**, Direct access
    grants **off**, Service accounts roles **on**. Under its **Service accounts roles** tab, grant
-   `manage-users` from the `realm-management` client — that's the only role it currently needs;
-   don't grant more (see the redirect-URI section below for why it doesn't need `manage-clients`
-   despite `registerClubRedirectAccess` mutating client config — re-read that section before
-   assuming it does).
+   **both** `manage-users` and `manage-clients` from the `realm-management` client — see the
+   redirect-URI section below for why `manage-clients` is required too, not optional.
 
 ### Valid Redirect URIs & Web Origins — what's automatic vs. still manual
 
@@ -58,14 +56,27 @@ expecting it to work, on this Keycloak version or, per that spec's own updated n
 version.
 
 **What's automatic today:** every club's own subdomain is registered automatically —
-`ClubServiceImpl.create()`/`update()` (on a slug rename) call
+`ClubServiceImpl.create()`/`update()` (every update, not just a slug rename) call
 `KeycloakProvisioningService.registerClubRedirectAccess(slug)`, which appends
 `https://{slug}.cricketlegend.co.za/*` (redirect URI) and `https://{slug}.cricketlegend.co.za`
 (web origin) to the public SPA client via the Keycloak Admin API — best-effort, idempotent, never
-fails the Club write if Keycloak is unreachable. This is why the `platform-provisioning` service
-account needs `manage-users` only: this call runs as the backend's own service account through the
-same client, without needing a broader `manage-clients` grant — confirm this still holds if that
-implementation ever changes.
+fails the Club write if Keycloak is unreachable.
+
+**The `platform-provisioning` service account needs `manage-clients` for this, not just
+`manage-users`.** Originally assumed unnecessary here (wrongly — see below) since `manage-users`
+alone is enough for `provisionAccount`'s user-creation calls; `registerClubRedirectAccess` is a
+different operation (mutating the *public SPA client's* own `ClientRepresentation`, not a user),
+and Keycloak's Admin API authorizes that by the caller's granted roles regardless of which client
+it authenticated as — `manage-clients` is required to fetch/update another client's redirect
+URIs/web origins, full stop. Found in production-adjacent local testing: the redirect/web-origin
+entries for two real clubs (`riverside`, `cbc`) were silently never registered — both had to be
+added by hand in the Keycloak console — because this role was missing and the failure is
+deliberately caught-and-logged rather than surfaced (the same best-effort posture that keeps a
+Keycloak outage from blocking a Club write also means a *permanent* misconfiguration like this one
+produces no visible symptom beyond "that club's login redirect quietly doesn't work," discovered
+only when someone actually tried to log into that club's subdomain). Granting `manage-clients`
+fixes new Club creates/updates going forward; any Club that predates the grant needs one no-op edit
+(open it, Save changes with no changes) to retrigger registration once the role is in place.
 
 **What's still manual, per environment, because no `Club` row represents it:**
 - The root marketing domain itself — `https://cricketlegend.co.za/*` and
