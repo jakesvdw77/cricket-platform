@@ -1,6 +1,7 @@
 package com.cricketlegend.service;
 
 import com.cricketlegend.dto.CreateSubscriptionRequest;
+import com.cricketlegend.dto.ResendWelcomeEmailResultDto;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import java.util.UUID;
@@ -24,4 +25,12 @@ public interface SubscriptionService {
     SubscriptionDto update(UUID id, UpdateSubscriptionRequest request);
 
     SubscriptionDto cancel(UUID id);
+
+    /**
+     * docs/specs/019-resend-subscription-welcome-email.md. Resends the welcome email (017) to the
+     * Subscription's current responsible Person, using its current Club/Product/dates. Only valid
+     * for an ACTIVE Subscription - throws InvalidStatusTransitionException for a CANCELLED one.
+     * Never lets EmailDeliveryException propagate - always returns a result DTO, success or not.
+     */
+    ResendWelcomeEmailResultDto resendWelcomeEmail(UUID id);
 }

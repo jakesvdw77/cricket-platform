@@ -1,6 +1,7 @@
 package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.CreateSubscriptionRequest;
+import com.cricketlegend.dto.ResendWelcomeEmailResultDto;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.service.SubscriptionService;
@@ -59,5 +60,10 @@ public class SubscriptionController {
     @PostMapping("/api/v1/platform/subscriptions/{id}/cancel")
     public ResponseEntity<SubscriptionDto> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(subscriptionService.cancel(id));
+    }
+
+    @PostMapping("/api/v1/platform/subscriptions/{id}/resend-welcome-email")
+    public ResponseEntity<ResendWelcomeEmailResultDto> resendWelcomeEmail(@PathVariable UUID id) {
+        return ResponseEntity.ok(subscriptionService.resendWelcomeEmail(id));
     }
 }
