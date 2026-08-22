@@ -81,7 +81,7 @@ export default function SubscriptionList() {
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
         createLabel="Add Subscription"
-        onCreate={() => navigate('/admin/configuration/subscriptions/new')}
+        onCreate={() => navigate('/admin/billing/new')}
       />
 
       {hasSubscriptions && (
@@ -106,7 +106,7 @@ export default function SubscriptionList() {
                 { label: 'Start date', value: subscription.startDate },
               ]}
               editLabel="Edit"
-              editTo={`/admin/configuration/subscriptions/${subscription.id}/edit`}
+              editTo={`/admin/billing/${subscription.id}/edit`}
             />
           ))}
         </Box>

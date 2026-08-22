@@ -47,10 +47,10 @@ function renderSubscriptionList() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/admin/configuration/subscriptions']}>
+      <MemoryRouter initialEntries={['/admin/billing']}>
         <Routes>
-          <Route path="/admin/configuration/subscriptions" element={<SubscriptionList />} />
-          <Route path="/admin/configuration/subscriptions/new" element={<div>Add Subscription Page</div>} />
+          <Route path="/admin/billing" element={<SubscriptionList />} />
+          <Route path="/admin/billing/new" element={<div>Add Subscription Page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

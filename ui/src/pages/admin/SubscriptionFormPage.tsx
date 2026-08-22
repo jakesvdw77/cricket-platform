@@ -96,7 +96,7 @@ export default function SubscriptionFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
-      navigate('/admin/configuration/subscriptions')
+      navigate('/admin/billing')
     },
   })
 
@@ -111,7 +111,7 @@ export default function SubscriptionFormPage() {
       // navigate() below unmounts the only observer, so an invalidate-triggered refetch would
       // fire and be thrown away. A later re-visit to this same edit page fetches fresh anyway.
       queryClient.removeQueries({ queryKey: ['subscription', id] })
-      navigate('/admin/configuration/subscriptions')
+      navigate('/admin/billing')
     },
   })
 
@@ -138,7 +138,7 @@ export default function SubscriptionFormPage() {
   return (
     <RecordFormScreen
       title={isEdit ? 'Edit Subscription' : 'Add Subscription'}
-      backTo="/admin/configuration/subscriptions"
+      backTo="/admin/billing"
       backLabel="Back to Subscriptions"
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -158,7 +158,7 @@ export default function SubscriptionFormPage() {
           <Button
             variant="ghost"
             disabled={saveMutation.isPending}
-            onClick={() => navigate('/admin/configuration/subscriptions')}
+            onClick={() => navigate('/admin/billing')}
           >
             Cancel
           </Button>

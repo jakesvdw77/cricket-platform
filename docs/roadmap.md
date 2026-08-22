@@ -20,9 +20,9 @@ Sequenced by `007-configuration-hub-overview.md`'s own Rollout Notes. Each is a 
 | Module | Status | Notes |
 |---|---|---|
 | Products | ✅ Shipped (`008`) | Subscription-tier catalog: pricing, usage limits, capability toggles. |
-| Subscriptions | 🔶 Built, pending review (`009`); `014` (rewritten draft) amends it with a required responsible person | Links a `Club` to a `Product`. |
+| Subscriptions | 🔶 Built, pending review (`009`); `014` (rewritten draft) amends it with a required responsible person | Links a `Club` to a `Product`. **No longer a Configuration card** — moved post-ship to its own top-level `AdminHome.tsx` nav item (`/admin/billing*`, replacing the old placeholder `Subscriptions & Invoices` entry), since day-to-day billing workflows don't belong alongside system-level config (`009` Rollout Notes). Kept in this table for roadmap-sequencing continuity, not because it's still part of the Configuration hub. |
 | Discounts & Promotions | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals) — no spec yet. |
-| Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Also the spec that should decide whether `AdminHome.tsx`'s top-level `Subscriptions & Invoices` nav item becomes real or narrows to `Invoices` only (`009` Rollout Notes), and owns the billing-mechanics decisions below. |
+| Invoicing | Unscoped | Named for roadmap visibility only (`007`, `008` Non-goals). Owns the billing-mechanics decisions below. (The nav-item question this row used to flag — whether `Subscriptions & Invoices` becomes a combined view or narrows to `Invoices` only — is resolved: `Subscriptions` now has its own top-level item, see above; a future Invoicing spec still decides whether it also gets one, separate or combined.) |
 | System Settings | Unscoped | Named for roadmap visibility only (`007`). |
 
 ## Next up — Keycloak account provisioning for a Subscription's responsible party

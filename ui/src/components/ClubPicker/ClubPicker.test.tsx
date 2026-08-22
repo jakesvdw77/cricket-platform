@@ -172,14 +172,33 @@ describe('ClubPicker', () => {
     expect(await screen.findByRole('option', { name: 'Hillside CC' })).toBeInTheDocument()
   })
 
-  it('does not show the "+ Add" affordance while results are present', async () => {
+  it('closes the dropdown on Escape without selecting anything — regression coverage for a controlled Autocomplete that ignored every close trigger but a real selection', async () => {
+    const onChangeSpy = vi.fn()
+    const user = userEvent.setup()
+    renderClubPicker({ onChangeSpy })
+
+    const clubField = screen.getByLabelText('Club')
+    await user.click(clubField)
+    await screen.findByRole('option', { name: 'Riverside CC' })
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onChangeSpy).not.toHaveBeenCalled()
+
+    // Focusing back in reopens it — Escape shouldn't permanently wedge the field shut.
+    await user.click(clubField)
+    expect(await screen.findByRole('option', { name: 'Riverside CC' })).toBeInTheDocument()
+  })
+
+  it('shows the "+ Add" affordance even while matching results are present — the bug this fix addresses', async () => {
     const user = userEvent.setup()
     renderClubPicker()
 
     await user.click(screen.getByLabelText('Club'))
     await screen.findByRole('option', { name: 'Riverside CC' })
 
-    expect(screen.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Add a new club' })).toBeInTheDocument()
   })
 
   it('does not show the "+ Add" affordance while the query is still loading', async () => {

@@ -56,6 +56,11 @@ export function PersonPicker({
   const [hasFocused, setHasFocused] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  // Same suppressOpen mechanism ClubPicker uses (see its own comment for the full reasoning) —
+  // without it, a controlled `open` prop never reacts to MUI's own close triggers (click-away,
+  // Escape, the dropdown arrow), only to a real selection, so the popper stayed open regardless
+  // of what the admin did short of picking an option.
+  const [suppressOpen, setSuppressOpen] = useState(false)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(query.trim()), PERSON_SEARCH_DEBOUNCE_MS)
@@ -70,7 +75,7 @@ export function PersonPicker({
   const personOptions: Person[] = personPage?.content ?? []
 
   const trimmedQuery = query.trim()
-  const autocompleteOpen = hasFocused && (isFetching || personOptions.length > 0)
+  const autocompleteOpen = hasFocused && !suppressOpen && (isFetching || personOptions.length > 0)
 
   const startSearch = () => {
     setShowSearch(true)
@@ -135,12 +140,21 @@ export function PersonPicker({
 
           <Autocomplete<Person>
             open={autocompleteOpen}
-            onOpen={() => setHasFocused(true)}
-            onClose={() => {}}
+            onOpen={() => {
+              setHasFocused(true)
+              setSuppressOpen(false)
+            }}
+            // See ClubPicker's identical onClose for why this can't be a no-op — a controlled
+            // `open` prop otherwise never reacts to MUI's own close triggers (click-away,
+            // Escape, the dropdown arrow).
+            onClose={() => setSuppressOpen(true)}
             options={personOptions}
             loading={isFetching}
             value={null}
-            onFocus={() => setHasFocused(true)}
+            onFocus={() => {
+              setHasFocused(true)
+              setSuppressOpen(false)
+            }}
             onChange={(_event, newValue) => {
               if (newValue) {
                 setShowSearch(false)
@@ -157,6 +171,7 @@ export function PersonPicker({
             inputValue={query}
             onInputChange={(_event, newInputValue, reason) => {
               if (reason === 'input') {
+                setSuppressOpen(false)
                 setQuery(newInputValue)
                 return
               }

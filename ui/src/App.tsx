@@ -53,16 +53,19 @@ function App() {
               <Route path="onboarding/new" element={<ClubFormPage />} />
               <Route path="onboarding/:id/edit" element={<ClubFormPage />} />
               <Route path="whitelisting" element={<EmptyState title="Whitelisting" description="Coming soon." />} />
-              <Route path="invoices" element={<EmptyState title="Subscriptions & Invoices" description="Coming soon." />} />
+              {/* Promoted out of Configuration to its own top-level item — Subscriptions is a
+                  day-to-day billing workflow, not a system config an admin sets up once (that's
+                  what Configuration's Products/System Settings cards are for). Was briefly
+                  registered as the placeholder "Subscriptions & Invoices" at /admin/invoices. */}
+              <Route path="billing" element={<SubscriptionList />} />
+              <Route path="billing/new" element={<SubscriptionFormPage />} />
+              <Route path="billing/:id/edit" element={<SubscriptionFormPage />} />
               <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
               <Route path="configuration">
                 <Route index element={<ConfigurationHome />} />
                 <Route path="products" element={<ProductList />} />
                 <Route path="products/new" element={<ProductFormPage />} />
                 <Route path="products/:id/edit" element={<ProductFormPage />} />
-                <Route path="subscriptions" element={<SubscriptionList />} />
-                <Route path="subscriptions/new" element={<SubscriptionFormPage />} />
-                <Route path="subscriptions/:id/edit" element={<SubscriptionFormPage />} />
                 <Route path="discounts" element={<EmptyState title="Discounts & Promotions" description="Coming soon." />} />
                 <Route path="invoicing" element={<EmptyState title="Invoicing" description="Coming soon." />} />
                 <Route path="settings" element={<EmptyState title="System Settings" description="Coming soon." />} />

@@ -137,6 +137,26 @@ describe('PersonPicker', () => {
     )
   })
 
+  it('closes the dropdown on Escape without selecting anything — regression coverage for a controlled Autocomplete that ignored every close trigger but a real selection', async () => {
+    const onChangeSpy = vi.fn()
+    const user = userEvent.setup()
+    renderPersonPicker({ onChangeSpy })
+
+    await user.click(screen.getByRole('button', { name: 'Link to an existing person instead' }))
+    const personField = screen.getByLabelText('Search for an existing person')
+    await user.click(personField)
+    await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' })
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onChangeSpy).not.toHaveBeenCalled()
+
+    // Focusing back in reopens it — Escape shouldn't permanently wedge the field shut.
+    await user.click(personField)
+    expect(await screen.findByRole('option', { name: 'Jane Doe — jane.doe@example.com' })).toBeInTheDocument()
+  })
+
   it('selecting an existing person calls onChange with an existing-mode selection, and renders their fields disabled', async () => {
     const onChangeSpy = vi.fn()
     const user = userEvent.setup()

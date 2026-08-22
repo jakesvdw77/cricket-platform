@@ -9,11 +9,12 @@ interface ConfigurationCard {
 }
 
 // docs/specs/007-configuration-hub-overview.md's roadmap — Products is the only
-// working card today; the other four are placeholder routes (EmptyState "Coming
-// soon.", registered in App.tsx) until their own specs land.
+// working card today; the other three are placeholder routes (EmptyState "Coming
+// soon.", registered in App.tsx) until their own specs land. Subscriptions used to
+// be a card here too; promoted to its own top-level nav item (AdminHome's NAV_ITEMS)
+// since it's a day-to-day billing workflow, not a system config.
 const CARDS: ConfigurationCard[] = [
   { title: 'Products', description: 'Define subscription tiers, pricing, and usage limits', to: '/admin/configuration/products' },
-  { title: 'Subscriptions', description: 'Link clubs and sections to a Product', to: '/admin/configuration/subscriptions' },
   { title: 'Discounts & Promotions', description: 'Coupons and per-club pricing overrides', to: '/admin/configuration/discounts' },
   { title: 'Invoicing', description: 'Billing cycles and invoice history', to: '/admin/configuration/invoicing' },
   { title: 'System Settings', description: 'Platform-wide configuration', to: '/admin/configuration/settings' },
