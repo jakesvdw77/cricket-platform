@@ -72,11 +72,14 @@ public class KeycloakProvisioningServiceImpl implements KeycloakProvisioningServ
         }
 
         try {
+            // VERIFY_EMAIL alongside UPDATE_PASSWORD in the same link — MeServiceImpl.bridgeByEmail
+            // requires the JWT's email_verified claim before binding a Person by email, so this
+            // ensures a real invitee's first login already satisfies that, no extra step/email.
             keycloakAdminClient
                     .realm(realm)
                     .users()
                     .get(createdUserId)
-                    .executeActionsEmail(publicClientId, resetRedirectUri, List.of("UPDATE_PASSWORD"));
+                    .executeActionsEmail(publicClientId, resetRedirectUri, List.of("VERIFY_EMAIL", "UPDATE_PASSWORD"));
         } catch (Exception e) {
             throw new KeycloakProvisioningException(
                     "execute-actions-email failed for person " + person.getId()
@@ -86,43 +89,57 @@ public class KeycloakProvisioningServiceImpl implements KeycloakProvisioningServ
         // Non-goals. Person.keycloakUserId is set only at first login, from the JWT's own sub.
     }
 
+    // Guards the fetch-modify-update below — Keycloak's Admin API has no optimistic locking on a
+    // ClientRepresentation PUT, so two of these racing (e.g. two clubs created/renamed close
+    // together) can silently clobber each other: the second PUT, built from a representation
+    // fetched before the first PUT landed, overwrites the first club's just-added entry with no
+    // error or symptom beyond that one club's login redirect quietly not working. Serializing
+    // within this JVM closes that within a single backend instance; it does NOT protect across
+    // multiple backend replicas sharing one Keycloak client, since the lock is process-local —
+    // acceptable for now given this repo's current single-instance deployment model, but revisit
+    // if that ever changes. Found during standards review before this spec's PR opened.
+    private final Object clientUpdateLock = new Object();
+
     @Override
     public void registerClubRedirectAccess(String clubSlug) {
         String origin = clubOrigin(clubSlug);
         String redirectUri = origin + "/*";
 
-        try {
-            List<ClientRepresentation> matches = keycloakAdminClient.realm(realm).clients().findByClientId(publicClientId);
-            if (matches.isEmpty()) {
+        synchronized (clientUpdateLock) {
+            try {
+                List<ClientRepresentation> matches =
+                        keycloakAdminClient.realm(realm).clients().findByClientId(publicClientId);
+                if (matches.isEmpty()) {
+                    throw new KeycloakProvisioningException(
+                            "No Keycloak client found for clientId " + publicClientId, null);
+                }
+                ClientRepresentation client = matches.get(0);
+
+                List<String> redirectUris =
+                        new ArrayList<>(client.getRedirectUris() != null ? client.getRedirectUris() : List.of());
+                List<String> webOrigins =
+                        new ArrayList<>(client.getWebOrigins() != null ? client.getWebOrigins() : List.of());
+                boolean changed = false;
+                if (!redirectUris.contains(redirectUri)) {
+                    redirectUris.add(redirectUri);
+                    client.setRedirectUris(redirectUris);
+                    changed = true;
+                }
+                if (!webOrigins.contains(origin)) {
+                    webOrigins.add(origin);
+                    client.setWebOrigins(webOrigins);
+                    changed = true;
+                }
+
+                if (changed) {
+                    keycloakAdminClient.realm(realm).clients().get(client.getId()).update(client);
+                }
+            } catch (KeycloakProvisioningException e) {
+                throw e;
+            } catch (Exception e) {
                 throw new KeycloakProvisioningException(
-                        "No Keycloak client found for clientId " + publicClientId, null);
+                        "Failed to register redirect access for club slug " + clubSlug, e);
             }
-            ClientRepresentation client = matches.get(0);
-
-            List<String> redirectUris =
-                    new ArrayList<>(client.getRedirectUris() != null ? client.getRedirectUris() : List.of());
-            List<String> webOrigins =
-                    new ArrayList<>(client.getWebOrigins() != null ? client.getWebOrigins() : List.of());
-            boolean changed = false;
-            if (!redirectUris.contains(redirectUri)) {
-                redirectUris.add(redirectUri);
-                client.setRedirectUris(redirectUris);
-                changed = true;
-            }
-            if (!webOrigins.contains(origin)) {
-                webOrigins.add(origin);
-                client.setWebOrigins(webOrigins);
-                changed = true;
-            }
-
-            if (changed) {
-                keycloakAdminClient.realm(realm).clients().get(client.getId()).update(client);
-            }
-        } catch (KeycloakProvisioningException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new KeycloakProvisioningException(
-                    "Failed to register redirect access for club slug " + clubSlug, e);
         }
     }
 

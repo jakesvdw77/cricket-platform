@@ -108,7 +108,7 @@ class KeycloakProvisioningServiceImplTest {
     }
 
     @Test
-    void provisionAccountCallsExecuteActionsEmailWithUpdatePasswordAndConfiguredClientAndRedirectUri() {
+    void provisionAccountCallsExecuteActionsEmailWithVerifyEmailAndUpdatePasswordAndConfiguredClientAndRedirectUri() {
         Person person = person();
         String createdUserId = UUID.randomUUID().toString();
         Response response = createdResponse(createdUserId);
@@ -119,7 +119,9 @@ class KeycloakProvisioningServiceImplTest {
 
         verify(userResource)
                 .executeActionsEmail(
-                        eq(PUBLIC_CLIENT_ID), eq(EXPECTED_RESET_REDIRECT_URI), eq(List.of("UPDATE_PASSWORD")));
+                        eq(PUBLIC_CLIENT_ID),
+                        eq(EXPECTED_RESET_REDIRECT_URI),
+                        eq(List.of("VERIFY_EMAIL", "UPDATE_PASSWORD")));
     }
 
     @Test

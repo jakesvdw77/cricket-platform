@@ -49,7 +49,8 @@ public class MeServiceImpl implements MeService {
 
         Person person = personRepository.findByKeycloakUserId(keycloakUserId).orElse(null);
         if (person == null) {
-            person = bridgeByEmail(keycloakUserId, jwt.getClaimAsString("email"));
+            person = bridgeByEmail(
+                    keycloakUserId, jwt.getClaimAsString("email"), Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")));
         }
 
         List<UUID> clubAdminClubIds = person == null
@@ -67,9 +68,18 @@ public class MeServiceImpl implements MeService {
                 clubAdminClubIds);
     }
 
-    private Person bridgeByEmail(String keycloakUserId, String email) {
-        if (email == null) {
-            return null; // no email claim on this token — nothing to bridge against
+    // Requires email_verified on the JWT before binding keycloakUserId to a Person by email —
+    // without this, anyone able to influence an unverified email claim (self-registration, a
+    // social IdP, any future realm login option beyond today's admin-provisioned-only accounts)
+    // could bind their own Keycloak account to someone else's still-PENDING Person and inherit
+    // whatever RoleAssignment grant is waiting for that email, before the real invitee ever logs
+    // in. KeycloakProvisioningServiceImpl.provisionAccount's invite email now requires VERIFY_EMAIL
+    // alongside UPDATE_PASSWORD in the same link specifically so this check doesn't add friction
+    // to the legitimate flow — email_verified is already true by the time a real invitee's first
+    // login reaches here. Found during standards review before this spec's PR opened.
+    private Person bridgeByEmail(String keycloakUserId, String email, boolean emailVerified) {
+        if (email == null || !emailVerified) {
+            return null;
         }
         Person person = personRepository.findByEmailIgnoreCase(email).orElse(null);
         if (person == null) {

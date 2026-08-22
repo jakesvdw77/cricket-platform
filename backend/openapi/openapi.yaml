@@ -6,448 +6,6 @@ servers:
 - url: http://localhost:8082
   description: Generated server url
 paths:
-  /api/v1/platform/leads/{id}/status:
-    post:
-      tags:
-      - lead-controller
-      operationId: transitionStatus
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateLeadStatusRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeadDto"
-  /api/v1/leads:
-    post:
-      tags:
-      - lead-controller
-      operationId: create
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateLeadRequest"
-        required: true
-      responses:
-        "201":
-          description: Lead created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeadDto"
-  /api/v1/public/clubs:
-    get:
-      tags:
-      - public-club-controller
-      operationId: search
-      parameters:
-      - name: query
-        in: query
-        required: false
-        schema:
-          type: string
-          default: ""
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ClubSummaryDto"
-  /api/v1/platform/me:
-    get:
-      tags:
-      - admin-identity-controller
-      operationId: me
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/AdminIdentityDto"
-  /api/v1/platform/leads:
-    get:
-      tags:
-      - lead-controller
-      operationId: list
-      parameters:
-      - name: status
-        in: query
-        required: false
-        schema:
-          type: string
-          enum:
-          - NEW
-          - CONTACTED
-          - CONVERTED
-          - DISMISSED
-      - name: pageable
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/Pageable"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PageLeadDto"
-  /api/v1/platform/products:
-    get:
-      tags:
-      - product-controller
-      operationId: list
-      parameters:
-      - name: search
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: status
-        in: query
-        required: false
-        schema:
-          type: string
-          enum:
-          - DRAFT
-          - ACTIVE
-          - RETIRED
-      - name: pageable
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/Pageable"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PageProductDto"
-    post:
-      tags:
-      - product-controller
-      operationId: create
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateProductRequest"
-        required: true
-      responses:
-        "201":
-          description: Product created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ProductDto"
-  /api/v1/platform/products/{id}:
-    get:
-      tags:
-      - product-controller
-      operationId: get
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ProductDto"
-    put:
-      tags:
-      - product-controller
-      operationId: update
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateProductRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ProductDto"
-  /api/v1/platform/products/{id}/retire:
-    post:
-      tags:
-      - product-controller
-      operationId: retire
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ProductDto"
-  /api/v1/platform/clubs:
-    get:
-      tags:
-      - club-controller
-      operationId: list
-      parameters:
-      - name: search
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: pageable
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/Pageable"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PageClubDto"
-    post:
-      tags:
-      - club-controller
-      operationId: create
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateClubRequest"
-        required: true
-      responses:
-        "201":
-          description: Club created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubDto"
-  /api/v1/platform/clubs/{id}:
-    get:
-      tags:
-      - club-controller
-      operationId: get
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubDto"
-    put:
-      tags:
-      - club-controller
-      operationId: update
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateClubRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubDto"
-  /api/v1/platform/clubs/{id}/suspend:
-    post:
-      tags:
-      - club-controller
-      operationId: suspend
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubDto"
-  /api/v1/platform/clubs/{id}/reactivate:
-    post:
-      tags:
-      - club-controller
-      operationId: reactivate
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubDto"
-  /api/v1/platform/clubs/{id}/profile:
-    get:
-      tags:
-      - club-profile-controller
-      operationId: get
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubProfileDto"
-    put:
-      tags:
-      - club-profile-controller
-      operationId: upsert
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateClubProfileRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubProfileDto"
-  /api/v1/platform/persons:
-    get:
-      tags:
-      - person-controller
-      operationId: list
-      parameters:
-      - name: search
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: pageable
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/Pageable"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PagePersonDto"
-  /api/v1/platform/subscriptions:
-    get:
-      tags:
-      - subscription-controller
-      operationId: list
-      parameters:
-      - name: search
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: pageable
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/Pageable"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PageSubscriptionDto"
-    post:
-      tags:
-      - subscription-controller
-      operationId: create
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSubscriptionRequest"
-        required: true
-      responses:
-        "201":
-          description: Subscription created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SubscriptionDto"
   /api/v1/platform/subscriptions/{id}:
     get:
       tags:
@@ -491,6 +49,175 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SubscriptionDto"
+  /api/v1/platform/products/{id}:
+    get:
+      tags:
+      - product-controller
+      operationId: get_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+    put:
+      tags:
+      - product-controller
+      operationId: update_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+  /api/v1/platform/clubs/{id}:
+    get:
+      tags:
+      - club-controller
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+    put:
+      tags:
+      - club-controller
+      operationId: update_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/profile:
+    get:
+      tags:
+      - club-profile-controller
+      operationId: get_3
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
+    put:
+      tags:
+      - club-profile-controller
+      operationId: upsert
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
+  /api/v1/platform/subscriptions:
+    get:
+      tags:
+      - subscription-controller
+      operationId: list
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageSubscriptionDto"
+    post:
+      tags:
+      - subscription-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionRequest"
+        required: true
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
   /api/v1/platform/subscriptions/{id}/cancel:
     post:
       tags:
@@ -510,6 +237,74 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SubscriptionDto"
+  /api/v1/platform/products:
+    get:
+      tags:
+      - product-controller
+      operationId: list_1
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - RETIRED
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageProductDto"
+    post:
+      tags:
+      - product-controller
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+        required: true
+      responses:
+        "201":
+          description: Product created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+  /api/v1/platform/products/{id}/retire:
+    post:
+      tags:
+      - product-controller
+      operationId: retire
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductDto"
   /api/v1/platform/media:
     post:
       tags:
@@ -533,24 +328,240 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MediaUploadResponse"
-components:
-  schemas:
-    UpdateLeadStatusRequest:
-      type: object
-      properties:
-        status:
+  /api/v1/platform/leads/{id}/status:
+    post:
+      tags:
+      - lead-controller
+      operationId: transitionStatus
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeadStatusRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeadDto"
+  /api/v1/platform/clubs:
+    get:
+      tags:
+      - club-controller
+      operationId: list_2
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageClubDto"
+    post:
+      tags:
+      - club-controller
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubRequest"
+        required: true
+      responses:
+        "201":
+          description: Club created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/suspend:
+    post:
+      tags:
+      - club-controller
+      operationId: suspend
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/platform/clubs/{id}/reactivate:
+    post:
+      tags:
+      - club-controller
+      operationId: reactivate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubDto"
+  /api/v1/me/activate:
+    post:
+      tags:
+      - me-controller
+      operationId: activate
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeAccessDto"
+  /api/v1/leads:
+    post:
+      tags:
+      - lead-controller
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeadRequest"
+        required: true
+      responses:
+        "201":
+          description: Lead created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeadDto"
+  /api/v1/public/clubs:
+    get:
+      tags:
+      - public-club-controller
+      operationId: search
+      parameters:
+      - name: query
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ""
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubSummaryDto"
+  /api/v1/platform/persons:
+    get:
+      tags:
+      - person-controller
+      operationId: list_3
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagePersonDto"
+  /api/v1/platform/me:
+    get:
+      tags:
+      - admin-identity-controller
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AdminIdentityDto"
+  /api/v1/platform/leads:
+    get:
+      tags:
+      - lead-controller
+      operationId: list_4
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
           type: string
           enum:
           - NEW
           - CONTACTED
           - CONVERTED
           - DISMISSED
-        convertedClubId:
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageLeadDto"
+components:
+  schemas:
+    UpdateSubscriptionRequest:
+      type: object
+      properties:
+        productId:
           type: string
           format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
       required:
-      - status
-    LeadDto:
+      - productId
+    ClubSummaryDto:
       type: object
       properties:
         id:
@@ -558,50 +569,130 @@ components:
           format: uuid
         name:
           type: string
-        email:
+        slug:
           type: string
-        clubName:
+    PersonDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
           type: string
         phone:
           type: string
-        message:
+    ProductSummaryDto:
+      type: object
+      properties:
+        id:
           type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+    SubscriptionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SECTION
+        ownerId:
+          type: string
+          format: uuid
+        club:
+          $ref: "#/components/schemas/ClubSummaryDto"
+        product:
+          $ref: "#/components/schemas/ProductSummaryDto"
         status:
           type: string
           enum:
-          - NEW
-          - CONTACTED
-          - CONVERTED
-          - DISMISSED
-        convertedClubId:
+          - ACTIVE
+          - CANCELLED
+        startDate:
           type: string
-          format: uuid
-        contactedByPersonId:
+          format: date
+        endDate:
           type: string
-          format: uuid
-        contactedAt:
-          type: string
-          format: date-time
+          format: date
+        responsiblePerson:
+          $ref: "#/components/schemas/PersonDto"
         createdAt:
           type: string
           format: date-time
-    CreateLeadRequest:
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    UpdateProductRequest:
       type: object
       properties:
+        code:
+          type: string
         name:
           type: string
-        email:
+        description:
           type: string
-        clubName:
+        isFree:
+          type: boolean
+        price:
+          type: number
+        currency:
           type: string
-        phone:
+          maxLength: 3
+          minLength: 3
+        billingInterval:
           type: string
-        message:
+          enum:
+          - MONTHLY
+          - ANNUAL
+        maxPeriodMonths:
+          type: integer
+          format: int32
+        maxSections:
+          type: integer
+          format: int32
+        maxTeams:
+          type: integer
+          format: int32
+        maxPlayers:
+          type: integer
+          format: int32
+        displayOrder:
+          type: integer
+          format: int32
+        status:
           type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - RETIRED
+        showAds:
+          type: boolean
+        allowSubdomain:
+          type: boolean
+        allowWhitelisting:
+          type: boolean
       required:
-      - clubName
-      - email
+      - allowSubdomain
+      - allowWhitelisting
+      - code
+      - displayOrder
+      - isFree
       - name
+      - showAds
+      - status
     ProductDto:
       type: object
       properties:
@@ -661,117 +752,19 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateProductRequest:
+    UpdateClubRequest:
       type: object
       properties:
-        code:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        isFree:
-          type: boolean
-        price:
-          type: number
-        currency:
-          type: string
-        billingInterval:
-          type: string
-          enum:
-          - MONTHLY
-          - ANNUAL
-        maxPeriodMonths:
-          type: integer
-          format: int32
-        maxSections:
-          type: integer
-          format: int32
-        maxTeams:
-          type: integer
-          format: int32
-        maxPlayers:
-          type: integer
-          format: int32
-        displayOrder:
-          type: integer
-          format: int32
-        showAds:
-          type: boolean
-        allowSubdomain:
-          type: boolean
-        allowWhitelisting:
-          type: boolean
-      required:
-      - code
-      - isFree
-      - name
-    UpdateProductRequest:
-      type: object
-      properties:
-        code:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        isFree:
-          type: boolean
-        price:
-          type: number
-        currency:
-          type: string
-        billingInterval:
-          type: string
-          enum:
-          - MONTHLY
-          - ANNUAL
-        maxPeriodMonths:
-          type: integer
-          format: int32
-        maxSections:
-          type: integer
-          format: int32
-        maxTeams:
-          type: integer
-          format: int32
-        maxPlayers:
-          type: integer
-          format: int32
-        displayOrder:
-          type: integer
-          format: int32
-        status:
-          type: string
-          enum:
-          - DRAFT
-          - ACTIVE
-          - RETIRED
-        showAds:
-          type: boolean
-        allowSubdomain:
-          type: boolean
-        allowWhitelisting:
-          type: boolean
-      required:
-      - code
-      - isFree
-      - name
-      - displayOrder
-      - status
-      - showAds
-      - allowSubdomain
-      - allowWhitelisting
-    ClubSummaryDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
         name:
           type: string
         slug:
           type: string
+          maxLength: 63
+          minLength: 3
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      required:
+      - name
+      - slug
     ClubDto:
       type: object
       properties:
@@ -797,357 +790,6 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateClubRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-      required:
-      - name
-      - slug
-    UpdateClubRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-      required:
-      - name
-      - slug
-    ProductSummaryDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        code:
-          type: string
-    PersonDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-        phone:
-          type: string
-    SubscriptionDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        ownerType:
-          type: string
-          enum:
-          - CLUB
-          - SECTION
-        ownerId:
-          type: string
-          format: uuid
-        club:
-          $ref: "#/components/schemas/ClubSummaryDto"
-        product:
-          $ref: "#/components/schemas/ProductSummaryDto"
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - CANCELLED
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-        responsiblePerson:
-          $ref: "#/components/schemas/PersonDto"
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        updatedBy:
-          type: string
-          format: uuid
-    CreateSubscriptionRequest:
-      type: object
-      properties:
-        ownerType:
-          type: string
-          enum:
-          - CLUB
-          - SECTION
-        ownerId:
-          type: string
-          format: uuid
-        productId:
-          type: string
-          format: uuid
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-        responsiblePerson:
-          $ref: "#/components/schemas/ResponsiblePersonRequest"
-      required:
-      - ownerId
-      - ownerType
-      - productId
-      - responsiblePerson
-    ResponsiblePersonRequest:
-      type: object
-      properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-        phone:
-          type: string
-      required:
-      - email
-      - firstName
-      - lastName
-    UpdateSubscriptionRequest:
-      type: object
-      properties:
-        productId:
-          type: string
-          format: uuid
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-      required:
-      - productId
-    AdminIdentityDto:
-      type: object
-      properties:
-        keycloakUserId:
-          type: string
-        username:
-          type: string
-        email:
-          type: string
-    Pageable:
-      type: object
-      properties:
-        page:
-          type: integer
-          format: int32
-          minimum: 0
-        size:
-          type: integer
-          format: int32
-          minimum: 1
-        sort:
-          type: array
-          items:
-            type: string
-    PageLeadDto:
-      type: object
-      properties:
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/LeadDto"
-        number:
-          type: integer
-          format: int32
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
-        numberOfElements:
-          type: integer
-          format: int32
-        first:
-          type: boolean
-        last:
-          type: boolean
-        empty:
-          type: boolean
-    PageProductDto:
-      type: object
-      properties:
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/ProductDto"
-        number:
-          type: integer
-          format: int32
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
-        numberOfElements:
-          type: integer
-          format: int32
-        first:
-          type: boolean
-        last:
-          type: boolean
-        empty:
-          type: boolean
-    PageClubDto:
-      type: object
-      properties:
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/ClubDto"
-        number:
-          type: integer
-          format: int32
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
-        numberOfElements:
-          type: integer
-          format: int32
-        first:
-          type: boolean
-        last:
-          type: boolean
-        empty:
-          type: boolean
-    PageSubscriptionDto:
-      type: object
-      properties:
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/SubscriptionDto"
-        number:
-          type: integer
-          format: int32
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
-        numberOfElements:
-          type: integer
-          format: int32
-        first:
-          type: boolean
-        last:
-          type: boolean
-        empty:
-          type: boolean
-    PagePersonDto:
-      type: object
-      properties:
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/PersonDto"
-        number:
-          type: integer
-          format: int32
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
-        numberOfElements:
-          type: integer
-          format: int32
-        first:
-          type: boolean
-        last:
-          type: boolean
-        empty:
-          type: boolean
-    PageableObject:
-      type: object
-      properties:
-        offset:
-          type: integer
-          format: int64
-        sort:
-          $ref: "#/components/schemas/SortObject"
-        paged:
-          type: boolean
-        unpaged:
-          type: boolean
-        pageNumber:
-          type: integer
-          format: int32
-        pageSize:
-          type: integer
-          format: int32
-    SortObject:
-      type: object
-      properties:
-        empty:
-          type: boolean
-        unsorted:
-          type: boolean
-        sorted:
-          type: boolean
     AddressDto:
       type: object
       properties:
@@ -1163,22 +805,6 @@ components:
           type: string
         postalCode:
           type: string
-    ContactDto:
-      type: object
-      properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-        phone:
-          type: string
-      required:
-      - email
-      - firstName
-      - lastName
-      - phone
     UpdateClubProfileRequest:
       type: object
       properties:
@@ -1236,8 +862,407 @@ components:
         updatedBy:
           type: string
           format: uuid
+    CreateSubscriptionRequest:
+      type: object
+      properties:
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SECTION
+        ownerId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        responsiblePerson:
+          $ref: "#/components/schemas/ResponsiblePersonRequest"
+      required:
+      - ownerId
+      - ownerType
+      - productId
+      - responsiblePerson
+    ResponsiblePersonRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
+    CreateProductRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        isFree:
+          type: boolean
+        price:
+          type: number
+        currency:
+          type: string
+          maxLength: 3
+          minLength: 3
+        billingInterval:
+          type: string
+          enum:
+          - MONTHLY
+          - ANNUAL
+        maxPeriodMonths:
+          type: integer
+          format: int32
+        maxSections:
+          type: integer
+          format: int32
+        maxTeams:
+          type: integer
+          format: int32
+        maxPlayers:
+          type: integer
+          format: int32
+        displayOrder:
+          type: integer
+          format: int32
+        showAds:
+          type: boolean
+        allowSubdomain:
+          type: boolean
+        allowWhitelisting:
+          type: boolean
+      required:
+      - code
+      - isFree
+      - name
     MediaUploadResponse:
       type: object
       properties:
         url:
           type: string
+    UpdateLeadStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - NEW
+          - CONTACTED
+          - CONVERTED
+          - DISMISSED
+        convertedClubId:
+          type: string
+          format: uuid
+      required:
+      - status
+    LeadDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        clubName:
+          type: string
+        phone:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum:
+          - NEW
+          - CONTACTED
+          - CONVERTED
+          - DISMISSED
+        convertedClubId:
+          type: string
+          format: uuid
+        contactedByPersonId:
+          type: string
+          format: uuid
+        contactedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    CreateClubRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+          maxLength: 63
+          minLength: 3
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      required:
+      - name
+      - slug
+    MeAccessDto:
+      type: object
+      properties:
+        personId:
+          type: string
+          format: uuid
+        personStatus:
+          type: string
+          enum:
+          - PENDING
+          - ACTIVE
+          - SUSPENDED
+        platformAdmin:
+          type: boolean
+        clubAdminClubIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    CreateLeadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        clubName:
+          type: string
+        phone:
+          type: string
+        message:
+          type: string
+      required:
+      - clubName
+      - email
+      - name
+    Pageable:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+        sort:
+          type: array
+          items:
+            type: string
+    PageSubscriptionDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubscriptionDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageNumber:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        paged:
+          type: boolean
+        unpaged:
+          type: boolean
+    SortObject:
+      type: object
+      properties:
+        empty:
+          type: boolean
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+    PageProductDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PagePersonDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    AdminIdentityDto:
+      type: object
+      properties:
+        keycloakUserId:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+    PageLeadDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PageClubDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean

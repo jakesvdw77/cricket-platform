@@ -52,14 +52,22 @@ class MeServiceImplTest {
         meService = new MeServiceImpl(personRepository, roleAssignmentRepository, accessService);
     }
 
+    // Defaults email_verified to true — every existing test here exercises the legitimate,
+    // already-verified invite flow (KeycloakProvisioningServiceImpl.provisionAccount now requires
+    // VERIFY_EMAIL alongside UPDATE_PASSWORD in the same invite link). The unverified case gets
+    // its own explicit test below.
     private Jwt jwtWithEmail(String subject, String email) {
+        return jwtWithEmail(subject, email, true);
+    }
+
+    private Jwt jwtWithEmail(String subject, String email, boolean emailVerified) {
         Jwt.Builder builder = Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(60))
                 .claim("sub", subject);
         if (email != null) {
-            builder.claim("email", email);
+            builder.claim("email", email).claim("email_verified", emailVerified);
         }
         return builder.build();
     }
@@ -168,6 +176,27 @@ class MeServiceImplTest {
         assertThat(result.personId()).isNull();
         assertThat(result.personStatus()).isNull();
         verify(personRepository, never()).findByEmailIgnoreCase(any());
+    }
+
+    @Test
+    void anUnverifiedEmailClaimIsNeverBridgedEvenWhenAMatchingPersonExists() {
+        // Without this, an attacker able to influence an unverified email claim (self-registration,
+        // a social IdP, any future login option beyond today's admin-provisioned-only accounts)
+        // could bind their own Keycloak account to someone else's still-PENDING Person and inherit
+        // that Person's RoleAssignment grant before the real invitee ever logs in.
+        String subject = "99999999-9999-9999-9999-999999999999";
+        String email = "jane.doe@example.com";
+        var authentication = new TestingAuthenticationToken(subject, null, List.of());
+        Jwt jwt = jwtWithEmail(subject, email, false);
+        when(accessService.isPlatformAdmin(authentication)).thenReturn(false);
+        when(personRepository.findByKeycloakUserId(subject)).thenReturn(Optional.empty());
+
+        MeAccessDto result = meService.activateAndResolveAccess(authentication, jwt);
+
+        assertThat(result.personId()).isNull();
+        assertThat(result.personStatus()).isNull();
+        verify(personRepository, never()).findByEmailIgnoreCase(any());
+        verify(personRepository, never()).save(any());
     }
 
     @Test
