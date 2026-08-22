@@ -40,26 +40,23 @@ const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.lo
 // Keycloak having finished processing any pending login redirect should await this.
 //
 // onLoad: 'check-sso' — restores the session silently on a plain page load/refresh (no pending
-// OAuth callback in the URL), rather than requiring a full login() redirect every time. Works by
-// embedding an iframe pointed at Keycloak's own /auth endpoint (auth.localhost), which — since
-// this app runs on a different origin per club subdomain (002's own design) — needs Keycloak's
-// realm-level Security Defenses → Headers to actually allow being framed cross-origin
-// (X-Frame-Options cleared, Content-Security-Policy's frame-ancestors widened to this app's
-// domains) before it works at all. That's a one-time realm/infra config change, not app code —
-// treat it the same as the other manually-provisioned Keycloak setup (016's Phase 0). Without it,
-// this iframe just never resolves and keycloakInitPromise hangs — confirmed the hard way once
-// already, hence this being turned off before. silentCheckSsoRedirectUri points at a same-origin
-// static file (ui/public/silent-check-sso.html) that the Keycloak-origin iframe redirects to once
-// it has an answer — that file itself was never the blocked part.
+// OAuth callback in the URL), rather than requiring a full login() redirect every time.
+// Deliberately NOT passing silentCheckSsoRedirectUri: that option switches this into a
+// hidden-iframe implementation, which needs Keycloak's own realm-level Security Defenses →
+// Headers relaxed to allow being framed cross-origin (X-Frame-Options cleared, CSP's
+// frame-ancestors widened) — a real infra dependency that turned out to be unnecessary
+// complexity. Omitting it falls back to keycloak-js's other check-sso mode instead: a plain
+// top-level redirect-and-back through Keycloak with prompt=none, no iframe involved at all —
+// near-instant when a session exists (no login form ever renders), and requires zero Keycloak
+// configuration. Confirmed this is exactly what the original single-tenant Cricket Legend app
+// already does (ui/src/keycloak.ts there) — same onLoad: 'check-sso', no
+// silentCheckSsoRedirectUri, no realm changes ever needed.
 //
 // checkLoginIframe stays off deliberately — that's a separate, ongoing poll (detects logout
 // elsewhere while this tab stays open), not needed to fix a plain refresh, and no reason to add
-// more iframe traffic than this problem actually requires.
+// more redirect traffic than this problem actually requires.
 export const keycloakInitPromise = keycloak.init({
-  ...(needsKeycloakSession && {
-    onLoad: 'check-sso',
-    silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-  }),
+  ...(needsKeycloakSession && { onLoad: 'check-sso' }),
   redirectUri: window.location.origin + '/',
   checkLoginIframe: false,
 })
