@@ -55,8 +55,16 @@ const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.lo
 // checkLoginIframe stays off deliberately — that's a separate, ongoing poll (detects logout
 // elsewhere while this tab stays open), not needed to fix a plain refresh, and no reason to add
 // more redirect traffic than this problem actually requires.
+// No redirectUri here (deliberately, matching the legacy app's own init() call): check-sso's
+// plain-redirect round-trip uses this as its return destination, and keycloak-js's own default
+// when it's omitted is the current full URL (path included) — exactly what's wanted, so a
+// refresh on e.g. /admin/configuration returns there, not to the bare root. Setting it
+// unconditionally to origin + '/' was a real bug: it forced every check-sso round-trip back to
+// the root page regardless of where the admin actually was. keycloak.logout()'s 3 call sites
+// (AdminHome/ManagerHome/PlayerHome) don't pass their own redirectUri either, for the same
+// reason the legacy app doesn't — landing back on the current (now-unauthenticated) page after
+// logout is the simpler, already-proven-fine behavior, not a gap.
 export const keycloakInitPromise = keycloak.init({
   ...(needsKeycloakSession && { onLoad: 'check-sso' }),
-  redirectUri: window.location.origin + '/',
   checkLoginIframe: false,
 })
