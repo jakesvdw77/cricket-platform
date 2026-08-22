@@ -16,6 +16,25 @@ export interface RecordCardField {
   value: ReactNode
 }
 
+// Generic second footer action, e.g. a per-card async action like "Resend welcome email"
+// (docs/specs/019-resend-subscription-welcome-email.md) — not Subscription-specific, so any
+// future card needing a second footer action with inline pending/outcome feedback reuses this
+// rather than a bespoke variant.
+export interface RecordCardSecondaryAction {
+  label: string
+  pendingLabel: string
+  onClick: () => void
+  pending: boolean
+}
+
+// Generic inline outcome message for a card-level action (e.g. secondaryAction's result) — the
+// same "coloured Typography for the outcome" pattern already used in EmailSettings.tsx, not a
+// new Alert/Snackbar component.
+export interface RecordCardFeedback {
+  message: string
+  tone: 'success' | 'error'
+}
+
 export interface RecordCardProps {
   title: string
   badge?: RecordCardBadge
@@ -25,6 +44,8 @@ export interface RecordCardProps {
   editLabel: string
   onEdit?: () => void
   editTo?: string
+  secondaryAction?: RecordCardSecondaryAction
+  feedback?: RecordCardFeedback | null
 }
 
 // The grid unit for any record list (ProductList today, future Subscriptions/Discounts/
@@ -33,7 +54,18 @@ export interface RecordCardProps {
 // description, a row of key fields, an optional row of attribute chips, then an Edit footer.
 // Built directly from MUI Card/CardContent/CardActions rather than the shared Card component —
 // this slot structure is more specific than Card's generic title/children/footer shape.
-export function RecordCard({ title, badge, description, fields, chips, editLabel, onEdit, editTo }: RecordCardProps) {
+export function RecordCard({
+  title,
+  badge,
+  description,
+  fields,
+  chips,
+  editLabel,
+  onEdit,
+  editTo,
+  secondaryAction,
+  feedback,
+}: RecordCardProps) {
   return (
     <MuiCard variant="outlined">
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -106,9 +138,20 @@ export function RecordCard({ title, badge, description, fields, chips, editLabel
             ))}
           </Stack>
         )}
+
+        {feedback && (
+          <Typography variant="body2" color={feedback.tone === 'success' ? 'success.main' : 'error.main'}>
+            {feedback.message}
+          </Typography>
+        )}
       </CardContent>
 
       <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2, pt: 0 }}>
+        {secondaryAction && (
+          <Button variant="ghost" size="sm" disabled={secondaryAction.pending} onClick={secondaryAction.onClick}>
+            {secondaryAction.pending ? secondaryAction.pendingLabel : secondaryAction.label}
+          </Button>
+        )}
         {editTo ? (
           <MuiButton component={RouterLink} to={editTo} variant="text" color="inherit" size="small">
             {editLabel}

@@ -3,6 +3,7 @@ package com.cricketlegend.controller;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withRole;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -502,6 +503,68 @@ class SubscriptionControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/platform/subscriptions/{id}/cancel", subscription.getId())
                         .with(platformAdmin()))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void resendWelcomeEmailOnActiveSubscriptionReturns200WithSuccessTrueAndSentToTheResponsiblePersonsEmail()
+            throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+        Subscription subscription = subscriptionRepository.save(
+                newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+        Person responsiblePerson =
+                personRepository.findById(subscription.getResponsiblePersonId()).orElseThrow();
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions/{id}/resend-welcome-email", subscription.getId())
+                        .with(platformAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.sentTo").value(responsiblePerson.getEmail()));
+    }
+
+    @Test
+    void resendWelcomeEmailOnCancelledSubscriptionReturns409() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+        Subscription subscription = subscriptionRepository.save(
+                newSubscription(club.getId(), product.getId(), SubscriptionStatus.CANCELLED));
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions/{id}/resend-welcome-email", subscription.getId())
+                        .with(platformAdmin()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void resendWelcomeEmailStillReturns200WithSuccessFalseWhenSubscriptionWelcomeEmailServiceThrows()
+            throws Exception {
+        // Real Architectural Judgment Calls #1 (019) — a downstream EmailDeliveryException is
+        // caught and reported as response data, never allowed to fall through to a generic 5xx.
+        doThrow(new EmailDeliveryException("SMTP is unreachable", null))
+                .when(subscriptionWelcomeEmailService)
+                .sendWelcomeEmail(any(), any(), any(), any());
+
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+        Subscription subscription = subscriptionRepository.save(
+                newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions/{id}/resend-welcome-email", subscription.getId())
+                        .with(platformAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message", containsString("Failed to resend welcome email")));
+    }
+
+    @Test
+    void resendWelcomeEmailWithNonPlatformAdminJwtReturns403() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+        Subscription subscription = subscriptionRepository.save(
+                newSubscription(club.getId(), product.getId(), SubscriptionStatus.ACTIVE));
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions/{id}/resend-welcome-email", subscription.getId())
+                        .with(withRole("someone_else", UnaryOperator.identity())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

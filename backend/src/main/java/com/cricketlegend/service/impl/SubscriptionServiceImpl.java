@@ -14,6 +14,7 @@ import com.cricketlegend.dto.ClubSummaryDto;
 import com.cricketlegend.dto.CreateSubscriptionRequest;
 import com.cricketlegend.dto.PersonDto;
 import com.cricketlegend.dto.ProductSummaryDto;
+import com.cricketlegend.dto.ResendWelcomeEmailResultDto;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.exception.DuplicateActiveSubscriptionException;
@@ -286,6 +287,37 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Product product = findProductOrThrow(subscription.getProductId());
         Person responsiblePerson = findPersonOrThrow(subscription.getResponsiblePersonId());
         return toDto(subscription, club, product, responsiblePerson);
+    }
+
+    @Override
+    public ResendWelcomeEmailResultDto resendWelcomeEmail(UUID id) {
+        Subscription subscription = findOrThrow(id);
+        if (subscription.getStatus() == SubscriptionStatus.CANCELLED) {
+            throw new InvalidStatusTransitionException(
+                    "Cannot resend welcome email for a cancelled subscription: " + id);
+        }
+
+        Club club = findClubOrThrow(subscription.getOwnerId());
+        Product product = findProductOrThrow(subscription.getProductId());
+        Person responsiblePerson = findPersonOrThrow(subscription.getResponsiblePersonId());
+
+        try {
+            subscriptionWelcomeEmailService.sendWelcomeEmail(responsiblePerson, subscription, club, product);
+            return new ResendWelcomeEmailResultDto(
+                    true, "Welcome email resent to " + responsiblePerson.getEmail() + ".", responsiblePerson.getEmail());
+        } catch (EmailDeliveryException e) {
+            // Real Architectural Judgment Calls #1 (019) - the deliberate contrast with
+            // sendWelcomeEmailBestEffort's catch-log-swallow posture. This action's entire purpose
+            // is sending an email on request, so its outcome belongs in the response, never thrown
+            // to GlobalExceptionHandler.
+            return new ResendWelcomeEmailResultDto(
+                    false, "Failed to resend welcome email: " + rootCauseMessage(e), responsiblePerson.getEmail());
+        }
+    }
+
+    private String rootCauseMessage(EmailDeliveryException e) {
+        Throwable cause = e.getCause();
+        return cause != null && cause.getMessage() != null ? cause.getMessage() : e.getMessage();
     }
 
     private SubscriptionDto toDto(Subscription subscription, Club club, Product product, Person responsiblePerson) {

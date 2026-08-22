@@ -24,6 +24,7 @@ import com.cricketlegend.domain.SubscriptionStatus;
 import com.cricketlegend.dto.ClubSummaryDto;
 import com.cricketlegend.dto.CreateSubscriptionRequest;
 import com.cricketlegend.dto.ProductSummaryDto;
+import com.cricketlegend.dto.ResendWelcomeEmailResultDto;
 import com.cricketlegend.dto.ResponsiblePersonRequest;
 import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
@@ -684,6 +685,70 @@ class SubscriptionServiceImplTest {
                 .isInstanceOf(InvalidStatusTransitionException.class);
 
         verify(subscriptionRepository, never()).save(any());
+    }
+
+    @Test
+    void resendWelcomeEmailOnActiveSubscriptionCallsSendWelcomeEmailWithCurrentClubProductPersonAndReturnsSuccessTrue() {
+        UUID id = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Subscription existing = subscription(id, ownerId, productId, SubscriptionStatus.ACTIVE);
+        Club club = activeClub(ownerId);
+        Product product = product(productId, ProductStatus.ACTIVE);
+        Person responsiblePerson = person(existing.getResponsiblePersonId());
+
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(personRepository.findById(existing.getResponsiblePersonId()))
+                .thenReturn(Optional.of(responsiblePerson));
+
+        ResendWelcomeEmailResultDto result = subscriptionService.resendWelcomeEmail(id);
+
+        verify(subscriptionWelcomeEmailService).sendWelcomeEmail(responsiblePerson, existing, club, product);
+        assertThat(result.success()).isTrue();
+        assertThat(result.sentTo()).isEqualTo(responsiblePerson.getEmail());
+    }
+
+    @Test
+    void resendWelcomeEmailOnCancelledSubscriptionThrowsInvalidStatusTransitionExceptionAndNeverCallsSendWelcomeEmail() {
+        UUID id = UUID.randomUUID();
+        Subscription existing =
+                subscription(id, UUID.randomUUID(), UUID.randomUUID(), SubscriptionStatus.CANCELLED);
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> subscriptionService.resendWelcomeEmail(id))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+
+        verifyNoInteractions(subscriptionWelcomeEmailService);
+    }
+
+    @Test
+    void resendWelcomeEmailCatchesAnEmailDeliveryExceptionAndReturnsSuccessFalseWithADescriptiveMessage() {
+        // Real Architectural Judgment Calls #1 (019) — the deliberate opposite of create()'s own
+        // sendWelcomeEmailBestEffort posture: this action's entire purpose is sending an email on
+        // request, so a failure must be caught and reported as real response data, not propagated.
+        UUID id = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Subscription existing = subscription(id, ownerId, productId, SubscriptionStatus.ACTIVE);
+        Club club = activeClub(ownerId);
+        Product product = product(productId, ProductStatus.ACTIVE);
+        Person responsiblePerson = person(existing.getResponsiblePersonId());
+
+        when(subscriptionRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(personRepository.findById(existing.getResponsiblePersonId()))
+                .thenReturn(Optional.of(responsiblePerson));
+        doThrow(new EmailDeliveryException("SMTP is unreachable", null))
+                .when(subscriptionWelcomeEmailService)
+                .sendWelcomeEmail(any(), any(), any(), any());
+
+        ResendWelcomeEmailResultDto result = subscriptionService.resendWelcomeEmail(id);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("Failed to resend welcome email");
     }
 
     @Test
