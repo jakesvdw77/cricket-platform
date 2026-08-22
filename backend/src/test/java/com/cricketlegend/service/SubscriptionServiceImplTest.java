@@ -3,8 +3,10 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.Club;
@@ -12,6 +14,9 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.domain.ProductStatus;
+import com.cricketlegend.domain.RoleAssignment;
+import com.cricketlegend.domain.RoleAssignmentRole;
+import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
@@ -23,6 +28,7 @@ import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.exception.DuplicateActiveSubscriptionException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ProductNotActiveException;
 import com.cricketlegend.exception.ValidationException;
@@ -33,8 +39,10 @@ import com.cricketlegend.mapper.SubscriptionMapper;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.ProductRepository;
+import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SubscriptionRepository;
 import com.cricketlegend.service.impl.SubscriptionServiceImpl;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +50,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -93,13 +102,20 @@ class SubscriptionServiceImplTest {
     @Mock
     private PersonMapper personMapper;
 
+    @Mock
+    private RoleAssignmentRepository roleAssignmentRepository;
+
+    @Mock
+    private KeycloakProvisioningService keycloakProvisioningService;
+
     private SubscriptionServiceImpl subscriptionService;
 
     @BeforeEach
     void setUp() {
         subscriptionService = new SubscriptionServiceImpl(
                 subscriptionRepository, clubRepository, productRepository, personRepository, personService,
-                subscriptionMapper, clubMapper, productMapper, personMapper);
+                subscriptionMapper, clubMapper, productMapper, personMapper, roleAssignmentRepository,
+                keycloakProvisioningService);
     }
 
     private Club activeClub(UUID id) {
@@ -248,6 +264,150 @@ class SubscriptionServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(entity.getResponsiblePersonId()).isEqualTo(responsiblePerson.getId());
         verify(subscriptionRepository).save(entity);
+    }
+
+    /**
+     * Stubs everything create() needs to reach its post-save grant/provisioning steps
+     * (docs/specs/016-keycloak-account-provisioning.md), for the tests below that assert on those
+     * steps specifically rather than on the base create() happy path already covered above.
+     */
+    private void stubHappyPathCreate(UUID ownerId, UUID productId, Person responsiblePerson) {
+        Club club = activeClub(ownerId);
+        Product product = product(productId, ProductStatus.ACTIVE);
+        Subscription entity = subscription(UUID.randomUUID(), ownerId, productId, SubscriptionStatus.ACTIVE);
+        ResponsiblePersonRequest responsiblePersonRequest = validResponsiblePersonRequest();
+
+        when(clubRepository.findById(ownerId)).thenReturn(Optional.of(club));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(subscriptionRepository.existsByOwnerTypeAndOwnerIdAndStatus(
+                SubscriptionOwnerType.CLUB, ownerId, SubscriptionStatus.ACTIVE))
+                .thenReturn(false);
+        when(personService.findOrCreatePerson(
+                responsiblePersonRequest.firstName(), responsiblePersonRequest.lastName(),
+                responsiblePersonRequest.email(), responsiblePersonRequest.phone()))
+                .thenReturn(responsiblePerson);
+        when(subscriptionMapper.toEntity(any())).thenReturn(entity);
+        when(subscriptionRepository.save(entity)).thenReturn(entity);
+        when(clubMapper.toSummaryDto(club)).thenReturn(new ClubSummaryDto(ownerId, "Riverside CC", "riverside-cc"));
+        when(productMapper.toSummaryDto(product)).thenReturn(new ProductSummaryDto(productId, "Club Standard", "CLUB_STANDARD"));
+        when(subscriptionMapper.toDto(any(), any(), any(), any())).thenReturn(dummyDto());
+    }
+
+    private CreateSubscriptionRequest createRequest(UUID ownerId, UUID productId) {
+        return new CreateSubscriptionRequest(
+                SubscriptionOwnerType.CLUB, ownerId, productId, null, null, validResponsiblePersonRequest());
+    }
+
+    @Test
+    void createGrantsAClubAdminRoleAssignmentScopedToOwnerIdWhenNoneAlreadyExists() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        // Already provisioned, so this test's assertions focus purely on the grant, not provisioning.
+        responsiblePerson.setKeycloakProvisionedAt(Instant.now());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                responsiblePerson.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, ownerId))
+                .thenReturn(false);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        ArgumentCaptor<RoleAssignment> captor =
+                ArgumentCaptor.forClass(RoleAssignment.class);
+        verify(roleAssignmentRepository).save(captor.capture());
+        RoleAssignment saved = captor.getValue();
+        assertThat(saved.getPersonId()).isEqualTo(responsiblePerson.getId());
+        assertThat(saved.getRole()).isEqualTo(RoleAssignmentRole.CLUB_ADMIN);
+        assertThat(saved.getScopeType()).isEqualTo(ScopeType.CLUB);
+        assertThat(saved.getScopeId()).isEqualTo(ownerId);
+    }
+
+    @Test
+    void createDoesNotGrantASecondClubAdminRoleAssignmentWhenTheSamePersonClubGrantAlreadyExists() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        responsiblePerson.setKeycloakProvisionedAt(Instant.now());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                responsiblePerson.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, ownerId))
+                .thenReturn(true);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verify(roleAssignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void createProvisionsAKeycloakAccountWhenPersonHasNoKeycloakUserIdOrProvisionedAtAndSetsProvisionedAtOnSuccess() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                any(), any(), any(), any()))
+                .thenReturn(true); // grant already exists — irrelevant to this test's assertions
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verify(keycloakProvisioningService).provisionAccount(responsiblePerson);
+        assertThat(responsiblePerson.getKeycloakProvisionedAt()).isNotNull();
+        verify(personRepository).save(responsiblePerson);
+    }
+
+    @Test
+    void createSkipsProvisioningWhenPersonAlreadyHasAKeycloakUserId() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        responsiblePerson.setKeycloakUserId("11111111-1111-1111-1111-111111111111");
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                any(), any(), any(), any()))
+                .thenReturn(true);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verifyNoInteractions(keycloakProvisioningService);
+    }
+
+    @Test
+    void createSkipsProvisioningWhenPersonAlreadyHasAKeycloakProvisionedAtTimestamp() {
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        responsiblePerson.setKeycloakProvisionedAt(Instant.now());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                any(), any(), any(), any()))
+                .thenReturn(true);
+
+        subscriptionService.create(createRequest(ownerId, productId));
+
+        verifyNoInteractions(keycloakProvisioningService);
+    }
+
+    @Test
+    void createCatchesAKeycloakProvisioningExceptionWithoutPropagatingItAndLeavesProvisionedAtNull() {
+        // Judgment call #2 (docs/specs/016-keycloak-account-provisioning.md) — a Keycloak outage
+        // during Subscription creation must never fail the request; the Subscription and its
+        // RoleAssignment grant are already durably saved by the time provisioning is attempted.
+        UUID ownerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Person responsiblePerson = person(UUID.randomUUID());
+        stubHappyPathCreate(ownerId, productId, responsiblePerson);
+        when(roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                any(), any(), any(), any()))
+                .thenReturn(true);
+        doThrow(new KeycloakProvisioningException("Keycloak is unreachable", null))
+                .when(keycloakProvisioningService)
+                .provisionAccount(responsiblePerson);
+
+        SubscriptionDto result = subscriptionService.create(createRequest(ownerId, productId));
+
+        assertThat(result).isNotNull();
+        assertThat(responsiblePerson.getKeycloakProvisionedAt()).isNull();
+        verify(personRepository, never()).save(any());
     }
 
     @Test

@@ -9,12 +9,12 @@ vi.mock('../../auth/keycloak', () => ({
 }))
 
 describe('Login', () => {
-  it('redirects straight to Keycloak login on mount, targeting /admin', () => {
+  it('redirects straight to Keycloak login on mount, targeting /post-login', () => {
     render(<Login />)
 
     expect(login).toHaveBeenCalledTimes(1)
     expect(login).toHaveBeenCalledWith({
-      redirectUri: expect.stringContaining('/admin'),
+      redirectUri: expect.stringContaining('/post-login'),
     })
   })
 })

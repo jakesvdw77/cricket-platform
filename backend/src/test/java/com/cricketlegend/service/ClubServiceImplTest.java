@@ -3,6 +3,8 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.Club;
@@ -12,6 +14,7 @@ import com.cricketlegend.dto.CreateClubRequest;
 import com.cricketlegend.dto.UpdateClubRequest;
 import com.cricketlegend.exception.DuplicateSlugException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.ReservedSlugException;
 import com.cricketlegend.mapper.ClubMapper;
 import com.cricketlegend.repository.ClubRepository;
@@ -60,11 +63,14 @@ class ClubServiceImplTest {
     @Mock
     private ClubMapper clubMapper;
 
+    @Mock
+    private KeycloakProvisioningService keycloakProvisioningService;
+
     private ClubServiceImpl clubService;
 
     @BeforeEach
     void setUp() {
-        clubService = new ClubServiceImpl(clubRepository, clubMapper);
+        clubService = new ClubServiceImpl(clubRepository, clubMapper, keycloakProvisioningService);
     }
 
     private ClubDto dummyDto() {
@@ -84,6 +90,50 @@ class ClubServiceImplTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(ClubStatus.ACTIVE);
         assertThat(captor.getValue().getName()).isEqualTo("Riverside CC");
         assertThat(captor.getValue().getSlug()).isEqualTo("riverside-cc");
+    }
+
+    @Test
+    void createRegistersTheNewSlugForKeycloakRedirectAccess() {
+        CreateClubRequest request = new CreateClubRequest("Riverside CC", "riverside-cc");
+        when(clubRepository.existsBySlugIgnoreCase("riverside-cc")).thenReturn(false);
+        when(clubRepository.save(any(Club.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubMapper.toDto(any(Club.class))).thenReturn(dummyDto());
+
+        clubService.create(request);
+
+        verify(keycloakProvisioningService).registerClubRedirectAccess("riverside-cc");
+    }
+
+    @Test
+    void createStillReturns201WhenKeycloakRedirectRegistrationThrows() {
+        CreateClubRequest request = new CreateClubRequest("Riverside CC", "riverside-cc");
+        ClubDto dto = dummyDto();
+        when(clubRepository.existsBySlugIgnoreCase("riverside-cc")).thenReturn(false);
+        when(clubRepository.save(any(Club.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubMapper.toDto(any(Club.class))).thenReturn(dto);
+        doThrow(new KeycloakProvisioningException("Keycloak unreachable", null))
+                .when(keycloakProvisioningService)
+                .registerClubRedirectAccess("riverside-cc");
+
+        ClubDto result = clubService.create(request);
+
+        assertThat(result).isEqualTo(dto);
+    }
+
+    @Test
+    void updateOnASlugRenameRegistersTheNewSlugForKeycloakRedirectAccess() {
+        UUID id = UUID.randomUUID();
+        Club existing = existingClub(id, "Riverside CC", "riverside-cc", ClubStatus.ACTIVE);
+        when(clubRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(clubRepository.existsBySlugIgnoreCaseAndIdNot("riverside-cricket-club", id)).thenReturn(false);
+        when(clubRepository.save(existing)).thenReturn(existing);
+        when(clubMapper.toDto(existing)).thenReturn(dummyDto());
+
+        UpdateClubRequest request = new UpdateClubRequest("Riverside CC", "riverside-cricket-club");
+
+        clubService.update(id, request);
+
+        verify(keycloakProvisioningService).registerClubRedirectAccess("riverside-cricket-club");
     }
 
     @ParameterizedTest

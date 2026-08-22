@@ -1,7 +1,7 @@
 # 002 — Realm & Subdomain Auth
 
 **Depends on:** `001-tenancy-identity-model.md`. **Resolves:** that spec's ADR-04 open item.
-**Status:** proposed — ADR-03 below needs a version-specific spike before production.
+**Status:** proposed — ADR-03's wildcard has since been tested against the actual deployed Keycloak version (24.0.3) and confirmed **not** to work (see ADR-03's own update below); the documented fallback is implemented as of `016-keycloak-account-provisioning.md`'s ADR-03 follow-up.
 
 The Tenancy model closed with an open item: subdomain resolution needs Keycloak to actually cooperate with per-club hostnames, and the original Cricket Legend pattern — one realm, flat `realm_access.roles`, read straight off the JWT by `useAuth()` — was built for a single tenant. Bolting subdomains onto that pattern without rethinking it would mean either a Keycloak role per club (doesn't scale) or roles that can't express "admin of Juniors, nothing else" at all. This spec settles both: which parts of the auth story stay in Keycloak, and which move into the scoped `RoleAssignment` model from `001-tenancy-identity-model.md`.
 
@@ -62,7 +62,7 @@ The Keycloak session cookie lives on `auth.yourapp.com`, not on any club subdoma
 https://*.yourapp.com/*
 ```
 
-> **Verify before production:** wildcard redirect URI matching is standard practice for subdomain multi-tenancy, but exact matching behaviour has shifted across Keycloak versions. Confirm this pattern behaves as expected against the specific version deployed before relying on it — the fallback is an explicit allowlist of redirect URIs regenerated at each club's onboarding (see ADR-03 below).
+> **Resolved, not just verified — it doesn't work.** Tested directly against Keycloak 24.0.3 while building `016-keycloak-account-provisioning.md`: Keycloak's redirect URI (and web origin/CORS) matching only treats `*` as a wildcard when it's the very last character of the pattern — a plain `startsWith()` check after stripping it. A `*` placed inside the host, as above, is matched completely literally and can never match a real hostname like `riverside.yourapp.com`. The wildcard form above is dead on arrival on this Keycloak version; don't register it expecting it to work. The fallback below is what's actually implemented — see ADR-03's own update.
 
 The wildcard is bounded to infrastructure already controlled — DNS for `*.yourapp.com` is the platform's own, and every request still has to resolve to a real `Club.slug` row before anything is served.
 
@@ -162,10 +162,10 @@ Keycloak issues identity only. All club/section/team-scoped permissions are reso
 *Why:* Keycloak's flat role model can't express a scoped role without one role per club×section.
 *Reversible?* Costly once RoleAssignment rows accumulate — treat as settled alongside ADR-01.
 
-**ADR-03 — Wildcard redirect URI scoped to the platform's own domain.** *Decided, verify in spike.*
-`https://*.yourapp.com/*` registered as the client's Valid Redirect URIs, rather than a fixed central callback or a per-club allowlist.
-*Why:* lets each club subdomain's SPA instance complete its own OIDC redirect without a second same-origin resumption hop. The wildcard is bounded to DNS already controlled.
-*Reversible?* Yes — falls back cleanly to an explicit per-club allowlist, regenerated at onboarding, if the wildcard proves too permissive for a given Keycloak version.
+**ADR-03 — Wildcard redirect URI scoped to the platform's own domain.** *Superseded — tested and confirmed not to work; replaced by the fallback below.*
+`https://*.yourapp.com/*` was the original plan for the client's Valid Redirect URIs, rather than a fixed central callback or a per-club allowlist.
+*Why it was superseded:* tested directly against the deployed Keycloak version (24.0.3) while building `016-keycloak-account-provisioning.md` — Keycloak's redirect URI/web-origin matching only supports a trailing wildcard, never one embedded in the hostname, so this pattern silently matches nothing. Not a version-specific quirk worth re-verifying later; treat it as settled.
+**Replaced by:** an explicit redirect URI *and* web origin registered per club, at club creation and on any slug rename — `ClubServiceImpl.create()`/`update()` call `KeycloakProvisioningService.registerClubRedirectAccess(slug)` (best-effort, never fails the Club write if Keycloak is unreachable), which appends `https://{slug}.yourapp.com/*` and `https://{slug}.yourapp.com` to the client's existing lists via the Keycloak Admin API. Idempotent, additive — never removes an entry for a renamed-away-from slug.
 
 **ADR-04 — Slugs are vendor-assigned with a reserved-word blocklist.** *Decided.*
 `Club.slug` is set by the vendor during onboarding, validated against a reserved list: `www, auth, api, app, admin, static, mail, cdn, status, docs`.
@@ -175,10 +175,9 @@ Keycloak issues identity only. All club/section/team-scoped permissions are reso
 ## Deliberately Deferred
 
 - **Self-service slug selection** — ADR-04 keeps this vendor-controlled for now.
-- **Per-club redirect URI allowlist** — the documented fallback if ADR-03's wildcard doesn't hold up under the deployed Keycloak version.
 - **External identity providers** (Google/Microsoft SSO) — no requirement yet; addable later without a realm restructure.
 - **Mobile app redirect URIs** — out of scope until a mobile client exists.
 
 ## Before treating this spec as final
 
-Validate ADR-03's wildcard redirect behaviour against the specific Keycloak version you plan to deploy.
+~~Validate ADR-03's wildcard redirect behaviour against the specific Keycloak version you plan to deploy.~~ Done — see ADR-03's update above. The per-club allowlist it names is implemented (`ClubServiceImpl` + `KeycloakProvisioningService.registerClubRedirectAccess`), so this spec's one open verification item is resolved. Still not promoted to "Decided" status overall, since the rest of this spec (realm strategy, `TenantResolutionFilter`, ADR-01/02) remains unbuilt.

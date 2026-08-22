@@ -131,4 +131,25 @@ class AccessServiceTest {
 
         assertThat(accessService.canAdministerClub(authentication, clubId)).isFalse();
     }
+
+    @Test
+    void isPlatformAdminReturnsFalseForNullAuthentication() {
+        assertThat(accessService.isPlatformAdmin(null)).isFalse();
+    }
+
+    @Test
+    void isPlatformAdminReturnsFalseWhenTheCallerHasNoPlatformAdminAuthority() {
+        var authentication = new TestingAuthenticationToken(
+                "someone-else", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
+
+        assertThat(accessService.isPlatformAdmin(authentication)).isFalse();
+    }
+
+    @Test
+    void isPlatformAdminReturnsTrueWhenTheCallerHasThePlatformAdminAuthority() {
+        var authentication = new TestingAuthenticationToken(
+                "platform-admin", null, List.of(new SimpleGrantedAuthority("ROLE_platform_admin")));
+
+        assertThat(accessService.isPlatformAdmin(authentication)).isTrue();
+    }
 }

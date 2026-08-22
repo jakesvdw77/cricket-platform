@@ -96,6 +96,17 @@
                                             spring-boot-starter-parent 3.4.3, see docs/plans/013 -->
         </dependency>
 
+        <!-- Keycloak Admin API client — server-to-server account provisioning,
+             016-keycloak-account-provisioning.md -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-admin-client</artifactId>
+            <version>24.0.3</version> <!-- pinned to match the actual running Keycloak server
+                                            (quay.io/keycloak/keycloak:24.0.3, confirmed via
+                                            docker inspect cricketlegend-keycloak-dev) — NOT the
+                                            spec's own 26.0.7 placeholder, see docs/plans/016. -->
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

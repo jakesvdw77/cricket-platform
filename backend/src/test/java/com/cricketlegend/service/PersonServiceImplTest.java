@@ -73,11 +73,12 @@ class PersonServiceImplTest {
     }
 
     @Test
-    void findOrCreatePersonSetsStatusActiveOnANewlyCreatedPerson() {
-        // Per docs/specs/015-person-status-and-role-assignment.md's Data Model Changes: every
-        // Person created through this flow (today, only reachable behind the platform_admin-gated
-        // POST /subscriptions) is admin-vouched, so it defaults straight to ACTIVE rather than the
-        // reserved, unbuilt PENDING.
+    void findOrCreatePersonSetsStatusPendingOnANewlyCreatedPerson() {
+        // Per docs/specs/016-keycloak-account-provisioning.md's judgment call #4 (amending 015's
+        // original ACTIVE default): every Person created through this flow now starts PENDING,
+        // since a real Keycloak account/invite hasn't been provisioned yet at this point in
+        // SubscriptionServiceImpl.create() — first-login activation (MeServiceImpl) is what later
+        // flips this to ACTIVE.
         when(personRepository.findByEmailIgnoreCase("jane.doe@example.com")).thenReturn(Optional.empty());
         ArgumentCaptor<Person> captor = ArgumentCaptor.forClass(Person.class);
         when(personRepository.save(captor.capture())).thenAnswer(invocation -> {
@@ -88,8 +89,8 @@ class PersonServiceImplTest {
 
         Person result = personService.findOrCreatePerson("Jane", "Doe", "jane.doe@example.com", "+27821234567");
 
-        assertThat(captor.getValue().getStatus()).isEqualTo(PersonStatus.ACTIVE);
-        assertThat(result.getStatus()).isEqualTo(PersonStatus.ACTIVE);
+        assertThat(captor.getValue().getStatus()).isEqualTo(PersonStatus.PENDING);
+        assertThat(result.getStatus()).isEqualTo(PersonStatus.PENDING);
     }
 
     @Test

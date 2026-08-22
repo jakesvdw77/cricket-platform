@@ -14,6 +14,7 @@ import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.repository.ClubRepository;
+import com.cricketlegend.service.KeycloakProvisioningService;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -23,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +35,24 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Uses {@code @Import(AbstractIntegrationTest.class)} rather than {@code extends}, matching
  * {@code ProductControllerIntegrationTest}'s convention.
+ *
+ * <p>{@code KeycloakProvisioningService} is {@code @MockitoBean}'d — per
+ * docs/specs/016-keycloak-account-provisioning.md's ADR-03 follow-up, {@code ClubServiceImpl}'s
+ * create/update now call it, and without a mock this test class would make a real network call
+ * to whatever {@code app.keycloak.admin.server-url} resolves to (a local dev Keycloak that isn't
+ * running in CI) on every test hitting {@code create()}/{@code update()}. The real HTTP/DB layers
+ * under test here don't need Keycloak reachable to be exercised — that behavior is covered by
+ * {@code ClubServiceImplTest}'s mocked-service unit coverage and
+ * {@code KeycloakProvisioningServiceImplTest}'s own unit coverage, not here.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(AbstractIntegrationTest.class)
 @Transactional
 class ClubControllerIntegrationTest {
+
+    @MockitoBean
+    private KeycloakProvisioningService keycloakProvisioningService;
 
     @Autowired
     private MockMvc mockMvc;

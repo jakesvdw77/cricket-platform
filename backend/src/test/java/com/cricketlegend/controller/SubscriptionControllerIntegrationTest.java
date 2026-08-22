@@ -4,6 +4,8 @@ import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withRole;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -21,10 +23,12 @@ import com.cricketlegend.domain.ProductStatus;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
+import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.ProductRepository;
 import com.cricketlegend.repository.SubscriptionRepository;
+import com.cricketlegend.service.KeycloakProvisioningService;
 import java.time.LocalDate;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -34,6 +38,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,12 +51,24 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Uses {@code @Import(AbstractIntegrationTest.class)} rather than {@code extends}, matching
  * {@code ProductControllerIntegrationTest}'s convention.
+ *
+ * <p>{@code KeycloakProvisioningService} is {@code @MockitoBean}'d — per
+ * docs/specs/016-keycloak-account-provisioning.md, {@code SubscriptionServiceImpl.create()} calls
+ * it, and without a mock this test class would make a real network call to whatever
+ * {@code app.keycloak.admin.server-url} resolves to (a local dev Keycloak that isn't running in
+ * CI) on every test hitting {@code create()}. The real HTTP/DB layers under test here don't need
+ * Keycloak reachable to be exercised — provisioning's own behavior is covered by
+ * {@code SubscriptionServiceImplTest}'s mocked-service unit coverage and
+ * {@code KeycloakProvisioningServiceImplTest}'s own unit coverage, not here.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(AbstractIntegrationTest.class)
 @Transactional
 class SubscriptionControllerIntegrationTest {
+
+    @MockitoBean
+    private KeycloakProvisioningService keycloakProvisioningService;
 
     private static final String VALID_RESPONSIBLE_PERSON_JSON = """
             {
@@ -103,6 +120,40 @@ class SubscriptionControllerIntegrationTest {
                 .andExpect(jsonPath("$.responsiblePerson.id").isNotEmpty())
                 .andExpect(jsonPath("$.responsiblePerson.firstName").value("Jane"))
                 .andExpect(jsonPath("$.responsiblePerson.email").value("jane.doe@example.com"));
+
+        assertThat(subscriptionRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void createStillReturns201WhenKeycloakProvisioningThrows() throws Exception {
+        // Strongest, end-to-end proof of judgment call #2
+        // (docs/specs/016-keycloak-account-provisioning.md): a Keycloak outage during
+        // Subscription creation never fails the HTTP request. SubscriptionServiceImplTest already
+        // covers this at the unit layer with a mocked KeycloakProvisioningService; this proves it
+        // one layer up, through the real controller/service/repository stack.
+        doThrow(new KeycloakProvisioningException("Keycloak is unreachable", null))
+                .when(keycloakProvisioningService)
+                .provisionAccount(any());
+
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Product product = productRepository.save(newProduct("CLUB_STANDARD", ProductStatus.ACTIVE));
+
+        String body = """
+                {
+                    "ownerType": "CLUB",
+                    "ownerId": "%s",
+                    "productId": "%s",
+                    "responsiblePerson": %s
+                }
+                """.formatted(club.getId(), product.getId(), VALID_RESPONSIBLE_PERSON_JSON);
+
+        mockMvc.perform(post("/api/v1/platform/subscriptions")
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.club.id").value(club.getId().toString()));
 
         assertThat(subscriptionRepository.findAll()).hasSize(1);
     }

@@ -4,6 +4,9 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.Product;
 import com.cricketlegend.domain.ProductStatus;
+import com.cricketlegend.domain.RoleAssignment;
+import com.cricketlegend.domain.RoleAssignmentRole;
+import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Subscription;
 import com.cricketlegend.domain.SubscriptionOwnerType;
 import com.cricketlegend.domain.SubscriptionStatus;
@@ -15,6 +18,7 @@ import com.cricketlegend.dto.SubscriptionDto;
 import com.cricketlegend.dto.UpdateSubscriptionRequest;
 import com.cricketlegend.exception.DuplicateActiveSubscriptionException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.KeycloakProvisioningException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ProductNotActiveException;
 import com.cricketlegend.exception.ValidationException;
@@ -25,14 +29,19 @@ import com.cricketlegend.mapper.SubscriptionMapper;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.ProductRepository;
+import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SubscriptionRepository;
+import com.cricketlegend.service.KeycloakProvisioningService;
 import com.cricketlegend.service.PersonService;
 import com.cricketlegend.service.SubscriptionService;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -49,6 +58,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class SubscriptionServiceImpl implements SubscriptionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionServiceImpl.class);
+
     private final SubscriptionRepository subscriptionRepository;
     private final ClubRepository clubRepository;
     private final ProductRepository productRepository;
@@ -58,6 +69,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final ClubMapper clubMapper;
     private final ProductMapper productMapper;
     private final PersonMapper personMapper;
+    private final RoleAssignmentRepository roleAssignmentRepository;
+    private final KeycloakProvisioningService keycloakProvisioningService;
 
     public SubscriptionServiceImpl(
             SubscriptionRepository subscriptionRepository,
@@ -68,7 +81,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             SubscriptionMapper subscriptionMapper,
             ClubMapper clubMapper,
             ProductMapper productMapper,
-            PersonMapper personMapper) {
+            PersonMapper personMapper,
+            RoleAssignmentRepository roleAssignmentRepository,
+            KeycloakProvisioningService keycloakProvisioningService) {
         this.subscriptionRepository = subscriptionRepository;
         this.clubRepository = clubRepository;
         this.productRepository = productRepository;
@@ -78,6 +93,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         this.clubMapper = clubMapper;
         this.productMapper = productMapper;
         this.personMapper = personMapper;
+        this.roleAssignmentRepository = roleAssignmentRepository;
+        this.keycloakProvisioningService = keycloakProvisioningService;
     }
 
     @Override
@@ -104,7 +121,42 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = subscriptionMapper.toEntity(request);
         subscription.setResponsiblePersonId(responsiblePerson.getId());
         subscription = subscriptionRepository.save(subscription);
+
+        grantClubAdminAccess(responsiblePerson, subscription.getOwnerId());
+        provisionKeycloakAccountIfNeeded(responsiblePerson, subscription);
+
         return toDto(subscription, club, product, responsiblePerson);
+    }
+
+    private void grantClubAdminAccess(Person person, UUID clubId) {
+        boolean alreadyGranted = roleAssignmentRepository.existsByPersonIdAndRoleAndScopeTypeAndScopeId(
+                person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, clubId);
+        if (!alreadyGranted) {
+            roleAssignmentRepository.save(RoleAssignment.builder()
+                    .personId(person.getId())
+                    .role(RoleAssignmentRole.CLUB_ADMIN)
+                    .scopeType(ScopeType.CLUB)
+                    .scopeId(clubId)
+                    .build());
+        }
+    }
+
+    private void provisionKeycloakAccountIfNeeded(Person person, Subscription subscription) {
+        if (person.getKeycloakUserId() != null || person.getKeycloakProvisionedAt() != null) {
+            return; // already has, or already sent, an account — see judgment call #4 / Data Model Changes
+        }
+        try {
+            keycloakProvisioningService.provisionAccount(person);
+            person.setKeycloakProvisionedAt(Instant.now());
+            personRepository.save(person);
+        } catch (KeycloakProvisioningException e) {
+            // Judgment call #2 — never fails Subscription creation over this. Subscription and its
+            // RoleAssignment grant are already durably saved above; keycloakProvisionedAt stays null,
+            // the one honest "not yet provisioned" signal for a future retry mechanism (not built).
+            log.error(
+                    "Keycloak provisioning failed for person {} (subscription {}, club {}): {}",
+                    person.getId(), subscription.getId(), subscription.getOwnerId(), e.getMessage(), e);
+        }
     }
 
     @Override
