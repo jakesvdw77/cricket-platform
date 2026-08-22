@@ -76,26 +76,21 @@ implementation ever changes.
   the same reason — this isn't new, just calling out that the pattern continues in production
   under the real domain.
 
-### Security Defenses → Headers — required for session persistence across a page refresh
+### Security Defenses → Headers — turned out NOT to be needed, don't touch it
 
-Without this, `ui/src/auth/keycloak.ts`'s `onLoad: 'check-sso'` (added to survive a browser
-refresh without losing the authenticated session) can't work at all — the silent-SSO iframe it
-depends on is blocked by Keycloak's own default headers before it ever gets a chance to answer.
+Session-persistence-across-refresh was first attempted via `check-sso`'s hidden-iframe mode
+(`silentCheckSsoRedirectUri`), which does need Keycloak's default `X-Frame-Options`/CSP
+`frame-ancestors` relaxed to allow cross-origin framing — real infra complexity, and it turned
+into a genuine dead end (a regression on `/post-login`, then an unresolved "the realm setting
+doesn't seem to take effect" investigation that never got to the bottom of things).
 
-Per realm, under **Realm settings → Security defenses → Headers**:
-- **X-Frame-Options** — clear it (delete `SAMEORIGIN`, leave blank).
-- **Content-Security-Policy** — widen `frame-ancestors` from `'self'` to include this app's
-  domains. Production value:
-  ```
-  frame-src 'self'; frame-ancestors 'self' https://*.cricketlegend.co.za; object-src 'none';
-  ```
-  (Local dev uses `http://*.localhost:5173` instead — see `fix/session-persists-across-refresh`'s
-  PR description for the exact local value.) Unlike the redirect-URI/web-origin wildcard above,
-  CSP's `frame-ancestors` wildcard is real, browser-enforced glob matching per the CSP spec, not
-  Keycloak's own bespoke string matching — this one actually works as written.
-
-Done locally (`cricketlegend` realm on the dev container). **Not yet done on any real server —
-staging/production still need this applied by hand once those realms exist.**
+**Resolved by not needing it at all.** `ui/src/auth/keycloak.ts` now omits
+`silentCheckSsoRedirectUri`, which falls back to `check-sso`'s other mode: a plain top-level
+redirect through Keycloak with `prompt=none`, no framing involved — confirmed to be exactly what
+the original single-tenant Cricket Legend app already does, and it has never needed any realm
+header change. **No Security Defenses/Headers change is required for this, on any environment.**
+If a `frame-ancestors`/`X-Frame-Options` change is ever made for some other reason in the future,
+re-check this section first — it's very likely unrelated to auth.
 
 ### Email / SMTP — not yet configured anywhere
 
