@@ -17,5 +17,6 @@
     <include file="db/changelog/v1/010-add-person-status.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/011-add-role-assignment.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/012-add-person-keycloak-provisioned-at.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/013-add-club-contact.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

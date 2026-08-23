@@ -221,6 +221,132 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubProfileDto"
+  /api/v1/manage/clubs/{clubId}/contacts:
+    get:
+      tags:
+      - club-contact-controller
+      operationId: list_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubContactDto"
+    post:
+      tags:
+      - club-contact-controller
+      operationId: create_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubContactRequest"
+        required: true
+      responses:
+        "201":
+          description: Club contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}:
+    put:
+      tags:
+      - club-contact-controller
+      operationId: update_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - club-contact-controller
+      operationId: reactivate_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - club-contact-controller
+      operationId: deactivate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -372,6 +498,29 @@ paths:
       tags:
       - media-controller
       operationId: upload
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MediaUploadResponse"
+  /api/v1/manage/media:
+    post:
+      tags:
+      - media-controller
+      operationId: uploadManaged
       requestBody:
         content:
           multipart/form-data:
@@ -948,6 +1097,78 @@ components:
         updatedBy:
           type: string
           format: uuid
+    ContactDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+      required:
+      - email
+      - firstName
+      - lastName
+      - phone
+    UpdateClubContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        photoUrl:
+          type: string
+      required:
+      - contact
+      - role
+    ClubContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        photoUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateClubContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        photoUrl:
+          type: string
+      required:
+      - contact
+      - role
     CreateSubscriptionRequest:
       type: object
       properties:
