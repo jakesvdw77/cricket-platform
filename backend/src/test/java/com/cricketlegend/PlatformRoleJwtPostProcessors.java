@@ -41,4 +41,16 @@ public final class PlatformRoleJwtPostProcessors {
                 .jwt(builder -> claims.apply(builder).claim("realm_access", Map.of("roles", List.of(role))))
                 .authorities(new SimpleGrantedAuthority("ROLE_" + role));
     }
+
+    /**
+     * An authenticated caller whose authorization comes entirely from a DB-resolved
+     * {@code RoleAssignment} (e.g. a real {@code CLUB_ADMIN}), not any JWT claim — no {@code
+     * realm_access} claim, no {@code ROLE_}-prefixed authority. {@link
+     * com.cricketlegend.config.AccessService#canAdministerClub} resolves this caller purely via
+     * {@code Authentication.getName()} (the JWT {@code sub} claim) against {@code
+     * Person.keycloakUserId}, so this postprocessor deliberately grants nothing else.
+     */
+    public static JwtRequestPostProcessor withSubject(String subject) {
+        return jwt().jwt(builder -> builder.subject(subject));
+    }
 }

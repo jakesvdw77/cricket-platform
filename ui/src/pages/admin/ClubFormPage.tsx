@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Stack, Typography } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
 import { ClubForm, CLUB_FORM_ID } from '../../components/ClubForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
@@ -17,17 +16,7 @@ import {
   updateClubProfile,
 } from '../../api/clubApi'
 import type { ClubPayload, ClubProfilePayload } from '../../api/clubApi'
-
-// The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
-// carries the specific reason (e.g. a reserved slug, a duplicate slug). Falls back to a generic
-// message when the response isn't shaped that way — same pattern SubscriptionFormPage already
-// established.
-function errorDetail(error: unknown, fallback: string): string {
-  if (isAxiosError(error) && typeof error.response?.data?.detail === 'string') {
-    return error.response.data.detail
-  }
-  return fallback
-}
+import { errorDetail } from '../../utils/errorDetail'
 
 export default function ClubFormPage() {
   const { id } = useParams<{ id?: string }>()
@@ -67,10 +56,14 @@ export default function ClubFormPage() {
   // been passed into ClubForm, i.e. never on a create-mode submit.
   const saveMutation = useMutation({
     mutationFn: async ({ club: clubPayload, profile: profilePayload }: {
-      club: ClubPayload
+      club?: ClubPayload
       profile?: ClubProfilePayload
     }) => {
-      const saved = isEdit && id ? await updateClub(id, clubPayload) : await createClub(clubPayload)
+      // ClubForm's onSubmit type is shared with its 'profileOnly' mode (docs/specs/020-club-
+      // manager-access.md), where `club` is legitimately absent — but ClubFormPage only ever
+      // renders ClubForm in the default 'full' mode, so `club` is always actually populated here.
+      const club = clubPayload as ClubPayload
+      const saved = isEdit && id ? await updateClub(id, club) : await createClub(club)
       if (profilePayload) {
         await updateClubProfile(saved.id, profilePayload)
       }

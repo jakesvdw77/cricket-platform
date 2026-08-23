@@ -178,6 +178,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubProfileDto"
+  /api/v1/manage/clubs/{id}/profile:
+    get:
+      tags:
+      - club-profile-controller
+      operationId: getManaged
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
+    put:
+      tags:
+      - club-profile-controller
+      operationId: upsertManaged
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubProfileDto"
   /api/v1/platform/subscriptions:
     get:
       tags:

@@ -23,7 +23,12 @@ export interface ClubFormProps {
   // mode, per docs/plans/012-club-profile.md item 7. Its presence (not its content) is what
   // gates whether the Contact/Address/Branding tabs and the org-type field are enabled.
   profileInitialValues?: Partial<ClubProfilePayload>
-  onSubmit: (values: { club: ClubPayload; profile?: ClubProfilePayload }) => void
+  // Defaults to 'full' — every existing platform_admin call site (ClubFormPage) is unaffected.
+  // 'profileOnly' is for a /manage caller (docs/specs/020-club-manager-access.md): the caller's
+  // club always already exists, so there's no Basic Info tab, no name/slug validation, and
+  // onSubmit never receives a `club` key.
+  mode?: 'full' | 'profileOnly'
+  onSubmit: (values: { club?: ClubPayload; profile?: ClubProfilePayload }) => void
 }
 
 interface FormState {
@@ -42,11 +47,14 @@ type FormErrors = Partial<Record<'name' | 'slug' | 'email' | 'website', string>>
 
 // Maps each validated field to the tab that holds it, so an error surfaces on a visible tab
 // rather than silently failing on a hidden one (docs/plans/012-club-profile.md item 7).
-const FIELD_TAB: Record<keyof FormErrors, number> = {
-  name: 0,
-  slug: 0,
-  email: 1,
-  website: 1,
+// Mode-aware (docs/plans/020-club-manager-access.md item 5): 'profileOnly' has no Basic Info
+// tab (so no name/slug entries at all — they're never validated in this mode either) and
+// Contact shifts from tab 1 to tab 0.
+function fieldTab(showBasicInfo: boolean): Partial<Record<keyof FormErrors, number>> {
+  if (!showBasicInfo) {
+    return { email: 0, website: 0 }
+  }
+  return { name: 0, slug: 0, email: 1, website: 1 }
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -74,16 +82,18 @@ function toFormState(
   }
 }
 
-function validate(values: FormState, profileEnabled: boolean): FormErrors {
+function validate(values: FormState, profileEnabled: boolean, showBasicInfo: boolean): FormErrors {
   const errors: FormErrors = {}
 
-  if (!values.name.trim()) {
-    errors.name = 'Name is required'
-  }
+  if (showBasicInfo) {
+    if (!values.name.trim()) {
+      errors.name = 'Name is required'
+    }
 
-  const slugError = validateSlug(values.slug)
-  if (slugError) {
-    errors.slug = slugError
+    const slugError = validateSlug(values.slug)
+    if (slugError) {
+      errors.slug = slugError
+    }
   }
 
   if (profileEnabled) {
@@ -117,8 +127,19 @@ function toAddressPayload(address: Address): Address {
   }
 }
 
-export function ClubForm({ initialValues, profileInitialValues, onSubmit }: ClubFormProps) {
-  const profileEnabled = profileInitialValues !== undefined
+export function ClubForm({ initialValues, profileInitialValues, mode = 'full', onSubmit }: ClubFormProps) {
+  const showBasicInfo = mode !== 'profileOnly'
+  // A 'profileOnly' caller's club always already exists (a /manage caller is, by definition,
+  // an already-provisioned club admin — docs/specs/020-club-manager-access.md), so the
+  // Contact/Address/Branding tabs are always enabled in this mode, skipping the "Save the club
+  // first" disabled/tooltip gating 'full' mode still needs in create mode.
+  const profileEnabled = mode === 'profileOnly' ? true : profileInitialValues !== undefined
+  const FIELD_TAB = fieldTab(showBasicInfo)
+  // In 'full' mode Basic Info occupies tab 0, so Contact/Address/Branding start at 1. In
+  // 'profileOnly' mode there's no Basic Info tab, so Contact/Address/Branding start at 0.
+  const contactTab = showBasicInfo ? 1 : 0
+  const addressTab = showBasicInfo ? 2 : 1
+  const brandingTab = showBasicInfo ? 3 : 2
 
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues, profileInitialValues))
   const [errors, setErrors] = useState<FormErrors>({})
@@ -154,22 +175,24 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const validationErrors = validate(values, profileEnabled)
+    const validationErrors = validate(values, profileEnabled, showBasicInfo)
     setErrors(validationErrors)
 
     const errorFields = Object.keys(validationErrors) as Array<keyof FormErrors>
     if (errorFields.length > 0) {
-      const errorTab = Math.min(...errorFields.map((field) => FIELD_TAB[field]))
+      const errorTab = Math.min(...errorFields.map((field) => FIELD_TAB[field] ?? 0))
       if (errorTab !== activeTab) {
         setActiveTab(errorTab)
       }
       return
     }
 
-    const club: ClubPayload = {
-      name: values.name.trim(),
-      slug: values.slug.trim(),
-    }
+    const club: ClubPayload | undefined = showBasicInfo
+      ? {
+          name: values.name.trim(),
+          slug: values.slug.trim(),
+        }
+      : undefined
 
     const profile: ClubProfilePayload | undefined = profileEnabled
       ? {
@@ -183,8 +206,28 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
         }
       : undefined
 
-    onSubmit(profile ? { club, profile } : { club })
+    onSubmit({ ...(club && { club }), ...(profile && { profile }) })
   }
+
+  // Extracted since 'profileOnly' mode also renders this in the Contact tab (there's no Basic
+  // Info tab to host it there) — was previously copy-pasted in both places, flagged by
+  // standards-reviewer during docs/specs/020-club-manager-access.md's review.
+  const renderTypeField = (disabled: boolean) => (
+    <Input
+      select
+      label="Type"
+      value={values.type}
+      onChange={handleTypeChange}
+      disabled={disabled}
+      helperText={disabled ? 'Save the club first to set this.' : undefined}
+    >
+      <MenuItem value="">Not set</MenuItem>
+      <MenuItem value="CLUB">Club</MenuItem>
+      <MenuItem value="ACADEMY">Academy</MenuItem>
+      <MenuItem value="SCHOOL">School</MenuItem>
+      <MenuItem value="OTHER">Other</MenuItem>
+    </Input>
+  )
 
   const renderTab = (label: string) => {
     const tab = <Tab key={label} label={label} disabled={!profileEnabled} />
@@ -219,7 +262,7 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
         allowScrollButtonsMobile
         sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
       >
-        <Tab label="Basic Info" />
+        {showBasicInfo && <Tab label="Basic Info" />}
         {renderTab('Contact')}
         {renderTab('Address')}
         {renderTab('Branding')}
@@ -232,7 +275,7 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
         noValidate
         sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}
       >
-        {activeTab === 0 && (
+        {showBasicInfo && activeTab === 0 && (
           <>
             <ClubNameSlugFields
               name={values.name}
@@ -243,25 +286,15 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
               onNameChange={handleNameChange}
               onSlugChange={handleSlugChange}
             />
-            <Input
-              select
-              label="Type"
-              value={values.type}
-              onChange={handleTypeChange}
-              disabled={!profileEnabled}
-              helperText={profileEnabled ? undefined : 'Save the club first to set this.'}
-            >
-              <MenuItem value="">Not set</MenuItem>
-              <MenuItem value="CLUB">Club</MenuItem>
-              <MenuItem value="ACADEMY">Academy</MenuItem>
-              <MenuItem value="SCHOOL">School</MenuItem>
-              <MenuItem value="OTHER">Other</MenuItem>
-            </Input>
+            {renderTypeField(!profileEnabled)}
           </>
         )}
 
-        {activeTab === 1 && profileEnabled && (
+        {activeTab === contactTab && profileEnabled && (
           <>
+            {/* No Basic Info tab in 'profileOnly' mode, so the org-type field lives here
+                instead — the Contact tab is otherwise the first (index 0) tab in that mode. */}
+            {!showBasicInfo && renderTypeField(false)}
             <Input
               label="Email"
               type="email"
@@ -275,11 +308,11 @@ export function ClubForm({ initialValues, profileInitialValues, onSubmit }: Club
           </>
         )}
 
-        {activeTab === 2 && profileEnabled && (
+        {activeTab === addressTab && profileEnabled && (
           <AddressFields value={values.address} onChange={handleAddressChange} />
         )}
 
-        {activeTab === 3 && profileEnabled && (
+        {activeTab === brandingTab && profileEnabled && (
           <>
             <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" />
             <MediaUpload label="Banner" value={values.bannerUrl} onUploaded={handleBannerUploaded} variant="banner" />

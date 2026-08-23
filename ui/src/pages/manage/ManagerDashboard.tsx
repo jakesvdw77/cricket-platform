@@ -17,6 +17,7 @@ const GROUPS: ManagerGroup[] = [
   {
     label: 'Club manager',
     cards: [
+      { title: 'Club Profile', description: "Edit your club's details", to: '/manage/club-profile' },
       { title: 'Sections & Age Groups', description: 'Set up age-group sections', to: '/manage/sections' },
       { title: 'Teams', description: 'Register teams', to: '/manage/teams' },
       { title: 'Players', description: 'Manage the player roster', to: '/manage/players' },
