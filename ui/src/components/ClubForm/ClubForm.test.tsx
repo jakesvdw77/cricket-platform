@@ -285,4 +285,44 @@ describe('ClubForm', () => {
 
     expect(screen.getByLabelText('Slug')).toHaveValue('riverside-cc')
   })
+
+  describe('mode="profileOnly" (docs/specs/020-club-manager-access.md)', () => {
+    it('renders no Basic Info tab, and the Contact/Address/Branding tabs are enabled, not gated behind "Save the club first"', () => {
+      renderClubForm({ onSubmit: vi.fn(), mode: 'profileOnly', profileInitialValues: filledProfile })
+
+      expect(screen.queryByRole('tab', { name: 'Basic Info' })).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Slug')).not.toBeInTheDocument()
+
+      expect(screen.getByRole('tab', { name: 'Contact' })).not.toBeDisabled()
+      expect(screen.getByRole('tab', { name: 'Address' })).not.toBeDisabled()
+      expect(screen.getByRole('tab', { name: 'Branding' })).not.toBeDisabled()
+      expect(screen.queryByText('Save the club first')).not.toBeInTheDocument()
+    })
+
+    it('renders the org-type select inside the Contact tab, since there is no Basic Info tab to host it', () => {
+      renderClubForm({ onSubmit: vi.fn(), mode: 'profileOnly', profileInitialValues: filledProfile })
+
+      // Contact is tab index 0 in this mode, so it's already active by default — the Type
+      // field should be reachable without switching tabs.
+      expect(screen.getByRole('tab', { name: 'Contact' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByLabelText('Type')).toBeInTheDocument()
+      expect(screen.getByLabelText('Type')).not.toBeDisabled()
+    })
+
+    it('submits { profile } only, with no club key at all, and does not validate name/slug', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderClubForm({ onSubmit, mode: 'profileOnly', profileInitialValues: filledProfile })
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledTimes(1)
+      const values = onSubmit.mock.calls[0][0] as { club?: ClubPayload; profile?: ClubProfilePayload }
+      expect(values.club).toBeUndefined()
+      expect('club' in values).toBe(false)
+      expect(values.profile).toEqual(filledProfile)
+      expect(screen.queryByText('Name is required')).not.toBeInTheDocument()
+    })
+  })
 })
