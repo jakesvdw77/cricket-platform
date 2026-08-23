@@ -2,6 +2,7 @@ package com.cricketlegend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,14 +11,18 @@ import static org.mockito.Mockito.when;
 import com.cricketlegend.domain.Address;
 import com.cricketlegend.domain.ClubProfile;
 import com.cricketlegend.domain.ClubProfileType;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.AddressDto;
 import com.cricketlegend.dto.ClubProfileDto;
+import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateClubProfileRequest;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.ClubProfileMapper;
 import com.cricketlegend.repository.ClubProfileRepository;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.service.impl.ClubProfileServiceImpl;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,10 +107,27 @@ class ClubProfileServiceImplTest {
         UUID clubId = UUID.randomUUID();
         when(clubRepository.existsById(clubId)).thenReturn(false);
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                ClubProfileType.CLUB, null, null, null, null, null, null);
+                ClubProfileType.CLUB, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> clubProfileService.upsert(clubId, request)).isInstanceOf(NotFoundException.class);
 
+        verify(clubProfileRepository, never()).save(any());
+    }
+
+    @Test
+    void upsertWithADuplicatePlatformInTheRequestThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        UpdateClubProfileRequest request = new UpdateClubProfileRequest(
+                ClubProfileType.CLUB, null, null, null, null, null, null,
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/a"),
+                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+
+        assertThatThrownBy(() -> clubProfileService.upsert(clubId, request))
+                .isInstanceOf(ValidationException.class);
+
+        verify(clubProfileRepository, never()).findById(any());
         verify(clubProfileRepository, never()).save(any());
     }
 
@@ -121,7 +143,8 @@ class ClubProfileServiceImplTest {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.ACADEMY, "logo.png", "banner.png",
                 new AddressDto("1", "Main St", "Riverside", "Gauteng", "South Africa", "0001"),
-                "club@example.com", "0123456789", "https://example.com");
+                "club@example.com", "0123456789", "https://example.com",
+                List.of(new SocialLinkDto("facebook", "https://facebook.com/example")));
 
         clubProfileService.upsert(clubId, request);
 
@@ -134,6 +157,9 @@ class ClubProfileServiceImplTest {
         assertThat(saved.getEmail()).isEqualTo("club@example.com");
         assertThat(saved.getPhone()).isEqualTo("0123456789");
         assertThat(saved.getWebsite()).isEqualTo("https://example.com");
+        assertThat(saved.getSocialLinks())
+                .extracting(SocialLink::getPlatform, SocialLink::getUrl)
+                .containsExactly(tuple("facebook", "https://facebook.com/example"));
     }
 
     @Test
@@ -150,7 +176,7 @@ class ClubProfileServiceImplTest {
         when(clubProfileMapper.toDto(existing)).thenReturn(dummyDto(clubId));
 
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                ClubProfileType.SCHOOL, null, null, null, "new@example.com", null, null);
+                ClubProfileType.SCHOOL, null, null, null, "new@example.com", null, null, null);
 
         clubProfileService.upsert(clubId, request);
 
@@ -170,6 +196,8 @@ class ClubProfileServiceImplTest {
                 .phone("0123456789")
                 .website("https://old.example.com")
                 .address(Address.builder().city("Old City").build())
+                .socialLinks(new java.util.ArrayList<>(
+                        List.of(SocialLink.builder().platform("facebook").url("https://facebook.com/old").build())))
                 .build();
         when(clubRepository.existsById(clubId)).thenReturn(true);
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.of(existing));
@@ -177,9 +205,11 @@ class ClubProfileServiceImplTest {
         when(clubProfileMapper.toDto(existing)).thenReturn(dummyDto(clubId));
 
         // Second save omits every field except type — per Flag #4, this nulls them all out
-        // rather than leaving the previous values in place.
+        // rather than leaving the previous values in place. socialLinks follows the same
+        // full-replace posture: omitting it clears any previously-saved links to an empty list
+        // rather than leaving them unchanged.
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                ClubProfileType.CLUB, null, null, null, null, null, null);
+                ClubProfileType.CLUB, null, null, null, null, null, null, null);
 
         clubProfileService.upsert(clubId, request);
 
@@ -188,9 +218,10 @@ class ClubProfileServiceImplTest {
         assertThat(existing.getPhone()).isNull();
         assertThat(existing.getWebsite()).isNull();
         assertThat(existing.getAddress()).isNull();
+        assertThat(existing.getSocialLinks()).isEmpty();
     }
 
     private ClubProfileDto dummyDto(UUID clubId) {
-        return new ClubProfileDto(clubId, null, null, null, null, null, null, null, null, null, null);
+        return new ClubProfileDto(clubId, null, null, null, null, null, null, null, null, null, null, List.of());
     }
 }
