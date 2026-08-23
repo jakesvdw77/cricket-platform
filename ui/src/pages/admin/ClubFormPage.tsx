@@ -200,6 +200,7 @@ export default function ClubFormPage() {
                 email: profile.email,
                 phone: profile.phone,
                 website: profile.website,
+                socialLinks: profile.socialLinks,
               }
             : undefined
         }

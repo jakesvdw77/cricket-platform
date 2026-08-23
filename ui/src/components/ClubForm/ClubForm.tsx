@@ -7,6 +7,8 @@ import { PhoneInput } from '../PhoneInput'
 import { WebsiteInput } from '../WebsiteInput'
 import { MediaUpload } from '../MediaUpload'
 import { Input } from '../Input'
+import { SocialLinksFields } from '../SocialLinksFields'
+import type { SocialLink } from '../marketing/SocialLinksRow'
 import type { Address, ClubPayload, ClubProfilePayload, ClubProfileType } from '../../api/clubApi'
 import { deriveSlug, validateSlug } from '../../utils/slug'
 
@@ -41,6 +43,7 @@ interface FormState {
   address: Address
   logoUrl: string | null
   bannerUrl: string | null
+  socialLinks: SocialLink[]
 }
 
 type FormErrors = Partial<Record<'name' | 'slug' | 'email' | 'website', string>>
@@ -79,6 +82,7 @@ function toFormState(
     address: profileInitialValues?.address ?? emptyAddress(),
     logoUrl: profileInitialValues?.logoUrl ?? null,
     bannerUrl: profileInitialValues?.bannerUrl ?? null,
+    socialLinks: profileInitialValues?.socialLinks ?? [],
   }
 }
 
@@ -140,6 +144,7 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
   const contactTab = showBasicInfo ? 1 : 0
   const addressTab = showBasicInfo ? 2 : 1
   const brandingTab = showBasicInfo ? 3 : 2
+  const socialTab = showBasicInfo ? 4 : 3
 
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues, profileInitialValues))
   const [errors, setErrors] = useState<FormErrors>({})
@@ -172,6 +177,7 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
   const handleAddressChange = (address: Address) => setValues((prev) => ({ ...prev, address }))
   const handleLogoUploaded = (logoUrl: string) => setValues((prev) => ({ ...prev, logoUrl }))
   const handleBannerUploaded = (bannerUrl: string) => setValues((prev) => ({ ...prev, bannerUrl }))
+  const handleSocialLinksChange = (socialLinks: SocialLink[]) => setValues((prev) => ({ ...prev, socialLinks }))
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -203,6 +209,10 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
           email: blankToNull(values.email),
           phone: blankToNull(values.phone),
           website: blankToNull(values.website),
+          // Omitted entirely (rather than sent as an empty array) when there are none — matches
+          // the backend's "omitting clears any existing links" semantics, and keeps a club that
+          // never touches this tab producing the exact same payload shape it always has.
+          ...(values.socialLinks.length > 0 && { socialLinks: values.socialLinks }),
         }
       : undefined
 
@@ -266,6 +276,7 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
         {renderTab('Contact')}
         {renderTab('Address')}
         {renderTab('Branding')}
+        {renderTab('Social Media')}
       </Tabs>
 
       <Box
@@ -317,6 +328,12 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
             <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" />
             <MediaUpload label="Banner" value={values.bannerUrl} onUploaded={handleBannerUploaded} variant="banner" />
           </>
+        )}
+
+        {activeTab === socialTab && profileEnabled && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
+          </Box>
         )}
 
         {activeTab !== 0 && !profileEnabled && (

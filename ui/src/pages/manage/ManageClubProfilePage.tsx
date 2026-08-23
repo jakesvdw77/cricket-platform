@@ -87,6 +87,7 @@ export default function ManageClubProfilePage() {
           email: profile.email,
           phone: profile.phone,
           website: profile.website,
+          socialLinks: profile.socialLinks,
         }}
         onSubmit={(values) => values.profile && saveMutation.mutate(values.profile)}
       />
