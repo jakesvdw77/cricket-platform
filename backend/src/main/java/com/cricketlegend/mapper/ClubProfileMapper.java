@@ -2,8 +2,10 @@ package com.cricketlegend.mapper;
 
 import com.cricketlegend.domain.Address;
 import com.cricketlegend.domain.ClubProfile;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.AddressDto;
 import com.cricketlegend.dto.ClubProfileDto;
+import com.cricketlegend.dto.SocialLinkDto;
 import org.mapstruct.Mapper;
 
 /**
@@ -28,4 +30,9 @@ public interface ClubProfileMapper {
     // AddressMapper and pull in via @Mapper(uses = AddressMapper.class) the moment a second
     // entity needs the same mapping, no rework of this method itself.
     AddressDto toDto(Address address);
+
+    // platform/url exist with matching names on both sides — MapStruct maps both by convention.
+    // Declaring this element-level method is enough for MapStruct to auto-generate the
+    // List<SocialLink> -> List<SocialLinkDto> mapping used by toDto(ClubProfile) above.
+    SocialLinkDto toDto(SocialLink socialLink);
 }

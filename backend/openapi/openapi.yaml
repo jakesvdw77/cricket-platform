@@ -1040,6 +1040,17 @@ components:
           type: string
         postalCode:
           type: string
+    SocialLinkDto:
+      type: object
+      properties:
+        platform:
+          type: string
+        url:
+          type: string
+          pattern: ^https?://.+
+      required:
+      - platform
+      - url
     UpdateClubProfileRequest:
       type: object
       properties:
@@ -1063,6 +1074,10 @@ components:
         website:
           type: string
           pattern: ^https?://.+
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
     ClubProfileDto:
       type: object
       properties:
@@ -1097,6 +1112,10 @@ components:
         updatedBy:
           type: string
           format: uuid
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
     ContactDto:
       type: object
       properties:
