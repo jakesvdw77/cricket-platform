@@ -1,15 +1,20 @@
 package com.cricketlegend.domain;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,6 +63,11 @@ public class ClubProfile {
     private String phone;
 
     private String website;
+
+    @ElementCollection
+    @CollectionTable(name = "club_profile_social_link", joinColumns = @JoinColumn(name = "club_id"))
+    @Builder.Default
+    private List<SocialLink> socialLinks = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,7 +43,10 @@ class UpdateClubProfileRequestValidationTest {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.CLUB, "logo.png", "banner.png",
                 new AddressDto("1", "Main St", "Riverside", "Gauteng", "South Africa", "0001"),
-                "club@example.com", "0123456789", "https://example.com");
+                "club@example.com", "0123456789", "https://example.com",
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/example"),
+                        new SocialLinkDto("Discord", "https://discord.gg/example")));
 
         assertThat(validator.validate(request)).isEmpty();
     }
@@ -50,7 +54,7 @@ class UpdateClubProfileRequestValidationTest {
     @Test
     void everyFieldNullHasNoViolationsSinceNothingIsRequired() {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThat(validator.validate(request)).isEmpty();
     }
@@ -59,7 +63,7 @@ class UpdateClubProfileRequestValidationTest {
     @ValueSource(strings = {"not-an-email", "missing-at-sign.com", "@no-local-part.com"})
     void malformedEmailProducesViolation(String email) {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                null, null, null, null, email, null, null);
+                null, null, null, null, email, null, null, null);
 
         Set<ConstraintViolation<UpdateClubProfileRequest>> violations = validator.validate(request);
 
@@ -70,7 +74,7 @@ class UpdateClubProfileRequestValidationTest {
     @ValueSource(strings = {"not-a-url", "ftp missing protocol", "www.example.com"})
     void malformedWebsiteProducesViolation(String website) {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                null, null, null, null, null, null, website);
+                null, null, null, null, null, null, website, null);
 
         Set<ConstraintViolation<UpdateClubProfileRequest>> violations = validator.validate(request);
 
@@ -81,8 +85,26 @@ class UpdateClubProfileRequestValidationTest {
     @ValueSource(strings = {"http://example.com", "https://example.com/path?query=1"})
     void wellFormedWebsiteHasNoViolations(String website) {
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
-                null, null, null, null, null, null, website);
+                null, null, null, null, null, null, website, null);
 
         assertThat(validator.validate(request)).isEmpty();
+    }
+
+    // Regression test for a real bug found and fixed on this branch: socialLinks originally had
+    // no @Valid, so JSR-380 never cascaded into the nested SocialLinkDto list at all — a blank
+    // platform and a malformed url both passed with zero violations. This proves the fix
+    // (@Valid on the socialLinks record component) actually cascades, so an accidental removal
+    // of that annotation would be caught here rather than only via manual testing again.
+    @Test
+    void malformedNestedSocialLinkProducesViolations() {
+        UpdateClubProfileRequest request = new UpdateClubProfileRequest(
+                null, null, null, null, null, null, null,
+                List.of(new SocialLinkDto("", "not-a-url")));
+
+        Set<ConstraintViolation<UpdateClubProfileRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("socialLinks[0].platform", "socialLinks[0].url");
     }
 }

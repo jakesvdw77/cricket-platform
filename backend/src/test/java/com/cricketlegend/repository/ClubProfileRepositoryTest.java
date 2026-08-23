@@ -9,6 +9,8 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubProfile;
 import com.cricketlegend.domain.ClubProfileType;
 import com.cricketlegend.domain.ClubStatus;
+import com.cricketlegend.domain.SocialLink;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,6 +104,25 @@ class ClubProfileRepositoryTest {
 
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void compositePrimaryKeyOnClubIdAndPlatformRejectsTwoSocialLinksForTheSamePlatformAtTheDbLevel() {
+        // club_profile_social_link's PRIMARY KEY (club_id, platform) — proven directly at the
+        // repository/Testcontainers level, bypassing ClubProfileServiceImpl's own
+        // requireNoDuplicatePlatform(...) validation entirely, mirroring
+        // ClubContactRepositoryTest's ux_club_contact_primary proof shape.
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        ClubProfile profile = ClubProfile.builder()
+                .clubId(club.getId())
+                .type(ClubProfileType.CLUB)
+                .socialLinks(List.of(
+                        SocialLink.builder().platform("facebook").url("https://facebook.com/one").build(),
+                        SocialLink.builder().platform("facebook").url("https://facebook.com/two").build()))
+                .build();
+
+        assertThatThrownBy(() -> clubProfileRepository.saveAndFlush(profile))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Club newClub(String name, String slug) {

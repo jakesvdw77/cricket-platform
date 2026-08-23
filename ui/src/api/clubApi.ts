@@ -1,5 +1,6 @@
 import api from './axiosConfig'
 import type { Page } from './productApi'
+import type { SocialLink } from '../components/marketing/SocialLinksRow'
 
 // Re-exported for consumers of this file — same Spring Data Page<T> JSON envelope productApi.ts
 // already defines, no reason for a third copy (subscriptionApi.ts already follows this
@@ -101,6 +102,11 @@ export interface ClubProfile {
   email: string | null
   phone: string | null
   website: string | null
+  // Optional (unlike every other field on this type) purely so pre-existing test fixtures built
+  // before this field existed keep compiling unmodified — the real backend response always
+  // includes it (defaults to []), never omits it, so a consumer can safely treat a missing value
+  // the same as an empty array.
+  socialLinks?: SocialLink[]
   createdAt: string | null
   updatedAt: string | null
   updatedBy: string | null
@@ -117,6 +123,10 @@ export interface ClubProfilePayload {
   email?: string | null
   phone?: string | null
   website?: string | null
+  // Optional, unlike ClubProfile's read-side field — omitting it clears any existing links,
+  // same "full-resource replace, omitted clears" semantics every other field on this payload
+  // already has (see the type's own doc comment above).
+  socialLinks?: SocialLink[]
 }
 
 export async function getClubProfile(id: string): Promise<ClubProfile> {

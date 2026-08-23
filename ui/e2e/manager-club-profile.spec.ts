@@ -109,4 +109,54 @@ test.describe('Club manager access golden paths (020-club-manager-access.md)', (
 
     await expectManagerShellVisible(page);
   });
+
+  // docs/specs/022-club-social-media.md's golden path — extends this file's existing club-profile
+  // e2e coverage rather than a new spec file, per that spec's own Test Plan wording ("extends
+  // 020's existing club-profile e2e coverage").
+  test('club admin adds a known-platform and a custom social link, saves, and both persist across a reload; removing one and saving removes it too', async ({
+    page,
+  }) => {
+    await loginAsClubAdmin(page);
+    await expectManagerShellVisible(page);
+
+    await page.getByRole('link', { name: 'Club Profile' }).click();
+    await expect(page).toHaveURL(/\/manage\/club-profile$/);
+
+    await page.getByRole('tab', { name: 'Social Media' }).click();
+
+    // Known platform: Facebook, picked via the preset dropdown.
+    await page.getByRole('button', { name: 'Add link' }).click();
+    await page.getByLabel('Platform').first().click();
+    await page.getByRole('option', { name: 'Facebook' }).click();
+    await page.getByLabel('URL').first().fill('https://facebook.com/cricketlegend');
+
+    // Fully custom platform label, via "Custom…".
+    await page.getByRole('button', { name: 'Add link' }).click();
+    await page.getByLabel('Platform').nth(1).click();
+    await page.getByRole('option', { name: 'Custom…' }).click();
+    await page.getByLabel('Platform').nth(1).fill('Discord');
+    await page.getByLabel('URL').nth(1).fill('https://discord.gg/cricketlegend');
+
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText("Something went wrong saving your club's profile")).not.toBeVisible();
+
+    await page.reload();
+    await page.getByRole('tab', { name: 'Social Media' }).click();
+
+    await expect(page.getByLabel('Platform').first()).toHaveValue('facebook');
+    await expect(page.getByLabel('URL').first()).toHaveValue('https://facebook.com/cricketlegend');
+    await expect(page.getByLabel('Platform').nth(1)).toHaveValue('Discord');
+    await expect(page.getByLabel('URL').nth(1)).toHaveValue('https://discord.gg/cricketlegend');
+
+    // Remove the custom Discord link, save, reload, confirm it's gone (Facebook stays).
+    await page.getByRole('button', { name: 'Remove Discord' }).click();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText("Something went wrong saving your club's profile")).not.toBeVisible();
+
+    await page.reload();
+    await page.getByRole('tab', { name: 'Social Media' }).click();
+
+    await expect(page.getByLabel('Platform')).toHaveCount(1);
+    await expect(page.getByLabel('Platform').first()).toHaveValue('facebook');
+  });
 });

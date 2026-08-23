@@ -1,8 +1,10 @@
 package com.cricketlegend.dto;
 
 import com.cricketlegend.domain.ClubProfileType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
+import java.util.List;
 
 /**
  * PUT /api/v1/platform/clubs/{id}/profile payload — a full-resource replace, not a partial
@@ -17,5 +19,6 @@ public record UpdateClubProfileRequest(
         AddressDto address,
         @Email String email,
         String phone,
-        @Pattern(regexp = "^https?://.+") String website) {
+        @Pattern(regexp = "^https?://.+") String website,
+        @Valid List<SocialLinkDto> socialLinks) {
 }

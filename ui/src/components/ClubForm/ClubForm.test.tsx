@@ -44,13 +44,14 @@ describe('ClubForm', () => {
     expect(screen.getByLabelText('Slug')).toBeInTheDocument()
   })
 
-  it('renders all four tabs', () => {
+  it('renders all five tabs', () => {
     renderClubForm({ onSubmit: vi.fn() })
 
     expect(screen.getByRole('tab', { name: 'Basic Info' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Contact' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Address' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Branding' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Social Media' })).toBeInTheDocument()
   })
 
   it('disables the Contact, Address, and Branding tabs, and the Type field, when profileInitialValues is undefined (create mode)', () => {
@@ -247,6 +248,65 @@ describe('ClubForm', () => {
     expect(payload.profile?.type).toBe('ACADEMY')
   })
 
+  it('renders a fifth "Social Media" tab, reachable in create mode (disabled, same as the other profile tabs)', () => {
+    renderClubForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByRole('tab', { name: 'Social Media' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Social Media' })).toBeDisabled()
+  })
+
+  it('renders a reachable "Social Media" tab holding SocialLinksFields, once profileInitialValues is provided (edit mode)', async () => {
+    const user = userEvent.setup()
+    renderClubForm({
+      onSubmit: vi.fn(),
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    expect(screen.getByRole('tab', { name: 'Social Media' })).not.toBeDisabled()
+
+    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+
+    expect(screen.getByText('No social links added yet.')).toBeInTheDocument()
+  })
+
+  it('submitting with at least one social link includes socialLinks in the submitted profile payload', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+    await user.click(screen.getByRole('button', { name: 'Add link' }))
+    await user.type(screen.getByLabelText('URL'), 'https://facebook.com/cricketlegend')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const payload = onSubmit.mock.calls[0][0] as { club: ClubPayload; profile?: ClubProfilePayload }
+    expect(payload.profile?.socialLinks).toEqual([{ platform: 'facebook', url: 'https://facebook.com/cricketlegend' }])
+  })
+
+  it('submitting with zero social links omits the socialLinks key entirely from the payload', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderClubForm({
+      onSubmit,
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const payload = onSubmit.mock.calls[0][0] as { club: ClubPayload; profile?: ClubProfilePayload }
+    expect(payload.profile).toBeDefined()
+    expect('socialLinks' in (payload.profile as object)).toBe(false)
+  })
+
   it('pre-fills the fields from initialValues in edit mode', () => {
     renderClubForm({
       onSubmit: vi.fn(),
@@ -297,7 +357,17 @@ describe('ClubForm', () => {
       expect(screen.getByRole('tab', { name: 'Contact' })).not.toBeDisabled()
       expect(screen.getByRole('tab', { name: 'Address' })).not.toBeDisabled()
       expect(screen.getByRole('tab', { name: 'Branding' })).not.toBeDisabled()
+      expect(screen.getByRole('tab', { name: 'Social Media' })).not.toBeDisabled()
       expect(screen.queryByText('Save the club first')).not.toBeInTheDocument()
+    })
+
+    it('the Social Media tab is present and reachable', async () => {
+      const user = userEvent.setup()
+      renderClubForm({ onSubmit: vi.fn(), mode: 'profileOnly', profileInitialValues: filledProfile })
+
+      await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+
+      expect(screen.getByText('No social links added yet.')).toBeInTheDocument()
     })
 
     it('renders the org-type select inside the Contact tab, since there is no Basic Info tab to host it', () => {

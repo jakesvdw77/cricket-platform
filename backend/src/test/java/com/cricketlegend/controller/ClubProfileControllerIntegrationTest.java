@@ -96,7 +96,10 @@ class ClubProfileControllerIntegrationTest {
                     },
                     "email": "club@example.com",
                     "phone": "0123456789",
-                    "website": "https://example.com"
+                    "website": "https://example.com",
+                    "socialLinks": [
+                        {"platform": "facebook", "url": "https://facebook.com/example"}
+                    ]
                 }
                 """;
 
@@ -107,14 +110,40 @@ class ClubProfileControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("CLUB"))
                 .andExpect(jsonPath("$.email").value("club@example.com"))
-                .andExpect(jsonPath("$.address.city").value("Riverside"));
+                .andExpect(jsonPath("$.address.city").value("Riverside"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/example"));
 
         mockMvc.perform(get("/api/v1/platform/clubs/{id}/profile", club.getId()).with(platformAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("club@example.com"))
-                .andExpect(jsonPath("$.website").value("https://example.com"));
+                .andExpect(jsonPath("$.website").value("https://example.com"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/example"));
 
         assertThat(clubProfileRepository.findById(club.getId())).isPresent();
+    }
+
+    @Test
+    void putWithTwoSocialLinksSharingTheSamePlatformReturns400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+
+        String body = """
+                {
+                    "socialLinks": [
+                        {"platform": "facebook", "url": "https://facebook.com/one"},
+                        {"platform": "facebook", "url": "https://facebook.com/two"}
+                    ]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/platform/clubs/{id}/profile", club.getId())
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        assertThat(clubProfileRepository.findById(club.getId())).isEmpty();
     }
 
     @Test
@@ -229,7 +258,10 @@ class ClubProfileControllerIntegrationTest {
 
         String body = """
                 {
-                    "email": "manager@example.com"
+                    "email": "manager@example.com",
+                    "socialLinks": [
+                        {"platform": "facebook", "url": "https://facebook.com/example"}
+                    ]
                 }
                 """;
 
@@ -238,13 +270,21 @@ class ClubProfileControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("manager@example.com"));
+                .andExpect(jsonPath("$.email").value("manager@example.com"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/example"));
 
         assertThat(clubProfileRepository.findById(clubX.getId()))
                 .isPresent()
                 .get()
                 .extracting(ClubProfile::getEmail)
                 .isEqualTo("manager@example.com");
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{id}/profile", clubX.getId())
+                        .with(withSubject("test-club-admin-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/example"));
     }
 
     @Test

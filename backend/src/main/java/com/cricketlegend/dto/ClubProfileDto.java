@@ -2,6 +2,7 @@ package com.cricketlegend.dto;
 
 import com.cricketlegend.domain.ClubProfileType;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,5 +22,6 @@ public record ClubProfileDto(
         String website,
         Instant createdAt,
         Instant updatedAt,
-        UUID updatedBy) {
+        UUID updatedBy,
+        List<SocialLinkDto> socialLinks) {
 }
