@@ -12,6 +12,8 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
 import ManagerDashboard from './pages/manage/ManagerDashboard'
 import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
+import ClubContactList from './pages/manage/ClubContactList'
+import ClubContactFormPage from './pages/manage/ClubContactFormPage'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -83,6 +85,9 @@ function App() {
             <Route path="/manage" element={<ManagerHome />}>
               <Route index element={<ManagerDashboard />} />
               <Route path="club-profile" element={<ManageClubProfilePage />} />
+              <Route path="club-contacts" element={<ClubContactList />} />
+              <Route path="club-contacts/new" element={<ClubContactFormPage />} />
+              <Route path="club-contacts/:id/edit" element={<ClubContactFormPage />} />
               <Route path="sections" element={<EmptyState title="Sections & Age Groups" description="Coming soon." />} />
               <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
               <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />

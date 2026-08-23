@@ -4,7 +4,7 @@ import { Box, CircularProgress, Typography } from '@mui/material'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import { Button } from '../Button'
-import { uploadMedia } from '../../api/mediaApi'
+import { uploadMedia, uploadManagedMedia } from '../../api/mediaApi'
 
 // Generic image upload control — file picker restricted to the image MIME allowlist
 // client-side (mirrored, not replacing, the backend's own POST /platform/media check),
@@ -25,6 +25,11 @@ export interface MediaUploadProps {
   // needed to match the approved mediaupload.html preview's two distinct shapes — a ~96-120px
   // square for a logo vs. a wide ~340x120px rectangle for a banner. Defaults to 'logo'.
   variant?: MediaUploadVariant
+  // Which endpoint to upload against — 'platform' (POST /platform/media, platform_admin-only at
+  // the URL gate) or 'manage' (POST /manage/media, any authenticated /manage caller). Defaults
+  // to 'platform' so every existing ClubForm logo/banner call site is unaffected; a club-admin
+  // consumer like ClubContactForm (docs/specs/021-club-contacts.md) passes 'manage'.
+  namespace?: 'platform' | 'manage'
 }
 
 const DIMENSIONS: Record<MediaUploadVariant, { width: number | string; height: number }> = {
@@ -32,12 +37,13 @@ const DIMENSIONS: Record<MediaUploadVariant, { width: number | string; height: n
   banner: { width: '100%', height: 120 },
 }
 
-export function MediaUpload({ label, value, onUploaded, variant = 'logo' }: MediaUploadProps) {
+export function MediaUpload({ label, value, onUploaded, variant = 'logo', namespace = 'platform' }: MediaUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const dimensions = DIMENSIONS[variant]
+  const upload = namespace === 'manage' ? uploadManagedMedia : uploadMedia
 
   const handleFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -55,7 +61,7 @@ export function MediaUpload({ label, value, onUploaded, variant = 'logo' }: Medi
     setError(null)
     setUploading(true)
     try {
-      const { url } = await uploadMedia(file)
+      const { url } = await upload(file)
       onUploaded(url)
     } catch {
       setError(`Something went wrong uploading "${file.name}". Please try again.`)

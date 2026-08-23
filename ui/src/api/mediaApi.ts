@@ -20,3 +20,17 @@ export async function uploadMedia(file: File): Promise<MediaUploadResponse> {
   })
   return data
 }
+
+// Same upload, reachable by any authenticated /manage caller (a CLUB_ADMIN can't reach
+// /platform/**, per docs/specs/021-club-contacts.md's Media architecture note) — no @PreAuthorize
+// server-side, since the upload itself isn't club-scoped data until its URL is attached to an
+// authorized record (e.g. a ClubContact). MediaUpload's namespace="manage" prop selects this.
+export async function uploadManagedMedia(file: File): Promise<MediaUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const { data } = await api.post<MediaUploadResponse>('/manage/media', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
