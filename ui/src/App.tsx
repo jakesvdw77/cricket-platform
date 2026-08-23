@@ -11,6 +11,7 @@ import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
 import ManagerDashboard from './pages/manage/ManagerDashboard'
+import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -75,10 +76,13 @@ function App() {
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 
-            {/* Club/Team Manager shell — visual scaffolding only until 001's role model
-                lands (006's Non-goals); no real auth gate yet. */}
+            {/* Club/Team Manager shell — ManagerHome now has a real backend-verified auth gate
+                (docs/specs/020-club-manager-access.md, checking clubAdminClubIds from
+                /api/v1/me/activate). Club Profile is real; every other card still routes to an
+                EmptyState placeholder pending 001's Section/Team model. */}
             <Route path="/manage" element={<ManagerHome />}>
               <Route index element={<ManagerDashboard />} />
+              <Route path="club-profile" element={<ManageClubProfilePage />} />
               <Route path="sections" element={<EmptyState title="Sections & Age Groups" description="Coming soon." />} />
               <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
               <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />

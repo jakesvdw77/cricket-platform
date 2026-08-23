@@ -128,3 +128,18 @@ export async function updateClubProfile(id: string, payload: ClubProfilePayload)
   const { data } = await api.put<ClubProfile>(`/platform/clubs/${id}/profile`, payload)
   return data
 }
+
+// --- Club Profile, /manage namespace (docs/specs/020-club-manager-access.md) ---
+// Same request/response shape as the /platform pair above — a club admin (CLUB_ADMIN
+// RoleAssignment for this club) self-servicing their own club's profile, rather than a
+// platform admin editing any club's.
+
+export async function getManagedClubProfile(id: string): Promise<ClubProfile> {
+  const { data } = await api.get<ClubProfile>(`/manage/clubs/${id}/profile`)
+  return data
+}
+
+export async function updateManagedClubProfile(id: string, payload: ClubProfilePayload): Promise<ClubProfile> {
+  const { data } = await api.put<ClubProfile>(`/manage/clubs/${id}/profile`, payload)
+  return data
+}
