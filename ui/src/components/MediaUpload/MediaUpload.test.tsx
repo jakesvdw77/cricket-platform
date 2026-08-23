@@ -4,9 +4,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { MediaUpload } from './MediaUpload'
 
 const uploadMedia = vi.fn()
+const uploadManagedMedia = vi.fn()
 
 vi.mock('../../api/mediaApi', () => ({
   uploadMedia: (file: File) => uploadMedia(file),
+  uploadManagedMedia: (file: File) => uploadManagedMedia(file),
 }))
 
 beforeEach(() => {
@@ -82,5 +84,20 @@ describe('MediaUpload', () => {
     expect(
       await screen.findByText('Something went wrong uploading "banner.png". Please try again.'),
     ).toBeInTheDocument()
+  })
+
+  it('uploads via the manage-namespace endpoint, not the platform one, when namespace="manage"', async () => {
+    const user = userEvent.setup()
+    const onUploaded = vi.fn()
+    uploadManagedMedia.mockResolvedValueOnce({ url: '/media/managed/new-logo.png' })
+
+    render(<MediaUpload label="Photo" value={null} onUploaded={onUploaded} namespace="manage" />)
+
+    const file = new File(['photo'], 'photo.png', { type: 'image/png' })
+    await user.upload(screen.getByLabelText('Photo file'), file)
+
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledWith('/media/managed/new-logo.png'))
+    expect(uploadManagedMedia).toHaveBeenCalledWith(file)
+    expect(uploadMedia).not.toHaveBeenCalled()
   })
 })
