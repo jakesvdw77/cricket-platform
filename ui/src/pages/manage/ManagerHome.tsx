@@ -33,6 +33,7 @@ export default function ManagerHome() {
       user={{ name: keycloak.tokenParsed?.name ?? '', email: keycloak.tokenParsed?.email }}
       onLogout={() => keycloak.logout()}
       profileTo="/manage/profile"
+      homeTo="/manage"
     >
       <Outlet context={{ clubId: data.clubAdminClubIds[0] }} />
     </GridNavShell>
