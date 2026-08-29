@@ -8,15 +8,13 @@ import com.cricketlegend.dto.ClubProfileDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateClubProfileRequest;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.ClubProfileMapper;
 import com.cricketlegend.repository.ClubProfileRepository;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.service.ClubProfileService;
+import com.cricketlegend.service.support.SocialLinkValidation;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,7 +65,7 @@ public class ClubProfileServiceImpl implements ClubProfileService {
     @Transactional
     public ClubProfileDto upsert(UUID clubId, UpdateClubProfileRequest request) {
         requireClubExists(clubId);
-        requireNoDuplicatePlatform(request.socialLinks());
+        SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
 
         ClubProfile profile = clubProfileRepository.findById(clubId).orElseGet(() -> {
             ClubProfile created = new ClubProfile();
@@ -110,18 +108,6 @@ public class ClubProfileServiceImpl implements ClubProfileService {
                 .country(dto.country())
                 .postalCode(dto.postalCode())
                 .build();
-    }
-
-    private void requireNoDuplicatePlatform(List<SocialLinkDto> dtos) {
-        if (dtos == null) {
-            return;
-        }
-        Set<String> seen = new HashSet<>();
-        for (SocialLinkDto dto : dtos) {
-            if (!seen.add(dto.platform())) {
-                throw new ValidationException("Duplicate social media platform: " + dto.platform());
-            }
-        }
     }
 
     private List<SocialLink> toSocialLinks(List<SocialLinkDto> dtos) {

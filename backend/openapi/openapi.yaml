@@ -347,6 +347,132 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors:
+    get:
+      tags:
+      - sponsor-controller
+      operationId: list_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SponsorDto"
+    post:
+      tags:
+      - sponsor-controller
+      operationId: create_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsorRequest"
+        required: true
+      responses:
+        "201":
+          description: Sponsor created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}:
+    put:
+      tags:
+      - sponsor-controller
+      operationId: update_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSponsorRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/reactivate:
+    post:
+      tags:
+      - sponsor-controller
+      operationId: reactivate_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/deactivate:
+    post:
+      tags:
+      - sponsor-controller
+      operationId: deactivate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -1188,6 +1314,84 @@ components:
       required:
       - contact
       - role
+    UpdateSponsorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
+      required:
+      - name
+    SponsorDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateSponsorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
+      required:
+      - name
     CreateSubscriptionRequest:
       type: object
       properties:
