@@ -473,6 +473,162 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts:
+    get:
+      tags:
+      - sponsor-contact-controller
+      operationId: list_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SponsorContactDto"
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: create_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsorContactRequest"
+        required: true
+      responses:
+        "201":
+          description: Sponsor contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}:
+    put:
+      tags:
+      - sponsor-contact-controller
+      operationId: update_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSponsorContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: reactivate_2
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: deactivate_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -1392,6 +1548,56 @@ components:
             $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
+    UpdateSponsorContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
+    SponsorContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sponsorId:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateSponsorContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
     CreateSubscriptionRequest:
       type: object
       properties:
