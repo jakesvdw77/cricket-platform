@@ -90,7 +90,13 @@ const TreeScroller = styled(Box)({
 const TreeList = styled('ul', { shouldForwardProp: (prop) => prop !== 'depth' })<{ depth: number }>(
   ({ theme, depth }) => ({
     display: 'flex',
-    justifyContent: 'center',
+    // Centering a flex row that's wider than its scrollable ancestor clips the start-side
+    // overflow permanently — scrollLeft can't go negative to reach it, so content left of the
+    // centered midpoint becomes unreachable (a real bug a live screenshot caught: the leftmost
+    // root nodes were cut off with no way to scroll to them). Only the root row (depth 0) needs
+    // this fix — nested rows must stay centered so they align under their own parent's connector
+    // drop-line (the `ul::before` below).
+    justifyContent: depth === 0 ? 'flex-start' : 'center',
     margin: 0,
     padding: 0,
     paddingTop: depth === 0 ? 0 : 20,
