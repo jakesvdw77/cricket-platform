@@ -22,5 +22,7 @@
     <include file="db/changelog/v1/015-add-sponsor.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/016-add-sponsor-contact.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/017-add-section.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/018-add-team.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/019-add-team-profile.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
