@@ -99,14 +99,19 @@ test.describe('Club Structure golden path (025-club-structure.md)', () => {
 
     // First-run empty state, or a tree already exists from prior manual/e2e testing — either
     // way, "Start blank" (when offered) just leaves whatever's already there and lets us build
-    // our own uniquely-named nodes on top.
+    // our own uniquely-named nodes on top. `isVisible()` alone doesn't wait — on a genuinely
+    // empty club (no prior test data) the query hasn't resolved yet at the instant this ran,
+    // so it always read false and skipped a button that was about to appear a moment later.
+    // Racing both possible end states (via `.or()`) waits for whichever one actually renders.
     const startBlankButton = page.getByRole('button', { name: 'Start blank' });
-    if (await startBlankButton.isVisible().catch(() => false)) {
+    const addTopLevelButton = page.getByRole('button', { name: /add top-level section/i });
+    await expect(startBlankButton.or(addTopLevelButton)).toBeVisible();
+    if (await startBlankButton.isVisible()) {
       await startBlankButton.click();
     }
 
     // Add a top-level section, then rename it via the detail panel (auto-selected on create).
-    await page.getByRole('button', { name: /add top-level section/i }).click();
+    await addTopLevelButton.click();
     const nameField = page.getByRole('textbox', { name: 'Name', exact: true });
     await expect(nameField).toHaveValue('New section');
     await nameField.fill(parentName);
