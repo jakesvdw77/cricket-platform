@@ -89,6 +89,10 @@ export default function ClubStructure() {
   const queryClient = useQueryClient()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Bumped on every click of the tree's "Rename" toolbar button (which only ever shows on an
+  // already-selected node, so reselecting it is a no-op) — SectionDetailPanel watches this to
+  // focus its Name field, the field that button is actually meant to hand control to.
+  const [renameSignal, setRenameSignal] = useState(0)
   const [skipTemplateChoice, setSkipTemplateChoice] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -276,7 +280,10 @@ export default function ClubStructure() {
               onSelect={setSelectedId}
               onAddChild={handleAddChild}
               onRemove={(id) => deactivateMutation.mutate(id)}
-              onRenameStart={setSelectedId}
+              onRenameStart={(id) => {
+                setSelectedId(id)
+                setRenameSignal((n) => n + 1)
+              }}
             />
           </Card>
 
@@ -290,6 +297,7 @@ export default function ClubStructure() {
                 onLinkExisting={() => setLinkDialogOpen(true)}
                 onCreateAndLink={() => setCreateDialogOpen(true)}
                 onUnlink={(contactId) => unlinkMutation.mutate(contactId)}
+                focusNameSignal={renameSignal}
                 onReactivate={
                   selectedSection.active ? undefined : () => reactivateMutation.mutate(selectedSection.id)
                 }

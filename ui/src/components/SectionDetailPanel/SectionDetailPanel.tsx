@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Avatar, Box, Breadcrumbs, Divider, IconButton, MenuItem, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
@@ -24,6 +24,12 @@ export interface SectionDetailPanelProps {
   // requires a leaf node be reactivatable — the tree editor's own toolbar only ever offers
   // remove/rename on an *active* node, so this is the one place a reactivate action can live.
   onReactivate?: () => void
+  // Bumped by ClubStructure every time the tree's own "Rename" toolbar button is clicked, so this
+  // panel can focus its Name field in response — that button only ever appears on an already-
+  // selected node, so selecting it again is a no-op; focusing the field it's meant to edit is the
+  // actual "rename" affordance the design calls for. Any changing value works; a counter avoids
+  // needing to reset it, unlike a boolean.
+  focusNameSignal?: number
 }
 
 function initialsOf(contact: ClubContact): string {
@@ -55,10 +61,12 @@ export function SectionDetailPanel({
   onCreateAndLink,
   onUnlink,
   onReactivate,
+  focusNameSignal,
 }: SectionDetailPanelProps) {
   const [name, setName] = useState(section.name)
   const [minAge, setMinAge] = useState(numberToInput(section.minAge))
   const [maxAge, setMaxAge] = useState(numberToInput(section.maxAge))
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Resets local draft state only when a *different* node is selected — not on every refetch of
   // the same node (e.g. after a successful onUpdate), which would otherwise clobber a value the
@@ -68,6 +76,16 @@ export function SectionDetailPanel({
     setMinAge(numberToInput(section.minAge))
     setMaxAge(numberToInput(section.maxAge))
   }, [section.id])
+
+  // The tree's own "Rename" toolbar button only ever shows on an already-selected node, so
+  // reselecting it is a no-op — this is the actual rename affordance: focus (and select the text
+  // of) the Name field it's meant to edit. Skips the initial mount (signal starts undefined/0).
+  useEffect(() => {
+    if (focusNameSignal) {
+      nameInputRef.current?.focus()
+      nameInputRef.current?.select()
+    }
+  }, [focusNameSignal])
 
   const minAgeValue = inputToNumber(minAge)
   const maxAgeValue = inputToNumber(maxAge)
@@ -139,6 +157,7 @@ export function SectionDetailPanel({
         value={name}
         onChange={(event) => setName(event.target.value)}
         onBlur={commitName}
+        inputRef={nameInputRef}
       />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>

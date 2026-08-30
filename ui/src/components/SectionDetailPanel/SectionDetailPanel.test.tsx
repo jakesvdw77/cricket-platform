@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { SectionDetailPanel } from './SectionDetailPanel'
@@ -251,6 +251,39 @@ describe('SectionDetailPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Reactivate' }))
 
     expect(onReactivate).toHaveBeenCalledTimes(1)
+  })
+
+  it('focuses and selects the Name field when focusNameSignal changes — the tree toolbar\'s "Rename" action, which only shows on an already-selected node and so has no other observable effect', async () => {
+    const { rerender } = render(
+      <SectionDetailPanel
+        section={SECTION}
+        breadcrumb={[]}
+        onUpdate={vi.fn()}
+        contacts={[]}
+        onLinkExisting={vi.fn()}
+        onCreateAndLink={vi.fn()}
+        onUnlink={vi.fn()}
+        focusNameSignal={0}
+      />,
+    )
+
+    const nameField = screen.getByLabelText('Name')
+    expect(nameField).not.toHaveFocus()
+
+    rerender(
+      <SectionDetailPanel
+        section={SECTION}
+        breadcrumb={[]}
+        onUpdate={vi.fn()}
+        contacts={[]}
+        onLinkExisting={vi.fn()}
+        onCreateAndLink={vi.fn()}
+        onUnlink={vi.fn()}
+        focusNameSignal={1}
+      />,
+    )
+
+    await waitFor(() => expect(nameField).toHaveFocus())
   })
 
   it('does not render an inactive banner for an active section', () => {

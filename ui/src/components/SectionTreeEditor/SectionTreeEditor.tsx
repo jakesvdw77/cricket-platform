@@ -13,9 +13,10 @@ export interface SectionTreeEditorProps {
   onSelect: (id: string) => void
   onAddChild: (parentId: string | null) => void
   onRemove: (id: string) => void
-  // Rename is inline in SectionDetailPanel's own name field — this just hands control back to the
-  // parent (e.g. to make sure the node is selected) rather than editing anything itself, per
-  // docs/plans/025-club-structure.md item 12's own "your call" allowance.
+  // Rename is inline in SectionDetailPanel's own Name field — this only signals intent (this
+  // toolbar shows on an already-selected node, so it can't itself change the selection). The
+  // parent uses it to focus the detail panel's Name field, since reselecting the same node
+  // wouldn't otherwise do anything observable.
   onRenameStart?: (id: string) => void
 }
 
