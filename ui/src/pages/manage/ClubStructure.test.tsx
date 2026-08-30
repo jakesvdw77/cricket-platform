@@ -37,6 +37,16 @@ vi.mock('../../api/clubContactApi', () => ({
   createClubContact: (clubId: string, payload: unknown) => createClubContact(clubId, payload),
 }))
 
+// docs/specs/027-team-profile.md: ClubStructure.tsx now also fetches the selected section's teams
+// (to feed SectionDetailPanel's new "Manage Teams" badges) — mocked purely to keep this suite's
+// existing assertions noise-free; no test here exercises team badges directly (see
+// SectionDetailPanel.test.tsx for that coverage).
+const listTeamsForSection = vi.fn()
+
+vi.mock('../../api/teamApi', () => ({
+  listTeamsForSection: (clubId: string, sectionId: string) => listTeamsForSection(clubId, sectionId),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   // Low-priority defaults so a background refetch beyond a test's own queued
@@ -44,6 +54,7 @@ beforeEach(() => {
   // component is still subscribed to) resolves to something rather than undefined.
   listSectionContacts.mockResolvedValue([])
   listClubContacts.mockResolvedValue([])
+  listTeamsForSection.mockResolvedValue([])
 })
 
 function makeSection(overrides: Partial<Section> = {}): Section {

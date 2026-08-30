@@ -19,6 +19,9 @@ import SponsorFormPage from './pages/manage/SponsorFormPage'
 import SponsorContactList from './pages/manage/SponsorContactList'
 import SponsorContactFormPage from './pages/manage/SponsorContactFormPage'
 import ClubStructure from './pages/manage/ClubStructure'
+import TeamDirectory from './pages/manage/TeamDirectory'
+import TeamFormPage from './pages/manage/TeamFormPage'
+import TeamList from './pages/manage/TeamList'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -103,7 +106,16 @@ function App() {
               <Route path="sponsors/:sponsorId/contacts/new" element={<SponsorContactFormPage />} />
               <Route path="sponsors/:sponsorId/contacts/:contactId/edit" element={<SponsorContactFormPage />} />
               <Route path="sections" element={<ClubStructure />} />
-              <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
+              {/* docs/specs/026-teams.md: the club-wide Teams directory (006's pre-existing nav
+                  card finally gets a real screen) plus the section-scoped flow reached from
+                  SectionDetailPanel's "Manage Teams" entry point. sectionId/teamId are route
+                  params (not Outlet context), matching SponsorContactList/SponsorContactFormPage's
+                  nested-route precedent. */}
+              <Route path="teams" element={<TeamDirectory />} />
+              <Route path="teams/new" element={<TeamFormPage />} />
+              <Route path="sections/:sectionId/teams" element={<TeamList />} />
+              <Route path="sections/:sectionId/teams/new" element={<TeamFormPage />} />
+              <Route path="sections/:sectionId/teams/:teamId/edit" element={<TeamFormPage />} />
               <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />
               <Route path="fixtures" element={<EmptyState title="Fixtures & Results" description="Coming soon." />} />
               <Route

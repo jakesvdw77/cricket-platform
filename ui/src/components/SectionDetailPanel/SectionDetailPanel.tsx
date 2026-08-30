@@ -1,14 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Avatar, Box, Breadcrumbs, Divider, IconButton, MenuItem, Stack, Typography } from '@mui/material'
+import {
+  Avatar,
+  Box,
+  Breadcrumbs,
+  Chip,
+  Divider,
+  IconButton,
+  MenuItem,
+  Stack,
+  Typography,
+  Button as MuiButton,
+} from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import { Link as RouterLink } from 'react-router-dom'
 import { Input } from '../Input'
 import { Button } from '../Button'
+import { Card } from '../Card'
 import type { ClubContact } from '../../api/clubContactApi'
 import type { Section, SectionPayload } from '../../api/sectionApi'
+import type { Team } from '../../api/teamApi'
+
+// Identical to RecordCard's own 'muted' badge tone sx (docs/specs/027-team-profile.md) —
+// SectionDetailPanel doesn't use RecordCard itself, so the values are copied rather than shared.
+const MUTED_CHIP_SX = {
+  bgcolor: (theme: Theme) => alpha(theme.palette.text.secondary, 0.12),
+  color: 'text.secondary',
+  opacity: 0.7,
+} as const
 
 export interface SectionDetailPanelProps {
+  // Plumbed down from ClubStructure.tsx's existing Outlet-context value — needed to build the
+  // "Manage Teams" cross-link's route below (docs/specs/026-teams.md).
+  clubId: string
   section: Section
   // Ancestor names only, root-first — the parent (ClubStructure) computes this by walking
   // parentSectionId up the flat sections array. The current node's own name is rendered
@@ -16,6 +43,11 @@ export interface SectionDetailPanelProps {
   breadcrumb: string[]
   onUpdate: (payload: Partial<SectionPayload>) => void
   contacts: ClubContact[]
+  // The section's own teams (docs/specs/027-team-profile.md) — fetched by ClubStructure.tsx via
+  // 026's existing listTeamsForSection, the same place contacts is already fetched for the
+  // selected node. Rendered as badges on the "Manage Teams" card so an admin can see what's
+  // already there without clicking through.
+  teams: Team[]
   onLinkExisting: () => void
   onCreateAndLink: () => void
   onUnlink: (contactId: string) => void
@@ -53,10 +85,12 @@ function inputToNumber(value: string): number | null {
 // field, the three independently-optional eligibility fields, and the section's linked
 // ClubContact records (link existing / create-and-link / unlink).
 export function SectionDetailPanel({
+  clubId,
   section,
   breadcrumb,
   onUpdate,
   contacts,
+  teams,
   onLinkExisting,
   onCreateAndLink,
   onUnlink,
@@ -249,6 +283,69 @@ export function SectionDetailPanel({
           </Button>
         </Stack>
       </Box>
+
+      {/* docs/specs/026-teams.md: "Manage Teams" entry point for the Teams that live directly
+          under this section — shown for any selected node, active or not, leaf or not (see the
+          spec's Non-goal on leaf enforcement). A real bordered Card + icon + outlined button, not
+          a bare text link — copies SponsorFormPage.tsx's exact "Manage Contacts" cross-link
+          pattern, established after a first version used a small `variant="text"` link here and
+          it was genuinely hard to spot against the rest of the page (real user feedback). clubId
+          is plumbed through from ClubStructure.tsx's Outlet context and stamped onto the card so
+          this cross-link's club scope is visible/assertable even though it isn't itself part of
+          the target route (the destination screen resolves clubId from its own Outlet context). */}
+      <Card
+        data-club-id={clubId}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 2,
+          p: 2,
+        }}
+      >
+        <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ minWidth: 0 }}>
+          <GroupsOutlinedIcon color="action" />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle1" component="h2">
+              Teams
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage the named teams that sit directly under this section.
+            </Typography>
+
+            {teams.length === 0 ? (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                No teams yet
+              </Typography>
+            ) : (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                {teams.map((team) => (
+                  <Chip
+                    key={team.id}
+                    label={team.name}
+                    size="small"
+                    sx={team.active ? undefined : MUTED_CHIP_SX}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        </Stack>
+        {/* Raw MuiButton, not the shared Button wrapper — Button isn't typed as a polymorphic MUI
+            component (no generic `component` prop support), so `component`+`to` together fail
+            tsc's real project build (tsc -b) even though a plain `tsc --noEmit` run misses it
+            locally. variant/color/size below match Button's variant="secondary". */}
+        <MuiButton
+          component={RouterLink}
+          to={`/manage/sections/${section.id}/teams`}
+          variant="outlined"
+          color="primary"
+          size="small"
+        >
+          Manage Teams
+        </MuiButton>
+      </Card>
     </Box>
   )
 }

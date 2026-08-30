@@ -1,16 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Autocomplete,
-  Box,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Box, IconButton, Stack, Typography } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { useOutletContext } from 'react-router-dom'
@@ -21,10 +10,11 @@ import { SectionTemplatePicker } from '../../components/SectionTemplatePicker'
 import type { SectionTemplate, SectionTemplateNode } from '../../components/SectionTemplatePicker'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { Input } from '../../components/Input'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { ClubContactForm, CLUB_CONTACT_FORM_ID } from '../../components/ClubContactForm'
+import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
+import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
 import {
   createSection,
   deactivateSection,
@@ -38,6 +28,8 @@ import {
 import type { Section, SectionPayload } from '../../api/sectionApi'
 import { createClubContact, listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact, ClubContactPayload } from '../../api/clubContactApi'
+import { listTeamsForSection } from '../../api/teamApi'
+import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { errorDetail } from '../../utils/errorDetail'
 
 // A few genuinely different, real club/school shapes — not one hardcoded default — per direct
@@ -117,18 +109,6 @@ async function buildFromTemplate(clubId: string, template: SectionTemplate): Pro
   }
 }
 
-// Walks parentSectionId up the flat list to build a root-first ancestor name trail for the
-// breadcrumb — SectionDetailPanel just renders whatever's handed to it.
-function breadcrumbFor(section: Section, sectionsById: Map<string, Section>): string[] {
-  const trail: string[] = []
-  let current = section.parentSectionId ? sectionsById.get(section.parentSectionId) : undefined
-  while (current) {
-    trail.unshift(current.name)
-    current = current.parentSectionId ? sectionsById.get(current.parentSectionId) : undefined
-  }
-  return trail
-}
-
 const SECTIONS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'sections']
 const SECTION_CONTACTS_QUERY_KEY = (clubId?: string, sectionId?: string | null) => [
   'managed-club',
@@ -199,6 +179,17 @@ export default function ClubStructure() {
     queryKey: ['managed-club', clubId, 'contacts'],
     queryFn: () => listClubContacts(clubId as string),
     enabled: Boolean(clubId) && (linkDialogOpen || createDialogOpen),
+  })
+
+  // Feeds SectionDetailPanel's "Manage Teams" card badges (docs/specs/027-team-profile.md) — same
+  // place contacts is already fetched for the selected node.
+  const {
+    data: teams,
+    isFetching: teamsLoading,
+  } = useQuery({
+    queryKey: ['managed-club', clubId, 'sections', selectedId, 'teams'],
+    queryFn: () => listTeamsForSection(clubId as string, selectedId as string),
+    enabled: Boolean(clubId) && Boolean(selectedId),
   })
 
   const invalidateSections = () => queryClient.invalidateQueries({ queryKey: SECTIONS_QUERY_KEY(clubId) })
@@ -436,10 +427,12 @@ export default function ClubStructure() {
               <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
                 {selectedSection ? (
                   <SectionDetailPanel
+                    clubId={clubId as string}
                     section={selectedSection}
                     breadcrumb={breadcrumbFor(selectedSection, sectionsById)}
                     onUpdate={handleUpdate}
                     contacts={contactsLoading ? [] : (contacts ?? [])}
+                    teams={teamsLoading ? [] : (teams ?? [])}
                     onLinkExisting={() => setLinkDialogOpen(true)}
                     onCreateAndLink={() => setCreateDialogOpen(true)}
                     onUnlink={(contactId) => unlinkMutation.mutate(contactId)}
@@ -457,66 +450,33 @@ export default function ClubStructure() {
         </Box>
       )}
 
-      <Dialog open={linkDialogOpen} onClose={() => setLinkDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Link an existing contact</DialogTitle>
-        <DialogContent>
-          <Autocomplete<ClubContact>
-            options={linkableContacts}
-            loading={allContactsQuery.isFetching}
-            getOptionLabel={(option) => `${option.contact.firstName} ${option.contact.lastName} — ${option.role}`}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => {
-              if (value) {
-                linkMutation.mutate(value.id)
-              }
-            }}
-            renderInput={(params) => (
-              <Input
-                {...params}
-                label="Search contacts"
-                placeholder="Search by name or role"
-                sx={{ mt: 1 }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {allContactsQuery.isFetching && <CircularProgress color="inherit" size={16} />}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button variant="ghost" onClick={() => setLinkDialogOpen(false)}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* No extraField on either dialog — Section↔ClubContact keeps its exact original
+          auto-submit-on-select / external-confirm-button behavior after this extraction onto the
+          shared dialogs (docs/specs/027-team-profile.md's explicit regression requirement). */}
+      <LinkExistingRecordDialog<ClubContact>
+        open={linkDialogOpen}
+        onClose={() => setLinkDialogOpen(false)}
+        title="Link an existing contact"
+        candidates={linkableContacts}
+        loading={allContactsQuery.isFetching}
+        getOptionLabel={(option) => `${option.contact.firstName} ${option.contact.lastName} — ${option.role}`}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        searchLabel="Search contacts"
+        searchPlaceholder="Search by name or role"
+        onLink={(option) => linkMutation.mutate(option.id)}
+      />
 
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>New contact</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, pt: 1 }}>
-            <ClubContactForm onSubmit={(payload) => createAndLinkMutation.mutate(payload)} />
-          </Box>
-          {createAndLinkMutation.isError && (
-            <Typography variant="body2" color="error.main" sx={{ mt: 2 }}>
-              {errorDetail(createAndLinkMutation.error, "Couldn't create and link this contact. Please try again.")}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" form={CLUB_CONTACT_FORM_ID} disabled={createAndLinkMutation.isPending}>
-            {createAndLinkMutation.isPending ? 'Creating…' : 'Create & link'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CreateAndLinkRecordDialog<ClubContactPayload>
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        title="New contact"
+        formId={CLUB_CONTACT_FORM_ID}
+        renderForm={(onSubmit) => <ClubContactForm onSubmit={onSubmit} />}
+        onCreateAndLink={(payload) => createAndLinkMutation.mutate(payload)}
+        isPending={createAndLinkMutation.isPending}
+        isError={createAndLinkMutation.isError}
+        errorMessage={errorDetail(createAndLinkMutation.error, "Couldn't create and link this contact. Please try again.")}
+      />
     </Box>
   )
 }

@@ -3,12 +3,13 @@ import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
+import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { listSponsors, deactivateSponsor, reactivateSponsor } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
+import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
@@ -17,20 +18,6 @@ function badgeFor(sponsor: Sponsor): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
-}
-
-function fieldsFor(sponsor: Sponsor): RecordCardField[] {
-  const fields: RecordCardField[] = []
-  if (sponsor.website) {
-    fields.push({ label: 'Website', value: sponsor.website })
-  }
-  if (sponsor.email) {
-    fields.push({ label: 'Email', value: sponsor.email })
-  }
-  if (sponsor.phone) {
-    fields.push({ label: 'Phone', value: sponsor.phone })
-  }
-  return fields
 }
 
 // One RecordCard per sponsor, each with its own deactivate/reactivate mutation — mirrors
@@ -57,7 +44,7 @@ function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) 
     <RecordCard
       title={sponsor.name}
       badge={badgeFor(sponsor)}
-      fields={fieldsFor(sponsor)}
+      fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
       editTo={`/manage/sponsors/${sponsor.id}/edit`}
       secondaryAction={{
