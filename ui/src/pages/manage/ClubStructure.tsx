@@ -8,9 +8,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Stack,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionTreeEditor } from '../../components/SectionTreeEditor'
@@ -147,6 +152,10 @@ export default function ClubStructure() {
   // already-selected node, so reselecting it is a no-op) — SectionDetailPanel watches this to
   // focus its Name field, the field that button is actually meant to hand control to.
   const [renameSignal, setRenameSignal] = useState(0)
+  // The detail card can be manually collapsed, but selecting a node always reopens it — the
+  // point of collapsing is to reclaim space while browsing the tree, not to hide the panel from
+  // a selection the admin just made.
+  const [detailCollapsed, setDetailCollapsed] = useState(false)
   const [skipTemplateChoice, setSkipTemplateChoice] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -326,38 +335,127 @@ export default function ClubStructure() {
           pendingTemplateId={templateMutation.isPending ? templateMutation.variables?.id : null}
         />
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start' }}>
-          <Card sx={{ flex: { xs: '1 1 auto', md: '1 1 60%' }, width: '100%' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'stretch' }}>
+          <Card
+            sx={{
+              // On desktop, collapsing the detail panel reclaims its width for the tree (not its
+              // height — both cards always stay full height, see below) so there's more room to
+              // see the structure, per direct feedback that a vertical-only collapse hid the
+              // structure instead of revealing more of it. flex: '1 1 auto' here means "take
+              // whatever the detail panel's fixed-width rail doesn't."
+              flex: { xs: '1 1 auto', md: detailCollapsed ? '1 1 auto' : '1 1 60%' },
+              width: { xs: '100%', md: 'auto' },
+              alignSelf: 'stretch',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: { md: 560 },
+            }}
+            contentSx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          >
             <SectionTreeEditor
               sections={sections}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={(id) => {
+                setSelectedId(id)
+                setDetailCollapsed(false)
+              }}
               onAddChild={handleAddChild}
               onRemove={(id) => deactivateMutation.mutate(id)}
               onRenameStart={(id) => {
                 setSelectedId(id)
+                setDetailCollapsed(false)
                 setRenameSignal((n) => n + 1)
               }}
             />
           </Card>
 
-          <Card sx={{ flex: { xs: '1 1 auto', md: '1 1 40%' }, width: '100%' }}>
-            {selectedSection ? (
-              <SectionDetailPanel
-                section={selectedSection}
-                breadcrumb={breadcrumbFor(selectedSection, sectionsById)}
-                onUpdate={handleUpdate}
-                contacts={contactsLoading ? [] : (contacts ?? [])}
-                onLinkExisting={() => setLinkDialogOpen(true)}
-                onCreateAndLink={() => setCreateDialogOpen(true)}
-                onUnlink={(contactId) => unlinkMutation.mutate(contactId)}
-                focusNameSignal={renameSignal}
-                onReactivate={
-                  selectedSection.active ? undefined : () => reactivateMutation.mutate(selectedSection.id)
-                }
-              />
-            ) : (
-              <EmptyState title="Select a section" description="Click a node in the tree to view and edit it." />
+          <Card
+            sx={{
+              // Collapsed (desktop only): a fixed-width rail, not a fixed-height header bar —
+              // flex-basis (not width) drives sizing here since it wins over width in a flex row;
+              // width stays 'auto' so it never fights flex-basis (a real bug caught earlier this
+              // session came from exactly that conflict). Both states keep alignSelf: 'stretch' +
+              // the same minHeight as the tree card — collapsing never hides the structure by
+              // shrinking height, only reclaims width when there's nothing to show.
+              flex: { xs: '1 1 auto', md: detailCollapsed ? '0 0 56px' : '1 1 40%' },
+              width: { xs: '100%', md: 'auto' },
+              alignSelf: 'stretch',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: { md: 560 },
+              overflow: 'hidden',
+            }}
+            contentSx={{ p: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+          >
+            {/* Desktop-collapsed: a narrow rail with just an expand affordance. Never shown on
+                mobile — there, collapsing still means "hide the body, keep the header," since a
+                stacked layout has no spare width to reclaim in the first place. */}
+            {detailCollapsed && (
+              <Box
+                sx={{
+                  display: { xs: 'none', md: 'flex' },
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  pt: 2,
+                  flex: 1,
+                }}
+              >
+                <IconButton size="small" aria-label="Expand section details" onClick={() => setDetailCollapsed(false)}>
+                  <ChevronLeftIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+
+            <Box
+              sx={{
+                display: { xs: 'flex', md: detailCollapsed ? 'none' : 'flex' },
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+                p: 2,
+                flex: '0 0 auto',
+                ...(detailCollapsed ? {} : { borderBottom: 1, borderColor: 'divider' }),
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600}>
+                Section details
+              </Typography>
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                {selectedId && (
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
+                    Clear
+                  </Button>
+                )}
+                <IconButton
+                  size="small"
+                  aria-label={detailCollapsed ? 'Expand section details' : 'Collapse section details'}
+                  onClick={() => setDetailCollapsed((collapsed) => !collapsed)}
+                >
+                  {detailCollapsed ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+                </IconButton>
+              </Stack>
+            </Box>
+
+            {!detailCollapsed && (
+              <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
+                {selectedSection ? (
+                  <SectionDetailPanel
+                    section={selectedSection}
+                    breadcrumb={breadcrumbFor(selectedSection, sectionsById)}
+                    onUpdate={handleUpdate}
+                    contacts={contactsLoading ? [] : (contacts ?? [])}
+                    onLinkExisting={() => setLinkDialogOpen(true)}
+                    onCreateAndLink={() => setCreateDialogOpen(true)}
+                    onUnlink={(contactId) => unlinkMutation.mutate(contactId)}
+                    focusNameSignal={renameSignal}
+                    onReactivate={
+                      selectedSection.active ? undefined : () => reactivateMutation.mutate(selectedSection.id)
+                    }
+                  />
+                ) : (
+                  <EmptyState title="Select a section" description="Click a node in the tree to view and edit it." />
+                )}
+              </Box>
             )}
           </Card>
         </Box>

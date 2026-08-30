@@ -219,6 +219,54 @@ describe('ClubStructure', () => {
     )
   })
 
+  it('the "Clear" action deselects the current section, falling back to the "Select a section" placeholder', async () => {
+    const user = userEvent.setup()
+    listSections.mockResolvedValueOnce([makeSection({ id: 'juniors', name: 'Juniors' })])
+    listSectionContacts.mockResolvedValueOnce([])
+
+    renderPage('test-club-id')
+
+    await user.click(await screen.findByText('Juniors'))
+    await screen.findByLabelText('Name')
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(screen.getByText('Select a section')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
+  })
+
+  it('collapsing the detail panel hides its body but keeps the header, and selecting a node reopens it', async () => {
+    const user = userEvent.setup()
+    listSections.mockResolvedValueOnce([
+      makeSection({ id: 'juniors', name: 'Juniors' }),
+      makeSection({ id: 'vets', name: 'Vets' }),
+    ])
+    listSectionContacts.mockResolvedValue([])
+
+    renderPage('test-club-id')
+
+    await user.click(await screen.findByText('Juniors'))
+    await screen.findByLabelText('Name')
+
+    await user.click(screen.getByRole('button', { name: 'Collapse section details' }))
+
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+    expect(screen.getByText('Section details')).toBeInTheDocument()
+    // Two markups exist simultaneously — a mobile header toggle and a desktop-only collapsed
+    // rail — swapped via a responsive `display: { xs, md }` value, which compiles to a real CSS
+    // media query; JSDOM parses but doesn't evaluate those, so both are present in the test DOM
+    // at once even though a real browser only ever shows one. getAllByRole, not getByRole.
+    expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0)
+
+    // Selecting a different node — even while collapsed — reopens the panel automatically,
+    // rather than leaving the admin to notice and expand it manually.
+    await user.click(screen.getByText('Vets'))
+
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Vets'))
+    expect(screen.queryByRole('button', { name: 'Expand section details' })).not.toBeInTheDocument()
+  })
+
   it('removing a leaf node calls deactivateSection with the right club and section id', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([makeSection({ id: 'juniors', name: 'Juniors' })])

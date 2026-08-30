@@ -142,11 +142,18 @@ const TreeItem = styled('li', { shouldForwardProp: (prop) => prop !== 'depth' })
       '&:only-child': {
         paddingTop: 0,
       },
+      // Only the horizontal rail segment should disappear at the row's outer edges — NOT the
+      // vertical drop down to the node itself. `::before` only ever carries a top border (the
+      // horizontal segment), so nulling its color outright is safe. `::after` carries BOTH the
+      // horizontal segment (border-top) AND the vertical drop (border-left) on the same element;
+      // the earlier `borderColor` shorthand zeroed every side, silently killing the last child's
+      // own drop-line too and leaving it looking disconnected from the tree above it — a real bug
+      // caught from a live screenshot. Target border-top-color only so border-left is untouched.
       '&:first-of-type::before': {
-        borderColor: 'transparent',
+        borderTopColor: 'transparent',
       },
       '&:last-of-type::after': {
-        borderColor: 'transparent',
+        borderTopColor: 'transparent',
       },
     }),
   }),
@@ -325,7 +332,7 @@ export function SectionTreeEditor({
   const tree = useMemo(() => buildTree(sections), [sections])
 
   return (
-    <Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, gap: 2 }}>
         <Typography variant="subtitle1" fontWeight={600}>
           Section tree
@@ -336,11 +343,13 @@ export function SectionTreeEditor({
       </Box>
 
       {tree.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No sections yet — add a top-level section to get started.
-        </Typography>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120 }}>
+          <Typography variant="body2" color="text.secondary">
+            No sections yet — add a top-level section to get started.
+          </Typography>
+        </Box>
       ) : (
-        <TreeScroller>
+        <TreeScroller sx={{ flex: 1, minHeight: 0 }}>
           <TreeBranch
             nodes={tree}
             depth={0}
