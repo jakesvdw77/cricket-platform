@@ -55,9 +55,15 @@ export async function updateSection(
   return data
 }
 
-export async function deactivateSection(clubId: string, sectionId: string): Promise<Section> {
-  const { data } = await api.post<Section>(`${sectionsPath(clubId)}/${sectionId}/deactivate`)
-  return data
+// A section with a linked contact is soft-deactivated (200 + the updated Section); one with
+// nothing attached (no children, no linked contacts) is actually deleted server-side (204, no
+// body) rather than left as an inactive placeholder — see docs/specs/025-club-structure.md's Data
+// Model Changes Remove rule. `null` return means it was deleted.
+export async function deactivateSection(clubId: string, sectionId: string): Promise<Section | null> {
+  const { data } = await api.post<Section | '' | null>(`${sectionsPath(clubId)}/${sectionId}/deactivate`)
+  // A 204 body comes back as '' (or occasionally null/undefined, depending on the response) —
+  // a real Section is always truthy, so this normalizes every "nothing came back" case to null.
+  return data || null
 }
 
 export async function reactivateSection(clubId: string, sectionId: string): Promise<Section> {

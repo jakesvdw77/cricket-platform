@@ -221,6 +221,31 @@ describe('ClubStructure', () => {
     expect(deactivateSection).toHaveBeenCalledWith('test-club-id', 'juniors')
   })
 
+  it('removing a section with nothing attached (deactivateSection resolves null) clears the selection instead of showing the removed node\'s detail panel', async () => {
+    const user = userEvent.setup()
+    // A second section stays behind so the tree/detail-panel view remains after the removal —
+    // isolates the selectedId-clearing behavior from the separate "zero sections at all" empty
+    // state, which is its own, already-covered case.
+    listSections.mockResolvedValueOnce([
+      makeSection({ id: 'juniors', name: 'Juniors' }),
+      makeSection({ id: 'vets', name: 'Vets' }),
+    ])
+    listSectionContacts.mockResolvedValueOnce([])
+    // null = the section had nothing attached and was actually deleted server-side, not
+    // soft-deactivated (docs/specs/025-club-structure.md's Data Model Changes Remove rule).
+    deactivateSection.mockResolvedValueOnce(null)
+    listSections.mockResolvedValueOnce([makeSection({ id: 'vets', name: 'Vets' })])
+
+    renderPage('test-club-id')
+
+    await user.click(await screen.findByText('Juniors'))
+    await screen.findByLabelText('Name')
+    await user.click(screen.getByRole('button', { name: 'Remove Juniors' }))
+
+    await waitFor(() => expect(deactivateSection).toHaveBeenCalledWith('test-club-id', 'juniors'))
+    expect(await screen.findByText('Select a section')).toBeInTheDocument()
+  })
+
   it('reactivating an inactive selected node calls reactivateSection', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([makeSection({ id: 'juniors', name: 'Juniors', active: false })])

@@ -155,7 +155,15 @@ export default function ClubStructure() {
 
   const deactivateMutation = useMutation({
     mutationFn: (sectionId: string) => deactivateSection(clubId as string, sectionId),
-    onSuccess: invalidateSections,
+    onSuccess: (result, sectionId) => {
+      invalidateSections()
+      // `null` means the section had nothing attached to it and was actually deleted server-side
+      // (see sectionApi.ts) rather than soft-deactivated — clear the selection so the detail
+      // panel doesn't keep pointing at a row that no longer exists.
+      if (result === null && selectedId === sectionId) {
+        setSelectedId(null)
+      }
+    },
   })
 
   const reactivateMutation = useMutation({
