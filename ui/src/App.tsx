@@ -16,6 +16,8 @@ import ClubContactList from './pages/manage/ClubContactList'
 import ClubContactFormPage from './pages/manage/ClubContactFormPage'
 import SponsorList from './pages/manage/SponsorList'
 import SponsorFormPage from './pages/manage/SponsorFormPage'
+import SponsorContactList from './pages/manage/SponsorContactList'
+import SponsorContactFormPage from './pages/manage/SponsorContactFormPage'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -93,6 +95,12 @@ function App() {
               <Route path="sponsors" element={<SponsorList />} />
               <Route path="sponsors/new" element={<SponsorFormPage />} />
               <Route path="sponsors/:id/edit" element={<SponsorFormPage />} />
+              {/* docs/specs/024-sponsor-contacts.md: a sponsor's named contacts, one level deeper
+                  than sponsors/:id/edit — reads sponsorId from the route (not :id, to avoid
+                  clashing with the sibling sponsors/:id/edit route param name). */}
+              <Route path="sponsors/:sponsorId/contacts" element={<SponsorContactList />} />
+              <Route path="sponsors/:sponsorId/contacts/new" element={<SponsorContactFormPage />} />
+              <Route path="sponsors/:sponsorId/contacts/:contactId/edit" element={<SponsorContactFormPage />} />
               <Route path="sections" element={<EmptyState title="Sections & Age Groups" description="Coming soon." />} />
               <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
               <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />
