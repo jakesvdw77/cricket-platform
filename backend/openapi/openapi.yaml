@@ -629,6 +629,213 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sections:
+    get:
+      tags:
+      - section-controller
+      operationId: list_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionDto"
+    post:
+      tags:
+      - section-controller
+      operationId: create_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSectionRequest"
+        required: true
+      responses:
+        "201":
+          description: Section created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}:
+    put:
+      tags:
+      - section-controller
+      operationId: update_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSectionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate:
+    post:
+      tags:
+      - section-controller
+      operationId: deactivate_2
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate:
+    post:
+      tags:
+      - section-controller
+      operationId: reactivate_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts:
+    get:
+      tags:
+      - section-controller
+      operationId: listContacts
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/link:
+    post:
+      tags:
+      - section-controller
+      operationId: link
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink:
+    post:
+      tags:
+      - section-controller
+      operationId: unlink
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -1598,6 +1805,81 @@ components:
       required:
       - contact
       - role
+    UpdateSectionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+      required:
+      - name
+    SectionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        parentSectionId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    CreateSectionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentSectionId:
+          type: string
+          format: uuid
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+      required:
+      - name
     CreateSubscriptionRequest:
       type: object
       properties:
