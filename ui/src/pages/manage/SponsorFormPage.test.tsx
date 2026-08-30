@@ -114,6 +114,21 @@ describe('SponsorFormPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('create mode: does not render the "Manage Contacts" link (a brand-new sponsor has no id yet)', () => {
+    renderPage('/manage/sponsors/new', 'test-club-id')
+
+    expect(screen.queryByRole('link', { name: /Manage Contacts/ })).not.toBeInTheDocument()
+  })
+
+  it('edit mode: renders a "Manage Contacts" link to this sponsor\'s contacts screen', async () => {
+    listSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Riverside Hardware' })])
+
+    renderPage('/manage/sponsors/sponsor-1/edit', 'test-club-id')
+
+    const link = await screen.findByRole('link', { name: /Manage Contacts/ })
+    expect(link).toHaveAttribute('href', '/manage/sponsors/sponsor-1/contacts')
+  })
+
   it('edit mode: submit calls updateSponsor with the outlet clubId and route sponsor id, then navigates to the list', async () => {
     const user = userEvent.setup()
     // mockResolvedValue (not Once): saveMutation.onSuccess invalidates this same query key while
