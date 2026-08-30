@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Box, Button as MuiButton } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Link as RouterLink, useNavigate, useOutletContext } from 'react-router-dom'
+import { Box } from '@mui/material'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import {
   listClubContacts,
   deactivateClubContact,
@@ -134,22 +134,7 @@ export default function ClubContactList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* GridNavShell (unlike AppShell's sidebar or BottomTabShell's tab bar) has no persistent
-          nav, and this list — unlike ManageClubProfilePage's form — isn't wrapped in
-          RecordFormScreen, so it has no back link of its own without this. Same visual pattern
-          as RecordFormScreen's back button; worth extracting to a shared component if a third
-          bare /manage list screen ends up needing it too. */}
-      <MuiButton
-        component={RouterLink}
-        to="/manage"
-        variant="text"
-        color="inherit"
-        size="small"
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        sx={{ alignSelf: 'flex-start', ml: -1, color: 'text.secondary' }}
-      >
-        Back to Dashboard
-      </MuiButton>
+      <ManageScreenHeader title="Club Contacts" />
 
       <ListToolbar
         searchValue={search}

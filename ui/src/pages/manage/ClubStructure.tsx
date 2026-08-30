@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Autocomplete,
   Box,
-  Button as MuiButton,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -12,10 +11,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import { Link as RouterLink, useOutletContext } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionTreeEditor } from '../../components/SectionTreeEditor'
 import { SectionDetailPanel } from '../../components/SectionDetailPanel'
@@ -25,6 +23,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { EmptyState } from '../../components/EmptyState'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { ClubContactForm, CLUB_CONTACT_FORM_ID } from '../../components/ClubContactForm'
 import {
   createSection,
@@ -313,23 +312,7 @@ export default function ClubStructure() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Same bare-list-screen back link ClubContactList.tsx already established — no shared
-          component for it yet (see that file's own comment). */}
-      <MuiButton
-        component={RouterLink}
-        to="/manage"
-        variant="text"
-        color="inherit"
-        size="small"
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        sx={{ alignSelf: 'flex-start', ml: -1, color: 'text.secondary' }}
-      >
-        Back to Dashboard
-      </MuiButton>
-
-      <Typography variant="h6" fontWeight={600}>
-        Club Structure
-      </Typography>
+      <ManageScreenHeader title="Club Structure" />
 
       {deactivateMutation.isError && (
         <Typography variant="body2" color="error.main">
