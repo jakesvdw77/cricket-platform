@@ -21,5 +21,6 @@
     <include file="db/changelog/v1/014-add-club-profile-social-links.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/015-add-sponsor.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/016-add-sponsor-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/017-add-section.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
