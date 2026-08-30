@@ -39,8 +39,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * create/update's {@code minAge <= maxAge} validation (boundary equal is valid, either field
  * alone is valid, a real violation throws {@link ValidationException}), create's cross-club
  * {@code parentSectionId} rejection, the two-case deactivate guard (already-inactive checked
- * before has-active-children, and inactive children never block a deactivate), reactivate's
- * one-way guard, link/unlink treating {@link Section} and {@link ClubContact} as independent
+ * before has-active-children), the remove-eligibility split once that guard passes (a linked
+ * contact forces a soft-deactivate; a section with no children at all — active or inactive — and
+ * no linked contact is actually deleted; any children at all, even inactive ones, force a
+ * soft-deactivate regardless of contacts, since a remaining child row would violate the FK on
+ * delete), reactivate's one-way guard, link/unlink treating {@link Section} and {@link
+ * ClubContact} as independent
  * siblings under the same club (cross-club rejection for either id, already-linked {@code 409},
  * unlink-with-no-link {@code 404}), and {@code findOrThrowForClub}-style cross-club {@link
  * NotFoundException} isolation for {@code sectionId}.
@@ -218,21 +222,67 @@ class SectionServiceImplTest {
         assertThat(mapped.getClubId()).isEqualTo(clubId);
     }
 
-    // --- deactivate: two distinct blocking cases, checked in order ---
+    // --- deactivate/remove: two distinct blocking cases, then a hard-delete-vs-soft-deactivate
+    // eligibility split (docs/specs/025-club-structure.md's Data Model Changes Remove rule) ---
 
     @Test
-    void deactivateOnActiveSectionWithNoActiveChildrenTransitionsToInactive() {
+    void removeOnASectionWithALinkedContactSoftDeactivatesInstead() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         Section existing = section(sectionId, clubId, true);
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(existing));
         when(sectionRepository.findByParentSectionIdAndActiveTrue(sectionId)).thenReturn(List.of());
+        when(sectionRepository.existsByParentSectionId(sectionId)).thenReturn(false);
+        when(sectionContactRepository.existsBySectionId(sectionId)).thenReturn(true);
         when(sectionRepository.save(existing)).thenReturn(existing);
         when(sectionMapper.toDto(existing)).thenReturn(dummyDto());
 
-        sectionService.deactivate(clubId, sectionId);
+        Optional<SectionDto> result = sectionService.deactivate(clubId, sectionId);
 
+        assertThat(result).isPresent();
         assertThat(existing.isActive()).isFalse();
+        verify(sectionRepository, never()).delete(ArgumentMatchers.any());
+    }
+
+    @Test
+    void removeOnASectionWithNoChildrenAndNoLinkedContactsIsActuallyDeleted() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        Section existing = section(sectionId, clubId, true);
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(existing));
+        when(sectionRepository.findByParentSectionIdAndActiveTrue(sectionId)).thenReturn(List.of());
+        when(sectionRepository.existsByParentSectionId(sectionId)).thenReturn(false);
+        when(sectionContactRepository.existsBySectionId(sectionId)).thenReturn(false);
+
+        Optional<SectionDto> result = sectionService.deactivate(clubId, sectionId);
+
+        assertThat(result).isEmpty();
+        verify(sectionRepository).delete(existing);
+        verify(sectionRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void removeOnASectionWithOnlyInactiveChildrenSoftDeactivatesRatherThanDeleting() {
+        // findByParentSectionIdAndActiveTrue excludes them (doesn't block the remove at all), but
+        // existsByParentSectionId sees them (any child row, active or inactive, would violate
+        // this table's own parent_section_id FK if the parent were deleted) — so this section is
+        // soft-deactivated even though it has zero linked contacts, proving the "any children at
+        // all" check is independent of the contacts check.
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        Section existing = section(sectionId, clubId, true);
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(existing));
+        when(sectionRepository.findByParentSectionIdAndActiveTrue(sectionId)).thenReturn(List.of());
+        when(sectionRepository.existsByParentSectionId(sectionId)).thenReturn(true);
+        when(sectionRepository.save(existing)).thenReturn(existing);
+        when(sectionMapper.toDto(existing)).thenReturn(dummyDto());
+
+        Optional<SectionDto> result = sectionService.deactivate(clubId, sectionId);
+
+        assertThat(result).isPresent();
+        assertThat(existing.isActive()).isFalse();
+        verify(sectionRepository, never()).delete(ArgumentMatchers.any());
+        verify(sectionContactRepository, never()).existsBySectionId(sectionId);
     }
 
     @Test
@@ -261,23 +311,6 @@ class SectionServiceImplTest {
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("active child");
         verify(sectionRepository, never()).save(ArgumentMatchers.any());
-    }
-
-    @Test
-    void deactivateOnActiveSectionWithOnlyInactiveChildrenSucceeds() {
-        // Children being inactive doesn't block the parent — findByParentSectionIdAndActiveTrue's
-        // own contract already excludes inactive children from what it returns.
-        UUID clubId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        Section existing = section(sectionId, clubId, true);
-        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(existing));
-        when(sectionRepository.findByParentSectionIdAndActiveTrue(sectionId)).thenReturn(List.of());
-        when(sectionRepository.save(existing)).thenReturn(existing);
-        when(sectionMapper.toDto(existing)).thenReturn(dummyDto());
-
-        sectionService.deactivate(clubId, sectionId);
-
-        assertThat(existing.isActive()).isFalse();
     }
 
     // --- reactivate ---

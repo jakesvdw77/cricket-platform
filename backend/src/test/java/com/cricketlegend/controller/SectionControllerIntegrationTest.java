@@ -2,6 +2,7 @@ package com.cricketlegend.controller;
 
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -42,8 +43,10 @@ import org.springframework.transaction.annotation.Transactional;
  * reach all eight endpoints for their own club, gets {@code 403} for a different club and {@code
  * 404} for a {@code sectionId}/{@code contactId} that's real but belongs to a different club, a
  * {@code platform_admin} JWT also succeeds (proving {@code AccessService.canAdministerClub}'s
- * superset-access claim end-to-end), and the active-child deactivate-block is proven through the
- * real HTTP layer with the distinct "active child section(s)" message.
+ * superset-access claim end-to-end), the active-child block is proven through the real HTTP layer
+ * with the distinct "active child section(s)" message, and both remove outcomes are proven
+ * end-to-end: {@code 200}+body (soft-deactivate) for a section with a linked contact, {@code 204}
+ * (hard-deleted) for one with nothing attached.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -144,22 +147,9 @@ class SectionControllerIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(contact.getId().toString()));
 
-        mockMvc.perform(post(
-                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink",
-                                club.getId(),
-                                sectionId,
-                                contact.getId())
-                        .with(admin))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get(
-                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts",
-                                club.getId(),
-                                sectionId)
-                        .with(admin))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
-
+        // The section has a linked contact at this point, so deactivate/reactivate take the
+        // soft-deactivate path (200 + body), not the hard-delete path — see the dedicated
+        // removingASectionWithNoChildrenAndNoLinkedContactsIsHardDeleted test for that one.
         mockMvc.perform(post(
                                 "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate",
                                 club.getId(),
@@ -175,6 +165,22 @@ class SectionControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink",
+                                club.getId(),
+                                sectionId,
+                                contact.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts",
+                                club.getId(),
+                                sectionId)
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
@@ -325,14 +331,7 @@ class SectionControllerIntegrationTest {
                         .with(platformAdmin()))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post(
-                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink",
-                                club.getId(),
-                                sectionId,
-                                contact.getId())
-                        .with(platformAdmin()))
-                .andExpect(status().isOk());
-
+        // Linked contact present, so deactivate/reactivate take the soft-deactivate path.
         mockMvc.perform(post(
                                 "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate",
                                 club.getId(),
@@ -344,6 +343,14 @@ class SectionControllerIntegrationTest {
                                 "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate",
                                 club.getId(),
                                 sectionId)
+                        .with(platformAdmin()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink",
+                                club.getId(),
+                                sectionId,
+                                contact.getId())
                         .with(platformAdmin()))
                 .andExpect(status().isOk());
     }
@@ -359,12 +366,13 @@ class SectionControllerIntegrationTest {
     }
 
     /**
-     * The active-child deactivate-block, proven through the real HTTP layer with the correct
-     * distinct error message — a node with an active child can't be deactivated, but once the
-     * child is deactivated first, the parent's own deactivate succeeds.
+     * The active-child block, proven through the real HTTP layer with the correct distinct error
+     * message — a node with an active child can't be removed at all. Once the child is removed
+     * first, the parent's own removal succeeds too — both end up hard-deleted (204) here since
+     * neither {@code newSection} fixture carries any linked contact.
      */
     @Test
-    void deactivateOnASectionWithAnActiveChildIsBlockedWithADistinctMessageThenSucceedsOnceTheChildIsInactive()
+    void removeOnASectionWithAnActiveChildIsBlockedWithADistinctMessageThenSucceedsOnceTheChildIsGone()
             throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section parent = sectionRepository.save(newSection(club.getId(), null));
@@ -384,16 +392,43 @@ class SectionControllerIntegrationTest {
                                 club.getId(),
                                 child.getId())
                         .with(admin))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.active").value(false));
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(post(
                                 "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate",
                                 club.getId(),
                                 parent.getId())
                         .with(admin))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.active").value(false));
+                .andExpect(status().isNoContent());
+    }
+
+    /**
+     * The hard-delete path, proven through the real HTTP layer: a section with zero children and
+     * zero linked contacts is actually removed (204, no body) rather than left inactive — see
+     * docs/specs/025-club-structure.md's Data Model Changes Remove rule.
+     */
+    @Test
+    void removingASectionWithNoChildrenAndNoLinkedContactsIsHardDeletedReturning204() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), null));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate",
+                                club.getId(),
+                                section.getId())
+                        .with(admin))
+                .andExpect(status().isNoContent());
+
+        assertThat(sectionRepository.findById(section.getId())).isEmpty();
+
+        // Nothing left to reactivate.
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate",
+                                club.getId(),
+                                section.getId())
+                        .with(admin))
+                .andExpect(status().isNotFound());
     }
 
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {

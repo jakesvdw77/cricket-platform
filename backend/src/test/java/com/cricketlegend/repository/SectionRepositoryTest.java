@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code parent_section_id} FK across a real 3-level-deep tree (per docs/specs/025-club-structure.md's
  * own worked example — a root, a mid-level branch, two leaves), and the {@code section_contact}
  * unique {@code (section_id, club_contact_id)} constraint rejecting a duplicate insert at the DB
- * level.
+ * level, and that deleting a {@code Section} still referenced by a child's {@code
+ * parent_section_id} genuinely fails at the DB level (backing the service-layer remove-eligibility
+ * guard, not just documenting it).
  */
 @SpringBootTest
 @Import(AbstractIntegrationTest.class)
@@ -176,6 +178,58 @@ class SectionRepositoryTest {
                 .build());
 
         assertThat(secondLink.getId()).isNotNull();
+    }
+
+    @Test
+    void existsByParentSectionIdIsTrueForAnyChildEvenAnInactiveOne() {
+        // The remove-eligibility rule (SectionServiceImpl.canHardDelete) deliberately checks
+        // ALL children, not just active ones — an inactive child row would still violate this
+        // table's own parent_section_id FK if the parent were deleted out from under it.
+        Club club = savedClub("riverside-cc");
+        Section root = section(club.getId(), null, "Juniors");
+        Section inactiveChild = section(club.getId(), root.getId(), "U15");
+        inactiveChild.setActive(false);
+        sectionRepository.save(inactiveChild);
+
+        assertThat(sectionRepository.existsByParentSectionId(root.getId())).isTrue();
+    }
+
+    @Test
+    void existsByParentSectionIdIsFalseForALeafSection() {
+        Club club = savedClub("riverside-cc");
+        Section leaf = section(club.getId(), null, "Over 40");
+
+        assertThat(sectionRepository.existsByParentSectionId(leaf.getId())).isFalse();
+    }
+
+    @Test
+    void deletingASectionStillReferencedByAChildsParentSectionIdFailsAtTheDbLevel() {
+        // Proves the service-layer "any children at all block a hard delete" guard is backed by
+        // a real DB constraint, not just documented — the same posture 021/024 already prove for
+        // their own FK-backed invariants.
+        Club club = savedClub("riverside-cc");
+        Section root = section(club.getId(), null, "Juniors");
+        section(club.getId(), root.getId(), "U13");
+
+        assertThatThrownBy(() -> {
+                    sectionRepository.delete(root);
+                    sectionRepository.flush();
+                })
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void existsBySectionIdOnSectionContactReflectsWhetherAnyLinkExists() {
+        Club club = savedClub("riverside-cc");
+        Section section = section(club.getId(), null, "Juniors");
+        ClubContact contact = savedClubContact(club.getId());
+
+        assertThat(sectionContactRepository.existsBySectionId(section.getId())).isFalse();
+
+        sectionContactRepository.saveAndFlush(
+                SectionContact.builder().sectionId(section.getId()).clubContactId(contact.getId()).build());
+
+        assertThat(sectionContactRepository.existsBySectionId(section.getId())).isTrue();
     }
 
     @Test
