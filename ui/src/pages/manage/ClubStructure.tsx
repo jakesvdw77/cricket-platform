@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Autocomplete,
   Box,
@@ -14,8 +14,7 @@ import {
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionTreeEditor } from '../../components/SectionTreeEditor'
@@ -154,11 +153,21 @@ export default function ClubStructure() {
   const [renameSignal, setRenameSignal] = useState(0)
   // The detail card can be manually collapsed, but selecting a node always reopens it — the
   // point of collapsing is to reclaim space while browsing the tree, not to hide the panel from
-  // a selection the admin just made.
-  const [detailCollapsed, setDetailCollapsed] = useState(false)
+  // a selection the admin just made. Starts collapsed (nothing is selected yet on first load),
+  // and the effect below re-collapses it any time the selection is cleared — by the Clear
+  // action, or by deactivateMutation's own null result when a removed section is hard-deleted
+  // out from under the current selection — rather than leaving an empty "Select a section"
+  // placeholder sitting open at full width for no reason.
+  const [detailCollapsed, setDetailCollapsed] = useState(true)
   const [skipTemplateChoice, setSkipTemplateChoice] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+
+  useEffect(() => {
+    if (selectedId === null) {
+      setDetailCollapsed(true)
+    }
+  }, [selectedId])
 
   const {
     data: sections,
@@ -207,6 +216,7 @@ export default function ClubStructure() {
     onSuccess: (created) => {
       invalidateSections()
       setSelectedId(created.id)
+      setDetailCollapsed(false)
     },
   })
 
@@ -431,7 +441,10 @@ export default function ClubStructure() {
                   aria-label={detailCollapsed ? 'Expand section details' : 'Collapse section details'}
                   onClick={() => setDetailCollapsed((collapsed) => !collapsed)}
                 >
-                  {detailCollapsed ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+                  {/* Left/right, not up/down — collapsing this panel shrinks it horizontally
+                      (see the rail below), so the chevron should point the way the edge actually
+                      moves. Matches the collapsed rail's own ChevronLeftIcon for "expand". */}
+                  {detailCollapsed ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
                 </IconButton>
               </Stack>
             </Box>

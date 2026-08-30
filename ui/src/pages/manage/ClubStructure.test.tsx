@@ -219,7 +219,7 @@ describe('ClubStructure', () => {
     )
   })
 
-  it('the "Clear" action deselects the current section, falling back to the "Select a section" placeholder', async () => {
+  it('the "Clear" action deselects the current section, and the panel auto-collapses since nothing is selected anymore', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([makeSection({ id: 'juniors', name: 'Juniors' })])
     listSectionContacts.mockResolvedValueOnce([])
@@ -231,7 +231,10 @@ describe('ClubStructure', () => {
 
     await user.click(screen.getByRole('button', { name: 'Clear' }))
 
-    expect(screen.getByText('Select a section')).toBeInTheDocument()
+    // The panel collapses automatically once nothing is selected (docs/specs/025-club-structure.md's
+    // Rollout Notes) — it does NOT sit open showing an empty "Select a section" placeholder.
+    expect(screen.queryByText('Select a section')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
   })
@@ -304,7 +307,12 @@ describe('ClubStructure', () => {
     await user.click(screen.getByRole('button', { name: 'Remove Juniors' }))
 
     await waitFor(() => expect(deactivateSection).toHaveBeenCalledWith('test-club-id', 'juniors'))
-    expect(await screen.findByText('Select a section')).toBeInTheDocument()
+    // The panel auto-collapses once the selection clears — it doesn't sit open on an empty
+    // "Select a section" placeholder pointing at a row that no longer exists.
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Expand section details' }).length).toBeGreaterThan(0),
+    )
+    expect(screen.queryByText('Select a section')).not.toBeInTheDocument()
   })
 
   it('reactivating an inactive selected node calls reactivateSection', async () => {
