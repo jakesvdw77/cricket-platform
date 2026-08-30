@@ -8,7 +8,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Stack,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -16,6 +15,8 @@ import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionTreeEditor } from '../../components/SectionTreeEditor'
 import { SectionDetailPanel } from '../../components/SectionDetailPanel'
+import { SectionTemplatePicker } from '../../components/SectionTemplatePicker'
+import type { SectionTemplate, SectionTemplateNode } from '../../components/SectionTemplatePicker'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
@@ -36,13 +37,62 @@ import { createClubContact, listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact, ClubContactPayload } from '../../api/clubContactApi'
 import { errorDetail } from '../../utils/errorDetail'
 
-// A small, plausible starting shape (Goals section of docs/specs/025-club-structure.md) — pure
-// convenience data built via ordinary createSection calls, not a special server-side endpoint.
-// The admin can rename, delete, or restructure every node it creates.
-const STARTER_TEMPLATE: { name: string; children: string[] }[] = [
-  { name: 'Open Sides', children: ['1st XI', '2nd XI'] },
-  { name: 'Juniors', children: ['U13', 'U15'] },
-  { name: 'Vets', children: ['Over 40', 'Over 50'] },
+// A few genuinely different, real club/school shapes — not one hardcoded default — per direct
+// user feedback on docs/specs/025-club-structure.md (see its User Stories and Rollout Notes for
+// the reasoning). Pure convenience data built via ordinary createSection calls, not a special
+// server-side endpoint — the admin can rename, delete, or restructure every node any of these
+// create, exactly as if they'd built it by hand.
+const SECTION_TEMPLATES: SectionTemplate[] = [
+  {
+    id: 'traditional',
+    title: 'Traditional club',
+    description: "Men's and women's open sides, boys' and girls' junior age-groups, and a vets section.",
+    roots: [
+      {
+        name: 'Open Sides',
+        children: [
+          { name: 'Men', children: [{ name: '1st XI' }, { name: '2nd XI' }] },
+          { name: 'Women', children: [{ name: '1st XI' }] },
+        ],
+      },
+      {
+        name: 'Juniors',
+        children: [
+          { name: 'Boys', children: [{ name: 'U11' }, { name: 'U13' }, { name: 'U15' }] },
+          { name: 'Girls', children: [{ name: 'U13' }, { name: 'U15' }] },
+        ],
+      },
+      { name: 'Vets', children: [{ name: 'Over 40' }, { name: 'Over 50' }] },
+    ],
+  },
+  {
+    id: 'simple',
+    title: 'Simple club',
+    description: 'One open-age set of teams and one junior age-ladder — no gender split.',
+    roots: [
+      { name: 'Open Sides', children: [{ name: '1st XI' }, { name: '2nd XI' }, { name: '3rd XI' }] },
+      { name: 'Juniors', children: [{ name: 'U11' }, { name: 'U13' }, { name: 'U15' }, { name: 'U17' }] },
+    ],
+  },
+  {
+    id: 'adults-only',
+    title: 'Adults only',
+    description: "No junior section — just open-age and veterans' cricket.",
+    roots: [
+      { name: 'Open Sides', children: [{ name: '1st XI' }, { name: '2nd XI' }] },
+      { name: 'Vets', children: [{ name: 'Over 40' }, { name: 'Over 50' }] },
+    ],
+  },
+  {
+    id: 'school',
+    title: 'School',
+    description: 'First and Second XI, plus an age-graded Colts ladder — the shape most schools use.',
+    roots: [
+      { name: 'First XI' },
+      { name: 'Second XI' },
+      { name: 'Colts', children: [{ name: 'U14' }, { name: 'U15' }, { name: 'U16' }, { name: 'U19' }] },
+    ],
+  },
 ]
 
 const BLANK_PAYLOAD: Omit<SectionPayload, 'name' | 'parentSectionId'> = {
@@ -51,12 +101,16 @@ const BLANK_PAYLOAD: Omit<SectionPayload, 'name' | 'parentSectionId'> = {
   gender: null,
 }
 
-async function buildStarterTemplate(clubId: string): Promise<void> {
-  for (const group of STARTER_TEMPLATE) {
-    const parent = await createSection(clubId, { name: group.name, parentSectionId: null, ...BLANK_PAYLOAD })
-    for (const childName of group.children) {
-      await createSection(clubId, { name: childName, parentSectionId: parent.id, ...BLANK_PAYLOAD })
-    }
+async function createTemplateNode(clubId: string, node: SectionTemplateNode, parentId: string | null): Promise<void> {
+  const created = await createSection(clubId, { name: node.name, parentSectionId: parentId, ...BLANK_PAYLOAD })
+  for (const child of node.children ?? []) {
+    await createTemplateNode(clubId, child, created.id)
+  }
+}
+
+async function buildFromTemplate(clubId: string, template: SectionTemplate): Promise<void> {
+  for (const root of template.roots) {
+    await createTemplateNode(clubId, root, null)
   }
 }
 
@@ -135,7 +189,7 @@ export default function ClubStructure() {
     queryClient.invalidateQueries({ queryKey: SECTION_CONTACTS_QUERY_KEY(clubId, sectionId) })
 
   const templateMutation = useMutation({
-    mutationFn: () => buildStarterTemplate(clubId as string),
+    mutationFn: (template: SectionTemplate) => buildFromTemplate(clubId as string, template),
     onSuccess: invalidateSections,
   })
 
@@ -265,19 +319,11 @@ export default function ClubStructure() {
       )}
 
       {showTemplateChoice ? (
-        <EmptyState
-          title="Build your club's section tree"
-          description="Start from a small template you can freely rename, restructure, or prune — or start blank and build it yourself."
-          action={
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <Button onClick={() => templateMutation.mutate()} disabled={templateMutation.isPending}>
-                {templateMutation.isPending ? 'Building…' : 'Start from a template'}
-              </Button>
-              <Button variant="secondary" onClick={() => setSkipTemplateChoice(true)}>
-                Start blank
-              </Button>
-            </Stack>
-          }
+        <SectionTemplatePicker
+          templates={SECTION_TEMPLATES}
+          onChoose={(template) => templateMutation.mutate(template)}
+          onStartBlank={() => setSkipTemplateChoice(true)}
+          pendingTemplateId={templateMutation.isPending ? templateMutation.variables?.id : null}
         />
       ) : (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start' }}>

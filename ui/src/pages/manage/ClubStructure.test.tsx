@@ -108,14 +108,19 @@ describe('ClubStructure', () => {
     expect(listSections).not.toHaveBeenCalled()
   })
 
-  it('renders the "start from a template" / "start blank" choice when the club has no sections yet', async () => {
+  it('renders a choice of several named, previewed templates plus a "start blank" action when the club has no sections yet', async () => {
     listSections.mockResolvedValueOnce([])
 
     renderPage('test-club-id')
 
-    expect(await screen.findByText("Build your club's section tree")).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start from a template' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start blank' })).toBeInTheDocument()
+    expect(await screen.findByText("Build your club’s section tree")).toBeInTheDocument()
+    // The exact set is ClubStructure.tsx's own SECTION_TEMPLATES — assert a representative few
+    // rather than the full list, so this test doesn't have to change every time a template is
+    // added/renamed.
+    expect(screen.getByText('Traditional club')).toBeInTheDocument()
+    expect(screen.getByText('School')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Use this template' }).length).toBeGreaterThan(1)
+    expect(screen.getByRole('button', { name: /start blank/i })).toBeInTheDocument()
   })
 
   it('"Start blank" leaves the tree empty and renders the tree editor instead of the template choice', async () => {
@@ -124,29 +129,37 @@ describe('ClubStructure', () => {
 
     renderPage('test-club-id')
 
-    await user.click(await screen.findByRole('button', { name: 'Start blank' }))
+    await user.click(await screen.findByRole('button', { name: /start blank/i }))
 
-    expect(screen.queryByText("Build your club's section tree")).not.toBeInTheDocument()
+    expect(screen.queryByText("Build your club’s section tree")).not.toBeInTheDocument()
     expect(screen.getByText(/no sections yet/i)).toBeInTheDocument()
     expect(createSection).not.toHaveBeenCalled()
   })
 
-  it('"Start from a template" builds the starter tree via createSection calls', async () => {
+  it('choosing a template builds its tree via createSection calls, one per node', async () => {
     const user = userEvent.setup()
     listSections.mockResolvedValueOnce([])
+    let counter = 0
     createSection.mockImplementation((_clubId, payload) =>
-      Promise.resolve(makeSection({ id: `${payload.name}-id`, name: payload.name, parentSectionId: payload.parentSectionId })),
+      Promise.resolve(
+        makeSection({ id: `generated-${counter++}`, name: payload.name, parentSectionId: payload.parentSectionId }),
+      ),
     )
     // onSuccess invalidates the sections list, triggering a refetch.
-    listSections.mockResolvedValueOnce([makeSection({ id: 'Open Sides-id', name: 'Open Sides' })])
+    listSections.mockResolvedValueOnce([makeSection({ id: 'generated-0', name: 'First XI' })])
 
     renderPage('test-club-id')
 
-    await user.click(await screen.findByRole('button', { name: 'Start from a template' }))
+    // "School": First XI, Second XI, Colts (U14/U15/U16/U19) — 3 top-level + 4 children = 7 nodes.
+    const schoolCard = (await screen.findByText('School')).closest('div')?.parentElement as HTMLElement
+    await user.click(within(schoolCard).getByRole('button', { name: 'Use this template' }))
 
     await waitFor(() => expect(createSection).toHaveBeenCalled())
-    // 3 top-level groups + 6 children (2 each) from ClubStructure.tsx's STARTER_TEMPLATE.
-    await waitFor(() => expect(createSection).toHaveBeenCalledTimes(9))
+    await waitFor(() => expect(createSection).toHaveBeenCalledTimes(7))
+    expect(createSection).toHaveBeenCalledWith(
+      'test-club-id',
+      expect.objectContaining({ name: 'First XI', parentSectionId: null }),
+    )
   })
 
   it('selecting a node loads its linked contacts via a real query', async () => {
@@ -169,7 +182,7 @@ describe('ClubStructure', () => {
 
     renderPage('test-club-id')
 
-    await user.click(await screen.findByRole('button', { name: 'Start blank' }))
+    await user.click(await screen.findByRole('button', { name: /start blank/i }))
     await user.click(screen.getByRole('button', { name: /add top-level section/i }))
 
     expect(createSection).toHaveBeenCalledWith('test-club-id', {
