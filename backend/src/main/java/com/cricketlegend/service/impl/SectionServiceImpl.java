@@ -18,6 +18,7 @@ import com.cricketlegend.repository.SectionContactRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.service.SectionService;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code create}/{@code update} validate {@code minAge <= maxAge} when both are set; {@code
  * create} additionally verifies a non-null {@code parentSectionId} belongs to the same club;
  * {@code deactivate} is blocked both by the already-inactive case and by any still-active direct
- * child (distinct messages, checked in that order); {@code reactivate} mirrors every other spec's
+ * child (distinct messages, checked in that order); once that guard passes, {@code deactivate}
+ * either soft-deactivates (a linked contact exists) or actually deletes the row (nothing is
+ * attached to it — see {@link #canHardDelete}); {@code reactivate} mirrors every other spec's
  * one-way-transition-guard shape with no child-related check; {@code link}/{@code unlink} treat
  * {@link Section} and {@link ClubContact} as independent siblings under the same club — each
  * verified against {@code clubId} independently, not against each other (unlike {@code
@@ -92,7 +95,8 @@ public class SectionServiceImpl implements SectionService {
     }
 
     @Override
-    public SectionDto deactivate(UUID clubId, UUID sectionId) {
+    @Transactional
+    public Optional<SectionDto> deactivate(UUID clubId, UUID sectionId) {
         Section section = findOrThrowForClub(clubId, sectionId);
         if (!section.isActive()) {
             throw new InvalidStatusTransitionException("Section is already inactive: " + sectionId);
@@ -102,8 +106,28 @@ public class SectionServiceImpl implements SectionService {
             throw new InvalidStatusTransitionException(
                     "Section has " + activeChildren.size() + " active child section(s): " + sectionId);
         }
+
+        if (canHardDelete(sectionId)) {
+            sectionRepository.delete(section);
+            return Optional.empty();
+        }
+
         section.setActive(false);
-        return sectionMapper.toDto(sectionRepository.save(section));
+        return Optional.of(sectionMapper.toDto(sectionRepository.save(section)));
+    }
+
+    /**
+     * A section with nothing attached to it — no children at all (active or inactive; an
+     * inactive child row would still violate {@code parent_section_id}'s FK on delete) and no
+     * linked {@code ClubContact} — carries no data worth preserving, so it's actually deleted
+     * instead of left as an inactive placeholder. The one deliberate exception to this codebase's
+     * "disable, never delete" posture — see docs/specs/025-club-structure.md's Data Model Changes
+     * Remove rule. Once {@code Team} (001, still unbuilt) exists, its own linked-rows check
+     * belongs here too.
+     */
+    private boolean canHardDelete(UUID sectionId) {
+        return !sectionRepository.existsByParentSectionId(sectionId)
+                && !sectionContactRepository.existsBySectionId(sectionId);
     }
 
     @Override

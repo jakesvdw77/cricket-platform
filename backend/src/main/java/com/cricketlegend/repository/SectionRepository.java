@@ -16,8 +16,16 @@ public interface SectionRepository extends JpaRepository<Section, UUID> {
 
     /**
      * Every active direct child of {@code parentSectionId} — used by the service to block a
-     * deactivate while any direct child is still active (see docs/specs/025-club-structure.md's
+     * remove while any direct child is still active (see docs/specs/025-club-structure.md's
      * Data Model Changes).
      */
     List<Section> findByParentSectionIdAndActiveTrue(UUID parentSectionId);
+
+    /**
+     * Whether {@code parentSectionId} has ANY direct child at all, active or inactive — used by
+     * the remove-eligibility rule to decide hard-delete vs. soft-deactivate. Deliberately broader
+     * than {@link #findByParentSectionIdAndActiveTrue}: an inactive child row would still violate
+     * this table's own {@code parent_section_id} FK if the parent were deleted out from under it.
+     */
+    boolean existsByParentSectionId(UUID parentSectionId);
 }

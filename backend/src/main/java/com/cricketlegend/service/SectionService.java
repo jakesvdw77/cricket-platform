@@ -5,6 +5,7 @@ import com.cricketlegend.dto.CreateSectionRequest;
 import com.cricketlegend.dto.SectionDto;
 import com.cricketlegend.dto.UpdateSectionRequest;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -12,7 +13,9 @@ import java.util.UUID;
  * {@code parentSectionId}, plus a many-to-many link to docs/specs/021-club-contacts.md's existing
  * {@link com.cricketlegend.domain.ClubContact}. Reachable by a club's own {@code CLUB_ADMIN} or a
  * {@code platform_admin} via {@code /api/v1/manage/clubs/{clubId}/sections}, no dedicated {@code
- * /platform} mirror. "Disable, never delete" — see {@link #deactivate(UUID, UUID)}/{@link
+ * /platform} mirror. "Disable, never delete" for a node carrying real attached data — but a node
+ * with nothing attached to it (no children, no linked contacts) is actually deleted, the one
+ * deliberate exception in this codebase; see {@link #deactivate(UUID, UUID)}/{@link
  * #reactivate(UUID, UUID)}. See docs/specs/025-club-structure.md.
  */
 public interface SectionService {
@@ -40,11 +43,16 @@ public interface SectionService {
     SectionDto update(UUID clubId, UUID sectionId, UpdateSectionRequest request);
 
     /**
-     * {@code active: true -> false}. Throws {@link
+     * Removes {@code sectionId}. Throws {@link
      * com.cricketlegend.exception.InvalidStatusTransitionException} if already inactive, or if
-     * any direct child section is still active.
+     * any direct child section is still active (active or inactive children both block this —
+     * see the eligibility check below). Otherwise does one of two things: if the section has no
+     * children at all (active or inactive) and no linked {@code ClubContact}, it is actually
+     * deleted and this returns {@link Optional#empty()}; if it has any linked contact, it is
+     * soft-deactivated ({@code active: true -> false}) exactly as before and this returns the
+     * updated {@link SectionDto}.
      */
-    SectionDto deactivate(UUID clubId, UUID sectionId);
+    Optional<SectionDto> deactivate(UUID clubId, UUID sectionId);
 
     /**
      * {@code active: false -> true}. Throws {@link

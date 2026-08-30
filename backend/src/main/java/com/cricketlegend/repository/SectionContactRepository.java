@@ -15,6 +15,13 @@ public interface SectionContactRepository extends JpaRepository<SectionContact, 
 
     List<SectionContact> findBySectionId(UUID sectionId);
 
+    /**
+     * Whether {@code sectionId} has any linked contact at all — used by {@code
+     * SectionServiceImpl}'s remove-eligibility rule (docs/specs/025-club-structure.md's Data
+     * Model Changes: a section with a linked contact is soft-deactivated, never hard-deleted).
+     */
+    boolean existsBySectionId(UUID sectionId);
+
     boolean existsBySectionIdAndClubContactId(UUID sectionId, UUID clubContactId);
 
     Optional<SectionContact> findBySectionIdAndClubContactId(UUID sectionId, UUID clubContactId);

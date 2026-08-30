@@ -61,11 +61,18 @@ public class SectionController {
         return ResponseEntity.ok(sectionService.update(clubId, sectionId, request));
     }
 
+    // Returns 200 + the updated SectionDto when soft-deactivated (it still has a linked contact),
+    // or 204 with no body when the section had nothing attached to it and was actually deleted —
+    // see docs/specs/025-club-structure.md's Data Model Changes Remove rule and this endpoint's
+    // own Architecture note in the spec's API Contract.
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate")
     public ResponseEntity<SectionDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
-        return ResponseEntity.ok(sectionService.deactivate(clubId, sectionId));
+        return sectionService
+                .deactivate(clubId, sectionId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
