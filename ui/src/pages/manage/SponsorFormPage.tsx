@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography, Button as MuiButton } from '@mui/material'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -113,9 +113,19 @@ export default function SponsorFormPage() {
                 </Typography>
               </Box>
             </Stack>
-            <Button component={RouterLink} to={`/manage/sponsors/${id}/contacts`} variant="secondary" size="sm">
+            {/* Raw MuiButton, not the shared Button wrapper — Button isn't typed as a polymorphic
+                MUI component (no generic `component` prop support), so `component`+`to` together
+                fail tsc's real project build (tsc -b) even though a plain `tsc --noEmit` run
+                missed it locally. variant/color/size below match Button's variant="secondary". */}
+            <MuiButton
+              component={RouterLink}
+              to={`/manage/sponsors/${id}/contacts`}
+              variant="outlined"
+              color="primary"
+              size="small"
+            >
               Manage Contacts
-            </Button>
+            </MuiButton>
           </Card>
         </Box>
       )}
