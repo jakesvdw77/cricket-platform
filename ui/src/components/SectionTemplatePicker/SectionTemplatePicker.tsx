@@ -77,8 +77,11 @@ const MiniTreeItem = styled('li', { shouldForwardProp: (prop) => prop !== 'depth
       },
       '&:only-child::before, &:only-child::after': { display: 'none' },
       '&:only-child': { paddingTop: 0 },
-      '&:first-of-type::before': { borderColor: 'transparent' },
-      '&:last-of-type::after': { borderColor: 'transparent' },
+      // Only clear the horizontal rail (border-top), never the shorthand borderColor — ::after
+      // also carries the vertical drop-line (border-left) down to this node's own children, and
+      // zeroing both orphaned the last child's connector down to e.g. "Women" → "1st XI".
+      '&:first-of-type::before': { borderTopColor: 'transparent' },
+      '&:last-of-type::after': { borderTopColor: 'transparent' },
     }),
   }),
 )
