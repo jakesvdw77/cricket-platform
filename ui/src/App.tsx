@@ -18,6 +18,7 @@ import SponsorList from './pages/manage/SponsorList'
 import SponsorFormPage from './pages/manage/SponsorFormPage'
 import SponsorContactList from './pages/manage/SponsorContactList'
 import SponsorContactFormPage from './pages/manage/SponsorContactFormPage'
+import ClubStructure from './pages/manage/ClubStructure'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -101,7 +102,7 @@ function App() {
               <Route path="sponsors/:sponsorId/contacts" element={<SponsorContactList />} />
               <Route path="sponsors/:sponsorId/contacts/new" element={<SponsorContactFormPage />} />
               <Route path="sponsors/:sponsorId/contacts/:contactId/edit" element={<SponsorContactFormPage />} />
-              <Route path="sections" element={<EmptyState title="Sections & Age Groups" description="Coming soon." />} />
+              <Route path="sections" element={<ClubStructure />} />
               <Route path="teams" element={<EmptyState title="Teams" description="Coming soon." />} />
               <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />
               <Route path="fixtures" element={<EmptyState title="Fixtures & Results" description="Coming soon." />} />

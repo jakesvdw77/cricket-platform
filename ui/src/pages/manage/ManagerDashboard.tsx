@@ -20,7 +20,7 @@ const GROUPS: ManagerGroup[] = [
       { title: 'Club Profile', description: "Edit your club's details", to: '/manage/club-profile' },
       { title: 'Club Contacts', description: "Manage your club's named contacts", to: '/manage/club-contacts' },
       { title: 'Club Sponsors', description: "Manage your club's sponsors", to: '/manage/sponsors' },
-      { title: 'Sections & Age Groups', description: 'Set up age-group sections', to: '/manage/sections' },
+      { title: 'Club Structure', description: "Define your club's own section tree", to: '/manage/sections' },
       { title: 'Teams', description: 'Register teams', to: '/manage/teams' },
       { title: 'Players', description: 'Manage the player roster', to: '/manage/players' },
       { title: 'Fixtures & Results', description: 'Matches and captured results', to: '/manage/fixtures' },
