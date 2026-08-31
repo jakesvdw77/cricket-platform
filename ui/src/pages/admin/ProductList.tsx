@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -123,6 +124,7 @@ export default function ProductList() {
             <RecordCard
               key={product.id}
               title={product.name}
+              avatar={{ fallback: <Inventory2OutlinedIcon fontSize="small" />, shape: 'rounded' }}
               badge={{
                 label: STATUS_LABEL[product.status],
                 tone: STATUS_BADGE_TONE[product.status],

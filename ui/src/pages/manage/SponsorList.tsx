@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -10,6 +12,7 @@ import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { listSponsors, deactivateSponsor, reactivateSponsor } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
+import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
@@ -43,6 +46,7 @@ function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) 
   return (
     <RecordCard
       title={sponsor.name}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       badge={badgeFor(sponsor)}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
@@ -52,6 +56,7 @@ function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) 
         pendingLabel: sponsor.active ? 'Deactivating…' : 'Reactivating…',
         pending: toggle.isPending,
         onClick: () => toggle.mutate(),
+        icon: sponsor.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
       }}
     />
   )

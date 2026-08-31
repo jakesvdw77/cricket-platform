@@ -1,9 +1,21 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { ClubForm, CLUB_FORM_ID } from './ClubForm'
 import type { ClubFormProps } from './ClubForm'
 import type { ClubPayload, ClubProfilePayload } from '../../api/clubApi'
+
+const uploadMedia = vi.fn()
+const uploadManagedMedia = vi.fn()
+
+vi.mock('../../api/mediaApi', () => ({
+  uploadMedia: (file: File) => uploadMedia(file),
+  uploadManagedMedia: (file: File) => uploadManagedMedia(file),
+}))
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 // ClubForm's own submit button lives outside it (RecordFormScreen's actions bar, see
 // ClubFormPage) and targets the form via the native `form="…"` attribute — this mirrors that
@@ -92,6 +104,27 @@ describe('ClubForm', () => {
     // Both Logo and Banner already have a value in filledProfile, so each renders its own
     // "Replace" button.
     expect(screen.getAllByRole('button', { name: 'Replace' })).toHaveLength(2)
+  })
+
+  // Regression coverage: in default ('full') mode, the Branding tab's uploads must go through
+  // the platform-namespace endpoint (its only real caller, ClubFormPage, is a platform_admin
+  // screen) — not the manage one, which a platform_admin's own token may not even carry the
+  // right club context for.
+  it('uploads Branding tab images via the platform-namespace endpoint in default (\'full\') mode', async () => {
+    const user = userEvent.setup()
+    uploadMedia.mockResolvedValueOnce({ url: '/media/new-logo.png' })
+    renderClubForm({
+      onSubmit: vi.fn(),
+      initialValues: { name: 'Riverside Cricket Club', slug: 'riverside-cc' },
+      profileInitialValues: filledProfile,
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Branding' }))
+    const file = new File(['logo'], 'logo.png', { type: 'image/png' })
+    await user.upload(screen.getByLabelText('Logo file'), file)
+
+    await waitFor(() => expect(uploadMedia).toHaveBeenCalledWith(file))
+    expect(uploadManagedMedia).not.toHaveBeenCalled()
   })
 
   it('renders inline validation errors for missing name and slug, and does not submit', async () => {
@@ -378,6 +411,25 @@ describe('ClubForm', () => {
       expect(screen.getByRole('tab', { name: 'Contact' })).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByLabelText('Type')).toBeInTheDocument()
       expect(screen.getByLabelText('Type')).not.toBeDisabled()
+    })
+
+    // Regression coverage for a real bug: ManageClubProfilePage renders ClubForm with
+    // mode="profileOnly" for a CLUB_ADMIN, who can never reach POST /api/v1/platform/media
+    // (platform_admin-only at the URL gate) — before this fix, both MediaUpload calls in the
+    // Branding tab defaulted to namespace="platform" regardless of mode, so every real club
+    // admin's logo/banner upload 403'd, surfaced only as MediaUpload's generic "Something went
+    // wrong uploading" message.
+    it('uploads Branding tab images via the manage-namespace endpoint, not the platform one', async () => {
+      const user = userEvent.setup()
+      uploadManagedMedia.mockResolvedValueOnce({ url: '/media/managed/new-logo.png' })
+      renderClubForm({ onSubmit: vi.fn(), mode: 'profileOnly', profileInitialValues: filledProfile })
+
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
+      const file = new File(['logo'], 'logo.png', { type: 'image/png' })
+      await user.upload(screen.getByLabelText('Logo file'), file)
+
+      await waitFor(() => expect(uploadManagedMedia).toHaveBeenCalledWith(file))
+      expect(uploadMedia).not.toHaveBeenCalled()
     })
 
     it('submits { profile } only, with no club key at all, and does not validate name/slug', async () => {

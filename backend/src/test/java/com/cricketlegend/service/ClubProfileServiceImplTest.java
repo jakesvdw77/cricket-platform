@@ -9,8 +9,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.Address;
+import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubProfile;
 import com.cricketlegend.domain.ClubProfileType;
+import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.AddressDto;
 import com.cricketlegend.dto.ClubProfileDto;
@@ -63,12 +65,13 @@ class ClubProfileServiceImplTest {
     @Test
     void getOnClubWithNoProfileRowReturnsDefaultShapedDtoRatherThanThrowing() {
         UUID clubId = UUID.randomUUID();
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.empty());
 
         ClubProfileDto result = clubProfileService.get(clubId);
 
         assertThat(result.clubId()).isEqualTo(clubId);
+        assertThat(result.name()).isEqualTo("Riverside CC");
         assertThat(result.type()).isNull();
         assertThat(result.logoUrl()).isNull();
         assertThat(result.bannerUrl()).isNull();
@@ -83,9 +86,9 @@ class ClubProfileServiceImplTest {
         UUID clubId = UUID.randomUUID();
         ClubProfile existing = ClubProfile.builder().clubId(clubId).type(ClubProfileType.CLUB).build();
         ClubProfileDto mapped = dummyDto(clubId);
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.of(existing));
-        when(clubProfileMapper.toDto(existing)).thenReturn(mapped);
+        when(clubProfileMapper.toDto(existing, "Riverside CC")).thenReturn(mapped);
 
         ClubProfileDto result = clubProfileService.get(clubId);
 
@@ -95,7 +98,7 @@ class ClubProfileServiceImplTest {
     @Test
     void getOnNonexistentClubThrowsNotFoundExceptionAndNeverTouchesProfileRepository() {
         UUID clubId = UUID.randomUUID();
-        when(clubRepository.existsById(clubId)).thenReturn(false);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> clubProfileService.get(clubId)).isInstanceOf(NotFoundException.class);
 
@@ -105,7 +108,7 @@ class ClubProfileServiceImplTest {
     @Test
     void upsertOnNonexistentClubThrowsNotFoundExceptionAndNeverSaves() {
         UUID clubId = UUID.randomUUID();
-        when(clubRepository.existsById(clubId)).thenReturn(false);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.empty());
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.CLUB, null, null, null, null, null, null, null);
 
@@ -117,7 +120,7 @@ class ClubProfileServiceImplTest {
     @Test
     void upsertWithADuplicatePlatformInTheRequestThrowsValidationExceptionAndNeverSaves() {
         UUID clubId = UUID.randomUUID();
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.CLUB, null, null, null, null, null, null,
                 List.of(
@@ -134,11 +137,11 @@ class ClubProfileServiceImplTest {
     @Test
     void upsertWithNoExistingRowCreatesANewProfileWithClubIdSet() {
         UUID clubId = UUID.randomUUID();
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.empty());
         ArgumentCaptor<ClubProfile> captor = ArgumentCaptor.forClass(ClubProfile.class);
         when(clubProfileRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
-        when(clubProfileMapper.toDto(any(ClubProfile.class))).thenReturn(dummyDto(clubId));
+        when(clubProfileMapper.toDto(any(ClubProfile.class), any())).thenReturn(dummyDto(clubId));
 
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.ACADEMY, "logo.png", "banner.png",
@@ -170,10 +173,10 @@ class ClubProfileServiceImplTest {
                 .type(ClubProfileType.CLUB)
                 .email("old@example.com")
                 .build();
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.of(existing));
         when(clubProfileRepository.save(existing)).thenReturn(existing);
-        when(clubProfileMapper.toDto(existing)).thenReturn(dummyDto(clubId));
+        when(clubProfileMapper.toDto(existing, "Riverside CC")).thenReturn(dummyDto(clubId));
 
         UpdateClubProfileRequest request = new UpdateClubProfileRequest(
                 ClubProfileType.SCHOOL, null, null, null, "new@example.com", null, null, null);
@@ -199,10 +202,10 @@ class ClubProfileServiceImplTest {
                 .socialLinks(new java.util.ArrayList<>(
                         List.of(SocialLink.builder().platform("facebook").url("https://facebook.com/old").build())))
                 .build();
-        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club(clubId, "Riverside CC")));
         when(clubProfileRepository.findById(clubId)).thenReturn(Optional.of(existing));
         when(clubProfileRepository.save(existing)).thenReturn(existing);
-        when(clubProfileMapper.toDto(existing)).thenReturn(dummyDto(clubId));
+        when(clubProfileMapper.toDto(existing, "Riverside CC")).thenReturn(dummyDto(clubId));
 
         // Second save omits every field except type — per Flag #4, this nulls them all out
         // rather than leaving the previous values in place. socialLinks follows the same
@@ -222,6 +225,11 @@ class ClubProfileServiceImplTest {
     }
 
     private ClubProfileDto dummyDto(UUID clubId) {
-        return new ClubProfileDto(clubId, null, null, null, null, null, null, null, null, null, null, List.of());
+        return new ClubProfileDto(
+                clubId, null, null, null, null, null, null, null, null, null, null, null, List.of());
+    }
+
+    private Club club(UUID clubId, String name) {
+        return Club.builder().id(clubId).name(name).slug("riverside-cc").status(ClubStatus.ACTIVE).build();
     }
 }

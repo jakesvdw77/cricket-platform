@@ -13,6 +13,7 @@ import java.util.UUID;
  */
 public record ClubProfileDto(
         UUID clubId,
+        String name,
         ClubProfileType type,
         String logoUrl,
         String bannerUrl,

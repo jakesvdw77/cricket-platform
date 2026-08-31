@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Box, Breadcrumbs, Divider, Stack, Tab, Tabs, Typography } from '@mui/material'
+import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
@@ -26,6 +27,7 @@ import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor } from '../../api/
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { errorDetail } from '../../utils/errorDetail'
+import { initialsFromName } from '../../utils/initials'
 
 const ROLE_QUICK_FILL = ['Manager', 'Coach', 'Assistant Coach']
 
@@ -52,10 +54,12 @@ function TeamContactCard({
     onSuccess: onUnlinked,
   })
   const contact = teamContact.contact
+  const contactName = `${contact.contact.firstName} ${contact.contact.lastName}`
 
   return (
     <RecordCard
-      title={`${contact.contact.firstName} ${contact.contact.lastName}`}
+      title={contactName}
+      avatar={{ imageUrl: contact.photoUrl, fallback: initialsFromName(contactName), shape: 'circular' }}
       fields={[
         { label: 'Team role', value: teamContact.role },
         { label: 'Email', value: contact.contact.email },
@@ -68,6 +72,7 @@ function TeamContactCard({
         pendingLabel: 'Unlinking…',
         pending: unlink.isPending,
         onClick: () => unlink.mutate(),
+        icon: <LinkOffOutlinedIcon fontSize="small" />,
       }}
     />
   )
@@ -96,6 +101,7 @@ function TeamSponsorCard({
   return (
     <RecordCard
       title={sponsor.name}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
       editTo={`/manage/sponsors/${sponsor.id}/edit`}
@@ -104,6 +110,7 @@ function TeamSponsorCard({
         pendingLabel: 'Unlinking…',
         pending: unlink.isPending,
         onClick: () => unlink.mutate(),
+        icon: <LinkOffOutlinedIcon fontSize="small" />,
       }}
     />
   )
@@ -115,6 +122,7 @@ function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
   return (
     <RecordCard
       title={sponsor.name}
+      avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       fields={sponsorRecordFields(sponsor)}
       editLabel="Edit"
       editTo={`/manage/sponsors/${sponsor.id}/edit`}

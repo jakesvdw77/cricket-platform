@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Box, Button as MuiButton } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
@@ -13,6 +15,7 @@ import {
   reactivateSponsorContact,
 } from '../../api/sponsorContactApi'
 import type { SponsorContact } from '../../api/sponsorContactApi'
+import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [
   { value: 'name,asc', label: 'Name' },
@@ -65,6 +68,7 @@ function SponsorContactCard({
   return (
     <RecordCard
       title={fullName(contact)}
+      avatar={{ fallback: initialsFromName(fullName(contact)), shape: 'circular' }}
       badge={badgeFor(contact)}
       fields={[
         { label: 'Role', value: contact.role },
@@ -78,6 +82,7 @@ function SponsorContactCard({
         pendingLabel: contact.active ? 'Deactivating…' : 'Reactivating…',
         pending: toggle.isPending,
         onClick: () => toggle.mutate(),
+        icon: contact.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
       }}
     />
   )

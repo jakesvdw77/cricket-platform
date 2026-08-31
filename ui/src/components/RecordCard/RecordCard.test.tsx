@@ -159,4 +159,63 @@ describe('RecordCard', () => {
     expect(screen.queryByText(/welcome email/i)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
+
+  it('omits the avatar entirely when not provided', () => {
+    render(<RecordCard title="Club Standard" editLabel="Edit" onEdit={vi.fn()} />)
+
+    expect(document.querySelector('.MuiAvatar-root')).not.toBeInTheDocument()
+  })
+
+  it('renders the fallback initials when no imageUrl is given', () => {
+    render(
+      <RecordCard
+        title="Jane Smith"
+        avatar={{ fallback: 'JA', shape: 'circular' }}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+
+    const avatar = document.querySelector('.MuiAvatar-root')
+    expect(avatar).toBeInTheDocument()
+    expect(avatar).toHaveClass('MuiAvatar-circular')
+    expect(avatar).toHaveTextContent('JA')
+  })
+
+  it('renders a rounded avatar with an image src when imageUrl is given', () => {
+    render(
+      <RecordCard
+        title="Riverside 1st XI"
+        avatar={{ imageUrl: 'https://example.com/logo.png', fallback: 'R1', shape: 'rounded' }}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+
+    const avatar = document.querySelector('.MuiAvatar-root')
+    expect(avatar).toHaveClass('MuiAvatar-rounded')
+    const img = avatar?.querySelector('img')
+    expect(img).toHaveAttribute('src', 'https://example.com/logo.png')
+  })
+
+  it('renders startIcon elements on the Edit and secondaryAction buttons', () => {
+    render(
+      <RecordCard
+        title="Riverside CC"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        secondaryAction={{
+          label: 'Deactivate',
+          pendingLabel: 'Deactivating…',
+          pending: false,
+          onClick: vi.fn(),
+          icon: <span data-testid="deactivate-icon" />,
+        }}
+      />,
+    )
+
+    const editButton = screen.getByRole('button', { name: 'Edit' })
+    expect(editButton.querySelector('svg')).toBeInTheDocument()
+    expect(screen.getByTestId('deactivate-icon')).toBeInTheDocument()
+  })
 })

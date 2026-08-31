@@ -325,8 +325,20 @@ export function ClubForm({ initialValues, profileInitialValues, mode = 'full', o
 
         {activeTab === brandingTab && profileEnabled && (
           <>
-            <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" />
-            <MediaUpload label="Banner" value={values.bannerUrl} onUploaded={handleBannerUploaded} variant="banner" />
+            <MediaUpload
+              label="Logo"
+              value={values.logoUrl}
+              onUploaded={handleLogoUploaded}
+              variant="logo"
+              namespace={mode === 'profileOnly' ? 'manage' : 'platform'}
+            />
+            <MediaUpload
+              label="Banner"
+              value={values.bannerUrl}
+              onUploaded={handleBannerUploaded}
+              variant="banner"
+              namespace={mode === 'profileOnly' ? 'manage' : 'platform'}
+            />
           </>
         )}
 

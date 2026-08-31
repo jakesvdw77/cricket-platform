@@ -22,6 +22,7 @@ beforeEach(() => {
 function managedProfile(overrides: Partial<ClubProfile> = {}): ClubProfile {
   return {
     clubId: 'test-club-id',
+    name: 'Riverside CC',
     type: null,
     logoUrl: null,
     bannerUrl: null,

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -13,6 +15,7 @@ import {
   reactivateClubContact,
 } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
+import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [
   { value: 'name,asc', label: 'Name' },
@@ -56,6 +59,7 @@ function ClubContactCard({ clubId, contact }: { clubId: string; contact: ClubCon
   return (
     <RecordCard
       title={fullName(contact)}
+      avatar={{ imageUrl: contact.photoUrl, fallback: initialsFromName(fullName(contact)), shape: 'circular' }}
       badge={badgeFor(contact)}
       fields={[
         { label: 'Role', value: contact.role },
@@ -69,6 +73,7 @@ function ClubContactCard({ clubId, contact }: { clubId: string; contact: ClubCon
         pendingLabel: contact.active ? 'Deactivating…' : 'Reactivating…',
         pending: toggle.isPending,
         onClick: () => toggle.mutate(),
+        icon: contact.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
       }}
     />
   )

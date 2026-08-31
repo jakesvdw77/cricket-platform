@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -11,6 +13,7 @@ import { listPlayers, deactivatePlayer, reactivatePlayer } from '../../api/playe
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
+import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
@@ -62,6 +65,7 @@ function PlayerCard({ clubId, player, sectionNames }: { clubId: string; player: 
   return (
     <RecordCard
       title={fullName(player)}
+      avatar={{ imageUrl: player.photoUrl, fallback: initialsFromName(fullName(player)), shape: 'circular' }}
       badge={badgeFor(player)}
       fields={playerRecordFields(player)}
       chips={sectionNames}
@@ -72,6 +76,7 @@ function PlayerCard({ clubId, player, sectionNames }: { clubId: string; player: 
         pendingLabel: player.active ? 'Deactivating…' : 'Reactivating…',
         pending: toggle.isPending,
         onClick: () => toggle.mutate(),
+        icon: player.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
       }}
     />
   )

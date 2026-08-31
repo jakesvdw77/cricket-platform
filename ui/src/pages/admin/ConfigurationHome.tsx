@@ -1,11 +1,17 @@
-import { Box, Typography } from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
-import { Card } from '../../components/Card'
+import type { ReactNode } from 'react'
+import { Box } from '@mui/material'
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import { NavTile } from '../../components/NavTile'
 
 interface ConfigurationCard {
   title: string
   description: string
   to: string
+  icon: ReactNode
 }
 
 // docs/specs/007-configuration-hub-overview.md's roadmap — Products is the only
@@ -14,11 +20,11 @@ interface ConfigurationCard {
 // be a card here too; promoted to its own top-level nav item (AdminHome's NAV_ITEMS)
 // since it's a day-to-day billing workflow, not a system config.
 const CARDS: ConfigurationCard[] = [
-  { title: 'Products', description: 'Define subscription tiers, pricing, and usage limits', to: '/admin/configuration/products' },
-  { title: 'Email', description: 'View outbound email settings and send a test message', to: '/admin/configuration/email' },
-  { title: 'Discounts & Promotions', description: 'Coupons and per-club pricing overrides', to: '/admin/configuration/discounts' },
-  { title: 'Invoicing', description: 'Billing cycles and invoice history', to: '/admin/configuration/invoicing' },
-  { title: 'System Settings', description: 'Platform-wide configuration', to: '/admin/configuration/settings' },
+  { title: 'Products', description: 'Define subscription tiers, pricing, and usage limits', to: '/admin/configuration/products', icon: <Inventory2OutlinedIcon /> },
+  { title: 'Email', description: 'View outbound email settings and send a test message', to: '/admin/configuration/email', icon: <EmailOutlinedIcon /> },
+  { title: 'Discounts & Promotions', description: 'Coupons and per-club pricing overrides', to: '/admin/configuration/discounts', icon: <LocalOfferOutlinedIcon /> },
+  { title: 'Invoicing', description: 'Billing cycles and invoice history', to: '/admin/configuration/invoicing', icon: <ReceiptLongOutlinedIcon /> },
+  { title: 'System Settings', description: 'Platform-wide configuration', to: '/admin/configuration/settings', icon: <SettingsOutlinedIcon /> },
 ]
 
 export default function ConfigurationHome() {
@@ -31,18 +37,7 @@ export default function ConfigurationHome() {
       }}
     >
       {CARDS.map((card) => (
-        <Box
-          key={card.to}
-          component={RouterLink}
-          to={card.to}
-          sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-        >
-          <Card title={card.title}>
-            <Typography variant="body2" color="text.secondary">
-              {card.description}
-            </Typography>
-          </Card>
-        </Box>
+        <NavTile key={card.to} title={card.title} description={card.description} to={card.to} icon={card.icon} />
       ))}
     </Box>
   )

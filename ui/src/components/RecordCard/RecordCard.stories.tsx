@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import { RecordCard } from './RecordCard'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
@@ -88,6 +89,42 @@ export const WithSecondaryActionAndFeedback: Story = {
       message: 'Welcome email resent to jaco@example.com.',
       tone: 'success',
     },
+  },
+}
+
+// The avatar slot — a photo/logo when the record has one, initials otherwise. Circular for a
+// person-shaped record (a Contact, a Player), rounded for an organisation/named-thing a logo
+// actually belongs to (a Team, a Sponsor, a Club) — see RecordCardAvatar's own doc comment.
+export const WithPhotoAvatar: Story = {
+  args: {
+    title: 'Jane Smith',
+    avatar: { imageUrl: 'https://i.pravatar.cc/80?img=47', fallback: 'JA', shape: 'circular' },
+    badge: { label: 'Active', tone: 'positive' },
+    description: 'Club Treasurer',
+    fields: [
+      { label: 'Email', value: 'jane.smith@example.com' },
+      { label: 'Phone', value: '+27 82 555 0101' },
+    ],
+    editLabel: 'Edit',
+    editTo: '/manage/club-contacts/c-1/edit',
+    secondaryAction: {
+      label: 'Deactivate',
+      pendingLabel: 'Deactivating…',
+      pending: false,
+      onClick: () => undefined,
+      icon: <ToggleOffOutlinedIcon fontSize="small" />,
+    },
+  },
+}
+
+export const WithInitialsAvatar: Story = {
+  args: {
+    title: '1st XI',
+    avatar: { fallback: '1S', shape: 'rounded' },
+    badge: { label: 'Active', tone: 'positive' },
+    description: 'Juniors > Boys > O/15',
+    editLabel: 'Edit',
+    editTo: '/manage/teams/t-1/edit',
   },
 }
 

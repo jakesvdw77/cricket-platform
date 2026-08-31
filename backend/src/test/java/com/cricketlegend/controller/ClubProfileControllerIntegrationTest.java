@@ -67,6 +67,7 @@ class ClubProfileControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/platform/clubs/{id}/profile", club.getId()).with(platformAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.clubId").value(club.getId().toString()))
+                .andExpect(jsonPath("$.name").value("Riverside CC"))
                 .andExpect(jsonPath("$.type").doesNotExist())
                 .andExpect(jsonPath("$.email").doesNotExist());
     }
@@ -248,7 +249,8 @@ class ClubProfileControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/manage/clubs/{id}/profile", clubX.getId())
                         .with(withSubject("test-club-admin-sub")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.clubId").value(clubX.getId().toString()));
+                .andExpect(jsonPath("$.clubId").value(clubX.getId().toString()))
+                .andExpect(jsonPath("$.name").value("Riverside CC"));
     }
 
     @Test

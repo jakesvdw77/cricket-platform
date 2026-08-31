@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadgeTone, RecordCardFeedback } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -58,6 +60,7 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
   return (
     <RecordCard
       title={subscription.club.name}
+      avatar={{ fallback: <ReceiptLongOutlinedIcon fontSize="small" />, shape: 'rounded' }}
       badge={{
         label: STATUS_LABEL[subscription.status],
         tone: STATUS_BADGE_TONE[subscription.status],
@@ -79,6 +82,7 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
                 setFeedback(null)
                 resend.mutate()
               },
+              icon: <ForwardToInboxOutlinedIcon fontSize="small" />,
             },
             feedback,
           }

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Avatar, Box, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { AvatarMenu } from '../AvatarMenu'
+import { initialsFromName } from '../../utils/initials'
 
 export interface ShellHeaderProps {
   brand: string
@@ -19,13 +21,22 @@ export interface ShellHeaderProps {
   // ClubContactList once you'd navigated away from the dashboard (found via manual testing of
   // docs/specs/021-club-contacts.md).
   homeTo?: string
+  // The club's own logo, shown to the left of `brand` — undefined (the platform admin shell,
+  // AppShell, and the still-mock PlayerHome/BottomTabShell) renders no avatar at all, unchanged
+  // from before this existed. Passing this with a null value (a real club with no logo uploaded
+  // yet) still renders the avatar, falling back to initialsFromName(brand) — same photo-or-
+  // initials treatment RecordCard's own avatar slot already established for Team/Sponsor/Club
+  // Contact, reused here rather than inventing a second convention for "no logo yet".
+  logoUrl?: string | null
 }
 
 // The header row (brand + AvatarMenu) shared by every post-login shell — see
 // docs/specs/006-post-login-home-shells.md. Pulled out once AppShell, GridNavShell, and
 // BottomTabShell all turned out to render the same row, differing only in what nav they wrap
 // it with (sidebar drawer, nothing, or a bottom tab bar).
-export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo }: ShellHeaderProps) {
+export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl }: ShellHeaderProps) {
+  const hasLogoSlot = logoUrl !== undefined
+
   return (
     <Box
       component="header"
@@ -39,11 +50,29 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
         borderColor: 'divider',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
         {leading}
+        {hasLogoSlot && (
+          <Avatar
+            src={logoUrl ?? undefined}
+            variant="rounded"
+            sx={{
+              width: dense ? 28 : 32,
+              height: dense ? 28 : 32,
+              flex: 'none',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
+              color: 'primary.dark',
+            }}
+          >
+            {initialsFromName(brand)}
+          </Avatar>
+        )}
         <Typography
           variant={dense ? 'subtitle2' : 'subtitle1'}
           fontWeight={700}
+          noWrap
           {...(homeTo && {
             component: RouterLink,
             to: homeTo,

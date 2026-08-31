@@ -47,6 +47,7 @@ function activeClub(overrides: Partial<Club> = {}): Club {
 function emptyProfile(overrides: Partial<ClubProfile> = {}): ClubProfile {
   return {
     clubId: 'c-1',
+    name: 'Riverside Cricket Club',
     type: null,
     logoUrl: null,
     bannerUrl: null,

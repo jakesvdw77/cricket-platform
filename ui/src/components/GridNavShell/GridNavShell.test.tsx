@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { GridNavShell } from './GridNavShell'
 
-function renderShell(onLogout = vi.fn()) {
+function renderShell(onLogout = vi.fn(), logoUrl?: string | null) {
   render(
     <MemoryRouter>
       <GridNavShell
@@ -12,6 +12,7 @@ function renderShell(onLogout = vi.fn()) {
         user={{ name: 'Sam Manager', email: 'sam@riverside.cc' }}
         onLogout={onLogout}
         profileTo="/manage/profile"
+        {...(logoUrl !== undefined && { logoUrl })}
       >
         <div>Grid content</div>
       </GridNavShell>
@@ -44,5 +45,22 @@ describe('GridNavShell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))
 
     expect(screen.getByRole('menuitem', { name: 'Profile' })).toHaveAttribute('href', '/manage/profile')
+  })
+
+  it('passes logoUrl through to the header, rendering the club logo avatar alongside the account avatar', () => {
+    renderShell(vi.fn(), '/media/logo.png')
+
+    // Two avatars once a logo is passed: the club logo (header, left) and the account menu
+    // avatar (header, right, AvatarMenu's own) — query all rather than the first match so this
+    // doesn't accidentally pass by finding AvatarMenu's avatar instead of the new one.
+    const avatars = document.querySelectorAll('.MuiAvatar-root')
+    expect(avatars).toHaveLength(2)
+    expect(avatars[0].querySelector('img')).toHaveAttribute('src', '/media/logo.png')
+  })
+
+  it('omits the logo avatar entirely when logoUrl is not passed at all, leaving only the account menu avatar', () => {
+    renderShell()
+
+    expect(document.querySelectorAll('.MuiAvatar-root')).toHaveLength(1)
   })
 })

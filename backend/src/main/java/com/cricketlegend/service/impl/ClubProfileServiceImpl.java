@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.Address;
+import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubProfile;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.AddressDto;
@@ -54,17 +55,21 @@ public class ClubProfileServiceImpl implements ClubProfileService {
     @Override
     @Transactional(readOnly = true)
     public ClubProfileDto get(UUID clubId) {
-        requireClubExists(clubId);
+        Club club = clubRepository
+                .findById(clubId)
+                .orElseThrow(() -> new NotFoundException("Club not found: " + clubId));
         return clubProfileRepository
                 .findById(clubId)
-                .map(clubProfileMapper::toDto)
-                .orElseGet(() -> defaultDto(clubId));
+                .map(profile -> clubProfileMapper.toDto(profile, club.getName()))
+                .orElseGet(() -> defaultDto(clubId, club.getName()));
     }
 
     @Override
     @Transactional
     public ClubProfileDto upsert(UUID clubId, UpdateClubProfileRequest request) {
-        requireClubExists(clubId);
+        Club club = clubRepository
+                .findById(clubId)
+                .orElseThrow(() -> new NotFoundException("Club not found: " + clubId));
         SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
 
         ClubProfile profile = clubProfileRepository.findById(clubId).orElseGet(() -> {
@@ -82,18 +87,12 @@ public class ClubProfileServiceImpl implements ClubProfileService {
         profile.setWebsite(request.website());
         profile.setSocialLinks(toSocialLinks(request.socialLinks()));
 
-        return clubProfileMapper.toDto(clubProfileRepository.save(profile));
+        return clubProfileMapper.toDto(clubProfileRepository.save(profile), club.getName());
     }
 
-    private void requireClubExists(UUID clubId) {
-        if (!clubRepository.existsById(clubId)) {
-            throw new NotFoundException("Club not found: " + clubId);
-        }
-    }
-
-    private ClubProfileDto defaultDto(UUID clubId) {
+    private ClubProfileDto defaultDto(UUID clubId, String name) {
         return new ClubProfileDto(
-                clubId, null, null, null, null, null, null, null, null, null, null, List.of());
+                clubId, name, null, null, null, null, null, null, null, null, null, null, List.of());
     }
 
     private Address toAddress(AddressDto dto) {

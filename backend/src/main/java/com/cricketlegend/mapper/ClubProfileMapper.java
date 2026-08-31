@@ -7,6 +7,7 @@ import com.cricketlegend.dto.AddressDto;
 import com.cricketlegend.dto.ClubProfileDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
  * No {@code toEntity} — per docs/plans/012-club-profile.md's Flag #4, the service applies an
@@ -21,8 +22,12 @@ public interface ClubProfileMapper {
     // clubId/type/logoUrl/bannerUrl/address/email/phone/website/createdAt/updatedAt/updatedBy
     // all exist with matching names on both sides — MapStruct maps all eleven by convention, no
     // explicit @Mapping needed. The nested address is mapped by the toDto(Address) method below,
-    // which MapStruct infers for the Address -> AddressDto leg automatically.
-    ClubProfileDto toDto(ClubProfile entity);
+    // which MapStruct infers for the Address -> AddressDto leg automatically. `name` isn't a
+    // ClubProfile field at all (it lives on the separate Club entity, joined only by clubId, no
+    // JPA relationship) — the service supplies it as a second, plain-value source parameter,
+    // and this @Mapping tells MapStruct which target field it feeds.
+    @Mapping(target = "name", source = "clubName")
+    ClubProfileDto toDto(ClubProfile entity, String clubName);
 
     // number/street/city/provinceState/country/postalCode all exist with matching names on both
     // sides — MapStruct maps all six by convention, no explicit @Mapping needed. Declared here

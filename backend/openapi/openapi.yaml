@@ -2161,6 +2161,8 @@ components:
         clubId:
           type: string
           format: uuid
+        name:
+          type: string
         type:
           type: string
           enum:

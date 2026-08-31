@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -12,6 +14,7 @@ import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
+import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
@@ -47,6 +50,7 @@ function TeamCard({ clubId, sectionId, team }: { clubId: string; sectionId: stri
   return (
     <RecordCard
       title={team.name}
+      avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
       badge={badgeFor(team)}
       editLabel="Edit"
       editTo={`/manage/sections/${sectionId}/teams/${team.id}/edit`}
@@ -55,6 +59,7 @@ function TeamCard({ clubId, sectionId, team }: { clubId: string; sectionId: stri
         pendingLabel: team.active ? 'Deactivating…' : 'Reactivating…',
         pending: toggle.isPending,
         onClick: () => toggle.mutate(),
+        icon: team.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
       }}
     />
   )

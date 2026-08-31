@@ -95,6 +95,7 @@ export interface Address {
 // except clubId) rather than 404 — see docs/specs/012-club-profile.md's API Contract.
 export interface ClubProfile {
   clubId: string
+  name: string
   type: ClubProfileType | null
   logoUrl: string | null
   bannerUrl: string | null
