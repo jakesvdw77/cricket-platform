@@ -33,7 +33,7 @@ Cricket Legend Platform — a multi-club cricket management system: Spring Boot 
 | Backend layering | Controller → Service (iface+impl) → Repository, DTOs only cross the controller boundary — see `docs/standards/backend.md` |
 | Auth | Keycloak, single shared realm across all clubs — see `docs/specs/002-realm-subdomain-auth.md` |
 | Frontend | React 18 + TypeScript + Vite, `ui/` |
-| UI library | **Material UI (MUI) v5** — `@mui/material` + `@mui/icons-material`, styled via the shared theme in `ui/src/theme.ts`. Carried forward from the original Cricket Legend app, not a new choice — see `docs/standards/design-system.md`. No other component/styling system (no Tailwind, no CSS-in-JS alternatives). |
+| UI library | **Material UI (MUI) v5** — `@mui/material` + `@mui/icons-material`, styled via the shared theme in `ui/src/theme.ts`. Carried forward from the original Cricket Legend app, not a new choice — see `docs/standards/design-system.md`. No other component/styling system (no Tailwind, no CSS-in-JS alternatives). `@mui/x-tree-view` (v7, the last major line still compatible with this repo's MUI v5 + React 19) is an approved addition for real hierarchical pickers — added for `SectionTree`/`SectionTreeSelect` (`026`/`028`'s Rollout Notes) — not a departure from "MUI only," it's MUI's own companion package. |
 | Component library | Storybook, one story per shared component, thin wrappers around MUI primitives |
 | Server state | React Query over `ui/src/api/*` per-resource files |
 | Backend tests | JUnit 5 + Testcontainers (Postgres), ArchUnit, OpenAPI contract diff |
