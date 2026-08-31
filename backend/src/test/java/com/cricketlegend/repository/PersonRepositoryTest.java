@@ -25,11 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
  * Integration tests for PersonRepository — per docs/standards/backend.md, every custom repository
  * query ships a Testcontainers-backed integration test. Also proves
  * 008-restructure-person-identity.sql applied cleanly on top of 001's original person table
- * (implicit via context boot): first_name/last_name/email are NOT NULL at the DB level, and
- * ux_person_email_lower rejects a second row differing from an existing one only by email casing
- * — the invariant PersonServiceImpl.findOrCreatePerson relies on for "link, don't overwrite". Each
- * test runs in its own rolled-back transaction for isolation, since all tests share one
- * Testcontainers Postgres instance for the whole class.
+ * (implicit via context boot): first_name/last_name are NOT NULL at the DB level (email is no
+ * longer NOT NULL as of docs/specs/028-players.md's 020-add-player.sql, since a player-only
+ * Person genuinely has no login and so no email), and ux_person_email_lower rejects a second row
+ * differing from an existing one only by email casing — the invariant
+ * PersonServiceImpl.findOrCreatePerson relies on for "link, don't overwrite". Each test runs in
+ * its own rolled-back transaction for isolation, since all tests share one Testcontainers
+ * Postgres instance for the whole class.
  */
 @SpringBootTest
 @Import(AbstractIntegrationTest.class)
@@ -63,11 +65,16 @@ class PersonRepositoryTest {
     }
 
     @Test
-    void nullEmailIsRejectedAtTheDbLevel() {
+    void nullEmailIsAllowedAtTheDbLevel() {
+        // docs/specs/028-players.md drops email's NOT NULL constraint — a player-only Person
+        // (most players, especially juniors) never has a login and so genuinely has no email,
+        // unlike 014's one existing use case (a Subscription's responsible party) that always
+        // needs one to log in.
         Person person = person("Jane", "Doe", null, null);
 
-        assertThatThrownBy(() -> personRepository.saveAndFlush(person))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        Person saved = personRepository.saveAndFlush(person);
+
+        assertThat(personRepository.findById(saved.getId()).orElseThrow().getEmail()).isNull();
     }
 
     @Test

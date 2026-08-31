@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,15 @@ import lombok.Setter;
  * docs/specs/001-tenancy-identity-model.md (no ClubMembership/RoleAssignment relations yet) — this
  * is the identity/auth anchor a future login (self-serve signup, docs/roadmap.md) resolves
  * against, one row per human, forever.
+ *
+ * <p>docs/specs/028-players.md grows this with {@link #dateOfBirth}/{@link #gender} — {@code 001}'s
+ * own reserved-but-unbuilt fields, now given their first real consumer (a player's own basic
+ * info) — and loosens {@link #email} to nullable: a player-only {@code Person} (most players,
+ * especially juniors) never has a login and so genuinely has no email, unlike the one existing
+ * use case ({@code 014}'s Subscription responsible party) that required it {@code NOT NULL}. The
+ * {@code ux_person_email_lower} unique index needs no change — Postgres treats {@code NULL} as
+ * distinct from any other value, so any number of {@code Person} rows can share a {@code NULL}
+ * email without colliding.
  */
 @Entity
 @Table(name = "person")
@@ -46,11 +56,17 @@ public class Person {
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email")
     private String email;
 
     @Column(name = "phone")
     private String phone;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @Column(name = "keycloak_user_id", unique = true)
     private String keycloakUserId;

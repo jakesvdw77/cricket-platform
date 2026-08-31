@@ -1217,6 +1217,213 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/manage/clubs/{clubId}/players:
+    get:
+      tags:
+      - player-controller
+      operationId: list_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerDto"
+    post:
+      tags:
+      - player-controller
+      operationId: create_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayerRequest"
+        required: true
+      responses:
+        "201":
+          description: Player created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}:
+    put:
+      tags:
+      - player-controller
+      operationId: update_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/deactivate:
+    post:
+      tags:
+      - player-controller
+      operationId: deactivate_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/reactivate:
+    post:
+      tags:
+      - player-controller
+      operationId: reactivate_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections:
+    get:
+      tags:
+      - player-controller
+      operationId: listSections
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link:
+    post:
+      tags:
+      - player-controller
+      operationId: linkSection
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/unlink:
+    post:
+      tags:
+      - player-controller
+      operationId: unlinkSection
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -2326,6 +2533,202 @@ components:
         createdAt:
           type: string
           format: date-time
+    PlayerDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+        active:
+          type: boolean
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    UpdatePlayerRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+      required:
+      - firstName
+      - lastName
+    CreatePlayerRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+      required:
+      - firstName
+      - lastName
     CreateSubscriptionRequest:
       type: object
       properties:
