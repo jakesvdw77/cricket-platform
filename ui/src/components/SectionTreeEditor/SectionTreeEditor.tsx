@@ -6,6 +6,8 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { Button } from '../Button'
 import type { Section } from '../../api/sectionApi'
+import { buildSectionTree } from '../../utils/sectionTree'
+import type { SectionTreeNode as TreeNode } from '../../utils/sectionTree'
 
 export interface SectionTreeEditorProps {
   sections: Section[]
@@ -18,33 +20,6 @@ export interface SectionTreeEditorProps {
   // parent uses it to focus the detail panel's Name field, since reselecting the same node
   // wouldn't otherwise do anything observable.
   onRenameStart?: (id: string) => void
-}
-
-interface TreeNode {
-  section: Section
-  children: TreeNode[]
-}
-
-function buildTree(sections: Section[]): TreeNode[] {
-  const byParent = new Map<string | null, Section[]>()
-  sections.forEach((section) => {
-    const key = section.parentSectionId
-    const bucket = byParent.get(key)
-    if (bucket) {
-      bucket.push(section)
-    } else {
-      byParent.set(key, [section])
-    }
-  })
-
-  function build(parentId: string | null): TreeNode[] {
-    return (byParent.get(parentId) ?? []).map((section) => ({
-      section,
-      children: build(section.id),
-    }))
-  }
-
-  return build(null)
 }
 
 // A node's own active-children count, derived client-side from the same flat sections array —
@@ -329,7 +304,7 @@ export function SectionTreeEditor({
   onRemove,
   onRenameStart,
 }: SectionTreeEditorProps) {
-  const tree = useMemo(() => buildTree(sections), [sections])
+  const tree = useMemo(() => buildSectionTree(sections), [sections])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>

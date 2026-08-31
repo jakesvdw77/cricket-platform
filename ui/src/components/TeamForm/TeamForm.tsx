@@ -1,19 +1,16 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Avatar, Box, MenuItem, Stack, Typography } from '@mui/material'
+import { Avatar, Box, Stack, Typography } from '@mui/material'
 import { Input } from '../Input'
 import { Button } from '../Button'
 import { MediaUpload } from '../MediaUpload'
+import { SectionTreeSelect } from '../SectionTreeSelect'
+import type { Section } from '../../api/sectionApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see TeamFormPage), so its Save button targets this form via the native HTML
 // `form="…"` attribute, same pattern as CLUB_CONTACT_FORM_ID/SPONSOR_FORM_ID.
 export const TEAM_FORM_ID = 'team-form'
-
-export interface TeamFormSection {
-  id: string
-  name: string
-}
 
 export interface TeamFormValues {
   name: string
@@ -31,8 +28,9 @@ export interface TeamFormProps {
   // club-wide directory's create flow, where the team's section hasn't been chosen yet). When
   // omitted, no section field renders at all (the section-scoped create/edit flow, where the
   // section is already fixed by the route — editing never exposes a section field, see
-  // docs/specs/026-teams.md's re-parenting Non-goal). One component, two modes.
-  sections?: TeamFormSection[]
+  // docs/specs/026-teams.md's re-parenting Non-goal). One component, two modes. Full Section[]
+  // (not just {id, name}) — SectionTreeSelect needs parentSectionId to render the real hierarchy.
+  sections?: Section[]
   // The club's own logo (020's getManagedClubProfile, resolved by TeamFormPage) — drives the
   // "using your club's logo" fallback caption/preview shown whenever the team has no logo
   // override of its own (docs/specs/027-team-profile.md).
@@ -67,10 +65,6 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl }: Tea
     setName(event.target.value)
   }
 
-  const handleSectionChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSectionId(event.target.value)
-  }
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const validationErrors = validate(name, sectionId, requireSection)
@@ -94,20 +88,14 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl }: Tea
     // ClubContactForm/SponsorForm's *_FORM_ID.
     <Box component="form" id={TEAM_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
       {sections && (
-        <Input
-          select
+        <SectionTreeSelect
           label="Section"
-          value={sectionId}
-          onChange={handleSectionChange}
+          sections={sections}
+          value={sectionId || null}
+          onChange={setSectionId}
           error={Boolean(errors.sectionId)}
           helperText={errors.sectionId}
-        >
-          {sections.map((section) => (
-            <MenuItem key={section.id} value={section.id}>
-              {section.name}
-            </MenuItem>
-          ))}
-        </Input>
+        />
       )}
 
       <Input

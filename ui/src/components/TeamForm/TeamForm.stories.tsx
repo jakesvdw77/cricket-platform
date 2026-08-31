@@ -1,6 +1,36 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
 import { TeamForm } from './TeamForm'
+import type { Section } from '../../api/sectionApi'
+
+function makeSection(overrides: Partial<Section> = {}): Section {
+  return {
+    id: 'section-1',
+    clubId: 'club-1',
+    parentSectionId: null,
+    name: 'Section',
+    minAge: null,
+    maxAge: null,
+    gender: null,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+// Deliberately includes the same-named-leaf-in-two-branches case ("1st XI" under both Men and
+// Women) — the real shape that made a flat Section list ambiguous and motivated SectionTreeSelect.
+const SECTIONS: Section[] = [
+  makeSection({ id: 'open', name: 'Open Sides' }),
+  makeSection({ id: 'men', name: 'Men', parentSectionId: 'open' }),
+  makeSection({ id: 'men-1st', name: '1st XI', parentSectionId: 'men' }),
+  makeSection({ id: 'women', name: 'Women', parentSectionId: 'open' }),
+  makeSection({ id: 'women-1st', name: '1st XI', parentSectionId: 'women' }),
+  makeSection({ id: 'juniors', name: 'Juniors' }),
+  makeSection({ id: 'boys-u13', name: 'U13', parentSectionId: 'juniors' }),
+]
 
 const meta: Meta<typeof TeamForm> = {
   title: 'Components/TeamForm',
@@ -61,11 +91,7 @@ export const WithLogoOverride: Story = {
 export const WithSectionPicker: Story = {
   args: {
     onSubmit: () => undefined,
-    sections: [
-      { id: 'section-1', name: 'Men' },
-      { id: 'section-2', name: 'Women' },
-      { id: 'section-3', name: 'Juniors — U13' },
-    ],
+    sections: SECTIONS,
   },
 }
 

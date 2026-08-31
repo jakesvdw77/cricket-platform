@@ -22,6 +22,8 @@ import ClubStructure from './pages/manage/ClubStructure'
 import TeamDirectory from './pages/manage/TeamDirectory'
 import TeamFormPage from './pages/manage/TeamFormPage'
 import TeamList from './pages/manage/TeamList'
+import PlayerList from './pages/manage/PlayerList'
+import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -116,7 +118,13 @@ function App() {
               <Route path="sections/:sectionId/teams" element={<TeamList />} />
               <Route path="sections/:sectionId/teams/new" element={<TeamFormPage />} />
               <Route path="sections/:sectionId/teams/:teamId/edit" element={<TeamFormPage />} />
-              <Route path="players" element={<EmptyState title="Players" description="Coming soon." />} />
+              {/* docs/specs/028-players.md: the club-wide Players roster (006's pre-existing nav
+                  card finally gets a real screen). playerId is a route param (:playerId?),
+                  matching ClubContactFormPage/TeamFormPage's create/edit-via-optional-param
+                  shape. */}
+              <Route path="players" element={<PlayerList />} />
+              <Route path="players/new" element={<PlayerFormPage />} />
+              <Route path="players/:playerId/edit" element={<PlayerFormPage />} />
               <Route path="fixtures" element={<EmptyState title="Fixtures & Results" description="Coming soon." />} />
               <Route
                 path="permissions"

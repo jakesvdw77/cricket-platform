@@ -4,6 +4,24 @@ import { describe, expect, it, vi } from 'vitest'
 import { TeamForm, TEAM_FORM_ID } from './TeamForm'
 import type { TeamFormProps } from './TeamForm'
 import type { TeamFormValues } from './TeamForm'
+import type { Section } from '../../api/sectionApi'
+
+function makeSection(overrides: Partial<Section> = {}): Section {
+  return {
+    id: 'section-1',
+    clubId: 'club-1',
+    parentSectionId: null,
+    name: 'Section',
+    minAge: null,
+    maxAge: null,
+    gender: null,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
 
 // TeamForm's own submit button lives outside it (RecordFormScreen's actions bar, see
 // TeamFormPage) and targets the form via the native `form="…"` attribute — this mirrors that
@@ -20,9 +38,9 @@ function renderTeamForm(props: TeamFormProps, submitLabel = 'Submit') {
   )
 }
 
-const SECTIONS = [
-  { id: 'section-1', name: 'Men' },
-  { id: 'section-2', name: 'Women' },
+const SECTIONS: Section[] = [
+  makeSection({ id: 'section-1', name: 'Men' }),
+  makeSection({ id: 'section-2', name: 'Women' }),
 ]
 
 describe('TeamForm', () => {
@@ -80,8 +98,11 @@ describe('TeamForm', () => {
     const onSubmit = vi.fn()
     renderTeamForm({ onSubmit, sections: SECTIONS })
 
+    // The Section field opens a real SectionTree in a popover (not a flat Select) — picking a
+    // node's label closes it and fills the field. See SectionTreeSelect.test.tsx for coverage of
+    // the picker itself; this just confirms TeamForm wires it correctly end to end.
     await user.click(screen.getByLabelText('Section'))
-    await user.click(await screen.findByRole('option', { name: 'Women' }))
+    await user.click(await screen.findByText('Women'))
     await user.type(screen.getByLabelText('Name'), '2nd XI')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 

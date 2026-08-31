@@ -242,11 +242,13 @@ test.describe('Teams golden paths (026-teams.md, extended by 027-team-profile.md
     await expect(teamBCard).toBeVisible();
     await expect(teamBCard.getByText(sectionBName, { exact: true })).toBeVisible();
 
-    // Create a new team directly from the directory, picking its section from the dropdown.
+    // Create a new team directly from the directory, picking its section from the tree popover
+    // (not a flat Select — a real SectionTree, docs/specs/026-teams.md's own layout refinement:
+    // two branches reusing the same leaf name were genuinely ambiguous in a flat dropdown).
     await page.getByRole('button', { name: 'Add Team' }).click();
     await expect(page).toHaveURL(/\/manage\/teams\/new$/);
     await page.getByLabel('Section').click();
-    await page.getByRole('option', { name: sectionBName, exact: true }).click();
+    await page.getByRole('treeitem', { name: sectionBName, exact: true }).click();
     await page.getByLabel('Name').fill(teamCName);
     await page.getByRole('button', { name: 'Create team' }).click();
     await expect(page).toHaveURL(/\/manage\/teams$/);

@@ -475,8 +475,10 @@ describe('TeamFormPage', () => {
       const sectionPicker = screen.getByLabelText('Section')
       expect(sectionPicker).toBeInTheDocument()
 
+      // The Section field opens a real SectionTree in a popover (not a flat Select) — see
+      // SectionTreeSelect.test.tsx for coverage of the picker itself.
       await user.click(sectionPicker)
-      await user.click(await screen.findByRole('option', { name: 'Women' }))
+      await user.click(await screen.findByText('Women'))
       await user.type(screen.getByLabelText('Name'), '1st XI')
       await user.click(screen.getByRole('button', { name: 'Create team' }))
 
