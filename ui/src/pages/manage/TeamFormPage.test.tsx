@@ -9,6 +9,8 @@ import type { Section } from '../../api/sectionApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import type { Sponsor } from '../../api/sponsorApi'
 import type { ClubProfile } from '../../api/clubApi'
+import type { Season } from '../../api/seasonApi'
+import type { Player } from '../../api/playerApi'
 
 const listTeamsForSection = vi.fn()
 const createTeam = vi.fn()
@@ -25,6 +27,11 @@ const createSponsor = vi.fn()
 const listTeamSponsors = vi.fn()
 const linkTeamSponsor = vi.fn()
 const unlinkTeamSponsor = vi.fn()
+const listSeasons = vi.fn()
+const listSquad = vi.fn()
+const addToSquad = vi.fn()
+const removeFromSquad = vi.fn()
+const listPlayers = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
   listTeamsForSection: (clubId: string, sectionId: string) => listTeamsForSection(clubId, sectionId),
@@ -67,6 +74,22 @@ vi.mock('../../api/teamSponsorApi', () => ({
     unlinkTeamSponsor(clubId, sectionId, teamId, sponsorId),
 }))
 
+vi.mock('../../api/seasonApi', () => ({
+  listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
+vi.mock('../../api/teamSquadApi', () => ({
+  listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
+  addToSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
+    addToSquad(clubId, teamId, seasonId, playerId),
+  removeFromSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
+    removeFromSquad(clubId, teamId, seasonId, playerId),
+}))
+
+vi.mock('../../api/playerApi', () => ({
+  listPlayers: (clubId: string) => listPlayers(clubId),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   // Low-priority defaults so a background refetch beyond a test's own queued
@@ -78,6 +101,9 @@ beforeEach(() => {
   listTeamContacts.mockResolvedValue([])
   listSponsors.mockResolvedValue([])
   listTeamSponsors.mockResolvedValue([])
+  listSeasons.mockResolvedValue([])
+  listSquad.mockResolvedValue([])
+  listPlayers.mockResolvedValue([])
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -147,6 +173,51 @@ function makeSponsor(overrides: Partial<Sponsor> = {}): Sponsor {
   }
 }
 
+function makeSeason(overrides: Partial<Season> = {}): Season {
+  return {
+    id: 'season-1',
+    clubId: 'test-club-id',
+    label: '2026',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+function makePlayer(overrides: Partial<Player> = {}): Player {
+  return {
+    id: 'player-1',
+    personId: 'person-1',
+    clubId: 'test-club-id',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    dateOfBirth: null,
+    gender: null,
+    photoUrl: null,
+    clubMembershipNumber: null,
+    medicalAidProvider: null,
+    medicalAidMemberNumber: null,
+    phone: null,
+    email: null,
+    altContactName: null,
+    altContactPhone: null,
+    battingStance: null,
+    bowlingArm: null,
+    bowlingType: null,
+    isWicketKeeper: false,
+    active: true,
+    sectionIds: [],
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
 // Same wrapper-route shape as ClubContactFormPage.test.tsx, reproducing ManagerHome's Outlet
 // context without pulling ManagerHome itself in. Registers all three real routes TeamFormPage
 // serves, per docs/specs/026-teams.md.
@@ -205,8 +276,10 @@ describe('TeamFormPage', () => {
       expect(await screen.findByText('Add Team')).toBeInTheDocument()
       expect(screen.queryByText('Contacts')).not.toBeInTheDocument()
       expect(screen.queryByText('Sponsors')).not.toBeInTheDocument()
+      expect(screen.queryByText('Squad')).not.toBeInTheDocument()
       expect(listTeamContacts).not.toHaveBeenCalled()
       expect(listTeamSponsors).not.toHaveBeenCalled()
+      expect(listSquad).not.toHaveBeenCalled()
     })
 
     it('edit: fetches the section\'s team list and prefills from the matching team id, never showing a section picker', async () => {
@@ -458,6 +531,66 @@ describe('TeamFormPage', () => {
         )
       })
     })
+
+    describe('edit mode: Squad (docs/specs/029-league-management.md)', () => {
+      function renderEdit() {
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id' })])
+        return renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+      }
+
+      it('prompts to create a season first when the club has none yet', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([])
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+
+        expect(await screen.findByText(/create a season first/i)).toBeInTheDocument()
+        expect(listSquad).not.toHaveBeenCalled()
+      })
+
+      it('lists the squad for the selected season and removes a player via removeFromSquad', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([makePlayer({ id: 'player-1', firstName: 'Jane', lastName: 'Smith' })])
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+
+        expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+        expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1')
+
+        await user.click(screen.getByRole('button', { name: 'Remove' }))
+        expect(removeFromSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1')
+      })
+
+      it('adds a player from the club\'s active players (not already in the squad) via addToSquad', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([])
+        listPlayers.mockResolvedValue([
+          makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones', active: true }),
+          makePlayer({ id: 'player-3', firstName: 'Retired', lastName: 'Player', active: false }),
+        ])
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        await user.click(await screen.findByRole('button', { name: 'Add player' }))
+
+        const combobox = await screen.findByRole('combobox', { name: 'Search players' })
+        await user.click(combobox)
+
+        expect(await screen.findByRole('option', { name: 'Bob Jones' })).toBeInTheDocument()
+        expect(screen.queryByRole('option', { name: 'Retired Player' })).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('option', { name: 'Bob Jones' }))
+
+        expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-2')
+      })
+    })
   })
 
   describe('club-wide create mode (no sectionId in the route)', () => {
@@ -494,6 +627,7 @@ describe('TeamFormPage', () => {
       expect(await screen.findByText('Add Team')).toBeInTheDocument()
       expect(screen.queryByText('Contacts')).not.toBeInTheDocument()
       expect(screen.queryByText('Sponsors')).not.toBeInTheDocument()
+      expect(screen.queryByText('Squad')).not.toBeInTheDocument()
     })
   })
 })

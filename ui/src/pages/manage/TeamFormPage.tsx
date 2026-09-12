@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Box, Breadcrumbs, Divider, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { useEffect, useMemo, useState } from 'react'
+import { Box, Breadcrumbs, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import type { TeamFormValues } from '../../components/TeamForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
@@ -24,10 +25,16 @@ import type { TeamContact } from '../../api/teamContactApi'
 import { listSponsors, createSponsor } from '../../api/sponsorApi'
 import type { Sponsor, SponsorPayload } from '../../api/sponsorApi'
 import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor } from '../../api/teamSponsorApi'
+import { listPlayers } from '../../api/playerApi'
+import type { Player } from '../../api/playerApi'
+import { listSquad, addToSquad, removeFromSquad } from '../../api/teamSquadApi'
+import { listSeasons } from '../../api/seasonApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
+import { playerRecordFields } from '../../utils/playerRecordFields'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
+import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 
 const ROLE_QUICK_FILL = ['Manager', 'Coach', 'Assistant Coach']
 
@@ -130,6 +137,46 @@ function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
   )
 }
 
+// One player in this team's squad for the selected season, with its own remove mutation —
+// mirrors TeamSponsorCard's isolation pattern. docs/specs/029-league-management.md: removing a
+// player only affects that season's squad row, never the player record itself.
+function SquadPlayerCard({
+  clubId,
+  teamId,
+  seasonId,
+  player,
+  onRemoved,
+}: {
+  clubId: string
+  teamId: string
+  seasonId: string
+  player: Player
+  onRemoved: () => void
+}) {
+  const remove = useMutation({
+    mutationFn: () => removeFromSquad(clubId, teamId, seasonId, player.id),
+    onSuccess: onRemoved,
+  })
+  const playerName = `${player.firstName} ${player.lastName}`
+
+  return (
+    <RecordCard
+      title={playerName}
+      avatar={{ imageUrl: player.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
+      fields={playerRecordFields(player)}
+      editLabel="Edit"
+      editTo={`/manage/players/${player.id}/edit`}
+      secondaryAction={{
+        label: 'Remove',
+        pendingLabel: 'Removing…',
+        pending: remove.isPending,
+        onClick: () => remove.mutate(),
+        icon: <LinkOffOutlinedIcon fontSize="small" />,
+      }}
+    />
+  )
+}
+
 // Shared by three routes (docs/specs/026-teams.md): sections/:sectionId/teams/new,
 // sections/:sectionId/teams/:teamId/edit (section-scoped create/edit — section fixed by the
 // route, no picker), and teams/new (club-wide create — sectionId is absent, TeamForm renders a
@@ -159,6 +206,8 @@ export default function TeamFormPage() {
   const [contactCreateOpen, setContactCreateOpen] = useState(false)
   const [sponsorLinkOpen, setSponsorLinkOpen] = useState(false)
   const [sponsorCreateOpen, setSponsorCreateOpen] = useState(false)
+  const [squadLinkOpen, setSquadLinkOpen] = useState(false)
+  const [selectedSquadSeasonId, setSelectedSquadSeasonId] = useState('')
 
   // There's no single-team GET endpoint (only list/create/update/deactivate/reactivate, per the
   // spec's API Contract) — edit mode fetches the full (small, unpaginated) section list and finds
@@ -321,6 +370,56 @@ export default function TeamFormPage() {
     (sponsor) => !alreadyLinkedSponsorIds.has(sponsor.id),
   )
 
+  // --- Squad (docs/specs/029-league-management.md), edit mode only, season-scoped ---
+
+  const seasonsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'seasons'],
+    queryFn: () => listSeasons(clubId as string),
+    enabled: Boolean(clubId) && Boolean(teamId) && isEdit,
+  })
+
+  // Defaults the Season picker to whichever season contains today, else the most recently
+  // created — docs/specs/029-league-management.md's pre-build amendment.
+  useEffect(() => {
+    if (!selectedSquadSeasonId && seasonsQuery.data && seasonsQuery.data.length > 0) {
+      const defaultId = pickDefaultSeasonId(seasonsQuery.data)
+      if (defaultId) {
+        setSelectedSquadSeasonId(defaultId)
+      }
+    }
+  }, [seasonsQuery.data, selectedSquadSeasonId])
+
+  const squadQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSquadSeasonId, 'squad'],
+    queryFn: () => listSquad(clubId as string, teamId as string, selectedSquadSeasonId),
+    enabled: Boolean(clubId) && Boolean(teamId) && isEdit && Boolean(selectedSquadSeasonId),
+  })
+
+  // Only fetched while the "Add player" dialog is open — same pattern as clubContactsQuery above.
+  const clubPlayersQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'players'],
+    queryFn: () => listPlayers(clubId as string),
+    enabled: Boolean(clubId) && squadLinkOpen,
+  })
+
+  const invalidateSquad = () =>
+    queryClient.invalidateQueries({
+      queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSquadSeasonId, 'squad'],
+    })
+
+  const addToSquadMutation = useMutation({
+    mutationFn: (playerId: string) => addToSquad(clubId as string, teamId as string, selectedSquadSeasonId, playerId),
+    onSuccess: () => {
+      invalidateSquad()
+      setSquadLinkOpen(false)
+    },
+  })
+
+  const alreadyInSquadIds = new Set((squadQuery.data ?? []).map((player) => player.id))
+  const linkablePlayers: Player[] = (clubPlayersQuery.data ?? []).filter(
+    (player) => player.active && !alreadyInSquadIds.has(player.id),
+  )
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -413,6 +512,7 @@ export default function TeamFormPage() {
               <Tab label="Details" />
               <Tab label="Contacts" />
               <Tab label="Sponsors" />
+              <Tab label="Squad" />
             </Tabs>
           </Box>
         )}
@@ -535,6 +635,69 @@ export default function TeamFormPage() {
             )}
           </Box>
         )}
+
+        {showContactsAndSponsors && activeTab === 3 && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            {(seasonsQuery.data ?? []).length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Create a season first — a squad is always built for a specific season.
+              </Typography>
+            ) : (
+              <>
+                <Input
+                  select
+                  label="Season"
+                  value={selectedSquadSeasonId}
+                  onChange={(event) => setSelectedSquadSeasonId(event.target.value)}
+                  sx={{ maxWidth: 280, mb: 2 }}
+                >
+                  {(seasonsQuery.data ?? []).map((season) => (
+                    <MenuItem key={season.id} value={season.id}>
+                      {season.label}
+                    </MenuItem>
+                  ))}
+                </Input>
+
+                {(squadQuery.data ?? []).length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    No players in this team's squad for this season yet.
+                  </Typography>
+                )}
+
+                {(squadQuery.data ?? []).length > 0 && (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gap: 2,
+                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                      mb: 2,
+                    }}
+                  >
+                    {(squadQuery.data ?? []).map((player) => (
+                      <SquadPlayerCard
+                        key={player.id}
+                        clubId={clubId as string}
+                        teamId={teamId as string}
+                        seasonId={selectedSquadSeasonId}
+                        player={player}
+                        onRemoved={invalidateSquad}
+                      />
+                    ))}
+                  </Box>
+                )}
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSquadLinkOpen(true)}
+                  disabled={!selectedSquadSeasonId}
+                >
+                  Add player
+                </Button>
+              </>
+            )}
+          </Box>
+        )}
       </RecordFormScreen>
 
       {showContactsAndSponsors && (
@@ -595,6 +758,19 @@ export default function TeamFormPage() {
               createAndLinkSponsorMutation.error,
               "Couldn't create and link this sponsor. Please try again.",
             )}
+          />
+
+          <LinkExistingRecordDialog<Player>
+            open={squadLinkOpen}
+            onClose={() => setSquadLinkOpen(false)}
+            title="Add a player to this season's squad"
+            candidates={linkablePlayers}
+            loading={clubPlayersQuery.isFetching}
+            getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            searchLabel="Search players"
+            searchPlaceholder="Search by name"
+            onLink={(option) => addToSquadMutation.mutate(option.id)}
           />
         </>
       )}

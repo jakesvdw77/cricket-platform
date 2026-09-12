@@ -24,6 +24,14 @@ import TeamFormPage from './pages/manage/TeamFormPage'
 import TeamList from './pages/manage/TeamList'
 import PlayerList from './pages/manage/PlayerList'
 import PlayerFormPage from './pages/manage/PlayerFormPage'
+import ManageFixturesHome from './pages/manage/ManageFixturesHome'
+import LeagueList from './pages/manage/LeagueList'
+import LeagueFormPage from './pages/manage/LeagueFormPage'
+import SeasonList from './pages/manage/SeasonList'
+import SeasonFormPage from './pages/manage/SeasonFormPage'
+import MatchList from './pages/manage/MatchList'
+import MatchFormPage from './pages/manage/MatchFormPage'
+import SquadPicker from './pages/manage/SquadPicker'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -125,12 +133,24 @@ function App() {
               <Route path="players" element={<PlayerList />} />
               <Route path="players/new" element={<PlayerFormPage />} />
               <Route path="players/:playerId/edit" element={<PlayerFormPage />} />
-              <Route path="fixtures" element={<EmptyState title="Fixtures & Results" description="Coming soon." />} />
+              {/* docs/specs/029-league-management.md: League/Season/Match administration and
+                  match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
+                  nav cards finally get real screens. */}
+              <Route path="fixtures" element={<ManageFixturesHome />} />
+              <Route path="fixtures/leagues" element={<LeagueList />} />
+              <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
+              <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              <Route path="fixtures/seasons" element={<SeasonList />} />
+              <Route path="fixtures/seasons/new" element={<SeasonFormPage />} />
+              <Route path="fixtures/seasons/:seasonId/edit" element={<SeasonFormPage />} />
+              <Route path="fixtures/matches" element={<MatchList />} />
+              <Route path="fixtures/matches/new" element={<MatchFormPage />} />
+              <Route path="fixtures/matches/:matchId/edit" element={<MatchFormPage />} />
               <Route
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}
               />
-              <Route path="squads" element={<EmptyState title="Squads" description="Coming soon." />} />
+              <Route path="squads" element={<SquadPicker />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
               <Route path="availability" element={<EmptyState title="Availability Polls" description="Coming soon." />} />
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />

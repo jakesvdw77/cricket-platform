@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
+import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -14,6 +14,7 @@ import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { initialsFromName } from '../../utils/initials'
+import { playerRecordFields } from '../../utils/playerRecordFields'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
@@ -26,20 +27,6 @@ function badgeFor(player: Player): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
-}
-
-// Only pushes a field when the value is present — mirrors sponsorRecordFields.ts's own
-// conditional-push shape (docs/specs/023-sponsors.md), applied here to Player's identifying
-// fields instead of Sponsor's.
-function playerRecordFields(player: Player): RecordCardField[] {
-  const fields: RecordCardField[] = []
-  if (player.dateOfBirth) {
-    fields.push({ label: 'Date of birth', value: player.dateOfBirth })
-  }
-  if (player.clubMembershipNumber) {
-    fields.push({ label: 'Membership number', value: player.clubMembershipNumber })
-  }
-  return fields
 }
 
 // One RecordCard per player, each with its own deactivate/reactivate mutation — mirrors

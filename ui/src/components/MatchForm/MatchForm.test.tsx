@@ -1,0 +1,181 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import { MatchForm, MATCH_FORM_ID } from './MatchForm'
+import type { MatchFormProps } from './MatchForm'
+import type { MatchPayload } from '../../api/matchApi'
+import type { Team } from '../../api/teamApi'
+import type { Season } from '../../api/seasonApi'
+import type { League } from '../../api/leagueApi'
+
+function makeTeam(overrides: Partial<Team> = {}): Team {
+  return {
+    id: 'team-1',
+    clubId: 'club-1',
+    sectionId: 'section-1',
+    name: '1st XI',
+    logoUrl: null,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+function makeSeason(overrides: Partial<Season> = {}): Season {
+  return {
+    id: 'season-1',
+    clubId: 'club-1',
+    label: '2026',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+function makeLeague(overrides: Partial<League> = {}): League {
+  return {
+    id: 'league-1',
+    clubId: 'club-1',
+    name: 'Internal League',
+    source: 'INTERNAL',
+    maxPlayingXiSize: 11,
+    allowSubstitutions: false,
+    minAge: null,
+    maxAge: null,
+    ageCutoffDate: null,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+const TEAMS: Team[] = [makeTeam({ id: 'team-1', name: '1st XI' }), makeTeam({ id: 'team-2', name: '2nd XI' })]
+const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
+const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
+
+function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Submit') {
+  const merged: MatchFormProps = {
+    teams: TEAMS,
+    seasons: SEASONS,
+    leagues: LEAGUES,
+    onSubmit: vi.fn(),
+    ...props,
+  }
+  render(
+    <>
+      <MatchForm {...merged} />
+      <button type="submit" form={MATCH_FORM_ID}>
+        {submitLabel}
+      </button>
+    </>,
+  )
+  return merged
+}
+
+describe('MatchForm', () => {
+  it('renders a required Season select and an optional League select', () => {
+    renderMatchForm()
+    expect(screen.getByLabelText('Season')).toBeInTheDocument()
+    expect(screen.getByLabelText('League')).toBeInTheDocument()
+  })
+
+  it('defaults each side to "One of our teams" and shows a team Select', () => {
+    renderMatchForm()
+    expect(screen.getByLabelText('Home team')).toBeInTheDocument()
+    expect(screen.getByLabelText('Away team')).toBeInTheDocument()
+  })
+
+  it('switches the home side to a free-text opponent name field via the toggle', async () => {
+    const user = userEvent.setup()
+    renderMatchForm()
+
+    // Both toggle groups render an "External opponent" button — click the first (Home)'s.
+    const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+    await user.click(externalButtons[0])
+
+    expect(screen.getByLabelText('Home opponent name')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Home team')).not.toBeInTheDocument()
+  })
+
+  it('requires a season, a match date, and a home/away side before submitting', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Season is required')).toBeInTheDocument()
+    expect(screen.getByText('Match date is required')).toBeInTheDocument()
+    expect(screen.getByText('Choose a home team')).toBeInTheDocument()
+    expect(screen.getByText('Choose an away team')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('submits a team-vs-team match with the expected payload shape', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+
+    await user.click(screen.getByLabelText('Home team'))
+    await user.click(await screen.findByRole('option', { name: '1st XI' }))
+
+    await user.click(screen.getByLabelText('Away team'))
+    await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload).toMatchObject({
+      homeTeamId: 'team-1',
+      homeTeamName: null,
+      awayTeamId: 'team-2',
+      awayTeamName: null,
+      leagueId: null,
+      seasonId: 'season-1',
+      venue: null,
+    })
+    expect(payload.matchDate).toEqual(expect.any(String))
+  })
+
+  it('submits an external-opponent away side as a free-text name with no awayTeamId', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+
+    await user.click(screen.getByLabelText('Home team'))
+    await user.click(await screen.findByRole('option', { name: '1st XI' }))
+
+    const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+    await user.click(externalButtons[1])
+    await user.type(screen.getByLabelText('Away opponent name'), 'Riverside Occasionals')
+
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload.awayTeamId).toBeNull()
+    expect(payload.awayTeamName).toEqual('Riverside Occasionals')
+  })
+
+  it('prefills an external opponent name into "external" mode', () => {
+    renderMatchForm({ initialValues: { homeTeamName: 'Riverside Occasionals', seasonId: 'season-1' } })
+
+    expect(screen.getByLabelText('Home opponent name')).toHaveValue('Riverside Occasionals')
+  })
+})
