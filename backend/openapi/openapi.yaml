@@ -221,177 +221,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ClubProfileDto"
-  /api/v1/manage/clubs/{clubId}/contacts:
-    get:
-      tags:
-      - club-contact-controller
-      operationId: list_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ClubContactDto"
-    post:
-      tags:
-      - club-contact-controller
-      operationId: create_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateClubContactRequest"
-        required: true
-      responses:
-        "201":
-          description: Club contact created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubContactDto"
-  /api/v1/manage/clubs/{clubId}/contacts/{contactId}:
-    put:
-      tags:
-      - club-contact-controller
-      operationId: update_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateClubContactRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubContactDto"
-  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/reactivate:
-    post:
-      tags:
-      - club-contact-controller
-      operationId: reactivate_1
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubContactDto"
-  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/deactivate:
-    post:
-      tags:
-      - club-contact-controller
-      operationId: deactivate
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ClubContactDto"
-  /api/v1/manage/clubs/{clubId}/sponsors:
-    get:
-      tags:
-      - sponsor-controller
-      operationId: list_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SponsorDto"
-    post:
-      tags:
-      - sponsor-controller
-      operationId: create_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSponsorRequest"
-        required: true
-      responses:
-        "201":
-          description: Sponsor created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorDto"
   /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}:
     put:
       tags:
@@ -423,113 +252,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SponsorDto"
-  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/reactivate:
-    post:
-      tags:
-      - sponsor-controller
-      operationId: reactivate_1
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorDto"
-  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/deactivate:
-    post:
-      tags:
-      - sponsor-controller
-      operationId: deactivate
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorDto"
-  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts:
-    get:
-      tags:
-      - sponsor-contact-controller
-      operationId: list_4
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SponsorContactDto"
-    post:
-      tags:
-      - sponsor-contact-controller
-      operationId: create_4
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSponsorContactRequest"
-        required: true
-      responses:
-        "201":
-          description: Sponsor contact created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorContactDto"
   /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}:
     put:
       tags:
@@ -567,113 +289,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SponsorContactDto"
-  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/reactivate:
-    post:
-      tags:
-      - sponsor-contact-controller
-      operationId: reactivate_2
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorContactDto"
-  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/deactivate:
-    post:
-      tags:
-      - sponsor-contact-controller
-      operationId: deactivate_1
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SponsorContactDto"
-  /api/v1/manage/clubs/{clubId}/sections:
-    get:
-      tags:
-      - section-controller
-      operationId: list_5
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SectionDto"
-    post:
-      tags:
-      - section-controller
-      operationId: create_5
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSectionRequest"
-        required: true
-      responses:
-        "201":
-          description: Section created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SectionDto"
   /api/v1/manage/clubs/{clubId}/sections/{sectionId}:
     put:
       tags:
@@ -705,215 +320,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SectionDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate:
-    post:
-      tags:
-      - section-controller
-      operationId: deactivate_2
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SectionDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate:
-    post:
-      tags:
-      - section-controller
-      operationId: reactivate_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SectionDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts:
-    get:
-      tags:
-      - section-controller
-      operationId: listContacts
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ClubContactDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/link:
-    post:
-      tags:
-      - section-controller
-      operationId: link
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink:
-    post:
-      tags:
-      - section-controller
-      operationId: unlink
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/teams:
-    get:
-      tags:
-      - team-controller
-      operationId: listByClub
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TeamDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams:
-    get:
-      tags:
-      - team-controller
-      operationId: listBySection
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TeamDto"
-    post:
-      tags:
-      - team-controller
-      operationId: create_6
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateTeamRequest"
-        required: true
-      responses:
-        "201":
-          description: Team created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TeamDto"
   /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}:
     put:
       tags:
@@ -951,11 +357,11 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TeamDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/deactivate:
-    post:
+  /api/v1/manage/clubs/{clubId}/seasons/{seasonId}:
+    put:
       tags:
-      - team-controller
-      operationId: deactivate_2
+      - season-controller
+      operationId: update_7
       parameters:
       - name: clubId
         in: path
@@ -963,114 +369,7 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TeamDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/reactivate:
-    post:
-      tags:
-      - team-controller
-      operationId: reactivate_3
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TeamDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts:
-    get:
-      tags:
-      - team-controller
-      operationId: listContacts
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TeamContactDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/link:
-    post:
-      tags:
-      - team-controller
-      operationId: linkContact
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
+      - name: seasonId
         in: path
         required: true
         schema:
@@ -1080,193 +379,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinkTeamContactRequest"
+              $ref: "#/components/schemas/UpdateSeasonRequest"
         required: true
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/unlink:
-    post:
-      tags:
-      - team-controller
-      operationId: unlinkContact
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors:
-    get:
-      tags:
-      - team-controller
-      operationId: listSponsors
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SponsorDto"
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/link:
-    post:
-      tags:
-      - team-controller
-      operationId: linkSponsor
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/unlink:
-    post:
-      tags:
-      - team-controller
-      operationId: unlinkSponsor
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: teamId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: sponsorId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-  /api/v1/manage/clubs/{clubId}/players:
-    get:
-      tags:
-      - player-controller
-      operationId: list_6
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PlayerDto"
-    post:
-      tags:
-      - player-controller
-      operationId: create_7
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreatePlayerRequest"
-        required: true
-      responses:
-        "201":
-          description: Player created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PlayerDto"
+                $ref: "#/components/schemas/SeasonDto"
   /api/v1/manage/clubs/{clubId}/players/{playerId}:
     put:
       tags:
       - player-controller
-      operationId: update_7
+      operationId: update_8
       parameters:
       - name: clubId
         in: path
@@ -1293,61 +419,11 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerDto"
-  /api/v1/manage/clubs/{clubId}/players/{playerId}/deactivate:
-    post:
-      tags:
-      - player-controller
-      operationId: deactivate_4
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: playerId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PlayerDto"
-  /api/v1/manage/clubs/{clubId}/players/{playerId}/reactivate:
-    post:
-      tags:
-      - player-controller
-      operationId: reactivate_5
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: playerId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PlayerDto"
-  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections:
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}:
     get:
       tags:
-      - player-controller
-      operationId: listSections
+      - match-controller
+      operationId: get_4
       parameters:
       - name: clubId
         in: path
@@ -1355,7 +431,7 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: playerId
+      - name: matchId
         in: path
         required: true
         schema:
@@ -1367,14 +443,11 @@ paths:
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SectionDto"
-  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link:
-    post:
+                $ref: "#/components/schemas/MatchDto"
+    put:
       tags:
-      - player-controller
-      operationId: linkSection
+      - match-controller
+      operationId: update_9
       parameters:
       - name: clubId
         in: path
@@ -1382,26 +455,30 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: playerId
+      - name: matchId
         in: path
         required: true
         schema:
           type: string
           format: uuid
-      - name: sectionId
-        in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchRequest"
         required: true
-        schema:
-          type: string
-          format: uuid
       responses:
         "200":
           description: OK
-  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/unlink:
-    post:
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}:
+    put:
       tags:
-      - player-controller
-      operationId: unlinkSection
+      - match-side-controller
+      operationId: updateSide
       parameters:
       - name: clubId
         in: path
@@ -1409,21 +486,173 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: playerId
+      - name: matchId
         in: path
         required: true
         schema:
           type: string
           format: uuid
-      - name: sectionId
+      - name: sideId
         in: path
         required: true
         schema:
           type: string
           format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchSideRequest"
+        required: true
       responses:
         "200":
           description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}:
+    put:
+      tags:
+      - match-side-controller
+      operationId: updatePlayerRole
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sideId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerProfileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchSidePlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/reorder:
+    put:
+      tags:
+      - match-side-controller
+      operationId: reorderPlayers
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sideId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderMatchSidePlayersRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}:
+    put:
+      tags:
+      - league-controller
+      operationId: update_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}:
+    put:
+      tags:
+      - club-contact-controller
+      operationId: update_11
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
   /api/v1/platform/subscriptions:
     get:
       tags:
@@ -1593,29 +822,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MediaUploadResponse"
-  /api/v1/manage/media:
-    post:
-      tags:
-      - media-controller
-      operationId: uploadManaged
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-              required:
-              - file
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/MediaUploadResponse"
   /api/v1/platform/leads/{id}/status:
     post:
       tags:
@@ -1743,11 +949,1471 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MeAccessDto"
+  /api/v1/manage/media:
+    post:
+      tags:
+      - media-controller
+      operationId: uploadManaged
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MediaUploadResponse"
+  /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/remove:
+    post:
+      tags:
+      - team-squad-controller
+      operationId: remove
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add:
+    post:
+      tags:
+      - team-squad-controller
+      operationId: add
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/sponsors:
+    get:
+      tags:
+      - sponsor-controller
+      operationId: list_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SponsorDto"
+    post:
+      tags:
+      - sponsor-controller
+      operationId: create_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsorRequest"
+        required: true
+      responses:
+        "201":
+          description: Sponsor created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/reactivate:
+    post:
+      tags:
+      - sponsor-controller
+      operationId: reactivate_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/deactivate:
+    post:
+      tags:
+      - sponsor-controller
+      operationId: deactivate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts:
+    get:
+      tags:
+      - sponsor-contact-controller
+      operationId: list_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SponsorContactDto"
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: create_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsorContactRequest"
+        required: true
+      responses:
+        "201":
+          description: Sponsor contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: reactivate_2
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sponsors/{sponsorId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - sponsor-contact-controller
+      operationId: deactivate_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SponsorContactDto"
+  /api/v1/manage/clubs/{clubId}/sections:
+    get:
+      tags:
+      - section-controller
+      operationId: list_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionDto"
+    post:
+      tags:
+      - section-controller
+      operationId: create_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSectionRequest"
+        required: true
+      responses:
+        "201":
+          description: Section created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams:
+    get:
+      tags:
+      - team-controller
+      operationId: listBySection
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamDto"
+    post:
+      tags:
+      - team-controller
+      operationId: create_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+        required: true
+      responses:
+        "201":
+          description: Team created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/unlink:
+    post:
+      tags:
+      - team-controller
+      operationId: unlinkSponsor
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/link:
+    post:
+      tags:
+      - team-controller
+      operationId: linkSponsor
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sponsorId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/reactivate:
+    post:
+      tags:
+      - team-controller
+      operationId: reactivate_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/deactivate:
+    post:
+      tags:
+      - team-controller
+      operationId: deactivate_2
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/unlink:
+    post:
+      tags:
+      - team-controller
+      operationId: unlinkContact
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/link:
+    post:
+      tags:
+      - team-controller
+      operationId: linkContact
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkTeamContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/reactivate:
+    post:
+      tags:
+      - section-controller
+      operationId: reactivate_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/deactivate:
+    post:
+      tags:
+      - section-controller
+      operationId: deactivate_3
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/unlink:
+    post:
+      tags:
+      - section-controller
+      operationId: unlink
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts/{contactId}/link:
+    post:
+      tags:
+      - section-controller
+      operationId: link
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/seasons:
+    get:
+      tags:
+      - season-controller
+      operationId: list_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeasonDto"
+    post:
+      tags:
+      - season-controller
+      operationId: create_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSeasonRequest"
+        required: true
+      responses:
+        "201":
+          description: Season created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SeasonDto"
+  /api/v1/manage/clubs/{clubId}/seasons/{seasonId}/reactivate:
+    post:
+      tags:
+      - season-controller
+      operationId: reactivate_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SeasonDto"
+  /api/v1/manage/clubs/{clubId}/seasons/{seasonId}/deactivate:
+    post:
+      tags:
+      - season-controller
+      operationId: deactivate_4
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SeasonDto"
+  /api/v1/manage/clubs/{clubId}/players:
+    get:
+      tags:
+      - player-controller
+      operationId: list_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerDto"
+    post:
+      tags:
+      - player-controller
+      operationId: create_8
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayerRequest"
+        required: true
+      responses:
+        "201":
+          description: Player created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/unlink:
+    post:
+      tags:
+      - player-controller
+      operationId: unlinkSection
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link:
+    post:
+      tags:
+      - player-controller
+      operationId: linkSection
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/reactivate:
+    post:
+      tags:
+      - player-controller
+      operationId: reactivate_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/deactivate:
+    post:
+      tags:
+      - player-controller
+      operationId: deactivate_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/matches:
+    get:
+      tags:
+      - match-controller
+      operationId: list_8
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageMatchDto"
+    post:
+      tags:
+      - match-controller
+      operationId: create_9
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Match created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides:
+    get:
+      tags:
+      - match-side-controller
+      operationId: list_9
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchSideDto"
+    post:
+      tags:
+      - match-side-controller
+      operationId: createSide
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchSideRequest"
+        required: true
+      responses:
+        "201":
+          description: Match side created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players:
+    post:
+      tags:
+      - match-side-controller
+      operationId: addPlayer
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sideId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMatchSidePlayerRequest"
+        required: true
+      responses:
+        "201":
+          description: Player added to match side
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}/remove:
+    post:
+      tags:
+      - match-side-controller
+      operationId: removePlayer
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sideId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerProfileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/reactivate:
+    post:
+      tags:
+      - match-controller
+      operationId: reactivate_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/deactivate:
+    post:
+      tags:
+      - match-controller
+      operationId: deactivate_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/leagues:
+    get:
+      tags:
+      - league-controller
+      operationId: list_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueDto"
+    post:
+      tags:
+      - league-controller
+      operationId: create_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueRequest"
+        required: true
+      responses:
+        "201":
+          description: League created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/reactivate:
+    post:
+      tags:
+      - league-controller
+      operationId: reactivate_8
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/deactivate:
+    post:
+      tags:
+      - league-controller
+      operationId: deactivate_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/affiliations:
+    get:
+      tags:
+      - league-controller
+      operationId: listAffiliations
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueAffiliationDto"
+    post:
+      tags:
+      - league-controller
+      operationId: createAffiliation
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueAffiliationRequest"
+        required: true
+      responses:
+        "201":
+          description: League affiliation created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueAffiliationDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/affiliations/{affiliationId}/unaffiliate:
+    post:
+      tags:
+      - league-controller
+      operationId: unaffiliate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: affiliationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/contacts:
+    get:
+      tags:
+      - club-contact-controller
+      operationId: list_11
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubContactDto"
+    post:
+      tags:
+      - club-contact-controller
+      operationId: create_11
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubContactRequest"
+        required: true
+      responses:
+        "201":
+          description: Club contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - club-contact-controller
+      operationId: reactivate_9
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - club-contact-controller
+      operationId: deactivate_8
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ClubContactDto"
   /api/v1/leads:
     post:
       tags:
       - lead-controller
-      operationId: create_3
+      operationId: create_12
       requestBody:
         content:
           application/json:
@@ -1786,7 +2452,7 @@ paths:
     get:
       tags:
       - person-controller
-      operationId: list_3
+      operationId: list_12
       parameters:
       - name: search
         in: query
@@ -1821,7 +2487,7 @@ paths:
     get:
       tags:
       - lead-controller
-      operationId: list_4
+      operationId: list_13
       parameters:
       - name: status
         in: query
@@ -1857,6 +2523,180 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/EmailSettingsDto"
+  /api/v1/manage/clubs/{clubId}/teams:
+    get:
+      tags:
+      - team-controller
+      operationId: listByClub
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad:
+    get:
+      tags:
+      - team-squad-controller
+      operationId: list_14
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors:
+    get:
+      tags:
+      - team-controller
+      operationId: listSponsors
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SponsorDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts:
+    get:
+      tags:
+      - team-controller
+      operationId: listContacts
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamContactDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts:
+    get:
+      tags:
+      - section-controller
+      operationId: listContacts_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/sections:
+    get:
+      tags:
+      - player-controller
+      operationId: listSections
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionDto"
 components:
   schemas:
     UpdateSubscriptionRequest:
@@ -2195,78 +3035,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
-    ContactDto:
-      type: object
-      properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-        phone:
-          type: string
-      required:
-      - email
-      - firstName
-      - lastName
-      - phone
-    UpdateClubContactRequest:
-      type: object
-      properties:
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-        photoUrl:
-          type: string
-      required:
-      - contact
-      - role
-    ClubContactDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        clubId:
-          type: string
-          format: uuid
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-        active:
-          type: boolean
-        photoUrl:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        updatedBy:
-          type: string
-          format: uuid
-    CreateClubContactRequest:
-      type: object
-      properties:
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-        photoUrl:
-          type: string
-      required:
-      - contact
-      - role
     UpdateSponsorRequest:
       type: object
       properties:
@@ -2324,27 +3092,22 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateSponsorRequest:
+    ContactDto:
       type: object
       properties:
-        name:
+        firstName:
           type: string
-        website:
+        lastName:
           type: string
         email:
           type: string
         phone:
           type: string
-        logoUrl:
-          type: string
-        bannerUrl:
-          type: string
-        socialLinks:
-          type: array
-          items:
-            $ref: "#/components/schemas/SocialLinkDto"
       required:
-      - name
+      - email
+      - firstName
+      - lastName
+      - phone
     UpdateSponsorContactRequest:
       type: object
       properties:
@@ -2383,18 +3146,6 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateSponsorContactRequest:
-      type: object
-      properties:
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-      required:
-      - contact
-      - role
     UpdateSectionRequest:
       type: object
       properties:
@@ -2449,27 +3200,6 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateSectionRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        parentSectionId:
-          type: string
-          format: uuid
-        minAge:
-          type: integer
-          format: int32
-        maxAge:
-          type: integer
-          format: int32
-        gender:
-          type: string
-          enum:
-          - MALE
-          - FEMALE
-      required:
-      - name
     UpdateTeamRequest:
       type: object
       properties:
@@ -2506,35 +3236,107 @@ components:
         updatedBy:
           type: string
           format: uuid
-    CreateTeamRequest:
+    UpdateSeasonRequest:
       type: object
       properties:
-        name:
+        label:
           type: string
-        logoUrl:
+        startDate:
           type: string
+          format: date
+        endDate:
+          type: string
+          format: date
       required:
-      - name
-    LinkTeamContactRequest:
-      type: object
-      properties:
-        role:
-          type: string
-      required:
-      - role
-    TeamContactDto:
+      - endDate
+      - label
+      - startDate
+    SeasonDto:
       type: object
       properties:
         id:
           type: string
           format: uuid
-        contact:
-          $ref: '#/components/schemas/ClubContactDto'
-        role:
+        clubId:
           type: string
+          format: uuid
+        label:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    UpdatePlayerRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+      required:
+      - firstName
+      - lastName
     PlayerDto:
       type: object
       properties:
@@ -2615,122 +3417,256 @@ components:
         updatedBy:
           type: string
           format: uuid
-    UpdatePlayerRequest:
+    UpdateMatchRequest:
       type: object
       properties:
-        firstName:
+        homeTeamId:
           type: string
-        lastName:
+          format: uuid
+        homeTeamName:
           type: string
-        dateOfBirth:
+        awayTeamId:
           type: string
-          format: date
-        gender:
+          format: uuid
+        awayTeamName:
           type: string
-          enum:
-          - MALE
-          - FEMALE
-        photoUrl:
+        leagueId:
           type: string
-        clubMembershipNumber:
+          format: uuid
+        seasonId:
           type: string
-        medicalAidProvider:
+          format: uuid
+        matchDate:
           type: string
-        medicalAidMemberNumber:
+          format: date-time
+        venue:
           type: string
-        phone:
-          type: string
-        email:
-          type: string
-        altContactName:
-          type: string
-        altContactPhone:
-          type: string
-        battingStance:
-          type: string
-          enum:
-          - RIGHT_HANDED
-          - LEFT_HANDED
-        bowlingArm:
-          type: string
-          enum:
-          - RIGHT_ARM
-          - LEFT_ARM
-        bowlingType:
-          type: string
-          enum:
-          - FAST
-          - FAST_MEDIUM
-          - MEDIUM_FAST
-          - MEDIUM
-          - OFF_BREAK
-          - LEG_BREAK
-          - ORTHODOX_SPIN
-          - WRIST_SPIN
-          - GOOGLY
-        isWicketKeeper:
-          type: boolean
       required:
-      - firstName
-      - lastName
-    CreatePlayerRequest:
+      - matchDate
+      - seasonId
+    MatchDto:
       type: object
       properties:
-        firstName:
+        id:
           type: string
-        lastName:
+          format: uuid
+        clubId:
           type: string
-        dateOfBirth:
+          format: uuid
+        homeTeamId:
+          type: string
+          format: uuid
+        homeTeamName:
+          type: string
+        awayTeamId:
+          type: string
+          format: uuid
+        awayTeamName:
+          type: string
+        leagueId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    UpdateMatchSideRequest:
+      type: object
+      properties:
+        captainPlayerId:
+          type: string
+          format: uuid
+        wicketKeeperPlayerId:
+          type: string
+          format: uuid
+        twelfthManPlayerId:
+          type: string
+          format: uuid
+    MatchSideDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        captainPlayerId:
+          type: string
+          format: uuid
+        wicketKeeperPlayerId:
+          type: string
+          format: uuid
+        twelfthManPlayerId:
+          type: string
+          format: uuid
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSidePlayerDto"
+    MatchSidePlayerDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        battingOrder:
+          type: integer
+          format: int32
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+    UpdateMatchSidePlayerRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+      required:
+      - role
+    ReorderMatchSidePlayersRequest:
+      type: object
+      properties:
+        playerProfileIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - playerProfileIds
+    UpdateLeagueRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        source:
+          type: string
+          enum:
+          - INTERNAL
+          - EXTERNAL
+        maxPlayingXiSize:
+          type: integer
+          format: int32
+        allowSubstitutions:
+          type: boolean
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        ageCutoffDate:
           type: string
           format: date
-        gender:
+      required:
+      - name
+    LeagueDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        source:
           type: string
           enum:
-          - MALE
-          - FEMALE
+          - INTERNAL
+          - EXTERNAL
+        maxPlayingXiSize:
+          type: integer
+          format: int32
+        allowSubstitutions:
+          type: boolean
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        ageCutoffDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+    UpdateClubContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
         photoUrl:
           type: string
-        clubMembershipNumber:
-          type: string
-        medicalAidProvider:
-          type: string
-        medicalAidMemberNumber:
-          type: string
-        phone:
-          type: string
-        email:
-          type: string
-        altContactName:
-          type: string
-        altContactPhone:
-          type: string
-        battingStance:
-          type: string
-          enum:
-          - RIGHT_HANDED
-          - LEFT_HANDED
-        bowlingArm:
-          type: string
-          enum:
-          - RIGHT_ARM
-          - LEFT_ARM
-        bowlingType:
-          type: string
-          enum:
-          - FAST
-          - FAST_MEDIUM
-          - MEDIUM_FAST
-          - MEDIUM
-          - OFF_BREAK
-          - LEG_BREAK
-          - ORTHODOX_SPIN
-          - WRIST_SPIN
-          - GOOGLY
-        isWicketKeeper:
-          type: boolean
       required:
-      - firstName
-      - lastName
+      - contact
+      - role
+    ClubContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        photoUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
     CreateSubscriptionRequest:
       type: object
       properties:
@@ -2925,6 +3861,272 @@ components:
           items:
             type: string
             format: uuid
+    CreateSponsorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        logoUrl:
+          type: string
+        bannerUrl:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
+      required:
+      - name
+    CreateSponsorContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
+    CreateSectionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentSectionId:
+          type: string
+          format: uuid
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+      required:
+      - name
+    CreateTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+      required:
+      - name
+    LinkTeamContactRequest:
+      type: object
+      properties:
+        role:
+          type: string
+      required:
+      - role
+    CreateSeasonRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - endDate
+      - label
+      - startDate
+    CreatePlayerRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+      required:
+      - firstName
+      - lastName
+    CreateMatchRequest:
+      type: object
+      properties:
+        homeTeamId:
+          type: string
+          format: uuid
+        homeTeamName:
+          type: string
+        awayTeamId:
+          type: string
+          format: uuid
+        awayTeamName:
+          type: string
+        leagueId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+      required:
+      - matchDate
+      - seasonId
+    CreateMatchSideRequest:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+      required:
+      - teamId
+    AddMatchSidePlayerRequest:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+      required:
+      - playerProfileId
+      - role
+    CreateLeagueRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        source:
+          type: string
+          enum:
+          - INTERNAL
+          - EXTERNAL
+        maxPlayingXiSize:
+          type: integer
+          format: int32
+        allowSubstitutions:
+          type: boolean
+        minAge:
+          type: integer
+          format: int32
+        maxAge:
+          type: integer
+          format: int32
+        ageCutoffDate:
+          type: string
+          format: date
+      required:
+      - name
+    CreateLeagueAffiliationRequest:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+      required:
+      - seasonId
+      - teamId
+    LeagueAffiliationDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+    CreateClubContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        photoUrl:
+          type: string
+      required:
+      - contact
+      - role
     CreateLeadRequest:
       type: object
       properties:
@@ -3012,9 +4214,9 @@ components:
       properties:
         empty:
           type: boolean
-        unsorted:
-          type: boolean
         sorted:
+          type: boolean
+        unsorted:
           type: boolean
     PageProductDto:
       type: object
@@ -3155,6 +4357,51 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ClubDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    TeamContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ClubContactDto"
+        role:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PageMatchDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchDto"
         number:
           type: integer
           format: int32

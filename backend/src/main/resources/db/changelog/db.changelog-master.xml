@@ -25,5 +25,6 @@
     <include file="db/changelog/v1/018-add-team.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/019-add-team-profile.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/020-add-player.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/021-add-league-management.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
