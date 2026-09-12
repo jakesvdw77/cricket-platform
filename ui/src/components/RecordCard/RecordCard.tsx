@@ -200,7 +200,7 @@ export function RecordCard({
         )}
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2, pt: 0 }}>
+      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0 }}>
         {allSecondaryActions.map((action, index) => (
           <Button
             key={index}

@@ -229,7 +229,7 @@ describe('TeamSheetCommunicationDialog', () => {
         open
         onClose={vi.fn()}
         match={match}
-        sides={[]}
+        sides={[unannouncedSide(homeTeam), unannouncedSide(awayTeam)]}
         sidesLoading
         onPrint={vi.fn().mockResolvedValue(undefined)}
       />,

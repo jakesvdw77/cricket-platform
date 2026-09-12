@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { RecordCard } from './RecordCard'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
@@ -90,6 +91,48 @@ export const WithSecondaryActionAndFeedback: Story = {
       tone: 'success',
     },
   },
+}
+
+// docs/specs/030-team-sheet-communication.md's RecordCard extension — a card carrying both the
+// single secondaryAction slot (Deactivate/Reactivate) and the plural secondaryActions slot
+// (Communicate Team Sheet), same as MatchCard's real usage in MatchList.tsx. Long labels
+// deliberately chosen (three footer actions plus Edit) to exercise CardActions' flexWrap at
+// narrow widths — see the MobileViewport-scoped sibling story below.
+export const WithMultipleSecondaryActions: Story = {
+  args: {
+    title: 'Riverside 1st XI vs Coastal Cricket Club',
+    badge: { label: 'Active', tone: 'positive' },
+    fields: [
+      { label: 'Date & time', value: '9/13/2026, 3:00:00 PM' },
+      { label: 'Venue', value: 'Riverside Oval' },
+    ],
+    editLabel: 'Edit',
+    editTo: '/manage/fixtures/matches/m-1/edit',
+    secondaryAction: {
+      label: 'Deactivate',
+      pendingLabel: 'Deactivating…',
+      pending: false,
+      onClick: () => undefined,
+      icon: <ToggleOffOutlinedIcon fontSize="small" />,
+    },
+    secondaryActions: [
+      {
+        label: 'Communicate Team Sheet',
+        pendingLabel: 'Opening…',
+        pending: false,
+        onClick: () => undefined,
+        icon: <ShareOutlinedIcon fontSize="small" />,
+      },
+    ],
+  },
+}
+
+// Proves the three-footer-action case (finding from 030's standards review) wraps cleanly rather
+// than overflowing at a 375px viewport, per docs/standards/design-system.md's "mobile-friendliness
+// is visible per-component, not discovered on a phone after ship."
+export const WithMultipleSecondaryActionsMobile: Story = {
+  args: WithMultipleSecondaryActions.args,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
 }
 
 // The avatar slot — a photo/logo when the record has one, initials otherwise. Circular for a

@@ -8,7 +8,6 @@ import {
   DialogTitle,
   List,
   ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Stack,
@@ -33,9 +32,11 @@ export interface TeamSheetCommunicationDialogProps {
   match: Match
   // Both resolved sides, always passed in full regardless of the eventually-chosen scope — index
   // 0 is always the home side, index 1 the away side (MatchList/MatchCard's own assembly order).
+  // Typed as a fixed 2-tuple, not TeamSheetSide[], so a future caller that breaks this ordering
+  // (or passes the wrong number of sides) fails to compile rather than silently mis-rendering.
   // This component computes per-side "is this printable" itself, from `match`'s own
   // homeTeamId/awayTeamId plus each side's resolved MatchSide.
-  sides: TeamSheetSide[]
+  sides: [TeamSheetSide, TeamSheetSide]
   // True while the caller's listMatchSides/listSquad queries are in flight.
   sidesLoading: boolean
   // Caller-owned: runs generateTeamSheetPdf + window.open, rethrows on failure so this dialog can
@@ -131,21 +132,24 @@ export function TeamSheetCommunicationDialog({
       <DialogTitle>Communicate Team Sheet</DialogTitle>
       <DialogContent>
         <List disablePadding sx={{ mb: 2 }}>
-          <ListItemButton
-            selected
-            onClick={() => undefined}
+          {/* Not a ListItemButton: with only one option ever enabled, there's nothing to toggle by
+              activating it — a focusable control that no-ops on Enter/Space would be a real
+              keyboard/screen-reader dead end, not a genuine choice. */}
+          <ListItem
+            disablePadding
             sx={{
               borderRadius: 1,
               mb: 1,
+              px: 2,
+              py: 1,
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-              '&.Mui-selected': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08) },
             }}
           >
             <ListItemIcon>
               <PictureAsPdfOutlinedIcon color="primary" />
             </ListItemIcon>
             <ListItemText primary="Print as PDF" secondary="Generate an A4 team sheet, ready to print or save." />
-          </ListItemButton>
+          </ListItem>
 
           <ListItem disablePadding sx={{ opacity: 0.6 }} secondaryAction={<Chip label="Coming soon" size="small" variant="outlined" />}>
             <ListItemIcon sx={{ pl: 2 }}>

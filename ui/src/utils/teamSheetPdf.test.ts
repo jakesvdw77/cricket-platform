@@ -183,6 +183,11 @@ describe('generateTeamSheetPdf', () => {
     expect(texts).toContain('Riverside CC vs Coastal CC')
     expect(texts).toContain(subtitle)
     expect(texts).toContain('TEAM SHEET')
+
+    // homeTeam has a real logoUrl and the fetch/FileReader stubs above succeed, so the real-logo
+    // addImage path (not the initial-letter fallback tile) must be the one that actually runs.
+    expect(addImageSpy).toHaveBeenCalledTimes(1)
+    expect(addImageSpy).toHaveBeenCalledWith('data:image/png;base64,abc', 'PNG', expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number))
   })
 
   it('renders one section per side for the both scope', async () => {
@@ -276,6 +281,30 @@ describe('generateTeamSheetPdf', () => {
 
     const texts = textSpy.mock.calls.map((call) => call[0])
     expect(texts).toContain('Team not yet announced')
+  })
+
+  it('falls back to a readable label, not the raw id, for a player missing from the squad', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const sideWithMissingPlayer: TeamSheetSide = {
+      team: homeTeam,
+      teamName: homeTeam.name,
+      side: {
+        id: 'side-home',
+        matchId: 'match-1',
+        teamId: 'team-home',
+        captainPlayerId: null,
+        wicketKeeperPlayerId: null,
+        twelfthManPlayerId: 'missing-player',
+        players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
+      },
+      squad: [], // deliberately empty — the roster references a player id not present here
+    }
+
+    await generateTeamSheetPdf(match, [sideWithMissingPlayer], subtitle)
+
+    const texts = textSpy.mock.calls.map((call) => call[0])
+    expect(texts).toContain('Unknown player')
+    expect(texts).not.toContain('missing-player')
   })
 
   it('still produces a valid PDF blob URL when the logo fails to load', async () => {

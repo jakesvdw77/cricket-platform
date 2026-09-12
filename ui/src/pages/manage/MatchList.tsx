@@ -134,7 +134,9 @@ function MatchCard({
       (Boolean(match.homeTeamId) && homeSquadQuery.isLoading) ||
       (Boolean(match.awayTeamId) && awaySquadQuery.isLoading))
 
-  const teamSheetSides: TeamSheetSide[] = [
+  // A fixed 2-tuple (home, then away) — TeamSheetCommunicationDialog's own prop type relies on
+  // this exact order/length, per its "index 0 is home, index 1 is away" invariant.
+  const teamSheetSides: [TeamSheetSide, TeamSheetSide] = [
     {
       team: (match.homeTeamId && teamsById.get(match.homeTeamId)) || placeholderTeam(clubId, homeTeamName),
       teamName: homeTeamName,

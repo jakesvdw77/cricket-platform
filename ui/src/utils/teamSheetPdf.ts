@@ -58,8 +58,12 @@ interface RosterEntry {
   isWicketKeeper: boolean
 }
 
-function playerName(player: Player | undefined, fallbackId: string): string {
-  return player ? `${player.firstName} ${player.lastName}` : fallbackId
+// A printed team sheet is a club-admin-to-team-facing artifact, not an internal admin screen — a
+// raw UUID here would be a visible defect, so an unresolved id (a data-integrity edge case; the
+// squad fetch and the MatchSide's own player ids should always agree in practice) falls back to a
+// readable label instead of the id itself.
+function playerName(player: Player | undefined): string {
+  return player ? `${player.firstName} ${player.lastName}` : 'Unknown player'
 }
 
 // Duplicates (deliberately — see docs/plans/030-team-sheet-communication.md's Flag #2) the small
@@ -73,7 +77,7 @@ function resolveRoster(side: TeamSheetSide): RosterEntry[] {
   return [...players]
     .sort((a, b) => a.battingOrder - b.battingOrder)
     .map((entry) => ({
-      name: playerName(squadById.get(entry.playerProfileId), entry.playerProfileId),
+      name: playerName(squadById.get(entry.playerProfileId)),
       battingOrder: entry.battingOrder,
       isCaptain: side.side?.captainPlayerId === entry.playerProfileId,
       isWicketKeeper: side.side?.wicketKeeperPlayerId === entry.playerProfileId,
@@ -86,7 +90,7 @@ function resolveTwelfthMan(side: TeamSheetSide): string | null {
     return null
   }
   const player = side.squad.find((candidate) => candidate.id === twelfthManPlayerId)
-  return playerName(player, twelfthManPlayerId)
+  return playerName(player)
 }
 
 // Builds an A4 portrait team-sheet PDF for the given (already scope-filtered) sides and returns

@@ -145,7 +145,6 @@ export const NeitherSidePrintable: Story = {
 export const Loading: Story = {
   args: {
     ...Default.args,
-    sides: [],
     sidesLoading: true,
   },
 }
