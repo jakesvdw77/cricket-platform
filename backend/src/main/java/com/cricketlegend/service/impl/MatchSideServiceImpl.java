@@ -325,10 +325,12 @@ public class MatchSideServiceImpl implements MatchSideService {
                 .findById(profile.getPersonId())
                 .orElseThrow(() -> new NotFoundException("Person not found: " + profile.getPersonId()));
 
+        String playerName = person.getFirstName() + " " + person.getLastName();
+
         LocalDate dateOfBirth = person.getDateOfBirth();
         if (dateOfBirth == null) {
             throw new PlayerAgeIneligibleException(
-                    "Player " + playerId + " has no recorded date of birth; required for this league's age rule");
+                    playerName + " has no recorded date of birth; required for this league's age rule");
         }
 
         LocalDate cutoffDate = league.getAgeCutoffDate();
@@ -342,13 +344,11 @@ public class MatchSideServiceImpl implements MatchSideService {
         int age = Period.between(dateOfBirth, cutoffDate).getYears();
         if (league.getMinAge() != null && age < league.getMinAge()) {
             throw new PlayerAgeIneligibleException(
-                    "Player " + playerId + " is " + age + ", below this league's minAge of "
-                            + league.getMinAge());
+                    playerName + " is " + age + ", below this league's minAge of " + league.getMinAge());
         }
         if (league.getMaxAge() != null && age > league.getMaxAge()) {
             throw new PlayerAgeIneligibleException(
-                    "Player " + playerId + " is " + age + ", above this league's maxAge of "
-                            + league.getMaxAge());
+                    playerName + " is " + age + ", above this league's maxAge of " + league.getMaxAge());
         }
     }
 
