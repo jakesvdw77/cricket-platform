@@ -1,14 +1,17 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * E2E golden path for docs/specs/029-league-management.md. Per the spec's own Test Plan
- * (End-to-end row) and Acceptance Criteria: log in as a CLUB_ADMIN-provisioned test user, create a
- * league with enforced age restrictions, create a season, affiliate a team into that league for
- * that season, add players to that team's squad for the season, schedule a match against an
- * external opponent with that league/season attached, build the home side's playing XI (add
- * players, reorder, set captain/wicketkeeper/twelfth man), confirm the playing-XI cap blocks a
- * further add once reached, confirm an age-ineligible player is rejected, reload and confirm every
- * change persisted server-side.
+ * E2E golden path for docs/specs/029-league-management.md, extended to also cover
+ * docs/specs/030-team-sheet-communication.md's "Communicate Team Sheet → Print as PDF" flow (per
+ * 030's own Test Plan, which calls for extending this same golden path rather than a second,
+ * parallel one). Per 029's Test Plan (End-to-end row) and Acceptance Criteria: log in as a
+ * CLUB_ADMIN-provisioned test user, create a league with enforced age restrictions, create a
+ * season, affiliate a team into that league for that season, add players to that team's squad for
+ * the season, schedule a match against an external opponent with that league/season attached,
+ * build the home side's playing XI (add players, reorder, set captain/wicketkeeper/twelfth man),
+ * confirm the playing-XI cap blocks a further add once reached, confirm an age-ineligible player
+ * is rejected, reload and confirm every change persisted server-side, then (030) open that same
+ * match's "Communicate Team Sheet" dialog from its card and print a PDF for both sides.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-teams.spec.ts / manager-players.spec.ts:
@@ -338,5 +341,44 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // The cap-disabled state still holds — the age-ineligible player was never added, and the two
     // eligible players added earlier still fill the cap.
     await expect(page.getByRole('combobox', { name: 'Add player' })).toBeDisabled();
+
+    // --- Communicate Team Sheet (docs/specs/030-team-sheet-communication.md): extends this same
+    // golden path per that spec's own Test Plan (End-to-end row) rather than a second, parallel
+    // flow. This match's home side is a real, fully-printable Team (2/2 XI just built above); its
+    // away side is the free-text `awayOpponentName` opponent scheduled earlier — no roster exists
+    // for it, so its own scope option must stay disabled while "Both Teams" stays available.
+
+    await page.getByRole('link', { name: 'Back to Matches' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches$/);
+    await expect(matchCard).toBeVisible();
+
+    await matchCard.getByRole('button', { name: 'Communicate Team Sheet' }).click();
+    const teamSheetDialogHeading = page.getByRole('heading', { name: 'Communicate Team Sheet' });
+    await expect(teamSheetDialogHeading).toBeVisible();
+
+    // Away side is a free-text opponent (no MatchSide/roster to print), so its own scope option
+    // (ToggleButton, labelled with the opponent's free-text name per TeamSheetCommunicationDialog.tsx)
+    // is disabled; "Both Teams" stays enabled because the home side alone is printable.
+    await expect(page.getByRole('button', { name: awayOpponentName })).toBeDisabled();
+    const bothTeamsOption = page.getByRole('button', { name: 'Both Teams' });
+    await expect(bothTeamsOption).toBeEnabled();
+
+    // "Both Teams" is already the dialog's own default scope whenever at least one side is
+    // printable (TeamSheetCommunicationDialog.tsx's defaultScope) — select it explicitly anyway so
+    // this assertion doesn't silently depend on that default never changing.
+    await bothTeamsOption.click();
+
+    // window.open(url, '_blank') (MatchCard's handlePrint, ui/src/pages/manage/MatchList.tsx)
+    // surfaces as a new Page on this same browser context in Playwright — start waiting for it
+    // before the click that triggers it.
+    const teamSheetPopupPromise = page.context().waitForEvent('page');
+    await page.getByRole('button', { name: 'Print Both Teams' }).click();
+    const teamSheetPopup = await teamSheetPopupPromise;
+    await teamSheetPopup.waitForLoadState('domcontentloaded');
+    expect(teamSheetPopup.url()).toMatch(/^blob:/);
+
+    // TeamSheetCommunicationDialog.tsx's handlePrint calls onClose() once onPrint resolves
+    // successfully — confirms the dialog itself didn't stay open after a successful print.
+    await expect(teamSheetDialogHeading).not.toBeVisible();
   });
 });
