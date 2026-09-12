@@ -301,10 +301,19 @@ public class MatchSideServiceImpl implements MatchSideService {
     private void requireSquadMembership(UUID teamId, UUID seasonId, UUID playerId) {
         if (!teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
                 teamId, seasonId, playerId)) {
-            throw new PlayerNotInSquadException(
-                    "Player " + playerId + " is not in team " + teamId + "'s squad for season "
-                            + seasonId);
+            throw new PlayerNotInSquadException(playerName(playerId) + " is not in this team's squad for this season");
         }
+    }
+
+    // Best-effort display name for a user-facing exception message — falls back to the raw id
+    // if the player/person row can't be resolved (shouldn't happen on the calling paths here,
+    // since playerId is always already known to reference a real player by this point).
+    private String playerName(UUID playerId) {
+        return playerProfileRepository
+                .findById(playerId)
+                .flatMap(profile -> personRepository.findById(profile.getPersonId()))
+                .map(person -> person.getFirstName() + " " + person.getLastName())
+                .orElse("Player " + playerId);
     }
 
     private void requireAgeEligible(Match match, UUID playerId) {
