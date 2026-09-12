@@ -66,6 +66,12 @@ export interface RecordCardProps {
   onEdit?: () => void
   editTo?: string
   secondaryAction?: RecordCardSecondaryAction
+  // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
+  // card carrying both Deactivate/Reactivate (secondaryAction) and "Communicate Team Sheet"
+  // (docs/specs/030-team-sheet-communication.md). Rendered after `secondaryAction` (if both are
+  // present) and before Edit, using the exact same Button markup/pending behaviour. `secondaryAction`
+  // itself stays byte-for-byte unchanged so every existing single-action call site keeps compiling.
+  secondaryActions?: RecordCardSecondaryAction[]
   feedback?: RecordCardFeedback | null
 }
 
@@ -90,8 +96,11 @@ export function RecordCard({
   onEdit,
   editTo,
   secondaryAction,
+  secondaryActions,
   feedback,
 }: RecordCardProps) {
+  const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
+
   return (
     <MuiCard variant="outlined" sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05) }}>
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -192,17 +201,18 @@ export function RecordCard({
       </CardContent>
 
       <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2, pt: 0 }}>
-        {secondaryAction && (
+        {allSecondaryActions.map((action, index) => (
           <Button
+            key={index}
             variant="ghost"
             size="sm"
-            disabled={secondaryAction.pending}
-            onClick={secondaryAction.onClick}
-            startIcon={secondaryAction.icon}
+            disabled={action.pending}
+            onClick={action.onClick}
+            startIcon={action.icon}
           >
-            {secondaryAction.pending ? secondaryAction.pendingLabel : secondaryAction.label}
+            {action.pending ? action.pendingLabel : action.label}
           </Button>
-        )}
+        ))}
         {editTo ? (
           <MuiButton
             component={RouterLink}

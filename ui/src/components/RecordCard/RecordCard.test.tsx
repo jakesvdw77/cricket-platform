@@ -198,6 +198,51 @@ describe('RecordCard', () => {
     expect(img).toHaveAttribute('src', 'https://example.com/logo.png')
   })
 
+  // docs/specs/030-team-sheet-communication.md — secondaryActions is an ordered-list generalization
+  // of the existing single secondaryAction slot, additive and rendered alongside it.
+  it('renders every secondaryActions entry in order, alongside an existing secondaryAction', () => {
+    render(
+      <RecordCard
+        title="Riverside vs Coastal"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        secondaryAction={{ label: 'Deactivate', pendingLabel: 'Deactivating…', pending: false, onClick: vi.fn() }}
+        secondaryActions={[
+          { label: 'Communicate Team Sheet', pendingLabel: 'Opening…', pending: false, onClick: vi.fn() },
+          { label: 'Duplicate Match', pendingLabel: 'Duplicating…', pending: false, onClick: vi.fn() },
+        ]}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button').map((button) => button.textContent)
+    const deactivateIndex = buttons.findIndex((text) => text === 'Deactivate')
+    const communicateIndex = buttons.findIndex((text) => text === 'Communicate Team Sheet')
+    const duplicateIndex = buttons.findIndex((text) => text === 'Duplicate Match')
+    const editIndex = buttons.findIndex((text) => text === 'Edit')
+
+    expect(deactivateIndex).toBeGreaterThanOrEqual(0)
+    expect(communicateIndex).toBeGreaterThan(deactivateIndex)
+    expect(duplicateIndex).toBeGreaterThan(communicateIndex)
+    expect(editIndex).toBeGreaterThan(duplicateIndex)
+  })
+
+  it('renders secondaryActions correctly with no secondaryAction passed at all', () => {
+    render(
+      <RecordCard
+        title="Riverside vs Coastal"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        secondaryActions={[
+          { label: 'Communicate Team Sheet', pendingLabel: 'Opening…', pending: false, onClick: vi.fn() },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Communicate Team Sheet' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+  })
+
   it('renders startIcon elements on the Edit and secondaryAction buttons', () => {
     render(
       <RecordCard
