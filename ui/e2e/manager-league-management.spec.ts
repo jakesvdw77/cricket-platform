@@ -1,0 +1,342 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * E2E golden path for docs/specs/029-league-management.md. Per the spec's own Test Plan
+ * (End-to-end row) and Acceptance Criteria: log in as a CLUB_ADMIN-provisioned test user, create a
+ * league with enforced age restrictions, create a season, affiliate a team into that league for
+ * that season, add players to that team's squad for the season, schedule a match against an
+ * external opponent with that league/season attached, build the home side's playing XI (add
+ * players, reorder, set captain/wicketkeeper/twelfth man), confirm the playing-XI cap blocks a
+ * further add once reached, confirm an age-ineligible player is rejected, reload and confirm every
+ * change persisted server-side.
+ *
+ * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
+ * — start all of these before running, same as ui/e2e/manager-teams.spec.ts / manager-players.spec.ts:
+ *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 8082)
+ *   - frontend: `cd ui && npm run dev` (port 5173)
+ *   - Keycloak: `auth.localhost:8180`, realm `cricketlegend`, client `cricketlegend`
+ *     (docs/specs/005-admin-login.md's Implementation-time addendum)
+ *
+ * PREREQUISITE: this reuses the exact same CLUB_ADMIN test account as
+ * ui/e2e/manager-teams.spec.ts / manager-players.spec.ts (see either file's own PREREQUISITE
+ * comment, and project memory reference_smoketest_club_admin.md) — provisioned entirely out of
+ * band, no in-repo seeding. Provide the same three env vars, no defaults:
+ *   export E2E_CLUB_ADMIN_USERNAME=smoketest-club-admin
+ *   export E2E_CLUB_ADMIN_PASSWORD='SmokeTest123!'
+ *   export E2E_CLUB_ADMIN_CLUB_ID=<that club's id>
+ *
+ * NOT run in CI (matching every other Keycloak-dependent spec in this repo, e.g.
+ * manager-teams.spec.ts) — `.github/workflows/ci.yml`'s `e2e-smoke` job has no Keycloak. Skips
+ * itself whenever process.env.CI is set rather than failing that job. Per this spec's own Rollout
+ * Notes, this is deliberate — same precedent as every prior /manage spec's E2E tier.
+ */
+
+const ROOT_DOMAIN = process.env.E2E_ROOT_DOMAIN ?? 'localhost:5173';
+const CLUB_ADMIN_USERNAME = process.env.E2E_CLUB_ADMIN_USERNAME;
+const CLUB_ADMIN_PASSWORD = process.env.E2E_CLUB_ADMIN_PASSWORD;
+const CLUB_ADMIN_CLUB_ID = process.env.E2E_CLUB_ADMIN_CLUB_ID;
+
+async function completeKeycloakLogin(page: import('@playwright/test').Page) {
+  // Keycloak's own login form — not part of this app, so no shared component/selector to reuse
+  // (same helper shape as manager-teams.spec.ts's completeKeycloakLogin).
+  await page.getByLabel('Username or email').fill(CLUB_ADMIN_USERNAME as string);
+  await page.getByLabel('Password', { exact: true }).fill(CLUB_ADMIN_PASSWORD as string);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+}
+
+async function loginAsClubAdmin(page: import('@playwright/test').Page) {
+  await page.goto(`http://${ROOT_DOMAIN}/login`);
+  await completeKeycloakLogin(page);
+}
+
+// Adds one top-level section via Club Structure's tree editor, renames it to `name`, and leaves it
+// selected (auto-selected on create, per SectionTreeEditor) — byte-for-byte
+// manager-teams.spec.ts's own addTopLevelSection helper (no shared e2e helper module exists in
+// this repo — every spec keeps its own copy). Races the two possible end states of the tree
+// (first-run empty vs. a tree already exists from prior manual/e2e runs).
+async function addTopLevelSection(page: import('@playwright/test').Page, name: string) {
+  const startBlankButton = page.getByRole('button', { name: 'Start blank' });
+  const addTopLevelButton = page.getByRole('button', { name: /add top-level section/i });
+  await expect(startBlankButton.or(addTopLevelButton)).toBeVisible();
+  if (await startBlankButton.isVisible()) {
+    await startBlankButton.click();
+  }
+
+  await addTopLevelButton.click();
+  const nameField = page.getByRole('textbox', { name: 'Name', exact: true });
+  await expect(nameField).toHaveValue('New section');
+  await nameField.fill(name);
+  await nameField.blur();
+  await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+}
+
+// Opens PlayingXiBuilder's "Add player" Autocomplete, picks `playerName`, sets the role via the
+// add-row's own "Role" select (the LAST "Role"-labelled control in DOM order — every already-added
+// XI row renders its own "Role" select first, per PlayingXiBuilder.tsx's own JSX order: the ordered
+// rows Stack, then the add controls), then submits.
+async function addPlayerToXi(
+  page: import('@playwright/test').Page,
+  playerName: string,
+  role: 'Batsman' | 'Bowler' | 'All-rounder',
+) {
+  await page.getByRole('combobox', { name: 'Add player' }).click();
+  await page.getByRole('option', { name: playerName, exact: true }).click();
+  await page.getByLabel('Role').last().click();
+  await page.getByRole('option', { name: role, exact: true }).click();
+  await page.getByRole('button', { name: 'Add player' }).click();
+}
+
+test.describe('League Management golden path (029-league-management.md)', () => {
+  test.beforeEach(() => {
+    test.skip(!!process.env.CI, 'requires local Keycloak — not wired into CI yet, see docs/plans/005-admin-login.md Flag #2');
+    test.skip(
+      !CLUB_ADMIN_USERNAME || !CLUB_ADMIN_PASSWORD || !CLUB_ADMIN_CLUB_ID,
+      'requires E2E_CLUB_ADMIN_USERNAME / E2E_CLUB_ADMIN_PASSWORD / E2E_CLUB_ADMIN_CLUB_ID — no default CLUB_ADMIN fixture exists in this repo, see this file\'s PREREQUISITE comment',
+    );
+  });
+
+  test('club admin builds a league, season, affiliation, squad, match, and playing XI end to end, with the cap and age-eligibility rules enforced, and every change persists', async ({
+    page,
+  }) => {
+    // Date.now() alone can collide across projects (desktop-chromium/mobile-chromium run in
+    // parallel workers and can land in the same millisecond) — appending a random component
+    // avoids that, per manager-sponsor-contacts.spec.ts's own fix for the same issue.
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sectionName = `E2E League Section ${uniqueSuffix}`;
+    const teamName = `E2E League Team ${uniqueSuffix}`;
+    const leagueName = `E2E Vets League ${uniqueSuffix}`;
+    const seasonLabel = `E2E Season ${uniqueSuffix}`;
+    const awayOpponentName = `E2E Occasionals ${uniqueSuffix}`;
+    const venue = `E2E Ground ${uniqueSuffix}`;
+
+    const eligible1FullName = `AmaraOne E2ELeague${uniqueSuffix}`;
+    const eligible2FullName = `AmaraTwo E2ELeague${uniqueSuffix}`;
+    const eligible3FullName = `AmaraThree E2ELeague${uniqueSuffix}`;
+    const ineligibleFullName = `AmaraYoung E2ELeague${uniqueSuffix}`;
+
+    // Every "eligible" DOB uses 1 January so the birthday has always already passed by the time
+    // this test runs later in the year — a clean, unambiguous age as of the league's own age
+    // cutoff date (set to today, below), regardless of exactly which September/October/etc. day
+    // this actually runs on.
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const todayIso = today.toISOString().slice(0, 10);
+    const seasonStart = `${currentYear}-01-01`;
+    const seasonEnd = `${currentYear}-12-31`;
+    const eligible1Dob = `${currentYear - 30}-01-01`;
+    const eligible2Dob = `${currentYear - 40}-01-01`;
+    const eligible3Dob = `${currentYear - 25}-01-01`;
+    const ineligibleDob = `${currentYear - 10}-01-01`;
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const matchDateTimeLocal = `${tomorrow.toISOString().slice(0, 10)}T14:00`;
+
+    await loginAsClubAdmin(page);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await expect(page.getByText('Not authorized')).not.toBeVisible();
+
+    // --- Team: a section + one team, to affiliate into the league and build a squad for ---
+
+    await page.getByRole('link', { name: 'Club Structure' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections$/);
+    await addTopLevelSection(page, sectionName);
+    await page.getByRole('link', { name: 'Manage Teams' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams$/);
+    await page.getByRole('button', { name: 'Add Team' }).click();
+    await page.getByLabel('Name').fill(teamName);
+    await page.getByRole('button', { name: 'Create team' }).click();
+    await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
+
+    // --- League: create with enforced age restrictions (minAge/maxAge/ageCutoffDate) ---
+
+    await page.goto(`http://${ROOT_DOMAIN}/manage`);
+    await page.getByRole('link', { name: 'Fixtures & Results' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures$/);
+    await page.getByRole('link', { name: 'Leagues' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/leagues$/);
+    await page.getByRole('button', { name: 'Add League' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/new$/);
+    await page.getByLabel('Name').fill(leagueName);
+    await page.getByLabel('Playing XI size').fill('2');
+    await page.getByLabel('Min age').fill('18');
+    await page.getByLabel('Max age').fill('60');
+    await page.getByLabel('Age cutoff date').fill(todayIso);
+    await page.getByRole('button', { name: 'Create league' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/leagues$/);
+    const leagueCard = page.locator('.MuiCard-root').filter({ hasText: leagueName });
+    await expect(leagueCard).toBeVisible();
+    await expect(leagueCard.getByText('Playing XI size')).toBeVisible();
+
+    // --- Season: a single season spanning today, so it's auto-selected everywhere below ---
+
+    await page.getByRole('link', { name: 'Back to Fixtures & Results' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures$/);
+    await page.getByRole('link', { name: 'Seasons' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/seasons$/);
+    await page.getByRole('button', { name: 'Add Season' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/seasons\/new$/);
+    await page.getByLabel('Label').fill(seasonLabel);
+    await page.getByLabel('Start date').fill(seasonStart);
+    await page.getByLabel('End date').fill(seasonEnd);
+    await page.getByRole('button', { name: 'Create season' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/seasons$/);
+    await expect(page.locator('.MuiCard-root').filter({ hasText: seasonLabel })).toBeVisible();
+
+    // --- Affiliation: enter the league, affiliate the team for this season ---
+
+    await page.getByRole('link', { name: 'Back to Fixtures & Results' }).click();
+    await page.getByRole('link', { name: 'Leagues' }).click();
+    await leagueCard.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/.+\/edit$/);
+    await page.getByRole('tab', { name: 'Affiliations' }).click();
+    await page.getByRole('button', { name: 'Add team' }).click();
+    await page.getByRole('combobox', { name: 'Search teams' }).click();
+    await page.getByRole('option', { name: teamName, exact: true }).click();
+    await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
+
+    // --- Players: four squad candidates — three age-eligible, one deliberately too young ---
+
+    await page.goto(`http://${ROOT_DOMAIN}/manage`);
+    await page.getByRole('link', { name: 'Players' }).click();
+    await expect(page).toHaveURL(/\/manage\/players$/);
+
+    for (const [fullName, dob] of [
+      [eligible1FullName, eligible1Dob],
+      [eligible2FullName, eligible2Dob],
+      [eligible3FullName, eligible3Dob],
+      [ineligibleFullName, ineligibleDob],
+    ] as const) {
+      const [firstName, lastName] = fullName.split(' ');
+      await page.getByRole('button', { name: 'Add Player' }).click();
+      await expect(page).toHaveURL(/\/manage\/players\/new$/);
+      await page.getByLabel('First name').fill(firstName);
+      await page.getByLabel('Last name').fill(lastName);
+      await page.getByLabel('Date of birth').fill(dob);
+      await page.getByRole('button', { name: 'Create player' }).click();
+      await expect(page).toHaveURL(/\/manage\/players$/);
+      await expect(page.locator('.MuiCard-root').filter({ hasText: fullName })).toBeVisible();
+    }
+
+    // --- Squad: build the team's squad for this season with all four players ---
+
+    await page.goto(`http://${ROOT_DOMAIN}/manage`);
+    await page.getByRole('link', { name: 'Club Structure' }).click();
+    await page.getByRole('button', { name: sectionName, exact: true }).click();
+    await page.getByRole('link', { name: 'Manage Teams' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams$/);
+    await page.locator('.MuiCard-root').filter({ hasText: teamName }).getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/.+\/edit$/);
+    await page.getByRole('tab', { name: 'Squad' }).click();
+
+    for (const fullName of [eligible1FullName, eligible2FullName, eligible3FullName, ineligibleFullName]) {
+      await page.getByRole('button', { name: 'Add player' }).click();
+      await page.getByRole('combobox', { name: 'Search players' }).click();
+      await page.getByRole('option', { name: fullName, exact: true }).click();
+      await expect(page.getByText(fullName, { exact: true })).toBeVisible();
+    }
+
+    // --- Match: schedule against an external (free-text) opponent, with the league/season attached ---
+
+    await page.goto(`http://${ROOT_DOMAIN}/manage`);
+    await page.getByRole('link', { name: 'Fixtures & Results' }).click();
+    await page.getByRole('link', { name: 'Matches' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches$/);
+    await page.getByRole('button', { name: 'Add Match' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches\/new$/);
+
+    await page.getByLabel('Season').click();
+    await page.getByRole('option', { name: seasonLabel, exact: true }).click();
+    await page.getByLabel('League').click();
+    await page.getByRole('option', { name: leagueName, exact: true }).click();
+    await page.getByLabel('Match date & time').fill(matchDateTimeLocal);
+    await page.getByLabel('Venue').fill(venue);
+
+    // Home side defaults to "One of our teams" already — just pick this club's own team.
+    await page.getByLabel('Home team').click();
+    await page.getByRole('option', { name: teamName, exact: true }).click();
+
+    // Away side: toggle to "External opponent" — the SECOND such toggle button in DOM order
+    // (Home side's own identical-labelled toggle button renders first, per MatchForm.tsx's own
+    // Home-side-before-Away-side JSX order); Home side is left in its default "team" mode.
+    await page.getByRole('button', { name: 'External opponent' }).nth(1).click();
+    await page.getByLabel('Away opponent name').fill(awayOpponentName);
+
+    await page.getByRole('button', { name: 'Create match' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches$/);
+
+    const matchTitle = `${teamName} vs ${awayOpponentName}`;
+    const matchCard = page.locator('.MuiCard-root').filter({ hasText: matchTitle });
+    await expect(matchCard).toBeVisible();
+
+    // --- Playing XI: open the match, build the home side's XI ---
+
+    await matchCard.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches\/.+\/edit$/);
+    await page.getByRole('tab', { name: 'Home XI' }).click();
+    await expect(page.getByText('0 / 2')).toBeVisible();
+
+    // Add the first eligible player — succeeds, cap not yet reached.
+    await addPlayerToXi(page, eligible1FullName, 'Batsman');
+    await expect(page.getByText('1 / 2')).toBeVisible();
+
+    // Attempt to add the age-ineligible player — blocked server-side (below the league's own
+    // minAge as of its ageCutoffDate), surfaced inline rather than silently failing. The XI count
+    // stays unchanged.
+    await page.getByRole('combobox', { name: 'Add player' }).click();
+    await page.getByRole('option', { name: ineligibleFullName, exact: true }).click();
+    await page.getByRole('button', { name: 'Add player' }).click();
+    await expect(page.getByRole('alert')).toContainText('minAge');
+    await expect(page.getByText('1 / 2')).toBeVisible();
+
+    // Add the second eligible player — reaches the league's own configured cap of 2.
+    await addPlayerToXi(page, eligible2FullName, 'Bowler');
+    await expect(page.getByText('2 / 2')).toBeVisible();
+
+    // Attempting to exceed the cap is blocked at the UI itself — the add control disables outright
+    // once the cap is reached, rather than allowing a doomed request.
+    await expect(page.getByText(/playing XI is full/i)).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Add player' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add player' })).toBeDisabled();
+
+    // Reorder: move the second-added player to the top of the batting order.
+    await page.getByRole('button', { name: `Move ${eligible2FullName} up` }).click();
+
+    // Captain, wicketkeeper (both drawn from the ordered XI), and twelfth man (drawn from the
+    // squad but NOT counted against the cap, so the third eligible player — never added to the
+    // XI — is a valid choice here).
+    await page.getByLabel('Captain').click();
+    await page.getByRole('option', { name: eligible2FullName, exact: true }).click();
+    await page.getByLabel('Wicketkeeper').click();
+    await page.getByRole('option', { name: eligible1FullName, exact: true }).click();
+    await page.getByLabel('Twelfth man').click();
+    await page.getByRole('option', { name: eligible3FullName, exact: true }).click();
+
+    await expect(page.getByText('C', { exact: true })).toBeVisible();
+    await expect(page.getByText('WK', { exact: true })).toBeVisible();
+
+    // --- Reload — every change persisted server-side, not just in client state ---
+
+    await page.reload();
+    await page.getByRole('tab', { name: 'Home XI' }).click();
+    await expect(page.getByText('2 / 2')).toBeVisible();
+
+    // Batting order persisted: eligible2 (moved up) leads, eligible1 follows — proven via the
+    // reorder IconButtons' own disabled state (the first row's "up" is disabled, the last row's
+    // "down" is disabled) rather than bare name text, since eligible1/eligible2's names are each
+    // also independently rendered a second time as the Wicketkeeper/Captain selects' own display
+    // value below, which would otherwise make a plain getByText(name) ambiguous (strict-mode
+    // violation).
+    await expect(page.getByRole('button', { name: `Move ${eligible2FullName} up` })).toBeDisabled();
+    await expect(page.getByRole('button', { name: `Move ${eligible1FullName} down` })).toBeDisabled();
+
+    // Captain/keeper/twelfth-man selections persisted.
+    await expect(page.getByLabel('Captain')).toHaveText(eligible2FullName);
+    await expect(page.getByLabel('Wicketkeeper')).toHaveText(eligible1FullName);
+    await expect(page.getByLabel('Twelfth man')).toHaveText(eligible3FullName);
+    await expect(page.getByText('C', { exact: true })).toBeVisible();
+    await expect(page.getByText('WK', { exact: true })).toBeVisible();
+
+    // The cap-disabled state still holds — the age-ineligible player was never added, and the two
+    // eligible players added earlier still fill the cap.
+    await expect(page.getByRole('combobox', { name: 'Add player' })).toBeDisabled();
+  });
+});
