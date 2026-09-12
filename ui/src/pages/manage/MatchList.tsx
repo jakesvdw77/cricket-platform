@@ -5,12 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { TeamSheetCommunicationDialog } from '../../components/TeamSheetCommunicationDialog'
+import type { TeamSheetPrintScope } from '../../components/TeamSheetCommunicationDialog'
 import { listMatches, deactivateMatch, reactivateMatch } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
@@ -19,7 +22,11 @@ import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
+import { listMatchSides } from '../../api/matchSideApi'
+import { listSquad } from '../../api/teamSquadApi'
 import { matchFields } from '../../utils/matchRecordFields'
+import { generateTeamSheetPdf } from '../../utils/teamSheetPdf'
+import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 
 const SORT_OPTIONS = [
   { value: 'matchDate,desc', label: 'Match date (newest first)' },
@@ -42,6 +49,23 @@ function badgeFor(match: Match): RecordCardBadge | undefined {
   return undefined
 }
 
+// A lightweight stand-in Team for a free-text opponent side (no real Team record exists) — only
+// `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by teamSheetPdf.ts/
+// TeamSheetCommunicationDialog, both of which prefer `teamName` for display anyway.
+function placeholderTeam(clubId: string, name: string): Team {
+  return {
+    id: '',
+    clubId,
+    sectionId: '',
+    name,
+    logoUrl: null,
+    active: true,
+    createdAt: '',
+    updatedAt: '',
+    updatedBy: null,
+  }
+}
+
 // One RecordCard per match, each with its own deactivate/reactivate mutation — mirrors
 // SponsorList.tsx's SponsorCard pattern, so one card's pending state never leaks onto another's.
 function MatchCard({
@@ -60,6 +84,7 @@ function MatchCard({
   editTo: string
 }) {
   const queryClient = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
 
@@ -74,24 +99,102 @@ function MatchCard({
   })
 
   const toggle = match.active ? deactivate : reactivate
-  const title = `${sideName(match.homeTeamId, match.homeTeamName, teamsById)} vs ${sideName(match.awayTeamId, match.awayTeamName, teamsById)}`
+  const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
+  const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
+  const title = `${homeTeamName} vs ${awayTeamName}`
+
+  // docs/specs/030-team-sheet-communication.md — "Communicate Team Sheet" data-fetching lives
+  // here (the host page), not inside TeamSheetCommunicationDialog itself, matching this
+  // codebase's existing LinkExistingRecordDialog/CreateAndLinkRecordDialog convention of a
+  // presentational dialog fed by the caller's own React Query state. Every query is
+  // `enabled: dialogOpen` so nothing fires until the admin actually opens the dialog.
+  const sidesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', match.id, 'sides'],
+    queryFn: () => listMatchSides(clubId, match.id),
+    enabled: dialogOpen,
+  })
+
+  // Same query-key shape as MatchFormPage.tsx's MatchSideTab, so both share one cache entry per
+  // team/season squad rather than each maintaining its own copy.
+  const homeSquadQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', match.homeTeamId as string, 'seasons', match.seasonId, 'squad'],
+    queryFn: () => listSquad(clubId, match.homeTeamId as string, match.seasonId),
+    enabled: dialogOpen && Boolean(match.homeTeamId),
+  })
+
+  const awaySquadQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', match.awayTeamId as string, 'seasons', match.seasonId, 'squad'],
+    queryFn: () => listSquad(clubId, match.awayTeamId as string, match.seasonId),
+    enabled: dialogOpen && Boolean(match.awayTeamId),
+  })
+
+  const sidesLoading =
+    dialogOpen &&
+    (sidesQuery.isLoading ||
+      (Boolean(match.homeTeamId) && homeSquadQuery.isLoading) ||
+      (Boolean(match.awayTeamId) && awaySquadQuery.isLoading))
+
+  const teamSheetSides: TeamSheetSide[] = [
+    {
+      team: (match.homeTeamId && teamsById.get(match.homeTeamId)) || placeholderTeam(clubId, homeTeamName),
+      teamName: homeTeamName,
+      side: sidesQuery.data?.find((side) => side.teamId === match.homeTeamId),
+      squad: homeSquadQuery.data ?? [],
+    },
+    {
+      team: (match.awayTeamId && teamsById.get(match.awayTeamId)) || placeholderTeam(clubId, awayTeamName),
+      teamName: awayTeamName,
+      side: sidesQuery.data?.find((side) => side.teamId === match.awayTeamId),
+      squad: awaySquadQuery.data ?? [],
+    },
+  ]
+
+  const subtitle = matchFields(match, leaguesById, seasonsById)
+    .map((field) => String(field.value))
+    .join(' · ')
+
+  const handlePrint = async (scope: TeamSheetPrintScope) => {
+    const filteredSides =
+      scope === 'both' ? teamSheetSides : scope === 'home' ? [teamSheetSides[0]] : [teamSheetSides[1]]
+    const url = await generateTeamSheetPdf(match, filteredSides, subtitle)
+    window.open(url, '_blank')
+  }
 
   return (
-    <RecordCard
-      title={title}
-      avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-      badge={badgeFor(match)}
-      fields={matchFields(match, leaguesById, seasonsById)}
-      editLabel="Edit"
-      editTo={editTo}
-      secondaryAction={{
-        label: match.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: match.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: match.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
-    />
+    <>
+      <RecordCard
+        title={title}
+        avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+        badge={badgeFor(match)}
+        fields={matchFields(match, leaguesById, seasonsById)}
+        editLabel="Edit"
+        editTo={editTo}
+        secondaryAction={{
+          label: match.active ? 'Deactivate' : 'Reactivate',
+          pendingLabel: match.active ? 'Deactivating…' : 'Reactivating…',
+          pending: toggle.isPending,
+          onClick: () => toggle.mutate(),
+          icon: match.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
+        }}
+        secondaryActions={[
+          {
+            label: 'Communicate Team Sheet',
+            pendingLabel: 'Opening…',
+            pending: false,
+            onClick: () => setDialogOpen(true),
+            icon: <ShareOutlinedIcon fontSize="small" />,
+          },
+        ]}
+      />
+      <TeamSheetCommunicationDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        match={match}
+        sides={teamSheetSides}
+        sidesLoading={Boolean(sidesLoading)}
+        onPrint={handlePrint}
+      />
+    </>
   )
 }
 
