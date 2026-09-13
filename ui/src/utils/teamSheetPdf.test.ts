@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Match } from '../api/matchApi'
 import type { MatchSide } from '../api/matchSideApi'
 import type { Team } from '../api/teamApi'
-import type { Player } from '../api/playerApi'
+import type { SquadMember } from '../api/teamSquadApi'
 
 // jsPDF produces binary PDF output, so — per docs/standards/testing.md's guidance for a
 // third-party drawing library with no existing mocking precedent in this repo — this test asserts
@@ -78,10 +78,19 @@ const awayTeam: Team = {
   updatedBy: null,
 }
 
-function makePlayer(id: string, firstName: string, lastName: string): Player {
+// `id` (the TeamSquadMember row's own id) is deliberately distinct from `playerProfileId`
+// (docs/specs/031-jersey-numbers.md) — resolveRoster/resolveTwelfthMan must join on
+// playerProfileId, not `id`; a fixture reusing the same value for both would hide that bug.
+function makeSquadMember(
+  playerProfileId: string,
+  firstName: string,
+  lastName: string,
+  squadJerseyNumber: number | null = null,
+): SquadMember {
   return {
-    id,
-    personId: id,
+    id: `squad-row-${playerProfileId}`,
+    playerProfileId,
+    personId: playerProfileId,
     clubId: 'club-1',
     firstName,
     lastName,
@@ -101,15 +110,17 @@ function makePlayer(id: string, firstName: string, lastName: string): Player {
     isWicketKeeper: false,
     active: true,
     sectionIds: [],
+    jerseyNumber: null,
+    squadJerseyNumber,
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
   }
 }
 
-const p1 = makePlayer('p1', 'John', 'Smith')
-const p2 = makePlayer('p2', 'Amit', 'Patel')
-const p3 = makePlayer('p3', 'Sipho', 'Ndlovu')
+const p1 = makeSquadMember('p1', 'John', 'Smith')
+const p2 = makeSquadMember('p2', 'Amit', 'Patel')
+const p3 = makeSquadMember('p3', 'Sipho', 'Ndlovu')
 
 const homeSide: MatchSide = {
   id: 'side-home',
@@ -243,6 +254,31 @@ describe('generateTeamSheetPdf', () => {
     const texts = textSpy.mock.calls.map((call) => call[0])
     expect(texts).toContain('John Smith (C)')
     expect(texts).toContain('Amit Patel (WK)')
+  })
+
+  it('prefixes a roster entry with "#N " when its squadJerseyNumber is set (docs/specs/031-jersey-numbers.md)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const numberedSide: TeamSheetSide = {
+      team: homeTeam,
+      teamName: homeTeam.name,
+      side: homeSide,
+      squad: [makeSquadMember('p1', 'John', 'Smith', 7), p2, p3],
+    }
+
+    await generateTeamSheetPdf(match, [numberedSide], subtitle)
+
+    const texts = textSpy.mock.calls.map((call) => call[0])
+    expect(texts).toContain('#7 John Smith (C)')
+  })
+
+  it('prints the plain name, with no stray "#", when squadJerseyNumber is unset', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+
+    await generateTeamSheetPdf(match, [homeSheetSide], subtitle)
+
+    const texts = textSpy.mock.calls.map((call) => call[0])
+    expect(texts).toContain('John Smith (C)')
+    expect(texts.some((text) => typeof text === 'string' && text.includes('#'))).toBe(false)
   })
 
   it('renders a twelfth-man callout when one is set', async () => {

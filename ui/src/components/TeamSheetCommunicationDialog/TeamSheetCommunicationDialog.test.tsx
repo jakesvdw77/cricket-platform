@@ -5,7 +5,7 @@ import { TeamSheetCommunicationDialog } from './TeamSheetCommunicationDialog'
 import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 import type { Match } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
-import type { Player } from '../../api/playerApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 
 const match: Match = {
   id: 'match-1',
@@ -50,10 +50,11 @@ const awayTeam: Team = {
   updatedBy: null,
 }
 
-function makePlayer(id: string, firstName: string, lastName: string): Player {
+function makeSquadMember(playerProfileId: string, firstName: string, lastName: string): SquadMember {
   return {
-    id,
-    personId: id,
+    id: `squad-row-${playerProfileId}`,
+    playerProfileId,
+    personId: playerProfileId,
     clubId: 'club-1',
     firstName,
     lastName,
@@ -73,13 +74,15 @@ function makePlayer(id: string, firstName: string, lastName: string): Player {
     isWicketKeeper: false,
     active: true,
     sectionIds: [],
+    jerseyNumber: null,
+    squadJerseyNumber: null,
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
   }
 }
 
-const squad = [makePlayer('p1', 'John', 'Smith')]
+const squad = [makeSquadMember('p1', 'John', 'Smith')]
 
 function printableSide(team: Team): TeamSheetSide {
   return {

@@ -3,6 +3,7 @@ import type { Match } from '../api/matchApi'
 import type { MatchSide } from '../api/matchSideApi'
 import type { Team } from '../api/teamApi'
 import type { Player } from '../api/playerApi'
+import type { SquadMember } from '../api/teamSquadApi'
 
 // docs/specs/030-team-sheet-communication.md — the single home for all jsPDF usage in this
 // feature (per the spec's Rollout Notes), ported from the legacy Cricket Legend app's
@@ -26,7 +27,7 @@ export interface TeamSheetSide {
   team: Team
   teamName: string
   side: MatchSide | undefined
-  squad: Player[]
+  squad: SquadMember[]
 }
 
 // fetch → blob → FileReader.readAsDataURL, exactly matching legacy's own loadImageBase64 — kept
@@ -56,6 +57,10 @@ interface RosterEntry {
   battingOrder: number
   isCaptain: boolean
   isWicketKeeper: boolean
+  // docs/specs/031-jersey-numbers.md: this side's per-team-squad number for this player, resolved
+  // via the same squadById join isCaptain/isWicketKeeper already use — null when unset (a squad
+  // member may never have been assigned one).
+  squadJerseyNumber: number | null
 }
 
 // A printed team sheet is a club-admin-to-team-facing artifact, not an internal admin screen — a
@@ -70,8 +75,11 @@ function playerName(player: Player | undefined): string {
 // battingOrder-sort + captain/wicketkeeper/twelfth-man resolution PlayingXiBuilder.tsx already
 // does inline. Kept local and unexported rather than extracted into a shared helper, so this
 // spec's PDF work doesn't touch already-shipped, tested component code for a ~10-line block.
+// Keyed by playerProfileId, not member.id (the TeamSquadMember row's own id, distinct per
+// docs/specs/031-jersey-numbers.md) — entry.playerProfileId/captainPlayerId/wicketKeeperPlayerId/
+// twelfthManPlayerId are all expressed in terms of a player's identity, not this squad row's id.
 function resolveRoster(side: TeamSheetSide): RosterEntry[] {
-  const squadById = new Map(side.squad.map((player) => [player.id, player]))
+  const squadById = new Map(side.squad.map((member) => [member.playerProfileId, member]))
   const players = side.side?.players ?? []
 
   return [...players]
@@ -81,6 +89,7 @@ function resolveRoster(side: TeamSheetSide): RosterEntry[] {
       battingOrder: entry.battingOrder,
       isCaptain: side.side?.captainPlayerId === entry.playerProfileId,
       isWicketKeeper: side.side?.wicketKeeperPlayerId === entry.playerProfileId,
+      squadJerseyNumber: squadById.get(entry.playerProfileId)?.squadJerseyNumber ?? null,
     }))
 }
 
@@ -89,7 +98,7 @@ function resolveTwelfthMan(side: TeamSheetSide): string | null {
   if (!twelfthManPlayerId) {
     return null
   }
-  const player = side.squad.find((candidate) => candidate.id === twelfthManPlayerId)
+  const player = side.squad.find((candidate) => candidate.playerProfileId === twelfthManPlayerId)
   return playerName(player)
 }
 
@@ -231,10 +240,16 @@ export async function generateTeamSheetPdf(match: Match, sides: TeamSheetSide[],
           .filter(Boolean)
           .join(' ')
 
+        // docs/specs/031-jersey-numbers.md: prefix the printed name with "#N" when this side's
+        // squad has one, matching PlayingXiBuilder's own "#N" convention — left unnumbered when
+        // unset (no stray "#").
+        const numberedName =
+          entry.squadJerseyNumber != null ? `#${entry.squadJerseyNumber} ${entry.name}` : entry.name
+
         doc.setTextColor(...DARK)
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(8.5)
-        doc.text([entry.name, suffix].filter(Boolean).join(' '), margin + 9, y + rowH / 2 + 2.5)
+        doc.text([numberedName, suffix].filter(Boolean).join(' '), margin + 9, y + rowH / 2 + 2.5)
 
         y += rowH
       })
