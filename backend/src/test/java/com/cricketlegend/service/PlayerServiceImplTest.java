@@ -18,6 +18,7 @@ import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.UpdatePlayerRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.ClubMembershipRepository;
 import com.cricketlegend.repository.ClubRepository;
@@ -97,6 +98,10 @@ class PlayerServiceImplTest {
     }
 
     private CreatePlayerRequest createRequest() {
+        return createRequest(null);
+    }
+
+    private CreatePlayerRequest createRequest(Integer jerseyNumber) {
         return new CreatePlayerRequest(
                 "Jane",
                 "Doe",
@@ -113,10 +118,15 @@ class PlayerServiceImplTest {
                 BattingStance.RIGHT_HANDED,
                 BowlingArm.RIGHT_ARM,
                 BowlingType.MEDIUM,
-                false);
+                false,
+                jerseyNumber);
     }
 
     private UpdatePlayerRequest updateRequest() {
+        return updateRequest(null);
+    }
+
+    private UpdatePlayerRequest updateRequest(Integer jerseyNumber) {
         return new UpdatePlayerRequest(
                 "Janet",
                 "Doey",
@@ -133,7 +143,8 @@ class PlayerServiceImplTest {
                 null,
                 null,
                 null,
-                true);
+                true,
+                jerseyNumber);
     }
 
     // --- create ---
@@ -185,6 +196,93 @@ class PlayerServiceImplTest {
     }
 
     @Test
+    void createPersistsTheSuppliedJerseyNumber() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> {
+                    PlayerProfile p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+
+        var dto = playerService.create(clubId, createRequest(7));
+
+        assertThat(dto.jerseyNumber()).isEqualTo(7);
+    }
+
+    @Test
+    void createWithNoJerseyNumberPersistsNull() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> {
+                    PlayerProfile p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+
+        var dto = playerService.create(clubId, createRequest(null));
+
+        assertThat(dto.jerseyNumber()).isNull();
+    }
+
+    @Test
+    void createWithANegativeJerseyNumberThrowsValidationException() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+
+        assertThatThrownBy(() -> playerService.create(clubId, createRequest(-1)))
+                .isInstanceOf(ValidationException.class);
+        verify(personRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void createAppliesNoUniquenessCheckOnJerseyNumberAcrossPlayers() {
+        // No repository lookup for an existing jerseyNumber is stubbed or verified — create()
+        // never queries for one, proving no uniqueness check is applied to the standing number
+        // (per docs/specs/031-jersey-numbers.md's Non-goals).
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> {
+                    PlayerProfile p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+
+        var first = playerService.create(clubId, createRequest(7));
+        var second = playerService.create(clubId, createRequest(7));
+
+        assertThat(first.jerseyNumber()).isEqualTo(7);
+        assertThat(second.jerseyNumber()).isEqualTo(7);
+    }
+
+    @Test
     void createOnANonexistentClubThrowsNotFoundException() {
         UUID clubId = UUID.randomUUID();
         when(clubRepository.existsById(clubId)).thenReturn(false);
@@ -216,6 +314,39 @@ class PlayerServiceImplTest {
         assertThat(dto.firstName()).isEqualTo("Janet");
         assertThat(dto.clubMembershipNumber()).isEqualTo("M-999");
         assertThat(dto.isWicketKeeper()).isTrue();
+    }
+
+    @Test
+    void updatePersistsTheSuppliedJerseyNumberIncludingClearingItToNull() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
+        existingProfile.setJerseyNumber(7);
+        Person existingPerson = person(personId, personId);
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(existingProfile));
+        when(personRepository.findById(personId)).thenReturn(Optional.of(existingPerson));
+        when(personRepository.save(existingPerson)).thenReturn(existingPerson);
+        when(playerProfileRepository.save(existingProfile)).thenReturn(existingProfile);
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+
+        var dto = playerService.update(clubId, playerId, updateRequest(null));
+
+        assertThat(dto.jerseyNumber()).isNull();
+        assertThat(existingProfile.getJerseyNumber()).isNull();
+    }
+
+    @Test
+    void updateWithANegativeJerseyNumberThrowsValidationException() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(existingProfile));
+
+        assertThatThrownBy(() -> playerService.update(clubId, playerId, updateRequest(-1)))
+                .isInstanceOf(ValidationException.class);
+        verify(playerProfileRepository, never()).save(ArgumentMatchers.any());
     }
 
     @Test

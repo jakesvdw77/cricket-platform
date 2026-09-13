@@ -41,6 +41,7 @@ public record PlayerDto(
         boolean isWicketKeeper,
         boolean active,
         List<UUID> sectionIds,
+        Integer jerseyNumber,
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy) {

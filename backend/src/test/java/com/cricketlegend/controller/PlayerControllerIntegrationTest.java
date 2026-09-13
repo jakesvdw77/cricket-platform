@@ -42,7 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 403} for a different club and {@code 404} for a {@code playerId}/{@code sectionId} that's real
  * but belongs to a different club, a {@code platform_admin} JWT also succeeds, both transition
  * {@code 409}s (deactivate/reactivate) and the link/unlink {@code 409}/{@code 404} are proven
- * through the real HTTP layer.
+ * through the real HTTP layer. Also covers docs/specs/031-jersey-numbers.md's new {@code
+ * jerseyNumber} field — round-trips through create/update via real HTTP.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -470,6 +471,81 @@ class PlayerControllerIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail")
                         .value(org.hamcrest.Matchers.containsString("different active club membership")));
+    }
+
+    /** The new {@code jerseyNumber} field round-trips through create/update, via real HTTP. */
+    @Test
+    void jerseyNumberRoundTripsThroughCreateAndUpdate() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String createBody = """
+                {
+                    "firstName": "Jane",
+                    "lastName": "Doe",
+                    "dateOfBirth": "2005-03-04",
+                    "gender": "FEMALE",
+                    "clubMembershipNumber": "M-123",
+                    "isWicketKeeper": false,
+                    "jerseyNumber": 7
+                }
+                """;
+        String createResponse = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/players", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.jerseyNumber").value(7))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String playerId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/players", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].jerseyNumber").value(7));
+
+        String updateBody = """
+                {
+                    "firstName": "Jane",
+                    "lastName": "Doe",
+                    "dateOfBirth": "2005-03-04",
+                    "gender": "FEMALE",
+                    "clubMembershipNumber": "M-123",
+                    "isWicketKeeper": false,
+                    "jerseyNumber": null
+                }
+                """;
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/players/{playerId}", club.getId(), playerId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jerseyNumber").doesNotExist());
+    }
+
+    /** The new {@code jerseyNumber} negative-value {@code 400}, via real HTTP. */
+    @Test
+    void createWithANegativeJerseyNumberReturns400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String createBody = """
+                {
+                    "firstName": "Jane",
+                    "lastName": "Doe",
+                    "dateOfBirth": "2005-03-04",
+                    "gender": "FEMALE",
+                    "clubMembershipNumber": "M-123",
+                    "isWicketKeeper": false,
+                    "jerseyNumber": -1
+                }
+                """;
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/players", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andExpect(status().isBadRequest());
     }
 
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {

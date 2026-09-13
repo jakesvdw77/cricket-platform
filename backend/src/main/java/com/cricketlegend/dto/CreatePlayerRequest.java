@@ -31,5 +31,6 @@ public record CreatePlayerRequest(
         BattingStance battingStance,
         BowlingArm bowlingArm,
         BowlingType bowlingType,
-        boolean isWicketKeeper) {
+        boolean isWicketKeeper,
+        Integer jerseyNumber) {
 }

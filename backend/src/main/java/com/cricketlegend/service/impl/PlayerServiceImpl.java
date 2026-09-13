@@ -10,6 +10,7 @@ import com.cricketlegend.dto.PlayerDto;
 import com.cricketlegend.dto.UpdatePlayerRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.ClubMembershipRepository;
 import com.cricketlegend.repository.ClubRepository;
@@ -79,6 +80,7 @@ public class PlayerServiceImpl implements PlayerService {
     @Transactional
     public PlayerDto create(UUID clubId, CreatePlayerRequest request) {
         requireClubExists(clubId);
+        requireNonNegativeJerseyNumber(request.jerseyNumber());
 
         Person person = Person.builder()
                 .firstName(request.firstName())
@@ -112,6 +114,7 @@ public class PlayerServiceImpl implements PlayerService {
                 .bowlingArm(request.bowlingArm())
                 .bowlingType(request.bowlingType())
                 .wicketKeeper(request.isWicketKeeper())
+                .jerseyNumber(request.jerseyNumber())
                 .active(true)
                 .build();
         profile = playerProfileRepository.save(profile);
@@ -123,6 +126,7 @@ public class PlayerServiceImpl implements PlayerService {
     @Transactional
     public PlayerDto update(UUID clubId, UUID playerId, UpdatePlayerRequest request) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
+        requireNonNegativeJerseyNumber(request.jerseyNumber());
         Person person = findPersonOrThrow(profile.getPersonId());
 
         person.setFirstName(request.firstName());
@@ -143,6 +147,7 @@ public class PlayerServiceImpl implements PlayerService {
         profile.setBowlingArm(request.bowlingArm());
         profile.setBowlingType(request.bowlingType());
         profile.setWicketKeeper(request.isWicketKeeper());
+        profile.setJerseyNumber(request.jerseyNumber());
         profile = playerProfileRepository.save(profile);
 
         return playerMapper.toDto(person, profile, sectionIds(profile.getId()));
@@ -203,6 +208,17 @@ public class PlayerServiceImpl implements PlayerService {
     private void requireClubExists(UUID clubId) {
         if (!clubRepository.existsById(clubId)) {
             throw new NotFoundException("Club not found: " + clubId);
+        }
+    }
+
+    /**
+     * The only jersey-number validation this codebase applies to {@code PlayerProfile.jerseyNumber}
+     * — no uniqueness check (per docs/specs/031-jersey-numbers.md's Non-goals, two players may
+     * share a standing number).
+     */
+    private void requireNonNegativeJerseyNumber(Integer jerseyNumber) {
+        if (jerseyNumber != null && jerseyNumber < 0) {
+            throw new ValidationException("Jersey number must not be negative: " + jerseyNumber);
         }
     }
 
