@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
 import { PlayingXiBuilder } from './PlayingXiBuilder'
-import type { Player } from '../../api/playerApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer } from '../../api/matchSideApi'
 
-function makePlayer(overrides: Partial<Player> = {}): Player {
+function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
   return {
-    id: 'player-1',
+    id: 'squad-row-1',
+    playerProfileId: 'player-1',
     personId: 'person-1',
     clubId: 'club-1',
     firstName: 'Jane',
@@ -27,6 +28,8 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     isWicketKeeper: false,
     active: true,
     sectionIds: [],
+    jerseyNumber: null,
+    squadJerseyNumber: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -34,12 +37,12 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
   }
 }
 
-const SQUAD: Player[] = [
-  makePlayer({ id: 'p1', firstName: 'Jane', lastName: 'Smith' }),
-  makePlayer({ id: 'p2', firstName: 'Bob', lastName: 'Jones' }),
-  makePlayer({ id: 'p3', firstName: 'Amy', lastName: 'Lee' }),
-  makePlayer({ id: 'p4', firstName: 'Sam', lastName: 'Patel' }),
-  makePlayer({ id: 'p5', firstName: 'Lee', lastName: 'Nguyen' }),
+const SQUAD: SquadMember[] = [
+  makeSquadMember({ id: 'squad-p1', playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: 7 }),
+  makeSquadMember({ id: 'squad-p2', playerProfileId: 'p2', firstName: 'Bob', lastName: 'Jones' }),
+  makeSquadMember({ id: 'squad-p3', playerProfileId: 'p3', firstName: 'Amy', lastName: 'Lee' }),
+  makeSquadMember({ id: 'squad-p4', playerProfileId: 'p4', firstName: 'Sam', lastName: 'Patel' }),
+  makeSquadMember({ id: 'squad-p5', playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen' }),
 ]
 
 const XI: MatchSidePlayer[] = [

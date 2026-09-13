@@ -3,12 +3,16 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PlayingXiBuilder } from './PlayingXiBuilder'
 import type { PlayingXiBuilderProps } from './PlayingXiBuilder'
-import type { Player } from '../../api/playerApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer } from '../../api/matchSideApi'
 
-function makePlayer(overrides: Partial<Player> = {}): Player {
+// `id` (the TeamSquadMember row's own id) is deliberately distinct from `playerProfileId` below —
+// docs/specs/031-jersey-numbers.md — every join in PlayingXiBuilder is keyed by playerProfileId,
+// not `id`, so a fixture that (wrongly) reused the same value for both would hide a regression.
+function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
   return {
-    id: 'player-1',
+    id: 'squad-row-1',
+    playerProfileId: 'player-1',
     personId: 'person-1',
     clubId: 'club-1',
     firstName: 'Jane',
@@ -29,6 +33,8 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     isWicketKeeper: false,
     active: true,
     sectionIds: [],
+    jerseyNumber: null,
+    squadJerseyNumber: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -36,9 +42,9 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
   }
 }
 
-const PLAYER_1 = makePlayer({ id: 'player-1', firstName: 'Jane', lastName: 'Smith' })
-const PLAYER_2 = makePlayer({ id: 'player-2', firstName: 'Bob', lastName: 'Jones' })
-const PLAYER_3 = makePlayer({ id: 'player-3', firstName: 'Amy', lastName: 'Lee' })
+const PLAYER_1 = makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' })
+const PLAYER_2 = makeSquadMember({ id: 'squad-row-2', playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' })
+const PLAYER_3 = makeSquadMember({ id: 'squad-row-3', playerProfileId: 'player-3', firstName: 'Amy', lastName: 'Lee' })
 
 function baseProps(overrides: Partial<PlayingXiBuilderProps> = {}): PlayingXiBuilderProps {
   return {
@@ -185,5 +191,62 @@ describe('PlayingXiBuilder', () => {
     render(<PlayingXiBuilder {...baseProps({ errorMessage: 'This player is outside the league\'s age range.' })} />)
 
     expect(screen.getByRole('alert')).toHaveTextContent(/outside the league's age range/i)
+  })
+
+  // docs/specs/031-jersey-numbers.md
+  describe('squad jersey number display', () => {
+    const PLAYER_1_NUMBERED = makeSquadMember({
+      id: 'squad-row-1',
+      playerProfileId: 'player-1',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      squadJerseyNumber: 7,
+    })
+
+    it('prefixes the ordered XI list row with #N when the squad member has a squad number', () => {
+      render(
+        <PlayingXiBuilder
+          {...baseProps({ squad: [PLAYER_1_NUMBERED, PLAYER_2, PLAYER_3], xi: XI_WITH_TWO })}
+        />,
+      )
+
+      expect(screen.getByText('#7 Jane Smith')).toBeInTheDocument()
+      expect(screen.getByText('Bob Jones')).toBeInTheDocument()
+    })
+
+    it('falls back to the plain name (no stray "#") when a squad member has no squad number', () => {
+      render(<PlayingXiBuilder {...baseProps({ squad: [PLAYER_1, PLAYER_2, PLAYER_3], xi: XI_WITH_TWO })} />)
+
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.queryByText(/^#/)).not.toBeInTheDocument()
+    })
+
+    it('shows the #N prefix in the "Add player" Autocomplete option', async () => {
+      const user = userEvent.setup()
+      render(<PlayingXiBuilder {...baseProps({ squad: [PLAYER_1_NUMBERED, PLAYER_2, PLAYER_3] })} />)
+
+      await user.click(screen.getByLabelText('Add player'))
+      expect(await screen.findByText('#7 Jane Smith')).toBeInTheDocument()
+    })
+
+    it('shows the #N prefix in the Captain/Wicketkeeper/Twelfth Man Select options', async () => {
+      const user = userEvent.setup()
+      render(
+        <PlayingXiBuilder
+          {...baseProps({ squad: [PLAYER_1_NUMBERED, PLAYER_2, PLAYER_3], xi: XI_WITH_TWO })}
+        />,
+      )
+
+      await user.click(screen.getByLabelText('Captain'))
+      expect(await screen.findByRole('option', { name: '#7 Jane Smith' })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+
+      await user.click(screen.getByLabelText('Wicketkeeper'))
+      expect(await screen.findByRole('option', { name: '#7 Jane Smith' })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+
+      await user.click(screen.getByLabelText('Twelfth man'))
+      expect(await screen.findByRole('option', { name: 'Amy Lee' })).toBeInTheDocument()
+    })
   })
 })

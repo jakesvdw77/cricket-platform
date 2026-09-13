@@ -15,7 +15,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { Input } from '../Input'
 import { Button } from '../Button'
-import type { Player } from '../../api/playerApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer, PlayingRole } from '../../api/matchSideApi'
 
 export type { PlayingRole }
@@ -28,14 +28,18 @@ const ROLE_LABEL: Record<PlayingRole, string> = {
 
 const ROLE_OPTIONS: PlayingRole[] = ['BATSMAN', 'BOWLER', 'ALL_ROUNDER']
 
-function fullName(player: Player): string {
-  return `${player.firstName} ${player.lastName}`
+// docs/specs/031-jersey-numbers.md: every place a squad member's name is shown is prefixed with
+// their per-team-squad number when set (e.g. "#7 J. Smith"), falling back to the plain name when
+// unset — display only, no new sort/filter control.
+function squadDisplayName(member: SquadMember): string {
+  const name = `${member.firstName} ${member.lastName}`
+  return member.squadJerseyNumber != null ? `#${member.squadJerseyNumber} ${name}` : name
 }
 
 export interface PlayingXiBuilderProps {
   // The team's own squad for the match's season (listSquad(clubId, teamId, match.seasonId)) —
   // fetched by the page, passed down as plain data.
-  squad: Player[]
+  squad: SquadMember[]
   // The side's current ordered XI (MatchSideDto.players) — battingOrder ascending. This
   // component sorts defensively rather than trusting caller order.
   xi: MatchSidePlayer[]
@@ -84,19 +88,23 @@ export function PlayingXiBuilder({
   isAddPending = false,
   errorMessage,
 }: PlayingXiBuilderProps) {
-  const [addSelection, setAddSelection] = useState<Player | null>(null)
+  const [addSelection, setAddSelection] = useState<SquadMember | null>(null)
   const [addRole, setAddRole] = useState<PlayingRole>('BATSMAN')
 
+  // Keyed by playerProfileId, not member.id (the TeamSquadMember row's own id) — every join below
+  // (xi entries, captain/keeper/twelfth-man ids) is expressed in terms of playerProfileId, per
+  // MatchSidePlayer's own shape (docs/specs/029-league-management.md), unchanged by 031's DTO
+  // reshape.
   const squadById = useMemo(() => {
-    const map = new Map<string, Player>()
-    squad.forEach((player) => map.set(player.id, player))
+    const map = new Map<string, SquadMember>()
+    squad.forEach((member) => map.set(member.playerProfileId, member))
     return map
   }, [squad])
 
   const orderedXi = useMemo(() => [...xi].sort((a, b) => a.battingOrder - b.battingOrder), [xi])
   const xiIds = useMemo(() => new Set(orderedXi.map((entry) => entry.playerProfileId)), [orderedXi])
 
-  const notYetAdded = useMemo(() => squad.filter((player) => !xiIds.has(player.id)), [squad, xiIds])
+  const notYetAdded = useMemo(() => squad.filter((member) => !xiIds.has(member.playerProfileId)), [squad, xiIds])
 
   const atCap = orderedXi.length >= cap
 
@@ -104,7 +112,7 @@ export function PlayingXiBuilder({
     if (!addSelection || atCap) {
       return
     }
-    onAddPlayer(addSelection.id, addRole)
+    onAddPlayer(addSelection.playerProfileId, addRole)
     setAddSelection(null)
     setAddRole('BATSMAN')
   }
@@ -122,7 +130,7 @@ export function PlayingXiBuilder({
 
   const captainOptions = orderedXi
     .map((entry) => squadById.get(entry.playerProfileId))
-    .filter((player): player is Player => Boolean(player))
+    .filter((member): member is SquadMember => Boolean(member))
   const twelfthManOptions = notYetAdded
 
   return (
@@ -153,8 +161,8 @@ export function PlayingXiBuilder({
         )}
 
         {orderedXi.map((entry, index) => {
-          const player = squadById.get(entry.playerProfileId)
-          const name = player ? fullName(player) : entry.playerProfileId
+          const member = squadById.get(entry.playerProfileId)
+          const name = member ? squadDisplayName(member) : entry.playerProfileId
           const isCaptain = captainPlayerId === entry.playerProfileId
           const isKeeper = wicketKeeperPlayerId === entry.playerProfileId
 
@@ -226,10 +234,10 @@ export function PlayingXiBuilder({
       </Stack>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'flex-start' }}>
-        <Autocomplete<Player>
+        <Autocomplete<SquadMember>
           options={notYetAdded}
           value={addSelection}
-          getOptionLabel={(option) => fullName(option)}
+          getOptionLabel={(option) => squadDisplayName(option)}
           isOptionEqualToValue={(option, value) => option.id === value.id}
           onChange={(_event, value) => setAddSelection(value)}
           disabled={atCap}
@@ -276,9 +284,9 @@ export function PlayingXiBuilder({
           onChange={(event) => onChangeCaptain(event.target.value || null)}
         >
           <MenuItem value="">None</MenuItem>
-          {captainOptions.map((player) => (
-            <MenuItem key={player.id} value={player.id}>
-              {fullName(player)}
+          {captainOptions.map((member) => (
+            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
+              {squadDisplayName(member)}
             </MenuItem>
           ))}
         </Input>
@@ -290,9 +298,9 @@ export function PlayingXiBuilder({
           onChange={(event) => onChangeWicketKeeper(event.target.value || null)}
         >
           <MenuItem value="">None</MenuItem>
-          {captainOptions.map((player) => (
-            <MenuItem key={player.id} value={player.id}>
-              {fullName(player)}
+          {captainOptions.map((member) => (
+            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
+              {squadDisplayName(member)}
             </MenuItem>
           ))}
         </Input>
@@ -304,9 +312,9 @@ export function PlayingXiBuilder({
           onChange={(event) => onChangeTwelfthMan(event.target.value || null)}
         >
           <MenuItem value="">None</MenuItem>
-          {twelfthManOptions.map((player) => (
-            <MenuItem key={player.id} value={player.id}>
-              {fullName(player)}
+          {twelfthManOptions.map((member) => (
+            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
+              {squadDisplayName(member)}
             </MenuItem>
           ))}
         </Input>
