@@ -2,16 +2,21 @@ import { test, expect } from '@playwright/test';
 
 /**
  * E2E golden path for docs/specs/029-league-management.md, extended to also cover
- * docs/specs/030-team-sheet-communication.md's "Communicate Team Sheet → Print as PDF" flow (per
- * 030's own Test Plan, which calls for extending this same golden path rather than a second,
- * parallel one). Per 029's Test Plan (End-to-end row) and Acceptance Criteria: log in as a
- * CLUB_ADMIN-provisioned test user, create a league with enforced age restrictions, create a
- * season, affiliate a team into that league for that season, add players to that team's squad for
- * the season, schedule a match against an external opponent with that league/season attached,
- * build the home side's playing XI (add players, reorder, set captain/wicketkeeper/twelfth man),
- * confirm the playing-XI cap blocks a further add once reached, confirm an age-ineligible player
- * is rejected, reload and confirm every change persisted server-side, then (030) open that same
- * match's "Communicate Team Sheet" dialog from its card and print a PDF for both sides.
+ * docs/specs/030-team-sheet-communication.md's "Communicate Team Sheet → Print as PDF" flow and
+ * docs/specs/031-jersey-numbers.md's standing/per-squad jersey numbers (per each spec's own Test
+ * Plan, which calls for extending this same golden path rather than a second, parallel one). Per
+ * 029's Test Plan (End-to-end row) and Acceptance Criteria: log in as a CLUB_ADMIN-provisioned test
+ * user, create a league with enforced age restrictions, create a season, affiliate a team into that
+ * league for that season, add players to that team's squad for the season, schedule a match against
+ * an external opponent with that league/season attached, build the home side's playing XI (add
+ * players, reorder, set captain/wicketkeeper/twelfth man), confirm the playing-XI cap blocks a
+ * further add once reached, confirm an age-ineligible player is rejected, reload and confirm every
+ * change persisted server-side, then (030) open that same match's "Communicate Team Sheet" dialog
+ * from its card and print a PDF for both sides. (031) Along the way: one squad candidate is given a
+ * standing jersey number on their own profile, that number is overridden once they're on the squad,
+ * a second squad member is given a squad number from scratch, a third's attempt to reuse the
+ * first's squad number is rejected inline with a 409, and after a reload the successful edits
+ * persisted, the rejected one didn't, and the first player's own standing number is untouched.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-teams.spec.ts / manager-players.spec.ts:
@@ -197,16 +202,23 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
 
     // --- Players: four squad candidates — three age-eligible, one deliberately too young ---
+    //
+    // docs/specs/031-jersey-numbers.md: eligible1 also gets a standing jersey number here, set on
+    // their own PlayerForm (Basic Info tab) — independent from whatever they end up wearing on this
+    // team's squad below. The other three are left without one, matching a real club where not
+    // every player has claimed a "usual" number yet.
 
     await page.goto(`http://${ROOT_DOMAIN}/manage`);
     await page.getByRole('link', { name: 'Players' }).click();
     await expect(page).toHaveURL(/\/manage\/players$/);
 
-    for (const [fullName, dob] of [
-      [eligible1FullName, eligible1Dob],
-      [eligible2FullName, eligible2Dob],
-      [eligible3FullName, eligible3Dob],
-      [ineligibleFullName, ineligibleDob],
+    const eligible1StandingJerseyNumber = '77';
+
+    for (const [fullName, dob, standingJerseyNumber] of [
+      [eligible1FullName, eligible1Dob, eligible1StandingJerseyNumber],
+      [eligible2FullName, eligible2Dob, undefined],
+      [eligible3FullName, eligible3Dob, undefined],
+      [ineligibleFullName, ineligibleDob, undefined],
     ] as const) {
       const [firstName, lastName] = fullName.split(' ');
       await page.getByRole('button', { name: 'Add Player' }).click();
@@ -214,6 +226,9 @@ test.describe('League Management golden path (029-league-management.md)', () => 
       await page.getByLabel('First name').fill(firstName);
       await page.getByLabel('Last name').fill(lastName);
       await page.getByLabel('Date of birth').fill(dob);
+      if (standingJerseyNumber) {
+        await page.getByLabel('Jersey number').fill(standingJerseyNumber);
+      }
       await page.getByRole('button', { name: 'Create player' }).click();
       await expect(page).toHaveURL(/\/manage\/players$/);
       await expect(page.locator('.MuiCard-root').filter({ hasText: fullName })).toBeVisible();
@@ -236,6 +251,58 @@ test.describe('League Management golden path (029-league-management.md)', () => 
       await page.getByRole('option', { name: fullName, exact: true }).click();
       await expect(page.getByText(fullName, { exact: true })).toBeVisible();
     }
+
+    // --- Jersey numbers (docs/specs/031-jersey-numbers.md): each SquadPlayerCard's own "Squad #"
+    // Input (aria-labelled "<player's full name> squad number", committing on blur) is edited
+    // inline, right here on the same Squad tab the squad itself was just built on. eligible1's
+    // squad number already defaulted to their standing number (77, set above) at add-time — it's
+    // overridden here to prove the two numbers are independent from that point on; eligible2 is
+    // given a squad number from scratch (no standing number of their own).
+
+    const eligible1SquadJerseyNumber = '10';
+    const eligible2SquadJerseyNumber = '23';
+
+    const eligible1SquadNumberInput = page.getByLabel(`${eligible1FullName} squad number`);
+    await expect(eligible1SquadNumberInput).toHaveValue(eligible1StandingJerseyNumber);
+    await eligible1SquadNumberInput.fill(eligible1SquadJerseyNumber);
+    await eligible1SquadNumberInput.blur();
+    await expect(eligible1SquadNumberInput).toHaveValue(eligible1SquadJerseyNumber);
+
+    const eligible2SquadNumberInput = page.getByLabel(`${eligible2FullName} squad number`);
+    await eligible2SquadNumberInput.fill(eligible2SquadJerseyNumber);
+    await eligible2SquadNumberInput.blur();
+    await expect(eligible2SquadNumberInput).toHaveValue(eligible2SquadJerseyNumber);
+
+    // Attempt to give eligible3 the same number eligible1 now wears on this squad — blocked
+    // server-side (409, DuplicateSquadJerseyNumberException) and surfaced as inline feedback on
+    // eligible3's own card only (RecordCard's `feedback` prop), never a page-level toast, and never
+    // touching eligible1's/eligible2's own cards.
+    const eligible3Card = page.locator('.MuiCard-root').filter({ hasText: eligible3FullName });
+    const eligible3SquadNumberInput = eligible3Card.getByLabel(`${eligible3FullName} squad number`);
+    await eligible3SquadNumberInput.fill(eligible1SquadJerseyNumber);
+    await eligible3SquadNumberInput.blur();
+    await expect(eligible3Card.getByText(/already assigned/i)).toBeVisible();
+
+    // Reload this tab — the two successful edits persisted server-side, and the rejected duplicate
+    // never did (eligible3's own squad number stays unset).
+    await page.reload();
+    await page.getByRole('tab', { name: 'Squad' }).click();
+    await expect(page.getByLabel(`${eligible1FullName} squad number`)).toHaveValue(eligible1SquadJerseyNumber);
+    await expect(page.getByLabel(`${eligible2FullName} squad number`)).toHaveValue(eligible2SquadJerseyNumber);
+    await expect(page.getByLabel(`${eligible3FullName} squad number`)).toHaveValue('');
+
+    // eligible1's own standing jersey number (set on their PlayerForm, above) is unaffected by the
+    // squad-number override just made above — the two numbers are independently stored and edited,
+    // per this spec's two-number model.
+    await page.goto(`http://${ROOT_DOMAIN}/manage`);
+    await page.getByRole('link', { name: 'Players' }).click();
+    await page
+      .locator('.MuiCard-root')
+      .filter({ hasText: eligible1FullName })
+      .getByRole('link', { name: 'Edit' })
+      .click();
+    await expect(page).toHaveURL(/\/manage\/players\/.+\/edit$/);
+    await expect(page.getByLabel('Jersey number')).toHaveValue(eligible1StandingJerseyNumber);
 
     // --- Match: schedule against an external (free-text) opponent, with the league/season attached ---
 
