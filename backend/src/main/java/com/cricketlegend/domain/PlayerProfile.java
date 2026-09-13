@@ -91,6 +91,9 @@ public class PlayerProfile {
     @Column(name = "is_wicket_keeper", nullable = false)
     private boolean wicketKeeper;
 
+    @Column(name = "jersey_number")
+    private Integer jerseyNumber;
+
     @Column(nullable = false)
     private boolean active;
 

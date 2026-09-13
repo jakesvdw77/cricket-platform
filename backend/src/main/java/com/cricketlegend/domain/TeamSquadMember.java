@@ -45,6 +45,9 @@ public class TeamSquadMember {
     @Column(name = "player_profile_id", nullable = false)
     private UUID playerProfileId;
 
+    @Column(name = "jersey_number")
+    private Integer jerseyNumber;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
