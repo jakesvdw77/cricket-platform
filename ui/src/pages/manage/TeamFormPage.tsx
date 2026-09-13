@@ -27,7 +27,8 @@ import type { Sponsor, SponsorPayload } from '../../api/sponsorApi'
 import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor } from '../../api/teamSponsorApi'
 import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
-import { listSquad, addToSquad, removeFromSquad } from '../../api/teamSquadApi'
+import { listSquad, addToSquad, removeFromSquad, updateSquadJerseyNumber } from '../../api/teamSquadApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 import { listSeasons } from '../../api/seasonApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
 import { playerRecordFields } from '../../utils/playerRecordFields'
@@ -35,6 +36,7 @@ import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
+import { numberToInput, inputToNumber } from '../../utils/numberInput'
 
 const ROLE_QUICK_FILL = ['Manager', 'Coach', 'Assistant Coach']
 
@@ -140,32 +142,80 @@ function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
 // One player in this team's squad for the selected season, with its own remove mutation —
 // mirrors TeamSponsorCard's isolation pattern. docs/specs/029-league-management.md: removing a
 // player only affects that season's squad row, never the player record itself.
+//
+// docs/specs/031-jersey-numbers.md adds an inline-editable "Squad #" field — its own isolated
+// useMutation (calling the new updateSquadJerseyNumber), completely separate from `remove`'s, so
+// neither one card's pending/error state nor a sibling card's ever leaks across. A 409 (another
+// squad member already holds that number this season) surfaces via RecordCard's own `feedback`
+// prop rather than a page-level toast.
 function SquadPlayerCard({
   clubId,
   teamId,
   seasonId,
-  player,
+  member,
   onRemoved,
+  onJerseyNumberChanged,
 }: {
   clubId: string
   teamId: string
   seasonId: string
-  player: Player
+  member: SquadMember
   onRemoved: () => void
+  onJerseyNumberChanged: () => void
 }) {
+  // The squad/remove/update endpoints are addressed by playerProfileId, not member.id (the
+  // TeamSquadMember row's own id) — see teamSquadApi.ts's SquadMember doc comment.
   const remove = useMutation({
-    mutationFn: () => removeFromSquad(clubId, teamId, seasonId, player.id),
+    mutationFn: () => removeFromSquad(clubId, teamId, seasonId, member.playerProfileId),
     onSuccess: onRemoved,
   })
-  const playerName = `${player.firstName} ${player.lastName}`
+
+  const [jerseyNumberInput, setJerseyNumberInput] = useState(numberToInput(member.squadJerseyNumber))
+
+  const updateJerseyNumber = useMutation({
+    mutationFn: (jerseyNumber: number | null) =>
+      updateSquadJerseyNumber(clubId, teamId, seasonId, member.playerProfileId, jerseyNumber),
+    onSuccess: onJerseyNumberChanged,
+  })
+
+  const playerName = `${member.firstName} ${member.lastName}`
+
+  const commitJerseyNumber = () => {
+    const parsed = inputToNumber(jerseyNumberInput)
+    if (parsed !== member.squadJerseyNumber) {
+      updateJerseyNumber.mutate(parsed)
+    }
+  }
 
   return (
     <RecordCard
       title={playerName}
-      avatar={{ imageUrl: player.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
-      fields={playerRecordFields(player)}
+      avatar={{ imageUrl: member.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
+      fields={[
+        ...playerRecordFields(member),
+        {
+          label: 'Squad #',
+          // No visible label of its own — RecordCard already renders the "Squad #" caption above
+          // this field's value (docs/specs/031-jersey-numbers.md's UI Requirements) — `label=""`
+          // suppresses TextField's own InputLabel, and `inputProps.aria-label` (which lands on the
+          // real <input>, unlike a bare `aria-label` prop on TextField itself) keeps it accessible.
+          value: (
+            <Input
+              label=""
+              type="number"
+              size="small"
+              inputProps={{ 'aria-label': `${playerName} squad number` }}
+              value={jerseyNumberInput}
+              onChange={(event) => setJerseyNumberInput(event.target.value)}
+              onBlur={commitJerseyNumber}
+              disabled={updateJerseyNumber.isPending}
+              sx={{ width: 88 }}
+            />
+          ),
+        },
+      ]}
       editLabel="Edit"
-      editTo={`/manage/players/${player.id}/edit`}
+      editTo={`/manage/players/${member.playerProfileId}/edit`}
       secondaryAction={{
         label: 'Remove',
         pendingLabel: 'Removing…',
@@ -173,6 +223,11 @@ function SquadPlayerCard({
         onClick: () => remove.mutate(),
         icon: <LinkOffOutlinedIcon fontSize="small" />,
       }}
+      feedback={
+        updateJerseyNumber.isError
+          ? { message: errorDetail(updateJerseyNumber.error, "Couldn't update this squad number. Please try again."), tone: 'error' }
+          : null
+      }
     />
   )
 }
@@ -415,7 +470,7 @@ export default function TeamFormPage() {
     },
   })
 
-  const alreadyInSquadIds = new Set((squadQuery.data ?? []).map((player) => player.id))
+  const alreadyInSquadIds = new Set((squadQuery.data ?? []).map((member) => member.playerProfileId))
   const linkablePlayers: Player[] = (clubPlayersQuery.data ?? []).filter(
     (player) => player.active && !alreadyInSquadIds.has(player.id),
   )
@@ -673,14 +728,15 @@ export default function TeamFormPage() {
                       mb: 2,
                     }}
                   >
-                    {(squadQuery.data ?? []).map((player) => (
+                    {(squadQuery.data ?? []).map((member) => (
                       <SquadPlayerCard
-                        key={player.id}
+                        key={member.id}
                         clubId={clubId as string}
                         teamId={teamId as string}
                         seasonId={selectedSquadSeasonId}
-                        player={player}
+                        member={member}
                         onRemoved={invalidateSquad}
+                        onJerseyNumberChanged={invalidateSquad}
                       />
                     ))}
                   </Box>

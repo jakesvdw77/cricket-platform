@@ -11,6 +11,7 @@ import type { Sponsor } from '../../api/sponsorApi'
 import type { ClubProfile } from '../../api/clubApi'
 import type { Season } from '../../api/seasonApi'
 import type { Player } from '../../api/playerApi'
+import type { SquadMember } from '../../api/teamSquadApi'
 
 const listTeamsForSection = vi.fn()
 const createTeam = vi.fn()
@@ -31,6 +32,7 @@ const listSeasons = vi.fn()
 const listSquad = vi.fn()
 const addToSquad = vi.fn()
 const removeFromSquad = vi.fn()
+const updateSquadJerseyNumber = vi.fn()
 const listPlayers = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
@@ -84,6 +86,8 @@ vi.mock('../../api/teamSquadApi', () => ({
     addToSquad(clubId, teamId, seasonId, playerId),
   removeFromSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
     removeFromSquad(clubId, teamId, seasonId, playerId),
+  updateSquadJerseyNumber: (clubId: string, teamId: string, seasonId: string, playerId: string, jerseyNumber: number | null) =>
+    updateSquadJerseyNumber(clubId, teamId, seasonId, playerId, jerseyNumber),
 }))
 
 vi.mock('../../api/playerApi', () => ({
@@ -104,6 +108,7 @@ beforeEach(() => {
   listSeasons.mockResolvedValue([])
   listSquad.mockResolvedValue([])
   listPlayers.mockResolvedValue([])
+  updateSquadJerseyNumber.mockResolvedValue(undefined)
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -211,9 +216,23 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     isWicketKeeper: false,
     active: true,
     sectionIds: [],
+    jerseyNumber: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    ...overrides,
+  }
+}
+
+// `id` (the TeamSquadMember row's own id) is deliberately distinct from `playerProfileId` —
+// docs/specs/031-jersey-numbers.md — SquadPlayerCard must call remove/update against
+// playerProfileId, not `id`.
+function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
+  return {
+    ...makePlayer(),
+    id: 'squad-row-1',
+    playerProfileId: 'player-1',
+    squadJerseyNumber: null,
     ...overrides,
   }
 }
@@ -553,7 +572,9 @@ describe('TeamFormPage', () => {
       it('lists the squad for the selected season and removes a player via removeFromSquad', async () => {
         const user = userEvent.setup()
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
-        listSquad.mockResolvedValue([makePlayer({ id: 'player-1', firstName: 'Jane', lastName: 'Smith' })])
+        listSquad.mockResolvedValue([
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        ])
         renderEdit()
 
         await screen.findByText('Edit Team')
@@ -564,6 +585,53 @@ describe('TeamFormPage', () => {
 
         await user.click(screen.getByRole('button', { name: 'Remove' }))
         expect(removeFromSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1')
+      })
+
+      it("commits the inline squad-number edit on blur via updateSquadJerseyNumber", async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        ])
+        updateSquadJerseyNumber.mockResolvedValue(
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', squadJerseyNumber: 7 }),
+        )
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        await screen.findByText('Jane Smith')
+
+        const jerseyInput = screen.getByLabelText('Jane Smith squad number')
+        await user.click(jerseyInput)
+        await user.type(jerseyInput, '7')
+        await user.tab()
+
+        expect(updateSquadJerseyNumber).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1', 7)
+      })
+
+      it('surfaces a 409 from updateSquadJerseyNumber as inline card feedback', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        ])
+        updateSquadJerseyNumber.mockRejectedValue({
+          isAxiosError: true,
+          response: { data: { detail: 'Another player already wears number 7 this season.' } },
+        })
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        await screen.findByText('Jane Smith')
+
+        const jerseyInput = screen.getByLabelText('Jane Smith squad number')
+        await user.click(jerseyInput)
+        await user.type(jerseyInput, '7')
+        await user.tab()
+
+        expect(await screen.findByText('Another player already wears number 7 this season.')).toBeInTheDocument()
       })
 
       it('adds a player from the club\'s active players (not already in the squad) via addToSquad', async () => {
