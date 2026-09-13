@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
  * every query is genuinely scoped by {@code (teamId, seasonId)} together — the season-scoping
  * amendment's own point, per docs/specs/029-league-management.md's Rollout Notes: a player can be
  * (re)added independently for each season, and removing them from one season's squad has no
- * effect on another's.
+ * effect on another's. Also proves docs/specs/031-jersey-numbers.md's {@code
+ * ux_team_squad_member_jersey_number} partial unique index — rejects a duplicate {@code
+ * (team_id, season_id, jersey_number)} at the DB level, but allows any number of {@code NULL}
+ * rows for the same team/season without colliding.
  */
 @SpringBootTest
 @Import(AbstractIntegrationTest.class)
@@ -148,5 +151,65 @@ class TeamSquadMemberRepositoryTest {
         assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), seasonA.getId()))
                 .extracting(TeamSquadMember::getPlayerProfileId)
                 .containsExactly(playerInA.getId());
+    }
+
+    @Test
+    void jerseyNumberUniqueIndexRejectsADuplicateTeamSeasonJerseyNumberAtTheDbLevel() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerA.getId())
+                .jerseyNumber(7).build());
+
+        TeamSquadMember duplicate = TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerB.getId())
+                .jerseyNumber(7).build();
+
+        assertThatThrownBy(() -> teamSquadMemberRepository.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void jerseyNumberUniqueIndexAllowsAnyNumberOfNullJerseyNumberRowsForTheSameTeamAndSeason() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerA.getId())
+                .jerseyNumber(null).build());
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerB.getId())
+                .jerseyNumber(null).build());
+
+        assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), season.getId()))
+                .hasSize(2);
+    }
+
+    @Test
+    void jerseyNumberUniqueIndexAllowsTheSameJerseyNumberAcrossDifferentSeasons() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season seasonA = savedSeason(club.getId());
+        Season seasonB = savedSeason(club.getId());
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(seasonA.getId()).playerProfileId(playerA.getId())
+                .jerseyNumber(7).build());
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(seasonB.getId()).playerProfileId(playerB.getId())
+                .jerseyNumber(7).build());
+
+        assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), seasonA.getId()))
+                .hasSize(1);
+        assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), seasonB.getId()))
+                .hasSize(1);
     }
 }

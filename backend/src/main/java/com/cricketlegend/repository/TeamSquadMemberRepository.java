@@ -23,4 +23,7 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
             UUID teamId, UUID seasonId, UUID playerProfileId);
 
     void deleteByTeamIdAndSeasonIdAndPlayerProfileId(UUID teamId, UUID seasonId, UUID playerProfileId);
+
+    boolean existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
+            UUID teamId, UUID seasonId, Integer jerseyNumber, UUID excludeId);
 }

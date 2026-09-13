@@ -4,6 +4,7 @@ import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +46,10 @@ import org.springframework.transaction.annotation.Transactional;
  * belongs to a different club, a {@code platform_admin} JWT also succeeds, the inactive-player
  * {@code 400} ({@link com.cricketlegend.exception.PlayerNotActiveClubMemberException}), the
  * already-in-squad {@code 409}, and the not-in-squad {@code 404} on remove are all proven through
- * the real HTTP layer.
+ * the real HTTP layer. Also covers docs/specs/031-jersey-numbers.md's new {@code PUT
+ * .../squad/{playerId}} endpoint: {@code 200} (persists and is reflected in a subsequent {@code
+ * GET .../squad}), {@code 400} (negative), {@code 404} (player not in that season's squad), {@code
+ * 409} (duplicate), and cross-club isolation.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -103,7 +108,7 @@ class TeamSquadControllerIntegrationTest {
                                 player.getId())
                         .with(admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(player.getId().toString()))
+                .andExpect(jsonPath("$.playerProfileId").value(player.getId().toString()))
                 .andExpect(jsonPath("$.firstName").value("Jane"));
 
         mockMvc.perform(get(
@@ -114,7 +119,7 @@ class TeamSquadControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(player.getId().toString()));
+                .andExpect(jsonPath("$[0].playerProfileId").value(player.getId().toString()));
 
         mockMvc.perform(post(
                                 "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/remove",
@@ -385,6 +390,207 @@ class TeamSquadControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    /** The new {@code PUT .../squad/{playerId}}'s {@code 200}, persisted and reflected on a subsequent GET. */
+    @Test
+    void updatingASquadMembersJerseyNumberReturns200AndPersists() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person person = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile player = playerProfileRepository.save(newActivePlayerProfile(person.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.squadJerseyNumber").value(9));
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad",
+                                club.getId(),
+                                team.getId(),
+                                season.getId())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].squadJerseyNumber").value(9));
+    }
+
+    /** The new {@code PUT}'s {@code 400} for a negative jersey number. */
+    @Test
+    void updatingASquadMembersJerseyNumberToANegativeValueReturns400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person person = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile player = playerProfileRepository.save(newActivePlayerProfile(person.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": -1}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /** The new {@code PUT}'s {@code 404} for a player not currently in that season's squad. */
+    @Test
+    void updatingASquadMembersJerseyNumberForAPlayerNotInThatSeasonsSquadReturns404() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person person = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile player = playerProfileRepository.save(newActivePlayerProfile(person.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isNotFound());
+    }
+
+    /** The new {@code PUT}'s {@code 409} when another squad member already holds that number. */
+    @Test
+    void updatingASquadMembersJerseyNumberToOneAlreadyHeldByAnotherMemberReturns409() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person personA = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile playerA =
+                playerProfileRepository.save(newActivePlayerProfile(personA.getId(), club.getId()));
+        Person personB = personRepository.save(newPlayerPerson("Joe", "Bloggs"));
+        PlayerProfile playerB =
+                playerProfileRepository.save(newActivePlayerProfile(personB.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerA.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerB.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerA.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerB.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isConflict());
+    }
+
+    /** Cross-club {@code 403} isolation for the new {@code PUT} endpoint. */
+    @Test
+    void updatingASquadMembersJerseyNumberForADifferentClubReturns403() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        Section sectionY = sectionRepository.save(newSection(clubY.getId(), "Men"));
+        Team teamY = teamRepository.save(newTeam(clubY.getId(), sectionY.getId(), "1st XI"));
+        Season seasonY = seasonRepository.save(newSeason(clubY.getId(), "2026"));
+        Person personY = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile playerY =
+                playerProfileRepository.save(newActivePlayerProfile(personY.getId(), clubY.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", clubX.getId());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                clubY.getId(),
+                                teamY.getId(),
+                                seasonY.getId(),
+                                playerY.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isForbidden());
+    }
+
+    /** Cross-club {@code 404} isolation for the new {@code PUT} endpoint's {@code teamId}/{@code seasonId}. */
+    @Test
+    void updatingASquadMembersJerseyNumberForATeamOrSeasonBelongingToADifferentClubReturns404() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        Section sectionX = sectionRepository.save(newSection(clubX.getId(), "Men"));
+        Team teamX = teamRepository.save(newTeam(clubX.getId(), sectionX.getId(), "1st XI"));
+        Season seasonX = seasonRepository.save(newSeason(clubX.getId(), "2026"));
+        Section sectionY = sectionRepository.save(newSection(clubY.getId(), "Men"));
+        Team teamY = teamRepository.save(newTeam(clubY.getId(), sectionY.getId(), "1st XI"));
+        Person personX = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile playerX =
+                playerProfileRepository.save(newActivePlayerProfile(personX.getId(), clubX.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", clubX.getId());
+
+        // clubX is the caller's own club (so @PreAuthorize passes), but teamY belongs to clubY.
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                clubX.getId(),
+                                teamY.getId(),
+                                seasonX.getId(),
+                                playerX.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9}"))
+                .andExpect(status().isNotFound());
     }
 
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {

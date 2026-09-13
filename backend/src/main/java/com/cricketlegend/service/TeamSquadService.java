@@ -1,27 +1,43 @@
 package com.cricketlegend.service;
 
-import com.cricketlegend.dto.PlayerDto;
+import com.cricketlegend.dto.TeamSquadMemberDto;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * A {@code Team}'s squad for a given {@code Season} — season-scoped, not standing, per this
- * spec's own pre-build amendment. Reuses {@code 028}'s existing {@link PlayerDto}, no new DTO.
- * See docs/specs/029-league-management.md.
+ * spec's own pre-build amendment. Returns {@link TeamSquadMemberDto}, per
+ * docs/specs/031-jersey-numbers.md — {@code TeamSquadMember} gained its own mutable {@code
+ * jerseyNumber} attribute, so a bare {@code PlayerDto} no longer fully describes a squad row. See
+ * docs/specs/029-league-management.md.
  */
 public interface TeamSquadService {
 
     /** The team's squad for that season. 404s if {@code teamId}/{@code seasonId} doesn't belong to {@code clubId}. */
-    List<PlayerDto> list(UUID clubId, UUID teamId, UUID seasonId);
+    List<TeamSquadMemberDto> list(UUID clubId, UUID teamId, UUID seasonId);
 
     /**
      * Adds {@code playerId} to {@code teamId}'s squad for {@code seasonId}. 404s if the player
      * isn't a real player of this club, or {@code teamId}/{@code seasonId} doesn't belong to
      * {@code clubId}; throws {@link com.cricketlegend.exception.PlayerNotActiveClubMemberException}
      * if the player exists but is currently inactive; throws {@link
-     * com.cricketlegend.exception.ConflictException} if already in that season's squad.
+     * com.cricketlegend.exception.ConflictException} if already in that season's squad. The new
+     * row's {@code jerseyNumber} is pre-populated from the player's current {@code
+     * PlayerProfile.jerseyNumber} (a plain value copy, not a live reference) — this method never
+     * checks jersey-number uniqueness itself, even if the copied value collides with another
+     * squad member's number; that's corrected later via {@link #update}, not rejected here.
      */
-    PlayerDto add(UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
+    TeamSquadMemberDto add(UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
+
+    /**
+     * Updates {@code playerId}'s squad membership {@code jerseyNumber} for {@code teamId}/{@code
+     * seasonId} — the only mutable attribute on this row. 404s if {@code teamId}/{@code seasonId}
+     * doesn't belong to {@code clubId}, or if the player isn't currently in that season's squad.
+     * Throws {@link com.cricketlegend.exception.ValidationException} if {@code jerseyNumber} is
+     * negative, and {@link com.cricketlegend.exception.DuplicateSquadJerseyNumberException} if
+     * another squad member already holds that number for this team's squad this season.
+     */
+    TeamSquadMemberDto update(UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber);
 
     /**
      * Removes {@code playerId} from {@code teamId}'s squad for {@code seasonId} (hard delete of

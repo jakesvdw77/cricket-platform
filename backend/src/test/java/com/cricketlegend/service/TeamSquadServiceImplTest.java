@@ -14,9 +14,12 @@ import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
+import com.cricketlegend.dto.TeamSquadMemberDto;
 import com.cricketlegend.exception.ConflictException;
+import com.cricketlegend.exception.DuplicateSquadJerseyNumberException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PlayerNotActiveClubMemberException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
@@ -32,6 +35,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,7 +44,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * add/remove, the not-a-real-player 404, the inactive-player {@link
  * PlayerNotActiveClubMemberException}, the already-in-squad 409, and — per this spec's own
  * pre-build season-scoping amendment — a player addable to a team's squad for season A and
- * independently for season B, with removal from one season having no effect on the other.
+ * independently for season B, with removal from one season having no effect on the other. Also
+ * covers docs/specs/031-jersey-numbers.md: {@code add} copying the player's current standing
+ * jersey number into the new row at creation time only, and the new {@code update} (jersey-number
+ * only) business rules — happy path, 404/400/409, and independence from {@code PlayerProfile} and
+ * other seasons' rows.
  */
 @ExtendWith(MockitoExtension.class)
 class TeamSquadServiceImplTest {
@@ -114,6 +122,8 @@ class TeamSquadServiceImplTest {
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
         when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
                 teamId, seasonId, profile.getId())).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
         service.add(clubId, teamId, seasonId, profile.getId());
@@ -184,11 +194,179 @@ class TeamSquadServiceImplTest {
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
         when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
                 teamId, seasonBId, profile.getId())).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
         service.add(clubId, teamId, seasonBId, profile.getId());
 
         verify(teamSquadMemberRepository).save(any(TeamSquadMember.class));
+    }
+
+    @Test
+    void addCopiesTheCurrentPlayerProfileJerseyNumberIntoTheNewRowsJerseyNumberAtCreationTimeOnly() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        PlayerProfile profile = playerProfile(UUID.randomUUID(), clubId, true);
+        profile.setJerseyNumber(7);
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
+                teamId, seasonId, profile.getId())).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubPlayerLookup(profile);
+
+        service.add(clubId, teamId, seasonId, profile.getId());
+
+        ArgumentCaptor<TeamSquadMember> captor = ArgumentCaptor.forClass(TeamSquadMember.class);
+        verify(teamSquadMemberRepository).save(captor.capture());
+        assertThat(captor.getValue().getJerseyNumber()).isEqualTo(7);
+
+        // Changing the profile's standing number afterward never retroactively changes the
+        // already-created squad row's own value — the copy was a plain value, not a reference.
+        profile.setJerseyNumber(99);
+        assertThat(captor.getValue().getJerseyNumber()).isEqualTo(7);
+    }
+
+    @Test
+    void addNeverChecksJerseyNumberUniquenessEvenWhenTheCopiedValueWouldCollide() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        PlayerProfile profile = playerProfile(UUID.randomUUID(), clubId, true);
+        profile.setJerseyNumber(7);
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
+                teamId, seasonId, profile.getId())).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubPlayerLookup(profile);
+
+        service.add(clubId, teamId, seasonId, profile.getId());
+
+        verify(teamSquadMemberRepository, never())
+                .existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(any(), any(), any(), any());
+    }
+
+    // --- update ---
+
+    @Test
+    void updateSetsTheNewJerseyNumberAndReturnsItAsSquadJerseyNumber() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        TeamSquadMember member = TeamSquadMember.builder().id(memberId).teamId(teamId).seasonId(seasonId)
+                .playerProfileId(playerId).jerseyNumber(3).build();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(Optional.of(member));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
+                teamId, seasonId, 9, memberId)).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        PlayerProfile profile = playerProfile(playerId, clubId, true);
+        stubPlayerLookup(profile);
+        when(playerMapper.toSquadMemberDto(any(), any(), any(), any())).thenReturn(new TeamSquadMemberDto(
+                memberId, playerId, profile.getPersonId(), clubId, "Joe", "Bloggs", null, Gender.MALE,
+                null, null, null, null, null, null, null, null, null, null, null, false, true,
+                List.of(), null, 9));
+
+        var dto = service.update(clubId, teamId, seasonId, playerId, 9);
+
+        verify(teamSquadMemberRepository).save(any(TeamSquadMember.class));
+        assertThat(member.getJerseyNumber()).isEqualTo(9);
+        assertThat(dto.squadJerseyNumber()).isEqualTo(9);
+    }
+
+    @Test
+    void updateForAPlayerNotCurrentlyInThatSeasonsSquadThrowsNotFoundException() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, 9))
+                .isInstanceOf(NotFoundException.class);
+        verify(teamSquadMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void updateWithANegativeJerseyNumberThrowsValidationException() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        TeamSquadMember member = TeamSquadMember.builder().id(UUID.randomUUID()).teamId(teamId)
+                .seasonId(seasonId).playerProfileId(playerId).build();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, -1))
+                .isInstanceOf(ValidationException.class);
+        verify(teamSquadMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void updateToANumberAnotherSquadMemberAlreadyHoldsThrowsDuplicateSquadJerseyNumberException() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        TeamSquadMember member = TeamSquadMember.builder().id(memberId).teamId(teamId).seasonId(seasonId)
+                .playerProfileId(playerId).build();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(Optional.of(member));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
+                teamId, seasonId, 5, memberId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, 5))
+                .isInstanceOf(DuplicateSquadJerseyNumberException.class);
+        verify(teamSquadMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void updatingASquadMembersJerseyNumberNeverTouchesThePlayerProfileOrAnotherSeasonsRow() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        TeamSquadMember member = TeamSquadMember.builder().id(memberId).teamId(teamId).seasonId(seasonId)
+                .playerProfileId(playerId).jerseyNumber(3).build();
+        PlayerProfile profile = playerProfile(playerId, clubId, true);
+        profile.setJerseyNumber(3);
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(Optional.of(member));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
+                teamId, seasonId, 9, memberId)).thenReturn(false);
+        when(teamSquadMemberRepository.save(any(TeamSquadMember.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        stubPlayerLookup(profile);
+
+        service.update(clubId, teamId, seasonId, playerId, 9);
+
+        assertThat(member.getJerseyNumber()).isEqualTo(9);
+        assertThat(profile.getJerseyNumber()).isEqualTo(3);
+        verify(playerProfileRepository, never()).save(any());
     }
 
     @Test
