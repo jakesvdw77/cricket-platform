@@ -43,6 +43,9 @@ export interface Player {
   isWicketKeeper: boolean
   active: boolean
   sectionIds: string[]
+  // docs/specs/031-jersey-numbers.md: the player's own "usual"/standing number, independent of any
+  // specific team/season squad membership (see teamSquadApi.ts's SquadMember.squadJerseyNumber).
+  jerseyNumber: number | null
   createdAt: string
   updatedAt: string
   updatedBy: string | null
@@ -69,6 +72,8 @@ export interface PlayerPayload {
   bowlingArm: BowlingArm | null
   bowlingType: BowlingType | null
   isWicketKeeper: boolean
+  // docs/specs/031-jersey-numbers.md, nullable, no uniqueness enforced against it.
+  jerseyNumber: number | null
 }
 
 function playersPath(clubId: string): string {

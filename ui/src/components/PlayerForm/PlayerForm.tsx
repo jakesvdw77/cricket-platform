@@ -4,6 +4,7 @@ import { Box, Checkbox, FormControlLabel, MenuItem } from '@mui/material'
 import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
 import type { PlayerPayload, Gender, BattingStance, BowlingArm, BowlingType } from '../../api/playerApi'
+import { numberToInput, inputToNumber } from '../../utils/numberInput'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see PlayerFormPage), so its Save button targets this form via the native HTML
@@ -33,6 +34,10 @@ interface FormState {
   gender: '' | Gender
   photoUrl: string | null
   clubMembershipNumber: string
+  // docs/specs/031-jersey-numbers.md's standing/usual number — string-based local draft state like
+  // every other field on this form, round-tripped to/from PlayerPayload's `number | null` via the
+  // shared numberToInput/inputToNumber helpers.
+  jerseyNumber: string
   medicalAidProvider: string
   medicalAidMemberNumber: string
   phone: string
@@ -50,6 +55,7 @@ type TextField =
   | 'lastName'
   | 'dateOfBirth'
   | 'clubMembershipNumber'
+  | 'jerseyNumber'
   | 'medicalAidProvider'
   | 'medicalAidMemberNumber'
   | 'phone'
@@ -81,6 +87,7 @@ function toFormState(initialValues?: Partial<PlayerFormValues>): FormState {
     gender: initialValues?.gender ?? '',
     photoUrl: initialValues?.photoUrl ?? null,
     clubMembershipNumber: initialValues?.clubMembershipNumber ?? '',
+    jerseyNumber: numberToInput(initialValues?.jerseyNumber ?? null),
     medicalAidProvider: initialValues?.medicalAidProvider ?? '',
     medicalAidMemberNumber: initialValues?.medicalAidMemberNumber ?? '',
     phone: initialValues?.phone ?? '',
@@ -167,6 +174,7 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
       gender: values.gender === '' ? null : values.gender,
       photoUrl: values.photoUrl,
       clubMembershipNumber: blankToNull(values.clubMembershipNumber),
+      jerseyNumber: inputToNumber(values.jerseyNumber),
       medicalAidProvider: blankToNull(values.medicalAidProvider),
       medicalAidMemberNumber: blankToNull(values.medicalAidMemberNumber),
       phone: blankToNull(values.phone),
@@ -230,6 +238,12 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
             label="Club membership number"
             value={values.clubMembershipNumber}
             onChange={handleChange('clubMembershipNumber')}
+          />
+          <Input
+            label="Jersey number"
+            type="number"
+            value={values.jerseyNumber}
+            onChange={handleChange('jerseyNumber')}
           />
           <Input
             label="Medical aid provider"

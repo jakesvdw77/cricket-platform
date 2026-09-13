@@ -41,6 +41,7 @@ const populatedValues: Partial<PlayerFormValues> = {
   gender: 'MALE',
   photoUrl: '/media/managed/player-photo.png',
   clubMembershipNumber: 'RCC-042',
+  jerseyNumber: 7,
   medicalAidProvider: 'Discovery',
   medicalAidMemberNumber: 'DH-99123',
   phone: '+27 21 555 0188',
@@ -63,6 +64,7 @@ describe('PlayerForm', () => {
     expect(screen.getByLabelText('Gender')).toBeInTheDocument()
     expect(screen.getByText('Photo')).toBeInTheDocument()
     expect(screen.getByLabelText('Club membership number')).toBeInTheDocument()
+    expect(screen.getByLabelText('Jersey number')).toBeInTheDocument()
     expect(screen.getByLabelText('Medical aid provider')).toBeInTheDocument()
     expect(screen.getByLabelText('Medical aid member number')).toBeInTheDocument()
 
@@ -99,6 +101,7 @@ describe('PlayerForm', () => {
     expect(screen.getByLabelText('First name')).toHaveValue('Sipho')
     expect(screen.getByLabelText('Last name')).toHaveValue('Ndlovu')
     expect(screen.getByLabelText('Date of birth')).toHaveValue('2010-04-12')
+    expect(screen.getByLabelText('Jersey number')).toHaveValue(7)
     // MUI's Select renders a role="combobox" div (not a native <select>/<input>) for its visible
     // control — its rendered text is the chosen MenuItem's label ("Male"), not the raw enum value
     // toHaveValue() would check on a native form element.
@@ -136,6 +139,7 @@ describe('PlayerForm', () => {
       gender: null,
       photoUrl: null,
       clubMembershipNumber: null,
+      jerseyNumber: null,
       medicalAidProvider: null,
       medicalAidMemberNumber: null,
       phone: null,
@@ -159,6 +163,8 @@ describe('PlayerForm', () => {
 
     await user.click(screen.getByLabelText('Gender'))
     await user.click(await screen.findByRole('option', { name: 'Male' }))
+
+    await user.type(screen.getByLabelText('Jersey number'), '7')
 
     rerender(
       <>
@@ -185,6 +191,7 @@ describe('PlayerForm', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as PlayerFormValues
     expect(payload.gender).toBe('MALE')
+    expect(payload.jerseyNumber).toBe(7)
     expect(payload.battingStance).toBe('RIGHT_HANDED')
     expect(payload.bowlingArm).toBe('RIGHT_ARM')
     expect(payload.bowlingType).toBe('OFF_BREAK')
