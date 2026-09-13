@@ -23,6 +23,7 @@ import { Card } from '../Card'
 import type { ClubContact } from '../../api/clubContactApi'
 import type { Section, SectionPayload } from '../../api/sectionApi'
 import type { Team } from '../../api/teamApi'
+import { numberToInput, inputToNumber } from '../../utils/numberInput'
 
 // Identical to RecordCard's own 'muted' badge tone sx (docs/specs/027-team-profile.md) —
 // SectionDetailPanel doesn't use RecordCard itself, so the values are copied rather than shared.
@@ -66,19 +67,6 @@ export interface SectionDetailPanelProps {
 
 function initialsOf(contact: ClubContact): string {
   return `${contact.contact.firstName[0] ?? ''}${contact.contact.lastName[0] ?? ''}`.toUpperCase()
-}
-
-function numberToInput(value: number | null): string {
-  return value === null ? '' : String(value)
-}
-
-function inputToNumber(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) {
-    return null
-  }
-  const parsed = Number(trimmed)
-  return Number.isFinite(parsed) ? parsed : null
 }
 
 // The node detail panel — docs/specs/025-club-structure.md: breadcrumb trail, an editable name
