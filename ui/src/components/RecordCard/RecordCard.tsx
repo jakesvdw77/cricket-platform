@@ -177,7 +177,11 @@ export function RecordCard({
                 <Typography variant="caption" color="text.secondary">
                   {field.label}
                 </Typography>
-                <Typography variant="body2" fontWeight={600}>
+                {/* component="div", not the variant's default <p> — field.value is a plain
+                    ReactNode and, since docs/specs/031-jersey-numbers.md, sometimes a form
+                    control (e.g. an inline-editable Input, which renders a <fieldset> for its
+                    outline); a <p> cannot legally contain block-level content like that. */}
+                <Typography variant="body2" fontWeight={600} component="div">
                   {field.value}
                 </Typography>
               </Stack>
