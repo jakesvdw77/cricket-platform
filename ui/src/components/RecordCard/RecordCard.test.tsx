@@ -1,3 +1,4 @@
+import { TextField } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -262,5 +263,25 @@ describe('RecordCard', () => {
     const editButton = screen.getByRole('button', { name: 'Edit' })
     expect(editButton.querySelector('svg')).toBeInTheDocument()
     expect(screen.getByTestId('deactivate-icon')).toBeInTheDocument()
+  })
+
+  // Regression coverage (docs/specs/031-jersey-numbers.md): a field's `value` can be a real form
+  // control, not just static text — TeamFormPage's inline "Squad #" edit passes an MUI Input.
+  // The value slot used to render inside a Typography variant="body2" with no `component`
+  // override, which defaults to a <p> — invalid HTML once that value is a form control (Input
+  // renders a <fieldset> for its outline), and a live React hydration console error caught during
+  // manual testing. Asserts the container is not a <p> so this can't silently regress.
+  it('does not nest a form-control field value inside a <p>', () => {
+    render(
+      <RecordCard
+        title="Riverside CC"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        fields={[{ label: 'Squad #', value: <TextField size="small" label="" aria-label="squad number" /> }]}
+      />,
+    )
+
+    const input = screen.getByLabelText('squad number')
+    expect(input.closest('p')).toBeNull()
   })
 })
