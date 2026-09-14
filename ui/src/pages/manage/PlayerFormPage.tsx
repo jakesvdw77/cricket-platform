@@ -184,6 +184,7 @@ export default function PlayerFormPage() {
                     gender: player.gender,
                     photoUrl: player.photoUrl,
                     clubMembershipNumber: player.clubMembershipNumber,
+                    jerseyNumber: player.jerseyNumber,
                     medicalAidProvider: player.medicalAidProvider,
                     medicalAidMemberNumber: player.medicalAidMemberNumber,
                     phone: player.phone,

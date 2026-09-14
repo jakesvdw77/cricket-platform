@@ -143,13 +143,22 @@ describe('PlayerFormPage', () => {
 
   describe('edit mode', () => {
     it('fetches the player list and prefills from the matching player id', async () => {
-      listPlayers.mockResolvedValue([makePlayer({ id: 'player-1', firstName: 'Sipho' }), makePlayer({ id: 'player-2', firstName: 'Other' })])
+      listPlayers.mockResolvedValue([
+        makePlayer({ id: 'player-1', firstName: 'Sipho', jerseyNumber: 99 }),
+        makePlayer({ id: 'player-2', firstName: 'Other' }),
+      ])
 
       renderPage('/manage/players/player-1/edit', 'test-club-id')
 
       expect(await screen.findByText('Edit Player')).toBeInTheDocument()
       expect(listPlayers).toHaveBeenCalledWith('test-club-id')
       expect(await screen.findByDisplayValue('Sipho')).toBeInTheDocument()
+      // Regression coverage: PlayerFormPage's own field-by-field initialValues mapping had
+      // silently dropped jerseyNumber (PlayerFormValues is a Partial, so TypeScript never
+      // caught the omission) — a real player's standing number showed blank on Edit despite
+      // being correctly persisted server-side. Caught live via manual smoke test, not by any
+      // automated test until this assertion was added.
+      expect(await screen.findByDisplayValue('99')).toBeInTheDocument()
     })
 
     it('renders an error state when the matching player id is not in the fetched list', async () => {
