@@ -2,9 +2,12 @@ import { test, expect } from '@playwright/test';
 
 /**
  * E2E golden path for docs/specs/029-league-management.md, extended to also cover
- * docs/specs/030-team-sheet-communication.md's "Communicate Team Sheet → Print as PDF" flow and
- * docs/specs/031-jersey-numbers.md's standing/per-squad jersey numbers (per each spec's own Test
- * Plan, which calls for extending this same golden path rather than a second, parallel one). Per
+ * docs/specs/030-team-sheet-communication.md's "Communicate Team Sheet → Print as PDF" flow,
+ * docs/specs/031-jersey-numbers.md's standing/per-squad jersey numbers,
+ * docs/specs/032-match-availability-polls.md's admin/public poll flow, and
+ * docs/specs/033-availability-aware-xi-builder.md's indicator treatment in PlayingXiBuilder plus
+ * its own directly-requested (no-spec) admin-override addition (per each spec's own Test Plan,
+ * which calls for extending this same golden path rather than a second, parallel one). Per
  * 029's Test Plan (End-to-end row) and Acceptance Criteria: log in as a CLUB_ADMIN-provisioned test
  * user, create a league with enforced age restrictions, create a season, affiliate a team into that
  * league for that season, add players to that team's squad for the season, schedule a match against
@@ -15,8 +18,14 @@ import { test, expect } from '@playwright/test';
  * Availability tab, generate/inspect the share text, open the poll's public link in a fresh
  * unauthenticated browser context, set a squad member's status there, confirm the admin tab's
  * response count updates on reload, close the poll and confirm the public page goes read-only, then
- * reopen it and confirm it accepts changes again — then (030) open that same match's "Communicate
- * Team Sheet" dialog from its card and print a PDF for both sides. (031) Along the way: one squad
+ * reopen it and confirm it accepts changes again — then (033) with that same poll reopened, set a
+ * not-yet-added squad member's public response to Unavailable and confirm the red-tinted
+ * "Unavailable for this match" treatment appears on their Home XI tab's Add-player option and
+ * Twelfth Man option, set it to Unsure instead and confirm the orange-tinted treatment replaces it,
+ * then use the admin-override status Chip on the Availability tab (added directly, no spec) to set
+ * a different squad member's status without going through the public link at all — then (030) open
+ * that same match's "Communicate Team Sheet" dialog from its card and print a PDF for both sides.
+ * (031) Along the way: one squad
  * candidate is given a standing jersey number on their own profile, that number is overridden once
  * they're on the squad, a second squad member is given a squad number from scratch, a third's
  * attempt to reuse the first's squad number is rejected inline with a 409, and after a reload the
@@ -485,6 +494,46 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await publicPage.reload();
     await expect(publicPage.getByText(/this poll is closed/i)).not.toBeVisible();
     await expect(eligible1AvailableToggle).toBeEnabled();
+
+    // --- Availability-aware XI builder (docs/specs/033-availability-aware-xi-builder.md): reuses
+    // this same, now-reopened poll. eligible3 is a genuine "not yet added" candidate — set as
+    // Twelfth Man above but never added to the ordered XI itself — so setting their public
+    // response exercises both the Add-player Autocomplete and the Twelfth Man Select without
+    // touching anyone already in the batting order.
+    await publicPage.getByLabel(`${eligible3FullName}: Unavailable`).click();
+
+    await page.getByRole('tab', { name: 'Home XI' }).click();
+    await page.getByRole('combobox', { name: 'Add player' }).click();
+    // Accessible name concatenates the option's name + caption once tinted, so this can no longer
+    // be an exact match — a substring/regex lookup is the correct query from here on.
+    const eligible3AddOption = page.getByRole('option', { name: new RegExp(eligible3FullName) });
+    await expect(eligible3AddOption).toContainText(/unavailable for this match/i);
+    await expect(eligible3AddOption).toHaveCSS('background-color', 'rgba(176, 64, 46, 0.16)');
+    await page.keyboard.press('Escape');
+
+    await page.getByLabel('Twelfth man').click();
+    const eligible3TwelfthManOption = page.getByRole('option', { name: new RegExp(eligible3FullName) });
+    await expect(eligible3TwelfthManOption).toContainText(/unavailable for this match/i);
+    await page.keyboard.press('Escape');
+
+    // A different response — Unsure — via the same public link; confirm the orange treatment
+    // (not the red one above) shows wherever eligible3's name is displayed in the builder.
+    await publicPage.getByLabel(`${eligible3FullName}: Unsure`).click();
+    await page.getByLabel('Twelfth man').click();
+    const eligible3UnsureOption = page.getByRole('option', { name: new RegExp(eligible3FullName) });
+    await expect(eligible3UnsureOption).toContainText(/marked unsure for this match/i);
+    await expect(eligible3UnsureOption).toHaveCSS('background-color', 'rgba(183, 121, 31, 0.16)');
+    await page.keyboard.press('Escape');
+
+    // --- Admin override (added directly, no spec — see the branch's own commit history): the
+    // admin can set a squad member's status straight from the Availability tab's status Chip,
+    // independent of the public link.
+    await page.getByRole('tab', { name: 'Availability' }).click();
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible();
+    const eligible2StatusChip = page.getByRole('button', { name: new RegExp(`set.*${eligible2FullName}.*availability`, 'i') });
+    await eligible2StatusChip.click();
+    await page.getByRole('menuitem', { name: 'Unavailable' }).click();
+    await expect(eligible2StatusChip).toHaveText(/unavailable/i);
 
     await publicContext.close();
 
