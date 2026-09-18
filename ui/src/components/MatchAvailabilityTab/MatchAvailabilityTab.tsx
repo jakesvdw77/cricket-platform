@@ -1,5 +1,7 @@
-import { Alert, Box, Chip, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Alert, Box, Chip, FormControlLabel, Menu, MenuItem, Stack, Switch, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { Button } from '../Button'
 import { EmptyState } from '../EmptyState'
@@ -10,6 +12,8 @@ const STATUS_LABEL: Record<AvailabilityStatus, string> = {
   UNAVAILABLE: 'Unavailable',
   UNSURE: 'Unsure',
 }
+
+const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
 
 // 'success'/'error'/'warning' — MUI palette keys, matching this codebase's existing
 // RecordCard.tsx tinted-badge convention (alpha(theme.palette.X.main, ~0.12) for the
@@ -37,9 +41,16 @@ export interface MatchAvailabilityTabProps {
   onOpen: () => void
   onClose: () => void
   onShareInvite: () => void
+  // Admin override, added after live review found no way to record a response relayed outside
+  // the poll link (e.g. a phone call) — clicking a squad member's own status Chip opens a menu to
+  // set it directly. Disabled while the poll is closed, matching the backend's own rule.
+  onSetPlayerStatus: (playerProfileId: string, status: AvailabilityStatus) => void
   isCreatePending?: boolean
   isOpenPending?: boolean
   isClosePending?: boolean
+  // playerProfileId of the row currently being saved, if any — shows a pending state on just
+  // that one row rather than blocking the whole list.
+  settingPlayerId?: string | null
   errorMessage?: string | null
 }
 
@@ -56,9 +67,11 @@ export function MatchAvailabilityTab({
   onOpen,
   onClose,
   onShareInvite,
+  onSetPlayerStatus,
   isCreatePending = false,
   isOpenPending = false,
   isClosePending = false,
+  settingPlayerId = null,
   errorMessage,
 }: MatchAvailabilityTabProps) {
   if (isLoading) {
@@ -149,19 +162,13 @@ export function MatchAvailabilityTab({
             <Typography variant="body2" fontWeight={600} noWrap>
               {squadDisplayName(row)}
             </Typography>
-            {row.status ? (
-              <Chip
-                label={STATUS_LABEL[row.status]}
-                size="small"
-                sx={{
-                  bgcolor: (theme) => alpha(theme.palette[STATUS_COLOR[row.status]].main, 0.12),
-                  color: `${STATUS_COLOR[row.status]}.dark`,
-                  fontWeight: 600,
-                }}
-              />
-            ) : (
-              <Chip label="No response" size="small" variant="outlined" />
-            )}
+            <StatusMenuChip
+              status={row.status}
+              disabled={!poll.open}
+              pending={settingPlayerId === row.playerProfileId}
+              playerName={squadDisplayName(row)}
+              onSelect={(status) => onSetPlayerStatus(row.playerProfileId, status)}
+            />
           </Stack>
         ))}
       </Stack>
@@ -201,5 +208,61 @@ function SummaryTile({
         {label}
       </Typography>
     </Box>
+  )
+}
+
+// The admin-override entry point: a squad member's status Chip doubles as a menu trigger.
+// Disabled while the poll is closed (mirrors the backend's own PollClosedException rule) rather
+// than opening a menu whose every option would just fail on click.
+function StatusMenuChip({
+  status,
+  disabled,
+  pending,
+  playerName,
+  onSelect,
+}: {
+  status: AvailabilityStatus | null
+  disabled: boolean
+  pending: boolean
+  playerName: string
+  onSelect: (status: AvailabilityStatus) => void
+}) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+
+  const chipProps = status
+    ? {
+        label: STATUS_LABEL[status],
+        sx: {
+          bgcolor: (theme: Theme) => alpha(theme.palette[STATUS_COLOR[status]].main, 0.12),
+          color: `${STATUS_COLOR[status]}.dark`,
+          fontWeight: 600,
+        },
+      }
+    : { label: 'No response', variant: 'outlined' as const }
+
+  return (
+    <>
+      <Chip
+        {...chipProps}
+        size="small"
+        disabled={disabled || pending}
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        aria-label={`Set ${playerName}'s availability`}
+      />
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        {STATUS_OPTIONS.map((option) => (
+          <MenuItem
+            key={option}
+            selected={option === status}
+            onClick={() => {
+              setAnchorEl(null)
+              onSelect(option)
+            }}
+          >
+            {STATUS_LABEL[option]}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   )
 }

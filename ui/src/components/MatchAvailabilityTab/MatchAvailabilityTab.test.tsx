@@ -33,6 +33,7 @@ function baseProps(overrides: Partial<MatchAvailabilityTabProps> = {}): MatchAva
     onOpen: vi.fn(),
     onClose: vi.fn(),
     onShareInvite: vi.fn(),
+    onSetPlayerStatus: vi.fn(),
     ...overrides,
   }
 }
@@ -95,6 +96,42 @@ describe('MatchAvailabilityTab', () => {
 
     await user.click(screen.getByRole('button', { name: /share invite/i }))
     expect(onShareInvite).toHaveBeenCalled()
+  })
+
+  it('opens a status menu on a squad member\'s Chip and calls onSetPlayerStatus with the chosen status', async () => {
+    const user = userEvent.setup()
+    const onSetPlayerStatus = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ onSetPlayerStatus })} />)
+
+    await user.click(screen.getByRole('button', { name: /jane smith's availability/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Unavailable' }))
+
+    expect(onSetPlayerStatus).toHaveBeenCalledWith('p1', 'UNAVAILABLE')
+  })
+
+  it('lets the admin set a status for a squad member with no response yet', async () => {
+    const user = userEvent.setup()
+    const onSetPlayerStatus = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ onSetPlayerStatus })} />)
+
+    await user.click(screen.getByRole('button', { name: /set sam patel's availability/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Available' }))
+
+    expect(onSetPlayerStatus).toHaveBeenCalledWith('p4', 'AVAILABLE')
+  })
+
+  it('disables the status Chip for every row when the poll is closed', () => {
+    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }) })} />)
+
+    expect(screen.getByRole('button', { name: /jane smith's availability/i })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /set sam patel's availability/i })).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('shows a pending state only on the row currently being saved', () => {
+    render(<MatchAvailabilityTab {...baseProps({ settingPlayerId: 'p1' })} />)
+
+    expect(screen.getByRole('button', { name: /jane smith's availability/i })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /set bob jones's availability/i })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('surfaces a server error inline', () => {

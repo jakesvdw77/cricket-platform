@@ -47,6 +47,7 @@ export const NoPollYet: Story = {
     onOpen: noop,
     onClose: noop,
     onShareInvite: noop,
+    onSetPlayerStatus: noop,
   },
 }
 

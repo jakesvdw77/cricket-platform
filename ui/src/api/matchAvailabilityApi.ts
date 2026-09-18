@@ -67,3 +67,20 @@ export async function getPollResponses(
   const { data } = await api.get<MatchAvailabilityPollResponses>(`${pollsPath(clubId, matchId)}/${pollId}/responses`)
   return data
 }
+
+// Admin override — set a squad member's status directly from the Availability tab (added after
+// live review found no way to record a response relayed outside the poll link, e.g. a phone
+// call). Same closed-poll 409 rule as the public write path — admin included, no bypass.
+export async function setPlayerStatus(
+  clubId: string,
+  matchId: string,
+  pollId: string,
+  playerProfileId: string,
+  status: AvailabilityStatus,
+): Promise<MatchAvailabilityPollResponses> {
+  const { data } = await api.put<MatchAvailabilityPollResponses>(
+    `${pollsPath(clubId, matchId)}/${pollId}/players/${playerProfileId}`,
+    { status },
+  )
+  return data
+}
