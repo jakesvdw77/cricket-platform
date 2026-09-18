@@ -21,6 +21,7 @@ import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.service.PlayerService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -85,16 +86,17 @@ public class PlayerServiceImpl implements PlayerService {
         final Set<UUID> narrowToFinal = narrowTo;
 
         return playerProfileRepository.findByClubId(clubId).stream()
-                .filter(profile -> {
-                    List<UUID> tagged = sectionIds(profile.getId());
+                .map(profile -> Map.entry(profile, sectionIds(profile.getId())))
+                .filter(entry -> {
+                    List<UUID> tagged = entry.getValue();
                     if (accessibleSectionIds.isPresent()
                             && tagged.stream().noneMatch(accessibleSectionIds.get()::contains)) {
                         return false;
                     }
                     return narrowToFinal == null || tagged.stream().anyMatch(narrowToFinal::contains);
                 })
-                .map(profile -> playerMapper.toDto(
-                        findPersonOrThrow(profile.getPersonId()), profile, sectionIds(profile.getId())))
+                .map(entry -> playerMapper.toDto(
+                        findPersonOrThrow(entry.getKey().getPersonId()), entry.getKey(), entry.getValue()))
                 .toList();
     }
 
