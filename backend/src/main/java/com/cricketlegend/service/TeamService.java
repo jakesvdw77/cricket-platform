@@ -5,6 +5,7 @@ import com.cricketlegend.dto.TeamDto;
 import com.cricketlegend.dto.UpdateTeamRequest;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 
 /**
  * A club's {@link com.cricketlegend.domain.Team} rows — leaves hanging off a {@link
@@ -24,11 +25,14 @@ public interface TeamService {
     List<TeamDto> listBySection(UUID clubId, UUID sectionId);
 
     /**
-     * Every team for {@code clubId}, flat, across all sections — active and inactive, not
-     * paginated — backs the club-wide Teams directory. No section-ownership check needed, {@code
-     * club_id} is a direct column on {@link com.cricketlegend.domain.Team}.
+     * Every team for {@code clubId}, flat, across all sections whose {@code sectionId} intersects
+     * the caller's own accessible sections (unrestricted for a club-wide caller) — active and
+     * inactive, not paginated — backs the club-wide Teams directory. Per
+     * docs/specs/035-section-scoped-access.md: {@code sectionId}, when supplied, narrows further
+     * to that section's own closure, validated via {@link
+     * com.cricketlegend.config.AccessService#assertCanAdministerSection} first.
      */
-    List<TeamDto> listByClub(UUID clubId);
+    List<TeamDto> listByClub(Authentication authentication, UUID clubId, UUID sectionId);
 
     /**
      * Creates a team under {@code sectionId} for {@code clubId}. 404s if {@code sectionId}

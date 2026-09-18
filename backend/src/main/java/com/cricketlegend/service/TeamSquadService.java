@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.TeamSquadMemberDto;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 
 /**
  * A {@code Team}'s squad for a given {@code Season} — season-scoped, not standing, per this
@@ -10,11 +11,15 @@ import java.util.UUID;
  * docs/specs/031-jersey-numbers.md — {@code TeamSquadMember} gained its own mutable {@code
  * jerseyNumber} attribute, so a bare {@code PlayerDto} no longer fully describes a squad row. See
  * docs/specs/029-league-management.md.
+ *
+ * <p>Per docs/specs/035-section-scoped-access.md: every method now takes the caller's {@link
+ * Authentication} — a section-scoped caller manages only their own team's squad, checked against
+ * the already-loaded {@code Team.sectionId}.
  */
 public interface TeamSquadService {
 
     /** The team's squad for that season. 404s if {@code teamId}/{@code seasonId} doesn't belong to {@code clubId}. */
-    List<TeamSquadMemberDto> list(UUID clubId, UUID teamId, UUID seasonId);
+    List<TeamSquadMemberDto> list(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId);
 
     /**
      * Adds {@code playerId} to {@code teamId}'s squad for {@code seasonId}. 404s if the player
@@ -27,7 +32,7 @@ public interface TeamSquadService {
      * checks jersey-number uniqueness itself, even if the copied value collides with another
      * squad member's number; that's corrected later via {@link #update}, not rejected here.
      */
-    TeamSquadMemberDto add(UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
+    TeamSquadMemberDto add(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
 
     /**
      * Updates {@code playerId}'s squad membership {@code jerseyNumber} for {@code teamId}/{@code
@@ -37,7 +42,8 @@ public interface TeamSquadService {
      * negative, and {@link com.cricketlegend.exception.DuplicateSquadJerseyNumberException} if
      * another squad member already holds that number for this team's squad this season.
      */
-    TeamSquadMemberDto update(UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber);
+    TeamSquadMemberDto update(
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber);
 
     /**
      * Removes {@code playerId} from {@code teamId}'s squad for {@code seasonId} (hard delete of
@@ -46,5 +52,5 @@ public interface TeamSquadService {
      * squad. Does not retroactively remove the player from any {@code MatchSide} they're already
      * selected on.
      */
-    void remove(UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
+    void remove(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
 }

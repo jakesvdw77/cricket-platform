@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
@@ -22,6 +23,7 @@ import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.TeamSquadService;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +58,7 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     private final PlayerSectionRepository playerSectionRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final PlayerMapper playerMapper;
+    private final AccessService accessService;
 
     public TeamSquadServiceImpl(
             TeamRepository teamRepository,
@@ -64,7 +67,8 @@ public class TeamSquadServiceImpl implements TeamSquadService {
             PersonRepository personRepository,
             PlayerSectionRepository playerSectionRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
-            PlayerMapper playerMapper) {
+            PlayerMapper playerMapper,
+            AccessService accessService) {
         this.teamRepository = teamRepository;
         this.seasonRepository = seasonRepository;
         this.playerProfileRepository = playerProfileRepository;
@@ -72,12 +76,14 @@ public class TeamSquadServiceImpl implements TeamSquadService {
         this.playerSectionRepository = playerSectionRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.playerMapper = playerMapper;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TeamSquadMemberDto> list(UUID clubId, UUID teamId, UUID seasonId) {
-        findTeamOrThrowForClub(clubId, teamId);
+    public List<TeamSquadMemberDto> list(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId) {
+        Team team = findTeamOrThrowForClub(clubId, teamId);
+        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         return teamSquadMemberRepository.findByTeamIdAndSeasonId(teamId, seasonId).stream()
@@ -87,8 +93,9 @@ public class TeamSquadServiceImpl implements TeamSquadService {
 
     @Override
     @Transactional
-    public TeamSquadMemberDto add(UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
-        findTeamOrThrowForClub(clubId, teamId);
+    public TeamSquadMemberDto add(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
+        Team team = findTeamOrThrowForClub(clubId, teamId);
+        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
         PlayerProfile profile = findPlayerOrThrowForClub(clubId, playerId);
 
@@ -117,8 +124,9 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     @Override
     @Transactional
     public TeamSquadMemberDto update(
-            UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber) {
-        findTeamOrThrowForClub(clubId, teamId);
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber) {
+        Team team = findTeamOrThrowForClub(clubId, teamId);
+        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         TeamSquadMember member = teamSquadMemberRepository
@@ -146,8 +154,9 @@ public class TeamSquadServiceImpl implements TeamSquadService {
 
     @Override
     @Transactional
-    public void remove(UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
-        findTeamOrThrowForClub(clubId, teamId);
+    public void remove(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId) {
+        Team team = findTeamOrThrowForClub(clubId, teamId);
+        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
         teamSquadMemberRepository

@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.SectionDto;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 
 /**
  * A many-to-many, bare link between a {@link com.cricketlegend.domain.PlayerProfile} and
@@ -18,9 +19,11 @@ public interface PlayerSectionService {
 
     /**
      * Every {@link SectionDto} currently tagged to {@code playerId}. 404s if {@code playerId}
-     * doesn't belong to {@code clubId}.
+     * doesn't belong to {@code clubId}. Per docs/specs/035-section-scoped-access.md: a
+     * section-scoped caller may only read this for a player tagged to at least one of their own
+     * accessible sections ({@link com.cricketlegend.config.AccessService#assertCanAdministerAnySection}).
      */
-    List<SectionDto> list(UUID clubId, UUID playerId);
+    List<SectionDto> list(Authentication authentication, UUID clubId, UUID playerId);
 
     /**
      * Tags an existing {@link com.cricketlegend.domain.Section} (must belong to {@code clubId},
