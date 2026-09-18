@@ -1,10 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ThemeProvider } from '@mui/material/styles'
 import { describe, expect, it, vi } from 'vitest'
 import { PlayingXiBuilder } from './PlayingXiBuilder'
-import type { PlayingXiBuilderProps } from './PlayingXiBuilder'
+import type { AvailabilityStatus, PlayingXiBuilderProps } from './PlayingXiBuilder'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer } from '../../api/matchSideApi'
+import { baseTheme } from '../../theme'
 
 // `id` (the TeamSquadMember row's own id) is deliberately distinct from `playerProfileId` below —
 // docs/specs/031-jersey-numbers.md — every join in PlayingXiBuilder is keyed by playerProfileId,
@@ -247,6 +249,156 @@ describe('PlayingXiBuilder', () => {
 
       await user.click(screen.getByLabelText('Twelfth man'))
       expect(await screen.findByRole('option', { name: 'Amy Lee' })).toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/033-availability-aware-xi-builder.md
+  describe('availability indicators', () => {
+    // Wrapped in the real app theme (docs/standards/design-system.md's palette tokens) rather than
+    // MUI's own default theme, so the tinted-background assertions below check against the actual
+    // theme.ts error.main this component renders with, not MUI's default red.
+    function renderXi(props: Partial<PlayingXiBuilderProps> = {}) {
+      return render(
+        <ThemeProvider theme={baseTheme}>
+          <PlayingXiBuilder {...baseProps(props)} />
+        </ThemeProvider>,
+      )
+    }
+
+    it('renders no indicator anywhere when availabilityByPlayerId is omitted', async () => {
+      const user = userEvent.setup()
+      renderXi({ xi: XI_WITH_TWO })
+
+      expect(screen.queryByText('Marked Unsure for this match')).not.toBeInTheDocument()
+
+      await user.click(screen.getByLabelText('Add player'))
+      const option = await screen.findByText('Amy Lee')
+      expect(option.closest('li')).not.toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+    })
+
+    it('renders no indicator anywhere when availabilityByPlayerId is empty', () => {
+      renderXi({ xi: XI_WITH_TWO, availabilityByPlayerId: new Map() })
+      expect(screen.queryByText('Marked Unsure for this match')).not.toBeInTheDocument()
+    })
+
+    it('tints the Add-player option red and shows the caption for an UNAVAILABLE candidate', async () => {
+      const user = userEvent.setup()
+      renderXi({ availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'UNAVAILABLE']]) })
+
+      await user.click(screen.getByLabelText('Add player'))
+      const option = await screen.findByText('Bob Jones')
+      expect(option.closest('li')).toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+      expect(await screen.findByText('Unavailable for this match')).toBeInTheDocument()
+    })
+
+    it('tints an UNAVAILABLE player\'s own ordered-XI row red and shows the caption', () => {
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'UNAVAILABLE']]),
+      })
+
+      // The row's own outer Box wraps the "move up" IconButton two levels up (the action-buttons
+      // Stack's parent is the row Box itself).
+      const rowContainer = screen.getByLabelText('Move Bob Jones up').closest('div')?.parentElement
+      expect(rowContainer).toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+      expect(screen.getByText('Unavailable for this match')).toBeInTheDocument()
+    })
+
+    it('shows the exact Unsure caption and an orange tint on the Add-player option', async () => {
+      const user = userEvent.setup()
+      renderXi({ availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'UNSURE']]) })
+
+      await user.click(screen.getByLabelText('Add player'))
+      const caption = await screen.findByText('Marked Unsure for this match')
+      expect(caption).toBeInTheDocument()
+      expect(caption.closest('li')).toHaveStyle({ backgroundColor: 'rgba(183, 121, 31, 0.16)' })
+    })
+
+    it('shows the exact Unsure caption and an orange tint on that player\'s own ordered-XI row', () => {
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'UNSURE']]),
+      })
+
+      expect(screen.getByText('Marked Unsure for this match')).toBeInTheDocument()
+      const rowContainer = screen.getByLabelText('Move Bob Jones up').closest('div')?.parentElement
+      expect(rowContainer).toHaveStyle({ backgroundColor: 'rgba(183, 121, 31, 0.16)' })
+    })
+
+    it('renders no visual change for an AVAILABLE entry', () => {
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'AVAILABLE']]),
+      })
+
+      expect(screen.queryByText('Marked Unsure for this match')).not.toBeInTheDocument()
+      const rowContainer = screen.getByLabelText('Move Bob Jones up').closest('div')?.parentElement
+      expect(rowContainer).not.toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+      expect(rowContainer).not.toHaveStyle({ backgroundColor: 'rgba(183, 121, 31, 0.16)' })
+    })
+
+    it('applies the same treatment to Twelfth Man options as the Add-player Autocomplete', async () => {
+      const user = userEvent.setup()
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-3', 'UNAVAILABLE']]),
+      })
+
+      await user.click(screen.getByLabelText('Twelfth man'))
+      const option = await screen.findByRole('option', { name: /Amy Lee/ })
+      expect(option).toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+    })
+
+    it('shows the Unsure caption and orange tint inside the Twelfth Man option', async () => {
+      const user = userEvent.setup()
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-3', 'UNSURE']]),
+      })
+
+      await user.click(screen.getByLabelText('Twelfth man'))
+      const option = await screen.findByRole('option', { name: /Amy Lee/ })
+      expect(option).toHaveStyle({ backgroundColor: 'rgba(183, 121, 31, 0.16)' })
+      expect(await screen.findByText('Marked Unsure for this match')).toBeInTheDocument()
+    })
+
+    it('shows no indicator on Captain/Wicketkeeper options regardless of status', async () => {
+      const user = userEvent.setup()
+      renderXi({
+        xi: XI_WITH_TWO,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([
+          ['player-1', 'UNAVAILABLE'],
+          ['player-2', 'UNSURE'],
+        ]),
+      })
+
+      await user.click(screen.getByLabelText('Captain'))
+      const captainListbox = await screen.findByRole('listbox')
+      expect(captainListbox).not.toHaveTextContent('Marked Unsure for this match')
+      const captainOption = within(captainListbox).getByRole('option', { name: 'Jane Smith' })
+      expect(captainOption).not.toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+      await user.keyboard('{Escape}')
+
+      await user.click(screen.getByLabelText('Wicketkeeper'))
+      const keeperListbox = await screen.findByRole('listbox')
+      expect(keeperListbox).not.toHaveTextContent('Marked Unsure for this match')
+      const keeperOption = within(keeperListbox).getByRole('option', { name: 'Bob Jones' })
+      expect(keeperOption).not.toHaveStyle({ backgroundColor: 'rgba(176, 64, 46, 0.16)' })
+    })
+
+    it('still calls onAddPlayer normally for a flagged candidate', async () => {
+      const user = userEvent.setup()
+      const onAddPlayer = vi.fn()
+      renderXi({
+        onAddPlayer,
+        availabilityByPlayerId: new Map<string, AvailabilityStatus>([['player-2', 'UNAVAILABLE']]),
+      })
+
+      await user.click(screen.getByLabelText('Add player'))
+      await user.click(await screen.findByText('Bob Jones'))
+      await user.click(screen.getByRole('button', { name: 'Add player' }))
+
+      expect(onAddPlayer).toHaveBeenCalledWith('player-2', 'BATSMAN')
     })
   })
 })

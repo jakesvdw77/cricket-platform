@@ -10,6 +10,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -17,8 +18,10 @@ import { Input } from '../Input'
 import { Button } from '../Button'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer, PlayingRole } from '../../api/matchSideApi'
+import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 
 export type { PlayingRole }
+export type { AvailabilityStatus }
 
 const ROLE_LABEL: Record<PlayingRole, string> = {
   BATSMAN: 'Batsman',
@@ -34,6 +37,22 @@ const ROLE_OPTIONS: PlayingRole[] = ['BATSMAN', 'BOWLER', 'ALL_ROUNDER']
 function squadDisplayName(member: SquadMember): string {
   const name = `${member.firstName} ${member.lastName}`
   return member.squadJerseyNumber != null ? `#${member.squadJerseyNumber} ${name}` : name
+}
+
+// docs/specs/033-availability-aware-xi-builder.md (revised after live review): both statuses get
+// a full-row/option colour tint — red for Unavailable, orange/warning for Unsure — matching the
+// common traffic-light convention, not a subtle 12%-opacity tint that's easy to miss. Each also
+// keeps a text caption for clarity/accessibility (colour is never the only signal).
+function availabilityIndicator(
+  status: AvailabilityStatus | undefined,
+): { tone: 'error' | 'warning' | null; caption: string | null } {
+  if (status === 'UNAVAILABLE') {
+    return { tone: 'error', caption: 'Unavailable for this match' }
+  }
+  if (status === 'UNSURE') {
+    return { tone: 'warning', caption: 'Marked Unsure for this match' }
+  }
+  return { tone: null, caption: null }
 }
 
 export interface PlayingXiBuilderProps {
@@ -63,6 +82,13 @@ export interface PlayingXiBuilderProps {
   // Inline surfacing for the server's PlayerNotInSquadException/PlayingXiCapExceededException/
   // PlayerAgeIneligibleException rejections — an Alert, not a silent failure or toast-only.
   errorMessage?: string | null
+  // docs/specs/033-availability-aware-xi-builder.md — this side's current poll responses, keyed by
+  // playerProfileId. Absent key = no poll yet for this side, or that squad member hasn't responded
+  // — both render no indicator at all. AVAILABLE entries are included but render no visual
+  // treatment — the component owns 100% of the display decision, the caller just passes through
+  // whatever the server returned. Defaults to an empty Map when the poll/responses queries haven't
+  // resolved yet or don't apply — never blocks rendering the rest of the builder.
+  availabilityByPlayerId?: Map<string, AvailabilityStatus>
 }
 
 // docs/specs/029-league-management.md's genuinely new component: an ordered, role-tagged
@@ -87,6 +113,7 @@ export function PlayingXiBuilder({
   onChangeTwelfthMan,
   isAddPending = false,
   errorMessage,
+  availabilityByPlayerId = new Map(),
 }: PlayingXiBuilderProps) {
   const [addSelection, setAddSelection] = useState<SquadMember | null>(null)
   const [addRole, setAddRole] = useState<PlayingRole>('BATSMAN')
@@ -165,6 +192,7 @@ export function PlayingXiBuilder({
           const name = member ? squadDisplayName(member) : entry.playerProfileId
           const isCaptain = captainPlayerId === entry.playerProfileId
           const isKeeper = wicketKeeperPlayerId === entry.playerProfileId
+          const indicator = availabilityIndicator(availabilityByPlayerId.get(entry.playerProfileId))
 
           return (
             <Box
@@ -178,18 +206,26 @@ export function PlayingXiBuilder({
                 border: 1,
                 borderColor: 'divider',
                 borderRadius: 1,
+                bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
               }}
             >
               <Typography variant="body2" fontWeight={600} sx={{ width: 24, flex: 'none' }}>
                 {entry.battingOrder}
               </Typography>
 
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: '1 1 160px', minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={600} noWrap>
-                  {name}
-                </Typography>
-                {isCaptain && <Chip label="C" size="small" color="primary" />}
-                {isKeeper && <Chip label="WK" size="small" variant="outlined" />}
+              <Stack direction="column" spacing={0.25} sx={{ flex: '1 1 160px', minWidth: 0 }}>
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Typography variant="body2" fontWeight={600} noWrap>
+                    {name}
+                  </Typography>
+                  {isCaptain && <Chip label="C" size="small" color="primary" />}
+                  {isKeeper && <Chip label="WK" size="small" variant="outlined" />}
+                </Stack>
+                {indicator.caption && (
+                  <Typography variant="caption" color={`${indicator.tone}.dark`}>
+                    {indicator.caption}
+                  </Typography>
+                )}
               </Stack>
 
               <Input
@@ -242,6 +278,30 @@ export function PlayingXiBuilder({
           onChange={(_event, value) => setAddSelection(value)}
           disabled={atCap}
           sx={{ flex: '1 1 220px', minWidth: 200 }}
+          renderOption={(props, option) => {
+            const { key, ...optionProps } = props
+            const indicator = availabilityIndicator(availabilityByPlayerId.get(option.playerProfileId))
+            return (
+              <Box
+                component="li"
+                key={key}
+                {...optionProps}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
+                }}
+              >
+                <Typography variant="body2">{squadDisplayName(option)}</Typography>
+                {indicator.caption && (
+                  <Typography variant="caption" color={`${indicator.tone}.dark`}>
+                    {indicator.caption}
+                  </Typography>
+                )}
+              </Box>
+            )
+          }}
           renderInput={(params) => <Input {...params} label="Add player" placeholder="Search squad" />}
         />
 
@@ -312,11 +372,29 @@ export function PlayingXiBuilder({
           onChange={(event) => onChangeTwelfthMan(event.target.value || null)}
         >
           <MenuItem value="">None</MenuItem>
-          {twelfthManOptions.map((member) => (
-            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
-              {squadDisplayName(member)}
-            </MenuItem>
-          ))}
+          {twelfthManOptions.map((member) => {
+            const indicator = availabilityIndicator(availabilityByPlayerId.get(member.playerProfileId))
+            return (
+              <MenuItem
+                key={member.playerProfileId}
+                value={member.playerProfileId}
+                sx={{
+                  bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
+                }}
+              >
+                {indicator.caption ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="body2">{squadDisplayName(member)}</Typography>
+                    <Typography variant="caption" color={`${indicator.tone}.dark`}>
+                      {indicator.caption}
+                    </Typography>
+                  </Box>
+                ) : (
+                  squadDisplayName(member)
+                )}
+              </MenuItem>
+            )
+          })}
         </Input>
       </Box>
     </Box>

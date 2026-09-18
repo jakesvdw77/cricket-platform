@@ -26,8 +26,8 @@ import {
   reorderMatchSidePlayers,
 } from '../../api/matchSideApi'
 import type { PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
-import { listPolls, createPoll, openPoll, closePoll, getPollResponses } from '../../api/matchAvailabilityApi'
-import type { MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
+import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
+import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
 
 // Same "resolve a side's display name" fallback MatchList.tsx already uses: a real Team's own
@@ -119,6 +119,34 @@ function MatchSideTab({
     onSuccess: invalidateSides,
   })
 
+  // docs/specs/033-availability-aware-xi-builder.md: a second, small data fetch mirroring
+  // MatchAvailabilityPanel's own shape exactly (identical query-key shape, same match) so an admin
+  // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
+  // loading guard below — indicators simply appear once/if this resolves, XI building is never
+  // blocked or delayed waiting on poll data.
+  const pollsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'],
+    queryFn: () => listPolls(clubId, matchId),
+  })
+
+  const poll = (pollsQuery.data ?? []).find((candidate) => candidate.teamId === teamId) ?? null
+
+  const responsesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls', poll?.id, 'responses'],
+    queryFn: () => getPollResponses(clubId, matchId, (poll as MatchAvailabilityPoll).id),
+    enabled: Boolean(poll),
+  })
+
+  const availabilityByPlayerId = useMemo(() => {
+    const map = new Map<string, AvailabilityStatus>()
+    ;(responsesQuery.data?.responses ?? []).forEach((row) => {
+      if (row.status) {
+        map.set(row.playerProfileId, row.status)
+      }
+    })
+    return map
+  }, [responsesQuery.data])
+
   if (sidesQuery.isLoading || squadQuery.isLoading || createSideMutation.isPending || !side) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -153,6 +181,7 @@ function MatchSideTab({
       onChangeTwelfthMan={(id) => updateSideMutation.mutate({ twelfthManPlayerId: id })}
       isAddPending={addPlayerMutation.isPending}
       errorMessage={errorMessage}
+      availabilityByPlayerId={availabilityByPlayerId}
     />
   )
 }
@@ -212,9 +241,14 @@ function MatchAvailabilityPanel({
     mutationFn: () => closePoll(clubId, matchId, (poll as MatchAvailabilityPoll).id),
     onSuccess: invalidatePolls,
   })
+  const setPlayerStatusMutation = useMutation({
+    mutationFn: ({ playerProfileId, status }: { playerProfileId: string; status: AvailabilityStatus }) =>
+      setPlayerStatus(clubId, matchId, (poll as MatchAvailabilityPoll).id, playerProfileId, status),
+    onSuccess: invalidatePolls,
+  })
 
   const errorMessage =
-    [createMutation, openMutation, closeMutation]
+    [createMutation, openMutation, closeMutation, setPlayerStatusMutation]
       .map((mutation) =>
         mutation.isError
           ? errorDetail(mutation.error, 'Something went wrong updating this poll. Please try again.')
@@ -232,9 +266,13 @@ function MatchAvailabilityPanel({
         onOpen={() => openMutation.mutate()}
         onClose={() => closeMutation.mutate()}
         onShareInvite={() => setShareDialogOpen(true)}
+        onSetPlayerStatus={(playerProfileId, status) => setPlayerStatusMutation.mutate({ playerProfileId, status })}
         isCreatePending={createMutation.isPending}
         isOpenPending={openMutation.isPending}
         isClosePending={closeMutation.isPending}
+        settingPlayerId={
+          setPlayerStatusMutation.isPending ? setPlayerStatusMutation.variables?.playerProfileId ?? null : null
+        }
         errorMessage={errorMessage}
       />
       {poll && (

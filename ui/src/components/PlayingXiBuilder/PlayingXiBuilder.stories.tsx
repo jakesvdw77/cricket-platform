@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
 import { PlayingXiBuilder } from './PlayingXiBuilder'
+import type { AvailabilityStatus } from './PlayingXiBuilder'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer } from '../../api/matchSideApi'
 
@@ -110,6 +111,31 @@ export const WithServerError: Story = {
     ...Empty.args,
     xi: XI,
     errorMessage: "This player's age falls outside the league's eligible range.",
+  },
+}
+
+// docs/specs/033-availability-aware-xi-builder.md (revised after live review): both statuses get a
+// full-row/option colour tint (red for Unavailable, orange for Unsure) plus a text caption — a
+// populated availabilityByPlayerId covering all four states across the fixture squad. p2 (Bob
+// Jones, already in the XI) is UNAVAILABLE so the red tint + caption are visible on his ordered-XI
+// row; p3 (Amy Lee, already in the XI) is UNSURE so the orange tint + caption are visible on her
+// row; p4 (Sam Patel, not yet added) is UNAVAILABLE so the same treatment is visible in both the
+// Add-player Autocomplete and the Twelfth Man Select; p5 (Lee Nguyen, not yet added) is UNSURE so
+// the orange treatment is visible in both those same pickers; p1 (Jane Smith) is AVAILABLE and
+// renders no visual change at all.
+export const WithAvailabilityIndicators: Story = {
+  args: {
+    ...Empty.args,
+    xi: XI,
+    captainPlayerId: 'p1',
+    wicketKeeperPlayerId: 'p2',
+    availabilityByPlayerId: new Map<string, AvailabilityStatus>([
+      ['p1', 'AVAILABLE'],
+      ['p2', 'UNAVAILABLE'],
+      ['p3', 'UNSURE'],
+      ['p4', 'UNAVAILABLE'],
+      ['p5', 'UNSURE'],
+    ]),
   },
 }
 
