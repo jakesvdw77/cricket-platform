@@ -294,10 +294,8 @@ class MatchAvailabilityPollServiceImplTest {
         assertThat(responses.publicPath()).isEqualTo("/poll/" + pollId);
         assertThat(responses.responses()).hasSize(3);
         assertThat(responses.responses())
-                .anySatisfy(row -> {
-                    if (row.playerProfileId().equals(playerC)) {
-                        assertThat(row.status()).isNull();
-                    }
-                });
+                .filteredOn(row -> row.playerProfileId().equals(playerC))
+                .singleElement()
+                .satisfies(row -> assertThat(row.status()).isNull());
     }
 }
