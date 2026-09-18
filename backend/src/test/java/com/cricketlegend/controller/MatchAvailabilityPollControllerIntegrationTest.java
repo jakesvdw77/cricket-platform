@@ -4,6 +4,7 @@ import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -370,6 +371,98 @@ class MatchAvailabilityPollControllerIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void setPlayerStatusUpsertsAResponseAsTheAdmin() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match match = matchRepository.save(newMatchWithoutLeague(club.getId(), team.getId(), season.getId()));
+        UUID playerId = addSquadMember(club.getId(), team.getId(), season.getId(), "Alice");
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String pollId = createPoll(admin, club.getId(), match.getId(), team.getId());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerId}",
+                                club.getId(),
+                                match.getId(),
+                                pollId,
+                                playerId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"UNAVAILABLE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unavailableCount").value(1))
+                .andExpect(jsonPath("$.responses[?(@.playerProfileId=='" + playerId + "')].status")
+                        .value("UNAVAILABLE"));
+
+        // A repeat call for the same player upserts in place, not a second row.
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerId}",
+                                club.getId(),
+                                match.getId(),
+                                pollId,
+                                playerId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"AVAILABLE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableCount").value(1))
+                .andExpect(jsonPath("$.unavailableCount").value(0));
+    }
+
+    @Test
+    void setPlayerStatusReturns404ForAPlayerNotInThePollsOwnSquad() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match match = matchRepository.save(newMatchWithoutLeague(club.getId(), team.getId(), season.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String pollId = createPoll(admin, club.getId(), match.getId(), team.getId());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerId}",
+                                club.getId(),
+                                match.getId(),
+                                pollId,
+                                UUID.randomUUID())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"AVAILABLE\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void setPlayerStatusReturns409WhenThePollIsClosed() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match match = matchRepository.save(newMatchWithoutLeague(club.getId(), team.getId(), season.getId()));
+        UUID playerId = addSquadMember(club.getId(), team.getId(), season.getId(), "Alice");
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String pollId = createPoll(admin, club.getId(), match.getId(), team.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close",
+                                club.getId(),
+                                match.getId(),
+                                pollId)
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerId}",
+                                club.getId(),
+                                match.getId(),
+                                pollId,
+                                playerId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"AVAILABLE\"}"))
+                .andExpect(status().isConflict());
+    }
+
     private String createPoll(JwtRequestPostProcessor admin, UUID clubId, UUID matchId, UUID teamId)
             throws Exception {
         String response = mockMvc.perform(post(
@@ -384,7 +477,7 @@ class MatchAvailabilityPollControllerIntegrationTest {
         return com.jayway.jsonpath.JsonPath.read(response, "$.id");
     }
 
-    private void addSquadMember(UUID clubId, UUID teamId, UUID seasonId, String firstName) {
+    private UUID addSquadMember(UUID clubId, UUID teamId, UUID seasonId, String firstName) {
         Person person = personRepository.save(
                 Person.builder().firstName(firstName).lastName("Player").dateOfBirth(LocalDate.of(1995, 1, 1))
                         .build());
@@ -395,6 +488,7 @@ class MatchAvailabilityPollControllerIntegrationTest {
                 .seasonId(seasonId)
                 .playerProfileId(profile.getId())
                 .build());
+        return profile.getId();
     }
 
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {

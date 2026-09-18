@@ -3,6 +3,7 @@ package com.cricketlegend.controller;
 import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollDto;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
+import com.cricketlegend.dto.SetPlayerAvailabilityRequest;
 import com.cricketlegend.service.MatchAvailabilityPollService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -67,5 +69,17 @@ public class MatchAvailabilityPollController {
     public ResponseEntity<MatchAvailabilityPollResponsesDto> getResponses(
             @PathVariable UUID clubId, @PathVariable UUID matchId, @PathVariable UUID pollId) {
         return ResponseEntity.ok(matchAvailabilityPollService.getResponses(clubId, matchId, pollId));
+    }
+
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/players/{playerProfileId}")
+    public ResponseEntity<MatchAvailabilityPollResponsesDto> setPlayerStatus(
+            @PathVariable UUID clubId,
+            @PathVariable UUID matchId,
+            @PathVariable UUID pollId,
+            @PathVariable UUID playerProfileId,
+            @Valid @RequestBody SetPlayerAvailabilityRequest request) {
+        return ResponseEntity.ok(matchAvailabilityPollService.setPlayerStatus(
+                clubId, matchId, pollId, playerProfileId, request.status()));
     }
 }

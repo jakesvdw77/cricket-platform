@@ -298,4 +298,102 @@ class MatchAvailabilityPollServiceImplTest {
                 .singleElement()
                 .satisfies(row -> assertThat(row.status()).isNull());
     }
+
+    // --- setPlayerStatus (admin override) ---
+
+    @Test
+    void setPlayerStatusInsertsANewResponseWhenNoneExistsYet() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(openPoll));
+        when(squadResolver.resolveSquadRows(teamId, seasonId))
+                .thenReturn(List.of(new PlayerAvailabilityRowDto(playerId, "Jane", "Smith", null, null)));
+        when(playerAvailabilityRepository.findByPollIdAndPlayerProfileId(pollId, playerId))
+                .thenReturn(Optional.empty());
+        when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
+
+        MatchAvailabilityPollResponsesDto result =
+                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.UNAVAILABLE);
+
+        ArgumentCaptor<PlayerAvailability> captor = ArgumentCaptor.forClass(PlayerAvailability.class);
+        verify(playerAvailabilityRepository).save(captor.capture());
+        assertThat(captor.getValue().getPollId()).isEqualTo(pollId);
+        assertThat(captor.getValue().getPlayerProfileId()).isEqualTo(playerId);
+        assertThat(captor.getValue().getStatus()).isEqualTo(AvailabilityStatus.UNAVAILABLE);
+        assertThat(result.pollId()).isEqualTo(pollId);
+    }
+
+    @Test
+    void setPlayerStatusUpdatesInPlaceForARepeatCall() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        PlayerAvailability existing = PlayerAvailability.builder()
+                .pollId(pollId).playerProfileId(playerId).status(AvailabilityStatus.UNSURE).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(openPoll));
+        when(squadResolver.resolveSquadRows(teamId, seasonId))
+                .thenReturn(List.of(new PlayerAvailabilityRowDto(playerId, "Jane", "Smith", null, null)));
+        when(playerAvailabilityRepository.findByPollIdAndPlayerProfileId(pollId, playerId))
+                .thenReturn(Optional.of(existing));
+        when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
+
+        service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE);
+
+        verify(playerAvailabilityRepository).save(existing);
+        assertThat(existing.getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
+    }
+
+    @Test
+    void setPlayerStatusRejectsAPlayerNotInThePollsOwnSquad() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(openPoll));
+        when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of());
+
+        assertThatThrownBy(() ->
+                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
+                .isInstanceOf(NotFoundException.class);
+        verify(playerAvailabilityRepository, never()).save(any());
+    }
+
+    @Test
+    void setPlayerStatusRejectsAWriteAgainstAClosedPoll() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll closedPoll = poll(pollId, matchId, teamId, false);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(closedPoll));
+        when(squadResolver.resolveSquadRows(teamId, seasonId))
+                .thenReturn(List.of(new PlayerAvailabilityRowDto(playerId, "Jane", "Smith", null, null)));
+
+        assertThatThrownBy(() ->
+                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
+                .isInstanceOf(com.cricketlegend.exception.PollClosedException.class);
+        verify(playerAvailabilityRepository, never()).save(any());
+    }
 }
