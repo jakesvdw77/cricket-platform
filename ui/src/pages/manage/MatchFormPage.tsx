@@ -375,6 +375,25 @@ export default function MatchFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasXiTabs, homeXiTabIndex, awayXiTabIndex])
 
+  // docs/specs/034-availability-polls-dashboard.md: AvailabilityPollsDashboard's own "Manage
+  // responses" action routes straight into this match's Availability tab, on the correct side's
+  // sub-tab — the exact same deep-link mechanism as ?tab=playing-xi above, one more recognized
+  // query-string shape rather than a new deep-linking system.
+  useEffect(() => {
+    if (searchParams.get('tab') === 'availability' && availabilityTabIndex !== undefined) {
+      setActiveTab(availabilityTabIndex)
+      const side = searchParams.get('side')
+      if (side === 'home' && homeAvailabilitySubIndex !== undefined) {
+        setActiveAvailabilitySubTab(homeAvailabilitySubIndex)
+      } else if (side === 'away' && awayAvailabilitySubIndex !== undefined) {
+        setActiveAvailabilitySubTab(awayAvailabilitySubIndex)
+      }
+    }
+    // Only re-evaluated when the deep-link target itself becomes available — not on every
+    // activeTab/activeAvailabilitySubTab change caused by the admin's own tab clicks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, availabilityTabIndex, homeAvailabilitySubIndex, awayAvailabilitySubIndex])
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }

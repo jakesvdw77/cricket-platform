@@ -43,9 +43,18 @@ export async function listTeamsForSection(clubId: string, sectionId: string): Pr
   return data
 }
 
+export interface ListTeamsForClubParams {
+  // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
+  // teams — a section-scoped caller's own default is already narrowed server-side regardless of
+  // this param; it's an optional, further-narrowing convenience for any caller.
+  sectionId?: string
+}
+
 // Backs the club-wide Teams directory — every team across every section, in one flat call.
-export async function listTeamsForClub(clubId: string): Promise<Team[]> {
-  const { data } = await api.get<Team[]>(clubTeamsPath(clubId))
+export async function listTeamsForClub(clubId: string, params: ListTeamsForClubParams = {}): Promise<Team[]> {
+  const { data } = await api.get<Team[]>(clubTeamsPath(clubId), {
+    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+  })
   return data
 }
 

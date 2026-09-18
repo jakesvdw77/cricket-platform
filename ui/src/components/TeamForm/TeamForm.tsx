@@ -92,7 +92,7 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl }: Tea
           label="Section"
           sections={sections}
           value={sectionId || null}
-          onChange={setSectionId}
+          onChange={(id) => setSectionId(id ?? '')}
           error={Boolean(errors.sectionId)}
           helperText={errors.sectionId}
         />

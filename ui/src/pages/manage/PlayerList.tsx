@@ -9,6 +9,7 @@ import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { listPlayers, deactivatePlayer, reactivatePlayer } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
@@ -80,14 +81,18 @@ export default function PlayerList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of
+  // whatever the caller's own access already resolves server-side by default — never what makes a
+  // section-scoped admin's view scoped in the first place.
+  const [sectionId, setSectionId] = useState<string | null>(null)
 
   const {
     data: players,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'players'],
-    queryFn: () => listPlayers(clubId as string),
+    queryKey: ['managed-club', clubId, 'players', sectionId],
+    queryFn: () => listPlayers(clubId as string, { sectionId: sectionId ?? undefined }),
     enabled: Boolean(clubId),
   })
 
@@ -159,6 +164,16 @@ export default function PlayerList() {
         createLabel="Add Player"
         onCreate={() => navigate('/manage/players/new')}
       />
+
+      <Box sx={{ maxWidth: 360 }}>
+        <SectionTreeSelect
+          label="Section"
+          sections={sections ?? []}
+          value={sectionId}
+          onChange={setSectionId}
+          allowClear
+        />
+      </Box>
 
       {visiblePlayers.length > 0 && (
         <Box

@@ -80,10 +80,19 @@ function playersPath(clubId: string): string {
   return `/manage/clubs/${clubId}/players`
 }
 
+export interface ListPlayersParams {
+  // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
+  // players — a section-scoped caller's own default is already narrowed server-side regardless of
+  // this param; it's an optional, further-narrowing convenience for any caller.
+  sectionId?: string
+}
+
 // Plain array response, not Page<T> — a club's players are a small, bounded, unpaginated list,
 // matching Section/Team/Sponsor's own posture.
-export async function listPlayers(clubId: string): Promise<Player[]> {
-  const { data } = await api.get<Player[]>(playersPath(clubId))
+export async function listPlayers(clubId: string, params: ListPlayersParams = {}): Promise<Player[]> {
+  const { data } = await api.get<Player[]>(playersPath(clubId), {
+    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+  })
   return data
 }
 

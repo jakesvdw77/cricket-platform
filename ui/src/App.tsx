@@ -32,6 +32,7 @@ import SeasonFormPage from './pages/manage/SeasonFormPage'
 import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import SquadPicker from './pages/manage/SquadPicker'
+import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
@@ -159,19 +160,10 @@ function App() {
               />
               <Route path="squads" element={<SquadPicker />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
-              {/* docs/specs/032-match-availability-polls.md: no standalone cross-match poll-list
-                  screen this pass — polls are managed per-match, from that match's own new
-                  Availability tab (MatchFormPage). This nav card/route stay, but point admins
-                  there instead of the old "Coming soon" copy. */}
-              <Route
-                path="availability"
-                element={
-                  <EmptyState
-                    title="Availability Polls"
-                    description="Open a match from Fixtures & Results to manage its availability poll."
-                  />
-                }
-              />
+              {/* docs/specs/034-availability-polls-dashboard.md: a real, club-wide list of every
+                  currently-open availability poll, replacing the earlier "go find the match
+                  yourself" stub. */}
+              <Route path="availability" element={<AvailabilityPollsDashboard />} />
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 

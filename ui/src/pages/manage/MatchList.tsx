@@ -12,6 +12,7 @@ import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { TeamSheetCommunicationDialog } from '../../components/TeamSheetCommunicationDialog'
 import type { TeamSheetPrintScope } from '../../components/TeamSheetCommunicationDialog'
 import { listMatches, deactivateMatch, reactivateMatch } from '../../api/matchApi'
@@ -22,6 +23,7 @@ import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
+import { listSections } from '../../api/sectionApi'
 import { listMatchSides } from '../../api/matchSideApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { matchFields } from '../../utils/matchRecordFields'
@@ -229,6 +231,10 @@ export default function MatchList({
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  // docs/specs/035-section-scoped-access.md: a real, backend-param-driven filter (this list is
+  // genuinely paginated) — never a client-side one, per docs/standards/frontend.md's pagination
+  // rule.
+  const [sectionId, setSectionId] = useState<string | null>(null)
 
   // Note: the real backend GET /matches endpoint (docs/specs/029-league-management.md's API
   // Contract, MatchController.java) is Pageable-only — it has no `search` query param today.
@@ -242,21 +248,33 @@ export default function MatchList({
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, sort])
+  }, [debouncedSearch, sort, sectionId])
 
   const {
     data,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort],
-    queryFn: () => listMatches(clubId as string, { page, sort, ...(debouncedSearch ? { search: debouncedSearch } : {}) }),
+    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId],
+    queryFn: () =>
+      listMatches(clubId as string, {
+        page,
+        sort,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(sectionId ? { sectionId } : {}),
+      }),
     enabled: Boolean(clubId),
   })
 
   const { data: teams } = useQuery({
     queryKey: ['managed-club', clubId, 'teams'],
     queryFn: () => listTeamsForClub(clubId as string),
+    enabled: Boolean(clubId),
+  })
+
+  const { data: sections } = useQuery({
+    queryKey: ['managed-club', clubId, 'sections'],
+    queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
 
@@ -324,6 +342,16 @@ export default function MatchList({
         createLabel={createLabel}
         onCreate={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}
       />
+
+      <Box sx={{ maxWidth: 360 }}>
+        <SectionTreeSelect
+          label="Section"
+          sections={sections ?? []}
+          value={sectionId}
+          onChange={setSectionId}
+          allowClear
+        />
+      </Box>
 
       {hasMatches && (
         <Box
