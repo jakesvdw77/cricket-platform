@@ -6,6 +6,37 @@ servers:
 - url: http://localhost:8082
   description: Generated server url
 paths:
+  /api/v1/public/polls/{pollId}/players/{playerProfileId}:
+    put:
+      tags:
+      - public-availability-poll-controller
+      operationId: setAvailability
+      parameters:
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerProfileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPlayerAvailabilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAvailabilityPollDto"
   /api/v1/platform/subscriptions/{id}:
     get:
       tags:
@@ -2153,6 +2184,125 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls:
+    get:
+      tags:
+      - match-availability-poll-controller
+      operationId: list_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchAvailabilityPollDto"
+    post:
+      tags:
+      - match-availability-poll-controller
+      operationId: create_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchAvailabilityPollRequest"
+        required: true
+      responses:
+        "201":
+          description: Availability poll created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchAvailabilityPollDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/open:
+    post:
+      tags:
+      - match-availability-poll-controller
+      operationId: open
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchAvailabilityPollDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close:
+    post:
+      tags:
+      - match-availability-poll-controller
+      operationId: close
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchAvailabilityPollDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/deactivate:
     post:
       tags:
@@ -2182,7 +2332,7 @@ paths:
     get:
       tags:
       - league-controller
-      operationId: list_10
+      operationId: list_11
       parameters:
       - name: clubId
         in: path
@@ -2202,7 +2352,7 @@ paths:
     post:
       tags:
       - league-controller
-      operationId: create_10
+      operationId: create_11
       parameters:
       - name: clubId
         in: path
@@ -2361,7 +2511,7 @@ paths:
     get:
       tags:
       - club-contact-controller
-      operationId: list_11
+      operationId: list_12
       parameters:
       - name: clubId
         in: path
@@ -2381,7 +2531,7 @@ paths:
     post:
       tags:
       - club-contact-controller
-      operationId: create_11
+      operationId: create_12
       parameters:
       - name: clubId
         in: path
@@ -2456,7 +2606,7 @@ paths:
     post:
       tags:
       - lead-controller
-      operationId: create_12
+      operationId: create_13
       requestBody:
         content:
           application/json:
@@ -2470,6 +2620,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeadDto"
+  /api/v1/public/polls/{pollId}:
+    get:
+      tags:
+      - public-availability-poll-controller
+      operationId: getPoll
+      parameters:
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAvailabilityPollDto"
   /api/v1/public/clubs:
     get:
       tags:
@@ -2495,7 +2664,7 @@ paths:
     get:
       tags:
       - person-controller
-      operationId: list_12
+      operationId: list_13
       parameters:
       - name: search
         in: query
@@ -2530,7 +2699,7 @@ paths:
     get:
       tags:
       - lead-controller
-      operationId: list_13
+      operationId: list_14
       parameters:
       - name: status
         in: query
@@ -2591,7 +2760,7 @@ paths:
     get:
       tags:
       - team-squad-controller
-      operationId: list_14
+      operationId: list_15
       parameters:
       - name: clubId
         in: path
@@ -2740,8 +2909,96 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/responses:
+    get:
+      tags:
+      - match-availability-poll-controller
+      operationId: getResponses
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchAvailabilityPollResponsesDto"
 components:
   schemas:
+    SetPlayerAvailabilityRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+      required:
+      - status
+    PlayerAvailabilityRowDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        squadJerseyNumber:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+    PublicAvailabilityPollDto:
+      type: object
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        open:
+          type: boolean
+        homeTeamName:
+          type: string
+        awayTeamName:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        leagueName:
+          type: string
+        seasonLabel:
+          type: string
+        teamName:
+          type: string
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerAvailabilityRowDto"
     UpdateSubscriptionRequest:
       type: object
       properties:
@@ -4192,6 +4449,37 @@ components:
       required:
       - playerProfileId
       - role
+    CreateMatchAvailabilityPollRequest:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+      required:
+      - teamId
+    MatchAvailabilityPollDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        open:
+          type: boolean
+        availableCount:
+          type: integer
+          format: int64
+        unavailableCount:
+          type: integer
+          format: int64
+        unsureCount:
+          type: integer
+          format: int64
+        noResponseCount:
+          type: integer
+          format: int64
     CreateLeagueRequest:
       type: object
       properties:
@@ -4556,3 +4844,32 @@ components:
           type: boolean
         empty:
           type: boolean
+    MatchAvailabilityPollResponsesDto:
+      type: object
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        open:
+          type: boolean
+        availableCount:
+          type: integer
+          format: int64
+        unavailableCount:
+          type: integer
+          format: int64
+        unsureCount:
+          type: integer
+          format: int64
+        noResponseCount:
+          type: integer
+          format: int64
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerAvailabilityRowDto"
+        publicPath:
+          type: string

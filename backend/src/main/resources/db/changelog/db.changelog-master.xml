@@ -27,5 +27,6 @@
     <include file="db/changelog/v1/020-add-player.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/021-add-league-management.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/022-add-jersey-numbers.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/023-add-availability-polls.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
