@@ -32,6 +32,7 @@ import SeasonFormPage from './pages/manage/SeasonFormPage'
 import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import SquadPicker from './pages/manage/SquadPicker'
+import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
@@ -65,6 +66,12 @@ function App() {
                 as every club subdomain, without resolving any Club. */}
             <Route path="/login" element={<Login />} />
             <Route path="/post-login" element={<PostLoginRedirect />} />
+
+            {/* docs/specs/032-match-availability-polls.md: the poll's own public, no-login
+                response page — top-level and unguarded, outside both the /manage and /player
+                route trees, since it must render with zero shell for a visitor with no session
+                at all. */}
+            <Route path="/poll/:pollId" element={<PublicAvailabilityPoll />} />
 
             {/* System Admin shell — docs/specs/006-post-login-home-shells.md. Dashboard is
                 real (005's platform_admin identity check); every other section is a
@@ -152,7 +159,19 @@ function App() {
               />
               <Route path="squads" element={<SquadPicker />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
-              <Route path="availability" element={<EmptyState title="Availability Polls" description="Coming soon." />} />
+              {/* docs/specs/032-match-availability-polls.md: no standalone cross-match poll-list
+                  screen this pass — polls are managed per-match, from that match's own new
+                  Availability tab (MatchFormPage). This nav card/route stay, but point admins
+                  there instead of the old "Coming soon" copy. */}
+              <Route
+                path="availability"
+                element={
+                  <EmptyState
+                    title="Availability Polls"
+                    description="Open a match from Fixtures & Results to manage its availability poll."
+                  />
+                }
+              />
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 
