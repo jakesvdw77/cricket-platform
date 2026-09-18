@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateTeamRequest;
@@ -26,6 +27,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for TeamServiceImpl's business rules from docs/specs/026-teams.md: create/update,
@@ -46,11 +50,16 @@ class TeamServiceImplTest {
     @Mock
     private TeamMapper teamMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private TeamServiceImpl teamService;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
-        teamService = new TeamServiceImpl(teamRepository, sectionRepository, teamMapper);
+        teamService = new TeamServiceImpl(teamRepository, sectionRepository, teamMapper, accessService);
     }
 
     private Section section(UUID id, UUID clubId) {
@@ -335,10 +344,29 @@ class TeamServiceImplTest {
         when(teamRepository.findByClubId(clubId)).thenReturn(List.of(a, b));
         when(teamMapper.toDto(a)).thenReturn(dummyDto());
         when(teamMapper.toDto(b)).thenReturn(dummyDto());
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
 
-        List<TeamDto> result = teamService.listByClub(clubId);
+        List<TeamDto> result = teamService.listByClub(authentication, clubId, null);
 
         assertThat(result).hasSize(2);
         verify(sectionRepository, never()).findById(ArgumentMatchers.any());
+    }
+
+    @Test
+    void listByClubExcludesATeamWhoseSectionIsOutsideTheCallersAccessibleSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID accessibleSectionId = UUID.randomUUID();
+        UUID otherSectionId = UUID.randomUUID();
+        Team accessibleTeam = team(UUID.randomUUID(), accessibleSectionId, true);
+        Team outOfReachTeam = team(UUID.randomUUID(), otherSectionId, true);
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of(accessibleTeam, outOfReachTeam));
+        when(teamMapper.toDto(accessibleTeam)).thenReturn(dummyDto());
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
+
+        List<TeamDto> result = teamService.listByClub(authentication, clubId, null);
+
+        assertThat(result).hasSize(1);
+        verify(teamMapper, never()).toDto(outOfReachTeam);
     }
 }

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Gender;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonStatus;
@@ -38,6 +39,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for TeamSquadServiceImpl's business rules from docs/specs/029-league-management.md:
@@ -74,13 +78,18 @@ class TeamSquadServiceImplTest {
     @Mock
     private PlayerMapper playerMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private TeamSquadServiceImpl service;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
         service = new TeamSquadServiceImpl(
                 teamRepository, seasonRepository, playerProfileRepository, personRepository,
-                playerSectionRepository, teamSquadMemberRepository, playerMapper);
+                playerSectionRepository, teamSquadMemberRepository, playerMapper, accessService);
     }
 
     private Team team(UUID id, UUID clubId) {
@@ -126,7 +135,7 @@ class TeamSquadServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
-        service.add(clubId, teamId, seasonId, profile.getId());
+        service.add(authentication, clubId, teamId, seasonId, profile.getId());
 
         verify(teamSquadMemberRepository).save(any(TeamSquadMember.class));
     }
@@ -142,7 +151,7 @@ class TeamSquadServiceImplTest {
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
-        assertThatThrownBy(() -> service.add(clubId, teamId, seasonId, profile.getId()))
+        assertThatThrownBy(() -> service.add(authentication, clubId, teamId, seasonId, profile.getId()))
                 .isInstanceOf(NotFoundException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -157,7 +166,7 @@ class TeamSquadServiceImplTest {
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
-        assertThatThrownBy(() -> service.add(clubId, teamId, seasonId, profile.getId()))
+        assertThatThrownBy(() -> service.add(authentication, clubId, teamId, seasonId, profile.getId()))
                 .isInstanceOf(PlayerNotActiveClubMemberException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -174,7 +183,7 @@ class TeamSquadServiceImplTest {
         when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
                 teamId, seasonId, profile.getId())).thenReturn(true);
 
-        assertThatThrownBy(() -> service.add(clubId, teamId, seasonId, profile.getId()))
+        assertThatThrownBy(() -> service.add(authentication, clubId, teamId, seasonId, profile.getId()))
                 .isInstanceOf(ConflictException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -198,7 +207,7 @@ class TeamSquadServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
-        service.add(clubId, teamId, seasonBId, profile.getId());
+        service.add(authentication, clubId, teamId, seasonBId, profile.getId());
 
         verify(teamSquadMemberRepository).save(any(TeamSquadMember.class));
     }
@@ -219,7 +228,7 @@ class TeamSquadServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
-        service.add(clubId, teamId, seasonId, profile.getId());
+        service.add(authentication, clubId, teamId, seasonId, profile.getId());
 
         ArgumentCaptor<TeamSquadMember> captor = ArgumentCaptor.forClass(TeamSquadMember.class);
         verify(teamSquadMemberRepository).save(captor.capture());
@@ -247,7 +256,7 @@ class TeamSquadServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
-        service.add(clubId, teamId, seasonId, profile.getId());
+        service.add(authentication, clubId, teamId, seasonId, profile.getId());
 
         verify(teamSquadMemberRepository, never())
                 .existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(any(), any(), any(), any());
@@ -279,7 +288,7 @@ class TeamSquadServiceImplTest {
                 null, null, null, null, null, null, null, null, null, null, null, false, true,
                 List.of(), null, 9));
 
-        var dto = service.update(clubId, teamId, seasonId, playerId, 9);
+        var dto = service.update(authentication, clubId, teamId, seasonId, playerId, 9);
 
         verify(teamSquadMemberRepository).save(any(TeamSquadMember.class));
         assertThat(member.getJerseyNumber()).isEqualTo(9);
@@ -297,7 +306,7 @@ class TeamSquadServiceImplTest {
         when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, 9))
+        assertThatThrownBy(() -> service.update(authentication, clubId, teamId, seasonId, playerId, 9))
                 .isInstanceOf(NotFoundException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -315,7 +324,7 @@ class TeamSquadServiceImplTest {
         when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
                 .thenReturn(Optional.of(member));
 
-        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, -1))
+        assertThatThrownBy(() -> service.update(authentication, clubId, teamId, seasonId, playerId, -1))
                 .isInstanceOf(ValidationException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -336,7 +345,7 @@ class TeamSquadServiceImplTest {
         when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
                 teamId, seasonId, 5, memberId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.update(clubId, teamId, seasonId, playerId, 5))
+        assertThatThrownBy(() -> service.update(authentication, clubId, teamId, seasonId, playerId, 5))
                 .isInstanceOf(DuplicateSquadJerseyNumberException.class);
         verify(teamSquadMemberRepository, never()).save(any());
     }
@@ -362,7 +371,7 @@ class TeamSquadServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         stubPlayerLookup(profile);
 
-        service.update(clubId, teamId, seasonId, playerId, 9);
+        service.update(authentication, clubId, teamId, seasonId, playerId, 9);
 
         assertThat(member.getJerseyNumber()).isEqualTo(9);
         assertThat(profile.getJerseyNumber()).isEqualTo(3);
@@ -381,7 +390,7 @@ class TeamSquadServiceImplTest {
                 .thenReturn(Optional.of(TeamSquadMember.builder().id(UUID.randomUUID()).teamId(teamId)
                         .seasonId(seasonAId).playerProfileId(playerId).build()));
 
-        service.remove(clubId, teamId, seasonAId, playerId);
+        service.remove(authentication, clubId, teamId, seasonAId, playerId);
 
         verify(teamSquadMemberRepository).deleteByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonAId, playerId);
     }
@@ -397,7 +406,7 @@ class TeamSquadServiceImplTest {
         when(teamSquadMemberRepository.findByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.remove(clubId, teamId, seasonId, playerId))
+        assertThatThrownBy(() -> service.remove(authentication, clubId, teamId, seasonId, playerId))
                 .isInstanceOf(NotFoundException.class);
         verify(teamSquadMemberRepository, never())
                 .deleteByTeamIdAndSeasonIdAndPlayerProfileId(any(), any(), any());
@@ -416,8 +425,27 @@ class TeamSquadServiceImplTest {
                         .playerProfileId(profile.getId()).build()));
         stubPlayerLookup(profile);
 
-        service.list(clubId, teamId, seasonId);
+        service.list(authentication, clubId, teamId, seasonId);
 
         verify(playerProfileRepository).findById(profile.getId());
+    }
+
+    // --- 035: section-scoped access ---
+
+    @Test
+    void addThrowsAccessDeniedWhenCallerCannotAdministerTheTeamsSection() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Team team = team(teamId, clubId);
+        team.setSectionId(UUID.randomUUID());
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerSection(authentication, clubId, team.getSectionId());
+
+        assertThatThrownBy(() -> service.add(authentication, clubId, teamId, seasonId, UUID.randomUUID()))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(teamSquadMemberRepository, never()).save(any());
     }
 }

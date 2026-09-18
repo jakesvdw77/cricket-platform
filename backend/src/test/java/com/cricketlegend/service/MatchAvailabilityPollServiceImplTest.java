@@ -8,12 +8,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.PlayerAvailability;
 import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
+import com.cricketlegend.dto.OpenAvailabilityPollDto;
 import com.cricketlegend.dto.PlayerAvailabilityRowDto;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -25,8 +27,10 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.service.impl.MatchAvailabilityPollServiceImpl;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +38,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for MatchAvailabilityPollServiceImpl's business rules from
@@ -41,7 +48,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * team ids (400) and rejecting a duplicate {@code (match, team)} poll (409); {@code open}/{@code
  * close} transitions and their {@code InvalidStatusTransitionException} (409) "already in that
  * state" guards; {@code getResponses} resolving the full season-scoped squad with correct counts,
- * including zero-response members.
+ * including zero-response members. Extended per docs/specs/035-section-scoped-access.md for
+ * {@code assertCanAdministerAnySection} being consulted on every existing method, and per
+ * docs/specs/034-availability-polls-dashboard.md/035's amendment for {@code listOpenForClub}.
  */
 @ExtendWith(MockitoExtension.class)
 class MatchAvailabilityPollServiceImplTest {
@@ -61,7 +70,12 @@ class MatchAvailabilityPollServiceImplTest {
     @Mock
     private MatchAvailabilityPollMapper matchAvailabilityPollMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private MatchAvailabilityPollServiceImpl service;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
@@ -70,7 +84,8 @@ class MatchAvailabilityPollServiceImplTest {
                 matchAvailabilityPollRepository,
                 playerAvailabilityRepository,
                 squadResolver,
-                matchAvailabilityPollMapper);
+                matchAvailabilityPollMapper,
+                accessService);
     }
 
     private Match match(UUID clubId, UUID matchId, UUID homeTeamId, UUID awayTeamId, UUID seasonId) {
@@ -109,7 +124,7 @@ class MatchAvailabilityPollServiceImplTest {
                 });
         when(squadResolver.resolveSquadRows(eq(homeTeamId), eq(seasonId))).thenReturn(List.of());
 
-        service.create(clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId));
+        service.create(authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId));
 
         ArgumentCaptor<MatchAvailabilityPoll> savedCaptor = ArgumentCaptor.forClass(MatchAvailabilityPoll.class);
         verify(matchAvailabilityPollRepository).save(savedCaptor.capture());
@@ -130,8 +145,8 @@ class MatchAvailabilityPollServiceImplTest {
         Match match = match(clubId, matchId, homeTeamId, awayTeamId, seasonId);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
-        assertThatThrownBy(() ->
-                        service.create(clubId, matchId, new CreateMatchAvailabilityPollRequest(unrelatedTeamId)))
+        assertThatThrownBy(() -> service.create(
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(unrelatedTeamId)))
                 .isInstanceOf(ValidationException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -148,8 +163,8 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchAvailabilityPollRepository.existsByMatchIdAndTeamId(matchId, homeTeamId)).thenReturn(true);
 
-        assertThatThrownBy(() ->
-                        service.create(clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId)))
+        assertThatThrownBy(() -> service.create(
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId)))
                 .isInstanceOf(ConflictException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -162,8 +177,32 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
         assertThatThrownBy(() -> service.create(
-                        UUID.randomUUID(), matchId, new CreateMatchAvailabilityPollRequest(UUID.randomUUID())))
+                        authentication,
+                        UUID.randomUUID(),
+                        matchId,
+                        new CreateMatchAvailabilityPollRequest(UUID.randomUUID())))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void createThrowsAccessDeniedWhenCallerCannotAdministerAnyOfTheMatchsResolvedSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID homeTeamId = UUID.randomUUID();
+        UUID awayTeamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match match = match(clubId, matchId, homeTeamId, awayTeamId, seasonId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        Set<UUID> resolvedSections = Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, homeTeamId, awayTeamId)).thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> service.create(
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(matchAvailabilityPollRepository, never()).save(any());
     }
 
     // --- open/close ---
@@ -183,7 +222,7 @@ class MatchAvailabilityPollServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(squadResolver.resolveSquadRows(eq(teamId), eq(seasonId))).thenReturn(List.of());
 
-        service.open(clubId, matchId, pollId);
+        service.open(authentication, clubId, matchId, pollId);
 
         assertThat(closedPoll.isOpen()).isTrue();
     }
@@ -199,7 +238,7 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(openPoll));
 
-        assertThatThrownBy(() -> service.open(clubId, matchId, pollId))
+        assertThatThrownBy(() -> service.open(authentication, clubId, matchId, pollId))
                 .isInstanceOf(InvalidStatusTransitionException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -220,7 +259,7 @@ class MatchAvailabilityPollServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(squadResolver.resolveSquadRows(eq(teamId), eq(seasonId))).thenReturn(List.of());
 
-        service.close(clubId, matchId, pollId);
+        service.close(authentication, clubId, matchId, pollId);
 
         assertThat(openPoll.isOpen()).isFalse();
     }
@@ -236,7 +275,7 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(closedPoll));
 
-        assertThatThrownBy(() -> service.close(clubId, matchId, pollId))
+        assertThatThrownBy(() -> service.close(authentication, clubId, matchId, pollId))
                 .isInstanceOf(InvalidStatusTransitionException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -253,7 +292,8 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(pollOnOtherMatch));
 
-        assertThatThrownBy(() -> service.open(clubId, matchId, pollId)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.open(authentication, clubId, matchId, pollId))
+                .isInstanceOf(NotFoundException.class);
     }
 
     // --- getResponses ---
@@ -282,7 +322,7 @@ class MatchAvailabilityPollServiceImplTest {
                 PlayerAvailability.builder().pollId(pollId).playerProfileId(playerB)
                         .status(AvailabilityStatus.UNAVAILABLE).build()));
 
-        MatchAvailabilityPollResponsesDto responses = service.getResponses(clubId, matchId, pollId);
+        MatchAvailabilityPollResponsesDto responses = service.getResponses(authentication, clubId, matchId, pollId);
 
         assertThat(responses.pollId()).isEqualTo(pollId);
         assertThat(responses.teamId()).isEqualTo(teamId);
@@ -319,8 +359,8 @@ class MatchAvailabilityPollServiceImplTest {
                 .thenReturn(Optional.empty());
         when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
 
-        MatchAvailabilityPollResponsesDto result =
-                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.UNAVAILABLE);
+        MatchAvailabilityPollResponsesDto result = service.setPlayerStatus(
+                authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.UNAVAILABLE);
 
         ArgumentCaptor<PlayerAvailability> captor = ArgumentCaptor.forClass(PlayerAvailability.class);
         verify(playerAvailabilityRepository).save(captor.capture());
@@ -350,7 +390,7 @@ class MatchAvailabilityPollServiceImplTest {
                 .thenReturn(Optional.of(existing));
         when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
 
-        service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE);
+        service.setPlayerStatus(authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE);
 
         verify(playerAvailabilityRepository).save(existing);
         assertThat(existing.getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
@@ -370,8 +410,8 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(openPoll));
         when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of());
 
-        assertThatThrownBy(() ->
-                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
+        assertThatThrownBy(() -> service.setPlayerStatus(
+                        authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
                 .isInstanceOf(NotFoundException.class);
         verify(playerAvailabilityRepository, never()).save(any());
     }
@@ -391,9 +431,163 @@ class MatchAvailabilityPollServiceImplTest {
         when(squadResolver.resolveSquadRows(teamId, seasonId))
                 .thenReturn(List.of(new PlayerAvailabilityRowDto(playerId, "Jane", "Smith", null, null)));
 
-        assertThatThrownBy(() ->
-                service.setPlayerStatus(clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
+        assertThatThrownBy(() -> service.setPlayerStatus(
+                        authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
                 .isInstanceOf(com.cricketlegend.exception.PollClosedException.class);
         verify(playerAvailabilityRepository, never()).save(any());
+    }
+
+    // --- listOpenForClub (034/035) ---
+
+    @Test
+    void listOpenForClubReturnsOneEntryPerOpenPollScopedToClub() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        match.setHomeTeamName(null);
+        match.setAwayTeamName("Away Occasionals");
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of(openPoll));
+        when(matchRepository.findAllById(Set.of(matchId))).thenReturn(List.of(match));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .thenReturn(Set.of(UUID.randomUUID()));
+        when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of());
+
+        List<OpenAvailabilityPollDto> result = service.listOpenForClub(authentication, clubId, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).pollId()).isEqualTo(pollId);
+        assertThat(result.get(0).matchId()).isEqualTo(matchId);
+    }
+
+    @Test
+    void listOpenForClubExcludesAClosedPollAndReturnsEmptyListNotAnErrorWhenNoneOpen() {
+        UUID clubId = UUID.randomUUID();
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of());
+        when(matchRepository.findAllById(Set.of())).thenReturn(List.of());
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+
+        assertThat(service.listOpenForClub(authentication, clubId, null)).isEmpty();
+    }
+
+    @Test
+    void listOpenForClubBucketsRespondentsByStatusExcludingNullStatusFromAllThreeBuckets() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID available = UUID.randomUUID();
+        UUID unavailable = UUID.randomUUID();
+        UUID unsure = UUID.randomUUID();
+        UUID noResponse = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of(openPoll));
+        when(matchRepository.findAllById(Set.of(matchId))).thenReturn(List.of(match));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .thenReturn(Set.of(UUID.randomUUID()));
+        when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of(
+                new PlayerAvailabilityRowDto(available, "Alice", "A", null, null),
+                new PlayerAvailabilityRowDto(unavailable, "Bob", "B", null, null),
+                new PlayerAvailabilityRowDto(unsure, "Cara", "C", null, null),
+                new PlayerAvailabilityRowDto(noResponse, "Dee", "D", null, null)));
+        when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of(
+                PlayerAvailability.builder().pollId(pollId).playerProfileId(available)
+                        .status(AvailabilityStatus.AVAILABLE).build(),
+                PlayerAvailability.builder().pollId(pollId).playerProfileId(unavailable)
+                        .status(AvailabilityStatus.UNAVAILABLE).build(),
+                PlayerAvailability.builder().pollId(pollId).playerProfileId(unsure)
+                        .status(AvailabilityStatus.UNSURE).build()));
+
+        OpenAvailabilityPollDto dto = service.listOpenForClub(authentication, clubId, null).get(0);
+
+        assertThat(dto.availableCount()).isEqualTo(1);
+        assertThat(dto.unavailableCount()).isEqualTo(1);
+        assertThat(dto.unsureCount()).isEqualTo(1);
+        assertThat(dto.noResponseCount()).isEqualTo(1);
+        assertThat(dto.availableRespondents()).extracting("playerProfileId").containsExactly(available);
+        assertThat(dto.unavailableRespondents()).extracting("playerProfileId").containsExactly(unavailable);
+        assertThat(dto.unsureRespondents()).extracting("playerProfileId").containsExactly(unsure);
+    }
+
+    @Test
+    void listOpenForClubSortsByMatchDateAscending() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID laterMatchId = UUID.randomUUID();
+        UUID soonerMatchId = UUID.randomUUID();
+        Instant now = Instant.now();
+        Match laterMatch = match(clubId, laterMatchId, teamId, UUID.randomUUID(), seasonId);
+        laterMatch.setMatchDate(now.plus(5, ChronoUnit.DAYS));
+        Match soonerMatch = match(clubId, soonerMatchId, teamId, UUID.randomUUID(), seasonId);
+        soonerMatch.setMatchDate(now.plus(1, ChronoUnit.DAYS));
+        MatchAvailabilityPoll laterPoll = poll(UUID.randomUUID(), laterMatchId, teamId, true);
+        MatchAvailabilityPoll soonerPoll = poll(UUID.randomUUID(), soonerMatchId, teamId, true);
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId))
+                .thenReturn(List.of(laterPoll, soonerPoll));
+        when(matchRepository.findAllById(Set.of(laterMatchId, soonerMatchId)))
+                .thenReturn(List.of(laterMatch, soonerMatch));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(eq(clubId), any(), any())).thenReturn(Set.of(UUID.randomUUID()));
+        when(squadResolver.resolveSquadRows(eq(teamId), eq(seasonId))).thenReturn(List.of());
+
+        List<OpenAvailabilityPollDto> result = service.listOpenForClub(authentication, clubId, null);
+
+        assertThat(result).extracting(OpenAvailabilityPollDto::matchId)
+                .containsExactly(soonerMatchId, laterMatchId);
+    }
+
+    @Test
+    void listOpenForClubExcludesAPollWhoseMatchIsOutsideTheCallersAccessibleSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        UUID matchSectionId = UUID.randomUUID();
+        UUID accessibleSectionId = UUID.randomUUID();
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of(openPoll));
+        when(matchRepository.findAllById(Set.of(matchId))).thenReturn(List.of(match));
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(Set.of(accessibleSectionId)));
+        when(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .thenReturn(Set.of(matchSectionId));
+
+        assertThat(service.listOpenForClub(authentication, clubId, null)).isEmpty();
+    }
+
+    @Test
+    void listOpenForClubNarrowsToAnExplicitSectionIdsClosureAfterValidatingIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID filterSectionId = UUID.randomUUID();
+        UUID matchSectionId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of(openPoll));
+        when(matchRepository.findAllById(Set.of(matchId))).thenReturn(List.of(match));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionAndDescendantIds(clubId, filterSectionId))
+                .thenReturn(Set.of(filterSectionId, matchSectionId));
+        when(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .thenReturn(Set.of(matchSectionId));
+        when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of());
+
+        List<OpenAvailabilityPollDto> result = service.listOpenForClub(authentication, clubId, filterSectionId);
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, filterSectionId);
+        assertThat(result).hasSize(1);
     }
 }

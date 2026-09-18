@@ -8,9 +8,12 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,12 @@ class MatchRepositoryTest {
     @Autowired
     private MatchRepository matchRepository;
 
+    @Autowired
+    private SectionRepository sectionRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
     private Club savedClub(String slug) {
         return clubRepository.save(Club.builder().name("Riverside CC").slug(slug).status(ClubStatus.ACTIVE).build());
     }
@@ -70,6 +79,37 @@ class MatchRepositoryTest {
         assertThat(firstPage.getTotalElements()).isEqualTo(3);
         assertThat(firstPage.getContent()).hasSize(2);
         assertThat(firstPage.getTotalPages()).isEqualTo(2);
+    }
+
+    @Test
+    void findByClubIdAndSectionIdInReturnsOnlyMatchesWithAnOwnClubTeamSideInTheGivenSectionsAndStillPages() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section juniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
+        Section open = sectionRepository.save(Section.builder().clubId(club.getId()).name("Open").active(true).build());
+        Team juniorsTeam = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("U15").active(true).build());
+        Team openTeam = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(open.getId()).name("1st XI").active(true).build());
+        Instant now = Instant.now();
+        Match inScopeHome = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(juniorsTeam.getId())
+                .awayTeamName("Away Occasionals").seasonId(season.getId()).matchDate(now).active(true).build());
+        Match inScopeAway = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Home Occasionals")
+                .awayTeamId(juniorsTeam.getId()).seasonId(season.getId()).matchDate(now.plus(1, ChronoUnit.DAYS))
+                .active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(openTeam.getId())
+                .awayTeamName("Away Occasionals").seasonId(season.getId()).matchDate(now).active(true).build());
+
+        org.springframework.data.domain.Page<Match> firstPage = matchRepository.findByClubIdAndSectionIdIn(
+                club.getId(), Set.of(juniors.getId()), org.springframework.data.domain.PageRequest.of(0, 1));
+
+        assertThat(firstPage.getTotalElements()).isEqualTo(2);
+        assertThat(firstPage.getContent()).hasSize(1);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        org.springframework.data.domain.Page<Match> allMatches = matchRepository.findByClubIdAndSectionIdIn(
+                club.getId(), Set.of(juniors.getId()), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(allMatches.getContent()).extracting(Match::getId)
+                .containsExactlyInAnyOrder(inScopeHome.getId(), inScopeAway.getId());
     }
 
     @Test
