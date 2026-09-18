@@ -11,12 +11,17 @@ import { test, expect } from '@playwright/test';
  * an external opponent with that league/season attached, build the home side's playing XI (add
  * players, reorder, set captain/wicketkeeper/twelfth man), confirm the playing-XI cap blocks a
  * further add once reached, confirm an age-ineligible player is rejected, reload and confirm every
- * change persisted server-side, then (030) open that same match's "Communicate Team Sheet" dialog
- * from its card and print a PDF for both sides. (031) Along the way: one squad candidate is given a
- * standing jersey number on their own profile, that number is overridden once they're on the squad,
- * a second squad member is given a squad number from scratch, a third's attempt to reuse the
- * first's squad number is rejected inline with a 409, and after a reload the successful edits
- * persisted, the rejected one didn't, and the first player's own standing number is untouched.
+ * change persisted server-side, then (032) open that side's availability poll from the new
+ * Availability tab, generate/inspect the share text, open the poll's public link in a fresh
+ * unauthenticated browser context, set a squad member's status there, confirm the admin tab's
+ * response count updates on reload, close the poll and confirm the public page goes read-only, then
+ * reopen it and confirm it accepts changes again — then (030) open that same match's "Communicate
+ * Team Sheet" dialog from its card and print a PDF for both sides. (031) Along the way: one squad
+ * candidate is given a standing jersey number on their own profile, that number is overridden once
+ * they're on the squad, a second squad member is given a squad number from scratch, a third's
+ * attempt to reuse the first's squad number is rejected inline with a 409, and after a reload the
+ * successful edits persisted, the rejected one didn't, and the first player's own standing number
+ * is untouched.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-teams.spec.ts / manager-players.spec.ts:
@@ -105,6 +110,7 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
   test('club admin builds a league, season, affiliation, squad, match, and playing XI end to end, with the cap and age-eligibility rules enforced, and every change persists', async ({
     page,
+    browser,
   }) => {
     // Date.now() alone can collide across projects (desktop-chromium/mobile-chromium run in
     // parallel workers and can land in the same millisecond) — appending a random component
@@ -408,6 +414,79 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // The cap-disabled state still holds — the age-ineligible player was never added, and the two
     // eligible players added earlier still fill the cap.
     await expect(page.getByRole('combobox', { name: 'Add player' })).toBeDisabled();
+
+    // --- Availability poll (docs/specs/032-match-availability-polls.md): still on this same
+    // match's edit page (Home XI tab) — open the home side's Availability tab, open a poll for the
+    // full season squad (all four squad candidates added earlier, independent of who made the XI),
+    // generate/inspect the share text, respond via the poll's own public link from a genuinely
+    // fresh, unauthenticated browser context, confirm the admin side sees the updated response
+    // count on reload, close the poll (public page goes read-only), then reopen it (writable again).
+
+    await page.getByRole('tab', { name: 'Availability' }).click();
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible();
+    await expect(page.getByText(/no availability poll yet/i)).toBeVisible();
+    await page.getByRole('button', { name: /open a poll for this side/i }).click();
+
+    // Poll created open, with the full season squad (not just the playing XI) and every member
+    // starting at "No response" — the four SummaryTile <h6> counts render in a fixed
+    // Available/Unavailable/Unsure/No-response order (MatchAvailabilityTab.tsx), the only <h6> (and
+    // therefore the only level-6 heading) rendered anywhere on this tab.
+    await expect(page.getByText(eligible1FullName)).toBeVisible();
+    const summaryCounts = page.getByRole('heading', { level: 6 });
+    await expect(summaryCounts).toHaveCount(4);
+    await expect(summaryCounts.nth(3)).toHaveText('4'); // No response
+
+    // Share invite: generates a channel-agnostic, plain-text invite embedding this poll's own
+    // public link — inspect it, then pull the link out to visit as an unauthenticated visitor.
+    await page.getByRole('button', { name: /share invite/i }).click();
+    await expect(page.getByRole('heading', { name: 'Share invite' })).toBeVisible();
+    const inviteText = await page.getByLabel('Invite text').inputValue();
+    const pollLinkMatch = inviteText.match(/https?:\/\/\S+\/poll\/[0-9a-fA-F-]+/);
+    expect(pollLinkMatch).not.toBeNull();
+    const pollLink = (pollLinkMatch as RegExpMatchArray)[0];
+    await page.getByRole('button', { name: /^close$/i }).click();
+    await expect(page.getByRole('heading', { name: 'Share invite' })).not.toBeVisible();
+
+    // A real second browser context with zero auth state — not this same authenticated page
+    // navigating to a public URL — proving the public page is genuinely reachable pre-login.
+    const publicContext = await browser.newContext();
+    const publicPage = await publicContext.newPage();
+    await publicPage.goto(pollLink);
+    await expect(publicPage.getByText(`${teamName} vs ${awayOpponentName}`)).toBeVisible();
+
+    // Tap eligible1's own row to set Available — eligible1's squad jersey number (set earlier) is
+    // shown alongside their name, per PublicAvailabilityPoll.tsx's own squadDisplayName format.
+    const eligible1SquadDisplayName = `#${eligible1SquadJerseyNumber} ${eligible1FullName}`;
+    const eligible1AvailableToggle = publicPage.getByLabel(`${eligible1SquadDisplayName}: Available`);
+    await eligible1AvailableToggle.click();
+    await expect(eligible1AvailableToggle).toHaveAttribute('aria-pressed', 'true');
+
+    // Reload the admin tab (a fresh navigation, not just client state) — the response count
+    // reflects the public response just made.
+    await page.reload();
+    await page.getByRole('tab', { name: 'Availability' }).click();
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible();
+    await expect(summaryCounts.nth(0)).toHaveText('1'); // Available
+    await expect(summaryCounts.nth(3)).toHaveText('3'); // No response
+
+    // Close the poll — the switch (a real MUI Switch, not a button) flips it closed.
+    await page.getByRole('checkbox').click();
+    await expect(page.getByText(/^poll closed$/i)).toBeVisible();
+
+    // The public page, reloaded, is now read-only — every row's toggle group is disabled.
+    await publicPage.reload();
+    await expect(publicPage.getByText(/this poll is closed/i)).toBeVisible();
+    await expect(eligible1AvailableToggle).toBeDisabled();
+
+    // Reopen it — the public page, reloaded again, accepts changes once more.
+    await page.getByRole('checkbox').click();
+    await expect(page.getByText(/^poll open$/i)).toBeVisible();
+
+    await publicPage.reload();
+    await expect(publicPage.getByText(/this poll is closed/i)).not.toBeVisible();
+    await expect(eligible1AvailableToggle).toBeEnabled();
+
+    await publicContext.close();
 
     // --- Communicate Team Sheet (docs/specs/030-team-sheet-communication.md): extends this same
     // golden path per that spec's own Test Plan (End-to-end row) rather than a second, parallel
