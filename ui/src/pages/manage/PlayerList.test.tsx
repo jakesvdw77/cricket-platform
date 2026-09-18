@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,7 +14,7 @@ const listSections = vi.fn()
 
 // Mirrors SponsorList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/playerApi', () => ({
-  listPlayers: (clubId: string) => listPlayers(clubId),
+  listPlayers: (clubId: string, params: unknown) => listPlayers(clubId, params),
   deactivatePlayer: (clubId: string, playerId: string) => deactivatePlayer(clubId, playerId),
   reactivatePlayer: (clubId: string, playerId: string) => reactivatePlayer(clubId, playerId),
 }))
@@ -226,5 +226,29 @@ describe('PlayerList', () => {
     await user.click(screen.getByRole('button', { name: 'Reactivate' }))
 
     expect(reactivatePlayer).toHaveBeenCalledWith('test-club-id', 'player-1')
+  })
+
+  it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValue([makePlayer()])
+    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Sipho Ndlovu')
+    expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: undefined })
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(within(screen.getByRole('treeitem', { name: 'U15' })).getByText('U15'))
+
+    expect(await screen.findByLabelText('Section')).toHaveValue('U15')
+    await waitFor(() => expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(screen.getByRole('button', { name: /all sections/i }))
+
+    await waitFor(() =>
+      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
+    )
   })
 })

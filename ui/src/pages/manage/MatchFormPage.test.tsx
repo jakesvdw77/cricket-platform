@@ -334,4 +334,46 @@ describe('MatchFormPage', () => {
     expect(textarea.value).toContain('/poll/poll-1')
     expect(textarea.value).toContain('Riverside Oval')
   })
+
+  // docs/specs/034-availability-polls-dashboard.md: AvailabilityPollsDashboard's own "Manage
+  // responses" deep-link — matches the existing ?tab=playing-xi deep-link's shape (SquadPicker's
+  // own cards).
+  it('?tab=availability&side=home selects the Availability tab and the Home sub-tab on load', async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+
+    renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=home', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+
+    expect(screen.getByRole('tab', { name: 'Availability' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('tab', { name: 'Home' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('?tab=availability&side=away selects the Availability tab and the Away sub-tab on load', async () => {
+    const user = userEvent.setup()
+    getMatch.mockResolvedValueOnce(makeMatch())
+    createPoll.mockResolvedValueOnce({
+      id: 'poll-2',
+      teamId: 'team-2',
+      open: true,
+      availableCount: 0,
+      unavailableCount: 0,
+      unsureCount: 0,
+      noResponseCount: 0,
+    })
+
+    renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=away', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+
+    expect(screen.getByRole('tab', { name: 'Availability' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Home' })).toHaveAttribute('aria-selected', 'false')
+
+    // Confirms the panel showing is genuinely the away side's own poll panel, not just the tab
+    // label — "Open a poll for this side" here creates a poll for team-2 (away), not team-1.
+    await user.click(screen.getByRole('button', { name: /open a poll for this side/i }))
+    expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-2')
+  })
 })
