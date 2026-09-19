@@ -2856,6 +2856,51 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TeamSquadMemberDto"
+  /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous:
+    get:
+      tags:
+      - team-previous-match-controller
+      operationId: listPrevious
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: excludeMatchId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchDto"
   /api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors:
     get:
       tags:

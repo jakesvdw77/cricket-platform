@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,4 +57,16 @@ public interface MatchService {
 
     /** Throws {@link com.cricketlegend.exception.InvalidStatusTransitionException} if already active. */
     MatchDto reactivate(Authentication authentication, UUID clubId, UUID matchId);
+
+    /**
+     * Item 9's "Re-select from Previous Match" picker — see
+     * docs/specs/037-match-improvements.md. 404s if {@code teamId}/{@code seasonId} don't belong
+     * to {@code clubId} (same access-control shape as {@code TeamSquadServiceImpl}). Lists this
+     * team's own previous, already-played matches (see {@link
+     * com.cricketlegend.repository.MatchRepository#findPreviousForTeamSeasonLeague}) scoped to an
+     * exact {@code seasonId}/{@code leagueId} match (including {@code null}-to-{@code null} for
+     * {@code leagueId}), optionally excluding one match id, most recent first.
+     */
+    List<MatchDto> listPrevious(
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, UUID excludeMatchId);
 }

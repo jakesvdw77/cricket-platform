@@ -12,6 +12,7 @@ import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
@@ -26,6 +27,7 @@ import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.MatchServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,6 +99,10 @@ class MatchServiceImplTest {
         return Match.builder().id(id).clubId(clubId).homeTeamId(UUID.randomUUID())
                 .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
                 .active(active).build();
+    }
+
+    private Team team(UUID id, UUID clubId, UUID sectionId) {
+        return Team.builder().id(id).clubId(clubId).sectionId(sectionId).name("1st XI").active(true).build();
     }
 
     @Test
@@ -441,5 +447,73 @@ class MatchServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(clubId), any(), any(), any());
         verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
         verify(matchRepository, never()).findByClubId(any(), any());
+    }
+
+    // --- 037 item 9: listPrevious ---
+
+    @Test
+    void listPreviousCallsTheRepositoryWithTheRightParamsAndMapsEachResult() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID excludeMatchId = UUID.randomUUID();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId, sectionId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        Match previous = existingMatch(UUID.randomUUID(), clubId, true);
+        when(matchRepository.findPreviousForTeamSeasonLeague(
+                        org.mockito.ArgumentMatchers.eq(clubId),
+                        org.mockito.ArgumentMatchers.eq(teamId),
+                        org.mockito.ArgumentMatchers.eq(seasonId),
+                        org.mockito.ArgumentMatchers.eq(leagueId),
+                        any(),
+                        org.mockito.ArgumentMatchers.eq(excludeMatchId)))
+                .thenReturn(List.of(previous));
+        when(matchMapper.toDto(previous)).thenReturn(dummyDto());
+
+        List<MatchDto> result =
+                matchService.listPrevious(authentication, clubId, teamId, seasonId, leagueId, excludeMatchId);
+
+        assertThat(result).hasSize(1);
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(matchRepository)
+                .findPreviousForTeamSeasonLeague(
+                        org.mockito.ArgumentMatchers.eq(clubId),
+                        org.mockito.ArgumentMatchers.eq(teamId),
+                        org.mockito.ArgumentMatchers.eq(seasonId),
+                        org.mockito.ArgumentMatchers.eq(leagueId),
+                        any(),
+                        org.mockito.ArgumentMatchers.eq(excludeMatchId));
+    }
+
+    @Test
+    void listPreviousThrowsNotFoundWhenTeamDoesNotBelongToClub() {
+        UUID clubId = UUID.randomUUID();
+        UUID otherClubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, otherClubId, sectionId)));
+
+        assertThatThrownBy(() -> matchService.listPrevious(authentication, clubId, teamId, seasonId, null, null))
+                .isInstanceOf(NotFoundException.class);
+        verify(matchRepository, never()).findPreviousForTeamSeasonLeague(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void listPreviousThrowsNotFoundWhenSeasonDoesNotBelongToClub() {
+        UUID clubId = UUID.randomUUID();
+        UUID otherClubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId, sectionId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, otherClubId)));
+
+        assertThatThrownBy(() -> matchService.listPrevious(authentication, clubId, teamId, seasonId, null, null))
+                .isInstanceOf(NotFoundException.class);
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(matchRepository, never()).findPreviousForTeamSeasonLeague(any(), any(), any(), any(), any(), any());
     }
 }

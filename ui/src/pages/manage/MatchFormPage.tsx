@@ -1,18 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Stack, Tab, Tabs, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+} from '@mui/material'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { PlayingXiBuilder } from '../../components/PlayingXiBuilder'
 import { MatchAvailabilityTab } from '../../components/MatchAvailabilityTab'
 import { PollShareDialog } from '../../components/PollShareDialog'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
+import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
-import { getMatch, createMatch, updateMatch, deactivateMatch, reactivateMatch } from '../../api/matchApi'
+import {
+  getMatch,
+  createMatch,
+  updateMatch,
+  deactivateMatch,
+  reactivateMatch,
+  listPreviousMatches,
+} from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -30,7 +51,7 @@ import {
   removeMatchSidePlayer,
   reorderMatchSidePlayers,
 } from '../../api/matchSideApi'
-import type { PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
+import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
 import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
 import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
@@ -49,6 +70,30 @@ function sideDisplayName(teamId: string | null, teamName: string | null, teamsBy
   return 'Unknown team'
 }
 
+// docs/specs/037-match-improvements.md item 9: resolves the *other* side's display name for a
+// previous-match candidate in the "Re-select from Previous Match" picker — mirrors
+// sideDisplayName above rather than duplicating its team-lookup logic.
+function opponentLabel(match: Match, teamId: string, teamsById: Map<string, Team>): string {
+  if (match.homeTeamId === teamId) {
+    return sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)
+  }
+  return sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)
+}
+
+// docs/specs/037-match-improvements.md item 9: a side counts as "non-empty" (and therefore needs
+// a destructive-replace confirmation before "Re-select from Previous Match" overwrites it) if it
+// has any ordered-XI player or any of captain/wicketkeeper/twelfth-man set. Shared by
+// handlePickPreviousMatch (decides whether to confirm) and copyFromPreviousMatchMutation (decides
+// whether to clear first) so the two can never disagree about what "non-empty" means.
+function isSideNonEmpty(matchSide: MatchSide): boolean {
+  return (
+    matchSide.players.length > 0 ||
+    Boolean(matchSide.captainPlayerId) ||
+    Boolean(matchSide.wicketKeeperPlayerId) ||
+    Boolean(matchSide.twelfthManPlayerId)
+  )
+}
+
 // One Playing XI tab's content — data fetching/mutations live here (React Query, not inside
 // PlayingXiBuilder itself, per docs/standards/frontend.md's "server state in the page" rule).
 // Creates the MatchSide on first use if none exists yet, per docs/specs/029-league-management.md.
@@ -59,6 +104,8 @@ function MatchSideTab({
   seasonId,
   cap,
   label,
+  teamsById,
+  leagueId,
 }: {
   clubId: string
   matchId: string
@@ -66,6 +113,8 @@ function MatchSideTab({
   seasonId: string
   cap: number
   label: string
+  teamsById: Map<string, Team>
+  leagueId: string | null
 }) {
   const queryClient = useQueryClient()
   const attemptedCreateRef = useRef(false)
@@ -76,6 +125,16 @@ function MatchSideTab({
   // PlayerFormPage.tsx already uses).
   const [squadMemberDialogOpen, setSquadMemberDialogOpen] = useState(false)
   const [addPlayerTab, setAddPlayerTab] = useState<0 | 1 | 2>(0)
+  // docs/specs/037-match-improvements.md item 9: "Re-select from Previous Match" picker/confirm/
+  // copy-summary state — owned here for the same "server state in the page" reason as above.
+  const [previousMatchDialogOpen, setPreviousMatchDialogOpen] = useState(false)
+  const [pendingSourceMatch, setPendingSourceMatch] = useState<Match | null>(null)
+  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false)
+  const [copySummary, setCopySummary] = useState<{
+    copiedCount: number
+    totalSourcePlayers: number
+    skippedCount: number
+  } | null>(null)
 
   const sidesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'],
@@ -148,6 +207,141 @@ function MatchSideTab({
     },
   })
 
+  // docs/specs/037-match-improvements.md item 9: this side's own previous, identically-scoped
+  // matches — fetched only while the picker is open, so opening it is the only trigger for this
+  // (potentially per-open-stale) network call.
+  const previousMatchesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'matches', 'previous', leagueId, matchId],
+    queryFn: () => listPreviousMatches(clubId, teamId, seasonId, { leagueId, excludeMatchId: matchId }),
+    enabled: previousMatchDialogOpen,
+  })
+
+  // docs/specs/037-match-improvements.md item 9: copies a previous match's side onto this one —
+  // mirrors createAndLinkPlayerMutation's own "sequential awaited calls inside one mutationFn"
+  // shape above. Clears the destination side first (if non-empty), replays the source's players in
+  // batting-order, then resolves which of captain/wicketkeeper/twelfth-man actually carried over.
+  const copyFromPreviousMatchMutation = useMutation({
+    mutationFn: async (sourceMatchId: string) => {
+      const sourceSides = await listMatchSides(clubId, sourceMatchId)
+      const sourceSide = sourceSides.find((candidate) => candidate.teamId === teamId)
+      const destinationSide = side as MatchSide
+
+      if (!sourceSide) {
+        return { copiedCount: 0, totalSourcePlayers: 0, skippedCount: 0 }
+      }
+
+      if (isSideNonEmpty(destinationSide)) {
+        for (const player of destinationSide.players) {
+          await removeMatchSidePlayer(clubId, matchId, destinationSide.id, player.playerProfileId)
+        }
+        await updateMatchSide(clubId, matchId, destinationSide.id, {
+          captainPlayerId: null,
+          wicketKeeperPlayerId: null,
+          twelfthManPlayerId: null,
+        })
+      }
+
+      const copiedIds = new Set<string>()
+      let skippedCount = 0
+
+      const orderedSourcePlayers = [...sourceSide.players].sort((a, b) => a.battingOrder - b.battingOrder)
+      for (const player of orderedSourcePlayers) {
+        try {
+          await addMatchSidePlayer(clubId, matchId, destinationSide.id, player.playerProfileId, player.role)
+          copiedIds.add(player.playerProfileId)
+        } catch (error) {
+          if (isAxiosError(error) && error.response?.status === 400) {
+            skippedCount += 1
+          } else {
+            throw error
+          }
+        }
+      }
+
+      const currentSquadIds = new Set((squadQuery.data ?? []).map((member) => member.playerProfileId))
+
+      let captainPlayerId: string | null = null
+      if (sourceSide.captainPlayerId) {
+        if (copiedIds.has(sourceSide.captainPlayerId)) {
+          captainPlayerId = sourceSide.captainPlayerId
+        } else {
+          skippedCount += 1
+        }
+      }
+
+      let wicketKeeperPlayerId: string | null = null
+      if (sourceSide.wicketKeeperPlayerId) {
+        if (copiedIds.has(sourceSide.wicketKeeperPlayerId)) {
+          wicketKeeperPlayerId = sourceSide.wicketKeeperPlayerId
+        } else {
+          skippedCount += 1
+        }
+      }
+
+      let twelfthManPlayerId: string | null = null
+      if (sourceSide.twelfthManPlayerId) {
+        if (!copiedIds.has(sourceSide.twelfthManPlayerId) && currentSquadIds.has(sourceSide.twelfthManPlayerId)) {
+          twelfthManPlayerId = sourceSide.twelfthManPlayerId
+        } else {
+          skippedCount += 1
+        }
+      }
+
+      try {
+        await updateMatchSide(clubId, matchId, destinationSide.id, {
+          captainPlayerId,
+          wicketKeeperPlayerId,
+          twelfthManPlayerId,
+        })
+      } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 400) {
+          // Defensive edge case: one of the resolved ids somehow still fails validation. Don't
+          // retry — just count all three as skipped (if they were set) and let the copy finish
+          // without captain/WK/12th set, rather than crashing the whole mutation over this.
+          skippedCount += [captainPlayerId, wicketKeeperPlayerId, twelfthManPlayerId].filter(Boolean).length
+        } else {
+          throw error
+        }
+      }
+
+      return {
+        copiedCount: copiedIds.size,
+        totalSourcePlayers: sourceSide.players.length,
+        skippedCount,
+      }
+    },
+    onSuccess: (result) => {
+      invalidateSides()
+      setConfirmReplaceOpen(false)
+      setPreviousMatchDialogOpen(false)
+      setPendingSourceMatch(null)
+      setCopySummary(result)
+    },
+    // A non-400 failure mid-copy (e.g. a network drop) rethrows out of mutationFn rather than
+    // being caught — onSuccess's dialog-closing never runs, which would otherwise leave the
+    // confirm/picker Dialog open on top of the page, hiding the errorMessage Alert (rendered
+    // inside PlayingXiBuilder, behind the modal backdrop) with no visible indication of why the
+    // copy stalled. Close both dialogs here too so the error becomes visible; also
+    // re-fetch sides, since a destructive clear may have already applied before the failure.
+    onError: () => {
+      invalidateSides()
+      setConfirmReplaceOpen(false)
+      setPreviousMatchDialogOpen(false)
+      setPendingSourceMatch(null)
+    },
+  })
+
+  const handlePickPreviousMatch = (candidate: Match) => {
+    const currentSide = side as MatchSide
+
+    if (isSideNonEmpty(currentSide)) {
+      setPendingSourceMatch(candidate)
+      setConfirmReplaceOpen(true)
+    } else {
+      copyFromPreviousMatchMutation.mutate(candidate.id)
+    }
+  }
+
   // docs/specs/033-availability-aware-xi-builder.md: a second, small data fetch mirroring
   // MatchAvailabilityPanel's own shape exactly (identical query-key shape, same match) so an admin
   // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
@@ -191,7 +385,13 @@ function MatchSideTab({
           ? errorDetail(mutation.error, 'Something went wrong updating the playing XI. Please try again.')
           : null,
       )
-      .find((message): message is string => Boolean(message)) ?? null
+      .find((message): message is string => Boolean(message)) ??
+    (copyFromPreviousMatchMutation.isError
+      ? errorDetail(
+          copyFromPreviousMatchMutation.error,
+          'Something went wrong re-selecting the team from a previous match. Please try again.',
+        )
+      : null)
 
   return (
     <>
@@ -238,7 +438,64 @@ function MatchSideTab({
           setAddPlayerTab(0)
           setSquadMemberDialogOpen(true)
         }}
+        onReselectFromPreviousMatch={() => setPreviousMatchDialogOpen(true)}
       />
+
+      {/* docs/specs/037-match-improvements.md item 9: same placement convention as the errorMessage
+          Alert above (passed into PlayingXiBuilder itself) — this one renders as a sibling since
+          it's a MatchSideTab-owned summary, not a per-mutation error. */}
+      {copySummary && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="body2">
+            Copied {copySummary.copiedCount} of {copySummary.totalSourcePlayers} players from the previous XI.
+          </Typography>
+          {copySummary.skippedCount > 0 && (
+            <Typography variant="body2">
+              {copySummary.skippedCount} couldn't be copied — no longer eligible for this match. Add them manually.
+            </Typography>
+          )}
+        </Alert>
+      )}
+
+      {/* docs/specs/037-match-improvements.md item 9: the picker — LinkExistingRecordDialog's
+          no-extraField mode, so picking an option fires onLink immediately. */}
+      <LinkExistingRecordDialog<Match>
+        open={previousMatchDialogOpen}
+        onClose={() => setPreviousMatchDialogOpen(false)}
+        title="Re-select from Previous Match"
+        candidates={previousMatchesQuery.data ?? []}
+        loading={previousMatchesQuery.isLoading}
+        getOptionLabel={(candidate) => `${new Date(candidate.matchDate).toLocaleDateString()} — vs ${opponentLabel(candidate, teamId, teamsById)}`}
+        onLink={(candidate) => handlePickPreviousMatch(candidate)}
+      />
+
+      {/* docs/specs/037-match-improvements.md item 9: destructive-replace confirmation — a one-off
+          inline Dialog, not a new shared component, since there's no other consumer yet. */}
+      <Dialog open={confirmReplaceOpen} onClose={() => setConfirmReplaceOpen(false)}>
+        <DialogTitle>Replace the current Playing XI?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This replaces every player, role, and batting-order position currently set for {label}.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setConfirmReplaceOpen(false)
+              setPendingSourceMatch(null)
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => pendingSourceMatch && copyFromPreviousMatchMutation.mutate(pendingSourceMatch.id)}
+            disabled={copyFromPreviousMatchMutation.isPending}
+          >
+            {copyFromPreviousMatchMutation.isPending ? 'Replacing…' : 'Replace'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* docs/specs/037-match-improvements.md item 8: CreateAndLinkRecordDialog/PlayerForm both
           unmodified — since PlayerForm externalizes its own Basic/Contact/Cricket Info tab bar to
@@ -600,6 +857,8 @@ export default function MatchFormPage() {
             seasonId={match.seasonId}
             cap={cap}
             label="the home side"
+            teamsById={teamsById}
+            leagueId={match.leagueId}
           />
         </Box>
       )}
@@ -613,6 +872,8 @@ export default function MatchFormPage() {
             seasonId={match.seasonId}
             cap={cap}
             label="the away side"
+            teamsById={teamsById}
+            leagueId={match.leagueId}
           />
         </Box>
       )}

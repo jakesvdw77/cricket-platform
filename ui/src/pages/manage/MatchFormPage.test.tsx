@@ -12,6 +12,7 @@ const createMatch = vi.fn()
 const updateMatch = vi.fn()
 const deactivateMatch = vi.fn()
 const reactivateMatch = vi.fn()
+const listPreviousMatches = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSeasons = vi.fn()
 const listLeagues = vi.fn()
@@ -37,6 +38,8 @@ vi.mock('../../api/matchApi', () => ({
   updateMatch: (clubId: string, matchId: string, payload: unknown) => updateMatch(clubId, matchId, payload),
   deactivateMatch: (clubId: string, matchId: string) => deactivateMatch(clubId, matchId),
   reactivateMatch: (clubId: string, matchId: string) => reactivateMatch(clubId, matchId),
+  listPreviousMatches: (clubId: string, teamId: string, seasonId: string, params: unknown) =>
+    listPreviousMatches(clubId, teamId, seasonId, params),
 }))
 
 vi.mock('../../api/playerApi', () => ({
@@ -163,6 +166,7 @@ beforeEach(() => {
   listSquad.mockResolvedValue([])
   listMatchSides.mockResolvedValue([])
   listPolls.mockResolvedValue([])
+  listPreviousMatches.mockResolvedValue([])
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -325,6 +329,225 @@ describe('MatchFormPage', () => {
     )
     await waitFor(() => expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-9'))
     await waitFor(() => expect(listSquad).toHaveBeenCalledTimes(2))
+  })
+
+  // docs/specs/037-match-improvements.md item 9
+  describe('Re-select from Previous Match', () => {
+    const PREVIOUS_MATCH = makeMatch({
+      id: 'prev-match-1',
+      homeTeamId: 'team-1',
+      homeTeamName: null,
+      awayTeamId: 'team-2',
+      awayTeamName: null,
+      matchDate: '2026-05-01T14:30:00Z',
+    })
+
+    function mockSourceAndDestinationSides(destinationSide: MatchSide, sourceSide: MatchSide) {
+      listMatchSides.mockImplementation((_clubId: string, matchId: string) => {
+        if (matchId === 'match-1') return Promise.resolve([destinationSide])
+        if (matchId === 'prev-match-1') return Promise.resolve([sourceSide])
+        return Promise.resolve([])
+      })
+    }
+
+    async function openPickerAndSelect(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Re-select from Previous Match' }))
+      await user.click(screen.getByRole('combobox', { name: 'Search' }))
+      await user.click(await screen.findByText(/vs 2nd XI/))
+    }
+
+    it('copies immediately with no confirm dialog when the destination side is empty, in the documented call sequence', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
+      const destinationSide = makeSide({ id: 'side-1', teamId: 'team-1', players: [] })
+      const sourceSide = makeSide({
+        id: 'side-source',
+        teamId: 'team-1',
+        captainPlayerId: 'player-1',
+        wicketKeeperPlayerId: 'player-2',
+        twelfthManPlayerId: null,
+        players: [
+          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+        ],
+      })
+      mockSourceAndDestinationSides(destinationSide, sourceSide)
+      listSquad.mockResolvedValue([
+        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
+      ])
+      addMatchSidePlayer.mockResolvedValue(makeSide())
+      updateMatchSide.mockResolvedValue(makeSide())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+      await screen.findByLabelText('Add player')
+
+      await openPickerAndSelect(user)
+
+      expect(screen.queryByText('Replace the current Playing XI?')).not.toBeInTheDocument()
+      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
+
+      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(2))
+      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', 'player-1', 'BATSMAN')
+      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', 'player-2', 'BOWLER')
+
+      await waitFor(() =>
+        expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+          captainPlayerId: 'player-1',
+          wicketKeeperPlayerId: 'player-2',
+          twelfthManPlayerId: null,
+        }),
+      )
+      expect(updateMatchSide).toHaveBeenCalledTimes(1)
+
+      expect(await screen.findByText('Copied 2 of 2 players from the previous XI.')).toBeInTheDocument()
+    })
+
+    it('opens a confirm dialog when the destination side already has players, only copies on confirm, and leaves it untouched on cancel', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
+      const destinationSide = makeSide({
+        id: 'side-1',
+        teamId: 'team-1',
+        players: [{ playerProfileId: 'player-9', battingOrder: 1, role: 'BATSMAN' }],
+      })
+      const sourceSide = makeSide({
+        id: 'side-source',
+        teamId: 'team-1',
+        captainPlayerId: 'player-1',
+        wicketKeeperPlayerId: 'player-2',
+        twelfthManPlayerId: null,
+        players: [
+          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+        ],
+      })
+      mockSourceAndDestinationSides(destinationSide, sourceSide)
+      listSquad.mockResolvedValue([
+        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
+        makeSquadMember({ playerProfileId: 'player-9', firstName: 'Old', lastName: 'Player' }),
+      ])
+      removeMatchSidePlayer.mockResolvedValue(makeSide())
+      addMatchSidePlayer.mockResolvedValue(makeSide())
+      updateMatchSide.mockResolvedValue(makeSide())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+      await screen.findByLabelText('Add player')
+
+      await openPickerAndSelect(user)
+
+      expect(await screen.findByText('Replace the current Playing XI?')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByText('Replace the current Playing XI?')).not.toBeInTheDocument())
+      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
+      expect(addMatchSidePlayer).not.toHaveBeenCalled()
+      expect(updateMatchSide).not.toHaveBeenCalled()
+
+      // Close the (still-open) picker itself and reopen fresh — re-selecting the exact same
+      // Autocomplete option object without remounting is a MUI Autocomplete no-op (reference
+      // equality short-circuit), not something a real re-open (new fetch/new picker session)
+      // would ever hit in practice.
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Search' })).not.toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Re-select from Previous Match' }))
+      await user.click(screen.getByRole('combobox', { name: 'Search' }))
+      await user.click(await screen.findByText(/vs 2nd XI/))
+
+      expect(await screen.findByText('Replace the current Playing XI?')).toBeInTheDocument()
+      await user.click(await screen.findByRole('button', { name: 'Replace' }))
+
+      await waitFor(() =>
+        expect(removeMatchSidePlayer).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', 'player-9'),
+      )
+      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(updateMatchSide).toHaveBeenCalledTimes(2))
+      expect(updateMatchSide).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', {
+        captainPlayerId: null,
+        wicketKeeperPlayerId: null,
+        twelfthManPlayerId: null,
+      })
+      expect(updateMatchSide).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', {
+        captainPlayerId: 'player-1',
+        wicketKeeperPlayerId: 'player-2',
+        twelfthManPlayerId: null,
+      })
+    })
+
+    it('skips a player rejected with a 400, still completes the rest of the copy, and only carries captain/WK/12th over when they survived', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
+      const destinationSide = makeSide({ id: 'side-1', teamId: 'team-1', players: [] })
+      const sourceSide = makeSide({
+        id: 'side-source',
+        teamId: 'team-1',
+        captainPlayerId: 'player-1',
+        wicketKeeperPlayerId: 'player-2',
+        twelfthManPlayerId: 'player-4',
+        players: [
+          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+          { playerProfileId: 'player-3', battingOrder: 3, role: 'ALL_ROUNDER' },
+        ],
+      })
+      mockSourceAndDestinationSides(destinationSide, sourceSide)
+      listSquad.mockResolvedValue([
+        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
+        makeSquadMember({ playerProfileId: 'player-3', firstName: 'Amy', lastName: 'Lee' }),
+        makeSquadMember({ playerProfileId: 'player-4', firstName: 'Sam', lastName: 'Patel' }),
+      ])
+      addMatchSidePlayer.mockImplementation(
+        (_clubId: string, _matchId: string, _sideId: string, playerId: string) => {
+          if (playerId === 'player-1') {
+            return Promise.reject(Object.assign(new Error('Bad Request'), { isAxiosError: true, response: { status: 400 } }))
+          }
+          return Promise.resolve(makeSide())
+        },
+      )
+      updateMatchSide.mockResolvedValue(makeSide())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+      await screen.findByLabelText('Add player')
+
+      await openPickerAndSelect(user)
+
+      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(3))
+      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', 'player-1', 'BATSMAN')
+      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', 'player-2', 'BOWLER')
+      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(3, 'test-club-id', 'match-1', 'side-1', 'player-3', 'ALL_ROUNDER')
+
+      // player-1 failed to copy, so the captain (player-1) can't carry over either — counted as a
+      // second skip on top of the failed add. wicketKeeperPlayerId (player-2) copied successfully,
+      // so it carries over; twelfthManPlayerId (player-4) was never attempted as an XI row and is
+      // still in the squad, so it carries over too.
+      await waitFor(() =>
+        expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+          captainPlayerId: null,
+          wicketKeeperPlayerId: 'player-2',
+          twelfthManPlayerId: 'player-4',
+        }),
+      )
+
+      expect(await screen.findByText('Copied 2 of 3 players from the previous XI.')).toBeInTheDocument()
+      expect(
+        await screen.findByText("2 couldn't be copied — no longer eligible for this match. Add them manually."),
+      ).toBeInTheDocument()
+    })
   })
 
   // docs/specs/032-match-availability-polls.md
