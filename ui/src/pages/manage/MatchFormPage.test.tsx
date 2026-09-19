@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -26,11 +26,17 @@ const createPoll = vi.fn()
 const openPoll = vi.fn()
 const closePoll = vi.fn()
 const getPollResponses = vi.fn()
+const createPlayer = vi.fn()
+const addToSquad = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
   createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
   updateMatch: (clubId: string, matchId: string, payload: unknown) => updateMatch(clubId, matchId, payload),
+}))
+
+vi.mock('../../api/playerApi', () => ({
+  createPlayer: (clubId: string, payload: unknown) => createPlayer(clubId, payload),
 }))
 
 vi.mock('../../api/teamApi', () => ({
@@ -47,6 +53,8 @@ vi.mock('../../api/leagueApi', () => ({
 
 vi.mock('../../api/teamSquadApi', () => ({
   listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
+  addToSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
+    addToSquad(clubId, teamId, seasonId, playerId),
 }))
 
 vi.mock('../../api/matchSideApi', () => ({
@@ -101,6 +109,39 @@ function makeSide(overrides: Partial<MatchSide> = {}): MatchSide {
     wicketKeeperPlayerId: null,
     twelfthManPlayerId: null,
     players: [],
+    ...overrides,
+  }
+}
+
+function makeSquadMember(overrides: Partial<import('../../api/teamSquadApi').SquadMember> = {}) {
+  return {
+    id: 'squad-row-1',
+    playerProfileId: 'player-1',
+    personId: 'person-1',
+    clubId: 'test-club-id',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    dateOfBirth: null,
+    gender: null,
+    photoUrl: null,
+    clubMembershipNumber: null,
+    medicalAidProvider: null,
+    medicalAidMemberNumber: null,
+    phone: null,
+    email: null,
+    altContactName: null,
+    altContactPhone: null,
+    battingStance: null,
+    bowlingArm: null,
+    bowlingType: null,
+    isWicketKeeper: false,
+    active: true,
+    sectionIds: [],
+    jerseyNumber: null,
+    squadJerseyNumber: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
     ...overrides,
   }
 }
@@ -211,6 +252,71 @@ describe('MatchFormPage', () => {
 
     expect(await screen.findByLabelText('Add player')).toBeInTheDocument()
     expect(createMatchSide).not.toHaveBeenCalled()
+  })
+
+  // docs/specs/037-match-improvements.md item 5 — the actual regression test, since
+  // PlayingXiBuilder itself can't prove the merge (it only ever passes the single new id).
+  it('changing Captain when Wicketkeeper/Twelfth Man are already set sends a merged 3-field payload, not partial', async () => {
+    const user = userEvent.setup()
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listMatchSides.mockResolvedValue([
+      makeSide({
+        teamId: 'team-1',
+        wicketKeeperPlayerId: 'player-2',
+        twelfthManPlayerId: 'player-3',
+        players: [
+          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+        ],
+      }),
+    ])
+    listSquad.mockResolvedValue([
+      makeSquadMember({ id: 'squad-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+      makeSquadMember({ id: 'squad-2', playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
+      makeSquadMember({ id: 'squad-3', playerProfileId: 'player-3', firstName: 'Amy', lastName: 'Lee' }),
+    ])
+    updateMatchSide.mockResolvedValueOnce(makeSide())
+
+    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+    await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+
+    await user.click(await screen.findByLabelText('Captain'))
+    await user.click(await screen.findByRole('option', { name: 'Jane Smith' }))
+
+    expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+      captainPlayerId: 'player-1',
+      wicketKeeperPlayerId: 'player-2',
+      twelfthManPlayerId: 'player-3',
+    })
+  })
+
+  // docs/specs/037-match-improvements.md item 8
+  it('"Add Squad Member" creates a player then adds them to the squad, invalidating the squad query on success', async () => {
+    const user = userEvent.setup()
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
+    listSquad.mockResolvedValueOnce([]).mockResolvedValue([makeSquadMember({ playerProfileId: 'player-9', firstName: 'New', lastName: 'Player' })])
+    createPlayer.mockResolvedValueOnce({ id: 'player-9', firstName: 'New', lastName: 'Player' })
+    addToSquad.mockResolvedValueOnce(makeSquadMember({ playerProfileId: 'player-9' }))
+
+    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+    await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+    await screen.findByLabelText('Add player')
+
+    await user.click(screen.getByRole('button', { name: 'Add Squad Member' }))
+    await user.type(await screen.findByLabelText('First name'), 'New')
+    await user.type(screen.getByLabelText('Last name'), 'Player')
+    await user.click(screen.getByRole('button', { name: 'Create & link' }))
+
+    await waitFor(() =>
+      expect(createPlayer).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ firstName: 'New', lastName: 'Player' })),
+    )
+    await waitFor(() => expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-9'))
+    await waitFor(() => expect(listSquad).toHaveBeenCalledTimes(2))
   })
 
   // docs/specs/032-match-availability-polls.md

@@ -76,4 +76,36 @@ describe('ListToolbar', () => {
 
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
+
+  // docs/specs/037-match-improvements.md items 3/4: an additive, optional prop so MatchList's own
+  // longer sort-option labels ("Match date (newest first)") stop clipping inside the default
+  // 200px-wide Sort-by column, without touching any other list's default width.
+  it('applies a custom sortMinWidth to the Sort-by control\'s md-breakpoint width, defaulting to 200px', () => {
+    const { rerender } = render(
+      <ListToolbar
+        searchValue=""
+        onSearchChange={() => undefined}
+        sortValue={SORT_OPTIONS[0].value}
+        sortOptions={SORT_OPTIONS}
+        onSortChange={() => undefined}
+        createLabel="Add Product"
+        onCreate={() => undefined}
+      />,
+    )
+    expect(document.head.innerHTML).toContain('0 0 200px')
+
+    rerender(
+      <ListToolbar
+        searchValue=""
+        onSearchChange={() => undefined}
+        sortValue={SORT_OPTIONS[0].value}
+        sortOptions={SORT_OPTIONS}
+        onSortChange={() => undefined}
+        sortMinWidth={260}
+        createLabel="Add Product"
+        onCreate={() => undefined}
+      />,
+    )
+    expect(document.head.innerHTML).toContain('0 0 260px')
+  })
 })

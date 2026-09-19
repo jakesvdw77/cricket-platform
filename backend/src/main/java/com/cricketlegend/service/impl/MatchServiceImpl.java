@@ -16,6 +16,9 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -68,21 +71,48 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<MatchDto> list(Authentication authentication, UUID clubId, UUID sectionId, Pageable pageable) {
+    public Page<MatchDto> list(
+            Authentication authentication, UUID clubId, UUID sectionId, boolean upcomingOnly, Pageable pageable) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         Pageable sorted = withDefaultSort(pageable);
 
         if (sectionId != null) {
             accessService.assertCanAdministerSection(authentication, clubId, sectionId);
             Set<UUID> narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
+            if (upcomingOnly) {
+                return matchRepository
+                        .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                                clubId, narrowTo, startOfToday(), sorted)
+                        .map(matchMapper::toDto);
+            }
             return matchRepository.findByClubIdAndSectionIdIn(clubId, narrowTo, sorted).map(matchMapper::toDto);
         }
         if (accessibleSectionIds.isPresent()) {
+            if (upcomingOnly) {
+                return matchRepository
+                        .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                                clubId, accessibleSectionIds.get(), startOfToday(), sorted)
+                        .map(matchMapper::toDto);
+            }
             return matchRepository
                     .findByClubIdAndSectionIdIn(clubId, accessibleSectionIds.get(), sorted)
                     .map(matchMapper::toDto);
         }
+        if (upcomingOnly) {
+            return matchRepository
+                    .findByClubIdAndMatchDateGreaterThanEqual(clubId, startOfToday(), sorted)
+                    .map(matchMapper::toDto);
+        }
         return matchRepository.findByClubId(clubId, sorted).map(matchMapper::toDto);
+    }
+
+    /**
+     * Per docs/specs/037-match-improvements.md: start of the current local day —
+     * {@code ZoneId.systemDefault()}, the one existing timezone precedent in this codebase
+     * ({@code EmailTestSendServiceImpl}). No per-club timezone concept yet.
+     */
+    private Instant startOfToday() {
+        return LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     @Override

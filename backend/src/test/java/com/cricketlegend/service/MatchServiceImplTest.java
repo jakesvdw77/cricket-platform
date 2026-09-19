@@ -311,7 +311,7 @@ class MatchServiceImplTest {
         when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any()))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, pageable);
+        matchService.list(authentication, clubId, null, false, pageable);
 
         verify(matchRepository).findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any());
         verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
@@ -331,7 +331,7 @@ class MatchServiceImplTest {
                         any()))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, pageable);
+        matchService.list(authentication, clubId, null, false, pageable);
 
         verify(matchRepository, never()).findByClubId(any(), any());
     }
@@ -349,9 +349,97 @@ class MatchServiceImplTest {
                         org.mockito.ArgumentMatchers.eq(clubId), any(), any()))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, sectionId, pageable);
+        matchService.list(authentication, clubId, sectionId, false, pageable);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(matchRepository, never()).findByClubId(any(), any());
+    }
+
+    // --- 037: upcomingOnly ---
+
+    @Test
+    void listWithUpcomingOnlyFalseUsesThePlainClubWideQueryUnchangedForAnUnrestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        org.springframework.data.domain.Page<Match> expected = org.springframework.data.domain.Page.empty();
+        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any())).thenReturn(expected);
+
+        matchService.list(authentication, clubId, null, false, pageable);
+
+        verify(matchRepository).findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any());
+        verify(matchRepository, never())
+                .findByClubIdAndMatchDateGreaterThanEqual(any(), any(), any());
+        verify(matchRepository, never())
+                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(any(), any(), any(), any());
+    }
+
+    @Test
+    void listWithUpcomingOnlyTrueUsesTheDateFilteredClubWideQueryForAnUnrestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubIdAndMatchDateGreaterThanEqual(
+                        org.mockito.ArgumentMatchers.eq(clubId), any(), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, true, pageable);
+
+        verify(matchRepository)
+                .findByClubIdAndMatchDateGreaterThanEqual(org.mockito.ArgumentMatchers.eq(clubId), any(), any());
+        verify(matchRepository, never()).findByClubId(any(), any());
+        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
+    }
+
+    @Test
+    void listWithUpcomingOnlyTrueUsesTheDateFilteredSectionQueryForARestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        UUID accessibleSectionId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                        org.mockito.ArgumentMatchers.eq(clubId),
+                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
+                        any(),
+                        any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, true, pageable);
+
+        verify(matchRepository)
+                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                        org.mockito.ArgumentMatchers.eq(clubId),
+                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
+                        any(),
+                        any());
+        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
+        verify(matchRepository, never()).findByClubId(any(), any());
+    }
+
+    @Test
+    void listWithUpcomingOnlyTrueUsesTheDateFilteredSectionQueryWhenAnExplicitSectionIdIsSupplied() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID descendantSectionId = UUID.randomUUID();
+        when(accessService.sectionAndDescendantIds(clubId, sectionId))
+                .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                        org.mockito.ArgumentMatchers.eq(clubId), any(), any(), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, sectionId, true, pageable);
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(matchRepository)
+                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+                        org.mockito.ArgumentMatchers.eq(clubId), any(), any(), any());
+        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
         verify(matchRepository, never()).findByClubId(any(), any());
     }
 }

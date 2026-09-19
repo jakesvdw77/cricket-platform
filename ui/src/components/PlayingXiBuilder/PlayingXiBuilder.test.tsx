@@ -195,6 +195,103 @@ describe('PlayingXiBuilder', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/outside the league's age range/i)
   })
 
+  // docs/specs/037-match-improvements.md item 6
+  it('renders the Captain/Wicketkeeper/Twelfth Man block before the Playing XI heading', () => {
+    render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO })} />)
+
+    const captainSelect = screen.getByLabelText('Captain')
+    const playingXiHeading = screen.getByText('Playing XI')
+
+    // DOCUMENT_POSITION_FOLLOWING on the heading (relative to the Captain select) confirms the
+    // Captain/Wicketkeeper/Twelfth Man block renders first in DOM order.
+    // eslint-disable-next-line no-bitwise
+    expect(captainSelect.compareDocumentPosition(playingXiHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // docs/specs/037-match-improvements.md item 7
+  describe('click-to-edit batting-order stepper', () => {
+    it('reveals a numeric stepper when the batting-order number is clicked, and commits a reordered array on blur', async () => {
+      const user = userEvent.setup()
+      const onReorderPlayers = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, onReorderPlayers })} />)
+
+      await user.click(screen.getByLabelText('Edit batting order for Jane Smith'))
+      const input = screen.getByLabelText('Batting order for Jane Smith')
+      await user.clear(input)
+      await user.type(input, '2')
+      await user.tab()
+
+      expect(onReorderPlayers).toHaveBeenCalledWith(['player-2', 'player-1'])
+    })
+
+    it('commits on Enter as well as blur', async () => {
+      const user = userEvent.setup()
+      const onReorderPlayers = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, onReorderPlayers })} />)
+
+      await user.click(screen.getByLabelText('Edit batting order for Bob Jones'))
+      const input = screen.getByLabelText('Batting order for Bob Jones')
+      await user.clear(input)
+      await user.type(input, '1{Enter}')
+
+      expect(onReorderPlayers).toHaveBeenCalledWith(['player-2', 'player-1'])
+    })
+
+    it('clamps a too-large typed value to the end of the order rather than erroring', async () => {
+      const user = userEvent.setup()
+      const onReorderPlayers = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, onReorderPlayers })} />)
+
+      await user.click(screen.getByLabelText('Edit batting order for Jane Smith'))
+      const input = screen.getByLabelText('Batting order for Jane Smith')
+      await user.clear(input)
+      await user.type(input, '99')
+      await user.tab()
+
+      expect(onReorderPlayers).toHaveBeenCalledWith(['player-2', 'player-1'])
+    })
+
+    it('does not call onReorderPlayers when the committed position is unchanged', async () => {
+      const user = userEvent.setup()
+      const onReorderPlayers = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, onReorderPlayers })} />)
+
+      await user.click(screen.getByLabelText('Edit batting order for Jane Smith'))
+      const input = screen.getByLabelText('Batting order for Jane Smith')
+      await user.clear(input)
+      await user.type(input, '1')
+      await user.tab()
+
+      expect(onReorderPlayers).not.toHaveBeenCalled()
+    })
+
+    it('leaves the existing up/down IconButtons working unchanged alongside the stepper', async () => {
+      const user = userEvent.setup()
+      const onReorderPlayers = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, onReorderPlayers })} />)
+
+      await user.click(screen.getByLabelText('Move Jane Smith down'))
+      expect(onReorderPlayers).toHaveBeenCalledWith(['player-2', 'player-1'])
+    })
+  })
+
+  // docs/specs/037-match-improvements.md item 8
+  describe('Add Squad Member', () => {
+    it('is omitted entirely when onAddSquadMember is not passed', () => {
+      render(<PlayingXiBuilder {...baseProps()} />)
+      expect(screen.queryByRole('button', { name: 'Add Squad Member' })).not.toBeInTheDocument()
+    })
+
+    it('renders and fires onAddSquadMember when passed', async () => {
+      const user = userEvent.setup()
+      const onAddSquadMember = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ onAddSquadMember })} />)
+
+      await user.click(screen.getByRole('button', { name: 'Add Squad Member' }))
+      expect(onAddSquadMember).toHaveBeenCalledTimes(1)
+    })
+  })
+
   // docs/specs/031-jersey-numbers.md
   describe('squad jersey number display', () => {
     const PLAYER_1_NUMBERED = makeSquadMember({

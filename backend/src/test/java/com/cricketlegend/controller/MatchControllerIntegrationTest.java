@@ -441,6 +441,60 @@ class MatchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[1].homeTeamName").value("Riverside 1"));
     }
 
+    // --- 037: upcomingOnly ---
+
+    /**
+     * {@code GET /matches?upcomingOnly=true} against real seeded past/today/future matches —
+     * only today-or-later rows come back; omitting the param is unchanged from today's behaviour.
+     * See docs/specs/037-match-improvements.md.
+     */
+    @Test
+    void listWithUpcomingOnlyTrueReturnsOnlyTodayOrLaterMatches() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match pastMatch = matchRepository.save(Match.builder()
+                .clubId(club.getId())
+                .homeTeamName("Riverside Yesterday")
+                .awayTeamName("Occasionals")
+                .seasonId(season.getId())
+                .matchDate(Instant.now().minus(1, ChronoUnit.DAYS))
+                .active(true)
+                .build());
+        Match todayMatch = matchRepository.save(Match.builder()
+                .clubId(club.getId())
+                .homeTeamName("Riverside Today")
+                .awayTeamName("Occasionals")
+                .seasonId(season.getId())
+                .matchDate(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .active(true)
+                .build());
+        Match futureMatch = matchRepository.save(Match.builder()
+                .clubId(club.getId())
+                .homeTeamName("Riverside Tomorrow")
+                .awayTeamName("Occasionals")
+                .seasonId(season.getId())
+                .matchDate(Instant.now().plus(1, ChronoUnit.DAYS))
+                .active(true)
+                .build());
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .param("upcomingOnly", "true")
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[*].id", org.hamcrest.Matchers.containsInAnyOrder(
+                        todayMatch.getId().toString(), futureMatch.getId().toString())));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[*].id", org.hamcrest.Matchers.containsInAnyOrder(
+                        pastMatch.getId().toString(),
+                        todayMatch.getId().toString(),
+                        futureMatch.getId().toString())));
+    }
+
     // --- 035: section-scoped access ---
 
     @Test

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchList from './MatchList'
 import type { Match } from '../../api/matchApi'
@@ -80,6 +80,11 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
+function EditMatchPageStub() {
+  const location = useLocation()
+  return <div>Edit Match Page: {location.pathname + location.search}</div>
+}
+
 function renderPage(clubId?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -89,6 +94,7 @@ function renderPage(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="matches" element={<MatchList />} />
             <Route path="matches/new" element={<div>New Match Page</div>} />
+            <Route path="matches/:matchId/edit" element={<div>Edit Match Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -104,6 +110,72 @@ describe('MatchList', () => {
 
     expect(await screen.findByText('1st XI vs Riverside Occasionals')).toBeInTheDocument()
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
+  })
+
+  // docs/specs/037-match-improvements.md item 1
+  it('sends upcomingOnly: true by default, with no UI toggle to change it', async () => {
+    listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true }))
+  })
+
+  // docs/specs/037-match-improvements.md item 2
+  describe('Select Team shortcut', () => {
+    it('navigates to the edit route\'s Playing XI tab when the match has a real-Team side', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValueOnce(makePage([makeMatch({ homeTeamId: 'team-1' })]))
+
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await user.click(screen.getByRole('button', { name: 'Select Team' }))
+
+      expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
+    })
+
+    it('is hidden for a match with no real-Team side on either end', async () => {
+      listMatches.mockResolvedValueOnce(
+        makePage([makeMatch({ homeTeamId: null, homeTeamName: 'Home Occasionals', awayTeamId: null, awayTeamName: 'Away Occasionals' })]),
+      )
+
+      renderPage('test-club-id')
+
+      await screen.findByText('Home Occasionals vs Away Occasionals')
+      expect(screen.queryByRole('button', { name: 'Select Team' })).not.toBeInTheDocument()
+    })
+
+    // docs/specs/037-match-improvements.md item 2: SquadPicker.tsx (029) passes its own `editTo`
+    // that already ends in `?tab=playing-xi` — confirms the query string is never doubled up into
+    // an unparseable `?tab=playing-xi?tab=playing-xi`.
+    it('appends rather than duplicates the query string when editTo already carries one (SquadPicker\'s own editTo shape)', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValueOnce(makePage([makeMatch({ homeTeamId: 'team-1' })]))
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/manage/fixtures/matches']}>
+            <Routes>
+              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
+                <Route
+                  path="matches"
+                  element={<MatchList editTo={(matchId) => `/manage/fixtures/matches/${matchId}/edit?tab=playing-xi`} viewTo={null} />}
+                />
+                <Route path="matches/:matchId/edit" element={<EditMatchPageStub />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await user.click(screen.getByRole('button', { name: 'Select Team' }))
+
+      expect(await screen.findByText('Edit Match Page: /manage/fixtures/matches/match-1/edit?tab=playing-xi')).toBeInTheDocument()
+    })
   })
 
   it('requests the next page from the backend rather than slicing an already-fetched list', async () => {

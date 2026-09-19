@@ -7,6 +7,7 @@ import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { PlayingXiSummary } from '../../components/PlayingXiSummary'
 import { AvailabilityRespondentAvatars } from '../../components/AvailabilityRespondentAvatars'
@@ -214,6 +215,19 @@ export default function MatchDetailPage() {
       backLabel="Back to Matches"
       avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
       badge={badgeFor(match)}
+      // docs/specs/037-match-improvements.md item 2: jumps straight into this match's Playing XI
+      // tab — hidden for a match with no real-Team side (no Playing XI tab to jump into).
+      secondaryActions={
+        hasAnyXiSide
+          ? [
+              {
+                label: 'Select Team',
+                to: `/manage/fixtures/matches/${match.id}/edit?tab=playing-xi`,
+                icon: <GroupsOutlinedIcon fontSize="small" />,
+              },
+            ]
+          : undefined
+      }
       editTo={`/manage/fixtures/matches/${match.id}/edit`}
       sections={[
         {

@@ -52,6 +52,28 @@ export const WithSearchValue: Story = {
   },
 }
 
+// docs/specs/037-match-improvements.md items 3/4: MatchList's own longer sort-option labels
+// ("Match date (newest first)") clip inside the default 200px Sort-by width — this story exercises
+// the additive `sortMinWidth` prop that fixes it, without changing any other list's default width.
+const LONG_SORT_OPTIONS: ListToolbarSortOption[] = [
+  { value: 'matchDate,desc', label: 'Match date (newest first)' },
+  { value: 'matchDate,asc', label: 'Match date (oldest first)' },
+]
+
+export const WithWideSortOption: Story = {
+  args: {
+    searchValue: '',
+    onSearchChange: () => undefined,
+    searchPlaceholder: 'Search by opponent or team name',
+    sortValue: LONG_SORT_OPTIONS[0].value,
+    sortOptions: LONG_SORT_OPTIONS,
+    sortMinWidth: 260,
+    onSortChange: () => undefined,
+    createLabel: 'Add Match',
+    onCreate: () => undefined,
+  },
+}
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
 // mobile stacks search full-width above sort + create sharing a row, desktop is a single row.
 export const MobileViewport: Story = {
