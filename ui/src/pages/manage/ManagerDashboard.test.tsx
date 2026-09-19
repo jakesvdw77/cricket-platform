@@ -23,4 +23,17 @@ describe('ManagerDashboard', () => {
     const link = screen.getByText('Club Structure').closest('a')
     expect(link).toHaveAttribute('href', '/manage/sections')
   })
+
+  it('renders separate "Fixtures" and "Results" cards (not the old combined "Fixtures & Results" copy)', () => {
+    render(
+      <MemoryRouter>
+        <ManagerDashboard />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText('Fixtures & Results')).not.toBeInTheDocument()
+
+    expect(screen.getByText('Fixtures').closest('a')).toHaveAttribute('href', '/manage/fixtures')
+    expect(screen.getByText('Results').closest('a')).toHaveAttribute('href', '/manage/results')
+  })
 })

@@ -118,7 +118,7 @@ export default function SeasonList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Seasons" backTo="/manage/fixtures" backLabel="Back to Fixtures & Results" />
+      <ManageScreenHeader title="Seasons" backTo="/manage/fixtures" backLabel="Back to Fixtures" />
 
       <ListToolbar
         searchValue={search}

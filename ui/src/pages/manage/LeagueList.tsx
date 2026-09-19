@@ -135,7 +135,7 @@ export default function LeagueList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Leagues" backTo="/manage/fixtures" backLabel="Back to Fixtures & Results" />
+      <ManageScreenHeader title="Leagues" backTo="/manage/fixtures" backLabel="Back to Fixtures" />
 
       <ListToolbar
         searchValue={search}

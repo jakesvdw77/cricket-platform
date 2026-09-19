@@ -220,7 +220,7 @@ export interface MatchListProps {
 export default function MatchList({
   title = 'Matches',
   backTo = '/manage/fixtures',
-  backLabel = 'Back to Fixtures & Results',
+  backLabel = 'Back to Fixtures',
   createLabel = 'Add Match',
   editTo = (matchId: string) => `/manage/fixtures/matches/${matchId}/edit`,
   onCreate,

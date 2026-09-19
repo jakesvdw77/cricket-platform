@@ -154,6 +154,7 @@ function App() {
               <Route path="fixtures/matches" element={<MatchList />} />
               <Route path="fixtures/matches/new" element={<MatchFormPage />} />
               <Route path="fixtures/matches/:matchId/edit" element={<MatchFormPage />} />
+              <Route path="results" element={<EmptyState title="Results" description="Coming soon." />} />
               <Route
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}

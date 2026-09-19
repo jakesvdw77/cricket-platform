@@ -7,6 +7,7 @@ import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
@@ -35,7 +36,8 @@ const GROUPS: ManagerGroup[] = [
       { title: 'Club Structure', description: "Define your club's own section tree", to: '/manage/sections', icon: <AccountTreeOutlinedIcon /> },
       { title: 'Teams', description: 'Register teams', to: '/manage/teams', icon: <GroupsOutlinedIcon /> },
       { title: 'Players', description: 'Manage the player roster', to: '/manage/players', icon: <SportsCricketOutlinedIcon /> },
-      { title: 'Fixtures & Results', description: 'Matches and captured results', to: '/manage/fixtures', icon: <EventOutlinedIcon /> },
+      { title: 'Fixtures', description: 'Schedule matches and build playing XIs', to: '/manage/fixtures', icon: <EventOutlinedIcon /> },
+      { title: 'Results', description: 'Capture and review match results', to: '/manage/results', icon: <AssessmentOutlinedIcon /> },
       { title: 'Team Managers & Permissions', description: 'Add managers, manage access', to: '/manage/permissions', icon: <AdminPanelSettingsOutlinedIcon /> },
     ],
   },

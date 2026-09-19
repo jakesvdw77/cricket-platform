@@ -5,17 +5,15 @@ import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined
 import { NavTile } from '../../components/NavTile'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 
-// The "Fixtures & Results" dashboard card's real destination for the first time — mirrors
-// ConfigurationHome.tsx's own hub-of-cards pattern exactly (docs/specs/
-// 007-configuration-hub-overview.md), composed entirely from the existing NavTile component (a
-// thin wrapper around Card — see its own doc comment), no new shared component. "Results" stays
-// in the card's own copy even though no results feature exists yet — matching 007's own
-// precedent of naming a future module ahead of its own spec (docs/specs/
-// 029-league-management.md's Rollout Notes).
+// The "Fixtures" dashboard card's real destination — mirrors ConfigurationHome.tsx's own
+// hub-of-cards pattern exactly (docs/specs/007-configuration-hub-overview.md), composed
+// entirely from the existing NavTile component (a thin wrapper around Card — see its own doc
+// comment), no new shared component. Results now has its own separate dashboard card/route
+// (a placeholder for now) rather than sharing this one — split out at the user's request.
 export default function ManageFixturesHome() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Fixtures & Results" />
+      <ManageScreenHeader title="Fixtures" />
 
       <Box
         sx={{
