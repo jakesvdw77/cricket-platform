@@ -9,12 +9,16 @@ import type { ClubContact } from '../../api/clubContactApi'
 const listClubContacts = vi.fn()
 const createClubContact = vi.fn()
 const updateClubContact = vi.fn()
+const deactivateClubContact = vi.fn()
+const reactivateClubContact = vi.fn()
 
 vi.mock('../../api/clubContactApi', () => ({
   listClubContacts: (clubId: string) => listClubContacts(clubId),
   createClubContact: (clubId: string, payload: unknown) => createClubContact(clubId, payload),
   updateClubContact: (clubId: string, contactId: string, payload: unknown) =>
     updateClubContact(clubId, contactId, payload),
+  deactivateClubContact: (clubId: string, contactId: string) => deactivateClubContact(clubId, contactId),
+  reactivateClubContact: (clubId: string, contactId: string) => reactivateClubContact(clubId, contactId),
 }))
 
 beforeEach(() => {
@@ -81,6 +85,10 @@ describe('ClubContactFormPage', () => {
 
     expect(screen.getByText('Add Contact')).toBeInTheDocument()
     expect(listClubContacts).not.toHaveBeenCalled()
+    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+    // saved record.
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('First name'), 'Jane')
     await user.type(screen.getByLabelText('Last name'), 'Smith')
@@ -142,5 +150,48 @@ describe('ClubContactFormPage', () => {
     expect(payload).toMatchObject({ role: 'Chairman' })
 
     expect(await screen.findByText('Contact List Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from ClubContactList's own card.
+  describe('Deactivate/Reactivate', () => {
+    it('edit mode: renders Deactivate for an active contact, clicking it calls deactivateClubContact and invalidates the contacts list', async () => {
+      const user = userEvent.setup()
+      listClubContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1', active: true })])
+      // onSuccess invalidates the list query while this page's own useQuery is still mounted,
+      // triggering a refetch that must resolve to the now-inactive record for the button to
+      // relabel.
+      listClubContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1', active: false })])
+      let resolveDeactivate: (value: ClubContact) => void = () => {}
+      deactivateClubContact.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDeactivate = resolve
+        }),
+      )
+
+      renderPage('/manage/club-contacts/contact-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Contact')
+      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+      expect(deactivateClubContact).toHaveBeenCalledWith('test-club-id', 'contact-1')
+      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+      resolveDeactivate(makeContact({ id: 'contact-1', active: false }))
+
+      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+    })
+
+    it('edit mode: renders Reactivate for an inactive contact, clicking it calls reactivateClubContact', async () => {
+      const user = userEvent.setup()
+      listClubContacts.mockResolvedValue([makeContact({ id: 'contact-1', active: false })])
+      reactivateClubContact.mockResolvedValueOnce(makeContact({ id: 'contact-1', active: true }))
+
+      renderPage('/manage/club-contacts/contact-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Contact')
+      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+      expect(reactivateClubContact).toHaveBeenCalledWith('test-club-id', 'contact-1')
+    })
   })
 })

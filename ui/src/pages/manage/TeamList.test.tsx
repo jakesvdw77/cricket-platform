@@ -8,15 +8,13 @@ import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 
 const listTeamsForSection = vi.fn()
-const deactivateTeam = vi.fn()
-const reactivateTeam = vi.fn()
 const listSections = vi.fn()
 
 // Mirrors SponsorContactList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/teamApi', () => ({
   listTeamsForSection: (clubId: string, sectionId: string) => listTeamsForSection(clubId, sectionId),
-  deactivateTeam: (clubId: string, sectionId: string, teamId: string) => deactivateTeam(clubId, sectionId, teamId),
-  reactivateTeam: (clubId: string, sectionId: string, teamId: string) => reactivateTeam(clubId, sectionId, teamId),
+  deactivateTeam: vi.fn(),
+  reactivateTeam: vi.fn(),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -178,44 +176,20 @@ describe('TeamList', () => {
     expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate on an active team calls deactivateTeam and reflects a pending state', async () => {
-    const user = userEvent.setup()
-    listTeamsForSection.mockResolvedValueOnce([makeTeam({ active: true })])
-    let resolveDeactivate: (value: Team) => void = () => {}
-    deactivateTeam.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
-      }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to — same gotcha as ClubContactList.test.tsx.
-    listTeamsForSection.mockResolvedValueOnce([makeTeam({ active: false })])
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to TeamFormPage's own actions bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listTeamsForSection.mockResolvedValueOnce([
+      makeTeam({ id: 'team-1', name: '1st XI', active: true }),
+      makeTeam({ id: 'team-2', name: '2nd XI', active: false }),
+    ])
 
     renderList('test-club-id')
 
     await screen.findByText('1st XI')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makeTeam({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate on an inactive team calls reactivateTeam', async () => {
-    const user = userEvent.setup()
-    listTeamsForSection.mockResolvedValueOnce([makeTeam({ active: false })])
-    reactivateTeam.mockResolvedValueOnce(makeTeam({ active: true }))
-    listTeamsForSection.mockResolvedValueOnce([makeTeam({ active: true })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('1st XI')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1')
+    expect(screen.getByText('2nd XI')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('the back link targets Club Structure', async () => {

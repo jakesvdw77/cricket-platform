@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
-import { listPlayers, deactivatePlayer, reactivatePlayer } from '../../api/playerApi'
+import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
@@ -32,26 +30,10 @@ export function badgeFor(player: Player): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per player, each with its own deactivate/reactivate mutation — mirrors
-// ClubContactList.tsx's ClubContactCard pattern, so one card's pending state never leaks onto
-// another's.
-function PlayerCard({ clubId, player, sectionNames }: { clubId: string; player: Player; sectionNames: string[] }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivatePlayer(clubId, player.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivatePlayer(clubId, player.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = player.active ? deactivate : reactivate
-
+// One RecordCard per player — Deactivate/Reactivate now lives on PlayerFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
+// with "View" as its only footer action.
+function PlayerCard({ player, sectionNames }: { player: Player; sectionNames: string[] }) {
   return (
     <RecordCard
       title={fullName(player)}
@@ -60,13 +42,6 @@ function PlayerCard({ clubId, player, sectionNames }: { clubId: string; player: 
       fields={playerRecordFields(player)}
       chips={sectionNames}
       viewTo={`/manage/players/${player.id}`}
-      secondaryAction={{
-        label: player.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: player.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: player.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -185,7 +160,7 @@ export default function PlayerList() {
           }}
         >
           {visiblePlayers.map((player) => (
-            <PlayerCard key={player.id} clubId={clubId} player={player} sectionNames={sectionNamesFor(player)} />
+            <PlayerCard key={player.id} player={player} sectionNames={sectionNamesFor(player)} />
           ))}
         </Box>
       )}

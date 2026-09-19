@@ -9,6 +9,8 @@ import type { SponsorContact } from '../../api/sponsorContactApi'
 const listSponsorContacts = vi.fn()
 const createSponsorContact = vi.fn()
 const updateSponsorContact = vi.fn()
+const deactivateSponsorContact = vi.fn()
+const reactivateSponsorContact = vi.fn()
 
 vi.mock('../../api/sponsorContactApi', () => ({
   listSponsorContacts: (clubId: string, sponsorId: string) => listSponsorContacts(clubId, sponsorId),
@@ -16,6 +18,10 @@ vi.mock('../../api/sponsorContactApi', () => ({
     createSponsorContact(clubId, sponsorId, payload),
   updateSponsorContact: (clubId: string, sponsorId: string, contactId: string, payload: unknown) =>
     updateSponsorContact(clubId, sponsorId, contactId, payload),
+  deactivateSponsorContact: (clubId: string, sponsorId: string, contactId: string) =>
+    deactivateSponsorContact(clubId, sponsorId, contactId),
+  reactivateSponsorContact: (clubId: string, sponsorId: string, contactId: string) =>
+    reactivateSponsorContact(clubId, sponsorId, contactId),
 }))
 
 beforeEach(() => {
@@ -81,6 +87,10 @@ describe('SponsorContactFormPage', () => {
 
     expect(screen.getByText('Add Contact')).toBeInTheDocument()
     expect(listSponsorContacts).not.toHaveBeenCalled()
+    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+    // saved record.
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('First name'), 'Jane')
     await user.type(screen.getByLabelText('Last name'), 'Smith')
@@ -144,5 +154,48 @@ describe('SponsorContactFormPage', () => {
     expect(payload).toMatchObject({ role: 'Marketing Contact' })
 
     expect(await screen.findByText('Contact List Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from SponsorContactList's own card.
+  describe('Deactivate/Reactivate', () => {
+    it('edit mode: renders Deactivate for an active contact, clicking it calls deactivateSponsorContact and invalidates the contacts list', async () => {
+      const user = userEvent.setup()
+      listSponsorContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1', active: true })])
+      // onSuccess invalidates the list query while this page's own useQuery is still mounted,
+      // triggering a refetch that must resolve to the now-inactive record for the button to
+      // relabel.
+      listSponsorContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1', active: false })])
+      let resolveDeactivate: (value: SponsorContact) => void = () => {}
+      deactivateSponsorContact.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDeactivate = resolve
+        }),
+      )
+
+      renderPage('/manage/sponsors/test-sponsor-id/contacts/contact-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Contact')
+      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+      expect(deactivateSponsorContact).toHaveBeenCalledWith('test-club-id', 'test-sponsor-id', 'contact-1')
+      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+      resolveDeactivate(makeContact({ id: 'contact-1', active: false }))
+
+      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+    })
+
+    it('edit mode: renders Reactivate for an inactive contact, clicking it calls reactivateSponsorContact', async () => {
+      const user = userEvent.setup()
+      listSponsorContacts.mockResolvedValue([makeContact({ id: 'contact-1', active: false })])
+      reactivateSponsorContact.mockResolvedValueOnce(makeContact({ id: 'contact-1', active: true }))
+
+      renderPage('/manage/sponsors/test-sponsor-id/contacts/contact-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Contact')
+      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+      expect(reactivateSponsorContact).toHaveBeenCalledWith('test-club-id', 'test-sponsor-id', 'contact-1')
+    })
   })
 })

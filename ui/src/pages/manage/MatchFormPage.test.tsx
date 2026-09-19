@@ -10,6 +10,8 @@ import type { MatchSide } from '../../api/matchSideApi'
 const getMatch = vi.fn()
 const createMatch = vi.fn()
 const updateMatch = vi.fn()
+const deactivateMatch = vi.fn()
+const reactivateMatch = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSeasons = vi.fn()
 const listLeagues = vi.fn()
@@ -33,6 +35,8 @@ vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
   createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
   updateMatch: (clubId: string, matchId: string, payload: unknown) => updateMatch(clubId, matchId, payload),
+  deactivateMatch: (clubId: string, matchId: string) => deactivateMatch(clubId, matchId),
+  reactivateMatch: (clubId: string, matchId: string) => reactivateMatch(clubId, matchId),
 }))
 
 vi.mock('../../api/playerApi', () => ({
@@ -191,6 +195,10 @@ describe('MatchFormPage', () => {
 
     expect(await screen.findByText('Add Match')).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Home XI' })).not.toBeInTheDocument()
+    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+    // saved record.
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Season'))
     await user.click(await screen.findByRole('option', { name: '2026' }))
@@ -481,5 +489,65 @@ describe('MatchFormPage', () => {
     // label — "Open a poll for this side" here creates a poll for team-2 (away), not team-1.
     await user.click(screen.getByRole('button', { name: /open a poll for this side/i }))
     expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-2')
+  })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from MatchList's own card, plus
+  // the tab-gating restructure — the button must render on every tab, not just Details.
+  describe('Deactivate/Reactivate', () => {
+    it('edit mode: renders Deactivate for an active match on the Details tab, clicking it calls deactivateMatch', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch({ active: true }))
+      // onSuccess invalidates ['managed-club', clubId, 'matches'], which prefix-matches this
+      // page's own single-record query too, triggering a refetch that must resolve to the
+      // now-inactive record for the button to relabel.
+      getMatch.mockResolvedValueOnce(makeMatch({ active: false }))
+      let resolveDeactivate: (value: Match) => void = () => {}
+      deactivateMatch.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDeactivate = resolve
+        }),
+      )
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+      expect(deactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1')
+      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+      resolveDeactivate(makeMatch({ active: false }))
+
+      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+    })
+
+    it('edit mode: renders Reactivate for an inactive match, clicking it calls reactivateMatch', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch({ active: false }))
+      // onSuccess invalidates ['managed-club', clubId, 'matches'], which prefix-matches this
+      // page's own single-record query too, triggering a refetch.
+      getMatch.mockResolvedValueOnce(makeMatch({ active: true }))
+      reactivateMatch.mockResolvedValueOnce(makeMatch({ active: true }))
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+      expect(reactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1')
+    })
+
+    it('still renders on the Home XI tab, while Save is hidden there', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch({ active: true }))
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+
+      expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+    })
   })
 })

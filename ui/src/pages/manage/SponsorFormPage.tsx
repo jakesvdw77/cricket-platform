@@ -6,8 +6,9 @@ import { SponsorForm, SPONSOR_FORM_ID } from '../../components/SponsorForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
-import { listSponsors, createSponsor, updateSponsor } from '../../api/sponsorApi'
+import { listSponsors, createSponsor, updateSponsor, deactivateSponsor, reactivateSponsor } from '../../api/sponsorApi'
 import type { SponsorPayload } from '../../api/sponsorApi'
 import { errorDetail } from '../../utils/errorDetail'
 
@@ -48,6 +49,23 @@ export default function SponsorFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from SponsorList.tsx's own
+  // SponsorCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
+  // bar instead of the list card's footer.
+  const invalidateSponsors = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sponsors'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateSponsor(clubId as string, id as string),
+    onSuccess: invalidateSponsors,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateSponsor(clubId as string, id as string),
+    onSuccess: invalidateSponsors,
+  })
+
+  const toggle = sponsor?.active ? deactivate : reactivate
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -81,6 +99,10 @@ export default function SponsorFormPage() {
           <Button type="submit" form={SPONSOR_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create sponsor'}
           </Button>
+
+          {isEdit && sponsor && (
+            <RecordStatusToggle active={sponsor.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+          )}
         </Stack>
       }
     >

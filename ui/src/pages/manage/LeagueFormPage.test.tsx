@@ -12,6 +12,8 @@ import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 const listLeagues = vi.fn()
 const createLeague = vi.fn()
 const updateLeague = vi.fn()
+const deactivateLeague = vi.fn()
+const reactivateLeague = vi.fn()
 const listSeasons = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
@@ -22,6 +24,8 @@ vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
   createLeague: (clubId: string, payload: unknown) => createLeague(clubId, payload),
   updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
+  deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
+  reactivateLeague: (clubId: string, leagueId: string) => reactivateLeague(clubId, leagueId),
 }))
 
 vi.mock('../../api/seasonApi', () => ({
@@ -124,6 +128,10 @@ describe('LeagueFormPage', () => {
     expect(await screen.findByText('Add League')).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Affiliations' })).not.toBeInTheDocument()
     expect(listLeagueAffiliations).not.toHaveBeenCalled()
+    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+    // saved record.
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('create mode: submits and navigates to the league list', async () => {
@@ -195,5 +203,62 @@ describe('LeagueFormPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Unaffiliate' }))
 
     expect(unaffiliateLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'aff-1')
+  })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from LeagueList's own card, plus
+  // the tab-gating restructure — the button must render on both tabs, not just Details.
+  describe('Deactivate/Reactivate', () => {
+    it('edit mode: renders Deactivate for an active league on the Details tab, clicking it calls deactivateLeague', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', active: true })])
+      // onSuccess invalidates the list query while this page's own useQuery is still mounted,
+      // triggering a refetch that must resolve to the now-inactive record for the button to
+      // relabel.
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', active: false })])
+      let resolveDeactivate: (value: League) => void = () => {}
+      deactivateLeague.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDeactivate = resolve
+        }),
+      )
+
+      renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+      expect(deactivateLeague).toHaveBeenCalledWith('test-club-id', 'league-1')
+      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+      resolveDeactivate(makeLeague({ id: 'league-1', active: false }))
+
+      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+    })
+
+    it('edit mode: renders Reactivate for an inactive league, clicking it calls reactivateLeague', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', active: false })])
+      reactivateLeague.mockResolvedValueOnce(makeLeague({ id: 'league-1', active: true }))
+
+      renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+      expect(reactivateLeague).toHaveBeenCalledWith('test-club-id', 'league-1')
+    })
+
+    it('still renders on the Affiliations tab, while Save is hidden there', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', active: true })])
+
+      renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Affiliations' }))
+
+      expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+    })
   })
 })

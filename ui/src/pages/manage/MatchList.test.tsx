@@ -210,6 +210,21 @@ describe('MatchList', () => {
     expect(await screen.findByText('Inactive')).toBeInTheDocument()
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. "Select
+  // Team" and "Communicate Team Sheet" (037) are unaffected — still on the card.
+  it('never renders a Deactivate/Reactivate button on the card, while Select Team/Communicate Team Sheet remain', async () => {
+    listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Select Team' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Communicate Team Sheet' })).toBeInTheDocument()
+  })
+
   it('navigates to the create route by default', async () => {
     const user = userEvent.setup()
     listMatches.mockResolvedValueOnce(makePage([]))

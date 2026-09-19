@@ -10,8 +10,9 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
-import { getMatch, createMatch, updateMatch } from '../../api/matchApi'
+import { getMatch, createMatch, updateMatch, deactivateMatch, reactivateMatch } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -432,7 +433,24 @@ export default function MatchFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from MatchList.tsx's own
+  // MatchCard — same mutation fn/onSuccess invalidation (prefix-matches both MatchList's paginated
+  // query and this page's own single-record query), now rendered in this screen's actions bar
+  // instead of the list card's footer.
+  const invalidateMatches = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateMatch(clubId as string, matchId as string),
+    onSuccess: invalidateMatches,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateMatch(clubId as string, matchId as string),
+    onSuccess: invalidateMatches,
+  })
+
   const match = matchQuery.data
+  const toggle = match?.active ? deactivate : reactivate
   const league = useMemo(
     () => (match?.leagueId ? (leaguesQuery.data ?? []).find((candidate) => candidate.id === match.leagueId) : undefined),
     [match?.leagueId, leaguesQuery.data],
@@ -511,19 +529,25 @@ export default function MatchFormPage() {
       backTo="/manage/fixtures/matches"
       backLabel="Back to Matches"
       actions={
-        activeTab === 0 ? (
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-            {saveMutation.isError && (
-              <Typography variant="body2" color="error.main">
-                {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
-              </Typography>
-            )}
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+          {activeTab === 0 && (
+            <>
+              {saveMutation.isError && (
+                <Typography variant="body2" color="error.main">
+                  {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
+                </Typography>
+              )}
 
-            <Button type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create match'}
-            </Button>
-          </Stack>
-        ) : null
+              <Button type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create match'}
+              </Button>
+            </>
+          )}
+
+          {isEdit && match && (
+            <RecordStatusToggle active={match.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+          )}
+        </Stack>
       }
     >
       {hasXiTabs && (

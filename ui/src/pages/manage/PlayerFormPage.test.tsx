@@ -10,6 +10,8 @@ import type { Section } from '../../api/sectionApi'
 const listPlayers = vi.fn()
 const createPlayer = vi.fn()
 const updatePlayer = vi.fn()
+const deactivatePlayer = vi.fn()
+const reactivatePlayer = vi.fn()
 const listPlayerSections = vi.fn()
 const linkPlayerSection = vi.fn()
 const unlinkPlayerSection = vi.fn()
@@ -19,6 +21,8 @@ vi.mock('../../api/playerApi', () => ({
   listPlayers: (clubId: string) => listPlayers(clubId),
   createPlayer: (clubId: string, payload: unknown) => createPlayer(clubId, payload),
   updatePlayer: (clubId: string, playerId: string, payload: unknown) => updatePlayer(clubId, playerId, payload),
+  deactivatePlayer: (clubId: string, playerId: string) => deactivatePlayer(clubId, playerId),
+  reactivatePlayer: (clubId: string, playerId: string) => reactivatePlayer(clubId, playerId),
   listPlayerSections: (clubId: string, playerId: string) => listPlayerSections(clubId, playerId),
   linkPlayerSection: (clubId: string, playerId: string, sectionId: string) =>
     linkPlayerSection(clubId, playerId, sectionId),
@@ -128,6 +132,10 @@ describe('PlayerFormPage', () => {
       expect(screen.getByRole('tab', { name: 'Cricket Info' })).toBeInTheDocument()
       expect(screen.queryByRole('tab', { name: 'Sections' })).not.toBeInTheDocument()
       expect(listPlayers).not.toHaveBeenCalled()
+      // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+      // saved record.
+      expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
       await user.type(screen.getByLabelText('First name'), 'Sipho')
       await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
@@ -264,6 +272,63 @@ describe('PlayerFormPage', () => {
         await user.click(within(dialog).getByText('Open Men'))
 
         expect(linkPlayerSection).toHaveBeenCalledWith('test-club-id', 'player-1', 'section-2')
+      })
+    })
+
+    // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from PlayerList's own card, plus
+    // the tab-gating restructure — the button must render on all four tabs, including Sections.
+    describe('Deactivate/Reactivate', () => {
+      it('renders Deactivate for an active player on the Basic Info tab, clicking it calls deactivatePlayer', async () => {
+        const user = userEvent.setup()
+        listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', active: true })])
+        // onSuccess invalidates the list query while this page's own useQuery is still mounted,
+        // triggering a refetch that must resolve to the now-inactive record for the button to
+        // relabel.
+        listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', active: false })])
+        let resolveDeactivate: (value: Player) => void = () => {}
+        deactivatePlayer.mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveDeactivate = resolve
+          }),
+        )
+
+        renderPage('/manage/players/player-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Player')
+        await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+        expect(deactivatePlayer).toHaveBeenCalledWith('test-club-id', 'player-1')
+        expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+        resolveDeactivate(makePlayer({ id: 'player-1', active: false }))
+
+        expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+      })
+
+      it('renders Reactivate for an inactive player, clicking it calls reactivatePlayer', async () => {
+        const user = userEvent.setup()
+        listPlayers.mockResolvedValue([makePlayer({ id: 'player-1', active: false })])
+        reactivatePlayer.mockResolvedValueOnce(makePlayer({ id: 'player-1', active: true }))
+
+        renderPage('/manage/players/player-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Player')
+        await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+        expect(reactivatePlayer).toHaveBeenCalledWith('test-club-id', 'player-1')
+      })
+
+      it('still renders on the Sections tab, while Save is hidden there', async () => {
+        const user = userEvent.setup()
+        listPlayers.mockResolvedValue([makePlayer({ id: 'player-1', active: true })])
+
+        renderPage('/manage/players/player-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Player')
+        await user.click(screen.getByRole('tab', { name: 'Sections' }))
+
+        expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
       })
     })
   })

@@ -7,14 +7,12 @@ import SponsorList from './SponsorList'
 import type { Sponsor } from '../../api/sponsorApi'
 
 const listSponsors = vi.fn()
-const deactivateSponsor = vi.fn()
-const reactivateSponsor = vi.fn()
 
 // Mirrors ClubContactList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/sponsorApi', () => ({
   listSponsors: (clubId: string) => listSponsors(clubId),
-  deactivateSponsor: (clubId: string, sponsorId: string) => deactivateSponsor(clubId, sponsorId),
-  reactivateSponsor: (clubId: string, sponsorId: string) => reactivateSponsor(clubId, sponsorId),
+  deactivateSponsor: vi.fn(),
+  reactivateSponsor: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -148,45 +146,19 @@ describe('SponsorList', () => {
     expect(await screen.findByText('Add Sponsor Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate on an active sponsor calls deactivateSponsor and reflects a pending state', async () => {
-    const user = userEvent.setup()
-    listSponsors.mockResolvedValueOnce([makeSponsor({ active: true })])
-    let resolveDeactivate: (value: Sponsor) => void = () => {}
-    deactivateSponsor.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
-      }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to — same gotcha as ClubContactList.test.tsx's
-    // own equivalent case.
-    listSponsors.mockResolvedValueOnce([makeSponsor({ active: false })])
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to SponsorFormPage's own actions bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listSponsors.mockResolvedValueOnce([
+      makeSponsor({ id: 'sponsor-1', active: true }),
+      makeSponsor({ id: 'sponsor-2', name: 'Past Sponsor Co', active: false }),
+    ])
 
     renderList('test-club-id')
 
     await screen.findByText('Riverside Hardware')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivateSponsor).toHaveBeenCalledWith('test-club-id', 'sponsor-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makeSponsor({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate on an inactive sponsor calls reactivateSponsor', async () => {
-    const user = userEvent.setup()
-    listSponsors.mockResolvedValueOnce([makeSponsor({ active: false })])
-    reactivateSponsor.mockResolvedValueOnce(makeSponsor({ active: true }))
-    // onSuccess invalidates the list query, triggering a refetch.
-    listSponsors.mockResolvedValueOnce([makeSponsor({ active: true })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Riverside Hardware')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivateSponsor).toHaveBeenCalledWith('test-club-id', 'sponsor-1')
+    expect(screen.getByText('Past Sponsor Co')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 })

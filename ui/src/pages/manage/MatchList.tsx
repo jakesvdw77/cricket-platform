@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -17,7 +15,7 @@ import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { TeamSheetCommunicationDialog } from '../../components/TeamSheetCommunicationDialog'
 import type { TeamSheetPrintScope } from '../../components/TeamSheetCommunicationDialog'
-import { listMatches, deactivateMatch, reactivateMatch } from '../../api/matchApi'
+import { listMatches } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -84,8 +82,9 @@ function placeholderTeam(clubId: string, name: string): Team {
   }
 }
 
-// One RecordCard per match, each with its own deactivate/reactivate mutation — mirrors
-// SponsorList.tsx's SponsorCard pattern, so one card's pending state never leaks onto another's.
+// One RecordCard per match — Deactivate/Reactivate now lives on MatchFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; "Select Team"/"Communicate Team
+// Sheet" remain the card's own secondaryActions, untouched.
 function MatchCard({
   clubId,
   match,
@@ -108,22 +107,8 @@ function MatchCard({
   viewTo?: string
 }) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateMatch(clubId, match.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateMatch(clubId, match.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = match.active ? deactivate : reactivate
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
@@ -202,13 +187,6 @@ function MatchCard({
         editLabel="Edit"
         editTo={editTo}
         viewTo={viewTo}
-        secondaryAction={{
-          label: match.active ? 'Deactivate' : 'Reactivate',
-          pendingLabel: match.active ? 'Deactivating…' : 'Reactivating…',
-          pending: toggle.isPending,
-          onClick: () => toggle.mutate(),
-          icon: match.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-        }}
         secondaryActions={[
           ...(hasRealTeamSide
             ? [

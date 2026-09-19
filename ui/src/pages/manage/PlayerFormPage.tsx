@@ -6,12 +6,15 @@ import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import type { PlayerFormValues } from '../../components/PlayerForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { SectionTree } from '../../components/SectionTree'
 import {
   listPlayers,
   createPlayer,
   updatePlayer,
+  deactivatePlayer,
+  reactivatePlayer,
   listPlayerSections,
   linkPlayerSection,
   unlinkPlayerSection,
@@ -67,6 +70,23 @@ export default function PlayerFormPage() {
       navigate('/manage/players')
     },
   })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from PlayerList.tsx's own
+  // PlayerCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
+  // bar instead of the list card's footer.
+  const invalidatePlayers = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivatePlayer(clubId as string, playerId as string),
+    onSuccess: invalidatePlayers,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivatePlayer(clubId as string, playerId as string),
+    onSuccess: invalidatePlayers,
+  })
+
+  const toggle = player?.active ? deactivate : reactivate
 
   // --- Sections (docs/specs/028-players.md), edit mode only ---
 
@@ -141,19 +161,25 @@ export default function PlayerFormPage() {
         backTo="/manage/players"
         backLabel="Back to Players"
         actions={
-          activeTab !== 3 ? (
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-              {saveMutation.isError && (
-                <Typography variant="body2" color="error.main">
-                  {errorDetail(saveMutation.error, 'Something went wrong saving this player. Please try again.')}
-                </Typography>
-              )}
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            {activeTab !== 3 && (
+              <>
+                {saveMutation.isError && (
+                  <Typography variant="body2" color="error.main">
+                    {errorDetail(saveMutation.error, 'Something went wrong saving this player. Please try again.')}
+                  </Typography>
+                )}
 
-              <Button type="submit" form={PLAYER_FORM_ID} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create player'}
-              </Button>
-            </Stack>
-          ) : null
+                <Button type="submit" form={PLAYER_FORM_ID} disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create player'}
+                </Button>
+              </>
+            )}
+
+            {isEdit && player && (
+              <RecordStatusToggle active={player.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+            )}
+          </Stack>
         }
       >
         <Box sx={{ gridColumn: '1 / -1' }}>

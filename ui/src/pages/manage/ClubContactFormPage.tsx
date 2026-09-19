@@ -4,11 +4,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ClubContactForm, CLUB_CONTACT_FORM_ID } from '../../components/ClubContactForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import {
   listClubContacts,
   createClubContact,
   updateClubContact,
+  deactivateClubContact,
+  reactivateClubContact,
 } from '../../api/clubContactApi'
 import type { ClubContactPayload } from '../../api/clubContactApi'
 import { errorDetail } from '../../utils/errorDetail'
@@ -50,6 +53,23 @@ export default function ClubContactFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from ClubContactList.tsx's
+  // own ClubContactCard — same mutation fn/onSuccess invalidation, now rendered in this screen's
+  // actions bar instead of the list card's footer.
+  const invalidateContacts = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'contacts'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateClubContact(clubId as string, id as string),
+    onSuccess: invalidateContacts,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateClubContact(clubId as string, id as string),
+    onSuccess: invalidateContacts,
+  })
+
+  const toggle = contact?.active ? deactivate : reactivate
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -83,6 +103,10 @@ export default function ClubContactFormPage() {
           <Button type="submit" form={CLUB_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create contact'}
           </Button>
+
+          {isEdit && contact && (
+            <RecordStatusToggle active={contact.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+          )}
         </Stack>
       }
     >
