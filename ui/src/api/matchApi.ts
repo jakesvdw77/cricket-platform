@@ -72,6 +72,11 @@ export interface ListMatchesParams {
   // client-side one. A section-scoped caller's own default is already narrowed server-side
   // regardless of this param; it's an optional, further-narrowing convenience for any caller.
   sectionId?: string
+  // docs/specs/037-match-improvements.md: restricts results to matches dated today or later
+  // (server/database local date). Omitted or false preserves today's exact unfiltered behaviour —
+  // purely additive. MatchList.tsx sends `true` by default (no UI toggle yet); a future "Show past
+  // matches" control is just flipping this boolean, no further frontend/backend work.
+  upcomingOnly?: boolean
 }
 
 function matchesPath(clubId: string): string {
@@ -83,7 +88,7 @@ function matchesPath(clubId: string): string {
 // pagination rule.
 export async function listMatches(
   clubId: string,
-  { page, size = 20, sort, search, sectionId }: ListMatchesParams,
+  { page, size = 20, sort, search, sectionId, upcomingOnly }: ListMatchesParams,
 ): Promise<Page<Match>> {
   const { data } = await api.get<Page<Match>>(matchesPath(clubId), {
     params: {
@@ -92,6 +97,7 @@ export async function listMatches(
       ...(sort ? { sort } : {}),
       ...(search ? { search } : {}),
       ...(sectionId ? { sectionId } : {}),
+      ...(upcomingOnly ? { upcomingOnly } : {}),
     },
   })
   return data

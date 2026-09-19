@@ -41,8 +41,10 @@ public class MatchController {
             Authentication authentication,
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false, defaultValue = "false") boolean upcomingOnly,
             Pageable pageable) {
-        return ResponseEntity.ok(matchService.list(authentication, clubId, sectionId, pageable));
+        return ResponseEntity.ok(
+                matchService.list(authentication, clubId, sectionId, upcomingOnly, pageable));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

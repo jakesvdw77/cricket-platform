@@ -224,6 +224,30 @@ describe('MatchDetailPage', () => {
     expect(screen.queryByRole('button', { name: /set.*availability/i })).not.toBeInTheDocument()
   })
 
+  // docs/specs/037-match-improvements.md item 2
+  it('renders a "Select Team" action linking to the Playing XI tab when a real-Team side exists', async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+
+    renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI vs 2nd XI' })
+    expect(screen.getByRole('link', { name: /select team/i })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/matches/match-1/edit?tab=playing-xi',
+    )
+  })
+
+  it('omits the "Select Team" action for a match with no real-Team side on either end', async () => {
+    getMatch.mockResolvedValueOnce(
+      makeMatch({ homeTeamId: null, homeTeamName: 'Home Occasionals', awayTeamId: null, awayTeamName: 'Away Occasionals' }),
+    )
+
+    renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Home Occasionals vs Away Occasionals' })
+    expect(screen.queryByRole('link', { name: /select team/i })).not.toBeInTheDocument()
+  })
+
   it('renders an error state when the match fails to load', async () => {
     getMatch.mockRejectedValueOnce(new Error('not found'))
 

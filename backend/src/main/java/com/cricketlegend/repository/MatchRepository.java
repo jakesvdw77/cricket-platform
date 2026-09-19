@@ -1,6 +1,7 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.Match;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -33,4 +34,26 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
             + "OR m.awayTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId IN :sectionIds))")
     Page<Match> findByClubIdAndSectionIdIn(
             @Param("clubId") UUID clubId, @Param("sectionIds") Collection<UUID> sectionIds, Pageable pageable);
+
+    /**
+     * The "upcoming only" counterpart to {@link #findByClubId} — see
+     * docs/specs/037-match-improvements.md. {@code startOfToday} is the caller-computed start of
+     * the current local day ({@code ZoneId.systemDefault()}); a match dated earlier today is
+     * still included since {@code matchDate} is compared, not the calendar date alone.
+     */
+    Page<Match> findByClubIdAndMatchDateGreaterThanEqual(UUID clubId, Instant startOfToday, Pageable pageable);
+
+    /**
+     * The "upcoming only" counterpart to {@link #findByClubIdAndSectionIdIn} — same JPQL shape,
+     * with the added {@code matchDate >= :startOfToday} condition. See
+     * docs/specs/037-match-improvements.md.
+     */
+    @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.matchDate >= :startOfToday AND ("
+            + "m.homeTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId IN :sectionIds) "
+            + "OR m.awayTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId IN :sectionIds))")
+    Page<Match> findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
+            @Param("clubId") UUID clubId,
+            @Param("sectionIds") Collection<UUID> sectionIds,
+            @Param("startOfToday") Instant startOfToday,
+            Pageable pageable);
 }

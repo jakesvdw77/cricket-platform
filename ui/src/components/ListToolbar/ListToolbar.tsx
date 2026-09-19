@@ -16,6 +16,11 @@ export interface ListToolbarProps {
   sortValue: string
   sortOptions: ListToolbarSortOption[]
   onSortChange: (value: string) => void
+  // docs/specs/037-match-improvements.md items 3/4: the Sort-by Select's fixed `md`-breakpoint
+  // width — 200px comfortably fits every other list's short option labels ("Name", "Price") but
+  // clips MatchList's own longer ones ("Match date (newest first)"). Additive and optional so
+  // every other list's Sort-by width stays byte-for-byte unchanged unless a caller opts in.
+  sortMinWidth?: number
   createLabel: string
   onCreate: () => void
 }
@@ -31,6 +36,7 @@ export function ListToolbar({
   sortValue,
   sortOptions,
   onSortChange,
+  sortMinWidth = 200,
   createLabel,
   onCreate,
 }: ListToolbarProps) {
@@ -57,7 +63,7 @@ export function ListToolbar({
           label="Sort by"
           value={sortValue}
           onChange={(event) => onSortChange(event.target.value)}
-          sx={{ flex: { xs: 1, md: '0 0 200px' } }}
+          sx={{ flex: { xs: 1, md: `0 0 ${sortMinWidth}px` } }}
         >
           {sortOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>

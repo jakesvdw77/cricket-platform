@@ -116,6 +116,59 @@ describe('RecordDetailScreen', () => {
     expect(document.querySelector('.MuiAvatar-root')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Jane Smith' })).toBeInTheDocument()
   })
+
+  // docs/specs/037-match-improvements.md item 2
+  it('renders secondaryActions before the Edit action, and omits them entirely when not passed', () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/manage/fixtures/matches/m-1']}>
+        <Routes>
+          <Route
+            path="/manage/fixtures/matches/m-1"
+            element={
+              <RecordDetailScreen
+                title="1st XI vs 2nd XI"
+                backTo="/manage/fixtures/matches"
+                backLabel="Back to Matches"
+                editTo="/manage/fixtures/matches/m-1/edit"
+                secondaryActions={[{ label: 'Select Team', to: '/manage/fixtures/matches/m-1/edit?tab=playing-xi' }]}
+                sections={[{ content: <div>Match fields</div> }]}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const buttons = screen.getAllByRole('link')
+    const labels = buttons.map((button) => button.textContent)
+    expect(labels.indexOf('Select Team')).toBeGreaterThanOrEqual(0)
+    expect(labels.indexOf('Select Team')).toBeLessThan(labels.indexOf('Edit'))
+    expect(screen.getByRole('link', { name: 'Select Team' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/matches/m-1/edit?tab=playing-xi',
+    )
+
+    rerender(
+      <MemoryRouter initialEntries={['/manage/fixtures/matches/m-1']}>
+        <Routes>
+          <Route
+            path="/manage/fixtures/matches/m-1"
+            element={
+              <RecordDetailScreen
+                title="1st XI vs 2nd XI"
+                backTo="/manage/fixtures/matches"
+                backLabel="Back to Matches"
+                editTo="/manage/fixtures/matches/m-1/edit"
+                sections={[{ content: <div>Match fields</div> }]}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('link', { name: 'Select Team' })).not.toBeInTheDocument()
+  })
 })
 
 describe('DetailFieldRow', () => {

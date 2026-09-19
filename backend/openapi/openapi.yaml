@@ -2047,6 +2047,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: upcomingOnly
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
       - name: pageable
         in: query
         required: true

@@ -24,8 +24,15 @@ public interface MatchService {
      * Unrestricted callers use the plain club-wide query; a restricted caller, or anyone passing
      * an explicit {@code sectionId}, uses the section-filtered query instead — a real query-level
      * filter, not fetch-then-filter, since this list is genuinely paginated.
+     *
+     * <p>Per docs/specs/037-match-improvements.md: when {@code upcomingOnly} is {@code true},
+     * restricts the result to matches whose {@code matchDate} falls on or after the start of
+     * today ({@code ZoneId.systemDefault()} — no per-club timezone concept yet) — a match played
+     * earlier today is still included, one played yesterday is not. {@code false} (the default)
+     * preserves the unfiltered behaviour exactly.
      */
-    Page<MatchDto> list(Authentication authentication, UUID clubId, UUID sectionId, Pageable pageable);
+    Page<MatchDto> list(
+            Authentication authentication, UUID clubId, UUID sectionId, boolean upcomingOnly, Pageable pageable);
 
     MatchDto get(Authentication authentication, UUID clubId, UUID matchId);
 

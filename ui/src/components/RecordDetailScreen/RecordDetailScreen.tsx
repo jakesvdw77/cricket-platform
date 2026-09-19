@@ -28,6 +28,12 @@ export interface RecordDetailScreenProps {
   // one full-page rendering of a record rather than a grid tile.
   avatar?: RecordCardAvatar
   badge?: RecordCardBadge
+  // docs/specs/037-match-improvements.md item 2: additional header actions rendered before the
+  // single Edit button — link-shaped (`to`, RouterLink), not callback-shaped like RecordCard's own
+  // `secondaryActions`, since these are plain navigations with no pending/async state, matching
+  // this screen's own `editTo` being a link rather than a callback. Optional and additive — every
+  // existing call site keeps its current header unchanged.
+  secondaryActions?: { label: string; to: string; icon?: ReactNode }[]
   editTo: string
   editLabel?: string
   sections: RecordDetailScreenSection[]
@@ -44,6 +50,7 @@ export function RecordDetailScreen({
   backLabel,
   avatar,
   badge,
+  secondaryActions,
   editTo,
   editLabel = 'Edit',
   sections,
@@ -111,28 +118,47 @@ export function RecordDetailScreen({
             </Stack>
           </Stack>
 
-          {/* The one mutating affordance on the whole screen — matches the mockup's `.edit-btn`
-              treatment (a tinted-primary outlined button, not RecordCard's plain text Edit link,
-              since this is the page's single, deliberate action rather than a grid-tile footer
-              action among several). */}
-          <MuiButton
-            component={RouterLink}
-            to={editTo}
-            variant="outlined"
-            startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{
-              flex: 'none',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-              color: 'primary.dark',
-              borderColor: 'transparent',
-              '&:hover': {
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            {/* docs/specs/037-match-improvements.md item 2: rendered before the Edit action,
+                mirroring RecordCard's own "secondary actions render before the primary action"
+                ordering — plain outlined/text navigation buttons, not RecordCard's callback shape. */}
+            {(secondaryActions ?? []).map((action) => (
+              <MuiButton
+                key={action.label}
+                component={RouterLink}
+                to={action.to}
+                variant="outlined"
+                color="inherit"
+                startIcon={action.icon}
+                sx={{ flex: 'none' }}
+              >
+                {action.label}
+              </MuiButton>
+            ))}
+
+            {/* The one mutating affordance on the whole screen — matches the mockup's `.edit-btn`
+                treatment (a tinted-primary outlined button, not RecordCard's plain text Edit link,
+                since this is the page's single, deliberate action rather than a grid-tile footer
+                action among several). */}
+            <MuiButton
+              component={RouterLink}
+              to={editTo}
+              variant="outlined"
+              startIcon={<EditOutlinedIcon fontSize="small" />}
+              sx={{
+                flex: 'none',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+                color: 'primary.dark',
                 borderColor: 'transparent',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-              },
-            }}
-          >
-            {editLabel}
-          </MuiButton>
+                '&:hover': {
+                  borderColor: 'transparent',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              {editLabel}
+            </MuiButton>
+          </Stack>
         </Stack>
       </Box>
 

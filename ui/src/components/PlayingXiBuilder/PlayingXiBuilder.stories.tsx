@@ -114,6 +114,16 @@ export const WithServerError: Story = {
   },
 }
 
+// docs/specs/037-match-improvements.md item 8: the "Add Squad Member" button next to "Add
+// player" — purely additive, omitted entirely on every other story above since none pass
+// onAddSquadMember.
+export const WithAddSquadMember: Story = {
+  args: {
+    ...WithPlayersAdded.args,
+    onAddSquadMember: noop,
+  },
+}
+
 // docs/specs/033-availability-aware-xi-builder.md (revised after live review): both statuses get a
 // full-row/option colour tint (red for Unavailable, orange for Unsure) plus a text caption — a
 // populated availabilityByPlayerId covering all four states across the fixture squad. p2 (Bob

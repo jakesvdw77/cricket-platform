@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -36,6 +38,18 @@ const SORT_OPTIONS = [
 ]
 
 const SEARCH_DEBOUNCE_MS = 300
+
+// docs/specs/037-match-improvements.md item 2: SquadPicker.tsx (029) already passes an `editTo`
+// that itself ends in `?tab=playing-xi` — a naive `${editTo}?tab=playing-xi` would double up the
+// query string (`?tab=playing-xi?tab=playing-xi`, which MatchFormPage's own `searchParams.get`
+// read would then fail to match exactly). Skips entirely when already present, else appends with
+// `&` when a (different) query string already exists.
+function withPlayingXiTab(url: string): string {
+  if (url.includes('tab=playing-xi')) {
+    return url
+  }
+  return `${url}${url.includes('?') ? '&' : '?'}tab=playing-xi`
+}
 
 // Exported for MatchDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's title/badge match this card's exactly, rather than a second copy.
@@ -93,6 +107,7 @@ function MatchCard({
   // "jump straight to the Playing XI tab" edit shortcut, unchanged.
   viewTo?: string
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -165,6 +180,11 @@ function MatchCard({
     .map((field) => String(field.value))
     .join(' · ')
 
+  // docs/specs/037-match-improvements.md item 2: a match between two free-text opponents has no
+  // Playing XI tab to jump into (029) — the shortcut is omitted entirely rather than shown
+  // disabled or landing on an empty tab.
+  const hasRealTeamSide = Boolean(match.homeTeamId) || Boolean(match.awayTeamId)
+
   const handlePrint = async (scope: TeamSheetPrintScope) => {
     const filteredSides =
       scope === 'both' ? teamSheetSides : scope === 'home' ? [teamSheetSides[0]] : [teamSheetSides[1]]
@@ -190,6 +210,17 @@ function MatchCard({
           icon: match.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
         }}
         secondaryActions={[
+          ...(hasRealTeamSide
+            ? [
+                {
+                  label: 'Select Team',
+                  pendingLabel: 'Select Team',
+                  pending: false,
+                  onClick: () => navigate(withPlayingXiTab(editTo)),
+                  icon: <GroupsOutlinedIcon fontSize="small" />,
+                },
+              ]
+            : []),
           {
             label: 'Communicate Team Sheet',
             pendingLabel: 'Opening…',
@@ -250,6 +281,11 @@ export default function MatchList({
   // genuinely paginated) — never a client-side one, per docs/standards/frontend.md's pagination
   // rule.
   const [sectionId, setSectionId] = useState<string | null>(null)
+  // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only — no
+  // UI control to change it this pass (see spec's Non-goals). A future "Show past matches" toggle
+  // is just flipping this boolean, so it's kept as real state (and in the query key below) rather
+  // than a hard-coded inline `true`.
+  const [upcomingOnly] = useState(true)
 
   // Note: the real backend GET /matches endpoint (docs/specs/029-league-management.md's API
   // Contract, MatchController.java) is Pageable-only — it has no `search` query param today.
@@ -270,13 +306,14 @@ export default function MatchList({
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId],
+    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, upcomingOnly],
     queryFn: () =>
       listMatches(clubId as string, {
         page,
         sort,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(sectionId ? { sectionId } : {}),
+        upcomingOnly,
       }),
     enabled: Boolean(clubId),
   })
@@ -347,25 +384,43 @@ export default function MatchList({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader title={title} backTo={backTo} backLabel={backLabel} />
 
-      <ListToolbar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by opponent or team name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
-        createLabel={createLabel}
-        onCreate={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}
-      />
-
-      <Box sx={{ maxWidth: 360 }}>
-        <SectionTreeSelect
-          label="Section"
-          sections={sections ?? []}
-          value={sectionId}
-          onChange={setSectionId}
-          allowClear
+      {/* docs/specs/037-match-improvements.md items 3/4: ListToolbar + the section filter read as
+          two visually disconnected rows before this — grouped in one bordered/tinted container
+          (SponsorDetailPage's own alpha(primary.main, 0.05) treatment) so they read as
+          one control group instead. */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
+          p: 2,
+        }}
+      >
+        <ListToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by opponent or team name"
+          sortValue={sort}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={setSort}
+          sortMinWidth={260}
+          createLabel={createLabel}
+          onCreate={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}
         />
+
+        <Box sx={{ maxWidth: 360 }}>
+          <SectionTreeSelect
+            label="Section"
+            sections={sections ?? []}
+            value={sectionId}
+            onChange={setSectionId}
+            allowClear
+          />
+        </Box>
       </Box>
 
       {hasMatches && (

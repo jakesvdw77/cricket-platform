@@ -112,6 +112,29 @@ export const SectionWithNestedRecordCards: Story = {
   },
 }
 
+// docs/specs/037-match-improvements.md item 2: a link-shaped secondary action rendered before the
+// Edit button — Match-shaped (multiple headed sections, plus a "Select Team" shortcut).
+export const WithSecondaryActions: Story = {
+  args: {
+    title: '1st XI vs 2nd XI',
+    backTo: '/manage/fixtures/matches',
+    backLabel: 'Back to Matches',
+    avatar: { fallback: 'M', shape: 'rounded' },
+    editTo: '/manage/fixtures/matches/m-1/edit',
+    secondaryActions: [{ label: 'Select Team', to: '/manage/fixtures/matches/m-1/edit?tab=playing-xi' }],
+    sections: [
+      {
+        heading: 'Details',
+        content: (
+          <DetailFieldGrid>
+            <DetailFieldRow icon={<CalendarTodayOutlinedIcon />} label="Date & time" value="1 Jun 2026, 14:30" />
+          </DetailFieldGrid>
+        ),
+      },
+    ],
+  },
+}
+
 export const MobileViewport: Story = {
   args: MultiSection.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },

@@ -89,6 +89,11 @@ export interface PlayingXiBuilderProps {
   // whatever the server returned. Defaults to an empty Map when the poll/responses queries haven't
   // resolved yet or don't apply — never blocks rendering the rest of the builder.
   availabilityByPlayerId?: Map<string, AvailabilityStatus>
+  // docs/specs/037-match-improvements.md item 8: opens the caller's own "Add Squad Member" dialog
+  // (MatchSideTab owns the actual dialog/mutation, per docs/standards/frontend.md's "server state
+  // in the page" rule) — omitted entirely when not passed, so every existing call site/story/test
+  // that doesn't pass this keeps its current "Add player" row unchanged.
+  onAddSquadMember?: () => void
 }
 
 // docs/specs/029-league-management.md's genuinely new component: an ordered, role-tagged
@@ -114,9 +119,14 @@ export function PlayingXiBuilder({
   isAddPending = false,
   errorMessage,
   availabilityByPlayerId = new Map(),
+  onAddSquadMember,
 }: PlayingXiBuilderProps) {
   const [addSelection, setAddSelection] = useState<SquadMember | null>(null)
   const [addRole, setAddRole] = useState<PlayingRole>('BATSMAN')
+  // docs/specs/037-match-improvements.md item 7: which ordered-XI row's batting-order number is
+  // currently swapped into edit mode (at most one at a time), and its in-progress draft value.
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
+  const [orderDraft, setOrderDraft] = useState('')
 
   // Keyed by playerProfileId, not member.id (the TeamSquadMember row's own id) — every join below
   // (xi entries, captain/keeper/twelfth-man ids) is expressed in terms of playerProfileId, per
@@ -155,6 +165,31 @@ export function PlayingXiBuilder({
     onReorderPlayers(reordered)
   }
 
+  // docs/specs/037-match-improvements.md item 7: commits the click-to-edit batting-order stepper
+  // — clamps the typed value to [1, orderedXi.length] (a position beyond the side's own current XI
+  // size has no meaningful slot, so the player lands at the end rather than erroring), then builds
+  // the full reordered array using the exact same splice-out/splice-in shape as handleMove above,
+  // and calls the same onReorderPlayers prop/endpoint the up/down arrows already use.
+  const commitBattingOrder = (index: number) => {
+    const entry = orderedXi[index]
+    setEditingOrderId(null)
+    if (!entry) {
+      return
+    }
+    const parsed = Number(orderDraft)
+    const clamped = Number.isFinite(parsed)
+      ? Math.min(Math.max(Math.trunc(parsed), 1), orderedXi.length)
+      : entry.battingOrder
+    const targetIndex = clamped - 1
+    if (targetIndex === index) {
+      return
+    }
+    const reordered = orderedXi.map((candidate) => candidate.playerProfileId)
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(targetIndex, 0, moved)
+    onReorderPlayers(reordered)
+  }
+
   const captainOptions = orderedXi
     .map((entry) => squadById.get(entry.playerProfileId))
     .filter((member): member is SquadMember => Boolean(member))
@@ -163,6 +198,78 @@ export function PlayingXiBuilder({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
+      {/* docs/specs/037-match-improvements.md item 6: rendered first, above the Playing XI
+          list/batting order — a small, fixed-size control group that shouldn't push a
+          potentially-long batting order down the page. Pure layout move: no prop or
+          option-scoping change from before. */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+          gap: 2,
+        }}
+      >
+        <Input
+          select
+          label="Captain"
+          value={captainPlayerId ?? ''}
+          onChange={(event) => onChangeCaptain(event.target.value || null)}
+        >
+          <MenuItem value="">None</MenuItem>
+          {captainOptions.map((member) => (
+            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
+              {squadDisplayName(member)}
+            </MenuItem>
+          ))}
+        </Input>
+
+        <Input
+          select
+          label="Wicketkeeper"
+          value={wicketKeeperPlayerId ?? ''}
+          onChange={(event) => onChangeWicketKeeper(event.target.value || null)}
+        >
+          <MenuItem value="">None</MenuItem>
+          {captainOptions.map((member) => (
+            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
+              {squadDisplayName(member)}
+            </MenuItem>
+          ))}
+        </Input>
+
+        <Input
+          select
+          label="Twelfth man"
+          value={twelfthManPlayerId ?? ''}
+          onChange={(event) => onChangeTwelfthMan(event.target.value || null)}
+        >
+          <MenuItem value="">None</MenuItem>
+          {twelfthManOptions.map((member) => {
+            const indicator = availabilityIndicator(availabilityByPlayerId.get(member.playerProfileId))
+            return (
+              <MenuItem
+                key={member.playerProfileId}
+                value={member.playerProfileId}
+                sx={{
+                  bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
+                }}
+              >
+                {indicator.caption ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="body2">{squadDisplayName(member)}</Typography>
+                    <Typography variant="caption" color={`${indicator.tone}.dark`}>
+                      {indicator.caption}
+                    </Typography>
+                  </Box>
+                ) : (
+                  squadDisplayName(member)
+                )}
+              </MenuItem>
+            )
+          })}
+        </Input>
+      </Box>
 
       <Box>
         <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
@@ -209,9 +316,54 @@ export function PlayingXiBuilder({
                 bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
               }}
             >
-              <Typography variant="body2" fontWeight={600} sx={{ width: 24, flex: 'none' }}>
-                {entry.battingOrder}
-              </Typography>
+              {/* docs/specs/037-match-improvements.md item 7: click-to-edit batting-order stepper,
+                  augmenting (not replacing) the up/down IconButtons below. Plain text by default;
+                  clicking swaps in an auto-focused numeric input; commits on blur/Enter via the
+                  same onReorderPlayers callback/endpoint the arrows already use. */}
+              {editingOrderId === entry.playerProfileId ? (
+                <Input
+                  label="Order"
+                  type="number"
+                  size="small"
+                  autoFocus
+                  value={orderDraft}
+                  onChange={(event) => setOrderDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      ;(event.target as HTMLInputElement).blur()
+                    }
+                  }}
+                  onBlur={() => commitBattingOrder(index)}
+                  inputProps={{ min: 1, max: 12, step: 1, 'aria-label': `Batting order for ${name}` }}
+                  sx={{ width: 88, flex: 'none' }}
+                />
+              ) : (
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => {
+                    setEditingOrderId(entry.playerProfileId)
+                    setOrderDraft(String(entry.battingOrder))
+                  }}
+                  aria-label={`Edit batting order for ${name}`}
+                  sx={{
+                    width: 24,
+                    flex: 'none',
+                    p: 0,
+                    border: 0,
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: 'inherit',
+                    textAlign: 'left',
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={600} component="span">
+                    {entry.battingOrder}
+                  </Typography>
+                </Box>
+              )}
 
               <Stack direction="column" spacing={0.25} sx={{ flex: '1 1 160px', minWidth: 0 }}>
                 <Stack direction="row" spacing={0.75} alignItems="center">
@@ -322,6 +474,15 @@ export function PlayingXiBuilder({
         <Button onClick={handleAdd} disabled={!addSelection || atCap || isAddPending} sx={{ flex: 'none' }}>
           {isAddPending ? 'Adding…' : 'Add player'}
         </Button>
+
+        {/* docs/specs/037-match-improvements.md item 8: purely additive — omitted entirely when
+            onAddSquadMember isn't passed, so every existing call site/story/test keeps working
+            unchanged. MatchSideTab owns the actual dialog/mutation this opens. */}
+        {onAddSquadMember && (
+          <Button variant="secondary" onClick={onAddSquadMember} sx={{ flex: 'none' }}>
+            Add Squad Member
+          </Button>
+        )}
       </Box>
 
       {atCap && (
@@ -329,74 +490,6 @@ export function PlayingXiBuilder({
           The playing XI is full ({cap} players) — remove a player to add another.
         </Typography>
       )}
-
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-          gap: 2,
-        }}
-      >
-        <Input
-          select
-          label="Captain"
-          value={captainPlayerId ?? ''}
-          onChange={(event) => onChangeCaptain(event.target.value || null)}
-        >
-          <MenuItem value="">None</MenuItem>
-          {captainOptions.map((member) => (
-            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
-              {squadDisplayName(member)}
-            </MenuItem>
-          ))}
-        </Input>
-
-        <Input
-          select
-          label="Wicketkeeper"
-          value={wicketKeeperPlayerId ?? ''}
-          onChange={(event) => onChangeWicketKeeper(event.target.value || null)}
-        >
-          <MenuItem value="">None</MenuItem>
-          {captainOptions.map((member) => (
-            <MenuItem key={member.playerProfileId} value={member.playerProfileId}>
-              {squadDisplayName(member)}
-            </MenuItem>
-          ))}
-        </Input>
-
-        <Input
-          select
-          label="Twelfth man"
-          value={twelfthManPlayerId ?? ''}
-          onChange={(event) => onChangeTwelfthMan(event.target.value || null)}
-        >
-          <MenuItem value="">None</MenuItem>
-          {twelfthManOptions.map((member) => {
-            const indicator = availabilityIndicator(availabilityByPlayerId.get(member.playerProfileId))
-            return (
-              <MenuItem
-                key={member.playerProfileId}
-                value={member.playerProfileId}
-                sx={{
-                  bgcolor: indicator.tone ? (theme) => alpha(theme.palette[indicator.tone as 'error' | 'warning'].main, 0.16) : undefined,
-                }}
-              >
-                {indicator.caption ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="body2">{squadDisplayName(member)}</Typography>
-                    <Typography variant="caption" color={`${indicator.tone}.dark`}>
-                      {indicator.caption}
-                    </Typography>
-                  </Box>
-                ) : (
-                  squadDisplayName(member)
-                )}
-              </MenuItem>
-            )
-          })}
-        </Input>
-      </Box>
     </Box>
   )
 }

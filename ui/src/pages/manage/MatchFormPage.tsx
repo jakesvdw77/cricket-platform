@@ -7,6 +7,8 @@ import { PlayingXiBuilder } from '../../components/PlayingXiBuilder'
 import { MatchAvailabilityTab } from '../../components/MatchAvailabilityTab'
 import { PollShareDialog } from '../../components/PollShareDialog'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
+import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
+import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { getMatch, createMatch, updateMatch } from '../../api/matchApi'
@@ -15,7 +17,9 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listLeagues } from '../../api/leagueApi'
-import { listSquad } from '../../api/teamSquadApi'
+import { listSquad, addToSquad } from '../../api/teamSquadApi'
+import { createPlayer } from '../../api/playerApi'
+import type { PlayerPayload } from '../../api/playerApi'
 import {
   listMatchSides,
   createMatchSide,
@@ -64,6 +68,13 @@ function MatchSideTab({
 }) {
   const queryClient = useQueryClient()
   const attemptedCreateRef = useRef(false)
+  // docs/specs/037-match-improvements.md item 8: "Add Squad Member" dialog/mutation state — owned
+  // here (the page), not inside PlayingXiBuilder, per docs/standards/frontend.md's "server state
+  // in the page" rule. addPlayerTab is this dialog's own small local 3-tab bar state (PlayerForm
+  // externalizes its Basic/Contact/Cricket Info tab bar to its caller — same pattern
+  // PlayerFormPage.tsx already uses).
+  const [squadMemberDialogOpen, setSquadMemberDialogOpen] = useState(false)
+  const [addPlayerTab, setAddPlayerTab] = useState<0 | 1 | 2>(0)
 
   const sidesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'],
@@ -119,6 +130,23 @@ function MatchSideTab({
     onSuccess: invalidateSides,
   })
 
+  // docs/specs/037-match-improvements.md item 8: creates a brand-new Player then adds them to
+  // this side's team/season squad — two sequential calls in one mutation, matching
+  // TeamFormPage.tsx's existing createAndLinkContactMutation/createAndLinkSponsorMutation shape.
+  const createAndLinkPlayerMutation = useMutation({
+    mutationFn: async (payload: PlayerPayload) => {
+      const player = await createPlayer(clubId, payload)
+      await addToSquad(clubId, teamId, seasonId, player.id)
+      return player
+    },
+    onSuccess: () => {
+      // Same query key squadQuery below already uses — the new player becomes selectable in
+      // PlayingXiBuilder's "Add player" Autocomplete immediately, without a page reload.
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'] })
+      setSquadMemberDialogOpen(false)
+    },
+  })
+
   // docs/specs/033-availability-aware-xi-builder.md: a second, small data fetch mirroring
   // MatchAvailabilityPanel's own shape exactly (identical query-key shape, same match) so an admin
   // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
@@ -165,24 +193,90 @@ function MatchSideTab({
       .find((message): message is string => Boolean(message)) ?? null
 
   return (
-    <PlayingXiBuilder
-      squad={squadQuery.data ?? []}
-      xi={side.players}
-      captainPlayerId={side.captainPlayerId}
-      wicketKeeperPlayerId={side.wicketKeeperPlayerId}
-      twelfthManPlayerId={side.twelfthManPlayerId}
-      cap={cap}
-      onAddPlayer={(playerId, role) => addPlayerMutation.mutate({ playerId, role })}
-      onRemovePlayer={(playerId) => removePlayerMutation.mutate(playerId)}
-      onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
-      onReorderPlayers={(ids) => reorderMutation.mutate(ids)}
-      onChangeCaptain={(id) => updateSideMutation.mutate({ captainPlayerId: id })}
-      onChangeWicketKeeper={(id) => updateSideMutation.mutate({ wicketKeeperPlayerId: id })}
-      onChangeTwelfthMan={(id) => updateSideMutation.mutate({ twelfthManPlayerId: id })}
-      isAddPending={addPlayerMutation.isPending}
-      errorMessage={errorMessage}
-      availabilityByPlayerId={availabilityByPlayerId}
-    />
+    <>
+      <PlayingXiBuilder
+        squad={squadQuery.data ?? []}
+        xi={side.players}
+        captainPlayerId={side.captainPlayerId}
+        wicketKeeperPlayerId={side.wicketKeeperPlayerId}
+        twelfthManPlayerId={side.twelfthManPlayerId}
+        cap={cap}
+        onAddPlayer={(playerId, role) => addPlayerMutation.mutate({ playerId, role })}
+        onRemovePlayer={(playerId) => removePlayerMutation.mutate(playerId)}
+        onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
+        onReorderPlayers={(ids) => reorderMutation.mutate(ids)}
+        // docs/specs/037-match-improvements.md item 5: PUT .../sides/{sideId} is a full 3-field
+        // replace, not a partial merge (MatchSideServiceImpl.updateSide unconditionally overwrites
+        // all three) — each handler must send the side's own current values for the two fields NOT
+        // being changed, or setting one silently clears whichever of the other two was already set.
+        onChangeCaptain={(id) =>
+          updateSideMutation.mutate({
+            captainPlayerId: id,
+            wicketKeeperPlayerId: side.wicketKeeperPlayerId,
+            twelfthManPlayerId: side.twelfthManPlayerId,
+          })
+        }
+        onChangeWicketKeeper={(id) =>
+          updateSideMutation.mutate({
+            captainPlayerId: side.captainPlayerId,
+            wicketKeeperPlayerId: id,
+            twelfthManPlayerId: side.twelfthManPlayerId,
+          })
+        }
+        onChangeTwelfthMan={(id) =>
+          updateSideMutation.mutate({
+            captainPlayerId: side.captainPlayerId,
+            wicketKeeperPlayerId: side.wicketKeeperPlayerId,
+            twelfthManPlayerId: id,
+          })
+        }
+        isAddPending={addPlayerMutation.isPending}
+        errorMessage={errorMessage}
+        availabilityByPlayerId={availabilityByPlayerId}
+        onAddSquadMember={() => {
+          setAddPlayerTab(0)
+          setSquadMemberDialogOpen(true)
+        }}
+      />
+
+      {/* docs/specs/037-match-improvements.md item 8: CreateAndLinkRecordDialog/PlayerForm both
+          unmodified — since PlayerForm externalizes its own Basic/Contact/Cricket Info tab bar to
+          its caller, this dialog wrapper renders that same small local 3-tab bar (mirroring
+          PlayerFormPage.tsx's own tab-owning pattern) so the quick-add flow isn't limited to Basic
+          Info only. */}
+      <CreateAndLinkRecordDialog<PlayerPayload>
+        open={squadMemberDialogOpen}
+        onClose={() => setSquadMemberDialogOpen(false)}
+        title="New player"
+        formId={PLAYER_FORM_ID}
+        renderForm={(onSubmit) => (
+          <>
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <Tabs
+                value={addPlayerTab}
+                onChange={(_event, next: number) => setAddPlayerTab(next as 0 | 1 | 2)}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
+                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+              >
+                <Tab label="Basic Info" />
+                <Tab label="Contact Info" />
+                <Tab label="Cricket Info" />
+              </Tabs>
+            </Box>
+            <PlayerForm activeTab={addPlayerTab} onSubmit={onSubmit} />
+          </>
+        )}
+        onCreateAndLink={(payload) => createAndLinkPlayerMutation.mutate(payload)}
+        isPending={createAndLinkPlayerMutation.isPending}
+        isError={createAndLinkPlayerMutation.isError}
+        errorMessage={errorDetail(
+          createAndLinkPlayerMutation.error,
+          "Couldn't create and add this player to the squad. Please try again.",
+        )}
+      />
+    </>
   )
 }
 
