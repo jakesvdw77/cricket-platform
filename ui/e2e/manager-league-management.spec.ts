@@ -208,7 +208,12 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
     await page.getByRole('link', { name: 'Back to Fixtures & Results' }).click();
     await page.getByRole('link', { name: 'Leagues' }).click();
-    await leagueCard.getByRole('link', { name: 'Edit' }).click();
+    // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
+    // landing on the read-only detail screen first; its own Edit action is what reaches the real
+    // form the Affiliations tab lives on.
+    await leagueCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/.+\/edit$/);
     await page.getByRole('tab', { name: 'Affiliations' }).click();
     await page.getByRole('button', { name: 'Add team' }).click();
@@ -256,7 +261,12 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await page.getByRole('button', { name: sectionName, exact: true }).click();
     await page.getByRole('link', { name: 'Manage Teams' }).click();
     await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams$/);
-    await page.locator('.MuiCard-root').filter({ hasText: teamName }).getByRole('link', { name: 'Edit' }).click();
+    // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
+    // landing on the read-only detail screen first; its own Edit action is what reaches the real
+    // form the Squad tab lives on.
+    await page.locator('.MuiCard-root').filter({ hasText: teamName }).getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/.+\/edit$/);
     await page.getByRole('tab', { name: 'Squad' }).click();
 
@@ -311,11 +321,16 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // per this spec's two-number model.
     await page.goto(`http://${ROOT_DOMAIN}/manage`);
     await page.getByRole('link', { name: 'Players' }).click();
+    // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
+    // landing on the read-only detail screen first; its own Edit action is what reaches the real
+    // form.
     await page
       .locator('.MuiCard-root')
       .filter({ hasText: eligible1FullName })
-      .getByRole('link', { name: 'Edit' })
+      .getByRole('link', { name: 'View' })
       .click();
+    await expect(page).toHaveURL(/\/manage\/players\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/players\/.+\/edit$/);
     await expect(page.getByLabel('Jersey number')).toHaveValue(eligible1StandingJerseyNumber);
 
@@ -354,7 +369,12 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
     // --- Playing XI: open the match, build the home side's XI ---
 
-    await matchCard.getByRole('link', { name: 'Edit' }).click();
+    // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
+    // landing on the read-only detail screen first; its own Edit action is what reaches the real
+    // form the Home XI tab lives on.
+    await matchCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/fixtures\/matches\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/matches\/.+\/edit$/);
     await page.getByRole('tab', { name: 'Home XI' }).click();
     await expect(page.getByText('0 / 2')).toBeVisible();

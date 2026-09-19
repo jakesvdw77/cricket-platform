@@ -162,9 +162,13 @@ test.describe('Players golden path (028-players.md)', () => {
     await expect(playerCard.getByText(dateOfBirth)).toBeVisible();
     await expect(playerCard.getByText(membershipNumber)).toBeVisible();
 
-    // --- Open it: all four tabs present, and every field entered above round-trips ---
+    // --- Open it: docs/specs/036-view-first-record-detail-screens.md's read-only view first,
+    // then its single Edit action into the real form — all four tabs present, and every field
+    // entered above round-trips.
 
-    await playerCard.getByRole('link', { name: 'Edit' }).click();
+    await playerCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/players\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/players\/.+\/edit$/);
     await expect(page.getByRole('heading', { name: 'Edit Player' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Basic Info' })).toBeVisible();
@@ -192,6 +196,31 @@ test.describe('Players golden path (028-players.md)', () => {
     await expect(page.getByLabel('Bowling arm')).toHaveText('Right-arm');
     await expect(page.getByLabel('Bowling type')).toHaveText('Fast');
     await expect(page.getByLabel('Wicketkeeper')).toBeChecked();
+
+    // --- docs/plans/036-view-first-record-detail-screens.md's own Test Plan golden path: edit a
+    // real field, save, and confirm the read-only view — not just the edit form — reflects it,
+    // and that the view itself renders no editable control anywhere. ---
+
+    await page.getByRole('tab', { name: 'Basic Info' }).click();
+    const updatedMembershipNumber = `${membershipNumber}-UPD`;
+    const membershipField = page.getByLabel('Club membership number');
+    await membershipField.fill('');
+    await membershipField.fill(updatedMembershipNumber);
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page).toHaveURL(/\/manage\/players$/);
+
+    playerCard = page.locator('.MuiCard-root').filter({ hasText: fullName });
+    await playerCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/players\/[^/]+$/);
+    // Read-only, for real: no textbox/select anywhere on the whole page, not just "no Save button".
+    await expect(page.getByRole('textbox')).toHaveCount(0);
+    await expect(page.getByRole('combobox')).toHaveCount(0);
+    await expect(page.getByText(updatedMembershipNumber)).toBeVisible();
+
+    // Continue into the Sections tab via the view's own single Edit action — the same path a real
+    // user takes, not a shortcut back to the old direct-edit URL.
+    await page.getByRole('link', { name: 'Edit' }).click();
+    await expect(page).toHaveURL(/\/manage\/players\/.+\/edit$/);
 
     // --- Sections tab (edit-mode only): tag to both sections, then untag one ---
 
