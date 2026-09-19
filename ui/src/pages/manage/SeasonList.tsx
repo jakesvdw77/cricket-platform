@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { listSeasons, deactivateSeason, reactivateSeason } from '../../api/seasonApi'
+import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
 
 const SORT_OPTIONS = [{ value: 'label,asc', label: 'Label' }]
@@ -24,25 +22,10 @@ export function badgeFor(season: Season): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per season, each with its own deactivate/reactivate mutation — mirrors
-// SponsorList.tsx's SponsorCard pattern, so one card's pending state never leaks onto another's.
-function SeasonCard({ clubId, season }: { clubId: string; season: Season }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'seasons'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateSeason(clubId, season.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateSeason(clubId, season.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = season.active ? deactivate : reactivate
-
+// One RecordCard per season — Deactivate/Reactivate now lives on SeasonFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
+// with "View" as its only footer action.
+function SeasonCard({ season }: { season: Season }) {
   return (
     <RecordCard
       title={season.label}
@@ -53,13 +36,6 @@ function SeasonCard({ clubId, season }: { clubId: string; season: Season }) {
         { label: 'End date', value: season.endDate },
       ]}
       viewTo={`/manage/fixtures/seasons/${season.id}`}
-      secondaryAction={{
-        label: season.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: season.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: season.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -141,7 +117,7 @@ export default function SeasonList() {
           }}
         >
           {visibleSeasons.map((season) => (
-            <SeasonCard key={season.id} clubId={clubId} season={season} />
+            <SeasonCard key={season.id} season={season} />
           ))}
         </Box>
       )}

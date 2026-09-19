@@ -7,16 +7,12 @@ import SponsorContactList from './SponsorContactList'
 import type { SponsorContact } from '../../api/sponsorContactApi'
 
 const listSponsorContacts = vi.fn()
-const deactivateSponsorContact = vi.fn()
-const reactivateSponsorContact = vi.fn()
 
 // Mirrors ClubContactList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/sponsorContactApi', () => ({
   listSponsorContacts: (clubId: string, sponsorId: string) => listSponsorContacts(clubId, sponsorId),
-  deactivateSponsorContact: (clubId: string, sponsorId: string, contactId: string) =>
-    deactivateSponsorContact(clubId, sponsorId, contactId),
-  reactivateSponsorContact: (clubId: string, sponsorId: string, contactId: string) =>
-    reactivateSponsorContact(clubId, sponsorId, contactId),
+  deactivateSponsorContact: vi.fn(),
+  reactivateSponsorContact: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -165,45 +161,25 @@ describe('SponsorContactList', () => {
     expect(await screen.findByText('Add Contact Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate on an active contact calls deactivateSponsorContact and reflects a pending state', async () => {
-    const user = userEvent.setup()
-    listSponsorContacts.mockResolvedValueOnce([makeContact({ active: true })])
-    let resolveDeactivate: (value: SponsorContact) => void = () => {}
-    deactivateSponsorContact.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to SponsorContactFormPage's own actions
+  // bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listSponsorContacts.mockResolvedValueOnce([
+      makeContact({ id: 'contact-1', active: true }),
+      makeContact({
+        id: 'contact-2',
+        contact: { firstName: 'Past', lastName: 'Contact', email: 'past@example.com', phone: '+27 21 555 0199' },
+        active: false,
       }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to — same gotcha as ClubContactList.test.tsx.
-    listSponsorContacts.mockResolvedValueOnce([makeContact({ active: false })])
+    ])
 
     renderList('test-club-id')
 
     await screen.findByText('Jane Smith')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivateSponsorContact).toHaveBeenCalledWith('test-club-id', 'test-sponsor-id', 'contact-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makeContact({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate on an inactive contact calls reactivateSponsorContact', async () => {
-    const user = userEvent.setup()
-    listSponsorContacts.mockResolvedValueOnce([makeContact({ active: false })])
-    reactivateSponsorContact.mockResolvedValueOnce(makeContact({ active: true }))
-    // onSuccess invalidates the list query, triggering a refetch.
-    listSponsorContacts.mockResolvedValueOnce([makeContact({ active: true })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Jane Smith')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivateSponsorContact).toHaveBeenCalledWith('test-club-id', 'test-sponsor-id', 'contact-1')
+    expect(screen.getByText('Past Contact')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('the back link targets this sponsor\'s edit screen, not the dashboard', async () => {

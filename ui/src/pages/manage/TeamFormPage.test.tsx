@@ -16,6 +16,8 @@ import type { SquadMember } from '../../api/teamSquadApi'
 const listTeamsForSection = vi.fn()
 const createTeam = vi.fn()
 const updateTeam = vi.fn()
+const deactivateTeam = vi.fn()
+const reactivateTeam = vi.fn()
 const listSections = vi.fn()
 const getManagedClubProfile = vi.fn()
 const listClubContacts = vi.fn()
@@ -40,6 +42,8 @@ vi.mock('../../api/teamApi', () => ({
   createTeam: (clubId: string, sectionId: string, payload: unknown) => createTeam(clubId, sectionId, payload),
   updateTeam: (clubId: string, sectionId: string, teamId: string, payload: unknown) =>
     updateTeam(clubId, sectionId, teamId, payload),
+  deactivateTeam: (clubId: string, sectionId: string, teamId: string) => deactivateTeam(clubId, sectionId, teamId),
+  reactivateTeam: (clubId: string, sectionId: string, teamId: string) => reactivateTeam(clubId, sectionId, teamId),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -281,6 +285,10 @@ describe('TeamFormPage', () => {
       expect(screen.getByText('Add Team')).toBeInTheDocument()
       expect(screen.queryByLabelText('Section')).not.toBeInTheDocument()
       expect(listTeamsForSection).not.toHaveBeenCalled()
+      // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+      // saved record.
+      expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
       await user.type(screen.getByLabelText('Name'), '1st XI')
       await user.click(screen.getByRole('button', { name: 'Create team' }))
@@ -657,6 +665,64 @@ describe('TeamFormPage', () => {
         await user.click(screen.getByRole('option', { name: 'Bob Jones' }))
 
         expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-2')
+      })
+    })
+
+    // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from both TeamDirectory's and
+    // TeamList's own TeamCard, plus the tab-gating restructure — the button must render on every
+    // tab, not just Details.
+    describe('Deactivate/Reactivate', () => {
+      it('renders Deactivate for an active team on the Details tab, clicking it calls deactivateTeam and invalidates both list query keys', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1', active: true })])
+        // onSuccess invalidates both TeamDirectory's and TeamList's own query keys while this
+        // page's own useQuery is still mounted, triggering a refetch that must resolve to the
+        // now-inactive record for the button to relabel.
+        listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1', active: false })])
+        let resolveDeactivate: (value: Team) => void = () => {}
+        deactivateTeam.mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveDeactivate = resolve
+          }),
+        )
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+        expect(deactivateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1')
+        expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+        resolveDeactivate(makeTeam({ id: 'team-1', active: false }))
+
+        expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+      })
+
+      it('renders Reactivate for an inactive team, clicking it calls reactivateTeam', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', active: false })])
+        reactivateTeam.mockResolvedValueOnce(makeTeam({ id: 'team-1', active: true }))
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+        expect(reactivateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1')
+      })
+
+      it('still renders on the Squad tab, while Save is hidden there', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', active: true })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+
+        expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
       })
     })
   })

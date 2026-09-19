@@ -9,11 +9,15 @@ import type { Sponsor } from '../../api/sponsorApi'
 const listSponsors = vi.fn()
 const createSponsor = vi.fn()
 const updateSponsor = vi.fn()
+const deactivateSponsor = vi.fn()
+const reactivateSponsor = vi.fn()
 
 vi.mock('../../api/sponsorApi', () => ({
   listSponsors: (clubId: string) => listSponsors(clubId),
   createSponsor: (clubId: string, payload: unknown) => createSponsor(clubId, payload),
   updateSponsor: (clubId: string, sponsorId: string, payload: unknown) => updateSponsor(clubId, sponsorId, payload),
+  deactivateSponsor: (clubId: string, sponsorId: string) => deactivateSponsor(clubId, sponsorId),
+  reactivateSponsor: (clubId: string, sponsorId: string) => reactivateSponsor(clubId, sponsorId),
 }))
 
 beforeEach(() => {
@@ -78,6 +82,10 @@ describe('SponsorFormPage', () => {
 
     expect(screen.getByText('Add Sponsor')).toBeInTheDocument()
     expect(listSponsors).not.toHaveBeenCalled()
+    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
+    // saved record.
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Name'), 'Riverside Hardware')
     await user.click(screen.getByRole('button', { name: 'Create sponsor' }))
@@ -150,5 +158,48 @@ describe('SponsorFormPage', () => {
     expect(payload).toMatchObject({ name: 'Riverside Hardware' })
 
     expect(await screen.findByText('Sponsor List Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from SponsorList's own card.
+  describe('Deactivate/Reactivate', () => {
+    it('edit mode: renders Deactivate for an active sponsor, clicking it calls deactivateSponsor and invalidates the sponsors list', async () => {
+      const user = userEvent.setup()
+      listSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', active: true })])
+      // onSuccess invalidates the list query while this page's own useQuery is still mounted,
+      // triggering a refetch that must resolve to the now-inactive record for the button to
+      // relabel — same gotcha noted in ClubContactFormPage.test.tsx.
+      listSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', active: false })])
+      let resolveDeactivate: (value: Sponsor) => void = () => {}
+      deactivateSponsor.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDeactivate = resolve
+        }),
+      )
+
+      renderPage('/manage/sponsors/sponsor-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Sponsor')
+      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+      expect(deactivateSponsor).toHaveBeenCalledWith('test-club-id', 'sponsor-1')
+      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
+
+      resolveDeactivate(makeSponsor({ id: 'sponsor-1', active: false }))
+
+      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+    })
+
+    it('edit mode: renders Reactivate for an inactive sponsor, clicking it calls reactivateSponsor', async () => {
+      const user = userEvent.setup()
+      listSponsors.mockResolvedValue([makeSponsor({ id: 'sponsor-1', active: false })])
+      reactivateSponsor.mockResolvedValueOnce(makeSponsor({ id: 'sponsor-1', active: true }))
+
+      renderPage('/manage/sponsors/sponsor-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Sponsor')
+      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+
+      expect(reactivateSponsor).toHaveBeenCalledWith('test-club-id', 'sponsor-1')
+    })
   })
 })

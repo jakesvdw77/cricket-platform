@@ -9,12 +9,13 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
 import { ClubContactForm, CLUB_CONTACT_FORM_ID } from '../../components/ClubContactForm'
 import { SponsorForm, SPONSOR_FORM_ID } from '../../components/SponsorForm'
-import { listTeamsForSection, createTeam, updateTeam } from '../../api/teamApi'
+import { listTeamsForSection, createTeam, updateTeam, deactivateTeam, reactivateTeam } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { getManagedClubProfile } from '../../api/clubApi'
@@ -39,6 +40,12 @@ import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { numberToInput, inputToNumber } from '../../utils/numberInput'
 
 const ROLE_QUICK_FILL = ['Manager', 'Coach', 'Assistant Coach']
+
+// Mirrors TeamDirectory.tsx's own local CLUB_TEAMS_QUERY_KEY (not exported from teamApi.ts) — the
+// relocated deactivate/reactivate toggle below must invalidate both this club-wide key and the
+// section-scoped one TeamList.tsx reads from, since the admin may have arrived from either list
+// (docs/specs/038-move-deactivate-to-edit-screen.md).
+const CLUB_TEAMS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'teams']
 
 // One RecordCard per linked contact, with its own unlink mutation so one card's pending state
 // never leaks onto another's (same isolation ClubContactList.tsx's own ClubContactCard uses).
@@ -329,6 +336,26 @@ export default function TeamFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from both TeamDirectory.tsx
+  // and TeamList.tsx's own TeamCard — invalidates the union of both lists' own query keys, since
+  // the admin may have arrived at this edit screen from either one.
+  const invalidateTeams = () => {
+    queryClient.invalidateQueries({ queryKey: CLUB_TEAMS_QUERY_KEY(clubId) })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sections', sectionId, 'teams'] })
+  }
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateTeam(clubId as string, sectionId as string, teamId as string),
+    onSuccess: invalidateTeams,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateTeam(clubId as string, sectionId as string, teamId as string),
+    onSuccess: invalidateTeams,
+  })
+
+  const toggle = team?.active ? deactivate : reactivate
+
   // --- Contacts (docs/specs/027-team-profile.md), edit mode only ---
 
   const teamContactsQuery = useQuery({
@@ -519,19 +546,25 @@ export default function TeamFormPage() {
         backTo={backTo}
         backLabel="Back to Teams"
         actions={
-          activeTab === 0 ? (
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-              {saveMutation.isError && (
-                <Typography variant="body2" color="error.main">
-                  {errorDetail(saveMutation.error, 'Something went wrong saving this team. Please try again.')}
-                </Typography>
-              )}
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            {activeTab === 0 && (
+              <>
+                {saveMutation.isError && (
+                  <Typography variant="body2" color="error.main">
+                    {errorDetail(saveMutation.error, 'Something went wrong saving this team. Please try again.')}
+                  </Typography>
+                )}
 
-              <Button type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create team'}
-              </Button>
-            </Stack>
-          ) : null
+                <Button type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create team'}
+                </Button>
+              </>
+            )}
+
+            {isEdit && team && (
+              <RecordStatusToggle active={team.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+            )}
+          </Stack>
         }
       >
         {breadcrumbTrail.length > 0 && (

@@ -4,11 +4,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SponsorContactForm, SPONSOR_CONTACT_FORM_ID } from '../../components/SponsorContactForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import {
   listSponsorContacts,
   createSponsorContact,
   updateSponsorContact,
+  deactivateSponsorContact,
+  reactivateSponsorContact,
 } from '../../api/sponsorContactApi'
 import type { SponsorContactPayload } from '../../api/sponsorContactApi'
 import { errorDetail } from '../../utils/errorDetail'
@@ -50,6 +53,24 @@ export default function SponsorContactFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from
+  // SponsorContactList.tsx's own SponsorContactCard — same mutation fn/onSuccess invalidation, now
+  // rendered in this screen's actions bar instead of the list card's footer.
+  const invalidateContacts = () =>
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sponsors', sponsorId, 'contacts'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateSponsorContact(clubId as string, sponsorId as string, contactId as string),
+    onSuccess: invalidateContacts,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateSponsorContact(clubId as string, sponsorId as string, contactId as string),
+    onSuccess: invalidateContacts,
+  })
+
+  const toggle = contact?.active ? deactivate : reactivate
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -87,6 +108,10 @@ export default function SponsorContactFormPage() {
           <Button type="submit" form={SPONSOR_CONTACT_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create contact'}
           </Button>
+
+          {isEdit && contact && (
+            <RecordStatusToggle active={contact.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+          )}
         </Stack>
       }
     >

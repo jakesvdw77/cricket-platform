@@ -1,19 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Box, Button as MuiButton } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
 import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
-import {
-  listSponsorContacts,
-  deactivateSponsorContact,
-  reactivateSponsorContact,
-} from '../../api/sponsorContactApi'
+import { listSponsorContacts } from '../../api/sponsorContactApi'
 import type { SponsorContact } from '../../api/sponsorContactApi'
 import { initialsFromName } from '../../utils/initials'
 
@@ -39,35 +33,10 @@ export function badgeFor(contact: SponsorContact): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per contact, each with its own deactivate/reactivate mutation — mirrors
-// ClubContactList.tsx's ClubContactCard pattern, so one card's pending state never leaks onto
-// another's.
-function SponsorContactCard({
-  clubId,
-  sponsorId,
-  contact,
-}: {
-  clubId: string
-  sponsorId: string
-  contact: SponsorContact
-}) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sponsors', sponsorId, 'contacts'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateSponsorContact(clubId, sponsorId, contact.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateSponsorContact(clubId, sponsorId, contact.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = contact.active ? deactivate : reactivate
-
+// One RecordCard per contact — Deactivate/Reactivate now lives on SponsorContactFormPage's own
+// actions bar (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a
+// read-only summary with "View" as its only footer action.
+function SponsorContactCard({ sponsorId, contact }: { sponsorId: string; contact: SponsorContact }) {
   return (
     <RecordCard
       title={fullName(contact)}
@@ -79,13 +48,6 @@ function SponsorContactCard({
         { label: 'Phone', value: contact.contact.phone },
       ]}
       viewTo={`/manage/sponsors/${sponsorId}/contacts/${contact.id}`}
-      secondaryAction={{
-        label: contact.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: contact.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: contact.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -195,7 +157,7 @@ export default function SponsorContactList() {
           }}
         >
           {visibleContacts.map((contact) => (
-            <SponsorContactCard key={contact.id} clubId={clubId} sponsorId={sponsorId} contact={contact} />
+            <SponsorContactCard key={contact.id} sponsorId={sponsorId} contact={contact} />
           ))}
         </Box>
       )}

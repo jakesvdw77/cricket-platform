@@ -1,19 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import {
-  listClubContacts,
-  deactivateClubContact,
-  reactivateClubContact,
-} from '../../api/clubContactApi'
+import { listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import { initialsFromName } from '../../utils/initials'
 
@@ -38,26 +32,10 @@ export function badgeFor(contact: ClubContact): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per contact, each with its own deactivate/reactivate mutation — mirrors
-// SubscriptionList.tsx's SubscriptionCard pattern, so one card's pending state never leaks onto
-// another's.
-function ClubContactCard({ clubId, contact }: { clubId: string; contact: ClubContact }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'contacts'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateClubContact(clubId, contact.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateClubContact(clubId, contact.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = contact.active ? deactivate : reactivate
-
+// One RecordCard per contact — Deactivate/Reactivate now lives on ClubContactFormPage's own
+// actions bar (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a
+// read-only summary with "View" as its only footer action.
+function ClubContactCard({ contact }: { contact: ClubContact }) {
   return (
     <RecordCard
       title={fullName(contact)}
@@ -69,13 +47,6 @@ function ClubContactCard({ clubId, contact }: { clubId: string; contact: ClubCon
         { label: 'Phone', value: contact.contact.phone },
       ]}
       viewTo={`/manage/club-contacts/${contact.id}`}
-      secondaryAction={{
-        label: contact.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: contact.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: contact.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -162,7 +133,7 @@ export default function ClubContactList() {
           }}
         >
           {visibleContacts.map((contact) => (
-            <ClubContactCard key={contact.id} clubId={clubId} contact={contact} />
+            <ClubContactCard key={contact.id} contact={contact} />
           ))}
         </Box>
       )}

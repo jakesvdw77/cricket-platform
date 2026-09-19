@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
-import { listTeamsForClub, deactivateTeam, reactivateTeam } from '../../api/teamApi'
+import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
@@ -30,30 +28,11 @@ export function badgeFor(team: Team): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per team, each with its own deactivate/reactivate mutation — mirrors
-// ClubContactList.tsx's ClubContactCard pattern, so one card's pending state never leaks onto
-// another's. Called directly with the team's own sectionId (every TeamDto already carries it) —
-// no navigation into Club Structure needed.
-function TeamCard({ clubId, team, sectionBreadcrumb }: { clubId: string; team: Team; sectionBreadcrumb: string }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: CLUB_TEAMS_QUERY_KEY(clubId) })
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sections', team.sectionId, 'teams'] })
-  }
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateTeam(clubId, team.sectionId, team.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateTeam(clubId, team.sectionId, team.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = team.active ? deactivate : reactivate
-
+// One RecordCard per team — Deactivate/Reactivate now lives on TeamFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
+// with "View" as its only footer action. Called directly with the team's own sectionId (every
+// TeamDto already carries it) — no navigation into Club Structure needed.
+function TeamCard({ team, sectionBreadcrumb }: { team: Team; sectionBreadcrumb: string }) {
   return (
     <RecordCard
       title={team.name}
@@ -61,13 +40,6 @@ function TeamCard({ clubId, team, sectionBreadcrumb }: { clubId: string; team: T
       badge={badgeFor(team)}
       fields={[{ label: 'Section', value: sectionBreadcrumb }]}
       viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
-      secondaryAction={{
-        label: team.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: team.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: team.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -184,12 +156,7 @@ export default function TeamDirectory() {
           }}
         >
           {visibleTeams.map((team) => (
-            <TeamCard
-              key={team.id}
-              clubId={clubId}
-              team={team}
-              sectionBreadcrumb={sectionBreadcrumbFor(team.sectionId)}
-            />
+            <TeamCard key={team.id} team={team} sectionBreadcrumb={sectionBreadcrumbFor(team.sectionId)} />
           ))}
         </Box>
       )}

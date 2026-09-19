@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { listLeagues, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
+import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
@@ -44,25 +42,10 @@ export function leagueChips(league: League): string[] {
   return chips
 }
 
-// One RecordCard per league, each with its own deactivate/reactivate mutation — mirrors
-// SponsorList.tsx's SponsorCard pattern, so one card's pending state never leaks onto another's.
-function LeagueCard({ clubId, league }: { clubId: string; league: League }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateLeague(clubId, league.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateLeague(clubId, league.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = league.active ? deactivate : reactivate
-
+// One RecordCard per league — Deactivate/Reactivate now lives on LeagueFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
+// with "View" as its only footer action.
+function LeagueCard({ league }: { league: League }) {
   return (
     <RecordCard
       title={league.name}
@@ -71,13 +54,6 @@ function LeagueCard({ clubId, league }: { clubId: string; league: League }) {
       fields={leagueRecordFields(league)}
       chips={leagueChips(league)}
       viewTo={`/manage/fixtures/leagues/${league.id}`}
-      secondaryAction={{
-        label: league.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: league.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: league.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -159,7 +135,7 @@ export default function LeagueList() {
           }}
         >
           {visibleLeagues.map((league) => (
-            <LeagueCard key={league.id} clubId={clubId} league={league} />
+            <LeagueCard key={league.id} league={league} />
           ))}
         </Box>
       )}

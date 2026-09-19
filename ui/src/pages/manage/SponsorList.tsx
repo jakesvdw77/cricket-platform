@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { listSponsors, deactivateSponsor, reactivateSponsor } from '../../api/sponsorApi'
+import { listSponsors } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
 import { initialsFromName } from '../../utils/initials'
@@ -25,26 +23,10 @@ export function badgeFor(sponsor: Sponsor): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per sponsor, each with its own deactivate/reactivate mutation — mirrors
-// ClubContactList.tsx's ClubContactCard pattern, so one card's pending state never leaks onto
-// another's.
-function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sponsors'] })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateSponsor(clubId, sponsor.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateSponsor(clubId, sponsor.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = sponsor.active ? deactivate : reactivate
-
+// One RecordCard per sponsor — Deactivate/Reactivate now lives on SponsorFormPage's own actions
+// bar (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only
+// summary with "View" as its only footer action.
+function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
   return (
     <RecordCard
       title={sponsor.name}
@@ -52,13 +34,6 @@ function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) 
       badge={badgeFor(sponsor)}
       fields={sponsorRecordFields(sponsor)}
       viewTo={`/manage/sponsors/${sponsor.id}`}
-      secondaryAction={{
-        label: sponsor.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: sponsor.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: sponsor.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -141,7 +116,7 @@ export default function SponsorList() {
           }}
         >
           {visibleSponsors.map((sponsor) => (
-            <SponsorCard key={sponsor.id} clubId={clubId} sponsor={sponsor} />
+            <SponsorCard key={sponsor.id} sponsor={sponsor} />
           ))}
         </Box>
       )}

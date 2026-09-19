@@ -8,15 +8,13 @@ import type { Player } from '../../api/playerApi'
 import type { Section } from '../../api/sectionApi'
 
 const listPlayers = vi.fn()
-const deactivatePlayer = vi.fn()
-const reactivatePlayer = vi.fn()
 const listSections = vi.fn()
 
 // Mirrors SponsorList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/playerApi', () => ({
   listPlayers: (clubId: string, params: unknown) => listPlayers(clubId, params),
-  deactivatePlayer: (clubId: string, playerId: string) => deactivatePlayer(clubId, playerId),
-  reactivatePlayer: (clubId: string, playerId: string) => reactivatePlayer(clubId, playerId),
+  deactivatePlayer: vi.fn(),
+  reactivatePlayer: vi.fn(),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -186,46 +184,20 @@ describe('PlayerList', () => {
     expect(await screen.findByText('Add Player Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate on an active player calls deactivatePlayer and reflects a pending state', async () => {
-    const user = userEvent.setup()
-    listPlayers.mockResolvedValueOnce([makePlayer({ active: true })])
-    let resolveDeactivate: (value: Player) => void = () => {}
-    deactivatePlayer.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
-      }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to — same gotcha as SponsorList.test.tsx's own
-    // equivalent case.
-    listPlayers.mockResolvedValueOnce([makePlayer({ active: false })])
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to PlayerFormPage's own actions bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listPlayers.mockResolvedValueOnce([
+      makePlayer({ id: 'player-1', active: true }),
+      makePlayer({ id: 'player-2', firstName: 'Past', lastName: 'Player', active: false }),
+    ])
 
     renderList('test-club-id')
 
     await screen.findByText('Sipho Ndlovu')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivatePlayer).toHaveBeenCalledWith('test-club-id', 'player-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makePlayer({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate on an inactive player calls reactivatePlayer', async () => {
-    const user = userEvent.setup()
-    listPlayers.mockResolvedValueOnce([makePlayer({ active: false })])
-    reactivatePlayer.mockResolvedValueOnce(makePlayer({ active: true }))
-    // onSuccess invalidates the list query, triggering a refetch.
-    listPlayers.mockResolvedValueOnce([makePlayer({ active: true })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Sipho Ndlovu')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivatePlayer).toHaveBeenCalledWith('test-club-id', 'player-1')
+    expect(screen.getByText('Past Player')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {

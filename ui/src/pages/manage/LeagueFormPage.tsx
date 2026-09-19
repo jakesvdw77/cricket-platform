@@ -9,9 +9,10 @@ import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { RecordCard } from '../../components/RecordCard'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
-import { listLeagues, createLeague, updateLeague } from '../../api/leagueApi'
+import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
@@ -157,6 +158,23 @@ export default function LeagueFormPage() {
     },
   })
 
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from LeagueList.tsx's own
+  // LeagueCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
+  // bar instead of the list card's footer.
+  const invalidateLeagues = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues'] })
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateLeague(clubId as string, leagueId as string),
+    onSuccess: invalidateLeagues,
+  })
+
+  const reactivate = useMutation({
+    mutationFn: () => reactivateLeague(clubId as string, leagueId as string),
+    onSuccess: invalidateLeagues,
+  })
+
+  const toggle = league?.active ? deactivate : reactivate
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -181,19 +199,25 @@ export default function LeagueFormPage() {
         backTo="/manage/fixtures/leagues"
         backLabel="Back to Leagues"
         actions={
-          activeTab === 0 ? (
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-              {saveMutation.isError && (
-                <Typography variant="body2" color="error.main">
-                  {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
-                </Typography>
-              )}
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            {activeTab === 0 && (
+              <>
+                {saveMutation.isError && (
+                  <Typography variant="body2" color="error.main">
+                    {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
+                  </Typography>
+                )}
 
-              <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
-              </Button>
-            </Stack>
-          ) : null
+                <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
+                </Button>
+              </>
+            )}
+
+            {isEdit && league && (
+              <RecordStatusToggle active={league.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+            )}
+          </Stack>
         }
       >
         {isEdit && (

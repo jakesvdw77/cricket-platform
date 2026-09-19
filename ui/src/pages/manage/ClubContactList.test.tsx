@@ -7,14 +7,12 @@ import ClubContactList from './ClubContactList'
 import type { ClubContact } from '../../api/clubContactApi'
 
 const listClubContacts = vi.fn()
-const deactivateClubContact = vi.fn()
-const reactivateClubContact = vi.fn()
 
 // Mirrors ManageClubProfilePage.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/clubContactApi', () => ({
   listClubContacts: (clubId: string) => listClubContacts(clubId),
-  deactivateClubContact: (clubId: string, contactId: string) => deactivateClubContact(clubId, contactId),
-  reactivateClubContact: (clubId: string, contactId: string) => reactivateClubContact(clubId, contactId),
+  deactivateClubContact: vi.fn(),
+  reactivateClubContact: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -163,45 +161,23 @@ describe('ClubContactList', () => {
     expect(await screen.findByText('Add Contact Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate on an active contact calls deactivateClubContact and reflects a pending state', async () => {
-    const user = userEvent.setup()
-    listClubContacts.mockResolvedValueOnce([makeContact({ active: true })])
-    let resolveDeactivate: (value: ClubContact) => void = () => {}
-    deactivateClubContact.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to ClubContactFormPage's own actions bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listClubContacts.mockResolvedValueOnce([
+      makeContact({ id: 'contact-1', active: true }),
+      makeContact({
+        id: 'contact-2',
+        contact: { firstName: 'Past', lastName: 'Treasurer', email: 'past@example.com', phone: '+27 21 555 0199' },
+        active: false,
       }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to — same gotcha as the refetch-after-mutation
-    // note in ManageClubProfilePage.test.tsx/ClubContactFormPage.test.tsx.
-    listClubContacts.mockResolvedValueOnce([makeContact({ active: false })])
+    ])
 
     renderList('test-club-id')
 
     await screen.findByText('Jane Smith')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivateClubContact).toHaveBeenCalledWith('test-club-id', 'contact-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makeContact({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate on an inactive contact calls reactivateClubContact', async () => {
-    const user = userEvent.setup()
-    listClubContacts.mockResolvedValueOnce([makeContact({ active: false })])
-    reactivateClubContact.mockResolvedValueOnce(makeContact({ active: true }))
-    // onSuccess invalidates the list query, triggering a refetch.
-    listClubContacts.mockResolvedValueOnce([makeContact({ active: true })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Jane Smith')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivateClubContact).toHaveBeenCalledWith('test-club-id', 'contact-1')
+    expect(screen.getByText('Past Treasurer')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 })

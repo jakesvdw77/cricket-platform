@@ -8,14 +8,12 @@ import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 
 const listTeamsForClub = vi.fn()
-const deactivateTeam = vi.fn()
-const reactivateTeam = vi.fn()
 const listSections = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string, params: unknown) => listTeamsForClub(clubId, params),
-  deactivateTeam: (clubId: string, sectionId: string, teamId: string) => deactivateTeam(clubId, sectionId, teamId),
-  reactivateTeam: (clubId: string, sectionId: string, teamId: string) => reactivateTeam(clubId, sectionId, teamId),
+  deactivateTeam: vi.fn(),
+  reactivateTeam: vi.fn(),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -188,46 +186,21 @@ describe('TeamDirectory', () => {
     expect(await screen.findByText('Add Team Page')).toBeInTheDocument()
   })
 
-  it('clicking Deactivate calls deactivateTeam directly with the team\'s own sectionId', async () => {
-    const user = userEvent.setup()
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ active: true, sectionId: 'section-1' })])
+  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
+  // the list card at all — active or inactive — it moved to TeamFormPage's own actions bar.
+  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    listTeamsForClub.mockResolvedValueOnce([
+      makeTeam({ id: 'team-1', name: '1st XI', active: true, sectionId: 'section-1' }),
+      makeTeam({ id: 'team-2', name: '2nd XI', active: false, sectionId: 'section-1' }),
+    ])
     listSections.mockResolvedValueOnce([makeSection()])
-    let resolveDeactivate: (value: Team) => void = () => {}
-    deactivateTeam.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveDeactivate = resolve
-      }),
-    )
-    // onSuccess invalidates the list query while this card is still mounted, triggering a
-    // refetch that also needs a value to resolve to.
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ active: false, sectionId: 'section-1' })])
 
     renderDirectory('test-club-id')
 
     await screen.findByText('1st XI')
-    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
-
-    expect(deactivateTeam).toHaveBeenCalledWith('test-club-id', 'section-1', 'team-1')
-    expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-    resolveDeactivate(makeTeam({ active: false }))
-
-    expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
-  })
-
-  it('clicking Reactivate calls reactivateTeam directly with the team\'s own sectionId', async () => {
-    const user = userEvent.setup()
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ active: false, sectionId: 'section-1' })])
-    listSections.mockResolvedValueOnce([makeSection()])
-    reactivateTeam.mockResolvedValueOnce(makeTeam({ active: true }))
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ active: true, sectionId: 'section-1' })])
-
-    renderDirectory('test-club-id')
-
-    await screen.findByText('1st XI')
-    await user.click(screen.getByRole('button', { name: 'Reactivate' }))
-
-    expect(reactivateTeam).toHaveBeenCalledWith('test-club-id', 'section-1', 'team-1')
+    expect(screen.getByText('2nd XI')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
   // docs/specs/036-view-first-record-detail-screens.md: the card's primary footer action is now

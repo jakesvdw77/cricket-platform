@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
-import ToggleOnOutlinedIcon from '@mui/icons-material/ToggleOnOutlined'
+import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { listTeamsForSection, deactivateTeam, reactivateTeam } from '../../api/teamApi'
+import { listTeamsForSection } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
@@ -27,39 +25,16 @@ function badgeFor(team: Team): RecordCardBadge | undefined {
   return undefined
 }
 
-// One RecordCard per team, each with its own deactivate/reactivate mutation — mirrors
-// ClubContactList.tsx's ClubContactCard pattern, so one card's pending state never leaks onto
-// another's.
-function TeamCard({ clubId, sectionId, team }: { clubId: string; sectionId: string; team: Team }) {
-  const queryClient = useQueryClient()
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: TEAMS_QUERY_KEY(clubId, sectionId) })
-
-  const deactivate = useMutation({
-    mutationFn: () => deactivateTeam(clubId, sectionId, team.id),
-    onSuccess: invalidate,
-  })
-
-  const reactivate = useMutation({
-    mutationFn: () => reactivateTeam(clubId, sectionId, team.id),
-    onSuccess: invalidate,
-  })
-
-  const toggle = team.active ? deactivate : reactivate
-
+// One RecordCard per team — Deactivate/Reactivate now lives on TeamFormPage's own actions bar
+// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
+// with "View" as its only footer action.
+function TeamCard({ sectionId, team }: { sectionId: string; team: Team }) {
   return (
     <RecordCard
       title={team.name}
       avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
       badge={badgeFor(team)}
       viewTo={`/manage/sections/${sectionId}/teams/${team.id}`}
-      secondaryAction={{
-        label: team.active ? 'Deactivate' : 'Reactivate',
-        pendingLabel: team.active ? 'Deactivating…' : 'Reactivating…',
-        pending: toggle.isPending,
-        onClick: () => toggle.mutate(),
-        icon: team.active ? <ToggleOffOutlinedIcon fontSize="small" /> : <ToggleOnOutlinedIcon fontSize="small" />,
-      }}
     />
   )
 }
@@ -169,7 +144,7 @@ export default function TeamList() {
           }}
         >
           {visibleTeams.map((team) => (
-            <TeamCard key={team.id} clubId={clubId} sectionId={sectionId} team={team} />
+            <TeamCard key={team.id} sectionId={sectionId} team={team} />
           ))}
         </Box>
       )}
