@@ -14,23 +14,31 @@ import ManagerDashboard from './pages/manage/ManagerDashboard'
 import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
 import ClubContactList from './pages/manage/ClubContactList'
 import ClubContactFormPage from './pages/manage/ClubContactFormPage'
+import ClubContactDetailPage from './pages/manage/ClubContactDetailPage'
 import SponsorList from './pages/manage/SponsorList'
 import SponsorFormPage from './pages/manage/SponsorFormPage'
+import SponsorDetailPage from './pages/manage/SponsorDetailPage'
 import SponsorContactList from './pages/manage/SponsorContactList'
 import SponsorContactFormPage from './pages/manage/SponsorContactFormPage'
+import SponsorContactDetailPage from './pages/manage/SponsorContactDetailPage'
 import ClubStructure from './pages/manage/ClubStructure'
 import TeamDirectory from './pages/manage/TeamDirectory'
 import TeamFormPage from './pages/manage/TeamFormPage'
+import TeamDetailPage from './pages/manage/TeamDetailPage'
 import TeamList from './pages/manage/TeamList'
 import PlayerList from './pages/manage/PlayerList'
 import PlayerFormPage from './pages/manage/PlayerFormPage'
+import PlayerDetailPage from './pages/manage/PlayerDetailPage'
 import ManageFixturesHome from './pages/manage/ManageFixturesHome'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
+import LeagueDetailPage from './pages/manage/LeagueDetailPage'
 import SeasonList from './pages/manage/SeasonList'
 import SeasonFormPage from './pages/manage/SeasonFormPage'
+import SeasonDetailPage from './pages/manage/SeasonDetailPage'
 import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
+import MatchDetailPage from './pages/manage/MatchDetailPage'
 import SquadPicker from './pages/manage/SquadPicker'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
@@ -113,15 +121,22 @@ function App() {
               <Route path="club-profile" element={<ManageClubProfilePage />} />
               <Route path="club-contacts" element={<ClubContactList />} />
               <Route path="club-contacts/new" element={<ClubContactFormPage />} />
+              {/* docs/specs/036-view-first-record-detail-screens.md: the new read-only view
+                  screen — a bare :id route, sibling to the existing :id/edit route, reached by
+                  clicking a card; the edit route stays reachable only via the view screen's own
+                  Edit action (or "Add" from the list, for a record that doesn't exist yet). */}
+              <Route path="club-contacts/:id" element={<ClubContactDetailPage />} />
               <Route path="club-contacts/:id/edit" element={<ClubContactFormPage />} />
               <Route path="sponsors" element={<SponsorList />} />
               <Route path="sponsors/new" element={<SponsorFormPage />} />
+              <Route path="sponsors/:id" element={<SponsorDetailPage />} />
               <Route path="sponsors/:id/edit" element={<SponsorFormPage />} />
               {/* docs/specs/024-sponsor-contacts.md: a sponsor's named contacts, one level deeper
                   than sponsors/:id/edit — reads sponsorId from the route (not :id, to avoid
                   clashing with the sibling sponsors/:id/edit route param name). */}
               <Route path="sponsors/:sponsorId/contacts" element={<SponsorContactList />} />
               <Route path="sponsors/:sponsorId/contacts/new" element={<SponsorContactFormPage />} />
+              <Route path="sponsors/:sponsorId/contacts/:contactId" element={<SponsorContactDetailPage />} />
               <Route path="sponsors/:sponsorId/contacts/:contactId/edit" element={<SponsorContactFormPage />} />
               <Route path="sections" element={<ClubStructure />} />
               {/* docs/specs/026-teams.md: the club-wide Teams directory (006's pre-existing nav
@@ -133,6 +148,7 @@ function App() {
               <Route path="teams/new" element={<TeamFormPage />} />
               <Route path="sections/:sectionId/teams" element={<TeamList />} />
               <Route path="sections/:sectionId/teams/new" element={<TeamFormPage />} />
+              <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
               <Route path="sections/:sectionId/teams/:teamId/edit" element={<TeamFormPage />} />
               {/* docs/specs/028-players.md: the club-wide Players roster (006's pre-existing nav
                   card finally gets a real screen). playerId is a route param (:playerId?),
@@ -140,6 +156,7 @@ function App() {
                   shape. */}
               <Route path="players" element={<PlayerList />} />
               <Route path="players/new" element={<PlayerFormPage />} />
+              <Route path="players/:playerId" element={<PlayerDetailPage />} />
               <Route path="players/:playerId/edit" element={<PlayerFormPage />} />
               {/* docs/specs/029-league-management.md: League/Season/Match administration and
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
@@ -147,12 +164,15 @@ function App() {
               <Route path="fixtures" element={<ManageFixturesHome />} />
               <Route path="fixtures/leagues" element={<LeagueList />} />
               <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
+              <Route path="fixtures/leagues/:leagueId" element={<LeagueDetailPage />} />
               <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueFormPage />} />
               <Route path="fixtures/seasons" element={<SeasonList />} />
               <Route path="fixtures/seasons/new" element={<SeasonFormPage />} />
+              <Route path="fixtures/seasons/:seasonId" element={<SeasonDetailPage />} />
               <Route path="fixtures/seasons/:seasonId/edit" element={<SeasonFormPage />} />
               <Route path="fixtures/matches" element={<MatchList />} />
               <Route path="fixtures/matches/new" element={<MatchFormPage />} />
+              <Route path="fixtures/matches/:matchId" element={<MatchDetailPage />} />
               <Route path="fixtures/matches/:matchId/edit" element={<MatchFormPage />} />
               <Route path="results" element={<EmptyState title="Results" description="Coming soon." />} />
               <Route

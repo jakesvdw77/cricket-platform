@@ -89,7 +89,12 @@ test.describe('Sponsor Contacts golden path (024-sponsor-contacts.md)', () => {
     await expect(sponsorCard).toBeVisible();
 
     // From the existing sponsor's edit screen, open Manage Contacts.
-    await sponsorCard.getByRole('link', { name: 'Edit' }).click();
+    // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
+    // landing on the read-only detail screen first; its own Edit action is what reaches the real
+    // form "Manage Contacts" is actually linked from.
+    await sponsorCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sponsors\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/sponsors\/.+\/edit$/);
     await page.getByRole('link', { name: 'Manage Contacts' }).click();
     await expect(page).toHaveURL(/\/manage\/sponsors\/.+\/contacts$/);

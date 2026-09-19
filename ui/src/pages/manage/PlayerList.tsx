@@ -19,11 +19,13 @@ import { playerRecordFields } from '../../utils/playerRecordFields'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
-function fullName(player: Player): string {
+// Exported for PlayerDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's title/badge match this card's exactly, rather than a second copy.
+export function fullName(player: Player): string {
   return `${player.firstName} ${player.lastName}`
 }
 
-function badgeFor(player: Player): RecordCardBadge | undefined {
+export function badgeFor(player: Player): RecordCardBadge | undefined {
   if (!player.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
@@ -57,8 +59,7 @@ function PlayerCard({ clubId, player, sectionNames }: { clubId: string; player: 
       badge={badgeFor(player)}
       fields={playerRecordFields(player)}
       chips={sectionNames}
-      editLabel="Edit"
-      editTo={`/manage/players/${player.id}/edit`}
+      viewTo={`/manage/players/${player.id}`}
       secondaryAction={{
         label: player.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: player.active ? 'Deactivating…' : 'Reactivating…',

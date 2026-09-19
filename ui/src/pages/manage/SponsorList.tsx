@@ -16,7 +16,9 @@ import { initialsFromName } from '../../utils/initials'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
-function badgeFor(sponsor: Sponsor): RecordCardBadge | undefined {
+// Exported for SponsorDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's badge matches this card's exactly, rather than a second copy.
+export function badgeFor(sponsor: Sponsor): RecordCardBadge | undefined {
   if (!sponsor.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
@@ -49,8 +51,7 @@ function SponsorCard({ clubId, sponsor }: { clubId: string; sponsor: Sponsor }) 
       avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
       badge={badgeFor(sponsor)}
       fields={sponsorRecordFields(sponsor)}
-      editLabel="Edit"
-      editTo={`/manage/sponsors/${sponsor.id}/edit`}
+      viewTo={`/manage/sponsors/${sponsor.id}`}
       secondaryAction={{
         label: sponsor.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: sponsor.active ? 'Deactivating…' : 'Reactivating…',

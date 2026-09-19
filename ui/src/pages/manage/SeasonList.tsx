@@ -15,7 +15,9 @@ import type { Season } from '../../api/seasonApi'
 
 const SORT_OPTIONS = [{ value: 'label,asc', label: 'Label' }]
 
-function badgeFor(season: Season): RecordCardBadge | undefined {
+// Exported for SeasonDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's badge matches this card's exactly, rather than a second copy.
+export function badgeFor(season: Season): RecordCardBadge | undefined {
   if (!season.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
@@ -50,8 +52,7 @@ function SeasonCard({ clubId, season }: { clubId: string; season: Season }) {
         { label: 'Start date', value: season.startDate },
         { label: 'End date', value: season.endDate },
       ]}
-      editLabel="Edit"
-      editTo={`/manage/fixtures/seasons/${season.id}/edit`}
+      viewTo={`/manage/fixtures/seasons/${season.id}`}
       secondaryAction={{
         label: season.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: season.active ? 'Deactivating…' : 'Reactivating…',

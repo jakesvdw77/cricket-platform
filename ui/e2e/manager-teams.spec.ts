@@ -158,8 +158,12 @@ test.describe('Teams golden paths (026-teams.md, extended by 027-team-profile.md
     let teamCard = page.locator('.MuiCard-root').filter({ hasText: teamName });
     await expect(teamCard).toBeVisible();
 
-    // Rename it.
-    await teamCard.getByRole('link', { name: 'Edit' }).click();
+    // Rename it. docs/specs/036-view-first-record-detail-screens.md: the card's primary action is
+    // now View, landing on the read-only detail screen first; its own Edit action is what reaches
+    // the real form.
+    await teamCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/.+\/edit$/);
     await expect(page.getByLabel('Name')).toHaveValue(teamName);
     await page.getByLabel('Name').fill(renamedTeamName);
@@ -341,7 +345,9 @@ test.describe('Teams golden paths (026-teams.md, extended by 027-team-profile.md
 
     let teamCard = page.locator('.MuiCard-root').filter({ hasText: teamName });
     await expect(teamCard).toBeVisible();
-    await teamCard.getByRole('link', { name: 'Edit' }).click();
+    await teamCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/.+\/edit$/);
 
     // The team's own edit-page breadcrumb shows the full path too — all three ancestor names, not
@@ -378,7 +384,9 @@ test.describe('Teams golden paths (026-teams.md, extended by 027-team-profile.md
     // Reopen it — the override persisted server-side, so the club-logo caption no longer shows
     // regardless of the club's own logo state (this team now has one of its own).
     teamCard = page.locator('.MuiCard-root').filter({ hasText: teamName });
-    await teamCard.getByRole('link', { name: 'Edit' }).click();
+    await teamCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page.getByRole('button', { name: 'Replace' })).toBeVisible();
     await expect(clubLogoCaption).not.toBeVisible();
 
@@ -389,7 +397,9 @@ test.describe('Teams golden paths (026-teams.md, extended by 027-team-profile.md
     await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams$/);
 
     teamCard = page.locator('.MuiCard-root').filter({ hasText: teamName });
-    await teamCard.getByRole('link', { name: 'Edit' }).click();
+    await teamCard.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections\/[^/]+\/teams\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page.getByRole('button', { name: 'Upload Logo' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reset to club logo' })).not.toBeVisible();
     if (clubHasLogo) {

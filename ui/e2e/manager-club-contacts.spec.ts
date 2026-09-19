@@ -103,8 +103,12 @@ test.describe('Club Contacts golden path (021-club-contacts.md)', () => {
     await expect(card.getByText('Primary')).toBeVisible();
     await expect(card.getByText('Chairman')).toBeVisible();
 
-    // Edit — change the role.
-    await card.getByRole('link', { name: 'Edit' }).click();
+    // Edit — change the role. docs/specs/036-view-first-record-detail-screens.md: the card's
+    // primary action is now View, landing on the read-only detail screen first; its own Edit
+    // action is what reaches the real form.
+    await card.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/club-contacts\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/club-contacts\/.+\/edit$/);
     await expect(page.getByLabel('First name')).toHaveValue(firstName);
 

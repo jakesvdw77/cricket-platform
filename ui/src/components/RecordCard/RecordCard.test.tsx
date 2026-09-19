@@ -265,6 +265,52 @@ describe('RecordCard', () => {
     expect(screen.getByTestId('deactivate-icon')).toBeInTheDocument()
   })
 
+  // docs/specs/036-view-first-record-detail-screens.md: viewTo becomes the footer's primary
+  // action ("View", VisibilityOutlined) and suppresses editTo entirely, even when editTo is still
+  // passed — the view screen it leads to owns the one Edit action instead.
+  it('renders a View action and suppresses Edit when viewTo is provided, even alongside editTo', () => {
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={
+              <RecordCard
+                title="Jane Smith"
+                editLabel="Edit"
+                editTo="/manage/players/p-1/edit"
+                viewTo="/manage/players/p-1"
+              />
+            }
+          />
+          <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/p-1')
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  // Existing editTo/onEdit-only call sites (anything not touched by 036) are unaffected — purely
+  // additive, per the plan.
+  it('keeps rendering the Edit action normally when viewTo is not provided', () => {
+    render(
+      <MemoryRouter initialEntries={['/products']}>
+        <Routes>
+          <Route
+            path="/products"
+            element={<RecordCard title="Club Standard" editLabel="Edit" editTo="/products/p-1/edit" />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/products/p-1/edit')
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+  })
+
   // Regression coverage (docs/specs/031-jersey-numbers.md): a field's `value` can be a real form
   // control, not just static text — TeamFormPage's inline "Squad #" edit passes an MUI Input.
   // The value slot used to render inside a Typography variant="body2" with no `component`

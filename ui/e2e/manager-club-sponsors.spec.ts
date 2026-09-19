@@ -108,8 +108,12 @@ test.describe('Club Sponsors golden path (023-sponsors.md)', () => {
     await expect(card).toBeVisible();
     await expect(card.getByText('https://e2e-sponsor.example.com')).toBeVisible();
 
-    // Edit — change the name.
-    await card.getByRole('link', { name: 'Edit' }).click();
+    // Edit — change the name. docs/specs/036-view-first-record-detail-screens.md: the card's
+    // primary action is now View, landing on the read-only detail screen first; its own Edit
+    // action is what reaches the real form.
+    await card.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sponsors\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/sponsors\/.+\/edit$/);
     await expect(page.getByLabel('Name')).toHaveValue(sponsorName);
 
@@ -146,7 +150,9 @@ test.describe('Club Sponsors golden path (023-sponsors.md)', () => {
     await expect(card.getByText('Inactive')).not.toBeVisible();
     await expect(card.getByRole('button', { name: 'Deactivate' })).toBeVisible();
 
-    await card.getByRole('link', { name: 'Edit' }).click();
+    await card.getByRole('link', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/manage\/sponsors\/[^/]+$/);
+    await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page.getByLabel('Name')).toHaveValue(renamedSponsorName);
     await page.getByRole('tab', { name: 'Branding' }).click();
     await expect(page.getByRole('button', { name: 'Replace' })).toBeVisible();

@@ -171,6 +171,24 @@ export const WithInitialsAvatar: Story = {
   },
 }
 
+// docs/specs/036-view-first-record-detail-screens.md: viewTo becomes the footer's primary action
+// ("View", VisibilityOutlined) and suppresses editTo/onEdit entirely — the new view screen it
+// leads to owns the record's one Edit action instead.
+export const WithViewTo: Story = {
+  args: {
+    title: 'Jane Smith',
+    avatar: { fallback: 'JA', shape: 'circular' },
+    badge: { label: 'Active', tone: 'positive' },
+    description: 'Club Treasurer',
+    fields: [
+      { label: 'Email', value: 'jane.smith@example.com' },
+      { label: 'Phone', value: '+27 82 555 0101' },
+    ],
+    editTo: '/manage/club-contacts/c-1/edit',
+    viewTo: '/manage/club-contacts/c-1',
+  },
+}
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280.
 export const MobileViewport: Story = {
   args: Active.args,
