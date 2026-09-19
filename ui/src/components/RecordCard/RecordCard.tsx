@@ -3,6 +3,7 @@ import { Avatar, Card as MuiCard, CardActions, CardContent, Chip, Stack, Typogra
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Button } from '../Button'
 
 export type RecordCardBadgeTone = 'positive' | 'neutral' | 'muted'
@@ -62,9 +63,17 @@ export interface RecordCardProps {
   description?: string | null
   fields?: RecordCardField[]
   chips?: string[]
-  editLabel: string
+  // Optional — required historically, but a viewTo-only call site (docs/specs/
+  // 036-view-first-record-detail-screens.md) has no use for it, since the footer's primary action
+  // becomes "View" instead. Defaults to 'Edit' for every existing call site's own convenience.
+  editLabel?: string
   onEdit?: () => void
   editTo?: string
+  // docs/specs/036-view-first-record-detail-screens.md: when present, this becomes the footer's
+  // primary action ("View", VisibilityOutlined) and editTo/onEdit — even if still passed — are
+  // suppressed entirely. Purely additive: any call site not passing this keeps its existing
+  // Edit-only footer unchanged.
+  viewTo?: string
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
   // card carrying both Deactivate/Reactivate (secondaryAction) and "Communicate Team Sheet"
@@ -92,9 +101,10 @@ export function RecordCard({
   description,
   fields,
   chips,
-  editLabel,
+  editLabel = 'Edit',
   onEdit,
   editTo,
+  viewTo,
   secondaryAction,
   secondaryActions,
   feedback,
@@ -217,7 +227,18 @@ export function RecordCard({
             {action.pending ? action.pendingLabel : action.label}
           </Button>
         ))}
-        {editTo ? (
+        {viewTo ? (
+          <MuiButton
+            component={RouterLink}
+            to={viewTo}
+            variant="text"
+            color="inherit"
+            size="small"
+            startIcon={<VisibilityOutlinedIcon fontSize="small" />}
+          >
+            View
+          </MuiButton>
+        ) : editTo ? (
           <MuiButton
             component={RouterLink}
             to={editTo}
