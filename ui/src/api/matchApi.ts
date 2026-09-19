@@ -127,3 +127,23 @@ export async function reactivateMatch(clubId: string, matchId: string): Promise<
   const { data } = await api.post<Match>(`${matchesPath(clubId)}/${matchId}/reactivate`)
   return data
 }
+
+// docs/specs/037-match-improvements.md item 9's "Re-select from Previous Match" picker — a
+// Team's own previous matches for a given Season, nested off clubId + teamId + seasonId
+// (TeamPreviousMatchController.java) rather than the club-wide, paginated /matches list above.
+// Already filtered/ordered server-side: same team (either side), exact seasonId, exact leagueId
+// match (including null-to-null), active, already-played, and has at least one MatchSidePlayer —
+// newest-first. Returns a plain, unpaginated Match[] reusing the existing MatchDto shape, so no
+// new frontend type is needed.
+export async function listPreviousMatches(
+  clubId: string,
+  teamId: string,
+  seasonId: string,
+  { leagueId, excludeMatchId }: { leagueId?: string | null; excludeMatchId?: string },
+): Promise<Match[]> {
+  const { data } = await api.get<Match[]>(
+    `/manage/clubs/${clubId}/teams/${teamId}/seasons/${seasonId}/matches/previous`,
+    { params: { ...(leagueId ? { leagueId } : {}), ...(excludeMatchId ? { excludeMatchId } : {}) } },
+  )
+  return data
+}

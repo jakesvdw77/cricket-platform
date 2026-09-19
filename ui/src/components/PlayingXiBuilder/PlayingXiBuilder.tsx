@@ -94,6 +94,11 @@ export interface PlayingXiBuilderProps {
   // in the page" rule) — omitted entirely when not passed, so every existing call site/story/test
   // that doesn't pass this keeps its current "Add player" row unchanged.
   onAddSquadMember?: () => void
+  // docs/specs/037-match-improvements.md item 9: opens the caller's own "Re-select from Previous
+  // Match" picker (MatchSideTab owns the actual picker/confirm dialog/copy mutation, per
+  // docs/standards/frontend.md's "server state in the page" rule) — omitted entirely when not
+  // passed, so every existing call site/story/test that doesn't pass this is unaffected.
+  onReselectFromPreviousMatch?: () => void
 }
 
 // docs/specs/029-league-management.md's genuinely new component: an ordered, role-tagged
@@ -120,6 +125,7 @@ export function PlayingXiBuilder({
   errorMessage,
   availabilityByPlayerId = new Map(),
   onAddSquadMember,
+  onReselectFromPreviousMatch,
 }: PlayingXiBuilderProps) {
   const [addSelection, setAddSelection] = useState<SquadMember | null>(null)
   const [addRole, setAddRole] = useState<PlayingRole>('BATSMAN')
@@ -481,6 +487,16 @@ export function PlayingXiBuilder({
         {onAddSquadMember && (
           <Button variant="secondary" onClick={onAddSquadMember} sx={{ flex: 'none' }}>
             Add Squad Member
+          </Button>
+        )}
+
+        {/* docs/specs/037-match-improvements.md item 9: purely additive — omitted entirely when
+            onReselectFromPreviousMatch isn't passed, so every existing call site/story/test keeps
+            working unchanged. MatchSideTab owns the actual picker/confirm dialog/copy mutation
+            this opens. */}
+        {onReselectFromPreviousMatch && (
+          <Button variant="secondary" onClick={onReselectFromPreviousMatch} sx={{ flex: 'none' }}>
+            Re-select from Previous Match
           </Button>
         )}
       </Box>
