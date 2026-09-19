@@ -515,6 +515,37 @@ class LeagueControllerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * Per docs/specs/035-section-scoped-access.md: League/Season/LeagueAffiliation stay
+     * CLUB-scope-only — a pure SECTION-scope caller (no CLUB-scope grant at all) still gets a
+     * clean 403, unchanged from before that spec.
+     */
+    @Test
+    void aPureSectionScopedCallerWithNoClubScopeGrantStillGets403() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", section.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(sectionAdmin))
+                .andExpect(status().isForbidden());
+    }
+
+    private JwtRequestPostProcessor grantSectionAdmin(String keycloakUserId, UUID sectionId) {
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jamie")
+                .lastName("SectionAdmin")
+                .email(keycloakUserId + "@example.com")
+                .keycloakUserId(keycloakUserId)
+                .build());
+        roleAssignmentRepository.save(RoleAssignment.builder()
+                .personId(person.getId())
+                .role(RoleAssignmentRole.CLUB_ADMIN)
+                .scopeType(ScopeType.SECTION)
+                .scopeId(sectionId)
+                .build());
+        return withSubject(keycloakUserId);
+    }
+
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {
         Person person = personRepository.save(Person.builder()
                 .firstName("Casey")

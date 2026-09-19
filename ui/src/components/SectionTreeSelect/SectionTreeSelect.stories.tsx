@@ -54,8 +54,17 @@ function InteractiveDemo() {
   return <SectionTreeSelect label="Section" sections={SECTIONS} value={value} onChange={setValue} />
 }
 
+function InteractiveClearableDemo() {
+  const [value, setValue] = useState<string | null>(null)
+  return <SectionTreeSelect label="Section" sections={SECTIONS} value={value} allowClear onChange={setValue} />
+}
+
 export const Empty: Story = {
   render: () => <InteractiveDemo />,
+}
+
+export const FilterModeWithClear: Story = {
+  render: () => <InteractiveClearableDemo />,
 }
 
 export const WithValueSelected: Story = {

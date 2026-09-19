@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
@@ -15,11 +16,14 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,38 +49,60 @@ public class MatchServiceImpl implements MatchService {
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;
     private final MatchMapper matchMapper;
+    private final AccessService accessService;
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             TeamRepository teamRepository,
-            MatchMapper matchMapper) {
+            MatchMapper matchMapper,
+            AccessService accessService) {
         this.matchRepository = matchRepository;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.teamRepository = teamRepository;
         this.matchMapper = matchMapper;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<MatchDto> list(UUID clubId, Pageable pageable) {
-        return matchRepository.findByClubId(clubId, withDefaultSort(pageable)).map(matchMapper::toDto);
+    public Page<MatchDto> list(Authentication authentication, UUID clubId, UUID sectionId, Pageable pageable) {
+        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Pageable sorted = withDefaultSort(pageable);
+
+        if (sectionId != null) {
+            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            Set<UUID> narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
+            return matchRepository.findByClubIdAndSectionIdIn(clubId, narrowTo, sorted).map(matchMapper::toDto);
+        }
+        if (accessibleSectionIds.isPresent()) {
+            return matchRepository
+                    .findByClubIdAndSectionIdIn(clubId, accessibleSectionIds.get(), sorted)
+                    .map(matchMapper::toDto);
+        }
+        return matchRepository.findByClubId(clubId, sorted).map(matchMapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MatchDto get(UUID clubId, UUID matchId) {
-        return matchMapper.toDto(findOrThrowForClub(clubId, matchId));
+    public MatchDto get(Authentication authentication, UUID clubId, UUID matchId) {
+        Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        return matchMapper.toDto(match);
     }
 
     @Override
     @Transactional
-    public MatchDto create(UUID clubId, CreateMatchRequest request) {
+    public MatchDto create(Authentication authentication, UUID clubId, CreateMatchRequest request) {
         validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
+        accessService.assertCanAdministerAnySection(
+                authentication,
+                clubId,
+                accessService.resolveMatchSectionIds(clubId, request.homeTeamId(), request.awayTeamId()));
 
         Match match = Match.builder()
                 .clubId(clubId)
@@ -96,12 +122,13 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
-    public MatchDto update(UUID clubId, UUID matchId, UpdateMatchRequest request) {
+    public MatchDto update(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchRequest request) {
         validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
 
         Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         match.setHomeTeamId(request.homeTeamId());
         match.setHomeTeamName(request.homeTeamName());
         match.setAwayTeamId(request.awayTeamId());
@@ -116,8 +143,9 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
-    public MatchDto deactivate(UUID clubId, UUID matchId) {
+    public MatchDto deactivate(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         if (!match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already inactive: " + matchId);
         }
@@ -127,8 +155,9 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
-    public MatchDto reactivate(UUID clubId, UUID matchId) {
+    public MatchDto reactivate(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         if (match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already active: " + matchId);
         }
@@ -191,6 +220,17 @@ public class MatchServiceImpl implements MatchService {
         if (!teamRepository.existsById(teamId)) {
             throw new NotFoundException("Team not found: " + teamId);
         }
+    }
+
+    /**
+     * Per docs/specs/035-section-scoped-access.md: a section-scoped caller may only reach a match
+     * that resolves to at least one of their own accessible sections; a match resolving to zero
+     * of this club's own sections is reachable only by a {@code CLUB}-scope admin.
+     */
+    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+        Set<UUID> matchSectionIds =
+                accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
+        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
     }
 
     /**

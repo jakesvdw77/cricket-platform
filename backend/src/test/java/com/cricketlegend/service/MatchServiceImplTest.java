@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
@@ -33,6 +34,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for MatchServiceImpl's business rules from docs/specs/029-league-management.md: the
@@ -59,12 +63,17 @@ class MatchServiceImplTest {
     @Mock
     private MatchMapper matchMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private MatchServiceImpl matchService;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
         matchService = new MatchServiceImpl(
-                matchRepository, leagueRepository, seasonRepository, teamRepository, matchMapper);
+                matchRepository, leagueRepository, seasonRepository, teamRepository, matchMapper, accessService);
     }
 
     private MatchDto dummyDto() {
@@ -97,7 +106,7 @@ class MatchServiceImplTest {
                 UUID.randomUUID(), "Occasionals", null, "Away Team", null, UUID.randomUUID(),
                 Instant.now(), null);
 
-        assertThatThrownBy(() -> matchService.create(clubId, request))
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
         verify(matchRepository, never()).save(any());
     }
@@ -108,7 +117,7 @@ class MatchServiceImplTest {
         CreateMatchRequest request = new CreateMatchRequest(
                 UUID.randomUUID(), null, null, null, null, UUID.randomUUID(), Instant.now(), null);
 
-        assertThatThrownBy(() -> matchService.create(clubId, request))
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
         verify(matchRepository, never()).save(any());
     }
@@ -123,7 +132,7 @@ class MatchServiceImplTest {
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", null, seasonId, Instant.now(), null);
 
-        assertThatThrownBy(() -> matchService.create(clubId, request))
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
         verify(matchRepository, never()).save(any());
     }
@@ -140,7 +149,7 @@ class MatchServiceImplTest {
                 null, "Home Occasionals", null, "Away Occasionals", leagueId, seasonId, Instant.now(),
                 null);
 
-        assertThatThrownBy(() -> matchService.create(clubId, request))
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
         verify(matchRepository, never()).save(any());
     }
@@ -159,7 +168,7 @@ class MatchServiceImplTest {
         CreateMatchRequest request = new CreateMatchRequest(
                 otherClubsTeamId, null, null, "Away Occasionals", null, seasonId, Instant.now(), null);
 
-        matchService.create(clubId, request);
+        matchService.create(authentication, clubId, request);
 
         Match saved = captor.getValue();
         assertThat(saved.getClubId()).isEqualTo(clubId);
@@ -177,7 +186,7 @@ class MatchServiceImplTest {
         CreateMatchRequest request = new CreateMatchRequest(
                 missingTeamId, null, null, "Away Occasionals", null, seasonId, Instant.now(), null);
 
-        assertThatThrownBy(() -> matchService.create(clubId, request))
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
         verify(matchRepository, never()).save(any());
     }
@@ -196,7 +205,7 @@ class MatchServiceImplTest {
         CreateMatchRequest request = new CreateMatchRequest(
                 otherClubsHomeTeamId, null, null, "Away Occasionals", null, seasonId, Instant.now(), null);
 
-        matchService.create(actingClubId, request);
+        matchService.create(authentication, actingClubId, request);
 
         assertThat(captor.getValue().getClubId()).isEqualTo(actingClubId);
     }
@@ -210,7 +219,7 @@ class MatchServiceImplTest {
         when(matchRepository.save(existing)).thenReturn(existing);
         when(matchMapper.toDto(existing)).thenReturn(dummyDto());
 
-        matchService.deactivate(clubId, matchId);
+        matchService.deactivate(authentication, clubId, matchId);
 
         assertThat(existing.isActive()).isFalse();
     }
@@ -222,7 +231,7 @@ class MatchServiceImplTest {
         Match existing = existingMatch(matchId, clubId, false);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> matchService.deactivate(clubId, matchId))
+        assertThatThrownBy(() -> matchService.deactivate(authentication, clubId, matchId))
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
@@ -235,7 +244,7 @@ class MatchServiceImplTest {
         when(matchRepository.save(existing)).thenReturn(existing);
         when(matchMapper.toDto(existing)).thenReturn(dummyDto());
 
-        matchService.reactivate(clubId, matchId);
+        matchService.reactivate(authentication, clubId, matchId);
 
         assertThat(existing.isActive()).isTrue();
     }
@@ -247,7 +256,7 @@ class MatchServiceImplTest {
         Match existing = existingMatch(matchId, clubId, true);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> matchService.reactivate(clubId, matchId))
+        assertThatThrownBy(() -> matchService.reactivate(authentication, clubId, matchId))
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
@@ -259,7 +268,7 @@ class MatchServiceImplTest {
         Match existing = existingMatch(matchId, otherClubId, true);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> matchService.get(clubId, matchId)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> matchService.get(authentication, clubId, matchId)).isInstanceOf(NotFoundException.class);
     }
 
     @Test
@@ -269,8 +278,80 @@ class MatchServiceImplTest {
         UpdateMatchRequest request = new UpdateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", null, null, Instant.now(), null);
 
-        assertThatThrownBy(() -> matchService.update(clubId, matchId, request))
+        assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
         verify(matchRepository, never()).save(any());
+    }
+
+    // --- 035: section-scoped access ---
+
+    @Test
+    void getThrowsAccessDeniedWhenCallerCannotAdministerAnyOfTheMatchsResolvedSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        java.util.Set<UUID> resolvedSections = java.util.Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, existing.getHomeTeamId(), existing.getAwayTeamId()))
+                .thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> matchService.get(authentication, clubId, matchId))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+    }
+
+    @Test
+    void listUsesThePlainClubWideQueryForAnUnrestrictedCallerWithNoExplicitSectionFilter() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, pageable);
+
+        verify(matchRepository).findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any());
+        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
+    }
+
+    @Test
+    void listUsesTheSectionFilteredQueryForARestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        UUID accessibleSectionId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubIdAndSectionIdIn(
+                        org.mockito.ArgumentMatchers.eq(clubId),
+                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
+                        any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, pageable);
+
+        verify(matchRepository, never()).findByClubId(any(), any());
+    }
+
+    @Test
+    void listUsesTheSectionFilteredQueryWhenAnExplicitSectionIdIsSuppliedEvenForAnUnrestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID descendantSectionId = UUID.randomUUID();
+        when(accessService.sectionAndDescendantIds(clubId, sectionId))
+                .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findByClubIdAndSectionIdIn(
+                        org.mockito.ArgumentMatchers.eq(clubId), any(), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, sectionId, pageable);
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        verify(matchRepository, never()).findByClubId(any(), any());
     }
 }

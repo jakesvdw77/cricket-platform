@@ -125,6 +125,27 @@ class RoleAssignmentRepositoryTest {
     }
 
     @Test
+    void findByPersonIdAndRoleAndScopeTypeReturnsOnlySectionScopeRowsExcludingClubScopeAndOtherPersons() {
+        Person person = savedPerson("jane.doe@example.com");
+        Person otherPerson = savedPerson("other.person@example.com");
+        UUID clubId = UUID.randomUUID();
+        UUID juniorsSectionId = UUID.randomUUID();
+        UUID vetsSectionId = UUID.randomUUID();
+        roleAssignmentRepository.save(grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, clubId));
+        RoleAssignment juniorsGrant = roleAssignmentRepository.save(
+                grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.SECTION, juniorsSectionId));
+        RoleAssignment vetsGrant = roleAssignmentRepository.save(
+                grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.SECTION, vetsSectionId));
+        roleAssignmentRepository.save(
+                grant(otherPerson.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.SECTION, juniorsSectionId));
+
+        assertThat(roleAssignmentRepository.findByPersonIdAndRoleAndScopeType(
+                        person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.SECTION))
+                .extracting(RoleAssignment::getId)
+                .containsExactlyInAnyOrder(juniorsGrant.getId(), vetsGrant.getId());
+    }
+
+    @Test
     void chkRoleAssignmentScopeIdRejectsANonPlatformRowWithANullScopeId() {
         Person person = savedPerson("jane.doe@example.com");
         RoleAssignment invalid = grant(person.getId(), RoleAssignmentRole.CLUB_ADMIN, ScopeType.CLUB, null);

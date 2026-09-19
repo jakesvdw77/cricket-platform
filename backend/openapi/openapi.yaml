@@ -1886,6 +1886,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         "200":
           description: OK
@@ -2032,6 +2038,12 @@ paths:
       - name: clubId
         in: path
         required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
         schema:
           type: string
           format: uuid
@@ -2790,6 +2802,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         "200":
           description: OK
@@ -2983,6 +3001,33 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchAvailabilityPollResponsesDto"
+  /api/v1/manage/clubs/{clubId}/availability-polls/open:
+    get:
+      tags:
+      - match-availability-poll-controller
+      operationId: listOpen
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenAvailabilityPollDto"
 components:
   schemas:
     SetPlayerAvailabilityRequest:
@@ -4678,11 +4723,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -4697,24 +4742,24 @@ components:
           format: int64
         sort:
           $ref: "#/components/schemas/SortObject"
-        paged:
-          type: boolean
-        unpaged:
-          type: boolean
         pageNumber:
           type: integer
           format: int32
         pageSize:
           type: integer
           format: int32
+        unpaged:
+          type: boolean
+        paged:
+          type: boolean
     SortObject:
       type: object
       properties:
         empty:
           type: boolean
-        sorted:
-          type: boolean
         unsorted:
+          type: boolean
+        sorted:
           type: boolean
     PageProductDto:
       type: object
@@ -4737,11 +4782,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -4769,11 +4814,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -4810,11 +4855,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -4860,11 +4905,11 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
@@ -4905,14 +4950,78 @@ components:
           format: int32
         sort:
           $ref: "#/components/schemas/SortObject"
-        pageable:
-          $ref: "#/components/schemas/PageableObject"
         numberOfElements:
           type: integer
           format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
         first:
           type: boolean
         last:
           type: boolean
         empty:
           type: boolean
+    AvailabilityRespondentDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        squadJerseyNumber:
+          type: integer
+          format: int32
+    OpenAvailabilityPollDto:
+      type: object
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        homeTeamId:
+          type: string
+          format: uuid
+        homeTeamName:
+          type: string
+        awayTeamId:
+          type: string
+          format: uuid
+        awayTeamName:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        availableCount:
+          type: integer
+          format: int64
+        unavailableCount:
+          type: integer
+          format: int64
+        unsureCount:
+          type: integer
+          format: int64
+        noResponseCount:
+          type: integer
+          format: int64
+        availableRespondents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityRespondentDto"
+        unavailableRespondents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityRespondentDto"
+        unsureRespondents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityRespondentDto"

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,7 @@ const reactivateTeam = vi.fn()
 const listSections = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
-  listTeamsForClub: (clubId: string) => listTeamsForClub(clubId),
+  listTeamsForClub: (clubId: string, params: unknown) => listTeamsForClub(clubId, params),
   deactivateTeam: (clubId: string, sectionId: string, teamId: string) => deactivateTeam(clubId, sectionId, teamId),
   reactivateTeam: (clubId: string, sectionId: string, teamId: string) => reactivateTeam(clubId, sectionId, teamId),
 }))
@@ -238,5 +238,29 @@ describe('TeamDirectory', () => {
 
     const editLink = await screen.findByRole('link', { name: 'Edit' })
     expect(editLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1/edit')
+  })
+
+  it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
+    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'Men' })])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id', { sectionId: undefined })
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(within(screen.getByRole('treeitem', { name: 'Men' })).getByText('Men'))
+
+    expect(await screen.findByLabelText('Section')).toHaveValue('Men')
+    await waitFor(() => expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(screen.getByRole('button', { name: /all sections/i }))
+
+    await waitFor(() =>
+      expect(listTeamsForClub).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
+    )
   })
 })

@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.ClubMembership;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonStatus;
@@ -20,8 +21,11 @@ import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.service.PlayerService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +55,7 @@ public class PlayerServiceImpl implements PlayerService {
     private final PlayerProfileRepository playerProfileRepository;
     private final PlayerSectionRepository playerSectionRepository;
     private final PlayerMapper playerMapper;
+    private final AccessService accessService;
 
     public PlayerServiceImpl(
             ClubRepository clubRepository,
@@ -58,21 +63,40 @@ public class PlayerServiceImpl implements PlayerService {
             ClubMembershipRepository clubMembershipRepository,
             PlayerProfileRepository playerProfileRepository,
             PlayerSectionRepository playerSectionRepository,
-            PlayerMapper playerMapper) {
+            PlayerMapper playerMapper,
+            AccessService accessService) {
         this.clubRepository = clubRepository;
         this.personRepository = personRepository;
         this.clubMembershipRepository = clubMembershipRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.playerSectionRepository = playerSectionRepository;
         this.playerMapper = playerMapper;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PlayerDto> list(UUID clubId) {
+    public List<PlayerDto> list(Authentication authentication, UUID clubId, UUID sectionId) {
+        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Set<UUID> narrowTo = null;
+        if (sectionId != null) {
+            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
+        }
+        final Set<UUID> narrowToFinal = narrowTo;
+
         return playerProfileRepository.findByClubId(clubId).stream()
-                .map(profile -> playerMapper.toDto(
-                        findPersonOrThrow(profile.getPersonId()), profile, sectionIds(profile.getId())))
+                .map(profile -> Map.entry(profile, sectionIds(profile.getId())))
+                .filter(entry -> {
+                    List<UUID> tagged = entry.getValue();
+                    if (accessibleSectionIds.isPresent()
+                            && tagged.stream().noneMatch(accessibleSectionIds.get()::contains)) {
+                        return false;
+                    }
+                    return narrowToFinal == null || tagged.stream().anyMatch(narrowToFinal::contains);
+                })
+                .map(entry -> playerMapper.toDto(
+                        findPersonOrThrow(entry.getKey().getPersonId()), entry.getKey(), entry.getValue()))
                 .toList();
     }
 
@@ -124,8 +148,9 @@ public class PlayerServiceImpl implements PlayerService {
 
     @Override
     @Transactional
-    public PlayerDto update(UUID clubId, UUID playerId, UpdatePlayerRequest request) {
+    public PlayerDto update(Authentication authentication, UUID clubId, UUID playerId, UpdatePlayerRequest request) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
+        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
         requireNonNegativeJerseyNumber(request.jerseyNumber());
         Person person = findPersonOrThrow(profile.getPersonId());
 
@@ -155,8 +180,9 @@ public class PlayerServiceImpl implements PlayerService {
 
     @Override
     @Transactional
-    public PlayerDto deactivate(UUID clubId, UUID playerId) {
+    public PlayerDto deactivate(Authentication authentication, UUID clubId, UUID playerId) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
+        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
         if (!profile.isActive()) {
             throw new InvalidStatusTransitionException("Player is already inactive: " + playerId);
         }
@@ -178,8 +204,9 @@ public class PlayerServiceImpl implements PlayerService {
 
     @Override
     @Transactional
-    public PlayerDto reactivate(UUID clubId, UUID playerId) {
+    public PlayerDto reactivate(Authentication authentication, UUID clubId, UUID playerId) {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
+        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
         if (profile.isActive()) {
             throw new InvalidStatusTransitionException("Player is already active: " + playerId);
         }

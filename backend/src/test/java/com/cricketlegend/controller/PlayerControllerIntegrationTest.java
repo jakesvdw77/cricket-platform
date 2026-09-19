@@ -548,6 +548,112 @@ class PlayerControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // --- 035: section-scoped access ---
+
+    @Test
+    void sectionScopedAdminCanTagAndEditAPlayerWithinTheirOwnSectionButNotOutsideIt() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        JwtRequestPostProcessor clubAdmin = grantClubAdmin("club-admin-sub", club.getId());
+        String createResponse = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/players", club.getId())
+                        .with(clubAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PLAYER_BODY))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String playerId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", juniors.getId());
+
+        // Cannot tag into a section outside their own grant.
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link",
+                                club.getId(),
+                                playerId,
+                                open.getId())
+                        .with(sectionAdmin))
+                .andExpect(status().isForbidden());
+
+        // Can tag into their own section.
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link",
+                                club.getId(),
+                                playerId,
+                                juniors.getId())
+                        .with(sectionAdmin))
+                .andExpect(status().isOk());
+
+        // Now tagged to Juniors — the section-scoped admin can edit them.
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/players/{playerId}", club.getId(), playerId)
+                        .with(sectionAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PLAYER_BODY))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void sectionScopedAdminCannotEditAPlayerTaggedOnlyToASectionOutsideTheirGrant() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        JwtRequestPostProcessor clubAdmin = grantClubAdmin("club-admin-sub", club.getId());
+        String createResponse = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/players", club.getId())
+                        .with(clubAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PLAYER_BODY))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String playerId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/players/{playerId}/sections/{sectionId}/link",
+                                club.getId(),
+                                playerId,
+                                open.getId())
+                        .with(clubAdmin))
+                .andExpect(status().isOk());
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", juniors.getId());
+
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/players/{playerId}", club.getId(), playerId)
+                        .with(sectionAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PLAYER_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void clubScopeAdminAccessIsUnchangedByTheSectionScopedAccessChanges() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/players", club.getId()).with(admin))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/players", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PLAYER_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    private JwtRequestPostProcessor grantSectionAdmin(String keycloakUserId, UUID sectionId) {
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jamie")
+                .lastName("SectionAdmin")
+                .email(keycloakUserId + "@example.com")
+                .keycloakUserId(keycloakUserId)
+                .build());
+        roleAssignmentRepository.save(RoleAssignment.builder()
+                .personId(person.getId())
+                .role(RoleAssignmentRole.CLUB_ADMIN)
+                .scopeType(ScopeType.SECTION)
+                .scopeId(sectionId)
+                .build());
+        return withSubject(keycloakUserId);
+    }
+
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {
         Person person = personRepository.save(Person.builder()
                 .firstName("Casey")

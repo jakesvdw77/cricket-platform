@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
 import com.cricketlegend.domain.Section;
@@ -26,6 +27,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for PlayerSectionServiceImpl's business rules from docs/specs/028-players.md: the
@@ -50,12 +54,17 @@ class PlayerSectionServiceImplTest {
     @Mock
     private SectionMapper sectionMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private PlayerSectionServiceImpl playerSectionService;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
         playerSectionService = new PlayerSectionServiceImpl(
-                playerProfileRepository, playerSectionRepository, sectionRepository, sectionMapper);
+                playerProfileRepository, playerSectionRepository, sectionRepository, sectionMapper, accessService);
     }
 
     private PlayerProfile profile(UUID id, UUID clubId) {
@@ -93,7 +102,7 @@ class PlayerSectionServiceImplTest {
         SectionDto dto = dummySectionDto();
         when(sectionMapper.toDto(ArgumentMatchers.any(Section.class))).thenReturn(dto);
 
-        List<SectionDto> result = playerSectionService.list(clubId, playerId);
+        List<SectionDto> result = playerSectionService.list(authentication, clubId, playerId);
 
         assertThat(result).containsExactly(dto);
     }
@@ -106,7 +115,7 @@ class PlayerSectionServiceImplTest {
         when(playerProfileRepository.findById(playerId))
                 .thenReturn(Optional.of(profile(playerId, otherClubId)));
 
-        assertThatThrownBy(() -> playerSectionService.list(clubId, playerId))
+        assertThatThrownBy(() -> playerSectionService.list(authentication, clubId, playerId))
                 .isInstanceOf(NotFoundException.class);
         verify(playerSectionRepository, never()).findByPlayerProfileId(ArgumentMatchers.any());
     }

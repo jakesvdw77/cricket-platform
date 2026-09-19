@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,43 +33,49 @@ public class TeamSquadController {
         this.teamSquadService = teamSquadService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad")
     public ResponseEntity<List<TeamSquadMemberDto>> list(
-            @PathVariable UUID clubId, @PathVariable UUID teamId, @PathVariable UUID seasonId) {
-        return ResponseEntity.ok(teamSquadService.list(clubId, teamId, seasonId));
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID teamId,
+            @PathVariable UUID seasonId) {
+        return ResponseEntity.ok(teamSquadService.list(authentication, clubId, teamId, seasonId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add")
     public ResponseEntity<TeamSquadMemberDto> add(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID teamId,
             @PathVariable UUID seasonId,
             @PathVariable UUID playerId) {
-        return ResponseEntity.ok(teamSquadService.add(clubId, teamId, seasonId, playerId));
+        return ResponseEntity.ok(teamSquadService.add(authentication, clubId, teamId, seasonId, playerId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}")
     public ResponseEntity<TeamSquadMemberDto> update(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID teamId,
             @PathVariable UUID seasonId,
             @PathVariable UUID playerId,
             @Valid @RequestBody UpdateTeamSquadMemberJerseyNumberRequest request) {
-        return ResponseEntity.ok(
-                teamSquadService.update(clubId, teamId, seasonId, playerId, request.jerseyNumber()));
+        return ResponseEntity.ok(teamSquadService.update(
+                authentication, clubId, teamId, seasonId, playerId, request.jerseyNumber()));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/remove")
     public ResponseEntity<Void> remove(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID teamId,
             @PathVariable UUID seasonId,
             @PathVariable UUID playerId) {
-        teamSquadService.remove(clubId, teamId, seasonId, playerId);
+        teamSquadService.remove(authentication, clubId, teamId, seasonId, playerId);
         return ResponseEntity.ok().build();
     }
 }

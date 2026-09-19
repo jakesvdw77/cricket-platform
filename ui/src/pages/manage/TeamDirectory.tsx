@@ -9,6 +9,7 @@ import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { listTeamsForClub, deactivateTeam, reactivateTeam } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
@@ -80,14 +81,17 @@ export default function TeamDirectory() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of
+  // whatever the caller's own access already resolves server-side by default.
+  const [sectionId, setSectionId] = useState<string | null>(null)
 
   const {
     data: teams,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: CLUB_TEAMS_QUERY_KEY(clubId),
-    queryFn: () => listTeamsForClub(clubId as string),
+    queryKey: [...CLUB_TEAMS_QUERY_KEY(clubId), sectionId],
+    queryFn: () => listTeamsForClub(clubId as string, { sectionId: sectionId ?? undefined }),
     enabled: Boolean(clubId),
   })
 
@@ -159,6 +163,16 @@ export default function TeamDirectory() {
         createLabel="Add Team"
         onCreate={() => navigate('/manage/teams/new')}
       />
+
+      <Box sx={{ maxWidth: 360 }}>
+        <SectionTreeSelect
+          label="Section"
+          sections={sections ?? []}
+          value={sectionId}
+          onChange={setSectionId}
+          allowClear
+        />
+      </Box>
 
       {visibleTeams.length > 0 && (
         <Box

@@ -67,6 +67,11 @@ export interface ListMatchesParams {
   // frontend changes if/when the backend adds support — flagged as a spec/backend gap, not
   // silently dropped.
   search?: string
+  // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
+  // matches — a real, query-level backend filter (this list is genuinely paginated), not a
+  // client-side one. A section-scoped caller's own default is already narrowed server-side
+  // regardless of this param; it's an optional, further-narrowing convenience for any caller.
+  sectionId?: string
 }
 
 function matchesPath(clubId: string): string {
@@ -78,10 +83,16 @@ function matchesPath(clubId: string): string {
 // pagination rule.
 export async function listMatches(
   clubId: string,
-  { page, size = 20, sort, search }: ListMatchesParams,
+  { page, size = 20, sort, search, sectionId }: ListMatchesParams,
 ): Promise<Page<Match>> {
   const { data } = await api.get<Page<Match>>(matchesPath(clubId), {
-    params: { page, size, ...(sort ? { sort } : {}), ...(search ? { search } : {}) },
+    params: {
+      page,
+      size,
+      ...(sort ? { sort } : {}),
+      ...(search ? { search } : {}),
+      ...(sectionId ? { sectionId } : {}),
+    },
   })
   return data
 }

@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,76 +35,83 @@ public class MatchSideController {
         this.matchSideService = matchSideService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides")
     public ResponseEntity<List<MatchSideDto>> list(
-            @PathVariable UUID clubId, @PathVariable UUID matchId) {
-        return ResponseEntity.ok(matchSideService.list(clubId, matchId));
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        return ResponseEntity.ok(matchSideService.list(authentication, clubId, matchId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides")
     @ApiResponse(responseCode = "201", description = "Match side created")
     public ResponseEntity<MatchSideDto> createSide(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @Valid @RequestBody CreateMatchSideRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(matchSideService.createSide(clubId, matchId, request));
+                .body(matchSideService.createSide(authentication, clubId, matchId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}")
     public ResponseEntity<MatchSideDto> updateSide(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
             @Valid @RequestBody UpdateMatchSideRequest request) {
-        return ResponseEntity.ok(matchSideService.updateSide(clubId, matchId, sideId, request));
+        return ResponseEntity.ok(matchSideService.updateSide(authentication, clubId, matchId, sideId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players")
     @ApiResponse(responseCode = "201", description = "Player added to match side")
     public ResponseEntity<MatchSideDto> addPlayer(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
             @Valid @RequestBody AddMatchSidePlayerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(matchSideService.addPlayer(clubId, matchId, sideId, request));
+                .body(matchSideService.addPlayer(authentication, clubId, matchId, sideId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}")
     public ResponseEntity<MatchSideDto> updatePlayerRole(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
             @PathVariable UUID playerProfileId,
             @Valid @RequestBody UpdateMatchSidePlayerRequest request) {
-        return ResponseEntity.ok(
-                matchSideService.updatePlayerRole(clubId, matchId, sideId, playerProfileId, request));
+        return ResponseEntity.ok(matchSideService.updatePlayerRole(
+                authentication, clubId, matchId, sideId, playerProfileId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PostMapping(
             "/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/{playerProfileId}/remove")
     public ResponseEntity<MatchSideDto> removePlayer(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
             @PathVariable UUID playerProfileId) {
-        return ResponseEntity.ok(matchSideService.removePlayer(clubId, matchId, sideId, playerProfileId));
+        return ResponseEntity.ok(
+                matchSideService.removePlayer(authentication, clubId, matchId, sideId, playerProfileId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/reorder")
     public ResponseEntity<MatchSideDto> reorderPlayers(
+            Authentication authentication,
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
             @Valid @RequestBody ReorderMatchSidePlayersRequest request) {
-        return ResponseEntity.ok(matchSideService.reorderPlayers(clubId, matchId, sideId, request));
+        return ResponseEntity.ok(matchSideService.reorderPlayers(authentication, clubId, matchId, sideId, request));
     }
 }

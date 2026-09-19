@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,6 +11,7 @@ const listMatches = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagues = vi.fn()
 const listSeasons = vi.fn()
+const listSections = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
@@ -28,6 +29,10 @@ vi.mock('../../api/leagueApi', () => ({
 
 vi.mock('../../api/seasonApi', () => ({
   listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
+vi.mock('../../api/sectionApi', () => ({
+  listSections: (clubId: string) => listSections(clubId),
 }))
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -66,6 +71,9 @@ beforeEach(() => {
   listTeamsForClub.mockResolvedValue([{ id: 'team-1', name: '1st XI' }])
   listLeagues.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
+  listSections.mockResolvedValue([
+    { id: 'section-1', clubId: 'test-club-id', parentSectionId: null, name: 'Men', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+  ])
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -138,5 +146,27 @@ describe('MatchList', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Add Match' }))
     expect(await screen.findByText('New Match Page')).toBeInTheDocument()
+  })
+
+  it('selecting a section in the filter re-fetches via the backend sectionId param, never client-side', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    const lastCallParams = () => listMatches.mock.calls.at(-1)?.[1]
+    expect(lastCallParams().sectionId).toBeUndefined()
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(within(screen.getByRole('treeitem', { name: 'Men' })).getByText('Men'))
+
+    expect(await screen.findByLabelText('Section')).toHaveValue('Men')
+    await waitFor(() => expect(lastCallParams().sectionId).toBe('section-1'))
+
+    await user.click(screen.getByLabelText('Section'))
+    await user.click(screen.getByRole('button', { name: /all sections/i }))
+
+    await waitFor(() => expect(lastCallParams().sectionId).toBeUndefined())
   })
 })

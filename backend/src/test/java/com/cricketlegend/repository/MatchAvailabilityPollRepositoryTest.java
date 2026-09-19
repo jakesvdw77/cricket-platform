@@ -120,6 +120,33 @@ class MatchAvailabilityPollRepositoryTest {
     }
 
     @Test
+    void findOpenByMatchClubIdReturnsOnlyOpenPollsWhoseMatchBelongsToTheGivenClub() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        Match openMatch = savedMatch(club.getId(), team.getId(), season.getId());
+        Match closedMatch = savedMatch(club.getId(), team.getId(), season.getId());
+        matchAvailabilityPollRepository.save(
+                MatchAvailabilityPoll.builder().matchId(openMatch.getId()).teamId(team.getId()).open(true).build());
+        MatchAvailabilityPoll closedPoll = matchAvailabilityPollRepository.save(
+                MatchAvailabilityPoll.builder().matchId(closedMatch.getId()).teamId(team.getId()).open(false).build());
+
+        Club otherClub = savedClub("lakeside-cc");
+        Team otherTeam = savedTeam(otherClub.getId());
+        Season otherSeason = savedSeason(otherClub.getId());
+        Match otherClubMatch = savedMatch(otherClub.getId(), otherTeam.getId(), otherSeason.getId());
+        matchAvailabilityPollRepository.save(MatchAvailabilityPoll.builder()
+                .matchId(otherClubMatch.getId()).teamId(otherTeam.getId()).open(true).build());
+
+        java.util.List<MatchAvailabilityPoll> result =
+                matchAvailabilityPollRepository.findOpenByMatchClubId(club.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getMatchId()).isEqualTo(openMatch.getId());
+        assertThat(result).extracting(MatchAvailabilityPoll::getId).doesNotContain(closedPoll.getId());
+    }
+
+    @Test
     void uniqueConstraintRejectsASecondPollForTheSameTeamOnTheSameMatch() {
         Club club = savedClub("riverside-cc");
         Team team = savedTeam(club.getId());

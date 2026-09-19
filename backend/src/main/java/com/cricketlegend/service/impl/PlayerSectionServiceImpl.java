@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
 import com.cricketlegend.domain.Section;
@@ -13,6 +14,7 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.service.PlayerSectionService;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,22 +35,26 @@ public class PlayerSectionServiceImpl implements PlayerSectionService {
     private final PlayerSectionRepository playerSectionRepository;
     private final SectionRepository sectionRepository;
     private final SectionMapper sectionMapper;
+    private final AccessService accessService;
 
     public PlayerSectionServiceImpl(
             PlayerProfileRepository playerProfileRepository,
             PlayerSectionRepository playerSectionRepository,
             SectionRepository sectionRepository,
-            SectionMapper sectionMapper) {
+            SectionMapper sectionMapper,
+            AccessService accessService) {
         this.playerProfileRepository = playerProfileRepository;
         this.playerSectionRepository = playerSectionRepository;
         this.sectionRepository = sectionRepository;
         this.sectionMapper = sectionMapper;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<SectionDto> list(UUID clubId, UUID playerId) {
+    public List<SectionDto> list(Authentication authentication, UUID clubId, UUID playerId) {
         findPlayerOrThrowForClub(clubId, playerId);
+        accessService.assertCanAdministerAnySection(authentication, clubId, taggedSectionIds(playerId));
 
         return playerSectionRepository.findByPlayerProfileId(playerId).stream()
                 .map(link -> sectionRepository
@@ -88,6 +94,12 @@ public class PlayerSectionServiceImpl implements PlayerSectionService {
                         "No tag between player " + playerId + " and section " + sectionId));
 
         playerSectionRepository.deleteByPlayerProfileIdAndSectionId(playerId, sectionId);
+    }
+
+    private List<UUID> taggedSectionIds(UUID playerId) {
+        return playerSectionRepository.findByPlayerProfileId(playerId).stream()
+                .map(PlayerSection::getSectionId)
+                .toList();
     }
 
     /**

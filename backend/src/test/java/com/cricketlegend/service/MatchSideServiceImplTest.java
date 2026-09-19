@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Gender;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
@@ -47,6 +48,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for MatchSideServiceImpl's business rules from docs/specs/029-league-management.md's
@@ -88,14 +92,19 @@ class MatchSideServiceImplTest {
     @Mock
     private MatchSideMapper matchSideMapper;
 
+    @Mock
+    private AccessService accessService;
+
     private MatchSideServiceImpl service;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
         service = new MatchSideServiceImpl(
                 matchRepository, matchSideRepository, matchSidePlayerRepository, teamSquadMemberRepository,
                 leagueRepository, seasonRepository, playerProfileRepository, personRepository,
-                matchSideMapper);
+                matchSideMapper, accessService);
         org.mockito.Mockito.lenient().when(matchSideMapper.toDto(any(), any())).thenReturn(null);
     }
 
@@ -138,7 +147,7 @@ class MatchSideServiceImplTest {
         when(matchSideRepository.save(any(MatchSide.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(any())).thenReturn(List.of());
 
-        service.createSide(clubId, matchId, new CreateMatchSideRequest(homeTeamId));
+        service.createSide(authentication, clubId, matchId, new CreateMatchSideRequest(homeTeamId));
 
         verify(matchSideRepository).save(any(MatchSide.class));
     }
@@ -150,7 +159,7 @@ class MatchSideServiceImplTest {
         Match match = matchWithoutLeague(clubId, matchId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
-        assertThatThrownBy(() -> service.createSide(clubId, matchId, new CreateMatchSideRequest(UUID.randomUUID())))
+        assertThatThrownBy(() -> service.createSide(authentication, clubId, matchId, new CreateMatchSideRequest(UUID.randomUUID())))
                 .isInstanceOf(ValidationException.class);
         verify(matchSideRepository, never()).save(any());
     }
@@ -164,7 +173,7 @@ class MatchSideServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(matchSideRepository.existsByMatchIdAndTeamId(matchId, homeTeamId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.createSide(clubId, matchId, new CreateMatchSideRequest(homeTeamId)))
+        assertThatThrownBy(() -> service.createSide(authentication, clubId, matchId, new CreateMatchSideRequest(homeTeamId)))
                 .isInstanceOf(ConflictException.class);
         verify(matchSideRepository, never()).save(any());
     }
@@ -187,7 +196,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayerNotInSquadException.class);
         verify(matchSidePlayerRepository, never()).save(any());
     }
@@ -210,7 +219,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayerNotInSquadException.class);
         verify(teamSquadMemberRepository, never())
                 .existsByTeamIdAndSeasonIdAndPlayerProfileId(teamId, otherSeasonId, playerId);
@@ -234,7 +243,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(ConflictException.class);
         verify(matchSidePlayerRepository, never()).save(any());
     }
@@ -260,7 +269,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayingXiCapExceededException.class);
         verify(matchSidePlayerRepository, never()).save(any());
     }
@@ -288,7 +297,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayingXiCapExceededException.class);
     }
 
@@ -318,7 +327,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayerAgeIneligibleException.class);
         verify(matchSidePlayerRepository, never()).save(any());
     }
@@ -349,7 +358,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        assertThatThrownBy(() -> service.addPlayer(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayerAgeIneligibleException.class);
         verify(seasonRepository, never()).findById(any());
     }
@@ -384,7 +393,7 @@ class MatchSideServiceImplTest {
 
         AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
 
-        service.addPlayer(clubId, matchId, matchSide.getId(), request);
+        service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request);
 
         verify(matchSidePlayerRepository).save(any(MatchSidePlayer.class));
     }
@@ -406,7 +415,7 @@ class MatchSideServiceImplTest {
 
         UpdateMatchSideRequest request = new UpdateMatchSideRequest(captainId, null, null);
 
-        assertThatThrownBy(() -> service.updateSide(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.updateSide(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(ValidationException.class);
         verify(matchSideRepository, never()).save(any());
     }
@@ -426,7 +435,7 @@ class MatchSideServiceImplTest {
 
         UpdateMatchSideRequest request = new UpdateMatchSideRequest(null, null, twelfthManId);
 
-        assertThatThrownBy(() -> service.updateSide(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.updateSide(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(ValidationException.class);
         verify(matchSideRepository, never()).save(any());
     }
@@ -449,7 +458,7 @@ class MatchSideServiceImplTest {
 
         UpdateMatchSideRequest request = new UpdateMatchSideRequest(null, null, twelfthManId);
 
-        assertThatThrownBy(() -> service.updateSide(clubId, matchId, matchSide.getId(), request))
+        assertThatThrownBy(() -> service.updateSide(authentication, clubId, matchId, matchSide.getId(), request))
                 .isInstanceOf(PlayerNotInSquadException.class);
     }
 
@@ -479,7 +488,7 @@ class MatchSideServiceImplTest {
                 .thenReturn(List.of());
 
         UpdateMatchSideRequest request = new UpdateMatchSideRequest(captainId, keeperId, twelfthManId);
-        service.updateSide(clubId, matchId, matchSide.getId(), request);
+        service.updateSide(authentication, clubId, matchId, matchSide.getId(), request);
 
         assertThat(matchSide.getCaptainPlayerId()).isEqualTo(captainId);
         assertThat(matchSide.getWicketKeeperPlayerId()).isEqualTo(keeperId);
@@ -508,7 +517,7 @@ class MatchSideServiceImplTest {
         when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
                 .thenReturn(List.of());
 
-        service.removePlayer(clubId, matchId, matchSide.getId(), playerId);
+        service.removePlayer(authentication, clubId, matchId, matchSide.getId(), playerId);
 
         assertThat(matchSide.getCaptainPlayerId()).isNull();
         assertThat(matchSide.getWicketKeeperPlayerId()).isNull();
@@ -528,7 +537,7 @@ class MatchSideServiceImplTest {
         when(matchSidePlayerRepository.findByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.removePlayer(clubId, matchId, matchSide.getId(), playerId))
+        assertThatThrownBy(() -> service.removePlayer(authentication, clubId, matchId, matchSide.getId(), playerId))
                 .isInstanceOf(NotFoundException.class);
         verify(matchSidePlayerRepository, never()).deleteByMatchSideIdAndPlayerProfileId(any(), any());
     }
@@ -551,7 +560,7 @@ class MatchSideServiceImplTest {
                         MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
                                 .playerProfileId(playerAId).battingOrder(1).role(PlayingRole.BATSMAN).build()));
 
-        assertThatThrownBy(() -> service.reorderPlayers(clubId, matchId, matchSide.getId(),
+        assertThatThrownBy(() -> service.reorderPlayers(authentication, clubId, matchId, matchSide.getId(),
                 new com.cricketlegend.dto.ReorderMatchSidePlayersRequest(List.of(playerBId))))
                 .isInstanceOf(ValidationException.class);
     }
@@ -576,10 +585,32 @@ class MatchSideServiceImplTest {
         when(matchSidePlayerRepository.save(any(MatchSidePlayer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.reorderPlayers(clubId, matchId, matchSide.getId(),
+        service.reorderPlayers(authentication, clubId, matchId, matchSide.getId(),
                 new com.cricketlegend.dto.ReorderMatchSidePlayersRequest(List.of(playerBId, playerAId)));
 
         assertThat(playerB.getBattingOrder()).isEqualTo(1);
         assertThat(playerA.getBattingOrder()).isEqualTo(2);
+    }
+
+    // --- 035: section-scoped access ---
+
+    @Test
+    void createSideThrowsAccessDeniedWhenCallerCannotAdministerAnyOfTheMatchsResolvedSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID homeTeamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, homeTeamId, UUID.randomUUID(), UUID.randomUUID());
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        java.util.Set<UUID> resolvedSections = java.util.Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> service.createSide(
+                        authentication, clubId, matchId, new CreateMatchSideRequest(homeTeamId)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(matchSideRepository, never()).save(any());
     }
 }

@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,6 +71,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     private final PlayerProfileRepository playerProfileRepository;
     private final PersonRepository personRepository;
     private final MatchSideMapper matchSideMapper;
+    private final AccessService accessService;
 
     public MatchSideServiceImpl(
             MatchRepository matchRepository,
@@ -79,7 +82,8 @@ public class MatchSideServiceImpl implements MatchSideService {
             SeasonRepository seasonRepository,
             PlayerProfileRepository playerProfileRepository,
             PersonRepository personRepository,
-            MatchSideMapper matchSideMapper) {
+            MatchSideMapper matchSideMapper,
+            AccessService accessService) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
@@ -89,19 +93,23 @@ public class MatchSideServiceImpl implements MatchSideService {
         this.playerProfileRepository = playerProfileRepository;
         this.personRepository = personRepository;
         this.matchSideMapper = matchSideMapper;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MatchSideDto> list(UUID clubId, UUID matchId) {
-        findMatchOrThrowForClub(clubId, matchId);
+    public List<MatchSideDto> list(Authentication authentication, UUID clubId, UUID matchId) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         return matchSideRepository.findByMatchId(matchId).stream().map(this::toDto).toList();
     }
 
     @Override
     @Transactional
-    public MatchSideDto createSide(UUID clubId, UUID matchId, CreateMatchSideRequest request) {
+    public MatchSideDto createSide(
+            Authentication authentication, UUID clubId, UUID matchId, CreateMatchSideRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         UUID teamId = request.teamId();
 
         boolean isHome = teamId.equals(match.getHomeTeamId());
@@ -122,8 +130,10 @@ public class MatchSideServiceImpl implements MatchSideService {
 
     @Override
     @Transactional
-    public MatchSideDto updateSide(UUID clubId, UUID matchId, UUID sideId, UpdateMatchSideRequest request) {
+    public MatchSideDto updateSide(
+            Authentication authentication, UUID clubId, UUID matchId, UUID sideId, UpdateMatchSideRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         if (request.captainPlayerId() != null
@@ -160,8 +170,10 @@ public class MatchSideServiceImpl implements MatchSideService {
 
     @Override
     @Transactional
-    public MatchSideDto addPlayer(UUID clubId, UUID matchId, UUID sideId, AddMatchSidePlayerRequest request) {
+    public MatchSideDto addPlayer(
+            Authentication authentication, UUID clubId, UUID matchId, UUID sideId, AddMatchSidePlayerRequest request) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         UUID playerId = request.playerProfileId();
 
@@ -201,8 +213,14 @@ public class MatchSideServiceImpl implements MatchSideService {
     @Override
     @Transactional
     public MatchSideDto updatePlayerRole(
-            UUID clubId, UUID matchId, UUID sideId, UUID playerProfileId, UpdateMatchSidePlayerRequest request) {
-        findMatchOrThrowForClub(clubId, matchId);
+            Authentication authentication,
+            UUID clubId,
+            UUID matchId,
+            UUID sideId,
+            UUID playerProfileId,
+            UpdateMatchSidePlayerRequest request) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         MatchSidePlayer player = matchSidePlayerRepository
@@ -217,8 +235,10 @@ public class MatchSideServiceImpl implements MatchSideService {
 
     @Override
     @Transactional
-    public MatchSideDto removePlayer(UUID clubId, UUID matchId, UUID sideId, UUID playerProfileId) {
-        findMatchOrThrowForClub(clubId, matchId);
+    public MatchSideDto removePlayer(
+            Authentication authentication, UUID clubId, UUID matchId, UUID sideId, UUID playerProfileId) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         matchSidePlayerRepository
@@ -246,8 +266,13 @@ public class MatchSideServiceImpl implements MatchSideService {
     @Override
     @Transactional
     public MatchSideDto reorderPlayers(
-            UUID clubId, UUID matchId, UUID sideId, ReorderMatchSidePlayersRequest request) {
-        findMatchOrThrowForClub(clubId, matchId);
+            Authentication authentication,
+            UUID clubId,
+            UUID matchId,
+            UUID sideId,
+            ReorderMatchSidePlayersRequest request) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
         List<MatchSidePlayer> current = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId);
@@ -365,6 +390,18 @@ public class MatchSideServiceImpl implements MatchSideService {
         List<MatchSidePlayer> players =
                 matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(side.getId());
         return matchSideMapper.toDto(side, players);
+    }
+
+    /**
+     * Per docs/specs/035-section-scoped-access.md: a section-scoped caller builds only their own
+     * section's side of a match, resolved via the shared {@link
+     * AccessService#resolveMatchSectionIds} helper (the side's own {@code teamId} is already
+     * constrained to equal one of the match's own team ids per 029).
+     */
+    private void assertCanAdministerMatch(Authentication authentication, UUID clubId, Match match) {
+        Set<UUID> matchSectionIds =
+                accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());
+        accessService.assertCanAdministerAnySection(authentication, clubId, matchSectionIds);
     }
 
     private Match findMatchOrThrowForClub(UUID clubId, UUID matchId) {

@@ -84,3 +84,52 @@ export async function setPlayerStatus(
   )
   return data
 }
+
+// docs/specs/034-availability-polls-dashboard.md: one currently-open poll, aggregated with its
+// match context and a per-status respondent summary — the club-wide dashboard's own response
+// shape, distinct from the match-nested MatchAvailabilityPollResponses above. Exactly one of
+// homeTeamId/homeTeamName (same for awayTeamId/awayTeamName) is non-null, per Match's own
+// invariant — resolved client-side the same way MatchList.tsx/MatchFormPage.tsx already do, not
+// re-solved server-side. Field names/types verified verbatim against
+// com.cricketlegend.dto.OpenAvailabilityPollDto.
+export interface AvailabilityRespondent {
+  playerProfileId: string
+  firstName: string
+  lastName: string
+  squadJerseyNumber: number | null
+}
+
+export interface OpenAvailabilityPoll {
+  pollId: string
+  matchId: string
+  teamId: string
+  homeTeamId: string | null
+  homeTeamName: string | null
+  awayTeamId: string | null
+  awayTeamName: string | null
+  matchDate: string
+  venue: string | null
+  availableCount: number
+  unavailableCount: number
+  unsureCount: number
+  noResponseCount: number
+  availableRespondents: AvailabilityRespondent[]
+  unavailableRespondents: AvailabilityRespondent[]
+  unsureRespondents: AvailabilityRespondent[]
+}
+
+export interface ListOpenPollsParams {
+  // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
+  // open polls — validated server-side, never a client-side filter over the full result.
+  sectionId?: string
+}
+
+// Plain array response, not Page<T> — see docs/specs/034-availability-polls-dashboard.md's API
+// Contract for why this club-wide list is deliberately unpaginated (bounded by "currently open",
+// not by match history).
+export async function listOpenPolls(clubId: string, params: ListOpenPollsParams = {}): Promise<OpenAvailabilityPoll[]> {
+  const { data } = await api.get<OpenAvailabilityPoll[]>(`/manage/clubs/${clubId}/availability-polls/open`, {
+    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+  })
+  return data
+}

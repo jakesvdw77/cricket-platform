@@ -16,11 +16,13 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -56,20 +58,23 @@ public class TeamController {
         this.teamSponsorService = teamSponsorService;
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/teams")
-    public ResponseEntity<List<TeamDto>> listByClub(@PathVariable UUID clubId) {
-        return ResponseEntity.ok(teamService.listByClub(clubId));
+    public ResponseEntity<List<TeamDto>> listByClub(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID sectionId) {
+        return ResponseEntity.ok(teamService.listByClub(authentication, clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams")
     public ResponseEntity<List<TeamDto>> listBySection(
             @PathVariable UUID clubId, @PathVariable UUID sectionId) {
         return ResponseEntity.ok(teamService.listBySection(clubId, sectionId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams")
     @ApiResponse(responseCode = "201", description = "Team created")
     public ResponseEntity<TeamDto> create(
@@ -79,7 +84,7 @@ public class TeamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(teamService.create(clubId, sectionId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PutMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}")
     public ResponseEntity<TeamDto> update(
             @PathVariable UUID clubId,
@@ -89,28 +94,28 @@ public class TeamController {
         return ResponseEntity.ok(teamService.update(clubId, sectionId, teamId, request));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/deactivate")
     public ResponseEntity<TeamDto> deactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamService.deactivate(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/reactivate")
     public ResponseEntity<TeamDto> reactivate(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamService.reactivate(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts")
     public ResponseEntity<List<TeamContactDto>> listContacts(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamContactService.list(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/link")
     public ResponseEntity<Void> linkContact(
             @PathVariable UUID clubId,
@@ -122,7 +127,7 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/contacts/{contactId}/unlink")
     public ResponseEntity<Void> unlinkContact(
             @PathVariable UUID clubId,
@@ -133,14 +138,14 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors")
     public ResponseEntity<List<SponsorDto>> listSponsors(
             @PathVariable UUID clubId, @PathVariable UUID sectionId, @PathVariable UUID teamId) {
         return ResponseEntity.ok(teamSponsorService.list(clubId, sectionId, teamId));
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/link")
     public ResponseEntity<Void> linkSponsor(
             @PathVariable UUID clubId,
@@ -151,7 +156,7 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PreAuthorize("@access.canAdministerSection(authentication, #clubId, #sectionId)")
     @PostMapping("/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}/sponsors/{sponsorId}/unlink")
     public ResponseEntity<Void> unlinkSponsor(
             @PathVariable UUID clubId,

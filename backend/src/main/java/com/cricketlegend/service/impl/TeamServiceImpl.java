@@ -1,5 +1,6 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateTeamRequest;
@@ -12,7 +13,10 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.TeamService;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,12 +38,17 @@ public class TeamServiceImpl implements TeamService {
     private final TeamRepository teamRepository;
     private final SectionRepository sectionRepository;
     private final TeamMapper teamMapper;
+    private final AccessService accessService;
 
     public TeamServiceImpl(
-            TeamRepository teamRepository, SectionRepository sectionRepository, TeamMapper teamMapper) {
+            TeamRepository teamRepository,
+            SectionRepository sectionRepository,
+            TeamMapper teamMapper,
+            AccessService accessService) {
         this.teamRepository = teamRepository;
         this.sectionRepository = sectionRepository;
         this.teamMapper = teamMapper;
+        this.accessService = accessService;
     }
 
     @Override
@@ -51,8 +60,20 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
-    public List<TeamDto> listByClub(UUID clubId) {
-        return teamRepository.findByClubId(clubId).stream().map(teamMapper::toDto).toList();
+    public List<TeamDto> listByClub(Authentication authentication, UUID clubId, UUID sectionId) {
+        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Set<UUID> narrowTo = null;
+        if (sectionId != null) {
+            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
+        }
+        final Set<UUID> narrowToFinal = narrowTo;
+
+        return teamRepository.findByClubId(clubId).stream()
+                .filter(team -> accessibleSectionIds.isEmpty() || accessibleSectionIds.get().contains(team.getSectionId()))
+                .filter(team -> narrowToFinal == null || narrowToFinal.contains(team.getSectionId()))
+                .map(teamMapper::toDto)
+                .toList();
     }
 
     @Override

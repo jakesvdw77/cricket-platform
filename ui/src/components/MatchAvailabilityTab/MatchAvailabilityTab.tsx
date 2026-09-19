@@ -6,29 +6,10 @@ import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { Button } from '../Button'
 import { EmptyState } from '../EmptyState'
 import type { AvailabilityStatus, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
-
-const STATUS_LABEL: Record<AvailabilityStatus, string> = {
-  AVAILABLE: 'Available',
-  UNAVAILABLE: 'Unavailable',
-  UNSURE: 'Unsure',
-}
+import { STATUS_COLOR, STATUS_LABEL } from '../../utils/availabilityStatus'
+import { squadDisplayName } from '../../utils/squadDisplayName'
 
 const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
-
-// 'success'/'error'/'warning' — MUI palette keys, matching this codebase's existing
-// RecordCard.tsx tinted-badge convention (alpha(theme.palette.X.main, ~0.12) for the
-// background, the full-saturation X.main/X.dark for the text) rather than a plain filled Chip.
-const STATUS_COLOR: Record<AvailabilityStatus, 'success' | 'error' | 'warning'> = {
-  AVAILABLE: 'success',
-  UNAVAILABLE: 'error',
-  UNSURE: 'warning',
-}
-
-// docs/specs/031-jersey-numbers.md's display convention, reused here for the read-only squad row.
-function squadDisplayName(row: { firstName: string; lastName: string; squadJerseyNumber: number | null }): string {
-  const name = `${row.firstName} ${row.lastName}`
-  return row.squadJerseyNumber != null ? `#${row.squadJerseyNumber} ${name}` : name
-}
 
 export interface MatchAvailabilityTabProps {
   // The side's label used in copy, e.g. "the home side" / "the away side" — mirrors MatchSideTab's

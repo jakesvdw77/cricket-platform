@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.BattingStance;
 import com.cricketlegend.domain.BowlingArm;
 import com.cricketlegend.domain.BowlingType;
@@ -29,6 +30,7 @@ import com.cricketlegend.service.impl.PlayerServiceImpl;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Unit tests for PlayerServiceImpl's business rules from docs/specs/028-players.md: {@code
@@ -64,9 +69,14 @@ class PlayerServiceImplTest {
     @Mock
     private PlayerSectionRepository playerSectionRepository;
 
+    @Mock
+    private AccessService accessService;
+
     private final PlayerMapper playerMapper = new PlayerMapper();
 
     private PlayerServiceImpl playerService;
+    private final Authentication authentication = new TestingAuthenticationToken(
+            "club-admin-subject", null, List.of(new SimpleGrantedAuthority("ROLE_someone_else")));
 
     @BeforeEach
     void setUp() {
@@ -76,7 +86,8 @@ class PlayerServiceImplTest {
                 clubMembershipRepository,
                 playerProfileRepository,
                 playerSectionRepository,
-                playerMapper);
+                playerMapper,
+                accessService);
     }
 
     private Person person(UUID id, UUID personId) {
@@ -307,7 +318,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.save(existingProfile)).thenReturn(existingProfile);
         when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
 
-        var dto = playerService.update(clubId, playerId, updateRequest());
+        var dto = playerService.update(authentication, clubId, playerId, updateRequest());
 
         assertThat(existingPerson.getFirstName()).isEqualTo("Janet");
         assertThat(existingPerson.getLastName()).isEqualTo("Doey");
@@ -330,7 +341,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.save(existingProfile)).thenReturn(existingProfile);
         when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
 
-        var dto = playerService.update(clubId, playerId, updateRequest(null));
+        var dto = playerService.update(authentication, clubId, playerId, updateRequest(null));
 
         assertThat(dto.jerseyNumber()).isNull();
         assertThat(existingProfile.getJerseyNumber()).isNull();
@@ -344,7 +355,7 @@ class PlayerServiceImplTest {
         PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
         when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(existingProfile));
 
-        assertThatThrownBy(() -> playerService.update(clubId, playerId, updateRequest(-1)))
+        assertThatThrownBy(() -> playerService.update(authentication, clubId, playerId, updateRequest(-1)))
                 .isInstanceOf(ValidationException.class);
         verify(playerProfileRepository, never()).save(ArgumentMatchers.any());
     }
@@ -357,7 +368,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findById(playerId))
                 .thenReturn(Optional.of(profile(playerId, UUID.randomUUID(), otherClubId, true)));
 
-        assertThatThrownBy(() -> playerService.update(clubId, playerId, updateRequest()))
+        assertThatThrownBy(() -> playerService.update(authentication, clubId, playerId, updateRequest()))
                 .isInstanceOf(NotFoundException.class);
         verify(personRepository, never()).findById(ArgumentMatchers.any());
     }
@@ -368,7 +379,7 @@ class PlayerServiceImplTest {
         UUID playerId = UUID.randomUUID();
         when(playerProfileRepository.findById(playerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> playerService.update(clubId, playerId, updateRequest()))
+        assertThatThrownBy(() -> playerService.update(authentication, clubId, playerId, updateRequest()))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -390,7 +401,7 @@ class PlayerServiceImplTest {
         when(personRepository.findById(personId)).thenReturn(Optional.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
 
-        var dto = playerService.deactivate(clubId, playerId);
+        var dto = playerService.deactivate(authentication, clubId, playerId);
 
         assertThat(dto.active()).isFalse();
         assertThat(membership.getValidTo()).isEqualTo(LocalDate.now());
@@ -404,7 +415,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findById(playerId))
                 .thenReturn(Optional.of(profile(playerId, UUID.randomUUID(), clubId, false)));
 
-        assertThatThrownBy(() -> playerService.deactivate(clubId, playerId))
+        assertThatThrownBy(() -> playerService.deactivate(authentication, clubId, playerId))
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("already inactive");
         verify(clubMembershipRepository, never())
@@ -433,7 +444,7 @@ class PlayerServiceImplTest {
         when(personRepository.findById(personId)).thenReturn(Optional.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
 
-        var dto = playerService.reactivate(clubId, playerId);
+        var dto = playerService.reactivate(authentication, clubId, playerId);
 
         assertThat(dto.active()).isTrue();
         assertThat(membership.getValidTo()).isNull();
@@ -447,7 +458,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findById(playerId))
                 .thenReturn(Optional.of(profile(playerId, UUID.randomUUID(), clubId, true)));
 
-        assertThatThrownBy(() -> playerService.reactivate(clubId, playerId))
+        assertThatThrownBy(() -> playerService.reactivate(authentication, clubId, playerId))
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("already active");
         verify(clubMembershipRepository, never())
@@ -476,7 +487,7 @@ class PlayerServiceImplTest {
         when(clubMembershipRepository.findByPersonIdAndValidToIsNull(personId))
                 .thenReturn(Optional.of(differentActiveMembership));
 
-        assertThatThrownBy(() -> playerService.reactivate(clubId, playerId))
+        assertThatThrownBy(() -> playerService.reactivate(authentication, clubId, playerId))
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("different active club membership");
         verify(clubMembershipRepository, never()).save(ArgumentMatchers.any());
@@ -493,7 +504,7 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findById(playerId))
                 .thenReturn(Optional.of(profile(playerId, UUID.randomUUID(), otherClubId, true)));
 
-        assertThatThrownBy(() -> playerService.deactivate(clubId, playerId))
+        assertThatThrownBy(() -> playerService.deactivate(authentication, clubId, playerId))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -506,10 +517,31 @@ class PlayerServiceImplTest {
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
         when(personRepository.findById(personId)).thenReturn(Optional.of(person(personId, personId)));
         when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
 
-        var result = playerService.list(clubId);
+        var result = playerService.list(authentication, clubId, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).clubId()).isEqualTo(clubId);
+    }
+
+    @Test
+    void listExcludesAPlayerWhoseTaggedSectionsAreOutsideTheCallersAccessibleSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID taggedSectionId = UUID.randomUUID();
+        UUID accessibleSectionId = UUID.randomUUID();
+        PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of(
+                com.cricketlegend.domain.PlayerSection.builder()
+                        .playerProfileId(playerId).sectionId(taggedSectionId).build()));
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(Set.of(accessibleSectionId)));
+
+        var result = playerService.list(authentication, clubId, null);
+
+        assertThat(result).isEmpty();
     }
 }

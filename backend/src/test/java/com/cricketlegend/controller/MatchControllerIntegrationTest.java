@@ -441,6 +441,92 @@ class MatchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content[1].homeTeamName").value("Riverside 1"));
     }
 
+    // --- 035: section-scoped access ---
+
+    @Test
+    void sectionScopedAdminCanReachAMatchResolvingToTheirOwnSectionButNotOutsideIt() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        Team juniorsTeam = teamRepository.save(newTeam(club.getId(), juniors.getId(), "U15"));
+        Team openTeam = teamRepository.save(newTeam(club.getId(), open.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match juniorsMatch = matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(juniorsTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(7, ChronoUnit.DAYS)).active(true).build());
+        Match openMatch = matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(openTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(7, ChronoUnit.DAYS)).active(true).build());
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", juniors.getId());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}",
+                                club.getId(),
+                                juniorsMatch.getId())
+                        .with(sectionAdmin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}",
+                                club.getId(),
+                                openMatch.getId())
+                        .with(sectionAdmin))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listNarrowsToASectionScopedAdminsOwnAccessibleSectionsByDefault() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        Team juniorsTeam = teamRepository.save(newTeam(club.getId(), juniors.getId(), "U15"));
+        Team openTeam = teamRepository.save(newTeam(club.getId(), open.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(juniorsTeam.getId())
+                .awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(7, ChronoUnit.DAYS)).active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(openTeam.getId())
+                .awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(7, ChronoUnit.DAYS)).active(true).build());
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", juniors.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId()).with(sectionAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].homeTeamId").value(juniorsTeam.getId().toString()));
+    }
+
+    @Test
+    void clubScopeAdminAccessIsUnchangedByTheSectionScopedAccessChanges() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId()).with(admin))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(matchBody(season.getId())))
+                .andExpect(status().isCreated());
+    }
+
+    private JwtRequestPostProcessor grantSectionAdmin(String keycloakUserId, UUID sectionId) {
+        Person person = personRepository.save(Person.builder()
+                .firstName("Jamie")
+                .lastName("SectionAdmin")
+                .email(keycloakUserId + "@example.com")
+                .keycloakUserId(keycloakUserId)
+                .build());
+        roleAssignmentRepository.save(RoleAssignment.builder()
+                .personId(person.getId())
+                .role(RoleAssignmentRole.CLUB_ADMIN)
+                .scopeType(ScopeType.SECTION)
+                .scopeId(sectionId)
+                .build());
+        return withSubject(keycloakUserId);
+    }
+
     private JwtRequestPostProcessor grantClubAdmin(String keycloakUserId, UUID clubId) {
         Person person = personRepository.save(Person.builder()
                 .firstName("Casey")
