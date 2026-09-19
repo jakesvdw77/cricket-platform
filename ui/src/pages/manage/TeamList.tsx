@@ -52,8 +52,7 @@ function TeamCard({ clubId, sectionId, team }: { clubId: string; sectionId: stri
       title={team.name}
       avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
       badge={badgeFor(team)}
-      editLabel="Edit"
-      editTo={`/manage/sections/${sectionId}/teams/${team.id}/edit`}
+      viewTo={`/manage/sections/${sectionId}/teams/${team.id}`}
       secondaryAction={{
         label: team.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: team.active ? 'Deactivating…' : 'Reactivating…',

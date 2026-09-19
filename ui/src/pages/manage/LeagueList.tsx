@@ -15,14 +15,17 @@ import type { League } from '../../api/leagueApi'
 
 const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
-function badgeFor(league: League): RecordCardBadge | undefined {
+// Exported for LeagueDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's badge/fields/chips match this card's exactly, rather than a second
+// copy.
+export function badgeFor(league: League): RecordCardBadge | undefined {
   if (!league.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
 }
 
-function leagueRecordFields(league: League): RecordCardField[] {
+export function leagueRecordFields(league: League): RecordCardField[] {
   const fields: RecordCardField[] = [{ label: 'Playing XI size', value: league.maxPlayingXiSize }]
   if (league.minAge != null || league.maxAge != null) {
     fields.push({
@@ -33,7 +36,7 @@ function leagueRecordFields(league: League): RecordCardField[] {
   return fields
 }
 
-function leagueChips(league: League): string[] {
+export function leagueChips(league: League): string[] {
   const chips: string[] = []
   if (league.allowSubstitutions) {
     chips.push('Substitutions allowed')
@@ -67,8 +70,7 @@ function LeagueCard({ clubId, league }: { clubId: string; league: League }) {
       badge={badgeFor(league)}
       fields={leagueRecordFields(league)}
       chips={leagueChips(league)}
-      editLabel="Edit"
-      editTo={`/manage/fixtures/leagues/${league.id}/edit`}
+      viewTo={`/manage/fixtures/leagues/${league.id}`}
       secondaryAction={{
         label: league.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: league.active ? 'Deactivating…' : 'Reactivating…',

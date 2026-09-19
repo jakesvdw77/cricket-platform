@@ -37,14 +37,16 @@ const SORT_OPTIONS = [
 
 const SEARCH_DEBOUNCE_MS = 300
 
-function sideName(teamId: string | null, teamName: string | null, teamsById: Map<string, Team>): string {
+// Exported for MatchDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's title/badge match this card's exactly, rather than a second copy.
+export function sideName(teamId: string | null, teamName: string | null, teamsById: Map<string, Team>): string {
   if (teamId) {
     return teamsById.get(teamId)?.name ?? 'Unknown team'
   }
   return teamName ?? 'TBC'
 }
 
-function badgeFor(match: Match): RecordCardBadge | undefined {
+export function badgeFor(match: Match): RecordCardBadge | undefined {
   if (!match.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
@@ -77,6 +79,7 @@ function MatchCard({
   leaguesById,
   seasonsById,
   editTo,
+  viewTo,
 }: {
   clubId: string
   match: Match
@@ -84,6 +87,11 @@ function MatchCard({
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
   editTo: string
+  // docs/specs/036-view-first-record-detail-screens.md: when present, the card's primary footer
+  // action becomes "View" (into MatchDetailPage) and editTo is suppressed — SquadPicker.tsx
+  // deliberately passes `undefined` here (via MatchList's own `viewTo={null}`) to keep its own
+  // "jump straight to the Playing XI tab" edit shortcut, unchanged.
+  viewTo?: string
 }) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -173,6 +181,7 @@ function MatchCard({
         fields={matchFields(match, leaguesById, seasonsById)}
         editLabel="Edit"
         editTo={editTo}
+        viewTo={viewTo}
         secondaryAction={{
           label: match.active ? 'Deactivate' : 'Reactivate',
           pendingLabel: match.active ? 'Deactivating…' : 'Reactivating…',
@@ -211,6 +220,11 @@ export interface MatchListProps {
   backLabel?: string
   createLabel?: string
   editTo?: (matchId: string) => string
+  // docs/specs/036-view-first-record-detail-screens.md: defaults to MatchDetailPage's own route —
+  // every card's primary action becomes "View" (editTo is then only reachable via that view
+  // screen's own Edit action). SquadPicker.tsx passes `null` to opt out entirely and keep its own
+  // "jump straight to the Playing XI tab" editTo shortcut as this list's primary action instead.
+  viewTo?: ((matchId: string) => string) | null
   onCreate?: () => void
 }
 
@@ -223,6 +237,7 @@ export default function MatchList({
   backLabel = 'Back to Fixtures',
   createLabel = 'Add Match',
   editTo = (matchId: string) => `/manage/fixtures/matches/${matchId}/edit`,
+  viewTo = (matchId: string) => `/manage/fixtures/matches/${matchId}`,
   onCreate,
 }: MatchListProps) {
   const { clubId } = useOutletContext<{ clubId?: string }>()
@@ -370,6 +385,7 @@ export default function MatchList({
               leaguesById={leaguesById}
               seasonsById={seasonsById}
               editTo={editTo(match.id)}
+              viewTo={viewTo ? viewTo(match.id) : undefined}
             />
           ))}
         </Box>

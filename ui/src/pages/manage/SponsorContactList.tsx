@@ -22,11 +22,14 @@ const SORT_OPTIONS = [
   { value: 'role,asc', label: 'Role' },
 ]
 
-function fullName(contact: SponsorContact): string {
+// Exported for SponsorContactDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md)
+// so the new read-only view screen's title/badge match this card's exactly, rather than a second
+// copy.
+export function fullName(contact: SponsorContact): string {
   return `${contact.contact.firstName} ${contact.contact.lastName}`
 }
 
-function badgeFor(contact: SponsorContact): RecordCardBadge | undefined {
+export function badgeFor(contact: SponsorContact): RecordCardBadge | undefined {
   if (contact.isPrimary) {
     return { label: 'Primary', tone: 'positive' }
   }
@@ -75,8 +78,7 @@ function SponsorContactCard({
         { label: 'Email', value: contact.contact.email },
         { label: 'Phone', value: contact.contact.phone },
       ]}
-      editLabel="Edit"
-      editTo={`/manage/sponsors/${sponsorId}/contacts/${contact.id}/edit`}
+      viewTo={`/manage/sponsors/${sponsorId}/contacts/${contact.id}`}
       secondaryAction={{
         label: contact.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: contact.active ? 'Deactivating…' : 'Reactivating…',

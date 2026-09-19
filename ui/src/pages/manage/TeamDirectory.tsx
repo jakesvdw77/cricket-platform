@@ -21,7 +21,9 @@ const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
 
 const CLUB_TEAMS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'teams']
 
-function badgeFor(team: Team): RecordCardBadge | undefined {
+// Exported for TeamDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
+// new read-only view screen's badge matches this card's exactly, rather than a second copy.
+export function badgeFor(team: Team): RecordCardBadge | undefined {
   if (!team.active) {
     return { label: 'Inactive', tone: 'muted' }
   }
@@ -58,8 +60,7 @@ function TeamCard({ clubId, team, sectionBreadcrumb }: { clubId: string; team: T
       avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
       badge={badgeFor(team)}
       fields={[{ label: 'Section', value: sectionBreadcrumb }]}
-      editLabel="Edit"
-      editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
+      viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
       secondaryAction={{
         label: team.active ? 'Deactivate' : 'Reactivate',
         pendingLabel: team.active ? 'Deactivating…' : 'Reactivating…',

@@ -230,14 +230,16 @@ describe('TeamDirectory', () => {
     expect(reactivateTeam).toHaveBeenCalledWith('test-club-id', 'section-1', 'team-1')
   })
 
-  it('the edit link on a team card targets the section-scoped edit route', async () => {
+  // docs/specs/036-view-first-record-detail-screens.md: the card's primary footer action is now
+  // "View" (into TeamDetailPage), not a direct Edit link — Edit lives on that view screen instead.
+  it('the view link on a team card targets the section-scoped view route', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
     listSections.mockResolvedValueOnce([makeSection()])
 
     renderDirectory('test-club-id')
 
-    const editLink = await screen.findByRole('link', { name: 'Edit' })
-    expect(editLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1/edit')
+    const viewLink = await screen.findByRole('link', { name: 'View' })
+    expect(viewLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {

@@ -17,6 +17,10 @@ export default function SquadPicker() {
       backLabel="Back to Dashboard"
       createLabel="Schedule Match"
       editTo={(matchId) => `/manage/fixtures/matches/${matchId}/edit?tab=playing-xi`}
+      // docs/specs/036-view-first-record-detail-screens.md: opts out of MatchList's new
+      // view-first default — this card's whole purpose is a shortcut straight into the Playing XI
+      // tab, an editing entry point, not the record's read-only view screen.
+      viewTo={null}
       onCreate={() => navigate('/manage/fixtures/matches/new')}
     />
   )
