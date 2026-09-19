@@ -36,7 +36,7 @@ const GROUPS: ManagerGroup[] = [
       { title: 'Club Structure', description: "Define your club's own section tree", to: '/manage/sections', icon: <AccountTreeOutlinedIcon /> },
       { title: 'Teams', description: 'Register teams', to: '/manage/teams', icon: <GroupsOutlinedIcon /> },
       { title: 'Players', description: 'Manage the player roster', to: '/manage/players', icon: <SportsCricketOutlinedIcon /> },
-      { title: 'Fixtures', description: 'Schedule matches and build playing XIs', to: '/manage/fixtures', icon: <EventOutlinedIcon /> },
+      { title: 'Leagues and Fixtures', description: 'Schedule matches and build playing XIs', to: '/manage/fixtures', icon: <EventOutlinedIcon /> },
       { title: 'Results', description: 'Capture and review match results', to: '/manage/results', icon: <AssessmentOutlinedIcon /> },
       { title: 'Team Managers & Permissions', description: 'Add managers, manage access', to: '/manage/permissions', icon: <AdminPanelSettingsOutlinedIcon /> },
     ],

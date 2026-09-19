@@ -24,7 +24,7 @@ describe('ManagerDashboard', () => {
     expect(link).toHaveAttribute('href', '/manage/sections')
   })
 
-  it('renders separate "Fixtures" and "Results" cards (not the old combined "Fixtures & Results" copy)', () => {
+  it('renders separate "Leagues and Fixtures" and "Results" cards (not the old combined "Fixtures & Results" copy)', () => {
     render(
       <MemoryRouter>
         <ManagerDashboard />
@@ -33,7 +33,7 @@ describe('ManagerDashboard', () => {
 
     expect(screen.queryByText('Fixtures & Results')).not.toBeInTheDocument()
 
-    expect(screen.getByText('Fixtures').closest('a')).toHaveAttribute('href', '/manage/fixtures')
+    expect(screen.getByText('Leagues and Fixtures').closest('a')).toHaveAttribute('href', '/manage/fixtures')
     expect(screen.getByText('Results').closest('a')).toHaveAttribute('href', '/manage/results')
   })
 })
