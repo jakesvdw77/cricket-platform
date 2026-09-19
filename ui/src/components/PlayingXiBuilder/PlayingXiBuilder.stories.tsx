@@ -124,6 +124,16 @@ export const WithAddSquadMember: Story = {
   },
 }
 
+// docs/specs/037-match-improvements.md item 9: the "Re-select from Previous Match" button next to
+// "Add Squad Member" — purely additive, omitted entirely on every other story above since none
+// pass onReselectFromPreviousMatch.
+export const WithReselectFromPreviousMatch: Story = {
+  args: {
+    ...WithPlayersAdded.args,
+    onReselectFromPreviousMatch: noop,
+  },
+}
+
 // docs/specs/033-availability-aware-xi-builder.md (revised after live review): both statuses get a
 // full-row/option colour tint (red for Unavailable, orange for Unsure) plus a text caption — a
 // populated availabilityByPlayerId covering all four states across the fixture squad. p2 (Bob
