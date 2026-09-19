@@ -3,6 +3,7 @@ package com.cricketlegend.repository;
 import com.cricketlegend.domain.Match;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,4 +57,36 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
             @Param("sectionIds") Collection<UUID> sectionIds,
             @Param("startOfToday") Instant startOfToday,
             Pageable pageable);
+
+    /**
+     * Item 9's "Re-select from Previous Match" candidate query — see
+     * docs/specs/037-match-improvements.md. Scoped to this club's own matches ({@code clubId}),
+     * one team's own fixture history ({@code teamId} as either {@code homeTeamId} or {@code
+     * awayTeamId}), an exact {@code seasonId} match, and an exact {@code leagueId} match
+     * including {@code NULL}-to-{@code NULL} ("same League, including no League" — never a
+     * broader "any League" match). Restricted to {@code active} matches whose {@code matchDate}
+     * is strictly before {@code now} (the "already played" proxy — see the spec's own Non-goals,
+     * no real match-result/status field exists yet), optionally excluding one match id, and
+     * further restricted to matches where a {@link com.cricketlegend.domain.MatchSide} for {@code
+     * teamId} already has at least one {@link com.cricketlegend.domain.MatchSidePlayer} — a side
+     * whose XI was never built has nothing meaningful to copy. Ordered {@code matchDate}
+     * descending (most recent first). Deliberately unpaginated — see the spec's own API Contract
+     * note that this candidate set is naturally small, unlike the club-wide {@link
+     * #findByClubId}.
+     */
+    @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.seasonId = :seasonId "
+            + "AND (m.homeTeamId = :teamId OR m.awayTeamId = :teamId) "
+            + "AND ((:leagueId IS NULL AND m.leagueId IS NULL) OR m.leagueId = :leagueId) "
+            + "AND m.active = true AND m.matchDate < :now "
+            + "AND (:excludeMatchId IS NULL OR m.id <> :excludeMatchId) "
+            + "AND EXISTS (SELECT 1 FROM MatchSide ms WHERE ms.matchId = m.id AND ms.teamId = :teamId "
+            + "AND EXISTS (SELECT 1 FROM MatchSidePlayer msp WHERE msp.matchSideId = ms.id)) "
+            + "ORDER BY m.matchDate DESC")
+    List<Match> findPreviousForTeamSeasonLeague(
+            @Param("clubId") UUID clubId,
+            @Param("teamId") UUID teamId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("now") Instant now,
+            @Param("excludeMatchId") UUID excludeMatchId);
 }
