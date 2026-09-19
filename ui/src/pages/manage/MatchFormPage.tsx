@@ -80,6 +80,20 @@ function opponentLabel(match: Match, teamId: string, teamsById: Map<string, Team
   return sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)
 }
 
+// docs/specs/037-match-improvements.md item 9: a side counts as "non-empty" (and therefore needs
+// a destructive-replace confirmation before "Re-select from Previous Match" overwrites it) if it
+// has any ordered-XI player or any of captain/wicketkeeper/twelfth-man set. Shared by
+// handlePickPreviousMatch (decides whether to confirm) and copyFromPreviousMatchMutation (decides
+// whether to clear first) so the two can never disagree about what "non-empty" means.
+function isSideNonEmpty(matchSide: MatchSide): boolean {
+  return (
+    matchSide.players.length > 0 ||
+    Boolean(matchSide.captainPlayerId) ||
+    Boolean(matchSide.wicketKeeperPlayerId) ||
+    Boolean(matchSide.twelfthManPlayerId)
+  )
+}
+
 // One Playing XI tab's content — data fetching/mutations live here (React Query, not inside
 // PlayingXiBuilder itself, per docs/standards/frontend.md's "server state in the page" rule).
 // Creates the MatchSide on first use if none exists yet, per docs/specs/029-league-management.md.
@@ -216,13 +230,7 @@ function MatchSideTab({
         return { copiedCount: 0, totalSourcePlayers: 0, skippedCount: 0 }
       }
 
-      const destinationNonEmpty =
-        destinationSide.players.length > 0 ||
-        Boolean(destinationSide.captainPlayerId) ||
-        Boolean(destinationSide.wicketKeeperPlayerId) ||
-        Boolean(destinationSide.twelfthManPlayerId)
-
-      if (destinationNonEmpty) {
+      if (isSideNonEmpty(destinationSide)) {
         for (const player of destinationSide.players) {
           await removeMatchSidePlayer(clubId, matchId, destinationSide.id, player.playerProfileId)
         }
@@ -309,17 +317,24 @@ function MatchSideTab({
       setPendingSourceMatch(null)
       setCopySummary(result)
     },
+    // A non-400 failure mid-copy (e.g. a network drop) rethrows out of mutationFn rather than
+    // being caught — onSuccess's dialog-closing never runs, which would otherwise leave the
+    // confirm/picker Dialog open on top of the page, hiding the errorMessage Alert (rendered
+    // inside PlayingXiBuilder, behind the modal backdrop) with no visible indication of why the
+    // copy stalled. Close both dialogs here too so the error becomes visible; also
+    // re-fetch sides, since a destructive clear may have already applied before the failure.
+    onError: () => {
+      invalidateSides()
+      setConfirmReplaceOpen(false)
+      setPreviousMatchDialogOpen(false)
+      setPendingSourceMatch(null)
+    },
   })
 
   const handlePickPreviousMatch = (candidate: Match) => {
     const currentSide = side as MatchSide
-    const destinationNonEmpty =
-      currentSide.players.length > 0 ||
-      Boolean(currentSide.captainPlayerId) ||
-      Boolean(currentSide.wicketKeeperPlayerId) ||
-      Boolean(currentSide.twelfthManPlayerId)
 
-    if (destinationNonEmpty) {
+    if (isSideNonEmpty(currentSide)) {
       setPendingSourceMatch(candidate)
       setConfirmReplaceOpen(true)
     } else {
