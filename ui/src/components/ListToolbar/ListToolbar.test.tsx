@@ -108,4 +108,48 @@ describe('ListToolbar', () => {
     )
     expect(document.head.innerHTML).toContain('0 0 260px')
   })
+
+  // docs/specs/041-list-screen-header-actions.md: an additive, optional single-control slot (e.g.
+  // a SectionTreeSelect) rendered inline with Search/Sort — absent entirely when the caller
+  // doesn't pass one, so every existing call site is unaffected.
+  it('renders a passed filters control, and renders nothing extra when filters is omitted', () => {
+    const { rerender } = render(
+      <ListToolbar
+        searchValue=""
+        onSearchChange={() => undefined}
+        sortValue={SORT_OPTIONS[0].value}
+        sortOptions={SORT_OPTIONS}
+        onSortChange={() => undefined}
+        filters={<label htmlFor="section-filter">Section filter</label>}
+      />,
+    )
+    expect(screen.getByText('Section filter')).toBeInTheDocument()
+
+    rerender(
+      <ListToolbar
+        searchValue=""
+        onSearchChange={() => undefined}
+        sortValue={SORT_OPTIONS[0].value}
+        sortOptions={SORT_OPTIONS}
+        onSortChange={() => undefined}
+      />,
+    )
+    expect(screen.queryByText('Section filter')).not.toBeInTheDocument()
+  })
+
+  // docs/specs/041-list-screen-header-actions.md: createLabel/onCreate are now optional — a
+  // caller placing its primary create action in ManageScreenHeader's own action slot instead
+  // renders no Create button here at all, rather than a broken/no-op one.
+  it('renders no create button when createLabel/onCreate are both omitted', () => {
+    render(
+      <ListToolbar
+        searchValue=""
+        onSearchChange={() => undefined}
+        sortValue={SORT_OPTIONS[0].value}
+        sortOptions={SORT_OPTIONS}
+        onSortChange={() => undefined}
+      />,
+    )
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
 })

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { ListToolbar } from './ListToolbar'
 import type { ListToolbarSortOption } from './ListToolbar'
+import { SectionTreeSelect } from '../SectionTreeSelect'
 
 const SORT_OPTIONS: ListToolbarSortOption[] = [
   { value: 'name,asc', label: 'Name' },
@@ -76,6 +77,31 @@ export const WithWideSortOption: Story = {
 
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
 // mobile stacks search full-width above sort + create sharing a row, desktop is a single row.
+// docs/specs/041-list-screen-header-actions.md: the optional `filters` slot — a single extra
+// control (typically a SectionTreeSelect) rendered inline with Search/Sort on desktop, its own
+// full-width row on mobile.
+function ControlledWithFilters() {
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sectionId, setSectionId] = useState<string | null>(null)
+
+  return (
+    <ListToolbar
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by opponent or team name"
+      sortValue={sort}
+      sortOptions={SORT_OPTIONS}
+      onSortChange={setSort}
+      filters={<SectionTreeSelect label="Section" sections={[]} value={sectionId} onChange={setSectionId} allowClear />}
+    />
+  )
+}
+
+export const WithFilters: Story = {
+  render: () => <ControlledWithFilters />,
+}
+
 export const MobileViewport: Story = {
   render: () => <Controlled />,
   parameters: { viewport: { defaultViewport: 'mobile' } },

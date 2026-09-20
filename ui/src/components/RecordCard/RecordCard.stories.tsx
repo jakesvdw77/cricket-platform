@@ -171,9 +171,10 @@ export const WithInitialsAvatar: Story = {
   },
 }
 
-// docs/specs/036-view-first-record-detail-screens.md: viewTo becomes the footer's primary action
-// ("View", VisibilityOutlined) and suppresses editTo/onEdit entirely — the new view screen it
-// leads to owns the record's one Edit action instead.
+// docs/specs/036-view-first-record-detail-screens.md (rendering revised by
+// docs/specs/041-list-screen-header-actions.md): viewTo becomes the footer's primary action
+// ("View", VisibilityOutlined); since editTo is ALSO passed here, Edit renders right after it —
+// an admin with a real edit route doesn't have to go through View first.
 export const WithViewTo: Story = {
   args: {
     title: 'Jane Smith',
@@ -186,6 +187,15 @@ export const WithViewTo: Story = {
     ],
     editTo: '/manage/club-contacts/c-1/edit',
     viewTo: '/manage/club-contacts/c-1',
+  },
+}
+
+// docs/specs/041-list-screen-header-actions.md: a viewTo-only call site (no editTo) still shows
+// just View — no Edit shortcut to show.
+export const WithViewToOnly: Story = {
+  args: {
+    ...WithViewTo.args,
+    editTo: undefined,
   },
 }
 

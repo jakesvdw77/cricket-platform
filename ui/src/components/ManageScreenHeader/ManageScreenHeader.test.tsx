@@ -24,4 +24,23 @@ describe('ManageScreenHeader', () => {
 
     expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
   })
+
+  // docs/specs/041-list-screen-header-actions.md: an additive, optional slot for a screen's
+  // primary create action, rendered top-right beside the title — absent when the caller doesn't
+  // pass one, so every existing title-only call site is unaffected.
+  it('renders a passed action, and renders nothing extra when action is omitted', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Matches" action={<button type="button">Add Match</button>} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: 'Add Match' })).toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter>
+        <ManageScreenHeader title="Matches" />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('button', { name: 'Add Match' })).not.toBeInTheDocument()
+  })
 })
