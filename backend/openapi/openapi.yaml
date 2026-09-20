@@ -3,7 +3,7 @@ info:
   title: OpenAPI definition
   version: v0
 servers:
-- url: http://localhost:8091
+- url: http://localhost:8082
   description: Generated server url
 paths:
   /api/v1/public/polls/{pollId}/players/{playerProfileId}:

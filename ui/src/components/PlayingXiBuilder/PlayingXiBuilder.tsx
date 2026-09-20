@@ -16,6 +16,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { Input } from '../Input'
 import { Button } from '../Button'
+import { badgeSx } from '../RecordCard'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer, PlayingRole } from '../../api/matchSideApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
@@ -227,15 +228,7 @@ export function PlayingXiBuilder({
           <Chip
             label={announced ? 'Announced' : 'Not Announced'}
             variant={announced ? 'filled' : 'outlined'}
-            sx={
-              announced
-                ? {
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-                    color: 'primary.dark',
-                    fontWeight: 600,
-                  }
-                : undefined
-            }
+            sx={announced ? badgeSx('positive') : undefined}
           />
           {announced ? (
             <Button variant="ghost" onClick={onToggleAnnounced} disabled={togglingAnnounced} sx={{ flex: 'none' }}>

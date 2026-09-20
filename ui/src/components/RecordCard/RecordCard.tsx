@@ -103,7 +103,7 @@ export interface RecordCardProps {
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
-function badgeSx(tone: RecordCardBadgeTone) {
+export function badgeSx(tone: RecordCardBadgeTone) {
   if (tone === 'positive') {
     return {
       bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),

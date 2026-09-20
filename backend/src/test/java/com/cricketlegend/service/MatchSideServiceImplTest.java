@@ -846,8 +846,13 @@ class MatchSideServiceImplTest {
         verify(matchSideRepository, never()).save(any());
     }
 
+    // updateSide's own save() was already unconditional before 040 (029's original shape) — unlike
+    // addPlayer/updatePlayerRole/removePlayer/reorderPlayers, which only gained a save() call as
+    // part of 040's own guarded un-announce side effect. So there's no "spurious resave" for this
+    // method to avoid; this test only proves the announced flag stays false on an already-
+    // unannounced side, not anything about save() being skipped.
     @Test
-    void updateSideOnAnAlreadyUnannouncedSideDoesNotSpuriouslyResaveTheAnnouncedFlag() {
+    void updateSideOnAnAlreadyUnannouncedSideLeavesTheAnnouncedFlagFalse() {
         UUID clubId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
