@@ -25,7 +25,8 @@ public class MatchSideMapper {
                 side.getCaptainPlayerId(),
                 side.getWicketKeeperPlayerId(),
                 side.getTwelfthManPlayerId(),
-                players.stream().map(this::toPlayerDto).toList());
+                players.stream().map(this::toPlayerDto).toList(),
+                side.isAnnounced());
     }
 
     private MatchSidePlayerDto toPlayerDto(MatchSidePlayer player) {

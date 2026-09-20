@@ -52,6 +52,9 @@ public class MatchSide {
     @Column(name = "twelfth_man_player_id")
     private UUID twelfthManPlayerId;
 
+    @Column(name = "announced", nullable = false)
+    private boolean announced;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

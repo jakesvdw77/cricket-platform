@@ -114,4 +114,18 @@ public class MatchSideController {
             @Valid @RequestBody ReorderMatchSidePlayersRequest request) {
         return ResponseEntity.ok(matchSideService.reorderPlayers(authentication, clubId, matchId, sideId, request));
     }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/announce")
+    public ResponseEntity<MatchSideDto> announce(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId, @PathVariable UUID sideId) {
+        return ResponseEntity.ok(matchSideService.announce(authentication, clubId, matchId, sideId));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/unannounce")
+    public ResponseEntity<MatchSideDto> unannounce(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId, @PathVariable UUID sideId) {
+        return ResponseEntity.ok(matchSideService.unannounce(authentication, clubId, matchId, sideId));
+    }
 }

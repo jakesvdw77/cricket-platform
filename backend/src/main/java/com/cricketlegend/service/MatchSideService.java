@@ -66,4 +66,14 @@ public interface MatchSideService {
             UUID matchId,
             UUID sideId,
             ReorderMatchSidePlayersRequest request);
+
+    /**
+     * Marks a side's Playing XI as final/shared. Throws {@link
+     * com.cricketlegend.exception.ValidationException} (400) if the side has no players yet — see
+     * docs/specs/040-announce-team.md.
+     */
+    MatchSideDto announce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId);
+
+    /** Clears the announced flag. Always succeeds if the side exists — no precondition. */
+    MatchSideDto unannounce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId);
 }

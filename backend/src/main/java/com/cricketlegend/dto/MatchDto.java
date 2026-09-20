@@ -20,6 +20,8 @@ public record MatchDto(
         Instant matchDate,
         String venue,
         boolean active,
+        boolean homeSideAnnounced,
+        boolean awaySideAnnounced,
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy) {
