@@ -18,6 +18,7 @@ export interface MatchSide {
   wicketKeeperPlayerId: string | null
   twelfthManPlayerId: string | null
   players: MatchSidePlayer[]
+  announced: boolean
 }
 
 function sidesPath(clubId: string, matchId: string): string {
@@ -99,5 +100,15 @@ export async function reorderMatchSidePlayers(
   const { data } = await api.put<MatchSide>(`${sidesPath(clubId, matchId)}/${sideId}/players/reorder`, {
     playerProfileIds,
   })
+  return data
+}
+
+export async function announceMatchSide(clubId: string, matchId: string, sideId: string): Promise<MatchSide> {
+  const { data } = await api.post<MatchSide>(`${sidesPath(clubId, matchId)}/${sideId}/announce`)
+  return data
+}
+
+export async function unannounceMatchSide(clubId: string, matchId: string, sideId: string): Promise<MatchSide> {
+  const { data } = await api.post<MatchSide>(`${sidesPath(clubId, matchId)}/${sideId}/unannounce`)
   return data
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Avatar, Card as MuiCard, CardActions, CardContent, Chip, Stack, Typography, Button as MuiButton } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
@@ -60,6 +61,11 @@ export interface RecordCardProps {
   title: string
   avatar?: RecordCardAvatar
   badge?: RecordCardBadge
+  // docs/specs/040-announce-team.md: up to a few more badges coexisting with the single `badge`
+  // slot above (e.g. one per real-Team side's own announced/not-announced state) — rendered in
+  // the same top-right Stack, immediately after `badge` when both are present. `badge` itself is
+  // unchanged, byte-for-byte, for every existing call site that only ever passes it.
+  badges?: RecordCardBadge[]
   description?: string | null
   fields?: RecordCardField[]
   chips?: string[]
@@ -94,10 +100,35 @@ export interface RecordCardProps {
 // theme.palette.primary rather than a hard-coded colour. Built directly from MUI Card/CardContent/
 // CardActions rather than the shared Card component — this slot structure is more specific than
 // Card's generic title/children/footer shape.
+// Shared by the singular `badge` and the plural `badges` below so both render identically —
+// extracted rather than duplicated inline once a second call site needed the exact same
+// tone-to-styling mapping (docs/specs/040-announce-team.md).
+function badgeSx(tone: RecordCardBadgeTone) {
+  if (tone === 'positive') {
+    return {
+      bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),
+      color: 'primary.dark',
+      fontWeight: 600,
+    }
+  }
+  if (tone === 'muted') {
+    // Visually distinct from both 'positive' (solid primary-tinted) and 'neutral' (bordered,
+    // full-opacity) — a faded grey fill with reduced overall opacity, reading as
+    // "inactive/archived" at a glance (e.g. RETIRED vs DRAFT's 'neutral' outline).
+    return {
+      bgcolor: (theme: Theme) => alpha(theme.palette.text.secondary, 0.12),
+      color: 'text.secondary',
+      opacity: 0.7,
+    }
+  }
+  return undefined
+}
+
 export function RecordCard({
   title,
   avatar,
   badge,
+  badges,
   description,
   fields,
   chips,
@@ -137,32 +168,22 @@ export function RecordCard({
               {title}
             </Typography>
           </Stack>
-          {badge && (
-            <Chip
-              size="small"
-              label={badge.label}
-              variant={badge.tone === 'neutral' ? 'outlined' : 'filled'}
-              sx={
-                badge.tone === 'positive'
-                  ? {
-                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-                      color: 'primary.dark',
-                      fontWeight: 600,
-                    }
-                  : badge.tone === 'muted'
-                    ? {
-                        // Visually distinct from both 'positive' (solid primary-tinted) and
-                        // 'neutral' (bordered, full-opacity) — a faded grey fill with reduced
-                        // overall opacity, reading as "inactive/archived" at a glance (e.g.
-                        // RETIRED vs DRAFT's 'neutral' outline).
-                        bgcolor: (theme) => alpha(theme.palette.text.secondary, 0.12),
-                        color: 'text.secondary',
-                        opacity: 0.7,
-                      }
-                    : undefined
-              }
-            />
-          )}
+          {/* docs/specs/040-announce-team.md: flexWrap added so `badge` plus a couple of
+              `badges` entries (up to 3 chips) never force horizontal overflow at 375px. */}
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+            {badge && (
+              <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+            )}
+            {badges?.map((entry, index) => (
+              <Chip
+                key={index}
+                size="small"
+                label={entry.label}
+                variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
+                sx={badgeSx(entry.tone)}
+              />
+            ))}
+          </Stack>
         </Stack>
 
         {description && (

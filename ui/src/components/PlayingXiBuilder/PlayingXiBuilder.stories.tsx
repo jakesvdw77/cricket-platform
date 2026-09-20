@@ -159,6 +159,24 @@ export const WithAvailabilityIndicators: Story = {
   },
 }
 
+// docs/specs/040-announce-team.md: the header chip + toggle button — omitted entirely on every
+// other story above since none pass announced/onToggleAnnounced.
+export const NotAnnouncedState: Story = {
+  args: {
+    ...WithPlayersAdded.args,
+    announced: false,
+    onToggleAnnounced: noop,
+  },
+}
+
+export const AnnouncedState: Story = {
+  args: {
+    ...WithPlayersAdded.args,
+    announced: true,
+    onToggleAnnounced: noop,
+  },
+}
+
 export const MobileViewport: Story = {
   args: WithPlayersAdded.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },

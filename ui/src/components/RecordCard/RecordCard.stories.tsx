@@ -189,6 +189,25 @@ export const WithViewTo: Story = {
   },
 }
 
+// docs/specs/040-announce-team.md: the `badges` array slot, coexisting with the singular `badge`
+// — MatchList's own real usage (one badge per real-Team side's announced state).
+export const WithBadges: Story = {
+  args: {
+    title: 'Riverside 1st XI vs Coastal CC',
+    badge: { label: 'Active', tone: 'positive' },
+    badges: [
+      { label: 'Riverside 1st XI: Announced', tone: 'positive' },
+      { label: 'Coastal CC: Not Announced', tone: 'neutral' },
+    ],
+    fields: [
+      { label: 'Date & time', value: '9/13/2026, 3:00:00 PM' },
+      { label: 'Venue', value: 'Riverside Oval' },
+    ],
+    editLabel: 'Edit',
+    editTo: '/manage/fixtures/matches/m-1/edit',
+  },
+}
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280.
 export const MobileViewport: Story = {
   args: Active.args,

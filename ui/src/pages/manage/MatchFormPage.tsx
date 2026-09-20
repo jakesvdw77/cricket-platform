@@ -50,6 +50,8 @@ import {
   updateMatchSidePlayerRole,
   removeMatchSidePlayer,
   reorderMatchSidePlayers,
+  announceMatchSide,
+  unannounceMatchSide,
 } from '../../api/matchSideApi'
 import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
 import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
@@ -187,6 +189,15 @@ function MatchSideTab({
   })
   const updateSideMutation = useMutation({
     mutationFn: (payload: UpdateMatchSidePayload) => updateMatchSide(clubId, matchId, (side as { id: string }).id, payload),
+    onSuccess: invalidateSides,
+  })
+  // docs/specs/040-announce-team.md
+  const announceMutation = useMutation({
+    mutationFn: () => announceMatchSide(clubId, matchId, (side as { id: string }).id),
+    onSuccess: invalidateSides,
+  })
+  const unannounceMutation = useMutation({
+    mutationFn: () => unannounceMatchSide(clubId, matchId, (side as { id: string }).id),
     onSuccess: invalidateSides,
   })
 
@@ -439,6 +450,9 @@ function MatchSideTab({
           setSquadMemberDialogOpen(true)
         }}
         onReselectFromPreviousMatch={() => setPreviousMatchDialogOpen(true)}
+        announced={side?.announced ?? false}
+        onToggleAnnounced={() => (side?.announced ? unannounceMutation.mutate() : announceMutation.mutate())}
+        togglingAnnounced={announceMutation.isPending || unannounceMutation.isPending}
       />
 
       {/* docs/specs/037-match-improvements.md item 9: same placement convention as the errorMessage

@@ -65,6 +65,35 @@ export function badgeFor(match: Match): RecordCardBadge | undefined {
   return undefined
 }
 
+// docs/specs/040-announce-team.md: one badge per real-Team side (skipped entirely for a
+// free-text opponent side, since there's nothing to announce), prefixed with that side's own
+// resolved team name only when both sides are real Teams — unprefixed for the overwhelmingly
+// common one-real-side case, since the card's own title already names both teams.
+export function announcedBadges(match: Match, teamsById: Map<string, Team>): RecordCardBadge[] {
+  const badges: RecordCardBadge[] = []
+  const bothRealTeams = Boolean(match.homeTeamId) && Boolean(match.awayTeamId)
+
+  if (match.homeTeamId) {
+    const prefix = bothRealTeams ? `${sideName(match.homeTeamId, match.homeTeamName, teamsById)}: ` : ''
+    badges.push(
+      match.homeSideAnnounced
+        ? { label: `${prefix}Announced`, tone: 'positive' }
+        : { label: `${prefix}Not Announced`, tone: 'neutral' },
+    )
+  }
+
+  if (match.awayTeamId) {
+    const prefix = bothRealTeams ? `${sideName(match.awayTeamId, match.awayTeamName, teamsById)}: ` : ''
+    badges.push(
+      match.awaySideAnnounced
+        ? { label: `${prefix}Announced`, tone: 'positive' }
+        : { label: `${prefix}Not Announced`, tone: 'neutral' },
+    )
+  }
+
+  return badges
+}
+
 // A lightweight stand-in Team for a free-text opponent side (no real Team record exists) — only
 // `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by teamSheetPdf.ts/
 // TeamSheetCommunicationDialog, both of which prefer `teamName` for display anyway.
@@ -183,6 +212,7 @@ function MatchCard({
         title={title}
         avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
         badge={badgeFor(match)}
+        badges={announcedBadges(match, teamsById)}
         fields={matchFields(match, leaguesById, seasonsById)}
         editLabel="Edit"
         editTo={editTo}
