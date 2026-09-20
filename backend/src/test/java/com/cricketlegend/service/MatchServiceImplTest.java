@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,9 +14,11 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
+import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -24,12 +27,14 @@ import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.SeasonRepository;
+import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.MatchServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -67,6 +73,9 @@ class MatchServiceImplTest {
     private TeamRepository teamRepository;
 
     @Mock
+    private SectionRepository sectionRepository;
+
+    @Mock
     private MatchMapper matchMapper;
 
     @Mock
@@ -80,7 +89,7 @@ class MatchServiceImplTest {
     void setUp() {
         matchService = new MatchServiceImpl(
                 matchRepository, matchSideRepository, leagueRepository, seasonRepository, teamRepository,
-                matchMapper, accessService);
+                sectionRepository, matchMapper, accessService);
     }
 
     private MatchDto dummyDto() {
@@ -313,57 +322,74 @@ class MatchServiceImplTest {
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
+    /**
+     * Per docs/plans/042-match-list-filters-and-search.md's own note: once every branch collapses
+     * to one {@code matchRepository.findAll(Specification, Pageable)} call, the old "assert exactly
+     * one of four distinct repository methods was called" style stops being meaningful — a
+     * {@code Specification}'s actual predicate logic can't be inspected through a Mockito mock at
+     * all. These tests instead assert what IS observable through the mock: which {@code
+     * AccessService} calls happened (the real authorization/section-scoping behaviour, unchanged),
+     * and that the single {@code findAll} entry point was invoked with the expected sorted {@code
+     * Pageable}. Real filter-predicate correctness is proven in {@code MatchRepositoryTest}
+     * instead, against a real database.
+     */
+    private static org.springframework.data.domain.Pageable defaultSortedPageable() {
+        return org.springframework.data.domain.PageRequest.of(
+                0, 10, org.springframework.data.domain.Sort.by("matchDate").descending());
+    }
+
     @Test
     void listUsesThePlainClubWideQueryForAnUnrestrictedCallerWithNoExplicitSectionFilter() {
         UUID clubId = UUID.randomUUID();
         when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, false, pageable);
+        matchService.list(authentication, clubId, null, false, null, null, null, pageable);
 
-        verify(matchRepository).findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any());
-        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+        verify(accessService, never()).sectionAndDescendantIds(any(), any());
     }
 
     @Test
-    void listUsesTheSectionFilteredQueryForARestrictedCaller() {
+    void listAppliesTheCallersOwnAccessibleSectionsForARestrictedCallerWithNoExplicitSectionFilter() {
         UUID clubId = UUID.randomUUID();
         UUID accessibleSectionId = UUID.randomUUID();
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubIdAndSectionIdIn(
-                        org.mockito.ArgumentMatchers.eq(clubId),
-                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
-                        any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, false, pageable);
+        matchService.list(authentication, clubId, null, false, null, null, null, pageable);
 
-        verify(matchRepository, never()).findByClubId(any(), any());
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+        verify(accessService, never()).sectionAndDescendantIds(any(), any());
     }
 
     @Test
-    void listUsesTheSectionFilteredQueryWhenAnExplicitSectionIdIsSuppliedEvenForAnUnrestrictedCaller() {
+    void listValidatesAndNarrowsToTheDescendantClosureWhenAnExplicitSectionIdIsSupplied() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID descendantSectionId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId))
                 .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubIdAndSectionIdIn(
-                        org.mockito.ArgumentMatchers.eq(clubId), any(), any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, sectionId, false, pageable);
+        matchService.list(authentication, clubId, sectionId, false, null, null, null, pageable);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
-        verify(matchRepository, never()).findByClubId(any(), any());
+        verify(accessService).sectionAndDescendantIds(clubId, sectionId);
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
     }
 
     // --- 040: announced enrichment ---
@@ -385,7 +411,7 @@ class MatchServiceImplTest {
         Match matchB = Match.builder().id(matchBId).clubId(clubId).homeTeamId(teamBHome)
                 .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true)
                 .build();
-        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null,
@@ -404,7 +430,7 @@ class MatchServiceImplTest {
                 .thenReturn(List.of(announcedHomeSideOfA, notAnnouncedHomeSideOfB));
 
         org.springframework.data.domain.Page<MatchDto> result =
-                matchService.list(authentication, clubId, null, false, pageable);
+                matchService.list(authentication, clubId, null, false, null, null, null, pageable);
 
         List<MatchDto> content = result.getContent();
         MatchDto resultA = content.stream().filter(d -> d.id().equals(matchAId)).findFirst().orElseThrow();
@@ -419,89 +445,213 @@ class MatchServiceImplTest {
     // --- 037: upcomingOnly ---
 
     @Test
-    void listWithUpcomingOnlyFalseUsesThePlainClubWideQueryUnchangedForAnUnrestrictedCaller() {
+    void listWithUpcomingOnlyFalseCallsFindAllOnceForAnUnrestrictedCaller() {
         UUID clubId = UUID.randomUUID();
         when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        org.springframework.data.domain.Page<Match> expected = org.springframework.data.domain.Page.empty();
-        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any())).thenReturn(expected);
-
-        matchService.list(authentication, clubId, null, false, pageable);
-
-        verify(matchRepository).findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any());
-        verify(matchRepository, never())
-                .findByClubIdAndMatchDateGreaterThanEqual(any(), any(), any());
-        verify(matchRepository, never())
-                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(any(), any(), any(), any());
-    }
-
-    @Test
-    void listWithUpcomingOnlyTrueUsesTheDateFilteredClubWideQueryForAnUnrestrictedCaller() {
-        UUID clubId = UUID.randomUUID();
-        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
-        org.springframework.data.domain.Pageable pageable =
-                org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubIdAndMatchDateGreaterThanEqual(
-                        org.mockito.ArgumentMatchers.eq(clubId), any(), any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, true, pageable);
+        matchService.list(authentication, clubId, null, false, null, null, null, pageable);
 
-        verify(matchRepository)
-                .findByClubIdAndMatchDateGreaterThanEqual(org.mockito.ArgumentMatchers.eq(clubId), any(), any());
-        verify(matchRepository, never()).findByClubId(any(), any());
-        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
     }
 
     @Test
-    void listWithUpcomingOnlyTrueUsesTheDateFilteredSectionQueryForARestrictedCaller() {
+    void listWithUpcomingOnlyTrueCallsFindAllOnceForAnUnrestrictedCaller() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, true, null, null, null, pageable);
+
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+    }
+
+    @Test
+    void listWithUpcomingOnlyTrueCallsFindAllOnceForARestrictedCaller() {
         UUID clubId = UUID.randomUUID();
         UUID accessibleSectionId = UUID.randomUUID();
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(java.util.Set.of(accessibleSectionId)));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
-                        org.mockito.ArgumentMatchers.eq(clubId),
-                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
-                        any(),
-                        any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, null, true, pageable);
+        matchService.list(authentication, clubId, null, true, null, null, null, pageable);
 
-        verify(matchRepository)
-                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
-                        org.mockito.ArgumentMatchers.eq(clubId),
-                        org.mockito.ArgumentMatchers.eq(java.util.Set.of(accessibleSectionId)),
-                        any(),
-                        any());
-        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
-        verify(matchRepository, never()).findByClubId(any(), any());
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
     }
 
     @Test
-    void listWithUpcomingOnlyTrueUsesTheDateFilteredSectionQueryWhenAnExplicitSectionIdIsSupplied() {
+    void listWithUpcomingOnlyTrueValidatesAccessWhenAnExplicitSectionIdIsSupplied() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID descendantSectionId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
         when(accessService.sectionAndDescendantIds(clubId, sectionId))
                 .thenReturn(java.util.Set.of(sectionId, descendantSectionId));
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(0, 10);
-        when(matchRepository.findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
-                        org.mockito.ArgumentMatchers.eq(clubId), any(), any(), any()))
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
-        matchService.list(authentication, clubId, sectionId, true, pageable);
+        matchService.list(authentication, clubId, sectionId, true, null, null, null, pageable);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
-        verify(matchRepository)
-                .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
-                        org.mockito.ArgumentMatchers.eq(clubId), any(), any(), any());
-        verify(matchRepository, never()).findByClubIdAndSectionIdIn(any(), any(), any());
-        verify(matchRepository, never()).findByClubId(any(), any());
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+    }
+
+    // --- 042: search/leagueId/seasonId filters ---
+
+    @Test
+    void listWithSearchLeagueIdAndSeasonIdAllSetCallsFindAllOnce() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, true, "riverside", leagueId, seasonId, pageable);
+
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+    }
+
+    @Test
+    void listWithABlankSearchStringDoesNotThrowAndStillCallsFindAllOnce() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, clubId, null, false, "   ", null, null, pageable);
+
+        verify(matchRepository).findAll(any(Specification.class), eq(defaultSortedPageable()));
+    }
+
+    // --- 042: filterOptions() ---
+
+    @Test
+    void filterOptionsForAnUnrestrictedCallerWithNoExplicitSectionIdNeverValidatesSectionAccess() {
+        UUID clubId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        MatchFilterOptionsDto result =
+                matchService.filterOptions(authentication, clubId, null, null, null, null, false);
+
+        assertThat(result.sectionIds()).isEmpty();
+        assertThat(result.leagueIds()).isEmpty();
+        assertThat(result.seasonIds()).isEmpty();
+        verify(accessService, never()).assertCanAdministerSection(any(), any(), any());
+    }
+
+    @Test
+    void filterOptionsValidatesAnExplicitSectionIdAgainstTheCallersOwnAccess() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(java.util.Set.of(sectionId));
+        when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        matchService.filterOptions(authentication, clubId, sectionId, null, null, null, false);
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+    }
+
+    @Test
+    void filterOptionsReturnsDistinctNonNullLeagueIdsAndDistinctSeasonIds() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+
+        Match withLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Home")
+                .awayTeamName("Away").leagueId(leagueId).seasonId(seasonId).matchDate(Instant.now())
+                .active(true).build();
+        Match withoutLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Home2")
+                .awayTeamName("Away2").leagueId(null).seasonId(seasonId).matchDate(Instant.now())
+                .active(true).build();
+        when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of(withLeague, withoutLeague));
+
+        MatchFilterOptionsDto result =
+                matchService.filterOptions(authentication, clubId, null, null, null, null, false);
+
+        assertThat(result.leagueIds()).containsExactly(leagueId);
+        assertThat(result.seasonIds()).containsExactly(seasonId);
+    }
+
+    /**
+     * Per docs/specs/042-match-list-filters-and-search.md's Search-autocomplete narrowing fix:
+     * {@code teamIds} is the distinct non-null {@code homeTeamId}/{@code awayTeamId} values across
+     * the matching matches — a duplicate team across two matches collapses to one entry, and a
+     * side with no real {@code Team} (a free-text opponent) contributes nothing.
+     */
+    @Test
+    void filterOptionsReturnsDistinctNonNullHomeAndAwayTeamIds() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamA = UUID.randomUUID();
+        UUID teamB = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+
+        Match teamAHomeVsFreeText = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamA)
+                .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
+                .active(true).build();
+        Match teamAAwayVsTeamB = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamB)
+                .awayTeamId(teamA).seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
+        when(matchRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(teamAHomeVsFreeText, teamAAwayVsTeamB));
+
+        MatchFilterOptionsDto result =
+                matchService.filterOptions(authentication, clubId, null, null, null, null, false);
+
+        assertThat(result.teamIds()).containsExactlyInAnyOrder(teamA, teamB);
+    }
+
+    /**
+     * Per docs/specs/042-match-list-filters-and-search.md's ancestor-closure design decision: a
+     * grandchild section's own match must make its grandparent (and every section in between)
+     * appear in the returned {@code sectionIds} array too, mirroring — upward — {@code
+     * AccessService.sectionAndDescendantIds}'s existing downward descendant closure.
+     */
+    @Test
+    void filterOptionsSectionIdsIncludeEveryAncestorOfADirectlyReachableSection() {
+        UUID clubId = UUID.randomUUID();
+        UUID grandparentId = UUID.randomUUID();
+        UUID parentId = UUID.randomUUID();
+        UUID grandchildSectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+
+        Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamId)
+                .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
+                .active(true).build();
+        when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of(match));
+        when(teamRepository.findAllById(java.util.Set.of(teamId)))
+                .thenReturn(List.of(team(teamId, clubId, grandchildSectionId)));
+
+        Section grandparent =
+                Section.builder().id(grandparentId).clubId(clubId).name("Club").active(true).build();
+        Section parent = Section.builder().id(parentId).clubId(clubId).parentSectionId(grandparentId)
+                .name("Seniors").active(true).build();
+        Section grandchild = Section.builder().id(grandchildSectionId).clubId(clubId)
+                .parentSectionId(parentId).name("1st XI").active(true).build();
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(grandparent, parent, grandchild));
+
+        MatchFilterOptionsDto result =
+                matchService.filterOptions(authentication, clubId, null, null, null, null, false);
+
+        assertThat(result.sectionIds()).containsExactlyInAnyOrder(grandchildSectionId, parentId, grandparentId);
     }
 
     // --- 037 item 9: listPrevious ---
