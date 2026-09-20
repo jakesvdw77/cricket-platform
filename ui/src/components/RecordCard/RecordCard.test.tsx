@@ -311,6 +311,40 @@ describe('RecordCard', () => {
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
+  // docs/specs/040-announce-team.md: `badges` is an array slot coexisting with the singular
+  // `badge`, rendered in the same top-right Stack.
+  it('renders every badges entry alongside an existing badge', () => {
+    render(
+      <RecordCard
+        title="Riverside 1st XI vs Coastal CC"
+        badge={{ label: 'Inactive', tone: 'muted' }}
+        badges={[
+          { label: 'Riverside 1st XI: Announced', tone: 'positive' },
+          { label: 'Coastal CC: Not Announced', tone: 'neutral' },
+        ]}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getByText('Riverside 1st XI: Announced')).toBeInTheDocument()
+    expect(screen.getByText('Coastal CC: Not Announced')).toBeInTheDocument()
+  })
+
+  it('renders badges entries on their own, with no badge prop passed', () => {
+    render(
+      <RecordCard
+        title="Riverside 1st XI vs Coastal CC"
+        badges={[{ label: 'Announced', tone: 'positive' }]}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Announced')).toBeInTheDocument()
+  })
+
   // Regression coverage (docs/specs/031-jersey-numbers.md): a field's `value` can be a real form
   // control, not just static text — TeamFormPage's inline "Squad #" edit passes an MUI Input.
   // The value slot used to render inside a Typography variant="body2" with no `component`

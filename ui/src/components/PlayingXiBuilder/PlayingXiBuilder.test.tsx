@@ -366,6 +366,74 @@ describe('PlayingXiBuilder', () => {
     })
   })
 
+  // docs/specs/040-announce-team.md
+  describe('Announce/Un-announce toggle', () => {
+    it('is omitted entirely when announced/onToggleAnnounced are not passed', () => {
+      render(<PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO })} />)
+
+      expect(screen.queryByText('Announced')).not.toBeInTheDocument()
+      expect(screen.queryByText('Not Announced')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Announce Team' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Un-announce' })).not.toBeInTheDocument()
+    })
+
+    it('shows a "Not Announced" chip and a disabled "Announce Team" button with zero players', () => {
+      render(<PlayingXiBuilder {...baseProps({ announced: false, onToggleAnnounced: vi.fn() })} />)
+
+      expect(screen.getByText('Not Announced')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Announce Team' })).toBeDisabled()
+    })
+
+    it('enables "Announce Team" once the side has at least one player, and calls onToggleAnnounced', async () => {
+      const user = userEvent.setup()
+      const onToggleAnnounced = vi.fn()
+      render(
+        <PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, announced: false, onToggleAnnounced })} />,
+      )
+
+      const button = screen.getByRole('button', { name: 'Announce Team' })
+      expect(button).not.toBeDisabled()
+      await user.click(button)
+
+      expect(onToggleAnnounced).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows an "Announced" chip and an enabled "Un-announce" button when announced is true', async () => {
+      const user = userEvent.setup()
+      const onToggleAnnounced = vi.fn()
+      render(
+        <PlayingXiBuilder {...baseProps({ xi: XI_WITH_TWO, announced: true, onToggleAnnounced })} />,
+      )
+
+      expect(screen.getByText('Announced')).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: 'Un-announce' })
+      expect(button).not.toBeDisabled()
+      await user.click(button)
+
+      expect(onToggleAnnounced).toHaveBeenCalledTimes(1)
+    })
+
+    it('swaps to the pending label and disables the button while togglingAnnounced is true', () => {
+      render(
+        <PlayingXiBuilder
+          {...baseProps({ xi: XI_WITH_TWO, announced: false, onToggleAnnounced: vi.fn(), togglingAnnounced: true })}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Announcing…' })).toBeDisabled()
+    })
+
+    it('swaps to the un-announcing pending label and disables the button while togglingAnnounced is true', () => {
+      render(
+        <PlayingXiBuilder
+          {...baseProps({ xi: XI_WITH_TWO, announced: true, onToggleAnnounced: vi.fn(), togglingAnnounced: true })}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Un-announcing…' })).toBeDisabled()
+    })
+  })
+
   // docs/specs/033-availability-aware-xi-builder.md
   describe('availability indicators', () => {
     // Wrapped in the real app theme (docs/standards/design-system.md's palette tokens) rather than

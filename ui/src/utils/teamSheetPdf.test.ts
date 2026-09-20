@@ -49,6 +49,8 @@ const match: Match = {
   matchDate: '2026-03-01T10:00:00Z',
   venue: 'Riverside Oval',
   active: true,
+  homeSideAnnounced: false,
+  awaySideAnnounced: false,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   updatedBy: null,
@@ -133,6 +135,7 @@ const homeSide: MatchSide = {
     { playerProfileId: 'p2', battingOrder: 2, role: 'BATSMAN' },
     { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
   ],
+  announced: false,
 }
 
 const homeSheetSide: TeamSheetSide = {
@@ -145,7 +148,7 @@ const homeSheetSide: TeamSheetSide = {
 const awaySheetSideEmpty: TeamSheetSide = {
   team: awayTeam,
   teamName: awayTeam.name,
-  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [] },
+  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false },
   squad: [],
 }
 
@@ -332,6 +335,7 @@ describe('generateTeamSheetPdf', () => {
         wicketKeeperPlayerId: null,
         twelfthManPlayerId: 'missing-player',
         players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
+        announced: false,
       },
       squad: [], // deliberately empty — the roster references a player id not present here
     }

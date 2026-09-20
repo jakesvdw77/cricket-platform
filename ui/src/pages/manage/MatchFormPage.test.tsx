@@ -24,6 +24,8 @@ const addMatchSidePlayer = vi.fn()
 const updateMatchSidePlayerRole = vi.fn()
 const removeMatchSidePlayer = vi.fn()
 const reorderMatchSidePlayers = vi.fn()
+const announceMatchSide = vi.fn()
+const unannounceMatchSide = vi.fn()
 const listPolls = vi.fn()
 const createPoll = vi.fn()
 const openPoll = vi.fn()
@@ -77,6 +79,8 @@ vi.mock('../../api/matchSideApi', () => ({
     removeMatchSidePlayer(clubId, matchId, sideId, playerId),
   reorderMatchSidePlayers: (clubId: string, matchId: string, sideId: string, ids: string[]) =>
     reorderMatchSidePlayers(clubId, matchId, sideId, ids),
+  announceMatchSide: (clubId: string, matchId: string, sideId: string) => announceMatchSide(clubId, matchId, sideId),
+  unannounceMatchSide: (clubId: string, matchId: string, sideId: string) => unannounceMatchSide(clubId, matchId, sideId),
 }))
 
 vi.mock('../../api/matchAvailabilityApi', () => ({
@@ -100,6 +104,8 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     matchDate: '2026-06-01T14:30:00Z',
     venue: 'Riverside Oval',
     active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -116,6 +122,7 @@ function makeSide(overrides: Partial<MatchSide> = {}): MatchSide {
     wicketKeeperPlayerId: null,
     twelfthManPlayerId: null,
     players: [],
+    announced: false,
     ...overrides,
   }
 }

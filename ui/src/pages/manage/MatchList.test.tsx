@@ -48,6 +48,8 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     matchDate: '2026-06-01T14:30:00Z',
     venue: 'Riverside Oval',
     active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -208,6 +210,78 @@ describe('MatchList', () => {
     renderPage('test-club-id')
 
     expect(await screen.findByText('Inactive')).toBeInTheDocument()
+  })
+
+  // docs/specs/040-announce-team.md
+  describe('announced badges', () => {
+    it('shows an unprefixed "Not Announced" badge for the one real-Team side', async () => {
+      listMatches.mockResolvedValueOnce(
+        makePage([makeMatch({ homeTeamId: 'team-1', homeSideAnnounced: false })]),
+      )
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText('Not Announced')).toBeInTheDocument()
+    })
+
+    it('prefixes each side\'s badge with its own team name when both sides are real Teams', async () => {
+      listMatches.mockResolvedValueOnce(
+        makePage([
+          makeMatch({
+            homeTeamId: 'team-1',
+            homeSideAnnounced: true,
+            awayTeamId: 'team-2',
+            awayTeamName: null,
+            awaySideAnnounced: false,
+          }),
+        ]),
+      )
+      listTeamsForClub.mockResolvedValueOnce([
+        { id: 'team-1', name: '1st XI' },
+        { id: 'team-2', name: '2nd XI' },
+      ])
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText('1st XI: Announced')).toBeInTheDocument()
+      expect(screen.getByText('2nd XI: Not Announced')).toBeInTheDocument()
+    })
+
+    it('prefixes each side\'s badge with its own team name for the opposite announced/not-announced ordering', async () => {
+      listMatches.mockResolvedValueOnce(
+        makePage([
+          makeMatch({
+            homeTeamId: 'team-1',
+            homeSideAnnounced: false,
+            awayTeamId: 'team-2',
+            awayTeamName: null,
+            awaySideAnnounced: true,
+          }),
+        ]),
+      )
+      listTeamsForClub.mockResolvedValueOnce([
+        { id: 'team-1', name: '1st XI' },
+        { id: 'team-2', name: '2nd XI' },
+      ])
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText('1st XI: Not Announced')).toBeInTheDocument()
+      expect(screen.getByText('2nd XI: Announced')).toBeInTheDocument()
+    })
+
+    it('shows no announced badge at all when neither side is a real Team', async () => {
+      listMatches.mockResolvedValueOnce(
+        makePage([
+          makeMatch({ homeTeamId: null, homeTeamName: 'Home Occasionals', awayTeamId: null, awayTeamName: 'Away Occasionals' }),
+        ]),
+      )
+
+      renderPage('test-club-id')
+
+      await screen.findByText('Home Occasionals vs Away Occasionals')
+      expect(screen.queryByText(/Announced/)).not.toBeInTheDocument()
+    })
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
