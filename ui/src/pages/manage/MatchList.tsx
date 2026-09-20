@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
@@ -230,7 +229,7 @@ function MatchCard({
               ]
             : []),
           {
-            label: 'Communicate Team Sheet',
+            label: 'Team Sheet',
             pendingLabel: 'Opening…',
             pending: false,
             onClick: () => setDialogOpen(true),
@@ -391,21 +390,28 @@ export default function MatchList({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title={title} backTo={backTo} backLabel={backLabel} />
+      <ManageScreenHeader
+        title={title}
+        backTo={backTo}
+        backLabel={backLabel}
+        action={
+          <Button onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
+        }
+      />
 
-      {/* docs/specs/037-match-improvements.md items 3/4: ListToolbar + the section filter read as
-          two visually disconnected rows before this — grouped in one bordered/tinted container
-          (SponsorDetailPage's own alpha(primary.main, 0.05) treatment) so they read as
-          one control group instead. */}
+      {/* docs/specs/037-match-improvements.md items 3/4: ListToolbar + the Section filter read as
+          one control group inside a bordered, shadowed container — a solid background.paper
+          surface (not a translucent primary tint, which reads as invisible against the shell's
+          own gradient page background) reads as a real surface floating above the page, matching
+          RecordCard's identical fix for the same problem. The Section filter itself sits inline
+          in ListToolbar's own filters slot rather than a second row below. */}
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
           border: 1,
           borderColor: 'divider',
           borderRadius: 2,
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
+          bgcolor: 'background.paper',
+          boxShadow: 1,
           p: 2,
         }}
       >
@@ -417,19 +423,11 @@ export default function MatchList({
           sortOptions={SORT_OPTIONS}
           onSortChange={setSort}
           sortMinWidth={260}
-          createLabel={createLabel}
-          onCreate={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}
+          filters={
+            <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+          }
+          filtersMinWidth={180}
         />
-
-        <Box sx={{ maxWidth: 360 }}>
-          <SectionTreeSelect
-            label="Section"
-            sections={sections ?? []}
-            value={sectionId}
-            onChange={setSectionId}
-            allowClear
-          />
-        </Box>
       </Box>
 
       {hasMatches && (

@@ -7,6 +7,7 @@ import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { Button } from '../../components/Button'
 import { listTeamsForSection } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
@@ -122,6 +123,7 @@ export default function TeamList() {
         title={section ? `Teams — ${[...breadcrumb, section.name].join(' › ')}` : 'Teams'}
         backTo="/manage/sections"
         backLabel="Back to Club Structure"
+        action={<Button onClick={() => navigate(`/manage/sections/${sectionId}/teams/new`)}>Add Team</Button>}
       />
 
       <ListToolbar
@@ -131,8 +133,6 @@ export default function TeamList() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add Team"
-        onCreate={() => navigate(`/manage/sections/${sectionId}/teams/new`)}
       />
 
       {visibleTeams.length > 0 && (

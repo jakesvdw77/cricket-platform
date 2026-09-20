@@ -7,6 +7,7 @@ import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { Button } from '../../components/Button'
 import { listSponsors } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
@@ -94,7 +95,10 @@ export default function SponsorList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Club Sponsors" />
+      <ManageScreenHeader
+        title="Club Sponsors"
+        action={<Button onClick={() => navigate('/manage/sponsors/new')}>Add Sponsor</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
@@ -103,8 +107,6 @@ export default function SponsorList() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add Sponsor"
-        onCreate={() => navigate('/manage/sponsors/new')}
       />
 
       {visibleSponsors.length > 0 && (

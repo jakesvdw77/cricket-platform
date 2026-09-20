@@ -8,6 +8,7 @@ import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
+import { Button } from '../../components/Button'
 import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
@@ -128,7 +129,10 @@ export default function PlayerList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Players" />
+      <ManageScreenHeader
+        title="Players"
+        action={<Button onClick={() => navigate('/manage/players/new')}>Add Player</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
@@ -137,19 +141,10 @@ export default function PlayerList() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add Player"
-        onCreate={() => navigate('/manage/players/new')}
+        filters={
+          <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+        }
       />
-
-      <Box sx={{ maxWidth: 360 }}>
-        <SectionTreeSelect
-          label="Section"
-          sections={sections ?? []}
-          value={sectionId}
-          onChange={setSectionId}
-          allowClear
-        />
-      </Box>
 
       {visiblePlayers.length > 0 && (
         <Box

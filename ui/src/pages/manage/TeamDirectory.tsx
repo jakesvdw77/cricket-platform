@@ -8,6 +8,7 @@ import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
+import { Button } from '../../components/Button'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
@@ -124,7 +125,10 @@ export default function TeamDirectory() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Teams" />
+      <ManageScreenHeader
+        title="Teams"
+        action={<Button onClick={() => navigate('/manage/teams/new')}>Add Team</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
@@ -133,19 +137,10 @@ export default function TeamDirectory() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add Team"
-        onCreate={() => navigate('/manage/teams/new')}
+        filters={
+          <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+        }
       />
-
-      <Box sx={{ maxWidth: 360 }}>
-        <SectionTreeSelect
-          label="Section"
-          sections={sections ?? []}
-          value={sectionId}
-          onChange={setSectionId}
-          allowClear
-        />
-      </Box>
 
       {visibleTeams.length > 0 && (
         <Box
