@@ -13,6 +13,10 @@ incomplete PUT payload), one is a new backend query param (upcoming-only filteri
 are UI/UX additions or reorderings on top of already-shipped entities (`029-league-management.md`,
 `033-availability-aware-xi-builder.md`, `028-players.md`). No new entity, no schema migration.
 
+**Items 1–8 below were already fully implemented, tested, and merged (PR #40) before a ninth item
+— "Re-select from Previous Match" — was added to the spec.** Item 9's own plan is Section 4 below,
+planned and grounded separately once 1–8 were confirmed complete on `master`.
+
 Verified directly against the current code (not just the spec's own claims) before writing this
 plan:
 - `ui/src/pages/manage/MatchList.tsx` — the list, its `ListToolbar`/`SectionTreeSelect` filter
@@ -117,9 +121,65 @@ Per spec's own Test Plan section and `docs/standards/testing.md`'s "required per
 - New shared-component behavior (the `ListToolbar.sortMinWidth` prop, `PlayingXiBuilder`'s stepper/reorder block) needs its own Storybook story per `docs/standards/frontend.md`'s four-file component anatomy — extend existing `.stories.tsx` files, not new ones.
 - One Playwright E2E extending `029`'s golden path, per spec's own Test Plan: schedule a match dated yesterday/tomorrow → list defaults to future only; card's "Select Team" → lands on Playing XI tab; set Captain, then WK, then 12th man → all three survive; click a batting-order number, retype it → order updates; "Add Squad Member" → new player immediately selectable.
 
+### 4. Item 9 — "Re-select from Previous Match" (`backend-builder`, `frontend-builder`, `test-writer`)
+
+Planned and built separately, after items 1–8 were already confirmed complete on `master` — see
+this section's own grounding against the current code before it started (`TeamSquadController`/
+`TeamSquadServiceImpl` as the exact precedent for a `teams/{teamId}/seasons/{seasonId}/...` nested
+resource; `MatchSideServiceImpl`'s `updateSide`/`addPlayer`/`removePlayer` exact signatures and
+exception classes; `LinkExistingRecordDialog`'s no-`extraField` immediate-fire mode; no generic
+confirm-dialog component existing anywhere in `ui/src/components/**`).
+
+**Backend** — new `GET /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous`
+(`TeamPreviousMatchController`, new file, mirroring `TeamSquadController`'s nested-resource shape
+rather than folding onto `MatchController`'s own club-scoped `/matches`). Backing service method
+`MatchService.listPrevious`/`MatchServiceImpl.listPrevious` — `findTeamOrThrowForClub` →
+`accessService.assertCanAdministerSection` → `findSeasonOrThrowForClub` (two new private helpers
+on `MatchServiceImpl`, copied from `TeamSquadServiceImpl`'s exact shape) → a new
+`MatchRepository.findPreviousForTeamSeasonLeague` JPQL query: same team (either side), exact
+`seasonId`, exact `leagueId` match including `null`-to-`null`, `active = true`, `matchDate` before
+now, optional `excludeMatchId`, and only matches whose side for this team already has ≥1
+`MatchSidePlayer` (nested `EXISTS`/`EXISTS`, not the originally-sketched nested `IN` — adjusted
+during build for Hibernate clarity) — ordered newest-first. Reuses the existing `MatchDto`
+unmodified. `backend/openapi/openapi.yaml` documents the new endpoint in the same style as the
+existing `upcomingOnly` entry.
+
+**Frontend** — `ui/src/api/matchApi.ts` gains `listPreviousMatches`. `MatchFormPage.tsx`'s
+`MatchSideTab` gains `teamsById`/`leagueId` props (wired from both existing call sites' own
+already-computed values), a `previousMatchesQuery` (fetched only while the picker is open), and a
+`copyFromPreviousMatchMutation`: clears a non-empty destination side first (remove-each-player then
+one full-replace `updateMatchSide` nulling captain/WK/12th), replays the source's players in
+ascending `battingOrder` via the existing `addMatchSidePlayer` (a per-player 400 is caught and
+counted as skipped, not fatal), then resolves and sets captain/wicketkeeper/twelfth-man only for
+ids that actually survived into the copy. A `LinkExistingRecordDialog<Match>` (no `extraField`,
+immediate-fire) is the picker; a small inline MUI `Dialog` (no new shared component) confirms a
+destructive replace only when the destination side is already non-empty — both share one new
+`isSideNonEmpty` helper so the confirm-trigger and the clear-before-copy logic can never disagree.
+An info `Alert` reports "copied X of Y, N skipped" after the copy. `PlayingXiBuilder.tsx` gains an
+additive `onReselectFromPreviousMatch?` prop, rendered as a button next to "Add Squad Member",
+omitted when not passed. **Review-pass fix, folded in before merge:** the mutation gained an
+`onError` handler (in addition to `onSuccess`) closing both dialogs and re-invalidating sides on a
+non-400 failure — without it, a failed copy left the confirm/picker `Dialog` open on top of the
+page, hiding the `errorMessage` `Alert` behind the modal backdrop with no visible reason for the
+stall.
+
+**Tests** — `MatchServiceImplTest`/`MatchControllerIntegrationTest` extended for `listPrevious`
+(scoping, 404s, ordering, real Postgres). `PlayingXiBuilder.test.tsx`/`.stories.tsx` extended for
+the new button's render/omit/fire behavior. `MatchFormPage.test.tsx` extended: empty-side copy
+applies immediately with no confirm dialog; a non-empty side opens the confirm dialog and only
+copies on confirm/leaves the side untouched on cancel; a simulated per-player 400 is skipped
+without aborting the rest of the copy; captain/WK/12th-man only carry over when they survived.
+
+No Claude Design pass was done for the confirm dialog (a deliberate decision at planning time,
+overriding the spec's own Rollout Notes suggestion) — it's built entirely from existing MUI
+primitives (`Dialog`/`DialogTitle`/`DialogContent`/`DialogActions`, the same ones
+`LinkExistingRecordDialog` already uses) with one paragraph of copy, judged not to need a separate
+design pass.
+
 ## Verification
 
 - Backend: `cd backend && ./mvnw test` (unit + Testcontainers integration + ArchUnit) and confirm the OpenAPI diff check passes with the new `upcomingOnly` param documented.
 - Frontend: `cd ui && npm run test` (Vitest) and `npm run test:e2e` (Playwright) for the new/updated specs above.
 - Manual/visual check (per spec's own Rollout Notes — items 3/4 had no supplied screenshot, so this is the one part of the plan not mechanically determined): run the app (`run` skill or `mvnw spring-boot:run` + `npm run dev`), open `/manage/fixtures/matches`, confirm the Sort-by dropdown no longer clips "Match date (newest first)"/"(oldest first)" at both mobile (375px) and desktop widths, and that the filters bar reads as one grouped control. Also click through: Select Team from both a card and the detail page; set Captain → Wicketkeeper → Twelfth Man in sequence and confirm none get cleared; click a batting-order number and retype a position; use Add Squad Member end-to-end.
 - After implementation, run the `review` skill (adversarial standards-compliance pass) before opening the PR, per `docs/workflow.md`.
+- **Item 9 specifically:** `cd backend && ./mvnw test` (864 tests, `BUILD SUCCESS`, includes the new `listPrevious` unit/integration tests) and `cd ui && npm run test`/`npm run build`/`npm run lint` (741 tests, clean build, no new lint warnings) both verified independently, not just on the builder agents' own word. A live browser walkthrough of the actual copy/confirm/skip flow was attempted but blocked — the dev environment's only CLUB_ADMIN login belongs to the human user and this session had no password for it; automated coverage was judged sufficient to proceed rather than block on it. Worth a manual pass before this is considered fully closed out: the local DB already has the exact fixture for it (one team/season/league, a past match with a built XI and a future one with captain/WK already set).

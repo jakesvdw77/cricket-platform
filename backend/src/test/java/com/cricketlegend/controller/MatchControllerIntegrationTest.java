@@ -14,7 +14,11 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.MatchSidePlayer;
 import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.PlayingRole;
 import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
@@ -24,7 +28,10 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchSidePlayerRepository;
+import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
@@ -79,6 +86,15 @@ class MatchControllerIntegrationTest {
 
     @Autowired
     private MatchRepository matchRepository;
+
+    @Autowired
+    private MatchSideRepository matchSideRepository;
+
+    @Autowired
+    private MatchSidePlayerRepository matchSidePlayerRepository;
+
+    @Autowired
+    private PlayerProfileRepository playerProfileRepository;
 
     @Autowired
     private PersonRepository personRepository;
@@ -563,6 +579,156 @@ class MatchControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(matchBody(season.getId())))
                 .andExpect(status().isCreated());
+    }
+
+    // --- 037 item 9: GET .../teams/{teamId}/seasons/{seasonId}/matches/previous ---
+
+    /**
+     * Real success case spanning past/future/different-league/different-season/no-XI-yet
+     * candidates, confirming only the correct subset comes back, most-recent-first. See
+     * docs/specs/037-match-improvements.md item 9.
+     */
+    @Test
+    void listPreviousReturnsOnlyMatchingPastMatchesWithABuiltXiOrderedByMatchDateDescending() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Team opponent = teamRepository.save(newTeam(club.getId(), section.getId(), "2nd XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Season otherSeason = seasonRepository.save(newSeason(club.getId(), "2025"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        League otherLeague = leagueRepository.save(newLeague(club.getId()));
+
+        // Matches an older previous fixture with a built XI.
+        Match olderMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), league.getId(), Instant.now().minus(14, ChronoUnit.DAYS)));
+        buildXi(club.getId(), olderMatch.getId(), team.getId());
+        // Matches a more recent previous fixture with a built XI — should sort first.
+        Match recentMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), league.getId(), Instant.now().minus(2, ChronoUnit.DAYS)));
+        buildXi(club.getId(), recentMatch.getId(), team.getId());
+
+        // Excluded: scheduled in the future, not yet played.
+        Match futureMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), league.getId(), Instant.now().plus(7, ChronoUnit.DAYS)));
+        buildXi(club.getId(), futureMatch.getId(), team.getId());
+
+        // Excluded: different league.
+        Match differentLeagueMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), otherLeague.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+        buildXi(club.getId(), differentLeagueMatch.getId(), team.getId());
+
+        // Excluded: different season.
+        Match differentSeasonMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                otherSeason.getId(), league.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+        buildXi(club.getId(), differentSeasonMatch.getId(), team.getId());
+
+        // Excluded: a MatchSide exists for the team, but no XI was ever built.
+        Match noXiMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), league.getId(), Instant.now().minus(4, ChronoUnit.DAYS)));
+        matchSideRepository.save(MatchSide.builder().matchId(noXiMatch.getId()).teamId(team.getId()).build());
+
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous",
+                                club.getId(),
+                                team.getId(),
+                                season.getId())
+                        .param("leagueId", league.getId().toString())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(recentMatch.getId().toString()))
+                .andExpect(jsonPath("$[1].id").value(olderMatch.getId().toString()));
+    }
+
+    /** {@code 404} for a {@code seasonId} belonging to a different club. See item 9. */
+    @Test
+    void listPreviousReturns404ForASeasonIdBelongingToADifferentClub() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        Section sectionX = sectionRepository.save(newSection(clubX.getId(), "Men"));
+        Team teamX = teamRepository.save(newTeam(clubX.getId(), sectionX.getId(), "1st XI"));
+        Season seasonY = seasonRepository.save(newSeason(clubY.getId(), "2026"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", clubX.getId());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous",
+                                clubX.getId(),
+                                teamX.getId(),
+                                seasonY.getId())
+                        .with(admin))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * {@code excludeMatchId} drops the currently-edited match; the null-{@code leagueId} scoping
+     * only matches another League-less previous match for the same team/season. See item 9.
+     */
+    @Test
+    void listPreviousExcludesExcludeMatchIdAndScopesNullLeagueExactly() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Team opponent = teamRepository.save(newTeam(club.getId(), section.getId(), "2nd XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+
+        // No-League previous match — should match a null leagueId query.
+        Match leaguelessMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), null, Instant.now().minus(2, ChronoUnit.DAYS)));
+        buildXi(club.getId(), leaguelessMatch.getId(), team.getId());
+
+        // A League-affiliated previous match — must NOT match a null leagueId query.
+        Match leaguedMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), league.getId(), Instant.now().minus(1, ChronoUnit.DAYS)));
+        buildXi(club.getId(), leaguedMatch.getId(), team.getId());
+
+        // Would otherwise match the null-league query too, but is the match being edited.
+        Match excludedMatch = matchRepository.save(pastMatch(club.getId(), team.getId(), opponent.getId(),
+                season.getId(), null, Instant.now().minus(3, ChronoUnit.DAYS)));
+        buildXi(club.getId(), excludedMatch.getId(), team.getId());
+
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/matches/previous",
+                                club.getId(),
+                                team.getId(),
+                                season.getId())
+                        .param("excludeMatchId", excludedMatch.getId().toString())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(leaguelessMatch.getId().toString()));
+    }
+
+    private Match pastMatch(
+            UUID clubId, UUID homeTeamId, UUID awayTeamId, UUID seasonId, UUID leagueId, Instant matchDate) {
+        return Match.builder()
+                .clubId(clubId)
+                .homeTeamId(homeTeamId)
+                .awayTeamId(awayTeamId)
+                .leagueId(leagueId)
+                .seasonId(seasonId)
+                .matchDate(matchDate)
+                .active(true)
+                .build();
+    }
+
+    private void buildXi(UUID clubId, UUID matchId, UUID teamId) {
+        MatchSide side = matchSideRepository.save(MatchSide.builder().matchId(matchId).teamId(teamId).build());
+        Person person = personRepository.save(
+                Person.builder().firstName("Alex").lastName("Player").build());
+        PlayerProfile profile = playerProfileRepository.save(
+                PlayerProfile.builder().personId(person.getId()).clubId(clubId).active(true).build());
+        matchSidePlayerRepository.save(MatchSidePlayer.builder()
+                .matchSideId(side.getId())
+                .playerProfileId(profile.getId())
+                .battingOrder(1)
+                .role(PlayingRole.BATSMAN)
+                .build());
     }
 
     private JwtRequestPostProcessor grantSectionAdmin(String keycloakUserId, UUID sectionId) {

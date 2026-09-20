@@ -292,6 +292,23 @@ describe('PlayingXiBuilder', () => {
     })
   })
 
+  // docs/specs/037-match-improvements.md item 9
+  describe('Re-select from Previous Match', () => {
+    it('is omitted entirely when onReselectFromPreviousMatch is not passed', () => {
+      render(<PlayingXiBuilder {...baseProps()} />)
+      expect(screen.queryByRole('button', { name: 'Re-select from Previous Match' })).not.toBeInTheDocument()
+    })
+
+    it('renders and fires onReselectFromPreviousMatch when passed', async () => {
+      const user = userEvent.setup()
+      const onReselectFromPreviousMatch = vi.fn()
+      render(<PlayingXiBuilder {...baseProps({ onReselectFromPreviousMatch })} />)
+
+      await user.click(screen.getByRole('button', { name: 'Re-select from Previous Match' }))
+      expect(onReselectFromPreviousMatch).toHaveBeenCalledTimes(1)
+    })
+  })
+
   // docs/specs/031-jersey-numbers.md
   describe('squad jersey number display', () => {
     const PLAYER_1_NUMBERED = makeSquadMember({

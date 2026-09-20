@@ -4,6 +4,7 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
@@ -19,6 +20,7 @@ import com.cricketlegend.service.MatchService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -275,5 +277,42 @@ public class MatchServiceImpl implements MatchService {
             throw new NotFoundException("Match not found: " + matchId);
         }
         return match;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MatchDto> listPrevious(
+            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID leagueId, UUID excludeMatchId) {
+        Team team = findTeamOrThrowForClub(clubId, teamId);
+        accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        findSeasonOrThrowForClub(clubId, seasonId);
+
+        return matchRepository
+                .findPreviousForTeamSeasonLeague(clubId, teamId, seasonId, leagueId, Instant.now(), excludeMatchId)
+                .stream()
+                .map(matchMapper::toDto)
+                .toList();
+    }
+
+    /** Same 404 logic/messages as {@code TeamSquadServiceImpl}'s own helper of the same name. */
+    private Team findTeamOrThrowForClub(UUID clubId, UUID teamId) {
+        Team team = teamRepository
+                .findById(teamId)
+                .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
+        if (!team.getClubId().equals(clubId)) {
+            throw new NotFoundException("Team not found: " + teamId);
+        }
+        return team;
+    }
+
+    /** Same 404 logic/messages as {@code TeamSquadServiceImpl}'s own helper of the same name. */
+    private Season findSeasonOrThrowForClub(UUID clubId, UUID seasonId) {
+        Season season = seasonRepository
+                .findById(seasonId)
+                .orElseThrow(() -> new NotFoundException("Season not found: " + seasonId));
+        if (!season.getClubId().equals(clubId)) {
+            throw new NotFoundException("Season not found: " + seasonId);
+        }
+        return season;
     }
 }
