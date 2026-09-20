@@ -120,6 +120,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[printableSide(homeTeam), printableSide(awayTeam)]}
         sidesLoading={false}
         onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -138,6 +139,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[printableSide(homeTeam), unannouncedSide(awayTeam)]}
         sidesLoading={false}
         onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -155,6 +157,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[unannouncedSide({ ...homeTeam, name: 'Visiting XI' }), printableSide(awayTeam)]}
         sidesLoading={false}
         onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -172,6 +175,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[unannouncedSide(homeTeam), unannouncedSide(awayTeam)]}
         sidesLoading={false}
         onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -194,6 +198,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[printableSide(homeTeam), printableSide(awayTeam)]}
         sidesLoading={false}
         onPrint={onPrint}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -217,6 +222,7 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[printableSide(homeTeam), printableSide(awayTeam)]}
         sidesLoading={false}
         onPrint={onPrint}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
@@ -235,10 +241,181 @@ describe('TeamSheetCommunicationDialog', () => {
         sides={[unannouncedSide(homeTeam), unannouncedSide(awayTeam)]}
         sidesLoading
         onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
       />,
     )
 
     expect(screen.getByRole('button', { name: 'Print' })).toBeDisabled()
     expect(screen.getByText('Loading team sheets…')).toBeInTheDocument()
+  })
+
+  it('selecting WhatsApp reveals a textbox pre-filled with a role emoji (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    expect((textbox as HTMLTextAreaElement).value).toContain('🏏')
+  })
+
+  it('regenerates the WhatsApp textbox when the team-scope selection changes (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    await user.click(screen.getByRole('button', { name: 'Riverside 1st XI' }))
+
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    expect((textbox as HTMLTextAreaElement).value).toContain('Riverside 1st XI')
+    expect((textbox as HTMLTextAreaElement).value).not.toContain('Coastal CC')
+
+    await user.click(screen.getByRole('button', { name: 'Coastal CC' }))
+
+    expect((textbox as HTMLTextAreaElement).value).toContain('Coastal CC')
+    expect((textbox as HTMLTextAreaElement).value).not.toContain('Riverside 1st XI')
+  })
+
+  it('discards a manual edit and rebuilds from current data when Regenerate is clicked (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    const originalValue = (textbox as HTMLTextAreaElement).value
+
+    await user.clear(textbox)
+    await user.type(textbox, 'a manually added note')
+    expect((textbox as HTMLTextAreaElement).value).toBe('a manually added note')
+
+    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+
+    expect((textbox as HTMLTextAreaElement).value).toBe(originalValue)
+    expect((textbox as HTMLTextAreaElement).value).not.toContain('a manually added note')
+  })
+
+  it('applies the same scope-disable rules under WhatsApp as under Print as PDF (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={freeTextMatch}
+        sides={[unannouncedSide({ ...homeTeam, name: 'Visiting XI' }), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+
+    expect(screen.getByRole('button', { name: 'Visiting XI' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Coastal CC' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Both Teams' })).not.toBeDisabled()
+  })
+
+  it('leaves Facebook unselectable, whichever option is currently selected (docs/specs/039)', () => {
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /facebook/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('listitembutton', { name: /facebook/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Facebook')).toBeInTheDocument()
+    expect(screen.getByText('Coming soon')).toBeInTheDocument()
+  })
+
+  it('"Copy to Clipboard" under WhatsApp writes the textbox content to the clipboard and closes, without calling onPrint (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const onPrint = vi.fn().mockResolvedValue(undefined)
+    const onClose = vi.fn()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={onClose}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={onPrint}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    const generatedText = (textbox as HTMLTextAreaElement).value
+
+    await user.click(screen.getByRole('button', { name: /copy to clipboard/i }))
+
+    expect(writeText).toHaveBeenCalledWith(generatedText)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onPrint).not.toHaveBeenCalled()
+  })
+
+  it('shows an inline error and keeps the dialog open when the clipboard write rejects (docs/specs/039)', async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    })
+    const onClose = vi.fn()
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={onClose}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    await user.click(screen.getByRole('button', { name: /copy to clipboard/i }))
+
+    expect(await screen.findByText("Couldn't copy to clipboard. Please try again.")).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
