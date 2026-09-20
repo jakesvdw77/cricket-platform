@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,8 +17,15 @@ import org.springframework.data.repository.query.Param;
  * rule — a club's match history grows every week across every season, unlike {@code
  * Section}/{@code Team}/{@code Sponsor}'s deliberately small, flat lists. See
  * docs/specs/029-league-management.md.
+ *
+ * <p>Per docs/specs/042-match-list-filters-and-search.md: also {@link JpaSpecificationExecutor} —
+ * the first use of Spring Data JPA's {@code Specification}/Criteria API anywhere in this backend,
+ * introduced so {@code search}/{@code leagueId}/{@code seasonId}/{@code sectionId}/{@code
+ * upcomingOnly} can combine in any combination as one composed query (see {@link
+ * MatchSpecifications}) rather than a hard-coded branch per combination. Every existing derived/
+ * {@code @Query} method below is kept exactly as-is — additive, not a replacement.
  */
-public interface MatchRepository extends JpaRepository<Match, UUID> {
+public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecificationExecutor<Match> {
 
     Page<Match> findByClubId(UUID clubId, Pageable pageable);
 

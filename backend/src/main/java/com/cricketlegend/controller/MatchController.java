@@ -2,6 +2,7 @@ package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
+import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.service.MatchService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,9 +43,32 @@ public class MatchController {
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false, defaultValue = "false") boolean upcomingOnly,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID seasonId,
             Pageable pageable) {
-        return ResponseEntity.ok(
-                matchService.list(authentication, clubId, sectionId, upcomingOnly, pageable));
+        return ResponseEntity.ok(matchService.list(
+                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, pageable));
+    }
+
+    /**
+     * Per docs/specs/042-match-list-filters-and-search.md: tells the frontend which
+     * Section/League/Season ids are still reachable given whichever OTHER filters are currently
+     * active, so {@code MatchList}'s three filter dropdowns can narrow each other's own option
+     * lists rather than ever offering a combination with zero possible matches.
+     */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/matches/filter-options")
+    public ResponseEntity<MatchFilterOptionsDto> filterOptions(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean upcomingOnly) {
+        return ResponseEntity.ok(matchService.filterOptions(
+                authentication, clubId, sectionId, leagueId, seasonId, search, upcomingOnly));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
