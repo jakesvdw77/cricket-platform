@@ -654,6 +654,47 @@ class MatchServiceImplTest {
         assertThat(result.sectionIds()).containsExactlyInAnyOrder(grandchildSectionId, parentId, grandparentId);
     }
 
+    /**
+     * Regression for a standards-reviewer finding on docs/specs/042-match-list-filters-and-
+     * search.md's own ancestor-closure walk: a SECTION-scoped restricted caller's {@code
+     * sectionIds} must stop climbing at their own accessible-section boundary — {@code
+     * childToParent} is built from the club's entire section tree (unrestricted), so without
+     * capping the walk at {@code sectionRestrictionForOwnArray}, a restricted caller would receive
+     * ancestor section ids above their own grant root. Here the caller's own access is {@code
+     * {parentId, grandchildSectionId}} (their grant root is {@code parent}, self+descendants) —
+     * {@code grandparentId} must never appear in the result.
+     */
+    @Test
+    void filterOptionsSectionIdsForARestrictedCallerNeverClimbAboveTheCallersOwnAccessBoundary() {
+        UUID clubId = UUID.randomUUID();
+        UUID grandparentId = UUID.randomUUID();
+        UUID parentId = UUID.randomUUID();
+        UUID grandchildSectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.of(java.util.Set.of(parentId, grandchildSectionId)));
+
+        Match match = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamId)
+                .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now())
+                .active(true).build();
+        when(matchRepository.findAll(any(Specification.class))).thenReturn(List.of(match));
+        when(teamRepository.findAllById(java.util.Set.of(teamId)))
+                .thenReturn(List.of(team(teamId, clubId, grandchildSectionId)));
+
+        Section grandparent =
+                Section.builder().id(grandparentId).clubId(clubId).name("Club").active(true).build();
+        Section parent = Section.builder().id(parentId).clubId(clubId).parentSectionId(grandparentId)
+                .name("Seniors").active(true).build();
+        Section grandchild = Section.builder().id(grandchildSectionId).clubId(clubId)
+                .parentSectionId(parentId).name("1st XI").active(true).build();
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(grandparent, parent, grandchild));
+
+        MatchFilterOptionsDto result =
+                matchService.filterOptions(authentication, clubId, null, null, null, null, false);
+
+        assertThat(result.sectionIds()).containsExactlyInAnyOrder(grandchildSectionId, parentId);
+    }
+
     // --- 037 item 9: listPrevious ---
 
     @Test

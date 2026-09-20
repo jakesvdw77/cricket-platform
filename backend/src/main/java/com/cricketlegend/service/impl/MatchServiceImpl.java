@@ -201,7 +201,8 @@ public class MatchServiceImpl implements MatchService {
         List<UUID> leagueIds =
                 matchesForLeagueIds.stream().map(Match::getLeagueId).filter(Objects::nonNull).distinct().toList();
         List<UUID> seasonIds = matchesForSeasonIds.stream().map(Match::getSeasonId).distinct().toList();
-        List<UUID> sectionIds = resolveReachableSectionIds(clubId, matchesForSectionIds);
+        List<UUID> sectionIds =
+                resolveReachableSectionIds(clubId, matchesForSectionIds, sectionRestrictionForOwnArray);
         List<UUID> teamIds = resolveReachableTeamIds(matchesForTeamIds);
 
         return new MatchFilterOptionsDto(sectionIds, leagueIds, seasonIds, teamIds);
@@ -232,8 +233,18 @@ public class MatchServiceImpl implements MatchService {
      * AccessService#sectionAndDescendantIds}'s existing downward descendant closure. {@code
      * teamRepository.findAllById}/{@code sectionRepository.findByClubId} are each called once
      * (not per-match/per-team), avoiding N+1.
+     *
+     * <p>{@code sectionRestriction} caps the walk at the caller's own accessible-section boundary
+     * (the same {@code Optional<Set<UUID>>} shape {@link #resolveAuthorizedSectionIds} returns —
+     * {@code Optional.empty()} for an unrestricted caller, {@code Optional.of(allowed)} for a
+     * SECTION-scoped one): the loop stops adding a section the moment {@code current} falls outside
+     * {@code allowed}, rather than continuing to climb {@code childToParent} — built from the
+     * entire club's section tree, unrestricted — up to the true club root. Without this check a
+     * restricted admin's {@code filter-options} response would leak ancestor section ids above
+     * their own grant root; found in review, see docs/specs/042-match-list-filters-and-search.md.
      */
-    private List<UUID> resolveReachableSectionIds(UUID clubId, List<Match> matches) {
+    private List<UUID> resolveReachableSectionIds(
+            UUID clubId, List<Match> matches, Optional<Set<UUID>> sectionRestriction) {
         Set<UUID> teamIds = new HashSet<>();
         for (Match match : matches) {
             if (match.getHomeTeamId() != null) {
@@ -254,10 +265,11 @@ public class MatchServiceImpl implements MatchService {
                 .filter(section -> section.getParentSectionId() != null)
                 .collect(Collectors.toMap(Section::getId, Section::getParentSectionId));
 
+        Set<UUID> allowed = sectionRestriction.orElse(null);
         Set<UUID> reachable = new HashSet<>();
         for (UUID sectionId : directSectionIds) {
             UUID current = sectionId;
-            while (current != null && reachable.add(current)) {
+            while (current != null && (allowed == null || allowed.contains(current)) && reachable.add(current)) {
                 current = childToParent.get(current);
             }
         }
