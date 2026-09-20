@@ -215,6 +215,7 @@ function MatchCard({
         sides={teamSheetSides}
         sidesLoading={Boolean(sidesLoading)}
         onPrint={handlePrint}
+        subtitle={subtitle}
       />
     </>
   )
