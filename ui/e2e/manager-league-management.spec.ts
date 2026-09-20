@@ -444,6 +444,26 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // eligible players added earlier still fill the cap.
     await expect(page.getByRole('combobox', { name: 'Add player' })).toBeDisabled();
 
+    // --- Announce Team (docs/specs/040-announce-team.md): mark the home side's Playing XI as
+    // final from its own Playing XI tab, confirm the chip persists across a reload, then confirm
+    // editing an already-announced side (via a real reorderPlayers call, reusing the same "Move"
+    // buttons this test already exercised above rather than adding/removing a player) reverts it
+    // back to "Not Announced" automatically.
+
+    await expect(page.getByText('Not Announced', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Announce Team' }).click();
+    await expect(page.getByText('Announced', { exact: true })).toBeVisible();
+
+    await page.reload();
+    await page.getByRole('tab', { name: 'Home XI' }).click();
+    await expect(page.getByText('Announced', { exact: true })).toBeVisible();
+
+    // eligible2 is now the first row (moved up earlier), so its own "up" button is disabled — its
+    // "down" button still performs a real reorderPlayers call without needing to add/remove a
+    // player, since the cap is already at 2/2.
+    await page.getByRole('button', { name: `Move ${eligible2FullName} down` }).click();
+    await expect(page.getByText('Not Announced', { exact: true })).toBeVisible();
+
     // --- Availability poll (docs/specs/032-match-availability-polls.md): still on this same
     // match's edit page (Home XI tab) — open the home side's Availability tab, open a poll for the
     // full season squad (all four squad candidates added earlier, independent of who made the XI),
@@ -566,6 +586,11 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await page.getByRole('link', { name: 'Back to Matches' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/matches$/);
     await expect(matchCard).toBeVisible();
+
+    // (040) The match's own list card reflects the home side's actual final state above — reverted
+    // to "Not Announced" by the reorder in the Announce Team block, unprefixed since the away side
+    // isn't a real Team (only one real-Team side on this match).
+    await expect(matchCard.getByText('Not Announced', { exact: true })).toBeVisible();
 
     await matchCard.getByRole('button', { name: 'Communicate Team Sheet' }).click();
     const teamSheetDialogHeading = page.getByRole('heading', { name: 'Communicate Team Sheet' });

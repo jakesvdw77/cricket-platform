@@ -34,6 +34,8 @@ export interface Match {
   matchDate: string
   venue: string | null
   active: boolean
+  homeSideAnnounced: boolean
+  awaySideAnnounced: boolean
   createdAt: string
   updatedAt: string
   updatedBy: string | null

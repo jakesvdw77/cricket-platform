@@ -14,5 +14,6 @@ public record MatchSideDto(
         UUID captainPlayerId,
         UUID wicketKeeperPlayerId,
         UUID twelfthManPlayerId,
-        List<MatchSidePlayerDto> players) {
+        List<MatchSidePlayerDto> players,
+        boolean announced) {
 }

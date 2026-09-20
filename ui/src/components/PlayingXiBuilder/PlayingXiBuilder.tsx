@@ -16,6 +16,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { Input } from '../Input'
 import { Button } from '../Button'
+import { badgeSx } from '../RecordCard'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer, PlayingRole } from '../../api/matchSideApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
@@ -99,6 +100,14 @@ export interface PlayingXiBuilderProps {
   // docs/standards/frontend.md's "server state in the page" rule) — omitted entirely when not
   // passed, so every existing call site/story/test that doesn't pass this is unaffected.
   onReselectFromPreviousMatch?: () => void
+  // docs/specs/040-announce-team.md: this side's persisted announced flag. The header chip/toggle
+  // block below only renders when this AND onToggleAnnounced are both passed — every existing
+  // call site/story/test that omits them keeps its current, unaffected layout.
+  announced?: boolean
+  onToggleAnnounced?: () => void
+  // Disables the toggle button and swaps its label to the pending variant while an announce/
+  // unannounce mutation is in flight — mirrors isAddPending's own pending-disable convention.
+  togglingAnnounced?: boolean
 }
 
 // docs/specs/029-league-management.md's genuinely new component: an ordered, role-tagged
@@ -126,6 +135,9 @@ export function PlayingXiBuilder({
   availabilityByPlayerId = new Map(),
   onAddSquadMember,
   onReselectFromPreviousMatch,
+  announced,
+  onToggleAnnounced,
+  togglingAnnounced = false,
 }: PlayingXiBuilderProps) {
   const [addSelection, setAddSelection] = useState<SquadMember | null>(null)
   const [addRole, setAddRole] = useState<PlayingRole>('BATSMAN')
@@ -203,6 +215,37 @@ export function PlayingXiBuilder({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* docs/specs/040-announce-team.md: rendered first, above everything else in this component
+          — omitted entirely unless the caller passes both announced and onToggleAnnounced, so
+          every existing call site/story/test that doesn't pass them is completely unaffected. */}
+      {announced !== undefined && onToggleAnnounced && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ sm: 'center' }}
+          spacing={1.5}
+        >
+          <Chip
+            label={announced ? 'Announced' : 'Not Announced'}
+            variant={announced ? 'filled' : 'outlined'}
+            sx={announced ? badgeSx('positive') : undefined}
+          />
+          {announced ? (
+            <Button variant="ghost" onClick={onToggleAnnounced} disabled={togglingAnnounced} sx={{ flex: 'none' }}>
+              {togglingAnnounced ? 'Un-announcing…' : 'Un-announce'}
+            </Button>
+          ) : (
+            <Button
+              onClick={onToggleAnnounced}
+              disabled={orderedXi.length === 0 || togglingAnnounced}
+              sx={{ flex: 'none' }}
+            >
+              {togglingAnnounced ? 'Announcing…' : 'Announce Team'}
+            </Button>
+          )}
+        </Stack>
+      )}
+
       {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
       {/* docs/specs/037-match-improvements.md item 6: rendered first, above the Playing XI

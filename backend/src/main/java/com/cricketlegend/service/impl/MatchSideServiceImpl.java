@@ -163,6 +163,9 @@ public class MatchSideServiceImpl implements MatchSideService {
         side.setCaptainPlayerId(request.captainPlayerId());
         side.setWicketKeeperPlayerId(request.wicketKeeperPlayerId());
         side.setTwelfthManPlayerId(request.twelfthManPlayerId());
+        if (side.isAnnounced()) {
+            side.setAnnounced(false);
+        }
         side = matchSideRepository.save(side);
 
         return toDto(side);
@@ -207,6 +210,11 @@ public class MatchSideServiceImpl implements MatchSideService {
                 .build();
         matchSidePlayerRepository.save(player);
 
+        if (side.isAnnounced()) {
+            side.setAnnounced(false);
+            side = matchSideRepository.save(side);
+        }
+
         return toDto(side);
     }
 
@@ -229,6 +237,11 @@ public class MatchSideServiceImpl implements MatchSideService {
                         "Player " + playerProfileId + " is not on side " + sideId));
         player.setRole(request.role());
         matchSidePlayerRepository.save(player);
+
+        if (side.isAnnounced()) {
+            side.setAnnounced(false);
+            side = matchSideRepository.save(side);
+        }
 
         return toDto(side);
     }
@@ -254,6 +267,10 @@ public class MatchSideServiceImpl implements MatchSideService {
         }
         if (playerProfileId.equals(side.getWicketKeeperPlayerId())) {
             side.setWicketKeeperPlayerId(null);
+            changed = true;
+        }
+        if (side.isAnnounced()) {
+            side.setAnnounced(false);
             changed = true;
         }
         if (changed) {
@@ -309,6 +326,41 @@ public class MatchSideServiceImpl implements MatchSideService {
             matchSidePlayerRepository.save(player);
             i++;
         }
+
+        if (side.isAnnounced()) {
+            side.setAnnounced(false);
+            side = matchSideRepository.save(side);
+        }
+
+        return toDto(side);
+    }
+
+    @Override
+    @Transactional
+    public MatchSideDto announce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        MatchSide side = findSideOrThrowForMatch(matchId, sideId);
+
+        if (matchSidePlayerRepository.countByMatchSideId(sideId) == 0) {
+            throw new ValidationException("Side " + sideId + " has no players to announce");
+        }
+
+        side.setAnnounced(true);
+        side = matchSideRepository.save(side);
+
+        return toDto(side);
+    }
+
+    @Override
+    @Transactional
+    public MatchSideDto unannounce(Authentication authentication, UUID clubId, UUID matchId, UUID sideId) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        MatchSide side = findSideOrThrowForMatch(matchId, sideId);
+
+        side.setAnnounced(false);
+        side = matchSideRepository.save(side);
 
         return toDto(side);
     }

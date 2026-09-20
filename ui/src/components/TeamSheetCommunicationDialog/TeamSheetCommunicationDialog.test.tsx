@@ -19,6 +19,8 @@ const match: Match = {
   matchDate: '2026-03-01T10:00:00Z',
   venue: 'Riverside Oval',
   active: true,
+  homeSideAnnounced: false,
+  awaySideAnnounced: false,
   createdAt: '',
   updatedAt: '',
   updatedBy: null,
@@ -96,6 +98,7 @@ function printableSide(team: Team): TeamSheetSide {
       wicketKeeperPlayerId: null,
       twelfthManPlayerId: null,
       players: [{ playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' }],
+      announced: false,
     },
     squad,
   }
@@ -105,7 +108,7 @@ function unannouncedSide(team: Team): TeamSheetSide {
   return {
     team,
     teamName: team.name,
-    side: { id: `side-${team.id}`, matchId: 'match-1', teamId: team.id, captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [] },
+    side: { id: `side-${team.id}`, matchId: 'match-1', teamId: team.id, captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false },
     squad: [],
   }
 }

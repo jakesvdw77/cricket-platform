@@ -28,5 +28,6 @@
     <include file="db/changelog/v1/021-add-league-management.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/022-add-jersey-numbers.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/023-add-availability-polls.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/024-add-match-side-announced.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

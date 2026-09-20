@@ -21,6 +21,7 @@ import com.cricketlegend.domain.PlayingRole;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.AddMatchSidePlayerRequest;
 import com.cricketlegend.dto.CreateMatchSideRequest;
+import com.cricketlegend.dto.UpdateMatchSidePlayerRequest;
 import com.cricketlegend.dto.UpdateMatchSideRequest;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.NotFoundException;
@@ -590,6 +591,284 @@ class MatchSideServiceImplTest {
 
         assertThat(playerB.getBattingOrder()).isEqualTo(1);
         assertThat(playerA.getBattingOrder()).isEqualTo(2);
+    }
+
+    // --- 040: announce/unannounce ---
+
+    @Test
+    void announceASideWithAtLeastOnePlayerSetsAnnouncedTrue() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.countByMatchSideId(matchSide.getId())).thenReturn(1L);
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.announce(authentication, clubId, matchId, matchSide.getId());
+
+        assertThat(matchSide.isAnnounced()).isTrue();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void announceASideWithZeroPlayersThrowsValidationException() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.countByMatchSideId(matchSide.getId())).thenReturn(0L);
+
+        assertThatThrownBy(() -> service.announce(authentication, clubId, matchId, matchSide.getId()))
+                .isInstanceOf(ValidationException.class);
+        verify(matchSideRepository, never()).save(any());
+    }
+
+    @Test
+    void announceOnAnUnknownSideThrowsNotFoundException() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID sideId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(sideId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.announce(authentication, clubId, matchId, sideId))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void unannounceAnAnnouncedSideClearsTheFlagWithNoPrecondition() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        matchSide.setAnnounced(true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.unannounce(authentication, clubId, matchId, matchSide.getId());
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void addPlayerToAPreviouslyAnnouncedSideUnannouncesIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        matchSide.setAnnounced(true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(true);
+        when(matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(false);
+        when(matchSidePlayerRepository.countByMatchSideId(matchSide.getId())).thenReturn(0L);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+
+        AddMatchSidePlayerRequest request = new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN);
+        service.addPlayer(authentication, clubId, matchId, matchSide.getId(), request);
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void updatePlayerRoleOnAPreviouslyAnnouncedSideUnannouncesIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        matchSide.setAnnounced(true);
+        MatchSidePlayer player = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerId).battingOrder(1).role(PlayingRole.BATSMAN).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(Optional.of(player));
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.updatePlayerRole(authentication, clubId, matchId, matchSide.getId(), playerId,
+                new UpdateMatchSidePlayerRequest(PlayingRole.BOWLER));
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void updatePlayerRoleOnAnAlreadyUnannouncedSideDoesNotSpuriouslyResaveTheAnnouncedFlag() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        MatchSidePlayer player = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerId).battingOrder(1).role(PlayingRole.BATSMAN).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(Optional.of(player));
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.updatePlayerRole(authentication, clubId, matchId, matchSide.getId(), playerId,
+                new UpdateMatchSidePlayerRequest(PlayingRole.BOWLER));
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository, never()).save(any());
+    }
+
+    @Test
+    void removePlayerOnAPreviouslyAnnouncedSideUnannouncesIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        matchSide.setAnnounced(true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(Optional.of(MatchSidePlayer.builder().id(UUID.randomUUID())
+                        .matchSideId(matchSide.getId()).playerProfileId(playerId).battingOrder(1)
+                        .role(PlayingRole.BATSMAN).build()));
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.removePlayer(authentication, clubId, matchId, matchSide.getId(), playerId);
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void removePlayerOnAnAlreadyUnannouncedSideWithNoOtherChangesDoesNotSpuriouslyResaveTheSide() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(Optional.of(MatchSidePlayer.builder().id(UUID.randomUUID())
+                        .matchSideId(matchSide.getId()).playerProfileId(playerId).battingOrder(1)
+                        .role(PlayingRole.BATSMAN).build()));
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        service.removePlayer(authentication, clubId, matchId, matchSide.getId(), playerId);
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository, never()).save(any());
+    }
+
+    @Test
+    void reorderPlayersOnAPreviouslyAnnouncedSideUnannouncesIt() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        matchSide.setAnnounced(true);
+        UUID playerAId = UUID.randomUUID();
+        UUID playerBId = UUID.randomUUID();
+        MatchSidePlayer playerA = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerAId).battingOrder(1).role(PlayingRole.BATSMAN).build();
+        MatchSidePlayer playerB = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerBId).battingOrder(2).role(PlayingRole.BOWLER).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of(playerA, playerB));
+        when(matchSidePlayerRepository.save(any(MatchSidePlayer.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+
+        service.reorderPlayers(authentication, clubId, matchId, matchSide.getId(),
+                new com.cricketlegend.dto.ReorderMatchSidePlayersRequest(List.of(playerBId, playerAId)));
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
+    }
+
+    @Test
+    void reorderPlayersOnAnAlreadyUnannouncedSideDoesNotSpuriouslyResaveTheAnnouncedFlag() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        UUID playerAId = UUID.randomUUID();
+        UUID playerBId = UUID.randomUUID();
+        MatchSidePlayer playerA = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerAId).battingOrder(1).role(PlayingRole.BATSMAN).build();
+        MatchSidePlayer playerB = MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(matchSide.getId())
+                .playerProfileId(playerBId).battingOrder(2).role(PlayingRole.BOWLER).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of(playerA, playerB));
+        when(matchSidePlayerRepository.save(any(MatchSidePlayer.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reorderPlayers(authentication, clubId, matchId, matchSide.getId(),
+                new com.cricketlegend.dto.ReorderMatchSidePlayersRequest(List.of(playerBId, playerAId)));
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository, never()).save(any());
+    }
+
+    // updateSide's own save() was already unconditional before 040 (029's original shape) — unlike
+    // addPlayer/updatePlayerRole/removePlayer/reorderPlayers, which only gained a save() call as
+    // part of 040's own guarded un-announce side effect. So there's no "spurious resave" for this
+    // method to avoid; this test only proves the announced flag stays false on an already-
+    // unannounced side, not anything about save() being skipped.
+    @Test
+    void updateSideOnAnAlreadyUnannouncedSideLeavesTheAnnouncedFlagFalse() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = side(UUID.randomUUID(), matchId, teamId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        when(matchSideRepository.save(matchSide)).thenReturn(matchSide);
+        when(matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(matchSide.getId()))
+                .thenReturn(List.of());
+
+        UpdateMatchSideRequest request = new UpdateMatchSideRequest(null, null, null);
+        service.updateSide(authentication, clubId, matchId, matchSide.getId(), request);
+
+        assertThat(matchSide.isAnnounced()).isFalse();
+        verify(matchSideRepository).save(matchSide);
     }
 
     // --- 035: section-scoped access ---

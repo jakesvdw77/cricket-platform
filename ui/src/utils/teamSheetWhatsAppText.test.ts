@@ -18,6 +18,8 @@ const match: Match = {
   matchDate: '2026-03-01T10:00:00Z',
   venue: 'Riverside Oval',
   active: true,
+  homeSideAnnounced: false,
+  awaySideAnnounced: false,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   updatedBy: null,
@@ -99,6 +101,7 @@ const homeSide: MatchSide = {
     { playerProfileId: 'p2', battingOrder: 2, role: 'BOWLER' },
     { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
   ],
+  announced: false,
 }
 
 const homeSheetSide: TeamSheetSide = {
@@ -119,6 +122,7 @@ const awaySheetSideEmpty: TeamSheetSide = {
     wicketKeeperPlayerId: null,
     twelfthManPlayerId: null,
     players: [],
+    announced: false,
   },
   squad: [],
 }
@@ -197,6 +201,7 @@ describe('generateTeamSheetWhatsAppText', () => {
         wicketKeeperPlayerId: null,
         twelfthManPlayerId: null,
         players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
+        announced: false,
       },
       squad: [],
     }

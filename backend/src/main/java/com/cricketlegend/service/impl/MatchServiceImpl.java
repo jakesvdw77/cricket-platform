@@ -3,6 +3,7 @@ package com.cricketlegend.service.impl;
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
@@ -14,6 +15,7 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
@@ -21,9 +23,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MatchServiceImpl implements MatchService {
 
     private final MatchRepository matchRepository;
+    private final MatchSideRepository matchSideRepository;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;
@@ -58,12 +63,14 @@ public class MatchServiceImpl implements MatchService {
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
+            MatchSideRepository matchSideRepository,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             TeamRepository teamRepository,
             MatchMapper matchMapper,
             AccessService accessService) {
         this.matchRepository = matchRepository;
+        this.matchSideRepository = matchSideRepository;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.teamRepository = teamRepository;
@@ -82,30 +89,48 @@ public class MatchServiceImpl implements MatchService {
             accessService.assertCanAdministerSection(authentication, clubId, sectionId);
             Set<UUID> narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
             if (upcomingOnly) {
-                return matchRepository
+                return enrichAnnounced(matchRepository
                         .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
                                 clubId, narrowTo, startOfToday(), sorted)
-                        .map(matchMapper::toDto);
+                        .map(matchMapper::toDto));
             }
-            return matchRepository.findByClubIdAndSectionIdIn(clubId, narrowTo, sorted).map(matchMapper::toDto);
+            return enrichAnnounced(
+                    matchRepository.findByClubIdAndSectionIdIn(clubId, narrowTo, sorted).map(matchMapper::toDto));
         }
         if (accessibleSectionIds.isPresent()) {
             if (upcomingOnly) {
-                return matchRepository
+                return enrichAnnounced(matchRepository
                         .findByClubIdAndSectionIdInAndMatchDateGreaterThanEqual(
                                 clubId, accessibleSectionIds.get(), startOfToday(), sorted)
-                        .map(matchMapper::toDto);
+                        .map(matchMapper::toDto));
             }
-            return matchRepository
+            return enrichAnnounced(matchRepository
                     .findByClubIdAndSectionIdIn(clubId, accessibleSectionIds.get(), sorted)
-                    .map(matchMapper::toDto);
+                    .map(matchMapper::toDto));
         }
         if (upcomingOnly) {
-            return matchRepository
+            return enrichAnnounced(matchRepository
                     .findByClubIdAndMatchDateGreaterThanEqual(clubId, startOfToday(), sorted)
-                    .map(matchMapper::toDto);
+                    .map(matchMapper::toDto));
         }
-        return matchRepository.findByClubId(clubId, sorted).map(matchMapper::toDto);
+        return enrichAnnounced(matchRepository.findByClubId(clubId, sorted).map(matchMapper::toDto));
+    }
+
+    /**
+     * Per docs/specs/040-announce-team.md: resolves {@code homeSideAnnounced}/{@code
+     * awaySideAnnounced} for a whole page of {@link MatchDto} in one batched {@code
+     * matchSideRepository.findByMatchIdIn} query, never a per-row lookup.
+     */
+    private Page<MatchDto> enrichAnnounced(Page<MatchDto> page) {
+        List<UUID> matchIds = page.getContent().stream().map(MatchDto::id).toList();
+        Map<String, Boolean> announcedByKey = matchSideRepository.findByMatchIdIn(matchIds).stream()
+                .collect(Collectors.toMap(s -> s.getMatchId() + "|" + s.getTeamId(), MatchSide::isAnnounced));
+        return page.map(dto -> new MatchDto(
+                dto.id(), dto.clubId(), dto.homeTeamId(), dto.homeTeamName(), dto.awayTeamId(), dto.awayTeamName(),
+                dto.leagueId(), dto.seasonId(), dto.matchDate(), dto.venue(), dto.active(),
+                dto.homeTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.homeTeamId(), false),
+                dto.awayTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.awayTeamId(), false),
+                dto.createdAt(), dto.updatedAt(), dto.updatedBy()));
     }
 
     /**

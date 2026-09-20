@@ -59,6 +59,8 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     matchDate: '2026-06-01T14:30:00Z',
     venue: 'Riverside Oval',
     active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -75,6 +77,7 @@ function makeSide(overrides: Partial<MatchSide> = {}): MatchSide {
     wicketKeeperPlayerId: null,
     twelfthManPlayerId: null,
     players: [],
+    announced: false,
     ...overrides,
   }
 }
