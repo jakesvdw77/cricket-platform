@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { ManageScreenHeader } from './ManageScreenHeader'
+import { Button } from '../Button'
 
 // No local MemoryRouter decorator — .storybook/preview.tsx already wraps every story in one
 // globally (see RecordFormScreen.stories.tsx's same note).
@@ -18,4 +19,10 @@ export const Default: Story = {
 
 export const CustomBackTarget: Story = {
   args: { title: 'Sponsor Contacts', backTo: '/manage/sponsors', backLabel: 'Back to Sponsors' },
+}
+
+// docs/specs/041-list-screen-header-actions.md: a list screen's primary "create" action, rendered
+// top-right beside the title instead of inside ListToolbar's own row.
+export const WithAction: Story = {
+  args: { title: 'Matches', action: <Button onClick={() => undefined}>Add Match</Button> },
 }

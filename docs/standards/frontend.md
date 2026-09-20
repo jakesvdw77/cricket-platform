@@ -24,6 +24,16 @@ A CI script fails the build if any component folder is missing its test or story
 - **Pagination is never client-side.** Never fetch an entire backend collection and paginate or slice it in the browser — that's exactly the memory/scalability risk `docs/standards/backend.md`'s matching rule keeps off the server by pushing it onto every client instead. A paginated list consumes the backend's `page`/`size` (or cursor) params directly, via `useQuery` keyed on the current page or `useInfiniteQuery` for cursor-based loading — never a client-side `.slice()` over a full result set.
 - **Accessibility.** Every interactive element keyboard-reachable; every form input has a label — MUI's `TextField`/`FormControl` wire this up correctly by default, don't bypass it with a bare `<input>`. Colour contrast checked once at the token stage, not re-litigated per screen.
 
+## List screen layout (required shape for every `/manage` list screen)
+
+Every list screen (`ProductList` down through `MatchList`, `PlayerList`, `SponsorList`, etc.) composes from the same three pieces, in this order — a new list screen follows this shape rather than inventing its own:
+
+1. **`ManageScreenHeader`** — title (+ back link). Its own primary "create" action (e.g. "Add Match", "Add Player") renders via the `action` prop, top-right alongside the title — not inside the toolbar row below. `action` takes any `ReactNode`, typically a single `Button`.
+2. **`ListToolbar`** — search (flexes to fill), an optional single extra filter control via the `filters` prop (e.g. a `SectionTreeSelect`, rendered inline with search/sort on desktop, its own full-width row on mobile), and sort. `createLabel`/`onCreate` are deprecated on this component — new screens use `ManageScreenHeader`'s `action` instead; existing screens have all been migrated.
+3. The record list itself (a grid/stack of `RecordCard`s, or an `EmptyState`).
+
+A screen with more than one filter control still uses `ListToolbar.filters` for the single most important one; anything beyond that is a case for extending `filters` to accept more than one control, not stacking ad-hoc `Box`es under the toolbar.
+
 ## Folder structure
 
 ```

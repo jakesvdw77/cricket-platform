@@ -7,6 +7,7 @@ import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { Button } from '../../components/Button'
 import { listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import { initialsFromName } from '../../utils/initials'
@@ -111,7 +112,10 @@ export default function ClubContactList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Club Contacts" />
+      <ManageScreenHeader
+        title="Club Contacts"
+        action={<Button onClick={() => navigate('/manage/club-contacts/new')}>Add Contact</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
@@ -120,8 +124,6 @@ export default function ClubContactList() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add Contact"
-        onCreate={() => navigate('/manage/club-contacts/new')}
       />
 
       {visibleContacts.length > 0 && (

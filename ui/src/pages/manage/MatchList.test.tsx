@@ -114,6 +114,22 @@ describe('MatchList', () => {
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
   })
 
+  // docs/specs/041-list-screen-header-actions.md: MatchList's default viewTo AND editTo are both
+  // real routes, so its card is the one existing call site where RecordCard's revised
+  // View+Edit-together rendering is actually reachable today.
+  it('renders View and Edit together on a card, both pointing at the match\'s own routes', async () => {
+    listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1' })]))
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/matches/match-1/edit',
+    )
+  })
+
   // docs/specs/037-match-improvements.md item 1
   it('sends upcomingOnly: true by default, with no UI toggle to change it', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
@@ -286,8 +302,9 @@ describe('MatchList', () => {
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. "Select
-  // Team" and "Communicate Team Sheet" (037) are unaffected — still on the card.
-  it('never renders a Deactivate/Reactivate button on the card, while Select Team/Communicate Team Sheet remain', async () => {
+  // Team" and "Team Sheet" (037/041 — the latter shortened from "Communicate Team Sheet") are
+  // unaffected — still on the card.
+  it('never renders a Deactivate/Reactivate button on the card, while Select Team/Team Sheet remain', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
 
     renderPage('test-club-id')
@@ -296,7 +313,7 @@ describe('MatchList', () => {
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Select Team' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Communicate Team Sheet' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Team Sheet' })).toBeInTheDocument()
   })
 
   it('navigates to the create route by default', async () => {

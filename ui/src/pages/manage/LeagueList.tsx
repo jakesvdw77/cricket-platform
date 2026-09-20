@@ -8,6 +8,7 @@ import type { RecordCardBadge, RecordCardField } from '../../components/RecordCa
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { Button } from '../../components/Button'
 import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
@@ -113,7 +114,12 @@ export default function LeagueList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Leagues" backTo="/manage/fixtures" backLabel="Back to Fixtures" />
+      <ManageScreenHeader
+        title="Leagues"
+        backTo="/manage/fixtures"
+        backLabel="Back to Fixtures"
+        action={<Button onClick={() => navigate('/manage/fixtures/leagues/new')}>Add League</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
@@ -122,8 +128,6 @@ export default function LeagueList() {
         sortValue={sort}
         sortOptions={SORT_OPTIONS}
         onSortChange={setSort}
-        createLabel="Add League"
-        onCreate={() => navigate('/manage/fixtures/leagues/new')}
       />
 
       {visibleLeagues.length > 0 && (

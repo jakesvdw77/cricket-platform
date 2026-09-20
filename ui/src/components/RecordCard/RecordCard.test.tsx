@@ -265,10 +265,12 @@ describe('RecordCard', () => {
     expect(screen.getByTestId('deactivate-icon')).toBeInTheDocument()
   })
 
-  // docs/specs/036-view-first-record-detail-screens.md: viewTo becomes the footer's primary
-  // action ("View", VisibilityOutlined) and suppresses editTo entirely, even when editTo is still
-  // passed — the view screen it leads to owns the one Edit action instead.
-  it('renders a View action and suppresses Edit when viewTo is provided, even alongside editTo', () => {
+  // docs/specs/041-list-screen-header-actions.md: viewTo becomes the footer's primary action
+  // ("View", VisibilityOutlined); when editTo is ALSO passed, Edit renders right after it, so an
+  // admin with a real edit route doesn't have to go through View first (036's own original
+  // suppress-Edit-entirely decision, revised here — see 041's Non-goals for why this is safe to
+  // ship with no permission gate: nothing newly reachable, View already led to Edit).
+  it('renders View and Edit together when both viewTo and editTo are provided', () => {
     render(
       <MemoryRouter initialEntries={['/manage/players']}>
         <Routes>
@@ -282,6 +284,24 @@ describe('RecordCard', () => {
                 viewTo="/manage/players/p-1"
               />
             }
+          />
+          <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
+          <Route path="/manage/players/p-1/edit" element={<div>Player Edit Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/p-1')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/p-1/edit')
+  })
+
+  it('renders View alone, with no Edit link, when only viewTo is provided', () => {
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={<RecordCard title="Jane Smith" editLabel="Edit" viewTo="/manage/players/p-1" />}
           />
           <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
         </Routes>

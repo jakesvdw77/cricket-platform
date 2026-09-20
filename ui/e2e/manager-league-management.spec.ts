@@ -592,7 +592,7 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // isn't a real Team (only one real-Team side on this match).
     await expect(matchCard.getByText('Not Announced', { exact: true })).toBeVisible();
 
-    await matchCard.getByRole('button', { name: 'Communicate Team Sheet' }).click();
+    await matchCard.getByRole('button', { name: 'Team Sheet' }).click();
     const teamSheetDialogHeading = page.getByRole('heading', { name: 'Communicate Team Sheet' });
     await expect(teamSheetDialogHeading).toBeVisible();
 
