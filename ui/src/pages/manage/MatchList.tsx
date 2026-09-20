@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
+import MenuItem from '@mui/material/MenuItem'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
@@ -9,12 +10,13 @@ import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { TeamSheetCommunicationDialog } from '../../components/TeamSheetCommunicationDialog'
 import type { TeamSheetPrintScope } from '../../components/TeamSheetCommunicationDialog'
-import { listMatches } from '../../api/matchApi'
+import { listMatches, listMatchFilterOptions } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -29,9 +31,13 @@ import { matchFields } from '../../utils/matchRecordFields'
 import { generateTeamSheetPdf } from '../../utils/teamSheetPdf'
 import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 
+// docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first — index
+// 0 (the default) is now ascending. Both entries stay in this array for the underlying
+// value/label pairing ListToolbar's sortToggle switches between; the icon toggle itself replaces
+// the old Select rendering (see the ListToolbar sortToggle prop below).
 const SORT_OPTIONS = [
-  { value: 'matchDate,desc', label: 'Match date (newest first)' },
-  { value: 'matchDate,asc', label: 'Match date (oldest first)' },
+  { value: 'matchDate,asc', label: 'Match date (soonest first)' },
+  { value: 'matchDate,desc', label: 'Match date (latest first)' },
 ]
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -289,17 +295,18 @@ export default function MatchList({
   // genuinely paginated) — never a client-side one, per docs/standards/frontend.md's pagination
   // rule.
   const [sectionId, setSectionId] = useState<string | null>(null)
+  // docs/specs/042-match-list-filters-and-search.md: League/Season filters, same backend-driven
+  // shape as sectionId above — combinable with it and with search/upcomingOnly in any combination.
+  const [leagueId, setLeagueId] = useState<string | null>(null)
+  const [seasonId, setSeasonId] = useState<string | null>(null)
   // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only — no
   // UI control to change it this pass (see spec's Non-goals). A future "Show past matches" toggle
   // is just flipping this boolean, so it's kept as real state (and in the query key below) rather
   // than a hard-coded inline `true`.
   const [upcomingOnly] = useState(true)
 
-  // Note: the real backend GET /matches endpoint (docs/specs/029-league-management.md's API
-  // Contract, MatchController.java) is Pageable-only — it has no `search` query param today.
-  // This is still wired exactly like ProductList's own backend-driven search (a harmless no-op
-  // extra param today, zero frontend changes needed if/when the backend adds support) rather than
-  // a client-side filter, per docs/standards/frontend.md's "never client-side" pagination rule.
+  // docs/specs/042-match-list-filters-and-search.md: real, backend-driven search — MatchController
+  // now has a `search` query param and actually applies it (previously a documented no-op).
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(handle)
@@ -307,20 +314,54 @@ export default function MatchList({
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, sort, sectionId])
+  }, [debouncedSearch, sort, sectionId, leagueId, seasonId])
+
+  // docs/specs/042-match-list-filters-and-search.md: Section/League/Season selections (never
+  // search) persist per club across visits — the first localStorage call site in this codebase,
+  // so every access is individually try/catch-guarded rather than assuming it's always available
+  // (private browsing, quota, disabled storage). Loaded once on mount/clubId-change; write-back
+  // effect below keeps it current after that.
+  const filtersStorageKey = `matchList:filters:${clubId}`
+
+  useEffect(() => {
+    if (!clubId) return
+    try {
+      const raw = localStorage.getItem(filtersStorageKey)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed.sectionId) setSectionId(parsed.sectionId)
+        if (parsed.leagueId) setLeagueId(parsed.leagueId)
+        if (parsed.seasonId) setSeasonId(parsed.seasonId)
+      }
+    } catch {
+      // storage unavailable/corrupt — start from defaults, never throw
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubId])
+
+  useEffect(() => {
+    if (!clubId) return
+    try {
+      localStorage.setItem(filtersStorageKey, JSON.stringify({ sectionId, leagueId, seasonId }))
+    } catch {
+      // storage full/unavailable — filters just won't persist this session
+    }
+  }, [clubId, filtersStorageKey, sectionId, leagueId, seasonId])
 
   const {
     data,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, upcomingOnly],
+    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, leagueId, seasonId, upcomingOnly],
     queryFn: () =>
       listMatches(clubId as string, {
         page,
         sort,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(sectionId ? { sectionId } : {}),
+        ...(leagueId ? { leagueId } : {}),
+        ...(seasonId ? { seasonId } : {}),
         upcomingOnly,
       }),
     enabled: Boolean(clubId),
@@ -350,6 +391,22 @@ export default function MatchList({
     enabled: Boolean(clubId),
   })
 
+  // docs/specs/042-match-list-filters-and-search.md: given the *currently selected* filters, which
+  // section/league/season ids are actually reachable — narrows each of the three pickers' own
+  // option lists below so an admin never picks a combination with nothing in it.
+  const filterOptionsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', 'filter-options', sectionId, leagueId, seasonId, debouncedSearch, upcomingOnly],
+    queryFn: () =>
+      listMatchFilterOptions(clubId as string, {
+        sectionId: sectionId ?? undefined,
+        leagueId: leagueId ?? undefined,
+        seasonId: seasonId ?? undefined,
+        search: debouncedSearch || undefined,
+        upcomingOnly,
+      }),
+    enabled: Boolean(clubId),
+  })
+
   const teamsById = useMemo(() => {
     const map = new Map<string, Team>()
     ;(teams ?? []).forEach((team) => map.set(team.id, team))
@@ -367,6 +424,41 @@ export default function MatchList({
     ;(seasons ?? []).forEach((season) => map.set(season.id, season))
     return map
   }, [seasons])
+
+  // docs/specs/042-match-list-filters-and-search.md: filtered against filter-options' own
+  // reachable-id arrays before being passed to each picker — while filterOptionsQuery is still
+  // loading (or hasn't run yet), the full unfiltered list renders rather than flashing empty
+  // dropdowns on every keystroke/filter change.
+  const filterableSections = useMemo(
+    () => (sections ?? []).filter((section) => !filterOptionsQuery.data || filterOptionsQuery.data.sectionIds.includes(section.id)),
+    [sections, filterOptionsQuery.data],
+  )
+
+  const filterableLeagues = useMemo(
+    () => (leagues ?? []).filter((league) => !filterOptionsQuery.data || filterOptionsQuery.data.leagueIds.includes(league.id)),
+    [leagues, filterOptionsQuery.data],
+  )
+
+  const filterableSeasons = useMemo(
+    () => (seasons ?? []).filter((season) => !filterOptionsQuery.data || filterOptionsQuery.data.seasonIds.includes(season.id)),
+    [seasons, filterOptionsQuery.data],
+  )
+
+  // docs/specs/042-match-list-filters-and-search.md: client-side suggestions drawn from the club's
+  // own already-loaded Team names — narrowed to teams filterOptionsQuery reports as reachable
+  // given the currently active Section/League/Season filters first (a team outside the current
+  // filter scope is never suggested — see MatchFilterOptions.teamIds' own doc comment for why this
+  // doesn't also narrow by search itself), then filtered to those containing the currently-typed
+  // substring. No new endpoint beyond filter-options, no server debounce for the suggestion list
+  // itself (only the real backend search call, via debouncedSearch above, stays debounced).
+  const searchSuggestions = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    const reachableTeams = filterOptionsQuery.data
+      ? Array.from(teamsById.values()).filter((team) => filterOptionsQuery.data.teamIds.includes(team.id))
+      : Array.from(teamsById.values())
+    const names = reachableTeams.map((team) => team.name)
+    return term ? names.filter((name) => name.toLowerCase().includes(term)) : names
+  }, [search, teamsById, filterOptionsQuery.data])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -419,12 +511,39 @@ export default function MatchList({
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search by opponent or team name"
-          sortValue={sort}
-          sortOptions={SORT_OPTIONS}
-          onSortChange={setSort}
-          sortMinWidth={260}
+          searchOptions={searchSuggestions}
+          sortToggle={{
+            value: sort === 'matchDate,asc' ? 'asc' : 'desc',
+            ascLabel: 'Match date, soonest first',
+            descLabel: 'Match date, latest first',
+            onToggle: () => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc'),
+          }}
           filters={
-            <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <SectionTreeSelect
+                label="Section"
+                sections={filterableSections}
+                value={sectionId}
+                onChange={setSectionId}
+                allowClear
+              />
+              <Input select label="League" value={leagueId ?? ''} onChange={(event) => setLeagueId(event.target.value || null)}>
+                <MenuItem value="">All leagues</MenuItem>
+                {filterableLeagues.map((league) => (
+                  <MenuItem key={league.id} value={league.id}>
+                    {league.name}
+                  </MenuItem>
+                ))}
+              </Input>
+              <Input select label="Season" value={seasonId ?? ''} onChange={(event) => setSeasonId(event.target.value || null)}>
+                <MenuItem value="">All seasons</MenuItem>
+                {filterableSeasons.map((season) => (
+                  <MenuItem key={season.id} value={season.id}>
+                    {season.label}
+                  </MenuItem>
+                ))}
+              </Input>
+            </Stack>
           }
           filtersMinWidth={180}
         />

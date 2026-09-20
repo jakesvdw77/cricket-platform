@@ -61,19 +61,20 @@ export interface ListMatchesParams {
   // Spring Data's native Pageable sort format — the controller's own default is
   // 'matchDate,desc'.
   sort?: string
-  // NOTE: the real GET /matches endpoint (MatchController.java) is Pageable-only today — it has
-  // no `search` query param yet, even though docs/specs/029-league-management.md's UI
-  // Requirements describe MatchList's ListToolbar search as "backend-driven, over opponent
-  // name/team name". Accepted here (and sent as a harmless extra query param Spring ignores) so
-  // MatchList's wiring matches ProductList's own real backend-driven search shape and needs zero
-  // frontend changes if/when the backend adds support — flagged as a spec/backend gap, not
-  // silently dropped.
+  // docs/specs/042-match-list-filters-and-search.md: real, backend-driven search over
+  // opponent/team name (case-insensitive contains) — MatchController.list() now has a `search`
+  // query param and actually applies it. Previously accepted here but silently dropped by the
+  // backend (see git history); that gap is closed.
   search?: string
   // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
   // matches — a real, query-level backend filter (this list is genuinely paginated), not a
   // client-side one. A section-scoped caller's own default is already narrowed server-side
   // regardless of this param; it's an optional, further-narrowing convenience for any caller.
   sectionId?: string
+  // docs/specs/042-match-list-filters-and-search.md: narrows to one league/season — combinable
+  // with sectionId/search/upcomingOnly in any combination.
+  leagueId?: string
+  seasonId?: string
   // docs/specs/037-match-improvements.md: restricts results to matches dated today or later
   // (server/database local date). Omitted or false preserves today's exact unfiltered behaviour —
   // purely additive. MatchList.tsx sends `true` by default (no UI toggle yet); a future "Show past
@@ -90,7 +91,7 @@ function matchesPath(clubId: string): string {
 // pagination rule.
 export async function listMatches(
   clubId: string,
-  { page, size = 20, sort, search, sectionId, upcomingOnly }: ListMatchesParams,
+  { page, size = 20, sort, search, sectionId, leagueId, seasonId, upcomingOnly }: ListMatchesParams,
 ): Promise<Page<Match>> {
   const { data } = await api.get<Page<Match>>(matchesPath(clubId), {
     params: {
@@ -99,6 +100,47 @@ export async function listMatches(
       ...(sort ? { sort } : {}),
       ...(search ? { search } : {}),
       ...(sectionId ? { sectionId } : {}),
+      ...(leagueId ? { leagueId } : {}),
+      ...(seasonId ? { seasonId } : {}),
+      ...(upcomingOnly ? { upcomingOnly } : {}),
+    },
+  })
+  return data
+}
+
+// docs/specs/042-match-list-filters-and-search.md: given the *currently selected* filters, returns
+// which section/league/season ids are actually reachable — each array computed ignoring that same
+// dimension's own current selection, so picking a filter never makes itself disappear from its own
+// dropdown. Unpaginated (no page/size/sort) — the frontend uses this only to narrow its own
+// already-loaded Section/League/Season option lists, never to render rows directly.
+//
+// teamIds is different in kind: it drives Search's own autocomplete suggestions, narrowed by
+// whichever section/league/season filters are active (so a team outside the current Section/
+// League/Season selection is never suggested) but deliberately NOT by the search text itself —
+// suggesting names to help decide what to type would be circular otherwise.
+export interface MatchFilterOptions {
+  sectionIds: string[]
+  leagueIds: string[]
+  seasonIds: string[]
+  teamIds: string[]
+}
+
+export async function listMatchFilterOptions(
+  clubId: string,
+  { search, sectionId, leagueId, seasonId, upcomingOnly }: {
+    search?: string
+    sectionId?: string
+    leagueId?: string
+    seasonId?: string
+    upcomingOnly?: boolean
+  },
+): Promise<MatchFilterOptions> {
+  const { data } = await api.get<MatchFilterOptions>(`${matchesPath(clubId)}/filter-options`, {
+    params: {
+      ...(search ? { search } : {}),
+      ...(sectionId ? { sectionId } : {}),
+      ...(leagueId ? { leagueId } : {}),
+      ...(seasonId ? { seasonId } : {}),
       ...(upcomingOnly ? { upcomingOnly } : {}),
     },
   })
