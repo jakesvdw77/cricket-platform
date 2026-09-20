@@ -115,6 +115,10 @@ export default meta
 
 type Story = StoryObj<typeof TeamSheetCommunicationDialog>
 
+// The same already-assembled date/venue/league-season string MatchCard computes via
+// matchFields() — reused verbatim by both the PDF and WhatsApp paths (docs/specs/039).
+const subtitle = '1 March 2026 · Riverside Oval · Premier League — 2026'
+
 // Both sides have a built XI — every scope option enabled.
 export const Default: Story = {
   args: {
@@ -124,6 +128,7 @@ export const Default: Story = {
     sides: [printableHomeSide, { ...printableHomeSide, team: awayTeam, teamName: awayTeam.name }],
     sidesLoading: false,
     onPrint: async () => undefined,
+    subtitle,
   },
 }
 
@@ -169,6 +174,18 @@ export const ErrorState: Story = {
   },
 }
 
+// Selecting "WhatsApp" reveals the generated, editable text area in place of the (nonexistent, for
+// PDF) preview area — the play function clicks the WhatsApp row, same pattern ErrorState already
+// uses to exercise a state only reachable via interaction, not a settable prop.
+export const WhatsAppSelected: Story = {
+  args: Default.args,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: /whatsapp/i }))
+    await canvas.findByRole('textbox', { name: /whatsapp message/i })
+  },
+}
+
 export const MobileViewport: Story = {
   args: OneSideNotPrintable.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
@@ -181,5 +198,26 @@ export const TabletViewport: Story = {
 
 export const DesktopViewport: Story = {
   args: OneSideNotPrintable.args,
+  parameters: { viewport: { defaultViewport: 'desktop' } },
+}
+
+// The PDF-path viewport trio above never exercises the WhatsApp option's own Input/Regenerate
+// row — these three mirror WhatsAppSelected's own args/play so the WhatsApp state gets the same
+// mobile/tablet/desktop coverage the PDF path already has.
+export const WhatsAppMobileViewport: Story = {
+  args: WhatsAppSelected.args,
+  play: WhatsAppSelected.play,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const WhatsAppTabletViewport: Story = {
+  args: WhatsAppSelected.args,
+  play: WhatsAppSelected.play,
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+}
+
+export const WhatsAppDesktopViewport: Story = {
+  args: WhatsAppSelected.args,
+  play: WhatsAppSelected.play,
   parameters: { viewport: { defaultViewport: 'desktop' } },
 }

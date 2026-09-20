@@ -583,6 +583,21 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     // this assertion doesn't silently depend on that default never changing.
     await bothTeamsOption.click();
 
+    // --- WhatsApp (docs/specs/039-team-sheet-whatsapp-text.md): extends this same
+    // "Communicate Team Sheet" dialog, still open with "Both Teams" selected above, per that
+    // spec's own Test Plan (End-to-end row) — asserted here, before the "Print as PDF" click
+    // below, since clicking Print closes the dialog.
+    await page.getByRole('button', { name: /whatsapp/i }).click();
+    const whatsappTextbox = page.getByRole('textbox', { name: /whatsapp message/i });
+    await expect(whatsappTextbox).toBeVisible();
+    await expect(whatsappTextbox).toHaveValue(new RegExp(teamName));
+    await expect(whatsappTextbox).toHaveValue(new RegExp(awayOpponentName));
+    await expect(whatsappTextbox).toHaveValue(/🏏/);
+
+    // Switch back to "Print as PDF" so the rest of this test's existing flow (which prints and
+    // asserts a PDF popup opens) is otherwise unchanged.
+    await page.getByRole('button', { name: /print as pdf/i }).click();
+
     // window.open(url, '_blank') (MatchCard's handlePrint, ui/src/pages/manage/MatchList.tsx)
     // surfaces as a new Page on this same browser context in Playwright — start waiting for it
     // before the click that triggers it.
