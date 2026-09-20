@@ -72,10 +72,10 @@ export function ListToolbar({
       />
 
       {filters && (
-        <Box sx={{ flex: { xs: 'unset', md: `0 0 ${filtersMinWidth}px` } }}>{filters}</Box>
+        <Box sx={{ flex: { xs: 'unset', md: `1 1 ${filtersMinWidth}px` }, minWidth: 0 }}>{filters}</Box>
       )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '1 1 auto' }, minWidth: { xs: 'unset', md: 320 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' } }}>
         <Input
           select
           label="Sort by"
