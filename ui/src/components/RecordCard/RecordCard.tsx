@@ -76,9 +76,10 @@ export interface RecordCardProps {
   onEdit?: () => void
   editTo?: string
   // docs/specs/036-view-first-record-detail-screens.md: when present, this becomes the footer's
-  // primary action ("View", VisibilityOutlined) and editTo/onEdit — even if still passed — are
-  // suppressed entirely. Purely additive: any call site not passing this keeps its existing
-  // Edit-only footer unchanged.
+  // primary action ("View", VisibilityOutlined). If `editTo` is ALSO passed, both render side by
+  // side (View, then Edit) — `onEdit` stays suppressed either way, since it's the bare-callback
+  // fallback for call sites with neither a real view nor edit route. Purely additive: any call
+  // site not passing this keeps its existing Edit-only footer unchanged.
   viewTo?: string
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
@@ -249,16 +250,30 @@ export function RecordCard({
           </Button>
         ))}
         {viewTo ? (
-          <MuiButton
-            component={RouterLink}
-            to={viewTo}
-            variant="text"
-            color="inherit"
-            size="small"
-            startIcon={<VisibilityOutlinedIcon fontSize="small" />}
-          >
-            View
-          </MuiButton>
+          <>
+            <MuiButton
+              component={RouterLink}
+              to={viewTo}
+              variant="text"
+              color="inherit"
+              size="small"
+              startIcon={<VisibilityOutlinedIcon fontSize="small" />}
+            >
+              View
+            </MuiButton>
+            {editTo && (
+              <MuiButton
+                component={RouterLink}
+                to={editTo}
+                variant="text"
+                color="inherit"
+                size="small"
+                startIcon={<EditOutlinedIcon fontSize="small" />}
+              >
+                {editLabel}
+              </MuiButton>
+            )}
+          </>
         ) : editTo ? (
           <MuiButton
             component={RouterLink}
