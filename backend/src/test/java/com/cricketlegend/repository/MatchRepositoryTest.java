@@ -12,9 +12,12 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
+import com.cricketlegend.dto.MatchFilterOptionsDto;
+import com.cricketlegend.service.MatchService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -56,6 +62,15 @@ class MatchRepositoryTest {
 
     @Autowired
     private LeagueRepository leagueRepository;
+
+    @Autowired
+    private MatchService matchService;
+
+    // canAdministerClub(...) short-circuits true on ROLE_platform_admin before ever touching
+    // Person/RoleAssignment — no DB fixture needed to exercise the unrestricted (Optional.empty())
+    // path these tests want.
+    private static final Authentication PLATFORM_ADMIN =
+            new TestingAuthenticationToken("platform-admin", "n/a", List.of(new SimpleGrantedAuthority("ROLE_platform_admin")));
 
     private Club savedClub(String slug) {
         return clubRepository.save(Club.builder().name("Riverside CC").slug(slug).status(ClubStatus.ACTIVE).build());
@@ -263,5 +278,48 @@ class MatchRepositoryTest {
         Page<Match> result = matchRepository.findAll(spec, PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Match::getId).containsExactly(matching.getId());
+    }
+
+    /**
+     * Per docs/specs/042-match-list-filters-and-search.md's Search-autocomplete narrowing fix and
+     * standards-reviewer finding: {@code MatchServiceImpl.filterOptions()} deliberately omits
+     * {@code search} from the specification it builds for {@code teamIds} (to avoid the
+     * autocomplete suggestion list narrowing itself out as the admin types), while genuinely
+     * applying it to {@code sectionIds}/{@code leagueIds}/{@code seasonIds}. Exercises the real
+     * {@link MatchService} bean end to end (not just {@link MatchSpecifications} in isolation) —
+     * only a real narrowed-vs-unnarrowed comparison against actual saved rows can prove the
+     * service wires {@code search} into three of the four arrays and not the fourth.
+     */
+    @Test
+    void filterOptionsTeamIdsIgnoresSearchWhileSectionLeagueAndSeasonIdsAreNarrowedByIt() {
+        Club club = savedClub("riverside-cc");
+        Season seasonA = savedSeason(club.getId());
+        Season seasonB = seasonRepository.save(Season.builder().clubId(club.getId()).label("2027")
+                .startDate(LocalDate.of(2027, 1, 1)).endDate(LocalDate.of(2027, 12, 31)).active(true).build());
+        Section sectionA = sectionRepository.save(Section.builder().clubId(club.getId()).name("Section A").active(true).build());
+        Section sectionB = sectionRepository.save(Section.builder().clubId(club.getId()).name("Section B").active(true).build());
+        Team teamAlpha = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(sectionA.getId()).name("Alpha").active(true).build());
+        Team teamBeta = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(sectionB.getId()).name("Beta").active(true).build());
+        League leagueA = leagueRepository.save(League.builder().clubId(club.getId()).name("League A")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        League leagueB = leagueRepository.save(League.builder().clubId(club.getId()).name("League B")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(teamAlpha.getId())
+                .awayTeamName("Occasionals A").leagueId(leagueA.getId()).seasonId(seasonA.getId())
+                .matchDate(Instant.now()).active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(teamBeta.getId())
+                .awayTeamName("Occasionals B").leagueId(leagueB.getId()).seasonId(seasonB.getId())
+                .matchDate(Instant.now()).active(true).build());
+
+        MatchFilterOptionsDto result = matchService.filterOptions(
+                PLATFORM_ADMIN, club.getId(), null, null, null, "Alpha", false);
+
+        assertThat(result.sectionIds()).containsExactly(sectionA.getId());
+        assertThat(result.leagueIds()).containsExactly(leagueA.getId());
+        assertThat(result.seasonIds()).containsExactly(seasonA.getId());
+        assertThat(result.teamIds()).containsExactlyInAnyOrder(teamAlpha.getId(), teamBeta.getId());
     }
 }
