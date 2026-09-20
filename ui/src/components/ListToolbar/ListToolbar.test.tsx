@@ -152,4 +152,51 @@ describe('ListToolbar', () => {
     )
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
+
+  // docs/specs/042-match-list-filters-and-search.md: an additive, optional prop — when passed, the
+  // Sort `Select` is replaced entirely by a compact icon toggle; every other call site (which
+  // never passes it) keeps rendering the Select exactly as before, per the tests above.
+  describe('sortToggle', () => {
+    it('renders an icon button instead of the Sort Select when passed, with an aria-label describing the target state', () => {
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{
+            value: 'asc',
+            ascLabel: 'Sort ascending',
+            descLabel: 'Sort descending',
+            onToggle: () => undefined,
+          }}
+        />,
+      )
+
+      expect(screen.queryByLabelText('Sort by')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sort descending' })).toBeInTheDocument()
+    })
+
+    it('calls onToggle when clicked, and flips the aria-label to the other target state', async () => {
+      const user = userEvent.setup()
+      const onToggle = vi.fn()
+      const { rerender } = render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'asc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle }}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Sort descending' }))
+      expect(onToggle).toHaveBeenCalledTimes(1)
+
+      rerender(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'desc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle }}
+        />,
+      )
+      expect(screen.getByRole('button', { name: 'Sort ascending' })).toBeInTheDocument()
+    })
+  })
 })
