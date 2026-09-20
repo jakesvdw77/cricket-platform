@@ -11,6 +11,7 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
@@ -54,6 +55,9 @@ class MatchServiceImplTest {
     private MatchRepository matchRepository;
 
     @Mock
+    private com.cricketlegend.repository.MatchSideRepository matchSideRepository;
+
+    @Mock
     private LeagueRepository leagueRepository;
 
     @Mock
@@ -75,13 +79,14 @@ class MatchServiceImplTest {
     @BeforeEach
     void setUp() {
         matchService = new MatchServiceImpl(
-                matchRepository, leagueRepository, seasonRepository, teamRepository, matchMapper, accessService);
+                matchRepository, matchSideRepository, leagueRepository, seasonRepository, teamRepository,
+                matchMapper, accessService);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null,
-                UUID.randomUUID(), Instant.now(), null, true, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -359,6 +364,56 @@ class MatchServiceImplTest {
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
         verify(matchRepository, never()).findByClubId(any(), any());
+    }
+
+    // --- 040: announced enrichment ---
+
+    @Test
+    void listResolvesHomeAndAwaySideAnnouncedViaOneBatchedQueryForTheWholePage() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchAId = UUID.randomUUID();
+        UUID matchBId = UUID.randomUUID();
+        UUID teamAHome = UUID.randomUUID();
+        UUID teamAAway = UUID.randomUUID();
+        UUID teamBHome = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+
+        Match matchA = Match.builder().id(matchAId).clubId(clubId).homeTeamId(teamAHome).awayTeamId(teamAAway)
+                .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
+        Match matchB = Match.builder().id(matchBId).clubId(clubId).homeTeamId(teamBHome)
+                .awayTeamName("Occasionals").seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true)
+                .build();
+        when(matchRepository.findByClubId(org.mockito.ArgumentMatchers.eq(clubId), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
+
+        MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null,
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null);
+        MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null,
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null);
+        when(matchMapper.toDto(matchA)).thenReturn(dtoA);
+        when(matchMapper.toDto(matchB)).thenReturn(dtoB);
+
+        MatchSide announcedHomeSideOfA =
+                MatchSide.builder().id(UUID.randomUUID()).matchId(matchAId).teamId(teamAHome).announced(true).build();
+        MatchSide notAnnouncedHomeSideOfB =
+                MatchSide.builder().id(UUID.randomUUID()).matchId(matchBId).teamId(teamBHome).announced(false)
+                        .build();
+        when(matchSideRepository.findByMatchIdIn(List.of(matchAId, matchBId)))
+                .thenReturn(List.of(announcedHomeSideOfA, notAnnouncedHomeSideOfB));
+
+        org.springframework.data.domain.Page<MatchDto> result =
+                matchService.list(authentication, clubId, null, false, pageable);
+
+        List<MatchDto> content = result.getContent();
+        MatchDto resultA = content.stream().filter(d -> d.id().equals(matchAId)).findFirst().orElseThrow();
+        MatchDto resultB = content.stream().filter(d -> d.id().equals(matchBId)).findFirst().orElseThrow();
+        assertThat(resultA.homeSideAnnounced()).isTrue();
+        assertThat(resultA.awaySideAnnounced()).isFalse();
+        assertThat(resultB.homeSideAnnounced()).isFalse();
+        assertThat(resultB.awaySideAnnounced()).isFalse();
+        verify(matchSideRepository).findByMatchIdIn(List.of(matchAId, matchBId));
     }
 
     // --- 037: upcomingOnly ---
