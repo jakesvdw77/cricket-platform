@@ -146,6 +146,34 @@ describe('SponsorList', () => {
     expect(await screen.findByText('Add Sponsor Page')).toBeInTheDocument()
   })
 
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listSponsors.mockResolvedValueOnce([
+      makeSponsor({ id: 'sponsor-1', name: 'Alpha Sponsors' }),
+      makeSponsor({ id: 'sponsor-2', name: 'Zeta Sponsors' }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Alpha Sponsors')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Alpha Sponsors',
+      'Zeta Sponsors',
+    ])
+
+    const sortButton = screen.getByRole('button', { name: 'Name, Z to A' })
+    await user.click(sortButton)
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Zeta Sponsors',
+      'Alpha Sponsors',
+    ])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the list card at all — active or inactive — it moved to SponsorFormPage's own actions bar.
   it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {

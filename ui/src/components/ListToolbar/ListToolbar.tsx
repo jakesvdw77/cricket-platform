@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react'
-import { Autocomplete, InputAdornment, MenuItem } from '@mui/material'
+import type { MouseEvent, ReactNode } from 'react'
+import { useState } from 'react'
+import { Autocomplete, InputAdornment, Menu, MenuItem } from '@mui/material'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import SearchIcon from '@mui/icons-material/Search'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import { Input } from '../Input'
 import { Button } from '../Button'
 
@@ -61,6 +63,15 @@ export interface ListToolbarProps {
   // `onSortChange`/`sortMinWidth`'s own rendering path, which still renders byte-for-byte
   // unchanged for every call site that omits this prop.
   sortToggle?: ListToolbarSortToggle
+  // docs/specs/043-list-toolbar-gold-standard.md: a compact field picker layered on top of
+  // sortToggle, for the one caller (ClubContactList) with more than one sortable field. Rendered
+  // only when `sortToggle` is present and this array has more than one entry — every other
+  // sortToggle-only caller (a single sortable field) is unaffected, since it never passes these.
+  // Direction stays field-agnostic and keeps coming from `sortToggle` itself; this only changes
+  // which field that direction applies to.
+  sortFieldOptions?: ListToolbarSortOption[]
+  sortField?: string
+  onSortFieldChange?: (value: string) => void
 }
 
 // Sits above any record list (ProductList today, Subscriptions/Discounts/Invoicing/System
@@ -83,7 +94,17 @@ export function ListToolbar({
   filtersMinWidth = 200,
   sortToggle,
   searchOptions,
+  sortFieldOptions,
+  sortField,
+  onSortFieldChange,
 }: ListToolbarProps) {
+  const [fieldMenuAnchorEl, setFieldMenuAnchorEl] = useState<HTMLElement | null>(null)
+  const showSortFieldPicker = Boolean(sortToggle) && (sortFieldOptions?.length ?? 0) > 1
+  const activeFieldOption = sortFieldOptions?.find((option) => option.value === sortField)
+
+  const handleFieldMenuOpen = (event: MouseEvent<HTMLElement>) => setFieldMenuAnchorEl(event.currentTarget)
+  const handleFieldMenuClose = () => setFieldMenuAnchorEl(null)
+
   const searchAdornment = (
     <InputAdornment position="start">
       <SearchIcon fontSize="small" color="action" />
@@ -91,73 +112,119 @@ export function ListToolbar({
   )
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexWrap: { xs: 'nowrap', md: 'wrap' }, gap: 2 }}>
-      {searchOptions ? (
-        <Autocomplete
-          freeSolo
-          options={searchOptions}
-          inputValue={searchValue}
-          onInputChange={(_event, newInputValue) => onSearchChange(newInputValue)}
-          sx={{ flex: { xs: 'unset', md: 1 }, minWidth: 0 }}
-          renderInput={(params) => (
-            <Input
-              {...params}
-              label="Search"
-              placeholder={searchPlaceholder}
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: searchAdornment,
-              }}
-            />
-          )}
-        />
-      ) : (
-        <Input
-          label="Search"
-          placeholder={searchPlaceholder}
-          value={searchValue}
-          onChange={(event) => onSearchChange(event.target.value)}
-          sx={{ flex: { xs: 'unset', md: 1 }, minWidth: 0 }}
-          InputProps={{
-            startAdornment: searchAdornment,
-          }}
-        />
-      )}
-
-      {filters && (
-        <Box sx={{ flex: { xs: 'unset', md: `1 1 ${filtersMinWidth}px` }, minWidth: 0 }}>{filters}</Box>
-      )}
-
-      <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' }, alignItems: 'center' }}>
-        {sortToggle ? (
-          <IconButton
-            onClick={sortToggle.onToggle}
-            aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
-            sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
-          >
-            {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
-          </IconButton>
+    // docs/specs/037-match-improvements.md items 3/4, generalized to every caller by
+    // docs/specs/043-list-toolbar-gold-standard.md: a bordered, shadowed background.paper surface
+    // (not a translucent tint, which reads as invisible against the app shell's own gradient page
+    // background) — reads as a real surface floating above the page, matching RecordCard's own
+    // identical fix. Originally only MatchList wrapped itself in this Box; now every ListToolbar
+    // caller gets it automatically, with nothing to remember at the call site.
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', boxShadow: 1, p: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexWrap: { xs: 'nowrap', md: 'wrap' }, gap: 2 }}>
+        {searchOptions ? (
+          <Autocomplete
+            freeSolo
+            options={searchOptions}
+            inputValue={searchValue}
+            onInputChange={(_event, newInputValue) => onSearchChange(newInputValue)}
+            sx={{ flex: { xs: 'unset', md: 1 }, minWidth: 0 }}
+            renderInput={(params) => (
+              <Input
+                {...params}
+                label="Search"
+                placeholder={searchPlaceholder}
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: searchAdornment,
+                }}
+              />
+            )}
+          />
         ) : (
           <Input
-            select
-            label="Sort by"
-            value={sortValue}
-            onChange={(event) => onSortChange?.(event.target.value)}
-            sx={{ flex: { xs: 1, md: `0 0 ${sortMinWidth}px` } }}
-          >
-            {(sortOptions ?? []).map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Input>
+            label="Search"
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            sx={{ flex: { xs: 'unset', md: 1 }, minWidth: 0 }}
+            InputProps={{
+              startAdornment: searchAdornment,
+            }}
+          />
         )}
 
-        {createLabel && onCreate && (
-          <Button onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
-            {createLabel}
-          </Button>
+        {filters && (
+          <Box sx={{ flex: { xs: 'unset', md: `1 1 ${filtersMinWidth}px` }, minWidth: 0 }}>{filters}</Box>
         )}
+
+        <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' }, alignItems: 'center' }}>
+          {sortToggle ? (
+            <>
+              {showSortFieldPicker && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleFieldMenuOpen}
+                    aria-label={`Sort field: ${activeFieldOption?.label ?? ''}`}
+                    endIcon={<ArrowDropDownIcon fontSize="small" />}
+                    sx={{
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      minWidth: 0,
+                      px: 1.5,
+                      color: 'text.primary',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {activeFieldOption?.label ?? ''}
+                  </Button>
+                  <Menu anchorEl={fieldMenuAnchorEl} open={Boolean(fieldMenuAnchorEl)} onClose={handleFieldMenuClose}>
+                    {sortFieldOptions?.map((option) => (
+                      <MenuItem
+                        key={option.value}
+                        selected={option.value === sortField}
+                        onClick={() => {
+                          onSortFieldChange?.(option.value)
+                          handleFieldMenuClose()
+                        }}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </>
+              )}
+              <IconButton
+                onClick={sortToggle.onToggle}
+                aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
+                sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+              >
+                {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+              </IconButton>
+            </>
+          ) : (
+            <Input
+              select
+              label="Sort by"
+              value={sortValue}
+              onChange={(event) => onSortChange?.(event.target.value)}
+              sx={{ flex: { xs: 1, md: `0 0 ${sortMinWidth}px` } }}
+            >
+              {(sortOptions ?? []).map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Input>
+          )}
+
+          {createLabel && onCreate && (
+            <Button onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
+              {createLabel}
+            </Button>
+          )}
+        </Box>
       </Box>
     </Box>
   )

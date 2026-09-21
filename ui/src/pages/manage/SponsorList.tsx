@@ -13,8 +13,6 @@ import type { Sponsor } from '../../api/sponsorApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
 import { initialsFromName } from '../../utils/initials'
 
-const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
-
 // Exported for SponsorDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's badge matches this card's exactly, rather than a second copy.
 export function badgeFor(sponsor: Sponsor): RecordCardBadge | undefined {
@@ -47,7 +45,7 @@ export default function SponsorList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
 
   const {
     data: sponsors,
@@ -104,9 +102,12 @@ export default function SponsorList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Name, A to Z',
+          descLabel: 'Name, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
+        }}
       />
 
       {visibleSponsors.length > 0 && (

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardField } from '../../components/RecordCard'
+import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
@@ -14,6 +15,7 @@ import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
+import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 
 // Same "resolve whichever side is null against the club's own team list" join MatchList.tsx's
 // sideName / MatchFormPage.tsx's sideDisplayName already use — not a new resolution helper.
@@ -78,13 +80,27 @@ function PollCard({ poll, teamsById }: { poll: OpenAvailabilityPoll; teamsById: 
 
 // docs/specs/034-availability-polls-dashboard.md: replaces the /manage/availability stub, a
 // club-wide read-summary-plus-navigate list of every currently-open availability poll — no
-// ListToolbar/RecordFormScreen (this screen has no create action and no form of its own, see the
-// spec's own dedicated UI Requirements sub-decision). docs/specs/035-section-scoped-access.md
-// layers an optional SectionTreeSelect filter on top, same pattern as PlayerList/TeamDirectory/
-// MatchList.
+// RecordFormScreen (this screen has no create action or form of its own, see the spec's own
+// dedicated UI Requirements sub-decision, unchanged by 043 below). docs/specs/
+// 043-list-toolbar-gold-standard.md deliberately reverses 034's original "no ListToolbar" call —
+// this screen now gets a real ListToolbar (Search + Sort by match date), still with no
+// createLabel/onCreate/ManageScreenHeader.action. docs/specs/035-section-scoped-access.md's own
+// SectionTreeSelect filter now lives in ListToolbar's filters slot, persisted the same way
+// PlayerList/TeamDirectory/MatchList's own filters already are.
 export default function AvailabilityPollsDashboard() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
-  const [sectionId, setSectionId] = useState<string | null>(null)
+  // docs/specs/043-list-toolbar-gold-standard.md: Search is client-side only (listOpenPolls is
+  // unpaginated, like every other screen in this rollout) — a new, separate, non-persisted
+  // useState, never folded into the persisted filters below.
+  const [search, setSearch] = useState('')
+  // docs/specs/042-match-list-filters-and-search.md's own default-ascending convention — soonest
+  // upcoming poll first.
+  const [sort, setSort] = useState<'asc' | 'desc'>('asc')
+  // docs/specs/035-section-scoped-access.md's existing filter, now persisted the same way
+  // MatchList's own filters already are (docs/specs/043-list-toolbar-gold-standard.md).
+  const [{ sectionId }, setFilters] = usePersistedListFilters(`availabilityPolls:filters:${clubId}`, {
+    sectionId: null as string | null,
+  })
 
   const {
     data: polls,
@@ -114,6 +130,29 @@ export default function AvailabilityPollsDashboard() {
     return map
   }, [teams])
 
+  // docs/specs/043-list-toolbar-gold-standard.md: Search/Sort for the first time on this screen —
+  // both client-side, since listOpenPolls is unpaginated like every other screen in this rollout.
+  // Search matches on the same resolved home/away team names PollCard's own title already shows
+  // (via sideDisplayName, reused here rather than a new resolution helper).
+  const visiblePolls = useMemo(() => {
+    if (!polls) {
+      return []
+    }
+
+    const term = search.trim().toLowerCase()
+    const filtered = term
+      ? polls.filter((poll) => {
+          const homeTeamName = sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
+          const awayTeamName = sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
+          return homeTeamName.toLowerCase().includes(term) || awayTeamName.toLowerCase().includes(term)
+        })
+      : polls
+
+    const sorted = [...filtered].sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime())
+
+    return sort === 'desc' ? sorted.reverse() : sorted
+  }, [polls, search, sort, teamsById])
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -132,22 +171,34 @@ export default function AvailabilityPollsDashboard() {
   }
 
   const hasPolls = polls.length > 0
+  const isSearching = search.trim().length > 0
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader title="Availability Polls" />
 
-      <Box sx={{ maxWidth: 360 }}>
-        <SectionTreeSelect
-          label="Section"
-          sections={sections ?? []}
-          value={sectionId}
-          onChange={setSectionId}
-          allowClear
-        />
-      </Box>
+      <ListToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by team name"
+        sortToggle={{
+          value: sort,
+          ascLabel: 'Match date, soonest first',
+          descLabel: 'Match date, latest first',
+          onToggle: () => setSort(sort === 'asc' ? 'desc' : 'asc'),
+        }}
+        filters={
+          <SectionTreeSelect
+            label="Section"
+            sections={sections ?? []}
+            value={sectionId}
+            onChange={(value) => setFilters({ sectionId: value })}
+            allowClear
+          />
+        }
+      />
 
-      {hasPolls && (
+      {visiblePolls.length > 0 && (
         <Box
           sx={{
             display: 'grid',
@@ -155,13 +206,20 @@ export default function AvailabilityPollsDashboard() {
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
           }}
         >
-          {polls.map((poll) => (
+          {visiblePolls.map((poll) => (
             <PollCard key={poll.pollId} poll={poll} teamsById={teamsById} />
           ))}
         </Box>
       )}
 
-      {!hasPolls && (
+      {visiblePolls.length === 0 && isSearching && (
+        <EmptyState
+          title="No matching polls"
+          description={`No open polls match "${search.trim()}". Try a different search.`}
+        />
+      )}
+
+      {!hasPolls && !isSearching && (
         <EmptyState
           title="No open polls"
           description="Open a poll for an upcoming match from its own Availability tab to see it here."

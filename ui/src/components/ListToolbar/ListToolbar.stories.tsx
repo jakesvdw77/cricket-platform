@@ -102,6 +102,43 @@ export const WithFilters: Story = {
   render: () => <ControlledWithFilters />,
 }
 
+// docs/specs/043-list-toolbar-gold-standard.md: the compact sort-field picker layered on top of
+// sortToggle — ClubContactList's own two-sortable-field case (Name/Role). Selecting a field keeps
+// the current direction; toggling direction keeps the current field.
+const SORT_FIELD_OPTIONS: ListToolbarSortOption[] = [
+  { value: 'name', label: 'Name' },
+  { value: 'role', label: 'Role' },
+]
+
+function ControlledWithSortFieldPicker() {
+  const [search, setSearch] = useState('')
+  const [field, setField] = useState(SORT_FIELD_OPTIONS[0].value)
+  const [direction, setDirection] = useState<'asc' | 'desc'>('asc')
+
+  return (
+    <ListToolbar
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search by name"
+      sortToggle={{
+        value: direction,
+        ascLabel: `${field === 'name' ? 'Name' : 'Role'}, A to Z`,
+        descLabel: `${field === 'name' ? 'Name' : 'Role'}, Z to A`,
+        onToggle: () => setDirection((current) => (current === 'asc' ? 'desc' : 'asc')),
+      }}
+      sortFieldOptions={SORT_FIELD_OPTIONS}
+      sortField={field}
+      onSortFieldChange={setField}
+      createLabel="Add Contact"
+      onCreate={() => undefined}
+    />
+  )
+}
+
+export const WithSortFieldPicker: Story = {
+  render: () => <ControlledWithSortFieldPicker />,
+}
+
 export const MobileViewport: Story = {
   render: () => <Controlled />,
   parameters: { viewport: { defaultViewport: 'mobile' } },

@@ -24,6 +24,10 @@ vi.mock('../../api/sectionApi', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   listSections.mockResolvedValue([])
+  // docs/specs/043-list-toolbar-gold-standard.md: PlayerList's Section filter now persists via
+  // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
+  // never leaks into the next.
+  localStorage.clear()
 })
 
 function makePlayer(overrides: Partial<Player> = {}): Player {
@@ -222,5 +226,53 @@ describe('PlayerList', () => {
     await waitFor(() =>
       expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
     )
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValueOnce([
+      makePlayer({ id: 'player-1', firstName: 'Amy', lastName: 'Ansell' }),
+      makePlayer({ id: 'player-2', firstName: 'Zed', lastName: 'Zulu' }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Amy Ansell')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Amy Ansell',
+      'Zed Zulu',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Zed Zulu',
+      'Amy Ansell',
+    ])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
+  // visits — Search stays a separate, non-persisted useState. Mirrors MatchList.test.tsx's own
+  // persistence assertions.
+  it('reapplies a persisted section filter on mount, and never persists the search text', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValue([makePlayer()])
+    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' })])
+    localStorage.setItem('playerList:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
+
+    renderList('test-club-id')
+
+    await waitFor(() => expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    expect(await screen.findByLabelText('Section')).toHaveValue('U15')
+
+    await user.type(screen.getByLabelText('Search'), 'Sipho')
+
+    const persisted = JSON.parse(localStorage.getItem('playerList:filters:test-club-id') as string)
+    expect(persisted).toEqual({ sectionId: 'section-1' })
+    expect(persisted).not.toHaveProperty('search')
   })
 })

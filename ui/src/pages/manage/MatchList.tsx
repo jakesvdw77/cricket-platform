@@ -491,63 +491,51 @@ export default function MatchList({
         }
       />
 
-      {/* docs/specs/037-match-improvements.md items 3/4: ListToolbar + the Section filter read as
-          one control group inside a bordered, shadowed container — a solid background.paper
-          surface (not a translucent primary tint, which reads as invisible against the shell's
-          own gradient page background) reads as a real surface floating above the page, matching
-          RecordCard's identical fix for the same problem. The Section filter itself sits inline
-          in ListToolbar's own filters slot rather than a second row below. */}
-      <Box
-        sx={{
-          border: 1,
-          borderColor: 'divider',
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          p: 2,
+      {/* docs/specs/043-list-toolbar-gold-standard.md: the bordered, shadowed background.paper
+          surface this toolbar sits in (originally MatchList's own wrapping Box, per
+          docs/specs/037-match-improvements.md items 3/4) now lives inside ListToolbar itself —
+          every caller gets it automatically, nothing to wrap here anymore. The Section filter
+          itself sits inline in ListToolbar's own filters slot rather than a second row below. */}
+      <ListToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by opponent or team name"
+        searchOptions={searchSuggestions}
+        sortToggle={{
+          value: sort === 'matchDate,asc' ? 'asc' : 'desc',
+          ascLabel: 'Match date, soonest first',
+          descLabel: 'Match date, latest first',
+          onToggle: () => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc'),
         }}
-      >
-        <ListToolbar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search by opponent or team name"
-          searchOptions={searchSuggestions}
-          sortToggle={{
-            value: sort === 'matchDate,asc' ? 'asc' : 'desc',
-            ascLabel: 'Match date, soonest first',
-            descLabel: 'Match date, latest first',
-            onToggle: () => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc'),
-          }}
-          filters={
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <SectionTreeSelect
-                label="Section"
-                sections={filterableSections}
-                value={sectionId}
-                onChange={setSectionId}
-                allowClear
-              />
-              <Input select label="League" value={leagueId ?? ''} onChange={(event) => setLeagueId(event.target.value || null)}>
-                <MenuItem value="">All leagues</MenuItem>
-                {filterableLeagues.map((league) => (
-                  <MenuItem key={league.id} value={league.id}>
-                    {league.name}
-                  </MenuItem>
-                ))}
-              </Input>
-              <Input select label="Season" value={seasonId ?? ''} onChange={(event) => setSeasonId(event.target.value || null)}>
-                <MenuItem value="">All seasons</MenuItem>
-                {filterableSeasons.map((season) => (
-                  <MenuItem key={season.id} value={season.id}>
-                    {season.label}
-                  </MenuItem>
-                ))}
-              </Input>
-            </Stack>
-          }
-          filtersMinWidth={180}
-        />
-      </Box>
+        filters={
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <SectionTreeSelect
+              label="Section"
+              sections={filterableSections}
+              value={sectionId}
+              onChange={setSectionId}
+              allowClear
+            />
+            <Input select label="League" value={leagueId ?? ''} onChange={(event) => setLeagueId(event.target.value || null)}>
+              <MenuItem value="">All leagues</MenuItem>
+              {filterableLeagues.map((league) => (
+                <MenuItem key={league.id} value={league.id}>
+                  {league.name}
+                </MenuItem>
+              ))}
+            </Input>
+            <Input select label="Season" value={seasonId ?? ''} onChange={(event) => setSeasonId(event.target.value || null)}>
+              <MenuItem value="">All seasons</MenuItem>
+              {filterableSeasons.map((season) => (
+                <MenuItem key={season.id} value={season.id}>
+                  {season.label}
+                </MenuItem>
+              ))}
+            </Input>
+          </Stack>
+        }
+        filtersMinWidth={180}
+      />
 
       {hasMatches && (
         <Box

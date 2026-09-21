@@ -192,6 +192,28 @@ describe('TeamList', () => {
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually. TeamList has no Section filter of its own (nested under a fixed section route), so
+  // it needs only this sort-toggle coverage, no persistence test.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listTeamsForSection.mockResolvedValueOnce([
+      makeTeam({ id: 'team-1', name: 'Alpha XI' }),
+      makeTeam({ id: 'team-2', name: 'Zeta XI' }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Alpha XI')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
+
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
   it('the back link targets Club Structure', async () => {
     listTeamsForSection.mockResolvedValueOnce([])
 

@@ -27,6 +27,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   listTeamsForClub.mockResolvedValue([])
   listSections.mockResolvedValue([])
+  // docs/specs/043-list-toolbar-gold-standard.md: this screen's Section filter now persists via
+  // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
+  // never leaks into the next.
+  localStorage.clear()
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -187,5 +191,99 @@ describe('AvailabilityPollsDashboard', () => {
     await waitFor(() =>
       expect(listOpenPolls).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
     )
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: this screen gains a real Search box for the
+  // first time — it must filter client-side by the resolved home/away team name, the same names
+  // PollCard's own title already shows.
+  it('filters polls by the resolved home/away team name typed into Search', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([
+      makeTeam({ id: 'team-home', name: 'Home Team' }),
+      makeTeam({ id: 'team-other', name: 'Other Team' }),
+    ])
+    listOpenPolls.mockResolvedValueOnce([
+      makePoll({ pollId: 'poll-1', homeTeamId: 'team-home', awayTeamId: null, awayTeamName: 'Rivals CC' }),
+      makePoll({
+        pollId: 'poll-2',
+        teamId: 'team-other',
+        homeTeamId: 'team-other',
+        awayTeamId: null,
+        awayTeamName: 'Someone Else',
+      }),
+    ])
+
+    renderDashboard('test-club-id')
+
+    await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })
+    expect(screen.getByRole('heading', { name: 'Other Team vs Someone Else' })).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Search'), 'Rivals')
+
+    expect(await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Other Team vs Someone Else' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: this screen gains a real Sort control for the
+  // first time — default ascending (soonest-upcoming poll first), reversible via the icon toggle.
+  it('sorts polls by match date, soonest-first by default, and reverses on the sort icon', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-home', name: 'Home Team' })])
+    listOpenPolls.mockResolvedValueOnce([
+      makePoll({ pollId: 'poll-later', matchDate: '2026-08-01T09:00:00Z', awayTeamName: 'Later Rivals' }),
+      makePoll({ pollId: 'poll-sooner', matchDate: '2026-06-01T09:00:00Z', awayTeamName: 'Sooner Rivals' }),
+    ])
+
+    renderDashboard('test-club-id')
+
+    await screen.findByRole('heading', { name: 'Home Team vs Sooner Rivals' })
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Home Team vs Sooner Rivals',
+      'Home Team vs Later Rivals',
+    ])
+    expect(screen.getByRole('button', { name: 'Match date, latest first' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Match date, latest first' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Home Team vs Later Rivals',
+      'Home Team vs Sooner Rivals',
+    ])
+    expect(screen.getByRole('button', { name: 'Match date, soonest first' })).toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
+  // visits, for the first time on this screen — Search stays a separate, non-persisted useState.
+  // Mirrors MatchList.test.tsx's own persistence assertions.
+  it('reapplies a persisted section filter on mount, and never persists the search text', async () => {
+    const user = userEvent.setup()
+    listOpenPolls.mockResolvedValue([])
+    listSections.mockResolvedValue([
+      {
+        id: 'section-1',
+        clubId: 'test-club-id',
+        parentSectionId: null,
+        name: 'Juniors',
+        minAge: null,
+        maxAge: null,
+        gender: null,
+        active: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        updatedBy: null,
+      },
+    ])
+    localStorage.setItem('availabilityPolls:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
+
+    renderDashboard('test-club-id')
+
+    await waitFor(() => expect(listOpenPolls).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    expect(await screen.findByLabelText('Section')).toHaveValue('Juniors')
+
+    await user.type(screen.getByLabelText('Search'), 'Rivals')
+
+    const persisted = JSON.parse(localStorage.getItem('availabilityPolls:filters:test-club-id') as string)
+    expect(persisted).toEqual({ sectionId: 'section-1' })
+    expect(persisted).not.toHaveProperty('search')
   })
 })

@@ -199,4 +199,90 @@ describe('ListToolbar', () => {
       expect(screen.getByRole('button', { name: 'Sort ascending' })).toBeInTheDocument()
     })
   })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: the new compact field picker, additive on top
+  // of sortToggle — only ClubContactList (two sortable fields) passes this today.
+  describe('sortFieldOptions', () => {
+    const FIELD_OPTIONS = [
+      { value: 'name', label: 'Name' },
+      { value: 'role', label: 'Role' },
+    ]
+
+    it('does not render the field picker when sortToggle is omitted, even with more than one sortFieldOptions entry', () => {
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortValue={SORT_OPTIONS[0].value}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={() => undefined}
+          sortFieldOptions={FIELD_OPTIONS}
+          sortField="name"
+          onSortFieldChange={() => undefined}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: /Sort field/ })).not.toBeInTheDocument()
+    })
+
+    it('does not render the field picker when sortFieldOptions is omitted, has zero entries, or has exactly one entry', () => {
+      const baseProps = {
+        searchValue: '',
+        onSearchChange: () => undefined,
+        sortToggle: { value: 'asc' as const, ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle: () => undefined },
+      }
+
+      const { rerender } = render(<ListToolbar {...baseProps} />)
+      expect(screen.queryByRole('button', { name: /Sort field/ })).not.toBeInTheDocument()
+
+      rerender(<ListToolbar {...baseProps} sortFieldOptions={[]} />)
+      expect(screen.queryByRole('button', { name: /Sort field/ })).not.toBeInTheDocument()
+
+      rerender(<ListToolbar {...baseProps} sortFieldOptions={[FIELD_OPTIONS[0]]} sortField="name" onSortFieldChange={() => undefined} />)
+      expect(screen.queryByRole('button', { name: /Sort field/ })).not.toBeInTheDocument()
+      // The plain sortToggle-only button must still render exactly as every other single-field
+      // caller's does — the field picker's absence doesn't affect it.
+      expect(screen.getByRole('button', { name: 'Sort descending' })).toBeInTheDocument()
+    })
+
+    it('renders the field picker showing the active field, and every existing sortToggle-only rendering stays unaffected', () => {
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'asc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle: () => undefined }}
+          sortFieldOptions={FIELD_OPTIONS}
+          sortField="name"
+          onSortFieldChange={() => undefined}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Sort field: Name' })).toBeInTheDocument()
+      // Direction toggle keeps rendering exactly as the plain sortToggle-only case does.
+      expect(screen.getByRole('button', { name: 'Sort descending' })).toBeInTheDocument()
+    })
+
+    it('selecting a field from the menu calls onSortFieldChange with that field\'s value, leaving direction untouched', async () => {
+      const user = userEvent.setup()
+      const onSortFieldChange = vi.fn()
+      const onToggle = vi.fn()
+
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'asc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle }}
+          sortFieldOptions={FIELD_OPTIONS}
+          sortField="name"
+          onSortFieldChange={onSortFieldChange}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Sort field: Name' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Role' }))
+
+      expect(onSortFieldChange).toHaveBeenCalledWith('role')
+      expect(onToggle).not.toHaveBeenCalled()
+    })
+  })
 })

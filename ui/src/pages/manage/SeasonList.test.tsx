@@ -122,6 +122,27 @@ describe('SeasonList', () => {
     expect(screen.queryByText('2025')).not.toBeInTheDocument()
   })
 
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listSeasons.mockResolvedValueOnce([
+      makeSeason({ id: 'season-1', label: '2025' }),
+      makeSeason({ id: 'season-2', label: '2026' }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('2025')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['2025', '2026'])
+
+    await user.click(screen.getByRole('button', { name: 'Label, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['2026', '2025'])
+    expect(screen.getByRole('button', { name: 'Label, A to Z' })).toBeInTheDocument()
+  })
+
   it('clicking Add Season navigates to the create route', async () => {
     const user = userEvent.setup()
     listSeasons.mockResolvedValueOnce([])

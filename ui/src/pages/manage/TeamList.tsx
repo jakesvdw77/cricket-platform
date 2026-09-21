@@ -15,8 +15,6 @@ import type { Section } from '../../api/sectionApi'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { initialsFromName } from '../../utils/initials'
 
-const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
-
 const TEAMS_QUERY_KEY = (clubId?: string, sectionId?: string) => ['managed-club', clubId, 'sections', sectionId, 'teams']
 
 function badgeFor(team: Team): RecordCardBadge | undefined {
@@ -51,7 +49,7 @@ export default function TeamList() {
   const { sectionId } = useParams<{ sectionId: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
 
   const {
     data: teams,
@@ -130,9 +128,12 @@ export default function TeamList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Name, A to Z',
+          descLabel: 'Name, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
+        }}
       />
 
       {visibleTeams.length > 0 && (

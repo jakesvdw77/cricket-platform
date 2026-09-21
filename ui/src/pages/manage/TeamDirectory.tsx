@@ -15,8 +15,7 @@ import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { initialsFromName } from '../../utils/initials'
-
-const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
+import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 
 const CLUB_TEAMS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'teams']
 
@@ -54,10 +53,14 @@ export default function TeamDirectory() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
   // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of
   // whatever the caller's own access already resolves server-side by default.
-  const [sectionId, setSectionId] = useState<string | null>(null)
+  // docs/specs/043-list-toolbar-gold-standard.md: persisted across visits the same way MatchList's
+  // own filters already are — Search stays a separate, non-persisted useState above.
+  const [{ sectionId }, setFilters] = usePersistedListFilters(`teamDirectory:filters:${clubId}`, {
+    sectionId: null as string | null,
+  })
 
   const {
     data: teams,
@@ -134,11 +137,20 @@ export default function TeamDirectory() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Name, A to Z',
+          descLabel: 'Name, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
+        }}
         filters={
-          <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+          <SectionTreeSelect
+            label="Section"
+            sections={sections ?? []}
+            value={sectionId}
+            onChange={(value) => setFilters({ sectionId: value })}
+            allowClear
+          />
         }
       />
 
