@@ -4,6 +4,7 @@ import { MatchForm } from './MatchForm'
 import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
+import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
@@ -54,9 +55,31 @@ function makeLeague(overrides: Partial<League> = {}): League {
   }
 }
 
-const TEAMS: Team[] = [makeTeam({ id: 'team-1', name: '1st XI' }), makeTeam({ id: 'team-2', name: '2nd XI' })]
+function makeAffiliation(overrides: Partial<LeagueAffiliation> = {}): LeagueAffiliation {
+  return {
+    id: 'affiliation-1',
+    leagueId: 'league-1',
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    createdAt: '2026-01-01T00:00:00Z',
+    createdBy: null,
+    ...overrides,
+  }
+}
+
+const TEAMS: Team[] = [
+  makeTeam({ id: 'team-1', name: '1st XI' }),
+  makeTeam({ id: 'team-2', name: '2nd XI' }),
+  makeTeam({ id: 'team-3', name: 'O/13A' }),
+]
 const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
 const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
+// Only team-1/team-2 are entered into league-1 for season-1 — team-3 exists at the club but plays
+// in a different League/Section, demonstrating the narrowing in NarrowedByAffiliation below.
+const AFFILIATIONS: LeagueAffiliation[] = [
+  makeAffiliation({ id: 'affiliation-1', teamId: 'team-1' }),
+  makeAffiliation({ id: 'affiliation-2', teamId: 'team-2' }),
+]
 
 const meta: Meta<typeof MatchForm> = {
   title: 'Components/MatchForm',
@@ -75,7 +98,18 @@ export default meta
 type Story = StoryObj<typeof MatchForm>
 
 export const NewMatch: Story = {
-  args: { teams: TEAMS, seasons: SEASONS, leagues: LEAGUES, onSubmit: () => undefined },
+  args: { teams: TEAMS, seasons: SEASONS, leagues: LEAGUES, affiliations: AFFILIATIONS, onSubmit: () => undefined },
+}
+
+// docs/specs/029-league-management.md: once both League and Season are picked, Home/Away team
+// options narrow to only the teams actually affiliated with that League for that Season — team-3
+// ("O/13A", not affiliated with league-1/season-1) is offered by NewMatch above (no League/Season
+// picked yet) but not here.
+export const NarrowedByAffiliation: Story = {
+  args: {
+    ...NewMatch.args,
+    initialValues: { seasonId: 'season-1', leagueId: 'league-1' },
+  },
 }
 
 export const TeamVsTeam: Story = {

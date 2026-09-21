@@ -7,6 +7,7 @@ import type { MatchPayload } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
+import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
@@ -57,7 +58,23 @@ function makeLeague(overrides: Partial<League> = {}): League {
   }
 }
 
-const TEAMS: Team[] = [makeTeam({ id: 'team-1', name: '1st XI' }), makeTeam({ id: 'team-2', name: '2nd XI' })]
+function makeAffiliation(overrides: Partial<LeagueAffiliation> = {}): LeagueAffiliation {
+  return {
+    id: 'affiliation-1',
+    leagueId: 'league-1',
+    teamId: 'team-1',
+    seasonId: 'season-1',
+    createdAt: '2026-01-01T00:00:00Z',
+    createdBy: null,
+    ...overrides,
+  }
+}
+
+const TEAMS: Team[] = [
+  makeTeam({ id: 'team-1', name: '1st XI' }),
+  makeTeam({ id: 'team-2', name: '2nd XI' }),
+  makeTeam({ id: 'team-3', name: 'O/13A' }),
+]
 const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
 const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
 
@@ -66,6 +83,7 @@ function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Sub
     teams: TEAMS,
     seasons: SEASONS,
     leagues: LEAGUES,
+    affiliations: [],
     onSubmit: vi.fn(),
     ...props,
   }
@@ -177,5 +195,51 @@ describe('MatchForm', () => {
     renderMatchForm({ initialValues: { homeTeamName: 'Riverside Occasionals', seasonId: 'season-1' } })
 
     expect(screen.getByLabelText('Home opponent name')).toHaveValue('Riverside Occasionals')
+  })
+
+  // docs/specs/029-league-management.md: LeagueAffiliation narrowing, closing the same class of
+  // bug reported live against MatchList's search suggestions (042) — a team not entered into the
+  // selected League/Season must not be offered as Home/Away, since it doesn't actually play there.
+  describe('LeagueAffiliation narrowing', () => {
+    const AFFILIATIONS: LeagueAffiliation[] = [
+      makeAffiliation({ id: 'affiliation-1', teamId: 'team-1' }),
+      makeAffiliation({ id: 'affiliation-2', teamId: 'team-2' }),
+    ]
+
+    it('offers every team when no League is selected yet, even with affiliations loaded', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ affiliations: AFFILIATIONS })
+
+      await user.click(screen.getByLabelText('Home team'))
+      expect(await screen.findByRole('option', { name: '1st XI' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: '2nd XI' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'O/13A' })).toBeInTheDocument()
+    })
+
+    it('narrows Home/Away options to only teams affiliated with the selected League and Season', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({
+        affiliations: AFFILIATIONS,
+        initialValues: { seasonId: 'season-1', leagueId: 'league-1' },
+      })
+
+      await user.click(screen.getByLabelText('Home team'))
+      expect(await screen.findByRole('option', { name: '1st XI' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: '2nd XI' })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'O/13A' })).not.toBeInTheDocument()
+      expect(screen.getAllByText('Only teams affiliated with this League for this Season')).toHaveLength(2)
+    })
+
+    it('still shows an already-selected team even if it falls outside the narrowed affiliation set', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({
+        affiliations: AFFILIATIONS,
+        initialValues: { seasonId: 'season-1', leagueId: 'league-1', homeTeamId: 'team-3' },
+      })
+
+      expect(screen.getByLabelText('Home team')).toHaveTextContent('O/13A')
+      await user.click(screen.getByLabelText('Home team'))
+      expect(await screen.findByRole('option', { name: 'O/13A' })).toBeInTheDocument()
+    })
   })
 })
