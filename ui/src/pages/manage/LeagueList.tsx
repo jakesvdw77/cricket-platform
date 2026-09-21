@@ -12,8 +12,6 @@ import { Button } from '../../components/Button'
 import { listLeagues } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
-const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
-
 // Exported for LeagueDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's badge/fields/chips match this card's exactly, rather than a second
 // copy.
@@ -66,7 +64,7 @@ export default function LeagueList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
 
   const {
     data: leagues,
@@ -125,9 +123,12 @@ export default function LeagueList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Name, A to Z',
+          descLabel: 'Name, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
+        }}
       />
 
       {visibleLeagues.length > 0 && (

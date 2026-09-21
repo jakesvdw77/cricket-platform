@@ -12,9 +12,11 @@ import { listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import { initialsFromName } from '../../utils/initials'
 
-const SORT_OPTIONS = [
-  { value: 'name,asc', label: 'Name' },
-  { value: 'role,asc', label: 'Role' },
+// docs/specs/043-list-toolbar-gold-standard.md: the one two-sortable-field screen in this
+// rollout — passed to ListToolbar's sortFieldOptions, paired with sortToggle for direction.
+const SORT_FIELD_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'role', label: 'Role' },
 ]
 
 // Exported for ClubContactDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so
@@ -60,7 +62,7 @@ export default function ClubContactList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
 
   const {
     data: contacts,
@@ -121,9 +123,15 @@ export default function ClubContactList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: `${sort.startsWith('role') ? 'Role' : 'Name'}, A to Z`,
+          descLabel: `${sort.startsWith('role') ? 'Role' : 'Name'}, Z to A`,
+          onToggle: () => setSort(sort.endsWith(',asc') ? `${sort.split(',')[0]},desc` : `${sort.split(',')[0]},asc`),
+        }}
+        sortFieldOptions={SORT_FIELD_OPTIONS}
+        sortField={sort.split(',')[0]}
+        onSortFieldChange={(field) => setSort(`${field},${sort.endsWith(',asc') ? 'asc' : 'desc'}`)}
       />
 
       {visibleContacts.length > 0 && (

@@ -15,8 +15,7 @@ import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { initialsFromName } from '../../utils/initials'
 import { playerRecordFields } from '../../utils/playerRecordFields'
-
-const SORT_OPTIONS = [{ value: 'name,asc', label: 'Name' }]
+import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 
 // Exported for PlayerDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's title/badge match this card's exactly, rather than a second copy.
@@ -57,11 +56,15 @@ export default function PlayerList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
   // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of
   // whatever the caller's own access already resolves server-side by default — never what makes a
-  // section-scoped admin's view scoped in the first place.
-  const [sectionId, setSectionId] = useState<string | null>(null)
+  // section-scoped admin's view scoped in the first place. docs/specs/043-list-toolbar-gold-
+  // standard.md: persisted across visits the same way MatchList's own filters already are —
+  // Search stays a separate, non-persisted useState above.
+  const [{ sectionId }, setFilters] = usePersistedListFilters(`playerList:filters:${clubId}`, {
+    sectionId: null as string | null,
+  })
 
   const {
     data: players,
@@ -138,11 +141,20 @@ export default function PlayerList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Name, A to Z',
+          descLabel: 'Name, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
+        }}
         filters={
-          <SectionTreeSelect label="Section" sections={sections ?? []} value={sectionId} onChange={setSectionId} allowClear />
+          <SectionTreeSelect
+            label="Section"
+            sections={sections ?? []}
+            value={sectionId}
+            onChange={(value) => setFilters({ sectionId: value })}
+            allowClear
+          />
         }
       />
 

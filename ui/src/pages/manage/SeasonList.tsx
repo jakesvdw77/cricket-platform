@@ -12,8 +12,6 @@ import { Button } from '../../components/Button'
 import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
 
-const SORT_OPTIONS = [{ value: 'label,asc', label: 'Label' }]
-
 // Exported for SeasonDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
 // new read-only view screen's badge matches this card's exactly, rather than a second copy.
 export function badgeFor(season: Season): RecordCardBadge | undefined {
@@ -48,7 +46,7 @@ export default function SeasonList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('label,asc')
 
   const {
     data: seasons,
@@ -107,9 +105,12 @@ export default function SeasonList() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by label"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: 'Label, A to Z',
+          descLabel: 'Label, Z to A',
+          onToggle: () => setSort(sort.endsWith(',asc') ? 'label,desc' : 'label,asc'),
+        }}
       />
 
       {visibleSeasons.length > 0 && (
