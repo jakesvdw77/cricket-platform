@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Box, MenuItem, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { Input } from '../Input'
@@ -6,6 +6,7 @@ import type { MatchPayload } from '../../api/matchApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { Team } from '../../api/teamApi'
+import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see MatchFormPage), same pattern as LEAGUE_FORM_ID/SEASON_FORM_ID.
@@ -21,6 +22,10 @@ export interface MatchFormProps {
   teams: Team[]
   seasons: Season[]
   leagues: League[]
+  // docs/specs/029-league-management.md: every LeagueAffiliation for the club (across every
+  // League/Season, not just the currently-selected one) — narrows the Home/Away team pickers to
+  // teams actually entered into the selected League for the selected Season, once both are picked.
+  affiliations: LeagueAffiliation[]
   onSubmit: (payload: MatchPayload) => void
 }
 
@@ -99,9 +104,37 @@ function validate(values: FormState): FormErrors {
 // own teams) and "External opponent" (free-text) — docs/specs/029-league-management.md's UI
 // Requirements. Season is required (squad membership is season-scoped); League stays optional
 // and independent.
-export function MatchForm({ initialValues, teams, seasons, leagues, onSubmit }: MatchFormProps) {
+export function MatchForm({ initialValues, teams, seasons, leagues, affiliations, onSubmit }: MatchFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Only narrows once both League and Season are picked — LeagueAffiliation rows are always
+  // season-scoped, so a League chosen before Season would otherwise (incorrectly) show zero
+  // affiliated teams rather than "not narrowed yet". null means "no restriction" (a standalone
+  // friendly with no League, or Season not yet chosen) — every team stays offered.
+  const affiliatedTeamIds = useMemo(() => {
+    if (!values.leagueId || !values.seasonId) {
+      return null
+    }
+    return new Set(
+      affiliations
+        .filter((a) => a.leagueId === values.leagueId && a.seasonId === values.seasonId)
+        .map((a) => a.teamId),
+    )
+  }, [affiliations, values.leagueId, values.seasonId])
+
+  // Never hides a side's own already-selected team, even if it falls outside the narrowed set
+  // (editing a match from before this narrowing existed, or a since-removed affiliation) — only
+  // narrows what's offered for a NEW pick, never silently discards existing form state.
+  const homeTeamOptions = useMemo(
+    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.homeTeamId)),
+    [teams, affiliatedTeamIds, values.homeTeamId],
+  )
+  const awayTeamOptions = useMemo(
+    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.awayTeamId)),
+    [teams, affiliatedTeamIds, values.awayTeamId],
+  )
+  const narrowedByAffiliation = affiliatedTeamIds !== null
 
   const handleTextChange = (field: 'homeTeamName' | 'awayTeamName' | 'venue') => (event: ChangeEvent<HTMLInputElement>) => {
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
@@ -194,9 +227,14 @@ export function MatchForm({ initialValues, teams, seasons, leagues, onSubmit }: 
             value={values.homeTeamId}
             onChange={(event) => setValues((prev) => ({ ...prev, homeTeamId: event.target.value }))}
             error={Boolean(errors.homeTeamId)}
-            helperText={errors.homeTeamId}
+            helperText={
+              errors.homeTeamId ??
+              (narrowedByAffiliation
+                ? 'Only teams affiliated with this League for this Season'
+                : undefined)
+            }
           >
-            {teams.map((team) => (
+            {homeTeamOptions.map((team) => (
               <MenuItem key={team.id} value={team.id}>
                 {team.name}
               </MenuItem>
@@ -234,9 +272,14 @@ export function MatchForm({ initialValues, teams, seasons, leagues, onSubmit }: 
             value={values.awayTeamId}
             onChange={(event) => setValues((prev) => ({ ...prev, awayTeamId: event.target.value }))}
             error={Boolean(errors.awayTeamId)}
-            helperText={errors.awayTeamId}
+            helperText={
+              errors.awayTeamId ??
+              (narrowedByAffiliation
+                ? 'Only teams affiliated with this League for this Season'
+                : undefined)
+            }
           >
-            {teams.map((team) => (
+            {awayTeamOptions.map((team) => (
               <MenuItem key={team.id} value={team.id}>
                 {team.name}
               </MenuItem>

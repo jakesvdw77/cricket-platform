@@ -126,6 +126,13 @@ Named for completeness — none of these are next, none have a target spec numbe
 - ~~**A real backend-verified route guard on `/manage`**~~ — resolved by `020-club-manager-access.md`, see the matching bullet above under the `016` section for the detail; not blocked on `Section`/`Team` after all, since it only ever needed `015`'s already-real `CLUB`-scoped `RoleAssignment`.
 - **Per-club branded Keycloak password-reset email templates** — plain default Keycloak email only for now (`016` Non-goals); real custom Keycloak theme work, deferred.
 
+## Deferred by `042` — Match List filters/search polish
+
+`042-match-list-filters-and-search.md` (built) added League/Season filters, real backend search, cascading filter narrowing, and a sort toggle to `MatchList` only. Two items its own Non-goals name as real, wanted future work, not forgotten:
+
+- **Rolling `RecordCard`'s solid `background.paper` card treatment out to other `/manage` list screens.** `041-list-screen-header-actions.md` and `042` both applied this styling to Matches only, deliberately deferred elsewhere — named explicitly by the person who asked for it as its own separate future pass, not scoped or sequenced yet.
+- **Search autocomplete suggestions drawn from historical free-text opponent names**, not just the club's own real `Team` list. Would need a new distinct-values backend query against an unbounded, paginated table — a real, separate future item if it turns out to matter in practice, per `042`'s own Non-goals.
+
 ## Known tech debt (unscheduled, no owning spec)
 
 - **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.

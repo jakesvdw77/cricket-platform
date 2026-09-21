@@ -2,6 +2,7 @@ package com.cricketlegend.service;
 
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
+import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import java.util.List;
 import java.util.UUID;
@@ -31,9 +32,40 @@ public interface MatchService {
      * today ({@code ZoneId.systemDefault()} — no per-club timezone concept yet) — a match played
      * earlier today is still included, one played yesterday is not. {@code false} (the default)
      * preserves the unfiltered behaviour exactly.
+     *
+     * <p>Per docs/specs/042-match-list-filters-and-search.md: {@code search} (case-insensitive
+     * substring against the home/away side's team name), {@code leagueId}, and {@code seasonId}
+     * are further optional filters, combinable with {@code sectionId}/{@code upcomingOnly} in any
+     * combination — composed as one {@code Specification<Match>} rather than a branch per
+     * combination.
      */
     Page<MatchDto> list(
-            Authentication authentication, UUID clubId, UUID sectionId, boolean upcomingOnly, Pageable pageable);
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean upcomingOnly,
+            String search,
+            UUID leagueId,
+            UUID seasonId,
+            Pageable pageable);
+
+    /**
+     * Per docs/specs/042-match-list-filters-and-search.md: the distinct {@code Section}/{@code
+     * League}/{@code Season} ids still reachable among this caller's own accessible matches,
+     * given whichever of the other filters ({@code sectionId}/{@code leagueId}/{@code seasonId}/
+     * {@code search}/{@code upcomingOnly}) are currently active — each returned array is computed
+     * ignoring its OWN corresponding filter argument (so, e.g., a caller's own {@code leagueId}
+     * selection never narrows the returned {@code leagueIds} down to just itself). Same
+     * authorization/section-scoping as {@link #list}.
+     */
+    MatchFilterOptionsDto filterOptions(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID seasonId,
+            String search,
+            boolean upcomingOnly);
 
     MatchDto get(Authentication authentication, UUID clubId, UUID matchId);
 

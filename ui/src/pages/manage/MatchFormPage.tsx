@@ -39,6 +39,7 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listLeagues } from '../../api/leagueApi'
+import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
 import { listSquad, addToSquad } from '../../api/teamSquadApi'
 import { createPlayer } from '../../api/playerApi'
 import type { PlayerPayload } from '../../api/playerApi'
@@ -691,6 +692,23 @@ export default function MatchFormPage() {
     enabled: Boolean(clubId),
   })
 
+  // docs/specs/029-league-management.md left "season options/filtering exact behaviour" for
+  // MatchForm's Home/Away team pickers unresolved at build time — they've always listed every one
+  // of the club's teams regardless of the selected League/Season, even though LeagueAffiliation
+  // (which teams are actually entered into which League for which Season) already exists and is
+  // already exposed per-league. Fetched club-wide here (one call per already-loaded League,
+  // affiliations endpoints are nested under their own League per 029's own design) rather than via
+  // a new endpoint — the club's League count is small, and this matches the existing
+  // eagerly-load-everything-then-narrow-client-side pattern teams/seasons/leagues above already use.
+  const affiliationsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues', 'affiliations', (leaguesQuery.data ?? []).map((l) => l.id)],
+    queryFn: () =>
+      Promise.all((leaguesQuery.data ?? []).map((l) => listLeagueAffiliations(clubId as string, l.id))).then(
+        (results) => results.flat(),
+      ),
+    enabled: Boolean(clubId) && Boolean(leaguesQuery.data),
+  })
+
   const saveMutation = useMutation({
     mutationFn: (payload: MatchPayload) => {
       if (isEdit && matchId) {
@@ -858,6 +876,7 @@ export default function MatchFormPage() {
           teams={teamsQuery.data ?? []}
           seasons={seasonsQuery.data ?? []}
           leagues={leaguesQuery.data ?? []}
+          affiliations={affiliationsQuery.data ?? []}
           onSubmit={(payload) => saveMutation.mutate(payload)}
         />
       )}

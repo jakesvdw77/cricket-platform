@@ -16,6 +16,7 @@ const listPreviousMatches = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSeasons = vi.fn()
 const listLeagues = vi.fn()
+const listLeagueAffiliations = vi.fn()
 const listSquad = vi.fn()
 const listMatchSides = vi.fn()
 const createMatchSide = vi.fn()
@@ -58,6 +59,10 @@ vi.mock('../../api/seasonApi', () => ({
 
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
+}))
+
+vi.mock('../../api/leagueAffiliationApi', () => ({
+  listLeagueAffiliations: (clubId: string, leagueId: string) => listLeagueAffiliations(clubId, leagueId),
 }))
 
 vi.mock('../../api/teamSquadApi', () => ({
@@ -170,6 +175,7 @@ beforeEach(() => {
     { id: 'season-1', clubId: 'test-club-id', label: '2026', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
   ])
   listLeagues.mockResolvedValue([])
+  listLeagueAffiliations.mockResolvedValue([])
   listSquad.mockResolvedValue([])
   listMatchSides.mockResolvedValue([])
   listPolls.mockResolvedValue([])
