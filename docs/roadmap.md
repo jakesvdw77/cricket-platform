@@ -128,10 +128,11 @@ Named for completeness — none of these are next, none have a target spec numbe
 
 ## Deferred by `042` — Match List filters/search polish
 
-`042-match-list-filters-and-search.md` (built) added League/Season filters, real backend search, cascading filter narrowing, and a sort toggle to `MatchList` only. Two items its own Non-goals name as real, wanted future work, not forgotten:
+`042-match-list-filters-and-search.md` (built) added League/Season filters, real backend search, and cascading filter narrowing to `MatchList` only — genuinely Match-specific, since it's the one list screen backed by a real, paginated, ever-growing endpoint. Its sort-toggle control and the `background.paper` card surface it also introduced were generalized to every other `/manage` list screen by `043-list-toolbar-gold-standard.md` (built) — see that spec's own Rollout Notes for the card-surface move specifically. One item remains genuinely still deferred:
 
-- **Rolling `RecordCard`'s solid `background.paper` card treatment out to other `/manage` list screens.** `041-list-screen-header-actions.md` and `042` both applied this styling to Matches only, deliberately deferred elsewhere — named explicitly by the person who asked for it as its own separate future pass, not scoped or sequenced yet.
 - **Search autocomplete suggestions drawn from historical free-text opponent names**, not just the club's own real `Team` list. Would need a new distinct-values backend query against an unbounded, paginated table — a real, separate future item if it turns out to matter in practice, per `042`'s own Non-goals.
+
+~~**Rolling `RecordCard`'s solid `background.paper` card treatment out to other `/manage` list screens.**~~ — resolved by `043-list-toolbar-gold-standard.md`: the surface moved from `MatchList`'s own wrapping `Box` into `ListToolbar` itself, so every list screen (not just Matches) gets it automatically.
 
 ## Known tech debt (unscheduled, no owning spec)
 
