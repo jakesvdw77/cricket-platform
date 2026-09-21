@@ -22,6 +22,10 @@ vi.mock('../../api/sectionApi', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // docs/specs/043-list-toolbar-gold-standard.md: TeamDirectory's Section filter now persists via
+  // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
+  // never leaks into the next.
+  localStorage.clear()
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -237,5 +241,48 @@ describe('TeamDirectory', () => {
     await waitFor(() =>
       expect(listTeamsForClub).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
     )
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([
+      makeTeam({ id: 'team-1', name: 'Alpha XI' }),
+      makeTeam({ id: 'team-2', name: 'Zeta XI' }),
+    ])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('Alpha XI')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
+
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
+  // visits — Search stays a separate, non-persisted useState. Mirrors MatchList.test.tsx's own
+  // persistence assertions.
+  it('reapplies a persisted section filter on mount, and never persists the search text', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
+    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'Men' })])
+    localStorage.setItem('teamDirectory:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
+
+    renderDirectory('test-club-id')
+
+    await waitFor(() => expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    expect(await screen.findByLabelText('Section')).toHaveValue('Men')
+
+    await user.type(screen.getByLabelText('Search'), '1st')
+
+    const persisted = JSON.parse(localStorage.getItem('teamDirectory:filters:test-club-id') as string)
+    expect(persisted).toEqual({ sectionId: 'section-1' })
+    expect(persisted).not.toHaveProperty('search')
   })
 })

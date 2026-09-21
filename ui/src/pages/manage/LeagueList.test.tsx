@@ -126,6 +126,33 @@ describe('LeagueList', () => {
     expect(screen.queryByText('External League')).not.toBeInTheDocument()
   })
 
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listLeagues.mockResolvedValueOnce([
+      makeLeague({ id: 'league-1', name: 'Alpha League' }),
+      makeLeague({ id: 'league-2', name: 'Zeta League' }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Alpha League')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Alpha League',
+      'Zeta League',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Zeta League',
+      'Alpha League',
+    ])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
   it('clicking Add League navigates to the create route', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValueOnce([])
