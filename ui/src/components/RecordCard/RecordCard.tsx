@@ -95,12 +95,13 @@ export interface RecordCardProps {
 // Invoicing/System Settings screens — docs/specs/008-product-catalog.md's UI Requirements).
 // Fixed slot order regardless of which screen uses it: avatar + title + status badge, a
 // 2-line-clamped description, a row of key fields, an optional row of attribute chips, then an
-// Edit footer. A light primary-tinted background (not plain white, not a solid fill — see
-// docs/standards/design-system.md) keeps the card visible against the page without competing with
-// badge/chip colour, and re-tints automatically per club since it's derived from
-// theme.palette.primary rather than a hard-coded colour. Built directly from MUI Card/CardContent/
-// CardActions rather than the shared Card component — this slot structure is more specific than
-// Card's generic title/children/footer shape.
+// Edit footer. Solid `background.paper` + shadow (see docs/standards/design-system.md) keeps the
+// card visible against the page without competing with badge/chip colour — every shell's <main>
+// now carries its own brand-tinted gradient background (theme.ts's pageBackgroundGradient), and a
+// translucent tint card read as indistinguishable from it; an opaque, shadowed card reads as a
+// surface floating above it instead. Built directly from MUI Card/CardContent/CardActions rather
+// than the shared Card component — this slot structure is more specific than Card's generic
+// title/children/footer shape.
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
@@ -144,7 +145,7 @@ export function RecordCard({
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
 
   return (
-    <MuiCard variant="outlined" sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05) }}>
+    <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2 }}>
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>

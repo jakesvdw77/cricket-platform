@@ -5,6 +5,8 @@ import { Link as RouterLink } from 'react-router-dom'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import type { RecordCardAvatar, RecordCardBadge } from '../RecordCard'
+import { PageHeaderBand } from '../PageHeaderBand'
+import { ContentCard } from '../ContentCard'
 
 export interface RecordDetailScreenSection {
   // Omitted entirely for a single-section page (Season/Club Contact/Sponsor Contact/Sponsor) —
@@ -57,7 +59,7 @@ export function RecordDetailScreen({
 }: RecordDetailScreenProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box>
+      <PageHeaderBand>
         <MuiButton
           component={RouterLink}
           to={backTo}
@@ -97,7 +99,7 @@ export function RecordDetailScreen({
               </Avatar>
             )}
             <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap>
+              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
                 {title}
               </Typography>
               {badge && (
@@ -160,11 +162,11 @@ export function RecordDetailScreen({
             </MuiButton>
           </Stack>
         </Stack>
-      </Box>
+      </PageHeaderBand>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {sections.map((section, index) => (
-          <Box key={section.heading ?? index} sx={index > 0 ? { pt: 3, borderTop: 1, borderColor: 'divider' } : undefined}>
+          <ContentCard key={section.heading ?? index}>
             {section.heading && (
               <Typography
                 variant="subtitle2"
@@ -175,7 +177,7 @@ export function RecordDetailScreen({
             )}
             {section.note && <Box sx={{ mb: 1.5 }}>{section.note}</Box>}
             {section.content}
-          </Box>
+          </ContentCard>
         ))}
       </Box>
     </Box>

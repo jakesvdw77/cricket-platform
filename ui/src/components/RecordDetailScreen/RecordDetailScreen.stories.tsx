@@ -64,13 +64,14 @@ export const SingleCustomCardSection: Story = {
     sections: [
       {
         content: (
-          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 3 }}>
-            <DetailFieldGrid>
-              <DetailFieldRow icon={<PhoneOutlinedIcon />} label="Phone" value="+27 21 555 0199" />
-              <DetailFieldRow icon={<EmailOutlinedIcon />} label="Email" value="hello@acmecricket.example" />
-              <DetailFieldRow icon={<LanguageOutlinedIcon />} label="Website" value="acmecricket.example" />
-            </DetailFieldGrid>
-          </Box>
+          // RecordDetailScreen already wraps every section in its own white/shadowed ContentCard
+          // (docs/specs/046-header-body-elevation-standard.md) — no inline border/tint needed here
+          // any more, that would double-box against the card this story now renders inside.
+          <DetailFieldGrid>
+            <DetailFieldRow icon={<PhoneOutlinedIcon />} label="Phone" value="+27 21 555 0199" />
+            <DetailFieldRow icon={<EmailOutlinedIcon />} label="Email" value="hello@acmecricket.example" />
+            <DetailFieldRow icon={<LanguageOutlinedIcon />} label="Website" value="acmecricket.example" />
+          </DetailFieldGrid>
         ),
       },
     ],

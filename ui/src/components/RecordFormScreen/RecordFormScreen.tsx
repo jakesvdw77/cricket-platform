@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink } from 'react-router-dom'
+import { PageHeaderBand } from '../PageHeaderBand'
+import { ContentCard } from '../ContentCard'
 
 export interface RecordFormScreenProps {
   title: string
@@ -20,7 +22,7 @@ export interface RecordFormScreenProps {
 export function RecordFormScreen({ title, backTo, backLabel, actions, children }: RecordFormScreenProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box>
+      <PageHeaderBand>
         <MuiButton
           component={RouterLink}
           to={backTo}
@@ -32,34 +34,36 @@ export function RecordFormScreen({ title, backTo, backLabel, actions, children }
         >
           {backLabel}
         </MuiButton>
-        <Typography variant="h6" component="h1">
+        <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
           {title}
         </Typography>
-      </Box>
+      </PageHeaderBand>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: 3,
-        }}
-      >
-        {children}
-      </Box>
+      <ContentCard>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: 3,
+          }}
+        >
+          {children}
+        </Box>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'flex-end',
-          gap: 2,
-          pt: 3,
-          borderTop: 1,
-          borderColor: 'divider',
-        }}
-      >
-        {actions}
-      </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            gap: 2,
+            pt: 3,
+            borderTop: 1,
+            borderColor: 'divider',
+          }}
+        >
+          {actions}
+        </Box>
+      </ContentCard>
     </Box>
   )
 }

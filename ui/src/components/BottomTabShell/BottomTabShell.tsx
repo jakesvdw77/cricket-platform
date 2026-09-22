@@ -4,6 +4,7 @@ import { Footer } from '../Footer'
 import { Nav } from '../Nav'
 import type { NavItem } from '../Nav'
 import { ShellHeader } from '../ShellHeader'
+import { pageBackgroundGradient } from '../../theme'
 
 export interface BottomTabShellProps {
   brand: string
@@ -23,7 +24,7 @@ export function BottomTabShell({ brand, navItems, user, onLogout, profileTo, chi
 
       <Nav items={navItems} />
 
-      <Box component="main" sx={{ flex: 1, p: 2 }}>
+      <Box component="main" sx={{ flex: 1, p: 2, backgroundImage: pageBackgroundGradient }}>
         {children}
       </Box>
 
