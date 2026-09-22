@@ -1,19 +1,22 @@
 import { useMemo, useState } from 'react'
-import { Box, Button as MuiButton } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Box } from '@mui/material'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
+import { ManageScreenHeader } from '../../components/ManageScreenHeader'
+import { Button } from '../../components/Button'
 import { listSponsorContacts } from '../../api/sponsorContactApi'
 import type { SponsorContact } from '../../api/sponsorContactApi'
 import { initialsFromName } from '../../utils/initials'
 
-const SORT_OPTIONS = [
-  { value: 'name,asc', label: 'Name' },
-  { value: 'role,asc', label: 'Role' },
+// docs/specs/043-list-toolbar-gold-standard.md: the one two-sortable-field screen in this
+// rollout — passed to ListToolbar's sortFieldOptions, paired with sortToggle for direction.
+const SORT_FIELD_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'role', label: 'Role' },
 ]
 
 // Exported for SponsorContactDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md)
@@ -63,7 +66,7 @@ export default function SponsorContactList() {
   const { sponsorId } = useParams<{ sponsorId: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value)
+  const [sort, setSort] = useState('name,asc')
 
   const {
     data: contacts,
@@ -119,33 +122,26 @@ export default function SponsorContactList() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* GridNavShell (unlike AppShell's sidebar or BottomTabShell's tab bar) has no persistent
-          nav, and this list — unlike SponsorContactFormPage's form — isn't wrapped in
-          RecordFormScreen, so it has no back link of its own without this. Same visual pattern
-          as RecordFormScreen's back button, and the same "own list needs its own back button"
-          precedent ClubContactList.tsx established — except here it goes back to the owning
-          sponsor, not the dashboard. */}
-      <MuiButton
-        component={RouterLink}
-        to={`/manage/sponsors/${sponsorId}/edit`}
-        variant="text"
-        color="inherit"
-        size="small"
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        sx={{ alignSelf: 'flex-start', ml: -1, color: 'text.secondary' }}
-      >
-        Back to Sponsor
-      </MuiButton>
+      <ManageScreenHeader
+        title="Sponsor Contacts"
+        backTo={`/manage/sponsors/${sponsorId}/edit`}
+        backLabel="Back to Sponsor"
+        action={<Button onClick={() => navigate(`/manage/sponsors/${sponsorId}/contacts/new`)}>Add Contact</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by name"
-        sortValue={sort}
-        sortOptions={SORT_OPTIONS}
-        onSortChange={setSort}
-        createLabel="Add Contact"
-        onCreate={() => navigate(`/manage/sponsors/${sponsorId}/contacts/new`)}
+        sortToggle={{
+          value: sort.endsWith(',asc') ? 'asc' : 'desc',
+          ascLabel: `${sort.startsWith('role') ? 'Role' : 'Name'}, A to Z`,
+          descLabel: `${sort.startsWith('role') ? 'Role' : 'Name'}, Z to A`,
+          onToggle: () => setSort(sort.endsWith(',asc') ? `${sort.split(',')[0]},desc` : `${sort.split(',')[0]},asc`),
+        }}
+        sortFieldOptions={SORT_FIELD_OPTIONS}
+        sortField={sort.split(',')[0]}
+        onSortFieldChange={(field) => setSort(`${field},${sort.endsWith(',asc') ? 'asc' : 'desc'}`)}
       />
 
       {visibleContacts.length > 0 && (

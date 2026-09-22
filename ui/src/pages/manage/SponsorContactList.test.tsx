@@ -190,4 +190,91 @@ describe('SponsorContactList', () => {
     const backLink = await screen.findByRole('link', { name: /Back to Sponsor/ })
     expect(backLink).toHaveAttribute('href', '/manage/sponsors/test-sponsor-id/edit')
   })
+
+  it('renders the page title as a real heading', async () => {
+    listSponsorContacts.mockResolvedValueOnce([])
+
+    renderList('test-club-id')
+
+    expect(await screen.findByRole('heading', { name: 'Sponsor Contacts' })).toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
+  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
+  // visually.
+  it('clicking the sort icon reverses the card order (sorting by the default Name field), and flips its own accessible name', async () => {
+    const user = userEvent.setup()
+    listSponsorContacts.mockResolvedValueOnce([
+      makeContact({
+        id: 'contact-1',
+        contact: { firstName: 'Amy', lastName: 'Adams', email: 'amy@example.com', phone: null },
+        role: 'Zookeeper',
+      }),
+      makeContact({
+        id: 'contact-2',
+        contact: { firstName: 'Zoe', lastName: 'Brown', email: 'zoe@example.com', phone: null },
+        role: 'Assistant',
+      }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Amy Adams')
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Amy Adams',
+      'Zoe Brown',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Zoe Brown',
+      'Amy Adams',
+    ])
+    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
+  // docs/specs/043-list-toolbar-gold-standard.md: the one two-sortable-field screen in this
+  // rollout — switching the sort field via the picker actually re-sorts by that field, and the
+  // currently-active direction (set on the *previous* field) carries over rather than resetting.
+  it('switching the sort field to Role re-sorts by role, and the current direction carries over across the switch', async () => {
+    const user = userEvent.setup()
+    listSponsorContacts.mockResolvedValueOnce([
+      makeContact({
+        id: 'contact-1',
+        contact: { firstName: 'Amy', lastName: 'Adams', email: 'amy@example.com', phone: null },
+        role: 'Zookeeper',
+      }),
+      makeContact({
+        id: 'contact-2',
+        contact: { firstName: 'Zoe', lastName: 'Brown', email: 'zoe@example.com', phone: null },
+        role: 'Assistant',
+      }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Amy Adams')
+    expect(screen.getByRole('button', { name: 'Sort field: Name' })).toBeInTheDocument()
+
+    // Flip direction to descending while still sorting by Name.
+    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Zoe Brown',
+      'Amy Adams',
+    ])
+
+    // Switch the sort field to Role via the picker.
+    await user.click(screen.getByRole('button', { name: 'Sort field: Name' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Role' }))
+
+    expect(screen.getByRole('button', { name: 'Sort field: Role' })).toBeInTheDocument()
+    // Direction is still descending (carried over from the Name sort) — Role descending puts
+    // 'Zookeeper' (Amy Adams) ahead of 'Assistant' (Zoe Brown).
+    expect(screen.getByRole('button', { name: 'Role, A to Z' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
+      'Amy Adams',
+      'Zoe Brown',
+    ])
+  })
 })
