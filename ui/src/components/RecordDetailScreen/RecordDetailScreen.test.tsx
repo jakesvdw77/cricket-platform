@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react'
+import { ThemeProvider } from '@mui/material/styles'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from './RecordDetailScreen'
+import { baseTheme } from '../../theme'
 
 describe('RecordDetailScreen', () => {
   it('renders the Back action, header (avatar/title/badge), sections in order, and the Edit action', () => {
@@ -168,6 +170,112 @@ describe('RecordDetailScreen', () => {
     )
 
     expect(screen.queryByRole('link', { name: 'Select Team' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/046-header-body-elevation-standard.md
+  it('renders the header content (Back link/title/badge/Edit) inside a PageHeaderBand', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter initialEntries={['/manage/players/p-1']}>
+          <Routes>
+            <Route
+              path="/manage/players/p-1"
+              element={
+                <RecordDetailScreen
+                  title="Jane Smith"
+                  backTo="/manage/players"
+                  backLabel="Back to Players"
+                  avatar={{ fallback: 'JA', shape: 'circular' }}
+                  badge={{ label: 'Active', tone: 'positive' }}
+                  editTo="/manage/players/p-1/edit"
+                  sections={[{ content: <div>Basic Info content</div> }]}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    // PageHeaderBand renders a single Box wrapping the Back link + title/badge/Edit Stack
+    // directly — the Back link's own DOM parent is that Box, so this asserts the header content is
+    // an immediate child of an element carrying PageHeaderBand's own distinguishing treatment
+    // (flat white background, 3px solid primary.main top accent), rather than just re-rendering.
+    const backLink = screen.getByRole('link', { name: /back to players/i })
+    const editLink = screen.getByRole('link', { name: /edit/i })
+    const band = backLink.parentElement as HTMLElement
+
+    expect(band.contains(editLink)).toBe(true)
+    expect(band).toHaveStyle({
+      backgroundColor: 'rgb(255, 255, 255)',
+      borderTopWidth: '3px',
+      borderTopStyle: 'solid',
+      borderTopColor: 'rgb(47, 110, 79)', // baseTheme.palette.primary.main
+    })
+  })
+
+  // docs/specs/046-header-body-elevation-standard.md
+  it('renders each section inside its own, distinct ContentCard surface', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter initialEntries={['/manage/players/p-1']}>
+          <Routes>
+            <Route
+              path="/manage/players/p-1"
+              element={
+                <RecordDetailScreen
+                  title="Jane Smith"
+                  backTo="/manage/players"
+                  backLabel="Back to Players"
+                  editTo="/manage/players/p-1/edit"
+                  sections={[
+                    { heading: 'Basic Info', content: <div>Basic Info content</div> },
+                    { heading: 'Contact Info', content: <div>Contact Info content</div> },
+                  ]}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    // ContentCard renders a single Box wrapping a section's heading/note/content directly — each
+    // section's content text's own DOM parent is that section's own ContentCard.
+    const card1 = screen.getByText('Basic Info content').parentElement as HTMLElement
+    const card2 = screen.getByText('Contact Info content').parentElement as HTMLElement
+
+    expect(card1).not.toBe(card2) // two distinct card surfaces, one per section
+    for (const card of [card1, card2]) {
+      expect(card).toHaveStyle({ backgroundColor: 'rgb(255, 255, 255)' })
+      expect(getComputedStyle(card).boxShadow).not.toBe('')
+    }
+  })
+
+  // docs/specs/046-header-body-elevation-standard.md
+  it("renders the title at fontWeight 700", () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter initialEntries={['/manage/players/p-1']}>
+          <Routes>
+            <Route
+              path="/manage/players/p-1"
+              element={
+                <RecordDetailScreen
+                  title="Jane Smith"
+                  backTo="/manage/players"
+                  backLabel="Back to Players"
+                  editTo="/manage/players/p-1/edit"
+                  sections={[{ content: <div>Basic Info content</div> }]}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Jane Smith' })).toHaveStyle({ fontWeight: '700' })
   })
 })
 

@@ -14,12 +14,14 @@ export interface NavTileProps {
 // with no icon and a plain white background, real user feedback that every card in the app read
 // as an indistinguishable white rectangle. Extracted as its own component (rather than duplicating
 // the icon-tile + tint styling in both dashboards) since both already needed the identical fix.
-// Same light primary-tinted background RecordCard uses for the same reason — see that
-// component's own doc comment.
+// Solid `background.paper` + shadow, not a tint — every shell's <main> now carries its own
+// brand-tinted gradient (theme.ts's pageBackgroundGradient), and a translucent tint card read as
+// indistinguishable from that background; an opaque, shadowed card reads as a surface floating
+// above it instead. Same treatment RecordCard uses for the same reason.
 export function NavTile({ title, description, icon, to }: NavTileProps) {
   return (
     <Box component={RouterLink} to={to} sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-      <MuiCard variant="outlined" sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05) }}>
+      <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2 }}>
         <CardContent>
           <Box
             sx={{

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Box, Button as MuiButton, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink } from 'react-router-dom'
+import { PageHeaderBand } from '../PageHeaderBand'
 
 export interface ManageScreenHeaderProps {
   title: string
@@ -23,34 +24,36 @@ export interface ManageScreenHeaderProps {
 // exists to make structurally true rather than just documented.
 export function ManageScreenHeader({ title, backTo = '/manage', backLabel = 'Back to Dashboard', action }: ManageScreenHeaderProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-      <MuiButton
-        component={RouterLink}
-        to={backTo}
-        variant="text"
-        color="inherit"
-        size="small"
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        sx={{ ml: -1, color: 'text.secondary' }}
-      >
-        {backLabel}
-      </MuiButton>
+    <PageHeaderBand>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+        <MuiButton
+          component={RouterLink}
+          to={backTo}
+          variant="text"
+          color="inherit"
+          size="small"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          sx={{ ml: -1, color: 'text.secondary' }}
+        >
+          {backLabel}
+        </MuiButton>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          justifyContent: 'space-between',
-          gap: 1.5,
-          width: '100%',
-        }}
-      >
-        <Typography variant="h6" component="h1" fontWeight={600}>
-          {title}
-        </Typography>
-        {action}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            width: '100%',
+          }}
+        >
+          <Typography variant="h6" component="h1" fontWeight={700}>
+            {title}
+          </Typography>
+          {action}
+        </Box>
       </Box>
-    </Box>
+    </PageHeaderBand>
   )
 }

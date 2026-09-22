@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { Footer } from '../Footer'
 import { ShellHeader } from '../ShellHeader'
+import { pageBackgroundGradient } from '../../theme'
 
 export interface GridNavShellProps {
   brand: string
@@ -24,7 +25,7 @@ export function GridNavShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <ShellHeader brand={brand} user={user} onLogout={onLogout} profileTo={profileTo} homeTo={homeTo} logoUrl={logoUrl} />
 
-      <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
+      <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, backgroundImage: pageBackgroundGradient }}>
         {children}
       </Box>
 

@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
+import { ThemeProvider } from '@mui/material/styles'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { ManageScreenHeader } from './ManageScreenHeader'
+import { baseTheme } from '../../theme'
 
 describe('ManageScreenHeader', () => {
   it('renders the title as a heading and a Back action to the given target', () => {
@@ -42,5 +44,44 @@ describe('ManageScreenHeader', () => {
       </MemoryRouter>,
     )
     expect(screen.queryByRole('button', { name: 'Add Match' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/046-header-body-elevation-standard.md
+  it('renders the header inside a PageHeaderBand', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <ManageScreenHeader title="Club Contacts" backTo="/manage" backLabel="Back to Dashboard" />
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    // PageHeaderBand renders a single Box wrapping ManageScreenHeader's own back-link+title-row
+    // Box directly — the Back link's own DOM grandparent is that PageHeaderBand Box, carrying its
+    // distinguishing treatment (flat white background, 3px solid primary.main top accent).
+    const backLink = screen.getByRole('link', { name: /back to dashboard/i })
+    const band = backLink.parentElement?.parentElement as HTMLElement
+
+    expect(band).toContainElement(screen.getByRole('heading', { name: 'Club Contacts' }))
+    expect(band).toHaveStyle({
+      backgroundColor: 'rgb(255, 255, 255)',
+      borderTopWidth: '3px',
+      borderTopStyle: 'solid',
+      borderTopColor: 'rgb(47, 110, 79)', // baseTheme.palette.primary.main
+    })
+  })
+
+  // docs/specs/046-header-body-elevation-standard.md: fontWeight 700 replaces the component's old
+  // fontWeight={600} — a real replacement, not an addition on top of it.
+  it('renders the title at fontWeight 700, not 600', () => {
+    render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Club Contacts" />
+      </MemoryRouter>,
+    )
+
+    const heading = screen.getByRole('heading', { name: 'Club Contacts' })
+    expect(heading).toHaveStyle({ fontWeight: '700' })
+    expect(heading).not.toHaveStyle({ fontWeight: '600' })
   })
 })

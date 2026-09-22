@@ -1,7 +1,6 @@
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Box } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
@@ -66,15 +65,14 @@ export default function SponsorDetailPage() {
           content: !hasAnyContactField && !hasSocialLinks ? (
             <EmptyState title="No contact details yet" description="Add a phone, email, website, or social link from Edit." />
           ) : (
+            // RecordDetailScreen already wraps this section in its own white/shadowed ContentCard
+            // (docs/specs/046-header-body-elevation-standard.md) — this Box now only needs to stay
+            // the positioning anchor for the absolutely-positioned social-links row and provide the
+            // extra bottom clearance for it; its own border/tint would double-box against the card.
             <Box
               sx={{
                 position: 'relative',
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 2,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
-                p: 3,
-                pb: hasSocialLinks ? 7 : 3,
+                pb: hasSocialLinks ? 4 : 0,
               }}
             >
               <DetailFieldGrid>

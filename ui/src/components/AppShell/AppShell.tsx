@@ -5,6 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { Footer } from '../Footer'
 import { ShellHeader } from '../ShellHeader'
+import { pageBackgroundGradient } from '../../theme'
 
 const DRAWER_WIDTH = 232
 
@@ -94,7 +95,7 @@ export function AppShell({ brand, navItems, user, onLogout, profileTo, children 
           {drawerList}
         </Drawer>
 
-        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
+        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, minWidth: 0, backgroundImage: pageBackgroundGradient }}>
           {children}
         </Box>
       </Box>
