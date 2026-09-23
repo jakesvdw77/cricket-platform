@@ -79,10 +79,10 @@ function SideAvailability({
       <Typography variant="body2" fontWeight={600}>
         {label}
       </Typography>
-      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
-        <AvailabilityRespondentAvatars status="AVAILABLE" respondents={available} count={poll.availableCount} />
-        <AvailabilityRespondentAvatars status="UNAVAILABLE" respondents={unavailable} count={poll.unavailableCount} />
-        <AvailabilityRespondentAvatars status="UNSURE" respondents={unsure} count={poll.unsureCount} />
+      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap alignItems="flex-start">
+        <AvailabilityRespondentAvatars status="AVAILABLE" respondents={available} count={poll.availableCount} layout="wrap" />
+        <AvailabilityRespondentAvatars status="UNAVAILABLE" respondents={unavailable} count={poll.unavailableCount} layout="wrap" />
+        <AvailabilityRespondentAvatars status="UNSURE" respondents={unsure} count={poll.unsureCount} layout="wrap" />
         <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
           {poll.noResponseCount} No response
         </Typography>
@@ -240,6 +240,31 @@ export default function MatchDetailPage() {
             </DetailFieldGrid>
           ),
         },
+        ...(hasAnyXiSide
+          ? [
+              {
+                heading: 'Availability',
+                content: (
+                  <Stack spacing={3}>
+                    {match.homeTeamId && (
+                      <SideAvailability
+                        label={`${homeTeamName} (Home)`}
+                        poll={homePoll ? homeResponsesQuery.data ?? null : null}
+                        isLoading={pollsQuery.isLoading || (Boolean(homePoll) && homeResponsesQuery.isLoading)}
+                      />
+                    )}
+                    {match.awayTeamId && (
+                      <SideAvailability
+                        label={`${awayTeamName} (Away)`}
+                        poll={awayPoll ? awayResponsesQuery.data ?? null : null}
+                        isLoading={pollsQuery.isLoading || (Boolean(awayPoll) && awayResponsesQuery.isLoading)}
+                      />
+                    )}
+                  </Stack>
+                ),
+              },
+            ]
+          : []),
         ...(match.homeTeamId
           ? [
               {
@@ -268,31 +293,6 @@ export default function MatchDetailPage() {
                     wicketKeeperPlayerId={awaySide?.wicketKeeperPlayerId ?? null}
                     twelfthManPlayerId={awaySide?.twelfthManPlayerId ?? null}
                   />
-                ),
-              },
-            ]
-          : []),
-        ...(hasAnyXiSide
-          ? [
-              {
-                heading: 'Availability',
-                content: (
-                  <Stack spacing={3}>
-                    {match.homeTeamId && (
-                      <SideAvailability
-                        label={`${homeTeamName} (Home)`}
-                        poll={homePoll ? homeResponsesQuery.data ?? null : null}
-                        isLoading={pollsQuery.isLoading || (Boolean(homePoll) && homeResponsesQuery.isLoading)}
-                      />
-                    )}
-                    {match.awayTeamId && (
-                      <SideAvailability
-                        label={`${awayTeamName} (Away)`}
-                        poll={awayPoll ? awayResponsesQuery.data ?? null : null}
-                        isLoading={pollsQuery.isLoading || (Boolean(awayPoll) && awayResponsesQuery.isLoading)}
-                      />
-                    )}
-                  </Stack>
                 ),
               },
             ]

@@ -258,4 +258,64 @@ describe('MatchDetailPage', () => {
 
     expect(await screen.findByText("Couldn't load this match")).toBeInTheDocument()
   })
+
+  // docs/specs/048-match-availability-wrap-layout.md
+  it('renders section headings in the order Details, Availability, Home XI, Away XI', async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listMatchSides.mockResolvedValueOnce([
+      makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
+    ])
+    listSquad.mockImplementation((_clubId: string, teamId: string) =>
+      Promise.resolve(teamId === 'team-1' ? [makeSquadMember({ playerProfileId: 'player-1' })] : []),
+    )
+
+    renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI vs 2nd XI' })
+    await screen.findByText('Away XI')
+
+    const headings = screen
+      .getAllByText(/^(details|availability|home xi|away xi)$/i)
+      .map((node) => node.textContent)
+
+    expect(headings.indexOf('Details')).toBeLessThan(headings.indexOf('Availability'))
+    expect(headings.indexOf('Availability')).toBeLessThan(headings.indexOf('Home XI'))
+    expect(headings.indexOf('Home XI')).toBeLessThan(headings.indexOf('Away XI'))
+  })
+
+  it('renders every respondent as an individual avatar (no "+N" overflow) for a side with more than 4 Available responses', async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listPolls.mockResolvedValueOnce([makePoll({ id: 'poll-1', teamId: 'team-1' })])
+    getPollResponses.mockResolvedValueOnce(
+      makeResponses({
+        availableCount: 5,
+        responses: [
+          { playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'AVAILABLE' },
+          { playerProfileId: 'p2', firstName: 'Bob', lastName: 'Jones', squadJerseyNumber: null, status: 'AVAILABLE' },
+          { playerProfileId: 'p3', firstName: 'Amy', lastName: 'Lee', squadJerseyNumber: null, status: 'AVAILABLE' },
+          { playerProfileId: 'p4', firstName: 'Sam', lastName: 'Patel', squadJerseyNumber: null, status: 'AVAILABLE' },
+          { playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen', squadJerseyNumber: null, status: 'AVAILABLE' },
+        ],
+      }),
+    )
+
+    renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
+
+    expect(await screen.findByText('5 Available')).toBeInTheDocument()
+    for (const initials of ['JA', 'BO', 'AM', 'SA', 'LE']) {
+      expect(screen.getByText(initials)).toBeInTheDocument()
+    }
+    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+  })
+
+  it("renders SideAvailability's outer Stack with alignItems flex-start", async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listPolls.mockResolvedValueOnce([makePoll({ id: 'poll-1', teamId: 'team-1' })])
+    getPollResponses.mockResolvedValueOnce(makeResponses())
+
+    renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
+
+    const noResponseCaption = await screen.findByText(/No response/)
+    expect(noResponseCaption.parentElement).toHaveStyle({ alignItems: 'flex-start' })
+  })
 })
