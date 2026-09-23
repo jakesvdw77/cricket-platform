@@ -56,6 +56,7 @@ function renderList(clubId?: string) {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="club-contacts" element={<ClubContactList />} />
             <Route path="club-contacts/new" element={<div>Add Contact Page</div>} />
+            <Route path="club-contacts/:id/edit" element={<div>Edit Contact Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -238,6 +239,21 @@ describe('ClubContactList', () => {
       'Amy Adams',
       'Zoe Brown',
     ])
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the contact\'s own routes', async () => {
+    listClubContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1' })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Jane Smith')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/club-contacts/contact-1')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/club-contacts/contact-1/edit',
+    )
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

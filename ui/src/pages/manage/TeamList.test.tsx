@@ -74,6 +74,7 @@ function renderList(clubId?: string, sectionId = 'test-section-id') {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="sections/:sectionId/teams" element={<TeamList />} />
             <Route path="sections/:sectionId/teams/new" element={<div>Add Team Page</div>} />
+            <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
             <Route path="sections" element={<div>Club Structure Page</div>} />
           </Route>
         </Routes>
@@ -212,6 +213,24 @@ describe('TeamList', () => {
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
     expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the team\'s own routes', async () => {
+    listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderList('test-club-id', 'test-section-id')
+
+    await screen.findByText('1st XI')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/sections/test-section-id/teams/team-1',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/sections/test-section-id/teams/team-1/edit',
+    )
   })
 
   it('the back link targets Club Structure', async () => {

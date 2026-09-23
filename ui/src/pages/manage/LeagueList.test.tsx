@@ -56,6 +56,7 @@ function renderList(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="leagues" element={<LeagueList />} />
             <Route path="leagues/new" element={<div>Add League Page</div>} />
+            <Route path="leagues/:id/edit" element={<div>Edit League Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -163,6 +164,24 @@ describe('LeagueList', () => {
     await user.click(screen.getByRole('button', { name: 'Add League' }))
 
     expect(await screen.findByText('Add League Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the league\'s own routes', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Internal League')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/leagues/league-1',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/leagues/league-1/edit',
+    )
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

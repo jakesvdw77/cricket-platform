@@ -35,6 +35,7 @@ function SeasonCard({ season }: { season: Season }) {
         { label: 'End date', value: season.endDate },
       ]}
       viewTo={`/manage/fixtures/seasons/${season.id}`}
+      editTo={`/manage/fixtures/seasons/${season.id}/edit`}
     />
   )
 }

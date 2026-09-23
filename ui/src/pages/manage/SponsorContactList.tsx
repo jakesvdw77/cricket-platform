@@ -51,6 +51,7 @@ function SponsorContactCard({ sponsorId, contact }: { sponsorId: string; contact
         { label: 'Phone', value: contact.contact.phone },
       ]}
       viewTo={`/manage/sponsors/${sponsorId}/contacts/${contact.id}`}
+      editTo={`/manage/sponsors/${sponsorId}/contacts/${contact.id}/edit`}
     />
   )
 }

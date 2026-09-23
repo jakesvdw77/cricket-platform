@@ -75,6 +75,7 @@ function renderDirectory(clubId?: string) {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="teams" element={<TeamDirectory />} />
             <Route path="teams/new" element={<div>Add Team Page</div>} />
+            <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -217,6 +218,25 @@ describe('TeamDirectory', () => {
 
     const viewLink = await screen.findByRole('link', { name: 'View' })
     expect(viewLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md (amendment, item 15): TeamDirectory's card
+  // now passes editTo alongside viewTo — mirrors MatchList.test.tsx's own View+Edit precedent.
+  it('renders View and Edit together on a card, both pointing at the team\'s own routes', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
+    listSections.mockResolvedValueOnce([makeSection()])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/sections/section-1/teams/team-1',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/sections/section-1/teams/team-1/edit',
+    )
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {

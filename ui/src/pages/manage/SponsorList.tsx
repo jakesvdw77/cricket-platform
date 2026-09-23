@@ -33,6 +33,7 @@ function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
       badge={badgeFor(sponsor)}
       fields={sponsorRecordFields(sponsor)}
       viewTo={`/manage/sponsors/${sponsor.id}`}
+      editTo={`/manage/sponsors/${sponsor.id}/edit`}
     />
   )
 }

@@ -53,6 +53,7 @@ function LeagueCard({ league }: { league: League }) {
       fields={leagueRecordFields(league)}
       chips={leagueChips(league)}
       viewTo={`/manage/fixtures/leagues/${league.id}`}
+      editTo={`/manage/fixtures/leagues/${league.id}/edit`}
     />
   )
 }

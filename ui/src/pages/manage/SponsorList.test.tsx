@@ -54,6 +54,7 @@ function renderList(clubId?: string) {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="sponsors" element={<SponsorList />} />
             <Route path="sponsors/new" element={<div>Add Sponsor Page</div>} />
+            <Route path="sponsors/:id/edit" element={<div>Edit Sponsor Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -172,6 +173,18 @@ describe('SponsorList', () => {
       'Alpha Sponsors',
     ])
     expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the sponsor\'s own routes', async () => {
+    listSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1' })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Riverside Hardware')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1/edit')
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

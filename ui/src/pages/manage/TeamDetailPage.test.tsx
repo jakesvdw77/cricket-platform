@@ -184,6 +184,9 @@ function renderPage(initialPath: string, clubId?: string) {
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
+            <Route path="club-contacts/:id/edit" element={<div>Edit Contact Page</div>} />
+            <Route path="sponsors/:id/edit" element={<div>Edit Sponsor Page</div>} />
+            <Route path="players/:playerId/edit" element={<div>Edit Player Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -213,13 +216,13 @@ describe('TeamDetailPage', () => {
     expect(await screen.findByText('2 players')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 
-    expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute(
-      'href',
-      '/manage/sections/section-1/teams/team-1/edit',
-    )
+    // The Squad card's own RecordCard rows render "Edit" links too (docs/specs/049 amendment,
+    // item 19), so this asserts containment against the full set rather than a single-match query.
+    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
+    expect(editLinks).toContain('/manage/sections/section-1/teams/team-1/edit')
   })
 
-  it("renders this team's own linked Contacts/Sponsors/Squad as viewTo cards, not edit links", async () => {
+  it("renders this team's own linked Contacts/Sponsors/Squad as viewTo cards", async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
     listTeamContacts.mockResolvedValueOnce([makeTeamContact()])
     listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
@@ -239,6 +242,29 @@ describe('TeamDetailPage', () => {
 
     expect(screen.getByText('Acme Bank')).toBeInTheDocument()
     expect(screen.getByText('Sam Lee')).toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md (amendment, items 17-19): the Contacts,
+  // Sponsors, and Squad cards each now pass editTo alongside viewTo, rendering View and Edit side
+  // by side — mirrors MatchList.test.tsx's own View+Edit precedent, one assertion per card section.
+  it('renders View and Edit together on the Contacts, Sponsors, and Squad cards, each pointing at that record\'s own routes', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listTeamContacts.mockResolvedValueOnce([makeTeamContact()])
+    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listSquad.mockResolvedValueOnce([makeSquadMember({ playerProfileId: 'player-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await screen.findByText('Jane Smith')
+
+    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
+    // The Team's own "Edit" action (RecordDetailScreen's own header link) is also present, so this
+    // asserts containment rather than an exact-length match.
+    expect(editLinks).toContain('/manage/club-contacts/contact-1/edit')
+    expect(editLinks).toContain('/manage/sponsors/sponsor-1/edit')
+    expect(editLinks).toContain('/manage/players/player-1/edit')
   })
 
   it('renders an error state when the matching team id is not in the fetched list', async () => {

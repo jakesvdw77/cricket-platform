@@ -34,6 +34,7 @@ function TeamCard({ sectionId, team }: { sectionId: string; team: Team }) {
       avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
       badge={badgeFor(team)}
       viewTo={`/manage/sections/${sectionId}/teams/${team.id}`}
+      editTo={`/manage/sections/${sectionId}/teams/${team.id}/edit`}
     />
   )
 }
