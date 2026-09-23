@@ -16,6 +16,30 @@ const MANY_RESPONDENTS: AvailabilityRespondent[] = [
   { playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen', squadJerseyNumber: null },
 ]
 
+// docs/specs/048-match-availability-wrap-layout.md: the real screenshot-confirmed case
+// (9 Available respondents) driving the new 'wrap' layout — MatchDetailPage.tsx's SideAvailability
+// opts into this instead of the compact AvatarGroup truncation above.
+const NINE_RESPONDENTS: AvailabilityRespondent[] = [
+  { playerProfileId: 'w1', firstName: 'Maya', lastName: 'Osei', squadJerseyNumber: 3 },
+  { playerProfileId: 'w2', firstName: 'Ethan', lastName: 'Moore', squadJerseyNumber: 9 },
+  { playerProfileId: 'w3', firstName: 'Jasmine', lastName: 'Ahmed', squadJerseyNumber: 21 },
+  { playerProfileId: 'w4', firstName: 'Oliver', lastName: 'Chen', squadJerseyNumber: 15 },
+  { playerProfileId: 'w5', firstName: 'Priya', lastName: 'Rao', squadJerseyNumber: null },
+  { playerProfileId: 'w6', firstName: 'Kai', lastName: 'Thompson', squadJerseyNumber: 8 },
+  { playerProfileId: 'w7', firstName: 'Isla', lastName: 'Walker', squadJerseyNumber: 12 },
+  { playerProfileId: 'w8', firstName: 'Noah', lastName: 'Fitzgerald', squadJerseyNumber: null },
+  { playerProfileId: 'w9', firstName: 'Ruby', lastName: 'Singh', squadJerseyNumber: 6 },
+]
+
+// docs/specs/048-match-availability-wrap-layout.md: exercises the WRAP_LAYOUT_MAX (24) fallback —
+// 25 respondents renders 24 individual avatars plus one trailing "+1" summary avatar.
+const TWENTY_FIVE_RESPONDENTS: AvailabilityRespondent[] = Array.from({ length: 25 }, (_, index) => ({
+  playerProfileId: `w${index + 1}`,
+  firstName: `Player`,
+  lastName: `${index + 1}`,
+  squadJerseyNumber: index + 1,
+}))
+
 const meta: Meta<typeof AvailabilityRespondentAvatars> = {
   title: 'Components/AvailabilityRespondentAvatars',
   component: AvailabilityRespondentAvatars,
@@ -55,4 +79,12 @@ export const Empty: Story = {
 export const MobileViewport: Story = {
   args: OverflowBeyondMax.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const WrapLayout: Story = {
+  args: { status: 'AVAILABLE', respondents: NINE_RESPONDENTS, count: 9, layout: 'wrap' },
+}
+
+export const WrapLayoutOverflow: Story = {
+  args: { status: 'AVAILABLE', respondents: TWENTY_FIVE_RESPONDENTS, count: 25, layout: 'wrap' },
 }

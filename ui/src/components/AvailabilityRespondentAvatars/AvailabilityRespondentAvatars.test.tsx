@@ -80,4 +80,99 @@ describe('AvailabilityRespondentAvatars', () => {
 
     expect(await screen.findByText('#7 Jane Smith')).toBeInTheDocument()
   })
+
+  // docs/specs/048-match-availability-wrap-layout.md
+  it('layout omitted (default) still truncates to an AvatarGroup "+N" overflow avatar for 9 respondents', () => {
+    const respondents = [
+      respondent({ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith' }),
+      respondent({ playerProfileId: 'p2', firstName: 'Bob', lastName: 'Jones' }),
+      respondent({ playerProfileId: 'p3', firstName: 'Amy', lastName: 'Lee' }),
+      respondent({ playerProfileId: 'p4', firstName: 'Sam', lastName: 'Patel' }),
+      respondent({ playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen' }),
+      respondent({ playerProfileId: 'p6', firstName: 'Tom', lastName: 'Brown' }),
+      respondent({ playerProfileId: 'p7', firstName: 'Kim', lastName: 'Davis' }),
+      respondent({ playerProfileId: 'p8', firstName: 'Zoe', lastName: 'Adams' }),
+      respondent({ playerProfileId: 'p9', firstName: 'Max', lastName: 'Ford' }),
+    ]
+
+    render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} />)
+
+    // max=4 caps the AvatarGroup at 4 total avatars (including the "+N" overflow avatar itself),
+    // so 9 respondents render as 3 real avatars plus a "+6" overflow avatar — same math as the
+    // "+2"-for-5-respondents case above.
+    expect(screen.getByText('+6')).toBeInTheDocument()
+  })
+
+  it('layout="compact" behaves identically to the default, truncating to a "+N" overflow avatar for 9 respondents', () => {
+    const respondents = [
+      respondent({ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith' }),
+      respondent({ playerProfileId: 'p2', firstName: 'Bob', lastName: 'Jones' }),
+      respondent({ playerProfileId: 'p3', firstName: 'Amy', lastName: 'Lee' }),
+      respondent({ playerProfileId: 'p4', firstName: 'Sam', lastName: 'Patel' }),
+      respondent({ playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen' }),
+      respondent({ playerProfileId: 'p6', firstName: 'Tom', lastName: 'Brown' }),
+      respondent({ playerProfileId: 'p7', firstName: 'Kim', lastName: 'Davis' }),
+      respondent({ playerProfileId: 'p8', firstName: 'Zoe', lastName: 'Adams' }),
+      respondent({ playerProfileId: 'p9', firstName: 'Max', lastName: 'Ford' }),
+    ]
+
+    render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} layout="compact" />)
+
+    expect(screen.getByText('+6')).toBeInTheDocument()
+  })
+
+  it('layout="wrap" with 9 respondents renders exactly 9 individual avatars, no "+N" overflow avatar', () => {
+    const respondents = [
+      respondent({ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith' }),
+      respondent({ playerProfileId: 'p2', firstName: 'Bob', lastName: 'Jones' }),
+      respondent({ playerProfileId: 'p3', firstName: 'Amy', lastName: 'Lee' }),
+      respondent({ playerProfileId: 'p4', firstName: 'Sam', lastName: 'Patel' }),
+      respondent({ playerProfileId: 'p5', firstName: 'Lee', lastName: 'Nguyen' }),
+      respondent({ playerProfileId: 'p6', firstName: 'Tom', lastName: 'Brown' }),
+      respondent({ playerProfileId: 'p7', firstName: 'Kim', lastName: 'Davis' }),
+      respondent({ playerProfileId: 'p8', firstName: 'Zoe', lastName: 'Adams' }),
+      respondent({ playerProfileId: 'p9', firstName: 'Max', lastName: 'Ford' }),
+    ]
+
+    render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} layout="wrap" />)
+
+    for (const initials of ['JA', 'BO', 'AM', 'SA', 'LE', 'TO', 'KI', 'ZO', 'MA']) {
+      expect(screen.getByText(initials)).toBeInTheDocument()
+    }
+    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+  })
+
+  it('layout="wrap" with exactly WRAP_LAYOUT_MAX (24) respondents renders all 24, no overflow avatar', () => {
+    const respondents = Array.from({ length: 24 }, (_, index) => respondent({ playerProfileId: `p${index}` }))
+
+    render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={24} layout="wrap" />)
+
+    expect(document.querySelectorAll('.MuiAvatar-root')).toHaveLength(24)
+    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+  })
+
+  it('layout="wrap" with WRAP_LAYOUT_MAX + 1 (25) respondents renders 24 individual avatars plus one "+1" overflow avatar', () => {
+    const respondents = Array.from({ length: 25 }, (_, index) => respondent({ playerProfileId: `p${index}` }))
+
+    render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={25} layout="wrap" />)
+
+    // 24 visible respondent avatars + 1 "+1" overflow avatar = 25 total .MuiAvatar-root elements.
+    expect(document.querySelectorAll('.MuiAvatar-root')).toHaveLength(25)
+    expect(screen.getByText('+1')).toBeInTheDocument()
+  })
+
+  it('the count/status-label caption renders identically regardless of layout value or respondent count', () => {
+    const respondents = Array.from({ length: 9 }, (_, index) => respondent({ playerProfileId: `p${index}` }))
+
+    const { rerender } = render(
+      <AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} layout="compact" />,
+    )
+    expect(screen.getByText('9 Available')).toBeInTheDocument()
+
+    rerender(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} layout="wrap" />)
+    expect(screen.getByText('9 Available')).toBeInTheDocument()
+
+    rerender(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} />)
+    expect(screen.getByText('9 Available')).toBeInTheDocument()
+  })
 })
