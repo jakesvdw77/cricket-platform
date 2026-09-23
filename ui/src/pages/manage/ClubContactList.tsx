@@ -50,6 +50,7 @@ function ClubContactCard({ contact }: { contact: ClubContact }) {
         { label: 'Phone', value: contact.contact.phone },
       ]}
       viewTo={`/manage/club-contacts/${contact.id}`}
+      editTo={`/manage/club-contacts/${contact.id}/edit`}
     />
   )
 }

@@ -52,6 +52,7 @@ function renderList(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="seasons" element={<SeasonList />} />
             <Route path="seasons/new" element={<div>Add Season Page</div>} />
+            <Route path="seasons/:id/edit" element={<div>Edit Season Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -153,6 +154,24 @@ describe('SeasonList', () => {
     await user.click(screen.getByRole('button', { name: 'Add Season' }))
 
     expect(await screen.findByText('Add Season Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the season\'s own routes', async () => {
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('2026')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/seasons/season-1',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/seasons/season-1/edit',
+    )
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

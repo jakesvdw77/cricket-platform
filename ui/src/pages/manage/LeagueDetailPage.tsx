@@ -164,6 +164,7 @@ export default function LeagueDetailPage() {
                       title={team.name}
                       avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
                       viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
+                      editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
                     />
                   )
                 })}

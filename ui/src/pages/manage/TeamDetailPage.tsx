@@ -161,6 +161,7 @@ export default function TeamDetailPage() {
                       avatar={{ imageUrl: contact.photoUrl, fallback: initialsFromName(contactName), shape: 'circular' }}
                       fields={[{ label: 'Team role', value: teamContact.role }]}
                       viewTo={`/manage/club-contacts/${contact.id}`}
+                      editTo={`/manage/club-contacts/${contact.id}/edit`}
                     />
                   )
                 })}
@@ -183,6 +184,7 @@ export default function TeamDetailPage() {
                     avatar={{ imageUrl: sponsor.logoUrl, fallback: initialsFromName(sponsor.name), shape: 'rounded' }}
                     fields={sponsorRecordFields(sponsor)}
                     viewTo={`/manage/sponsors/${sponsor.id}`}
+                    editTo={`/manage/sponsors/${sponsor.id}/edit`}
                   />
                 ))}
               </Box>
@@ -226,6 +228,7 @@ export default function TeamDetailPage() {
                       avatar={{ imageUrl: member.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
                       fields={playerRecordFields(member)}
                       viewTo={`/manage/players/${member.playerProfileId}`}
+                      editTo={`/manage/players/${member.playerProfileId}/edit`}
                     />
                   )
                 })}

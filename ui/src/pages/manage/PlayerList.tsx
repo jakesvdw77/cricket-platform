@@ -42,6 +42,7 @@ function PlayerCard({ player, sectionNames }: { player: Player; sectionNames: st
       fields={playerRecordFields(player)}
       chips={sectionNames}
       viewTo={`/manage/players/${player.id}`}
+      editTo={`/manage/players/${player.id}/edit`}
     />
   )
 }

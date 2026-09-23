@@ -56,6 +56,7 @@ function renderList(clubId?: string, sponsorId = 'test-sponsor-id') {
             <Route path="sponsors/:sponsorId/contacts" element={<SponsorContactList />} />
             <Route path="sponsors/:sponsorId/contacts/new" element={<div>Add Contact Page</div>} />
             <Route path="sponsors/:id/edit" element={<div>Sponsor Edit Page</div>} />
+            <Route path="sponsors/:sponsorId/contacts/:contactId/edit" element={<div>Edit Contact Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -180,6 +181,24 @@ describe('SponsorContactList', () => {
     expect(screen.getByText('Past Contact')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
+  // precedent test for the View+Edit dual-render footer.
+  it('renders View and Edit together on a card, both pointing at the contact\'s own routes', async () => {
+    listSponsorContacts.mockResolvedValueOnce([makeContact({ id: 'contact-1' })])
+
+    renderList('test-club-id', 'test-sponsor-id')
+
+    await screen.findByText('Jane Smith')
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/sponsors/test-sponsor-id/contacts/contact-1',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/manage/sponsors/test-sponsor-id/contacts/contact-1/edit',
+    )
   })
 
   it('the back link targets this sponsor\'s edit screen, not the dashboard', async () => {

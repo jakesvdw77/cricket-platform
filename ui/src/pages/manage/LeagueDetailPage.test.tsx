@@ -112,6 +112,10 @@ function renderPage(initialPath: string, clubId?: string) {
             <Route path="leagues/:leagueId" element={<LeagueDetailPage />} />
             <Route path="leagues/:leagueId/edit" element={<div>Edit League Page</div>} />
           </Route>
+          {/* Sibling top-level route — the Affiliated Teams card's editTo targets Team's own edit
+              route, which lives outside the /manage/fixtures branch this page's wrapper otherwise
+              nests under. */}
+          <Route path="/manage/sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -141,7 +145,10 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
   })
 
-  it('renders affiliated teams for the default season as viewTo cards, not edit links', async () => {
+  // docs/specs/049-record-list-edit-action-rollout.md (amendment, item 16): the Affiliated Teams
+  // card now passes editTo alongside viewTo, rendering View and Edit side by side — mirrors
+  // MatchList.test.tsx's own View+Edit precedent.
+  it('renders affiliated teams for the default season as View and Edit cards, both pointing at the team\'s own routes', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1', name: '1st XI' })])
@@ -151,9 +158,15 @@ describe('LeagueDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Internal League' })
 
-    const teamLink = await screen.findByRole('link', { name: /view/i })
-    expect(teamLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
     expect(screen.getByText('1st XI')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/manage/sections/section-1/teams/team-1',
+    )
+    // The League's own "Edit" action (RecordDetailScreen's own header link) is also present, so
+    // this asserts containment rather than an exact-length match.
+    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
+    expect(editLinks).toContain('/manage/sections/section-1/teams/team-1/edit')
   })
 
   it('renders an error state when the matching league id is not in the fetched list', async () => {

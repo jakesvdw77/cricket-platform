@@ -40,6 +40,7 @@ function TeamCard({ team, sectionBreadcrumb }: { team: Team; sectionBreadcrumb: 
       badge={badgeFor(team)}
       fields={[{ label: 'Section', value: sectionBreadcrumb }]}
       viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
+      editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
     />
   )
 }
