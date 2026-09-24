@@ -415,6 +415,44 @@ class MatchControllerIntegrationTest {
     }
 
     /**
+     * Per docs/specs/050-league-schedule-and-fixtures.md: a side's logo may only be set alongside
+     * that side's own free-text name, never alongside a real {@code Team} id — proven through real
+     * HTTP for both {@code POST} and {@code PUT}.
+     */
+    @Test
+    void createAndUpdateReturn400WhenASidesLogoIsSetAlongsideThatSidesTeamId() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String logoWithTeamIdBody = """
+                {
+                    "homeTeamId": "%s",
+                    "homeTeamLogoUrl": "/media/logo.png",
+                    "awayTeamName": "Occasionals",
+                    "seasonId": "%s",
+                    "matchDate": "%s"
+                }
+                """.formatted(team.getId(), season.getId(), Instant.now().plus(1, ChronoUnit.DAYS));
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(logoWithTeamIdBody))
+                .andExpect(status().isBadRequest());
+
+        Match existing = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(team.getId())
+                .awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(1, ChronoUnit.DAYS)).active(true).build());
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), existing.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(logoWithTeamIdBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
      * The paginated {@code GET /matches} proven to actually page — a smaller page size doesn't
      * return every row, and the second page returns the remaining, different rows, sorted by
      * {@code matchDate} descending by default.

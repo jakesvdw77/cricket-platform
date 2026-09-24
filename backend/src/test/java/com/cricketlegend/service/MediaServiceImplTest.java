@@ -11,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,5 +94,32 @@ class MediaServiceImplTest {
         MediaUploadResponse response = mediaService.upload(file);
 
         assertThat(response.url()).endsWith(".webp");
+    }
+
+    /**
+     * Per docs/specs/050-league-schedule-and-fixtures.md: the 2-arg {@code upload(file,
+     * allowedContentTypes)} overload is the shared storage plumbing extracted so a non-image
+     * consumer (Playing Conditions PDFs) can reuse it against its own allowlist, called directly
+     * here rather than through the 1-arg image-only delegate.
+     */
+    @Test
+    void twoArgUploadAcceptsAContentTypeNotInTheFixedImageAllowlistWhenSuppliedInItsOwnMap() throws IOException {
+        when(file.getContentType()).thenReturn("application/pdf");
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("fake-pdf-bytes".getBytes()));
+
+        MediaUploadResponse response = mediaService.upload(file, Map.of("application/pdf", ".pdf"));
+
+        assertThat(response.url()).startsWith("/media/");
+        assertThat(response.url()).endsWith(".pdf");
+        String filename = response.url().substring("/media/".length());
+        assertThat(Files.exists(tempStorageDir.resolve(filename))).isTrue();
+    }
+
+    @Test
+    void twoArgUploadRejectsAContentTypeNotInTheSuppliedAllowlist() {
+        when(file.getContentType()).thenReturn("image/png");
+
+        assertThatThrownBy(() -> mediaService.upload(file, Map.of("application/pdf", ".pdf")))
+                .isInstanceOf(UnsupportedMediaTypeException.class);
     }
 }

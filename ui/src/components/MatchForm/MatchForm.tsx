@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Box, MenuItem, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { Input } from '../Input'
+import { MediaUpload } from '../MediaUpload'
 import type { MatchPayload } from '../../api/matchApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
@@ -33,9 +34,14 @@ interface FormState {
   homeMode: SideMode
   homeTeamId: string
   homeTeamName: string
+  // docs/specs/050-league-schedule-and-fixtures.md: an external opponent's optional logo — empty
+  // string default matching homeTeamName's own convention, cleared whenever that side's toggle
+  // switches back to 'team'.
+  homeTeamLogoUrl: string
   awayMode: SideMode
   awayTeamId: string
   awayTeamName: string
+  awayTeamLogoUrl: string
   leagueId: string
   seasonId: string
   matchDate: string
@@ -65,9 +71,11 @@ function toFormState(initialValues?: Partial<MatchPayload>): FormState {
     homeMode: initialValues?.homeTeamName ? 'external' : 'team',
     homeTeamId: initialValues?.homeTeamId ?? '',
     homeTeamName: initialValues?.homeTeamName ?? '',
+    homeTeamLogoUrl: initialValues?.homeTeamLogoUrl ?? '',
     awayMode: initialValues?.awayTeamName ? 'external' : 'team',
     awayTeamId: initialValues?.awayTeamId ?? '',
     awayTeamName: initialValues?.awayTeamName ?? '',
+    awayTeamLogoUrl: initialValues?.awayTeamLogoUrl ?? '',
     leagueId: initialValues?.leagueId ?? '',
     seasonId: initialValues?.seasonId ?? '',
     matchDate: initialValues?.matchDate ? toDatetimeLocal(initialValues.matchDate) : '',
@@ -152,8 +160,10 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
     const payload: MatchPayload = {
       homeTeamId: values.homeMode === 'team' ? values.homeTeamId : null,
       homeTeamName: values.homeMode === 'external' ? values.homeTeamName.trim() : null,
+      homeTeamLogoUrl: values.homeMode === 'external' ? values.homeTeamLogoUrl || null : null,
       awayTeamId: values.awayMode === 'team' ? values.awayTeamId : null,
       awayTeamName: values.awayMode === 'external' ? values.awayTeamName.trim() : null,
+      awayTeamLogoUrl: values.awayMode === 'external' ? values.awayTeamLogoUrl || null : null,
       leagueId: values.leagueId || null,
       seasonId: values.seasonId,
       matchDate: fromDatetimeLocal(values.matchDate),
@@ -214,7 +224,14 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
           value={values.homeMode}
           exclusive
           fullWidth
-          onChange={(_event, next: SideMode | null) => next && setValues((prev) => ({ ...prev, homeMode: next }))}
+          onChange={(_event, next: SideMode | null) =>
+            next &&
+            setValues((prev) => ({
+              ...prev,
+              homeMode: next,
+              ...(next === 'team' ? { homeTeamLogoUrl: '' } : {}),
+            }))
+          }
         >
           <ToggleButton value="team">One of our teams</ToggleButton>
           <ToggleButton value="external">External opponent</ToggleButton>
@@ -241,13 +258,22 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
             ))}
           </Input>
         ) : (
-          <Input
-            label="Home opponent name"
-            value={values.homeTeamName}
-            onChange={handleTextChange('homeTeamName')}
-            error={Boolean(errors.homeTeamName)}
-            helperText={errors.homeTeamName ?? 'e.g. Riverside Occasionals'}
-          />
+          <>
+            <Input
+              label="Home opponent name"
+              value={values.homeTeamName}
+              onChange={handleTextChange('homeTeamName')}
+              error={Boolean(errors.homeTeamName)}
+              helperText={errors.homeTeamName ?? 'e.g. Riverside Occasionals'}
+            />
+            <MediaUpload
+              label="Logo"
+              value={values.homeTeamLogoUrl || null}
+              onUploaded={(url) => setValues((prev) => ({ ...prev, homeTeamLogoUrl: url }))}
+              variant="logo"
+              namespace="manage"
+            />
+          </>
         )}
       </Box>
 
@@ -259,7 +285,14 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
           value={values.awayMode}
           exclusive
           fullWidth
-          onChange={(_event, next: SideMode | null) => next && setValues((prev) => ({ ...prev, awayMode: next }))}
+          onChange={(_event, next: SideMode | null) =>
+            next &&
+            setValues((prev) => ({
+              ...prev,
+              awayMode: next,
+              ...(next === 'team' ? { awayTeamLogoUrl: '' } : {}),
+            }))
+          }
         >
           <ToggleButton value="team">One of our teams</ToggleButton>
           <ToggleButton value="external">External opponent</ToggleButton>
@@ -286,13 +319,22 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
             ))}
           </Input>
         ) : (
-          <Input
-            label="Away opponent name"
-            value={values.awayTeamName}
-            onChange={handleTextChange('awayTeamName')}
-            error={Boolean(errors.awayTeamName)}
-            helperText={errors.awayTeamName ?? 'e.g. Riverside Occasionals'}
-          />
+          <>
+            <Input
+              label="Away opponent name"
+              value={values.awayTeamName}
+              onChange={handleTextChange('awayTeamName')}
+              error={Boolean(errors.awayTeamName)}
+              helperText={errors.awayTeamName ?? 'e.g. Riverside Occasionals'}
+            />
+            <MediaUpload
+              label="Logo"
+              value={values.awayTeamLogoUrl || null}
+              onUploaded={(url) => setValues((prev) => ({ ...prev, awayTeamLogoUrl: url }))}
+              variant="logo"
+              namespace="manage"
+            />
+          </>
         )}
       </Box>
     </Box>

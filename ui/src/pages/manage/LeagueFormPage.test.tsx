@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueFormPage from './LeagueFormPage'
 import type { League } from '../../api/leagueApi'
 import type { Season } from '../../api/seasonApi'
 import type { Team } from '../../api/teamApi'
+import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 
 const listLeagues = vi.fn()
@@ -19,6 +20,9 @@ const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
 const createLeagueAffiliation = vi.fn()
 const unaffiliateLeagueTeam = vi.fn()
+const listMatches = vi.fn()
+const getPlayingConditions = vi.fn()
+const uploadPlayingConditions = vi.fn()
 
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
@@ -44,6 +48,20 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
     unaffiliateLeagueTeam(clubId, leagueId, affiliationId),
 }))
 
+// docs/specs/050-league-schedule-and-fixtures.md: the new Schedule tab's own data — matches
+// (listMatches, reused unmodified from the existing matchApi) and Playing Conditions (the new
+// leaguePlayingConditionsApi module).
+vi.mock('../../api/matchApi', () => ({
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
+vi.mock('../../api/leaguePlayingConditionsApi', () => ({
+  getPlayingConditions: (clubId: string, leagueId: string, seasonId: string) =>
+    getPlayingConditions(clubId, leagueId, seasonId),
+  uploadPlayingConditions: (clubId: string, leagueId: string, seasonId: string, file: File) =>
+    uploadPlayingConditions(clubId, leagueId, seasonId, file),
+}))
+
 function makeLeague(overrides: Partial<League> = {}): League {
   return {
     id: 'league-1',
@@ -59,6 +77,9 @@ function makeLeague(overrides: Partial<League> = {}): League {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    currentSeasonTeamCount: 1,
+    currentSeasonLabel: '2026',
+    currentSeasonPlayingConditionsUrl: null,
     ...overrides,
   }
 }
@@ -93,11 +114,37 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
   }
 }
 
+function makeMatch(overrides: Partial<Match> = {}): Match {
+  return {
+    id: 'match-1',
+    clubId: 'test-club-id',
+    homeTeamId: 'team-1',
+    homeTeamName: null,
+    awayTeamId: null,
+    awayTeamName: 'Riverside Occasionals',
+    leagueId: 'league-1',
+    seasonId: 'season-1',
+    matchDate: '2026-06-01T14:30:00Z',
+    venue: 'Riverside Oval',
+    active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
+    homeTeamLogoUrl: null,
+    awayTeamLogoUrl: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSeasons.mockResolvedValue([])
   listTeamsForClub.mockResolvedValue([])
   listLeagueAffiliations.mockResolvedValue([])
+  listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
+  getPlayingConditions.mockResolvedValue(null)
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -122,11 +169,11 @@ function renderPage(initialPath: string, clubId?: string) {
 }
 
 describe('LeagueFormPage', () => {
-  it('create mode: does not render tabs or the Affiliations tab content', async () => {
+  it('create mode: does not render tabs or the Teams tab content', async () => {
     renderPage('/manage/fixtures/leagues/new', 'test-club-id')
 
     expect(await screen.findByText('Add League')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Affiliations' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Teams' })).not.toBeInTheDocument()
     expect(listLeagueAffiliations).not.toHaveBeenCalled()
     // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
     // saved record.
@@ -150,7 +197,7 @@ describe('LeagueFormPage', () => {
     expect(await screen.findByText('League List Page')).toBeInTheDocument()
   })
 
-  it('edit mode: renders Details/Affiliations tabs, listing affiliated teams for the selected season', async () => {
+  it('edit mode: renders Details/Teams tabs, listing affiliated teams for the selected season', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026', startDate: '2020-01-01', endDate: '2020-12-31' })])
@@ -162,7 +209,7 @@ describe('LeagueFormPage', () => {
     renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
 
     await screen.findByText('Edit League')
-    await user.click(screen.getByRole('tab', { name: 'Affiliations' }))
+    await user.click(screen.getByRole('tab', { name: 'Teams' }))
 
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
   })
@@ -177,7 +224,7 @@ describe('LeagueFormPage', () => {
     renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
 
     await screen.findByText('Edit League')
-    await user.click(screen.getByRole('tab', { name: 'Affiliations' }))
+    await user.click(screen.getByRole('tab', { name: 'Teams' }))
     await user.click(await screen.findByRole('button', { name: 'Add team' }))
 
     const combobox = await screen.findByRole('combobox', { name: 'Search teams' })
@@ -199,10 +246,152 @@ describe('LeagueFormPage', () => {
     renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
 
     await screen.findByText('Edit League')
-    await user.click(screen.getByRole('tab', { name: 'Affiliations' }))
+    await user.click(screen.getByRole('tab', { name: 'Teams' }))
     await user.click(await screen.findByRole('button', { name: 'Unaffiliate' }))
 
     expect(unaffiliateLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'aff-1')
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 4/28: the new Schedule tab — a season-
+  // scoped fixture list (via LeagueFixtures), an "Add Match" shortcut pre-filling League/Season,
+  // and the Playing Conditions DocumentUpload control.
+  describe('Schedule tab', () => {
+    function renderScheduleTab() {
+      const routerRender = render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <MemoryRouter initialEntries={['/manage/fixtures/leagues/league-1/edit']}>
+            <Routes>
+              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
+                <Route path="leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              </Route>
+              <Route
+                path="/manage/fixtures/matches/new"
+                element={<AddMatchPageStub />}
+              />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+      return routerRender
+    }
+
+    function AddMatchPageStub() {
+      // Renders the route's own current location search so the test can assert the exact
+      // ?leagueId=&seasonId= query string the "Add Match" shortcut navigates with.
+      const location = useLocation()
+      return <div>Add Match Page: {location.search}</div>
+    }
+
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+      listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+      listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+    })
+
+    it('renders the league+season\'s matches via LeagueFixtures', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue({
+        content: [makeMatch({ homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 20,
+      })
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByText('1st XI')).toBeInTheDocument()
+      expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
+      expect(listMatches).toHaveBeenCalledWith(
+        'test-club-id',
+        expect.objectContaining({ leagueId: 'league-1', seasonId: 'season-1' }),
+      )
+    })
+
+    it('renders the League Fixtures empty state when the selected season has no matches yet', async () => {
+      const user = userEvent.setup()
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
+    })
+
+    it('"Add Match" navigates to the create route pre-filling the selected League and Season as query params', async () => {
+      const user = userEvent.setup()
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+      await user.click(await screen.findByRole('button', { name: 'Add Match' }))
+
+      expect(await screen.findByText('Add Match Page: ?leagueId=league-1&seasonId=season-1')).toBeInTheDocument()
+    })
+
+    it('renders the Playing Conditions DocumentUpload control, empty by default', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue(null)
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByText('Playing Conditions')).toBeInTheDocument()
+      expect(await screen.findByText('No document uploaded yet')).toBeInTheDocument()
+    })
+
+    it('renders the uploaded Playing Conditions document with a View action once one exists', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue({
+        id: 'pc-1',
+        leagueId: 'league-1',
+        seasonId: 'season-1',
+        documentUrl: '/media/2f6a1c9e-playing-conditions.pdf',
+        uploadedAt: '2026-02-01T09:00:00Z',
+        uploadedBy: null,
+      })
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByText('2f6a1c9e-playing-conditions.pdf')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
+    })
+
+    it('uploading a Playing Conditions PDF calls uploadPlayingConditions for the selected league+season', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue(null)
+      uploadPlayingConditions.mockResolvedValueOnce({
+        id: 'pc-1',
+        leagueId: 'league-1',
+        seasonId: 'season-1',
+        documentUrl: '/media/playing-conditions.pdf',
+        uploadedAt: '2026-02-01T09:00:00Z',
+        uploadedBy: null,
+      })
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+      await screen.findByText('No document uploaded yet')
+
+      const file = new File(['%PDF-1.4'], 'playing-conditions.pdf', { type: 'application/pdf' })
+      await user.upload(screen.getByLabelText('Playing Conditions file'), file)
+
+      await waitFor(() =>
+        expect(uploadPlayingConditions).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', file),
+      )
+    })
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from LeagueList's own card, plus
@@ -248,14 +437,14 @@ describe('LeagueFormPage', () => {
       expect(reactivateLeague).toHaveBeenCalledWith('test-club-id', 'league-1')
     })
 
-    it('still renders on the Affiliations tab, while Save is hidden there', async () => {
+    it('still renders on the Teams tab, while Save is hidden there', async () => {
       const user = userEvent.setup()
       listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', active: true })])
 
       renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Affiliations' }))
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
 
       expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()

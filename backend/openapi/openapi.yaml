@@ -2513,6 +2513,78 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
+    get:
+      tags:
+      - league-playing-conditions-controller
+      operationId: get_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
+    post:
+      tags:
+      - league-playing-conditions-controller
+      operationId: upload_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/reactivate:
     post:
       tags:
@@ -4088,6 +4160,10 @@ components:
           format: uuid
         awayTeamName:
           type: string
+        homeTeamLogoUrl:
+          type: string
+        awayTeamLogoUrl:
+          type: string
         leagueId:
           type: string
           format: uuid
@@ -4120,6 +4196,10 @@ components:
           type: string
           format: uuid
         awayTeamName:
+          type: string
+        homeTeamLogoUrl:
+          type: string
+        awayTeamLogoUrl:
           type: string
         leagueId:
           type: string
@@ -4318,6 +4398,13 @@ components:
         updatedBy:
           type: string
           format: uuid
+        currentSeasonTeamCount:
+          type: integer
+          format: int32
+        currentSeasonLabel:
+          type: string
+        currentSeasonPlayingConditionsUrl:
+          type: string
     UpdateClubContactRequest:
       type: object
       properties:
@@ -4713,6 +4800,10 @@ components:
           format: uuid
         awayTeamName:
           type: string
+        homeTeamLogoUrl:
+          type: string
+        awayTeamLogoUrl:
+          type: string
         leagueId:
           type: string
           format: uuid
@@ -4807,6 +4898,26 @@ components:
           format: date
       required:
       - name
+    LeaguePlayingConditionsDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        documentUrl:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedBy:
+          type: string
+          format: uuid
     CreateLeagueAffiliationRequest:
       type: object
       properties:

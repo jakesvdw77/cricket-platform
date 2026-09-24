@@ -20,6 +20,8 @@ const match: Match = {
   active: true,
   homeSideAnnounced: false,
   awaySideAnnounced: false,
+  homeTeamLogoUrl: null,
+  awayTeamLogoUrl: null,
   createdAt: '',
   updatedAt: '',
   updatedBy: null,

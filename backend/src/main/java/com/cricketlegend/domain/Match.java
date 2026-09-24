@@ -26,7 +26,11 @@ import lombok.Setter;
  * #awayTeamName} — enforced at the service layer ahead of the DB {@code CHECK} constraints. {@link
  * #seasonId} is NOT NULL (required, not optional) per this spec's own pre-build amendment — every
  * {@code MatchSide} needs an unambiguous season to resolve squad eligibility against. {@link
- * #leagueId} stays optional. "Disable, never delete" — see {@link #active}. See
+ * #leagueId} stays optional. {@link #homeTeamLogoUrl}/{@link #awayTeamLogoUrl} (nullable, per
+ * docs/specs/050-league-schedule-and-fixtures.md) are meaningful only alongside the matching side's
+ * free-text {@code *TeamName} — a real {@code Team}'s logo already comes from {@code Team.logoUrl}
+ * resolved via {@code *TeamId} — enforced at the service layer, same posture as the id/name
+ * exclusivity above. "Disable, never delete" — see {@link #active}. See
  * docs/specs/029-league-management.md.
  */
 @Entity
@@ -56,6 +60,12 @@ public class Match {
 
     @Column(name = "away_team_name")
     private String awayTeamName;
+
+    @Column(name = "home_team_logo_url")
+    private String homeTeamLogoUrl;
+
+    @Column(name = "away_team_logo_url")
+    private String awayTeamLogoUrl;
 
     @Column(name = "league_id")
     private UUID leagueId;
