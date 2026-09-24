@@ -38,6 +38,12 @@ export interface RecordDetailScreenProps {
   secondaryActions?: { label: string; to: string; icon?: ReactNode }[]
   editTo: string
   editLabel?: string
+  // A control that applies to more than one section below (e.g. a single season picker a League's
+  // Teams and Fixtures sections both read from, rather than each section rendering its own copy in
+  // its own `note` slot) — rendered once, directly under the header's title/badge/actions row,
+  // above every section. Optional and additive; every existing call site keeps its current header
+  // unchanged.
+  headerNote?: ReactNode
   sections: RecordDetailScreenSection[]
 }
 
@@ -55,6 +61,7 @@ export function RecordDetailScreen({
   secondaryActions,
   editTo,
   editLabel = 'Edit',
+  headerNote,
   sections,
 }: RecordDetailScreenProps) {
   return (
@@ -162,6 +169,8 @@ export function RecordDetailScreen({
             </MuiButton>
           </Stack>
         </Stack>
+
+        {headerNote && <Box sx={{ mt: 2 }}>{headerNote}</Box>}
       </PageHeaderBand>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

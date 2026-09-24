@@ -23,16 +23,16 @@ export default function ManageFixturesHome() {
         }}
       >
         <NavTile
-          title="Leagues"
-          description="Create and manage your club's own leagues"
-          to="/manage/fixtures/leagues"
-          icon={<EmojiEventsOutlinedIcon />}
-        />
-        <NavTile
           title="Seasons"
           description="Define the date ranges that scope affiliations and matches"
           to="/manage/fixtures/seasons"
           icon={<EventOutlinedIcon />}
+        />
+        <NavTile
+          title="Leagues"
+          description="Create and manage your club's own leagues"
+          to="/manage/fixtures/leagues"
+          icon={<EmojiEventsOutlinedIcon />}
         />
         <NavTile
           title="Matches"
