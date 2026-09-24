@@ -2585,6 +2585,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeaguePlayingConditionsDto"
+    put:
+      tags:
+      - league-playing-conditions-controller
+      operationId: update_13
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaguePlayingConditionsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/reactivate:
     post:
       tags:
@@ -4918,6 +4954,99 @@ components:
         uploadedBy:
           type: string
           format: uuid
+        maxOversPerInnings:
+          type: integer
+          format: int32
+        powerplayOvers:
+          type: integer
+          format: int32
+        maxOversPerBowler:
+          type: integer
+          format: int32
+        fieldingRestrictionsNotes:
+          type: string
+        pointsForWin:
+          type: integer
+          format: int32
+        pointsForLoss:
+          type: integer
+          format: int32
+        pointsForDraw:
+          type: integer
+          format: int32
+        pointsForNoResult:
+          type: integer
+          format: int32
+        pointsForForfeitWin:
+          type: integer
+          format: int32
+        bonusPointsEnabled:
+          type: boolean
+        bonusBattingOversThreshold:
+          type: integer
+          format: int32
+        bonusBowlingRestrictionPercentage:
+          type: integer
+          format: int32
+        additionalNotes:
+          type: string
+    UpdateLeaguePlayingConditionsRequest:
+      type: object
+      properties:
+        maxOversPerInnings:
+          type: integer
+          format: int32
+        powerplayOvers:
+          type: integer
+          format: int32
+        maxOversPerBowler:
+          type: integer
+          format: int32
+        fieldingRestrictionsNotes:
+          type: string
+          maxLength: 2000
+        pointsForWin:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForLoss:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForDraw:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForNoResult:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForForfeitWin:
+          type: integer
+          format: int32
+          minimum: 0
+        bonusPointsEnabled:
+          type: boolean
+        bonusBattingOversThreshold:
+          type: integer
+          format: int32
+          minimum: 1
+        bonusBowlingRestrictionPercentage:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        additionalNotes:
+          type: string
+          maxLength: 4000
+      required:
+      - maxOversPerInnings
+      - pointsForDraw
+      - pointsForForfeitWin
+      - pointsForLoss
+      - pointsForNoResult
+      - pointsForWin
+      - powerplayOvers
     CreateLeagueAffiliationRequest:
       type: object
       properties:

@@ -23,6 +23,7 @@ const unaffiliateLeagueTeam = vi.fn()
 const listMatches = vi.fn()
 const getPlayingConditions = vi.fn()
 const uploadPlayingConditions = vi.fn()
+const updatePlayingConditions = vi.fn()
 
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
@@ -60,6 +61,8 @@ vi.mock('../../api/leaguePlayingConditionsApi', () => ({
     getPlayingConditions(clubId, leagueId, seasonId),
   uploadPlayingConditions: (clubId: string, leagueId: string, seasonId: string, file: File) =>
     uploadPlayingConditions(clubId, leagueId, seasonId, file),
+  updatePlayingConditions: (clubId: string, leagueId: string, seasonId: string, payload: unknown) =>
+    updatePlayingConditions(clubId, leagueId, seasonId, payload),
 }))
 
 function makeLeague(overrides: Partial<League> = {}): League {
@@ -352,17 +355,55 @@ describe('LeagueFormPage', () => {
       expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
     })
 
-    it('renders the Playing Conditions DocumentUpload control, empty by default', async () => {
+  })
+
+  // docs/specs/052-league-playing-conditions.md: promotes Playing Conditions out of the Schedule
+  // tab into its own 4th tab — the "Full Document" DocumentUpload control (relocated, unchanged
+  // capability) plus the new structured PlayingConditionsForm.
+  describe('Playing Conditions tab', () => {
+    function renderPlayingConditionsTab() {
+      return render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <MemoryRouter initialEntries={['/manage/fixtures/leagues/league-1/edit']}>
+            <Routes>
+              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
+                <Route path="leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+    }
+
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+      listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+      listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+    })
+
+    it('renders the Playing Conditions DocumentUpload control under a "Full Document" heading, empty by default', async () => {
       const user = userEvent.setup()
       getPlayingConditions.mockResolvedValue(null)
 
-      renderScheduleTab()
+      renderPlayingConditionsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+
+      expect(await screen.findByText('Full Document')).toBeInTheDocument()
+      expect(await screen.findByText('No document uploaded yet')).toBeInTheDocument()
+    })
+
+    it('does not render the DocumentUpload control under the Schedule tab any more', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue(null)
+
+      renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Schedule' }))
 
-      expect(await screen.findByText('Playing Conditions')).toBeInTheDocument()
-      expect(await screen.findByText('No document uploaded yet')).toBeInTheDocument()
+      expect(screen.queryByText('No document uploaded yet')).not.toBeInTheDocument()
     })
 
     it('renders the uploaded Playing Conditions document with a View action once one exists', async () => {
@@ -374,12 +415,25 @@ describe('LeagueFormPage', () => {
         documentUrl: '/media/2f6a1c9e-playing-conditions.pdf',
         uploadedAt: '2026-02-01T09:00:00Z',
         uploadedBy: null,
+        maxOversPerInnings: null,
+        powerplayOvers: null,
+        maxOversPerBowler: null,
+        fieldingRestrictionsNotes: null,
+        pointsForWin: null,
+        pointsForLoss: null,
+        pointsForDraw: null,
+        pointsForNoResult: null,
+        pointsForForfeitWin: null,
+        bonusPointsEnabled: false,
+        bonusBattingOversThreshold: null,
+        bonusBowlingRestrictionPercentage: null,
+        additionalNotes: null,
       })
 
-      renderScheduleTab()
+      renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
 
       expect(await screen.findByText('2f6a1c9e-playing-conditions.pdf')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
@@ -397,10 +451,10 @@ describe('LeagueFormPage', () => {
         uploadedBy: null,
       })
 
-      renderScheduleTab()
+      renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
       await screen.findByText('No document uploaded yet')
 
       const file = new File(['%PDF-1.4'], 'playing-conditions.pdf', { type: 'application/pdf' })
@@ -409,6 +463,72 @@ describe('LeagueFormPage', () => {
       await waitFor(() =>
         expect(uploadPlayingConditions).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', file),
       )
+    })
+
+    it('renders PlayingConditionsForm under a "Match Format & Points" heading and saves via updatePlayingConditions', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue(null)
+      updatePlayingConditions.mockResolvedValueOnce({
+        id: 'pc-1',
+        leagueId: 'league-1',
+        seasonId: 'season-1',
+        documentUrl: null,
+        uploadedAt: null,
+        uploadedBy: null,
+        maxOversPerInnings: 20,
+        powerplayOvers: 6,
+        maxOversPerBowler: null,
+        fieldingRestrictionsNotes: null,
+        pointsForWin: 2,
+        pointsForLoss: 0,
+        pointsForDraw: 1,
+        pointsForNoResult: 1,
+        pointsForForfeitWin: 2,
+        bonusPointsEnabled: false,
+        bonusBattingOversThreshold: null,
+        bonusBowlingRestrictionPercentage: null,
+        additionalNotes: null,
+      })
+
+      renderPlayingConditionsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+
+      expect(await screen.findByText('Match Format & Points')).toBeInTheDocument()
+
+      await user.type(screen.getByLabelText('Max overs per innings'), '20')
+      await user.type(screen.getByLabelText('Powerplay overs'), '6')
+      await user.click(screen.getByRole('button', { name: 'Save Playing Conditions' }))
+
+      await waitFor(() =>
+        expect(updatePlayingConditions).toHaveBeenCalledWith(
+          'test-club-id',
+          'league-1',
+          'season-1',
+          expect.objectContaining({ maxOversPerInnings: 20, powerplayOvers: 6 }),
+        ),
+      )
+    })
+
+    // docs/specs/052-league-playing-conditions.md: a second, independent Share flow — never
+    // touches the Schedule tab's own ShareScheduleDialog/shareOpen state.
+    it('"Share" button on the Playing Conditions tab opens PlayingConditionsShareDialog, independent of the Schedule tab\'s own Share', async () => {
+      const user = userEvent.setup()
+      getPlayingConditions.mockResolvedValue(null)
+
+      renderPlayingConditionsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+
+      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+      expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
+
+      await user.click(await screen.findByRole('button', { name: 'Share' }))
+
+      expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
+      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
     })
   })
 

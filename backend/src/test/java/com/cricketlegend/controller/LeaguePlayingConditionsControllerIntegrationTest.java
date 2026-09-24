@@ -4,6 +4,7 @@ import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,6 +56,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Import(AbstractIntegrationTest.class)
 @Transactional
 class LeaguePlayingConditionsControllerIntegrationTest {
+
+    private static final String VALID_STRUCTURED_FIELDS_BODY =
+            """
+            {
+                "maxOversPerInnings": 20,
+                "powerplayOvers": 6,
+                "maxOversPerBowler": 4,
+                "fieldingRestrictionsNotes": "Two fielders outside the circle in the powerplay.",
+                "pointsForWin": 2,
+                "pointsForLoss": 0,
+                "pointsForDraw": 1,
+                "pointsForNoResult": 1,
+                "pointsForForfeitWin": 2,
+                "bonusPointsEnabled": true,
+                "bonusBattingOversThreshold": 17,
+                "bonusBowlingRestrictionPercentage": 80,
+                "additionalNotes": "No DLS below 5 overs a side."
+            }
+            """;
 
     @Autowired
     private MockMvc mockMvc;
@@ -249,6 +270,16 @@ class LeaguePlayingConditionsControllerIntegrationTest {
                         .file(file)
                         .with(admin))
                 .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                clubX.getId(),
+                                leagueY.getId(),
+                                seasonX.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_STRUCTURED_FIELDS_BODY))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -277,6 +308,217 @@ class LeaguePlayingConditionsControllerIntegrationTest {
                         .file(file)
                         .with(admin))
                 .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                clubX.getId(),
+                                leagueX.getId(),
+                                seasonY.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_STRUCTURED_FIELDS_BODY))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- update() (PUT) — docs/specs/052-league-playing-conditions.md ---
+
+    @Test
+    void aFirstStructuredOnlySaveReturns200WithTheSavedFieldsAndNullPdfFields() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_STRUCTURED_FIELDS_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.leagueId").value(league.getId().toString()))
+                .andExpect(jsonPath("$.seasonId").value(season.getId().toString()))
+                .andExpect(jsonPath("$.maxOversPerInnings").value(20))
+                .andExpect(jsonPath("$.powerplayOvers").value(6))
+                .andExpect(jsonPath("$.maxOversPerBowler").value(4))
+                .andExpect(jsonPath("$.pointsForWin").value(2))
+                .andExpect(jsonPath("$.bonusPointsEnabled").value(true))
+                .andExpect(jsonPath("$.bonusBattingOversThreshold").value(17))
+                .andExpect(jsonPath("$.bonusBowlingRestrictionPercentage").value(80))
+                .andExpect(jsonPath("$.documentUrl").doesNotExist())
+                .andExpect(jsonPath("$.uploadedAt").doesNotExist())
+                .andExpect(jsonPath("$.uploadedBy").doesNotExist());
+
+        assertThat(leaguePlayingConditionsRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aSaveAgainstARowThatAlreadyHasAPdfLeavesThePdfFieldsUntouched() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        MockMultipartFile file =
+                new MockMultipartFile("file", "rules.pdf", "application/pdf", "fake-pdf-bytes".getBytes());
+
+        String uploadResponse = mockMvc.perform(multipart(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .file(file)
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String documentUrl = com.jayway.jsonpath.JsonPath.read(uploadResponse, "$.documentUrl");
+        String uploadedAt = com.jayway.jsonpath.JsonPath.read(uploadResponse, "$.uploadedAt");
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_STRUCTURED_FIELDS_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documentUrl").value(documentUrl))
+                .andExpect(jsonPath("$.uploadedAt").value(uploadedAt))
+                .andExpect(jsonPath("$.maxOversPerInnings").value(20));
+
+        assertThat(leaguePlayingConditionsRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void updateWithPowerplayOversGreaterThanMaxOversPerInningsIsRejectedWith400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String body =
+                """
+                {
+                    "maxOversPerInnings": 20,
+                    "powerplayOvers": 21,
+                    "pointsForWin": 2,
+                    "pointsForLoss": 0,
+                    "pointsForDraw": 1,
+                    "pointsForNoResult": 1,
+                    "pointsForForfeitWin": 2,
+                    "bonusPointsEnabled": false
+                }
+                """;
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateWithMaxOversPerBowlerGreaterThanMaxOversPerInningsIsRejectedWith400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String body =
+                """
+                {
+                    "maxOversPerInnings": 20,
+                    "powerplayOvers": 6,
+                    "maxOversPerBowler": 21,
+                    "pointsForWin": 2,
+                    "pointsForLoss": 0,
+                    "pointsForDraw": 1,
+                    "pointsForNoResult": 1,
+                    "pointsForForfeitWin": 2,
+                    "bonusPointsEnabled": false
+                }
+                """;
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateWithBonusPointsEnabledAndANullThresholdIsRejectedWith400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String body =
+                """
+                {
+                    "maxOversPerInnings": 20,
+                    "powerplayOvers": 6,
+                    "pointsForWin": 2,
+                    "pointsForLoss": 0,
+                    "pointsForDraw": 1,
+                    "pointsForNoResult": 1,
+                    "pointsForForfeitWin": 2,
+                    "bonusPointsEnabled": true,
+                    "bonusBowlingRestrictionPercentage": 80
+                }
+                """;
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateWithBonusBattingOversThresholdGreaterThanMaxOversPerInningsIsRejectedWith400() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+        Season season = seasonRepository.save(newSeason(club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String body =
+                """
+                {
+                    "maxOversPerInnings": 20,
+                    "powerplayOvers": 6,
+                    "pointsForWin": 2,
+                    "pointsForLoss": 0,
+                    "pointsForDraw": 1,
+                    "pointsForNoResult": 1,
+                    "pointsForForfeitWin": 2,
+                    "bonusPointsEnabled": true,
+                    "bonusBattingOversThreshold": 21,
+                    "bonusBowlingRestrictionPercentage": 80
+                }
+                """;
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions",
+                                club.getId(),
+                                league.getId(),
+                                season.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -95,6 +95,57 @@ class LeaguePlayingConditionsRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    /**
+     * docs/specs/052-league-playing-conditions.md — a row can now be saved with only the
+     * structured Match Format/Points/Bonus Points fields and no PDF ever uploaded (every PDF-only
+     * column left null), proving {@code document_url}/{@code uploaded_at} genuinely accept null
+     * at the DB level after the {@code 027} migration relaxed their {@code NOT NULL} constraint.
+     */
+    @Test
+    void aStructuredOnlyRowWithEveryPdfFieldNullPersistsAndRoundTripsCorrectly() {
+        Club club = savedClub("riverside-cc");
+        League league = savedLeague(club.getId());
+        Season season = savedSeason(club.getId());
+
+        LeaguePlayingConditions saved = leaguePlayingConditionsRepository.saveAndFlush(LeaguePlayingConditions
+                .builder()
+                .leagueId(league.getId())
+                .seasonId(season.getId())
+                .maxOversPerInnings(20)
+                .powerplayOvers(6)
+                .maxOversPerBowler(4)
+                .fieldingRestrictionsNotes("Two fielders outside the circle in the powerplay.")
+                .pointsForWin(2)
+                .pointsForLoss(0)
+                .pointsForDraw(1)
+                .pointsForNoResult(1)
+                .pointsForForfeitWin(2)
+                .bonusPointsEnabled(true)
+                .bonusBattingOversThreshold(17)
+                .bonusBowlingRestrictionPercentage(80)
+                .additionalNotes("No DLS below 5 overs a side.")
+                .build());
+
+        assertThat(saved.getDocumentUrl()).isNull();
+        assertThat(saved.getUploadedAt()).isNull();
+        assertThat(saved.getUploadedBy()).isNull();
+
+        LeaguePlayingConditions roundTripped = leaguePlayingConditionsRepository
+                .findByLeagueIdAndSeasonId(league.getId(), season.getId())
+                .orElseThrow();
+
+        assertThat(roundTripped.getDocumentUrl()).isNull();
+        assertThat(roundTripped.getUploadedAt()).isNull();
+        assertThat(roundTripped.getUploadedBy()).isNull();
+        assertThat(roundTripped.getMaxOversPerInnings()).isEqualTo(20);
+        assertThat(roundTripped.getPowerplayOvers()).isEqualTo(6);
+        assertThat(roundTripped.getMaxOversPerBowler()).isEqualTo(4);
+        assertThat(roundTripped.isBonusPointsEnabled()).isTrue();
+        assertThat(roundTripped.getBonusBattingOversThreshold()).isEqualTo(17);
+        assertThat(roundTripped.getBonusBowlingRestrictionPercentage()).isEqualTo(80);
+        assertThat(roundTripped.getAdditionalNotes()).isEqualTo("No DLS below 5 overs a side.");
+    }
+
     @Test
     void theSameLeagueCanHavePlayingConditionsAcrossDifferentSeasons() {
         Club club = savedClub("riverside-cc");
