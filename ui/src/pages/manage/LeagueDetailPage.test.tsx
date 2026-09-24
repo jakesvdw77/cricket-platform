@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueDetailPage from './LeagueDetailPage'
@@ -14,6 +15,7 @@ const listSeasons = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
 const listMatches = vi.fn()
+const getPlayingConditions = vi.fn()
 
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
@@ -35,6 +37,13 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
 // reuses listMatches unmodified from the existing matchApi.
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
+// The shared season-picker's own Playing Conditions link — resolves the selected season's
+// document, if any (see LeagueDetailPage.tsx's headerNote).
+vi.mock('../../api/leaguePlayingConditionsApi', () => ({
+  getPlayingConditions: (clubId: string, leagueId: string, seasonId: string) =>
+    getPlayingConditions(clubId, leagueId, seasonId),
 }))
 
 function makeLeague(overrides: Partial<League> = {}): League {
@@ -131,6 +140,7 @@ beforeEach(() => {
   listTeamsForClub.mockResolvedValue([])
   listLeagueAffiliations.mockResolvedValue([])
   listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
+  getPlayingConditions.mockResolvedValue(null)
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -257,5 +267,82 @@ describe('LeagueDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Internal League' })
     expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
+  })
+
+  // docs/specs/051-league-schedule-sharing.md item 7: NextMatchCountdown renders above
+  // LeagueFixtures whenever the season's own match list has an upcoming (strictly future-dated)
+  // fixture, and renders nothing at all otherwise — LeagueFixtures' own EmptyState already covers
+  // "nothing scheduled".
+  it('renders NextMatchCountdown above LeagueFixtures when an upcoming match exists', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
+    listMatches.mockResolvedValueOnce({
+      content: [
+        makeMatch({
+          id: 'match-future',
+          homeTeamId: 'team-1',
+          awayTeamName: 'Riverside Occasionals',
+          // Far enough in the future to stay "upcoming" for the lifetime of this test.
+          matchDate: '2030-06-01T14:30:00Z',
+        }),
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    const countdownLabel = await screen.findByText('Next match')
+    const fixturesEntry = screen.getByText('1st XI')
+
+    expect(countdownLabel.compareDocumentPosition(fixturesEntry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('renders no NextMatchCountdown card when the season has no upcoming (future-dated) match', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
+    listMatches.mockResolvedValueOnce({
+      content: [
+        makeMatch({
+          id: 'match-past',
+          homeTeamId: 'team-1',
+          awayTeamName: 'Riverside Occasionals',
+          matchDate: '2020-06-01T14:30:00Z',
+        }),
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    await screen.findByText('1st XI')
+    expect(screen.queryByText('Next match')).not.toBeInTheDocument()
+  })
+
+  // docs/specs/051-league-schedule-sharing.md item 7: the Fixtures section's own "note" slot
+  // Share button opens ShareScheduleDialog, rather than widening RecordDetailScreen's own
+  // link-only secondaryActions contract.
+  it('opens ShareScheduleDialog from the Fixtures section\'s Share button', async () => {
+    const user = userEvent.setup()
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Share' }))
+
+    expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
   })
 })
