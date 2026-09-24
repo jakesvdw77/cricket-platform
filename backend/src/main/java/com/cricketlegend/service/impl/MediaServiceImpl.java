@@ -19,6 +19,12 @@ import org.springframework.web.multipart.MultipartFile;
  * uploaded — everything else is rejected, not silently accepted or stored. Local-disk storage is
  * a known, deliberately-flagged limitation (doesn't survive/scale across multiple backend
  * instances), not a finished decision — see the spec's Rollout Notes.
+ *
+ * <p>Per docs/specs/050-league-schedule-and-fixtures.md: the storage plumbing (content-type check,
+ * UUID filename, {@code Files.createDirectories}/{@code Files.copy}) lives in {@link
+ * #upload(MultipartFile, Map)}; {@link #upload(MultipartFile)} is now a thin delegate to it using
+ * {@link #ALLOWED_CONTENT_TYPES}, preserving its own behavior byte-for-byte for every existing
+ * image-upload caller.
  */
 @Service
 public class MediaServiceImpl implements MediaService {
@@ -34,8 +40,13 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     public MediaUploadResponse upload(MultipartFile file) {
+        return upload(file, ALLOWED_CONTENT_TYPES);
+    }
+
+    @Override
+    public MediaUploadResponse upload(MultipartFile file, Map<String, String> allowedContentTypes) {
         String contentType = file.getContentType();
-        String extension = contentType == null ? null : ALLOWED_CONTENT_TYPES.get(contentType);
+        String extension = contentType == null ? null : allowedContentTypes.get(contentType);
         if (extension == null) {
             throw new UnsupportedMediaTypeException("Unsupported media type: " + contentType);
         }

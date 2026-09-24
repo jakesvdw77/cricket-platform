@@ -6,12 +6,14 @@ import LeagueDetailPage from './LeagueDetailPage'
 import type { League } from '../../api/leagueApi'
 import type { Season } from '../../api/seasonApi'
 import type { Team } from '../../api/teamApi'
+import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 
 const listLeagues = vi.fn()
 const listSeasons = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
+const listMatches = vi.fn()
 
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: (clubId: string) => listLeagues(clubId),
@@ -29,6 +31,12 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
   listLeagueAffiliations: (clubId: string, leagueId: string) => listLeagueAffiliations(clubId, leagueId),
 }))
 
+// docs/specs/050-league-schedule-and-fixtures.md: the new Fixtures section's own match data —
+// reuses listMatches unmodified from the existing matchApi.
+vi.mock('../../api/matchApi', () => ({
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
 function makeLeague(overrides: Partial<League> = {}): League {
   return {
     id: 'league-1',
@@ -44,6 +52,9 @@ function makeLeague(overrides: Partial<League> = {}): League {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    currentSeasonTeamCount: 1,
+    currentSeasonLabel: '2026',
+    currentSeasonPlayingConditionsUrl: null,
     ...overrides,
   }
 }
@@ -90,11 +101,36 @@ function makeAffiliation(overrides: Partial<LeagueAffiliation> = {}): LeagueAffi
   }
 }
 
+function makeMatch(overrides: Partial<Match> = {}): Match {
+  return {
+    id: 'match-1',
+    clubId: 'test-club-id',
+    homeTeamId: 'team-1',
+    homeTeamName: null,
+    awayTeamId: null,
+    awayTeamName: 'Riverside Occasionals',
+    leagueId: 'league-1',
+    seasonId: 'season-1',
+    matchDate: '2026-06-01T14:30:00Z',
+    venue: 'Riverside Oval',
+    active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
+    homeTeamLogoUrl: null,
+    awayTeamLogoUrl: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSeasons.mockResolvedValue([])
   listTeamsForClub.mockResolvedValue([])
   listLeagueAffiliations.mockResolvedValue([])
+  listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -175,5 +211,51 @@ describe('LeagueDetailPage', () => {
     renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
 
     expect(await screen.findByText("Couldn't load this league")).toBeInTheDocument()
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 2/7/30: the Affiliations→Teams rename and
+  // the new Fixtures section, rendering LeagueFixtures for the page's own selected season.
+  it('renders the "Teams" section heading, not "Affiliations"', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.getByText('Teams')).toBeInTheDocument()
+    expect(screen.queryByText('Affiliations')).not.toBeInTheDocument()
+  })
+
+  it('renders a new Fixtures section showing LeagueFixtures for the selected season', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
+    listMatches.mockResolvedValueOnce({
+      content: [makeMatch({ homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.getByText('Fixtures')).toBeInTheDocument()
+    expect(await screen.findByText('1st XI')).toBeInTheDocument()
+    expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
+    expect(listMatches).toHaveBeenCalledWith(
+      'test-club-id',
+      expect.objectContaining({ leagueId: 'league-1', seasonId: 'season-1' }),
+    )
+  })
+
+  it('renders the LeagueFixtures empty state in the Fixtures section when the season has no matches', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
   })
 })

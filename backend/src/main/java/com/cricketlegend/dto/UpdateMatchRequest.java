@@ -7,13 +7,17 @@ import java.util.UUID;
 /**
  * PUT /api/v1/manage/clubs/{clubId}/matches/{matchId} payload — rescheduling, changing
  * venue/opponent/league/season are all just an edit, no separate "reschedule" action. Same
- * validation as {@link CreateMatchRequest}. See docs/specs/029-league-management.md.
+ * validation as {@link CreateMatchRequest}, including {@code homeTeamLogoUrl}/{@code
+ * awayTeamLogoUrl}'s logo-only-alongside-matching-name rule (docs/specs/050-league-schedule-and-
+ * fixtures.md). See docs/specs/029-league-management.md.
  */
 public record UpdateMatchRequest(
         UUID homeTeamId,
         String homeTeamName,
         UUID awayTeamId,
         String awayTeamName,
+        String homeTeamLogoUrl,
+        String awayTeamLogoUrl,
         UUID leagueId,
         @NotNull UUID seasonId,
         @NotNull Instant matchDate,

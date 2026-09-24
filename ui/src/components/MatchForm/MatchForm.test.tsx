@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchForm, MATCH_FORM_ID } from './MatchForm'
 import type { MatchFormProps } from './MatchForm'
 import type { MatchPayload } from '../../api/matchApi'
@@ -8,6 +8,17 @@ import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+
+// docs/specs/050-league-schedule-and-fixtures.md: MatchForm's per-side external-opponent logo
+// renders via the real MediaUpload component (namespace="manage"), so its own uploadManagedMedia
+// call needs mocking here the same way MediaUpload.test.tsx mocks it directly.
+const uploadMedia = vi.fn()
+const uploadManagedMedia = vi.fn()
+
+vi.mock('../../api/mediaApi', () => ({
+  uploadMedia: (file: File) => uploadMedia(file),
+  uploadManagedMedia: (file: File) => uploadManagedMedia(file),
+}))
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
@@ -54,6 +65,9 @@ function makeLeague(overrides: Partial<League> = {}): League {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    currentSeasonTeamCount: 2,
+    currentSeasonLabel: '2026',
+    currentSeasonPlayingConditionsUrl: null,
     ...overrides,
   }
 }
@@ -77,6 +91,10 @@ const TEAMS: Team[] = [
 ]
 const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
 const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Submit') {
   const merged: MatchFormProps = {
@@ -240,6 +258,77 @@ describe('MatchForm', () => {
       expect(screen.getByLabelText('Home team')).toHaveTextContent('O/13A')
       await user.click(screen.getByLabelText('Home team'))
       expect(await screen.findByRole('option', { name: 'O/13A' })).toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 22: an external-opponent side's optional
+  // logo, captured via the same MediaUpload control TeamForm already uses.
+  describe('external-opponent logo', () => {
+    it('renders the Logo MediaUpload field only for a side in "External opponent" mode', async () => {
+      const user = userEvent.setup()
+      renderMatchForm()
+
+      // Both sides default to "One of our teams" — no Logo field anywhere yet.
+      expect(screen.queryByText('Logo')).not.toBeInTheDocument()
+
+      const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+      await user.click(externalButtons[0])
+
+      expect(screen.getByText('Logo')).toBeInTheDocument()
+      expect(screen.getByLabelText('Logo file')).toBeInTheDocument()
+
+      // Away side is still "One of our teams" — only one Logo field renders, not two.
+      expect(screen.getAllByText('Logo')).toHaveLength(1)
+    })
+
+    it('clears the side\'s uploaded logo when its toggle switches back to "One of our teams"', async () => {
+      const user = userEvent.setup()
+      uploadManagedMedia.mockResolvedValueOnce({ url: '/media/managed/opponent-logo.png' })
+      renderMatchForm()
+
+      const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+      await user.click(externalButtons[0])
+
+      const file = new File(['logo'], 'logo.png', { type: 'image/png' })
+      await user.upload(screen.getByLabelText('Logo file'), file)
+      expect(await screen.findByRole('button', { name: 'Replace' })).toBeInTheDocument()
+
+      // Toggle home back to "One of our teams", then to "External opponent" again — the logo
+      // must be gone (a fresh "Upload Logo" empty state, not "Replace").
+      const teamButtons = screen.getAllByRole('button', { name: 'One of our teams' })
+      await user.click(teamButtons[0])
+      await user.click(screen.getAllByRole('button', { name: 'External opponent' })[0])
+
+      expect(screen.getByRole('button', { name: 'Upload Logo' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument()
+    })
+
+    it('submits the uploaded logo only for the external side, never for a real-Team side', async () => {
+      const user = userEvent.setup()
+      uploadManagedMedia.mockResolvedValueOnce({ url: '/media/managed/riverside-logo.png' })
+      const onSubmit = vi.fn()
+      renderMatchForm({ onSubmit })
+
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2026' }))
+
+      await user.click(screen.getByLabelText('Home team'))
+      await user.click(await screen.findByRole('option', { name: '1st XI' }))
+
+      await user.click(screen.getAllByRole('button', { name: 'External opponent' })[1])
+      await user.type(screen.getByLabelText('Away opponent name'), 'Riverside Occasionals')
+
+      const file = new File(['logo'], 'logo.png', { type: 'image/png' })
+      await user.upload(screen.getByLabelText('Logo file'), file)
+      await screen.findByRole('button', { name: 'Replace' })
+
+      await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledTimes(1)
+      const payload = onSubmit.mock.calls[0][0] as MatchPayload
+      expect(payload.awayTeamLogoUrl).toEqual('/media/managed/riverside-logo.png')
+      expect(payload.homeTeamLogoUrl).toBeNull()
     })
   })
 })

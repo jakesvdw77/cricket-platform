@@ -740,6 +740,15 @@ export default function MatchFormPage() {
 
   const match = matchQuery.data
   const toggle = match?.active ? deactivate : reactivate
+
+  // docs/specs/050-league-schedule-and-fixtures.md: LeagueFormPage's Schedule tab's own "Add
+  // Match" shortcut pre-fills League and Season via query params on this same create route
+  // (/manage/fixtures/matches/new?leagueId=&seasonId=), read here rather than router `state` so
+  // the prefill survives a refresh — matching this codebase's existing ?tab=playing-xi/
+  // ?tab=availability query-param deep-linking convention above. Create mode only — an existing
+  // edit's own values (from `match`) are never overridden by a stray query param.
+  const prefillLeagueId = !isEdit ? searchParams.get('leagueId') : null
+  const prefillSeasonId = !isEdit ? searchParams.get('seasonId') : null
   const league = useMemo(
     () => (match?.leagueId ? (leaguesQuery.data ?? []).find((candidate) => candidate.id === match.leagueId) : undefined),
     [match?.leagueId, leaguesQuery.data],
@@ -864,14 +873,18 @@ export default function MatchFormPage() {
               ? {
                   homeTeamId: match.homeTeamId,
                   homeTeamName: match.homeTeamName,
+                  homeTeamLogoUrl: match.homeTeamLogoUrl,
                   awayTeamId: match.awayTeamId,
                   awayTeamName: match.awayTeamName,
+                  awayTeamLogoUrl: match.awayTeamLogoUrl,
                   leagueId: match.leagueId,
                   seasonId: match.seasonId,
                   matchDate: match.matchDate,
                   venue: match.venue,
                 }
-              : undefined
+              : prefillLeagueId || prefillSeasonId
+                ? { leagueId: prefillLeagueId ?? undefined, seasonId: prefillSeasonId ?? undefined }
+                : undefined
           }
           teams={teamsQuery.data ?? []}
           seasons={seasonsQuery.data ?? []}

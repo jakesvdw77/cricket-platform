@@ -20,6 +20,12 @@ export interface League {
   createdAt: string
   updatedAt: string
   updatedBy: string | null
+  // docs/specs/050-league-schedule-and-fixtures.md: computed (non-persisted) fields, resolved
+  // server-side against the club's own current Season (LeagueServiceImpl.list) — never sent on a
+  // create/update payload, read-only summary data for LeagueList's card badges/footer action.
+  currentSeasonTeamCount: number
+  currentSeasonLabel: string | null
+  currentSeasonPlayingConditionsUrl: string | null
 }
 
 // Same shape for create and update — CreateLeagueRequest/UpdateLeagueRequest are byte-for-byte

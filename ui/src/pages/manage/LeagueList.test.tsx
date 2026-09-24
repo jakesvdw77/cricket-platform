@@ -36,6 +36,9 @@ function makeLeague(overrides: Partial<League> = {}): League {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    currentSeasonTeamCount: 0,
+    currentSeasonLabel: null,
+    currentSeasonPlayingConditionsUrl: null,
     ...overrides,
   }
 }
@@ -198,5 +201,74 @@ describe('LeagueList', () => {
     expect(screen.getByText('Retired League')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 1: leagueSeasonBadges' two badges,
+  // rendered via RecordCard's own badges prop.
+  describe('season badges', () => {
+    it('renders both the team-count and season-label badges when the club has a current season', async () => {
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', currentSeasonTeamCount: 6, currentSeasonLabel: '2026/2027' }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      expect(screen.getByText('6 teams')).toBeInTheDocument()
+      expect(screen.getByText('2026/2027')).toBeInTheDocument()
+    })
+
+    it('singularizes the team-count badge label for exactly one team', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', currentSeasonTeamCount: 1, currentSeasonLabel: '2026' })])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      expect(screen.getByText('1 team')).toBeInTheDocument()
+    })
+
+    it('omits the season-label badge entirely (not blank) when the club has no current season', async () => {
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', currentSeasonTeamCount: 0, currentSeasonLabel: null }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      expect(screen.getByText('0 teams')).toBeInTheDocument()
+      // The only other badge this card can show is Active/Inactive — confirms no empty/blank
+      // season badge slipped through instead of being omitted outright.
+      expect(screen.queryByText('Inactive')).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 8: the conditional "Playing Conditions"
+  // card footer action — mirrors MatchList.tsx's own "Team Sheet"/window.open precedent, but
+  // this one opens the URL directly (no dialog in between).
+  describe('Playing Conditions action', () => {
+    it('renders the action and opens the document URL in a new tab when currentSeasonPlayingConditionsUrl is set', async () => {
+      const user = userEvent.setup()
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', currentSeasonPlayingConditionsUrl: '/media/2f6a1c9e-playing-conditions.pdf' }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      await user.click(screen.getByRole('button', { name: 'Playing Conditions' }))
+
+      expect(openSpy).toHaveBeenCalledWith('/media/2f6a1c9e-playing-conditions.pdf', '_blank')
+      openSpy.mockRestore()
+    })
+
+    it('does not render the action at all when currentSeasonPlayingConditionsUrl is null', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', currentSeasonPlayingConditionsUrl: null })])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      expect(screen.queryByRole('button', { name: 'Playing Conditions' })).not.toBeInTheDocument()
+    })
   })
 })

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import AddIcon from '@mui/icons-material/Add'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
@@ -12,17 +13,21 @@ import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
+import { LeagueFixtures } from '../../components/LeagueFixtures'
+import { DocumentUpload } from '../../components/DocumentUpload'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
+import { listMatches } from '../../api/matchApi'
 import {
   listLeagueAffiliations,
   createLeagueAffiliation,
   unaffiliateLeagueTeam,
 } from '../../api/leagueAffiliationApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import { getPlayingConditions, uploadPlayingConditions } from '../../api/leaguePlayingConditionsApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
@@ -105,6 +110,31 @@ export default function LeagueFormPage() {
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'],
     queryFn: () => listLeagueAffiliations(clubId as string, leagueId as string),
     enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
+  // list, rendered via the reusable LeagueFixtures component — reuses the existing
+  // listMatches(leagueId, seasonId) filter combination, no new endpoint.
+  const matchesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues', leagueId, 'matches', selectedSeasonId],
+    queryFn: () => listMatches(clubId as string, { page: 0, leagueId: leagueId as string, seasonId: selectedSeasonId }),
+    enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId) && isEdit,
+  })
+
+  const playingConditionsQueryKey = [
+    'managed-club',
+    clubId,
+    'leagues',
+    leagueId,
+    'seasons',
+    selectedSeasonId,
+    'playing-conditions',
+  ]
+
+  const playingConditionsQuery = useQuery({
+    queryKey: playingConditionsQueryKey,
+    queryFn: () => getPlayingConditions(clubId as string, leagueId as string, selectedSeasonId),
+    enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId) && isEdit,
   })
 
   // Defaults the Season picker to whichever season contains today, else the most recently
@@ -231,7 +261,8 @@ export default function LeagueFormPage() {
               sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
             >
               <Tab label="Details" />
-              <Tab label="Affiliations" />
+              <Tab label="Teams" />
+              <Tab label="Schedule" />
             </Tabs>
           </Box>
         )}
@@ -320,6 +351,67 @@ export default function LeagueFormPage() {
                   Add team
                 </Button>
               </>
+            )}
+          </Box>
+        )}
+
+        {isEdit && activeTab === 2 && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            {(seasonsQuery.data ?? []).length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Create a season first — matches are scheduled for a league and a specific season.
+              </Typography>
+            ) : (
+              <Stack spacing={4}>
+                <Input
+                  select
+                  label="Season"
+                  value={selectedSeasonId}
+                  onChange={(event) => setSelectedSeasonId(event.target.value)}
+                  sx={{ maxWidth: 280 }}
+                >
+                  {(seasonsQuery.data ?? []).map((season) => (
+                    <MenuItem key={season.id} value={season.id}>
+                      {season.label}
+                    </MenuItem>
+                  ))}
+                </Input>
+
+                <DocumentUpload
+                  label="Playing Conditions"
+                  value={
+                    playingConditionsQuery.data
+                      ? {
+                          documentUrl: playingConditionsQuery.data.documentUrl,
+                          uploadedAt: playingConditionsQuery.data.uploadedAt,
+                        }
+                      : null
+                  }
+                  onUpload={(file) =>
+                    uploadPlayingConditions(clubId as string, leagueId as string, selectedSeasonId, file).then(
+                      (response) => response.documentUrl,
+                    )
+                  }
+                  onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
+                />
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    startIcon={<AddIcon fontSize="small" />}
+                    onClick={() =>
+                      navigate(`/manage/fixtures/matches/new?leagueId=${leagueId}&seasonId=${selectedSeasonId}`)
+                    }
+                    disabled={!selectedSeasonId}
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    Add Match
+                  </Button>
+
+                  <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
+                </Box>
+              </Stack>
             )}
           </Box>
         )}

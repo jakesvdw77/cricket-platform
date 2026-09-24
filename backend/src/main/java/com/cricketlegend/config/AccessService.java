@@ -77,6 +77,28 @@ public class AccessService {
         this.teamRepository = teamRepository;
     }
 
+    /**
+     * Resolves the calling {@link Person}'s own {@code id} from {@code authentication} (via the
+     * JWT-subject-as-name lookup, {@code personRepository.findByKeycloakUserId(authentication
+     * .getName())} — the same mechanism {@link #canAdministerClub}/{@link #accessibleSectionIds}
+     * already use internally to resolve "who is calling"), or {@code null} when there's no
+     * authenticated caller or no matching {@link Person} row. Per
+     * docs/specs/050-league-schedule-and-fixtures.md: no service in this codebase populates an
+     * {@code updatedBy}/{@code createdBy}/{@code uploadedBy} audit column from the current
+     * principal today (every such column exists on its entity but stays {@code null} — confirmed
+     * by inspection across {@code League}/{@code Match}/{@code LeagueAffiliation}/{@code
+     * PublicAvailabilityPollServiceImpl}'s own Javadoc, "no authenticated identity on this write
+     * path"); this is the first real wiring, reusing {@code PersonRepository}'s existing lookup
+     * rather than duplicating it or reaching into the repository layer from a controller (which
+     * docs/standards/backend.md disallows).
+     */
+    public UUID resolveCurrentPersonId(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        return personRepository.findByKeycloakUserId(authentication.getName()).map(Person::getId).orElse(null);
+    }
+
     public boolean isPlatformAdmin(Authentication authentication) {
         if (authentication == null) {
             return false;

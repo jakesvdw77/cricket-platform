@@ -10,11 +10,13 @@ import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from '../../compo
 import { RecordCard } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
+import { LeagueFixtures } from '../../components/LeagueFixtures'
 import { listLeagues } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
+import { listMatches } from '../../api/matchApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { initialsFromName } from '../../utils/initials'
 import { badgeFor } from './LeagueList'
@@ -57,6 +59,15 @@ export default function LeagueDetailPage() {
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'],
     queryFn: () => listLeagueAffiliations(clubId as string, leagueId as string),
     enabled: Boolean(clubId) && Boolean(leagueId),
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md: the Fixtures section's own season-scoped match
+  // list, rendered via the reusable LeagueFixtures component — reuses the existing
+  // listMatches(leagueId, seasonId) filter combination, no new endpoint.
+  const matchesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues', leagueId, 'matches', selectedSeasonId],
+    queryFn: () => listMatches(clubId as string, { page: 0, leagueId: leagueId as string, seasonId: selectedSeasonId }),
+    enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId),
   })
 
   useEffect(() => {
@@ -125,7 +136,7 @@ export default function LeagueDetailPage() {
           ),
         },
         {
-          heading: 'Affiliations',
+          heading: 'Teams',
           note:
             (seasonsQuery.data ?? []).length > 0 ? (
               <Input
@@ -169,6 +180,33 @@ export default function LeagueDetailPage() {
                   )
                 })}
               </Box>
+            ),
+        },
+        {
+          heading: 'Fixtures',
+          note:
+            (seasonsQuery.data ?? []).length > 0 ? (
+              <Input
+                select
+                label="Season"
+                value={selectedSeasonId}
+                onChange={(event) => setSelectedSeasonId(event.target.value)}
+                sx={{ maxWidth: 280 }}
+              >
+                {(seasonsQuery.data ?? []).map((season) => (
+                  <MenuItem key={season.id} value={season.id}>
+                    {season.label}
+                  </MenuItem>
+                ))}
+              </Input>
+            ) : undefined,
+          content:
+            (seasonsQuery.data ?? []).length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No seasons yet — matches are scheduled for a league and a specific season.
+              </Typography>
+            ) : (
+              <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
             ),
         },
       ]}

@@ -3,6 +3,7 @@ import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
@@ -20,6 +21,23 @@ export function badgeFor(league: League): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
+}
+
+// docs/specs/050-league-schedule-and-fixtures.md: two badges reflecting the club's own current
+// Season — team-count always present, season-label only when the club has a current season at all
+// (omitted entirely rather than rendered blank). Coexists with badgeFor's own single Active/
+// Inactive `badge`, per 040's existing badge+badges co-rendering.
+export function leagueSeasonBadges(league: League): RecordCardBadge[] {
+  const badges: RecordCardBadge[] = [
+    {
+      label: `${league.currentSeasonTeamCount} team${league.currentSeasonTeamCount === 1 ? '' : 's'}`,
+      tone: 'neutral',
+    },
+  ]
+  if (league.currentSeasonLabel) {
+    badges.push({ label: league.currentSeasonLabel, tone: 'muted' })
+  }
+  return badges
 }
 
 export function leagueRecordFields(league: League): RecordCardField[] {
@@ -50,10 +68,24 @@ function LeagueCard({ league }: { league: League }) {
       title={league.name}
       avatar={{ fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
       badge={badgeFor(league)}
+      badges={leagueSeasonBadges(league)}
       fields={leagueRecordFields(league)}
       chips={leagueChips(league)}
       viewTo={`/manage/fixtures/leagues/${league.id}`}
       editTo={`/manage/fixtures/leagues/${league.id}/edit`}
+      secondaryActions={[
+        ...(league.currentSeasonPlayingConditionsUrl
+          ? [
+              {
+                label: 'Playing Conditions',
+                pendingLabel: 'Opening…',
+                pending: false,
+                onClick: () => window.open(league.currentSeasonPlayingConditionsUrl as string, '_blank'),
+                icon: <DescriptionOutlinedIcon fontSize="small" />,
+              },
+            ]
+          : []),
+      ]}
     />
   )
 }

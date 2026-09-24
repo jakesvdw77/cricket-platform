@@ -1,7 +1,6 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
-import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
@@ -23,6 +22,7 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
+import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -49,10 +49,13 @@ import org.springframework.transaction.annotation.Transactional;
  * endpoint in this feature area (default sort {@code matchDate} descending when the caller
  * specifies none, mirroring {@code LeadServiceImpl.withDefaultSort}); {@code create}/{@code
  * update} validate exactly-one-of-team-id/team-name per side ({@link
- * #validateExactlyOneOfIdOrName}) ahead of the DB {@code CHECK} constraints, that {@code leagueId}
- * (when set)/{@code seasonId} each belong to {@code clubId}, and that {@code homeTeamId}/{@code
- * awayTeamId} (when set) reference a real {@code Team} of ANY club (cross-club references are
- * allowed for a real inter-club fixture); {@code club_id} saved on the {@link Match} is ALWAYS
+ * #validateExactlyOneOfIdOrName}) ahead of the DB {@code CHECK} constraints, and (per
+ * docs/specs/050-league-schedule-and-fixtures.md, {@link #validateLogoOnlyWithName}) that a side's
+ * {@code *TeamLogoUrl} is only set alongside that side's own {@code *TeamName}; that {@code
+ * leagueId} (when set)/{@code seasonId} each belong to {@code clubId}, and that {@code
+ * homeTeamId}/{@code awayTeamId} (when set) reference a real {@code Team} of ANY club (cross-club
+ * references are allowed for a real inter-club fixture); {@code club_id} saved on the {@link Match}
+ * is ALWAYS
  * {@code clubId} — the acting/creating club from the URL — NEVER derived from {@code
  * homeTeamId}'s own club, a deliberate conservative call (see the spec's dedicated Data Model
  * Changes note); {@code deactivate}/{@code reactivate} mirror every other entity's one-way
@@ -287,6 +290,7 @@ public class MatchServiceImpl implements MatchService {
                 .collect(Collectors.toMap(s -> s.getMatchId() + "|" + s.getTeamId(), MatchSide::isAnnounced));
         return page.map(dto -> new MatchDto(
                 dto.id(), dto.clubId(), dto.homeTeamId(), dto.homeTeamName(), dto.awayTeamId(), dto.awayTeamName(),
+                dto.homeTeamLogoUrl(), dto.awayTeamLogoUrl(),
                 dto.leagueId(), dto.seasonId(), dto.matchDate(), dto.venue(), dto.active(),
                 dto.homeTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.homeTeamId(), false),
                 dto.awayTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.awayTeamId(), false),
@@ -314,6 +318,8 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchDto create(Authentication authentication, UUID clubId, CreateMatchRequest request) {
         validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
+        validateLogoOnlyWithName(
+                request.homeTeamName(), request.homeTeamLogoUrl(), request.awayTeamName(), request.awayTeamLogoUrl());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
         accessService.assertCanAdministerAnySection(
@@ -327,6 +333,8 @@ public class MatchServiceImpl implements MatchService {
                 .homeTeamName(request.homeTeamName())
                 .awayTeamId(request.awayTeamId())
                 .awayTeamName(request.awayTeamName())
+                .homeTeamLogoUrl(request.homeTeamLogoUrl())
+                .awayTeamLogoUrl(request.awayTeamLogoUrl())
                 .leagueId(request.leagueId())
                 .seasonId(request.seasonId())
                 .matchDate(request.matchDate())
@@ -341,6 +349,8 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchDto update(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchRequest request) {
         validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
+        validateLogoOnlyWithName(
+                request.homeTeamName(), request.homeTeamLogoUrl(), request.awayTeamName(), request.awayTeamLogoUrl());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
 
@@ -350,6 +360,8 @@ public class MatchServiceImpl implements MatchService {
         match.setHomeTeamName(request.homeTeamName());
         match.setAwayTeamId(request.awayTeamId());
         match.setAwayTeamName(request.awayTeamName());
+        match.setHomeTeamLogoUrl(request.homeTeamLogoUrl());
+        match.setAwayTeamLogoUrl(request.awayTeamLogoUrl());
         match.setLeagueId(request.leagueId());
         match.setSeasonId(request.seasonId());
         match.setMatchDate(request.matchDate());
@@ -404,24 +416,37 @@ public class MatchServiceImpl implements MatchService {
         }
     }
 
+    /**
+     * Per docs/specs/050-league-schedule-and-fixtures.md: a side's logo may only be set alongside
+     * that side's free-text name (i.e. that side is an external opponent, {@code *TeamId} null) —
+     * never alongside a real {@code Team} id, whose logo already comes from {@code Team.logoUrl}
+     * resolved via the id. Mirrors {@link #validateExactlyOneOfIdOrName}'s existing posture (a
+     * clean {@link ValidationException} ahead of any DB-level check); called alongside {@link
+     * #validateSides} from both {@link #create}/{@link #update}.
+     */
+    private void validateLogoOnlyWithName(
+            String homeTeamName, String homeTeamLogoUrl, String awayTeamName, String awayTeamLogoUrl) {
+        validateLogoOnlyWithName(homeTeamName, homeTeamLogoUrl, "home");
+        validateLogoOnlyWithName(awayTeamName, awayTeamLogoUrl, "away");
+    }
+
+    private void validateLogoOnlyWithName(String teamName, String teamLogoUrl, String side) {
+        boolean hasLogo = teamLogoUrl != null && !teamLogoUrl.isBlank();
+        boolean hasName = teamName != null && !teamName.isBlank();
+        if (hasLogo && !hasName) {
+            throw new ValidationException(
+                    side + "TeamLogoUrl may only be set alongside " + side + "TeamName");
+        }
+    }
+
     private void validateLeagueAndSeason(UUID clubId, UUID leagueId, UUID seasonId) {
         if (leagueId != null) {
-            League league = leagueRepository
-                    .findById(leagueId)
-                    .orElseThrow(() -> new NotFoundException("League not found: " + leagueId));
-            if (!league.getClubId().equals(clubId)) {
-                throw new NotFoundException("League not found: " + leagueId);
-            }
+            LeagueSeasonAccessValidation.assertLeagueBelongsToClub(leagueRepository, leagueId, clubId);
         }
         if (seasonId == null) {
             throw new ValidationException("seasonId is required");
         }
-        Season season = seasonRepository
-                .findById(seasonId)
-                .orElseThrow(() -> new NotFoundException("Season not found: " + seasonId));
-        if (!season.getClubId().equals(clubId)) {
-            throw new NotFoundException("Season not found: " + seasonId);
-        }
+        LeagueSeasonAccessValidation.assertSeasonBelongsToClub(seasonRepository, seasonId, clubId);
     }
 
     private void validateTeamReferences(UUID homeTeamId, UUID awayTeamId) {

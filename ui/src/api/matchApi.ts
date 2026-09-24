@@ -36,6 +36,11 @@ export interface Match {
   active: boolean
   homeSideAnnounced: boolean
   awaySideAnnounced: boolean
+  // docs/specs/050-league-schedule-and-fixtures.md: a small logo/crest for a free-text ("external")
+  // opponent side — meaningful only alongside the matching *TeamName (a real Team's own avatar
+  // comes from Team.logoUrl, resolved via *TeamId, never both at once).
+  homeTeamLogoUrl: string | null
+  awayTeamLogoUrl: string | null
   createdAt: string
   updatedAt: string
   updatedBy: string | null
@@ -49,6 +54,10 @@ export interface MatchPayload {
   homeTeamName?: string | null
   awayTeamId?: string | null
   awayTeamName?: string | null
+  // docs/specs/050-league-schedule-and-fixtures.md: only ever sent alongside the matching
+  // *TeamName (never alongside the matching *TeamId) — 400 server-side otherwise.
+  homeTeamLogoUrl?: string | null
+  awayTeamLogoUrl?: string | null
   leagueId?: string | null
   seasonId: string
   matchDate: string

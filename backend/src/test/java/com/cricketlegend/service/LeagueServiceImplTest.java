@@ -7,7 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
+import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
@@ -15,8 +17,14 @@ import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeagueMapper;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
+import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.impl.LeagueServiceImpl;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +41,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * left null, the {@code minAge <= maxAge} validation, deactivate/reactivate's one-way transition
  * guard, and cross-club isolation. Per docs/standards/backend.md, every @Service method carrying
  * a business rule ships a unit test in the same change.
+ *
+ * <p>Per docs/specs/050-league-schedule-and-fixtures.md: {@code list()}'s three computed
+ * "current season" fields ({@code currentSeasonTeamCount}/{@code currentSeasonLabel}/{@code
+ * currentSeasonPlayingConditionsUrl}) and the current-season resolution rule itself (contains-
+ * today vs. most-recently-created fallback, mirroring {@code ui/src/utils/defaultSeason.ts}'s
+ * {@code pickDefaultSeasonId}).
  */
 @ExtendWith(MockitoExtension.class)
 class LeagueServiceImplTest {
@@ -41,24 +55,51 @@ class LeagueServiceImplTest {
     private LeagueRepository leagueRepository;
 
     @Mock
+    private SeasonRepository seasonRepository;
+
+    @Mock
+    private LeagueAffiliationRepository leagueAffiliationRepository;
+
+    @Mock
+    private LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
+
+    @Mock
     private LeagueMapper leagueMapper;
 
     private LeagueServiceImpl leagueService;
 
     @BeforeEach
     void setUp() {
-        leagueService = new LeagueServiceImpl(leagueRepository, leagueMapper);
+        leagueService = new LeagueServiceImpl(
+                leagueRepository, seasonRepository, leagueAffiliationRepository,
+                leaguePlayingConditionsRepository, leagueMapper);
     }
 
     private LeagueDto dummyDto() {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
-                false, null, null, null, true, null, null, null);
+                false, null, null, null, true, null, null, null, 0, null, null);
     }
 
     private League existingLeague(UUID id, UUID clubId, boolean active) {
         return League.builder().id(id).clubId(clubId).name("Premier League").source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(11).allowSubstitutions(false).active(active).build();
+    }
+
+    private Season season(UUID id, UUID clubId, String label, LocalDate startDate, LocalDate endDate, Instant createdAt) {
+        return Season.builder().id(id).clubId(clubId).label(label).startDate(startDate).endDate(endDate)
+                .active(true).createdAt(createdAt).build();
+    }
+
+    /** A MapStruct-shaped base {@link LeagueDto} for {@code league}, the three computed fields left
+     * at their zero-value defaults — the same shape {@code leagueMapper.toDto} itself returns before
+     * {@code LeagueServiceImpl.withCurrentSeasonFields} reconstructs it. */
+    private LeagueDto baseDtoFor(League league) {
+        return new LeagueDto(
+                league.getId(), league.getClubId(), league.getName(), league.getSource(),
+                league.getMaxPlayingXiSize(), league.isAllowSubstitutions(), league.getMinAge(),
+                league.getMaxAge(), league.getAgeCutoffDate(), league.isActive(), league.getCreatedAt(),
+                league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null);
     }
 
     @Test
@@ -195,16 +236,157 @@ class LeagueServiceImplTest {
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
+    // --- 050: list()'s computed "current season" fields ---
+
     @Test
-    void listMapsEveryLeagueForTheClub() {
+    void listWithZeroSeasonsReturnsAllDefaultsForEveryLeague() {
         UUID clubId = UUID.randomUUID();
         League league = existingLeague(UUID.randomUUID(), clubId, true);
-        LeagueDto dto = dummyDto();
         when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
-        when(leagueMapper.toDto(league)).thenReturn(dto);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
 
         List<LeagueDto> result = leagueService.list(clubId);
 
-        assertThat(result).containsExactly(dto);
+        assertThat(result).hasSize(1);
+        LeagueDto dto = result.get(0);
+        assertThat(dto.currentSeasonTeamCount()).isZero();
+        assertThat(dto.currentSeasonLabel()).isNull();
+        assertThat(dto.currentSeasonPlayingConditionsUrl()).isNull();
+        org.mockito.Mockito.verify(leagueAffiliationRepository, never()).countDistinctTeamsBySeasonId(any());
+        org.mockito.Mockito.verify(leaguePlayingConditionsRepository, never()).findBySeasonId(any());
+    }
+
+    @Test
+    void listOnlyCountsDistinctTeamsAffiliatedForTheCurrentSeasonNotOtherSeasons() {
+        UUID clubId = UUID.randomUUID();
+        League leagueA = existingLeague(UUID.randomUUID(), clubId, true);
+        League leagueB = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season currentSeason = season(
+                UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        Season otherSeason = season(
+                UUID.randomUUID(), clubId, "2025/2026", today.minusYears(1).minusMonths(2),
+                today.minusYears(1).plusMonths(2), Instant.now().minusSeconds(60));
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(leagueA, leagueB));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(currentSeason, otherSeason));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeason.getId()))
+                .thenReturn(List.of(teamCount(leagueA.getId(), 3)));
+        when(leaguePlayingConditionsRepository.findBySeasonId(currentSeason.getId())).thenReturn(List.of());
+        when(leagueMapper.toDto(leagueA)).thenReturn(baseDtoFor(leagueA));
+        when(leagueMapper.toDto(leagueB)).thenReturn(baseDtoFor(leagueB));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        LeagueDto dtoA = result.stream().filter(d -> d.id().equals(leagueA.getId())).findFirst().orElseThrow();
+        LeagueDto dtoB = result.stream().filter(d -> d.id().equals(leagueB.getId())).findFirst().orElseThrow();
+        assertThat(dtoA.currentSeasonTeamCount()).isEqualTo(3);
+        assertThat(dtoA.currentSeasonLabel()).isEqualTo("2026/2027");
+        assertThat(dtoB.currentSeasonTeamCount()).isZero();
+        org.mockito.Mockito.verify(leagueAffiliationRepository).countDistinctTeamsBySeasonId(currentSeason.getId());
+        org.mockito.Mockito.verify(leagueAffiliationRepository, never()).countDistinctTeamsBySeasonId(otherSeason.getId());
+    }
+
+    @Test
+    void listWithACurrentSeasonAndNoUploadedDocumentLeavesPlayingConditionsUrlNullButStillPopulatesLabel() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season currentSeason = season(
+                UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(currentSeason));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeason.getId())).thenReturn(List.of());
+        when(leaguePlayingConditionsRepository.findBySeasonId(currentSeason.getId())).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        LeagueDto dto = result.get(0);
+        assertThat(dto.currentSeasonPlayingConditionsUrl()).isNull();
+        assertThat(dto.currentSeasonLabel()).isEqualTo("2026/2027");
+    }
+
+    @Test
+    void listResolvesThePlayingConditionsUrlWhenOneHasBeenUploadedForTheCurrentSeason() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season currentSeason = season(
+                UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        LeaguePlayingConditions playingConditions = LeaguePlayingConditions.builder()
+                .id(UUID.randomUUID()).leagueId(league.getId()).seasonId(currentSeason.getId())
+                .documentUrl("/media/rules.pdf").uploadedAt(Instant.now()).build();
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(currentSeason));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeason.getId())).thenReturn(List.of());
+        when(leaguePlayingConditionsRepository.findBySeasonId(currentSeason.getId()))
+                .thenReturn(List.of(playingConditions));
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        assertThat(result.get(0).currentSeasonPlayingConditionsUrl()).isEqualTo("/media/rules.pdf");
+    }
+
+    @Test
+    void listResolvesTheCurrentSeasonAsTheOneWhoseDateRangeContainsTodayOverAMoreRecentlyCreatedOne() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season containingToday = season(
+                UUID.randomUUID(), clubId, "Contains Today", today.minusMonths(1), today.plusMonths(1),
+                Instant.now().minusSeconds(3600));
+        Season mostRecentlyCreatedButNotContainingToday = season(
+                UUID.randomUUID(), clubId, "Most Recently Created", today.plusYears(1), today.plusYears(2),
+                Instant.now());
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId))
+                .thenReturn(List.of(containingToday, mostRecentlyCreatedButNotContainingToday));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonId(containingToday.getId()))
+                .thenReturn(List.of());
+        when(leaguePlayingConditionsRepository.findBySeasonId(containingToday.getId())).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        assertThat(result.get(0).currentSeasonLabel()).isEqualTo("Contains Today");
+    }
+
+    @Test
+    void listFallsBackToTheMostRecentlyCreatedSeasonWhenNoneContainsToday() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season olderSeason = season(
+                UUID.randomUUID(), clubId, "Older", today.minusYears(2), today.minusYears(1).minusMonths(6),
+                Instant.now().minusSeconds(3600));
+        Season mostRecentlyCreated = season(
+                UUID.randomUUID(), clubId, "Most Recently Created", today.plusYears(1), today.plusYears(2),
+                Instant.now());
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(olderSeason, mostRecentlyCreated));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonId(mostRecentlyCreated.getId()))
+                .thenReturn(List.of());
+        when(leaguePlayingConditionsRepository.findBySeasonId(mostRecentlyCreated.getId())).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        assertThat(result.get(0).currentSeasonLabel()).isEqualTo("Most Recently Created");
+    }
+
+    private static LeagueTeamCount teamCount(UUID leagueId, long teamCount) {
+        return new LeagueTeamCount() {
+            @Override
+            public UUID getLeagueId() {
+                return leagueId;
+            }
+
+            @Override
+            public long getTeamCount() {
+                return teamCount;
+            }
+        };
     }
 }

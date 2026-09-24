@@ -111,6 +111,8 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     active: true,
     homeSideAnnounced: false,
     awaySideAnnounced: false,
+    homeTeamLogoUrl: null,
+    awayTeamLogoUrl: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -228,6 +230,72 @@ describe('MatchFormPage', () => {
 
     expect(createMatch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('Match List Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/050-league-schedule-and-fixtures.md item 31/32: LeagueFormPage's Schedule tab's own
+  // "Add Match" shortcut pre-fills League/Season via query params on this same create route.
+  describe('League/Season query-param prefill', () => {
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([
+        {
+          id: 'league-1',
+          clubId: 'test-club-id',
+          name: 'Premier League',
+          source: 'INTERNAL',
+          maxPlayingXiSize: 11,
+          allowSubstitutions: true,
+          minAge: null,
+          maxAge: null,
+          ageCutoffDate: null,
+          active: true,
+          createdAt: '',
+          updatedAt: '',
+          updatedBy: null,
+          currentSeasonTeamCount: 4,
+          currentSeasonLabel: '2026',
+          currentSeasonPlayingConditionsUrl: null,
+        },
+      ])
+    })
+
+    it('create mode: a ?leagueId=&seasonId= query string pre-selects both on the rendered form', async () => {
+      renderPage('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1', 'test-club-id')
+
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(await screen.findByLabelText('League')).toHaveTextContent('Premier League')
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2026')
+    })
+
+    it('edit mode: the same query string is ignored — the match\'s own League/Season values win', async () => {
+      const user = userEvent.setup()
+      // A second season in the club's own list, distinct from the match's real season, so a stray
+      // seasonId query param landing here would be visibly distinguishable (in the submitted
+      // payload) if it were (incorrectly) applied.
+      listSeasons.mockResolvedValue([
+        { id: 'season-1', clubId: 'test-club-id', label: '2026', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+        { id: 'season-2', clubId: 'test-club-id', label: '2027', startDate: '2027-01-01', endDate: '2027-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      ])
+      // The match's own values are both real, already-filled fields (homeTeamId/awayTeamId,
+      // matchDate) — no further form interaction is needed before submitting, isolating this
+      // assertion to exactly the League/Season prefill behavior under test.
+      // .mockResolvedValue (not Once) — onSuccess invalidates this same query, triggering a
+      // refetch while the page is still mounted.
+      getMatch.mockResolvedValue(makeMatch({ leagueId: null, seasonId: 'season-1' }))
+      updateMatch.mockResolvedValueOnce(makeMatch({ leagueId: null, seasonId: 'season-1' }))
+
+      renderPage('/manage/fixtures/matches/match-1/edit?leagueId=league-1&seasonId=season-2', 'test-club-id')
+
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+      // The query string's leagueId=league-1/seasonId=season-2 never leak into the submitted
+      // payload — the match's own leagueId (null) and seasonId (season-1) win instead.
+      expect(updateMatch).toHaveBeenCalledWith(
+        'test-club-id',
+        'match-1',
+        expect.objectContaining({ leagueId: null, seasonId: 'season-1' }),
+      )
+    })
   })
 
   it('edit mode: renders a Playing XI tab for each side that is a real Team', async () => {

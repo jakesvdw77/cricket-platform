@@ -1,7 +1,9 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
+import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
@@ -9,9 +11,17 @@ import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeagueMapper;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
+import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,23 +35,106 @@ import org.springframework.transaction.annotation.Transactional;
  * (unlike {@code Section.minAge}/{@code maxAge}, see the spec's Problem &amp; Goals divergence
  * note), though the enforcement itself lives in {@code MatchSideServiceImpl}, not here; {@code
  * deactivate}/{@code reactivate} mirror {@code SponsorServiceImpl}'s one-way transition-guard
- * shape; every lookup is scoped to the owning club, not just by id.
+ * shape; every lookup is scoped to the owning club, not just by id. Per
+ * docs/specs/050-league-schedule-and-fixtures.md: {@code list} also resolves the club's own
+ * "current" {@link Season} once ({@link #resolveCurrentSeasonId}) and batch-computes each league's
+ * {@code currentSeasonTeamCount}/{@code currentSeasonLabel}/{@code
+ * currentSeasonPlayingConditionsUrl} in one round trip each (never per-league), reconstructing
+ * each {@link LeagueDto} via {@link #withCurrentSeasonFields}.
  */
 @Service
 public class LeagueServiceImpl implements LeagueService {
 
     private final LeagueRepository leagueRepository;
+    private final SeasonRepository seasonRepository;
+    private final LeagueAffiliationRepository leagueAffiliationRepository;
+    private final LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
     private final LeagueMapper leagueMapper;
 
-    public LeagueServiceImpl(LeagueRepository leagueRepository, LeagueMapper leagueMapper) {
+    public LeagueServiceImpl(
+            LeagueRepository leagueRepository,
+            SeasonRepository seasonRepository,
+            LeagueAffiliationRepository leagueAffiliationRepository,
+            LeaguePlayingConditionsRepository leaguePlayingConditionsRepository,
+            LeagueMapper leagueMapper) {
         this.leagueRepository = leagueRepository;
+        this.seasonRepository = seasonRepository;
+        this.leagueAffiliationRepository = leagueAffiliationRepository;
+        this.leaguePlayingConditionsRepository = leaguePlayingConditionsRepository;
         this.leagueMapper = leagueMapper;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<LeagueDto> list(UUID clubId) {
-        return leagueRepository.findByClubId(clubId).stream().map(leagueMapper::toDto).toList();
+        List<League> leagues = leagueRepository.findByClubId(clubId);
+        List<Season> seasons = seasonRepository.findByClubId(clubId);
+        UUID currentSeasonId = resolveCurrentSeasonId(seasons);
+
+        if (currentSeasonId == null) {
+            return leagues.stream()
+                    .map(league -> withCurrentSeasonFields(league, 0, null, null))
+                    .toList();
+        }
+
+        Map<UUID, Long> teamCountByLeagueId = new HashMap<>();
+        for (LeagueTeamCount row : leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeasonId)) {
+            teamCountByLeagueId.put(row.getLeagueId(), row.getTeamCount());
+        }
+        Map<UUID, String> documentUrlByLeagueId = new HashMap<>();
+        for (LeaguePlayingConditions playingConditions :
+                leaguePlayingConditionsRepository.findBySeasonId(currentSeasonId)) {
+            documentUrlByLeagueId.put(playingConditions.getLeagueId(), playingConditions.getDocumentUrl());
+        }
+        String currentSeasonLabel = seasons.stream()
+                .filter(season -> season.getId().equals(currentSeasonId))
+                .findFirst()
+                .map(Season::getLabel)
+                .orElse(null);
+
+        return leagues.stream()
+                .map(league -> withCurrentSeasonFields(
+                        league,
+                        teamCountByLeagueId.getOrDefault(league.getId(), 0L).intValue(),
+                        currentSeasonLabel,
+                        documentUrlByLeagueId.get(league.getId())))
+                .toList();
+    }
+
+    /**
+     * Maps {@code league} via MapStruct, then reconstructs the record adding the three computed
+     * "current season" fields — the same pattern {@code MatchServiceImpl.enrichAnnounced} uses for
+     * {@code homeSideAnnounced}/{@code awaySideAnnounced}.
+     */
+    private LeagueDto withCurrentSeasonFields(
+            League league, int currentSeasonTeamCount, String currentSeasonLabel, String currentSeasonPlayingConditionsUrl) {
+        LeagueDto dto = leagueMapper.toDto(league);
+        return new LeagueDto(
+                dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(), dto.allowSubstitutions(),
+                dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.active(), dto.createdAt(), dto.updatedAt(),
+                dto.updatedBy(), currentSeasonTeamCount, currentSeasonLabel, currentSeasonPlayingConditionsUrl);
+    }
+
+    /**
+     * The club's own "current" {@link Season} — the season whose {@code [startDate, endDate]}
+     * range contains today, else the most-recently-created season, else {@code null} when the club
+     * has zero seasons. Ported from {@code ui/src/utils/defaultSeason.ts}'s {@code
+     * pickDefaultSeasonId} — keep the two definitions in lockstep; a change to one rule is a change
+     * to both. See docs/specs/050-league-schedule-and-fixtures.md.
+     */
+    private UUID resolveCurrentSeasonId(List<Season> seasons) {
+        if (seasons.isEmpty()) {
+            return null;
+        }
+        LocalDate today = LocalDate.now();
+        return seasons.stream()
+                .filter(season -> !season.getStartDate().isAfter(today) && !season.getEndDate().isBefore(today))
+                .findFirst()
+                .map(Season::getId)
+                .orElseGet(() -> seasons.stream()
+                        .max(Comparator.comparing(Season::getCreatedAt))
+                        .map(Season::getId)
+                        .orElse(null));
     }
 
     @Override
