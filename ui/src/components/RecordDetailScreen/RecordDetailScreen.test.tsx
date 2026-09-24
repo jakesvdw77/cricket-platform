@@ -277,6 +277,51 @@ describe('RecordDetailScreen', () => {
 
     expect(screen.getByRole('heading', { name: 'Jane Smith' })).toHaveStyle({ fontWeight: '700' })
   })
+
+  it('renders headerNote directly under the header when provided, and omits it entirely otherwise', () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/manage/players/p-1']}>
+        <Routes>
+          <Route
+            path="/manage/players/p-1"
+            element={
+              <RecordDetailScreen
+                title="Jane Smith"
+                backTo="/manage/players"
+                backLabel="Back to Players"
+                editTo="/manage/players/p-1/edit"
+                headerNote={<div>Season picker</div>}
+                sections={[{ heading: 'Basic Info', content: <div>Basic Info content</div> }]}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Season picker')).toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter initialEntries={['/manage/players/p-1']}>
+        <Routes>
+          <Route
+            path="/manage/players/p-1"
+            element={
+              <RecordDetailScreen
+                title="Jane Smith"
+                backTo="/manage/players"
+                backLabel="Back to Players"
+                editTo="/manage/players/p-1/edit"
+                sections={[{ heading: 'Basic Info', content: <div>Basic Info content</div> }]}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText('Season picker')).not.toBeInTheDocument()
+  })
 })
 
 describe('DetailFieldRow', () => {

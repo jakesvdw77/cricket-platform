@@ -334,6 +334,24 @@ describe('LeagueFormPage', () => {
       expect(await screen.findByText('Add Match Page: ?leagueId=league-1&seasonId=season-1')).toBeInTheDocument()
     })
 
+    // docs/specs/051-league-schedule-sharing.md item 8: the Share button, rendered alongside "Add
+    // Match" in the same row, opens the same ShareScheduleDialog used on LeagueDetailPage.tsx.
+    it('"Share" button, alongside "Add Match", opens ShareScheduleDialog', async () => {
+      const user = userEvent.setup()
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(screen.getByRole('button', { name: 'Add Match' })).toBeInTheDocument()
+      expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Share' }))
+
+      expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
+    })
+
     it('renders the Playing Conditions DocumentUpload control, empty by default', async () => {
       const user = userEvent.setup()
       getPlayingConditions.mockResolvedValue(null)

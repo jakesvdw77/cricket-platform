@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import AddIcon from '@mui/icons-material/Add'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
@@ -15,6 +17,8 @@ import { EmptyState } from '../../components/EmptyState'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { LeagueFixtures } from '../../components/LeagueFixtures'
 import { DocumentUpload } from '../../components/DocumentUpload'
+import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
+import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
@@ -31,6 +35,10 @@ import { getPlayingConditions, uploadPlayingConditions } from '../../api/leagueP
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
+import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
+import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
+import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
+import { triggerDownload } from '../../utils/triggerDownload'
 
 // One affiliated team, with its own unlink mutation — mirrors TeamFormPage's TeamSponsorCard
 // isolation pattern, so one card's pending state never leaks onto another's.
@@ -78,10 +86,12 @@ export default function LeagueFormPage() {
   const isEdit = Boolean(leagueId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const theme = useTheme()
 
   const [activeTab, setActiveTab] = useState(0)
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   const {
     data: league,
@@ -157,6 +167,46 @@ export default function LeagueFormPage() {
   const affiliationsForSeason = (affiliationsQuery.data ?? []).filter(
     (affiliation) => affiliation.seasonId === selectedSeasonId,
   )
+
+  // docs/specs/051-league-schedule-sharing.md: same seasonLabel derivation as
+  // LeagueDetailPage.tsx — neither host page previously computed a plain season label string.
+  const seasonLabel = useMemo(
+    () => seasonsQuery.data?.find((season) => season.id === selectedSeasonId)?.label ?? '',
+    [seasonsQuery.data, selectedSeasonId],
+  )
+
+  const shareTeams: ShareScheduleTeamOption[] = affiliationsForSeason.map((affiliation) => ({
+    teamId: affiliation.teamId,
+    teamName: teamsById.get(affiliation.teamId)?.name ?? 'Unknown team',
+  }))
+
+  const handleSharePdf = async (teamFilter: ShareScheduleTeamOption | null) => {
+    const url = await generateLeagueSchedulePdf(
+      matchesQuery.data?.content ?? [],
+      teamsById,
+      league?.name ?? '',
+      seasonLabel,
+      teamFilter,
+    )
+    window.open(url, '_blank')
+  }
+
+  const handleSharePoster = async (teamFilter: ShareScheduleTeamOption | null) => {
+    const url = await generateLeagueSchedulePoster(
+      matchesQuery.data?.content ?? [],
+      teamsById,
+      league?.name ?? '',
+      seasonLabel,
+      teamFilter,
+      theme.palette.primary.main,
+    )
+    triggerDownload(url, `${league?.name ?? 'schedule'}-poster.png`)
+  }
+
+  const handleShareCalendar = async (team: ShareScheduleTeamOption) => {
+    const url = generateLeagueScheduleIcs(matchesQuery.data?.content ?? [], teamsById, league?.name ?? '', seasonLabel, team)
+    triggerDownload(url, `${team.teamName}-schedule.ics`)
+  }
 
   const affiliatedTeamIds = new Set(affiliationsForSeason.map((affiliation) => affiliation.teamId))
   const linkableTeams: Team[] = (teamsQuery.data ?? []).filter(
@@ -395,7 +445,7 @@ export default function LeagueFormPage() {
                   onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
                 />
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Stack direction="row" spacing={2} flexWrap="wrap">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -404,13 +454,21 @@ export default function LeagueFormPage() {
                       navigate(`/manage/fixtures/matches/new?leagueId=${leagueId}&seasonId=${selectedSeasonId}`)
                     }
                     disabled={!selectedSeasonId}
-                    sx={{ alignSelf: 'flex-start' }}
                   >
                     Add Match
                   </Button>
 
-                  <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
-                </Box>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    startIcon={<ShareOutlinedIcon fontSize="small" />}
+                    onClick={() => setShareOpen(true)}
+                  >
+                    Share
+                  </Button>
+                </Stack>
+
+                <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
               </Stack>
             )}
           </Box>
@@ -429,6 +487,19 @@ export default function LeagueFormPage() {
           searchLabel="Search teams"
           searchPlaceholder="Search by name"
           onLink={(option) => linkMutation.mutate(option.id)}
+        />
+      )}
+
+      {isEdit && league && (
+        <ShareScheduleDialog
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          leagueName={league.name}
+          seasonLabel={seasonLabel}
+          teams={shareTeams}
+          onSharePdf={handleSharePdf}
+          onSharePoster={handleSharePoster}
+          onShareCalendar={handleShareCalendar}
         />
       )}
     </>
