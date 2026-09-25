@@ -25,6 +25,7 @@ const savedValues: PlayingConditionsPayload = {
   powerplayOvers: 6,
   maxOversPerBowler: 4,
   fieldingRestrictionsNotes: 'Two fielders outside the 30-yard circle during the powerplay.',
+  allowSubstitutions: true,
   pointsForWin: 4,
   pointsForLoss: 0,
   pointsForDraw: 2,

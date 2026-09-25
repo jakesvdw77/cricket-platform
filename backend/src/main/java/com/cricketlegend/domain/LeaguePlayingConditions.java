@@ -66,6 +66,9 @@ public class LeaguePlayingConditions {
     @Column(name = "fielding_restrictions_notes")
     private String fieldingRestrictionsNotes;
 
+    @Column(name = "allow_substitutions", nullable = false)
+    private boolean allowSubstitutions;
+
     @Column(name = "points_for_win")
     private Integer pointsForWin;
 

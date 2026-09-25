@@ -575,7 +575,6 @@ class LeaguePlayingConditionsControllerIntegrationTest {
                 .name("Premier League")
                 .source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(11)
-                .allowSubstitutions(false)
                 .active(true)
                 .build();
     }

@@ -98,6 +98,7 @@ public class LeaguePlayingConditionsServiceImpl implements LeaguePlayingConditio
         playingConditions.setPowerplayOvers(request.powerplayOvers());
         playingConditions.setMaxOversPerBowler(request.maxOversPerBowler());
         playingConditions.setFieldingRestrictionsNotes(request.fieldingRestrictionsNotes());
+        playingConditions.setAllowSubstitutions(request.allowSubstitutions());
         playingConditions.setPointsForWin(request.pointsForWin());
         playingConditions.setPointsForLoss(request.pointsForLoss());
         playingConditions.setPointsForDraw(request.pointsForDraw());

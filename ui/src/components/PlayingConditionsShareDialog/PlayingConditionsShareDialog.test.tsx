@@ -9,6 +9,7 @@ const conditions: PlayingConditionsPayload = {
   powerplayOvers: 6,
   maxOversPerBowler: null,
   fieldingRestrictionsNotes: null,
+  allowSubstitutions: false,
   pointsForWin: 2,
   pointsForLoss: 0,
   pointsForDraw: 1,

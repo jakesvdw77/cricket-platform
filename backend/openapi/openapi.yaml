@@ -4380,8 +4380,6 @@ components:
         maxPlayingXiSize:
           type: integer
           format: int32
-        allowSubstitutions:
-          type: boolean
         minAge:
           type: integer
           format: int32
@@ -4412,8 +4410,6 @@ components:
         maxPlayingXiSize:
           type: integer
           format: int32
-        allowSubstitutions:
-          type: boolean
         minAge:
           type: integer
           format: int32
@@ -4921,8 +4917,6 @@ components:
         maxPlayingXiSize:
           type: integer
           format: int32
-        allowSubstitutions:
-          type: boolean
         minAge:
           type: integer
           format: int32
@@ -4965,6 +4959,8 @@ components:
           format: int32
         fieldingRestrictionsNotes:
           type: string
+        allowSubstitutions:
+          type: boolean
         pointsForWin:
           type: integer
           format: int32
@@ -5005,6 +5001,8 @@ components:
         fieldingRestrictionsNotes:
           type: string
           maxLength: 2000
+        allowSubstitutions:
+          type: boolean
         pointsForWin:
           type: integer
           format: int32

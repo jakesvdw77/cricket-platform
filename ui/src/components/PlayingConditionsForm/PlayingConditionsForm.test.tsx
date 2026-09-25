@@ -9,6 +9,7 @@ const savedValues: PlayingConditionsPayload = {
   powerplayOvers: 6,
   maxOversPerBowler: 4,
   fieldingRestrictionsNotes: 'Two fielders outside the circle in the powerplay.',
+  allowSubstitutions: true,
   pointsForWin: 4,
   pointsForLoss: 0,
   pointsForDraw: 2,
@@ -48,6 +49,7 @@ describe('PlayingConditionsForm', () => {
       'Two fielders outside the circle in the powerplay.',
     )
     expect(screen.getByLabelText('Points for win')).toHaveValue(4)
+    expect(screen.getByLabelText(/allow substitutions/i)).toBeChecked()
     expect(screen.getByLabelText(/enable bonus points/i)).toBeChecked()
     expect(screen.getByLabelText('Early-chase overs threshold')).toHaveValue(17)
     expect(screen.getByLabelText('Bowling restriction %')).toHaveValue(80)
@@ -125,6 +127,7 @@ describe('PlayingConditionsForm', () => {
       powerplayOvers: 6,
       maxOversPerBowler: null,
       fieldingRestrictionsNotes: null,
+      allowSubstitutions: false,
       pointsForWin: 2,
       pointsForLoss: 0,
       pointsForDraw: 1,
@@ -135,6 +138,19 @@ describe('PlayingConditionsForm', () => {
       bonusBowlingRestrictionPercentage: null,
       additionalNotes: null,
     })
+  })
+
+  it('toggling "Allow substitutions" is reflected in the submitted payload', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<PlayingConditionsForm onSubmit={onSubmit} pending={false} />)
+
+    await fillRequiredFields(user)
+    await user.click(screen.getByLabelText(/allow substitutions/i))
+    await user.click(screen.getByRole('button', { name: 'Save Playing Conditions' }))
+
+    const payload = onSubmit.mock.calls[0][0] as PlayingConditionsPayload
+    expect(payload.allowSubstitutions).toBe(true)
   })
 
   it('submits enabled bonus points with both thresholds populated', async () => {

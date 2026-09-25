@@ -13,7 +13,6 @@ public record UpdateLeagueRequest(
         @NotBlank String name,
         LeagueSource source,
         Integer maxPlayingXiSize,
-        Boolean allowSubstitutions,
         Integer minAge,
         Integer maxAge,
         LocalDate ageCutoffDate) {

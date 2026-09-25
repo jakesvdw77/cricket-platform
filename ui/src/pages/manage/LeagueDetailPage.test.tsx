@@ -55,7 +55,6 @@ function makeLeague(overrides: Partial<League> = {}): League {
     name: 'Internal League',
     source: 'INTERNAL',
     maxPlayingXiSize: 11,
-    allowSubstitutions: true,
     minAge: 13,
     maxAge: 17,
     ageCutoffDate: null,
@@ -148,6 +147,7 @@ function makeLeaguePlayingConditions(overrides: Partial<LeaguePlayingConditions>
     powerplayOvers: 6,
     maxOversPerBowler: 4,
     fieldingRestrictionsNotes: null,
+    allowSubstitutions: false,
     pointsForWin: 2,
     pointsForLoss: 0,
     pointsForDraw: 1,
@@ -212,7 +212,6 @@ describe('LeagueDetailPage', () => {
     expect(listLeagues).toHaveBeenCalledWith('test-club-id')
     expect(screen.getByText('11')).toBeInTheDocument()
     expect(screen.getByText('13–17')).toBeInTheDocument()
-    expect(screen.getByText('Yes')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 
     expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
@@ -414,6 +413,7 @@ describe('LeagueDetailPage', () => {
         documentUrl: '/media/rules.pdf',
         maxOversPerBowler: 4,
         fieldingRestrictionsNotes: 'Two fielders outside the circle in the powerplay.',
+        allowSubstitutions: true,
         bonusPointsEnabled: true,
         bonusBattingOversThreshold: 17,
         bonusBowlingRestrictionPercentage: 80,
@@ -428,6 +428,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.getByText('6')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('Two fielders outside the circle in the powerplay.')).toBeInTheDocument()
+    expect(screen.getByText('Substitutions allowed')).toBeInTheDocument()
     expect(screen.getByText('Before over 17')).toBeInTheDocument()
     expect(screen.getByText('80% of target')).toBeInTheDocument()
     expect(screen.getByText('No DLS below 5 overs a side.')).toBeInTheDocument()

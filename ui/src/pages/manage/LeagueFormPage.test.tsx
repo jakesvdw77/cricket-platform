@@ -72,7 +72,6 @@ function makeLeague(overrides: Partial<League> = {}): League {
     name: 'Internal League',
     source: 'INTERNAL',
     maxPlayingXiSize: 11,
-    allowSubstitutions: false,
     minAge: null,
     maxAge: null,
     ageCutoffDate: null,

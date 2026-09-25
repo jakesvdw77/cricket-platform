@@ -7,6 +7,7 @@ const baseConditions: PlayingConditionsPayload = {
   powerplayOvers: 6,
   maxOversPerBowler: null,
   fieldingRestrictionsNotes: 'Two fielders outside the circle.',
+  allowSubstitutions: false,
   pointsForWin: 2,
   pointsForLoss: 0,
   pointsForDraw: 1,

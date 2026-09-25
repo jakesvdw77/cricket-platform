@@ -37,6 +37,7 @@ export function resolvePlayingConditionsPayload(
     powerplayOvers: record.powerplayOvers as number,
     maxOversPerBowler: record.maxOversPerBowler,
     fieldingRestrictionsNotes: record.fieldingRestrictionsNotes,
+    allowSubstitutions: record.allowSubstitutions,
     pointsForWin: record.pointsForWin as number,
     pointsForLoss: record.pointsForLoss as number,
     pointsForDraw: record.pointsForDraw as number,

@@ -30,8 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Business rules per docs/specs/029-league-management.md: {@code list} returns every league for a
  * club (active and inactive, not paginated — a deliberately small bounded collection, mirroring
  * {@code SponsorServiceImpl}); {@code create}/{@code update} default {@code source} to {@code
- * INTERNAL}, {@code maxPlayingXiSize} to 11, {@code allowSubstitutions} to {@code false} when the
- * request leaves them null, and validate {@code minAge <= maxAge} when both are set — ENFORCED
+ * INTERNAL}, {@code maxPlayingXiSize} to 11 when the request leaves them null, and validate {@code
+ * minAge <= maxAge} when both are set — ENFORCED
  * (unlike {@code Section.minAge}/{@code maxAge}, see the spec's Problem &amp; Goals divergence
  * note), though the enforcement itself lives in {@code MatchSideServiceImpl}, not here; {@code
  * deactivate}/{@code reactivate} mirror {@code SponsorServiceImpl}'s one-way transition-guard
@@ -110,7 +110,7 @@ public class LeagueServiceImpl implements LeagueService {
             League league, int currentSeasonTeamCount, String currentSeasonLabel, String currentSeasonPlayingConditionsUrl) {
         LeagueDto dto = leagueMapper.toDto(league);
         return new LeagueDto(
-                dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(), dto.allowSubstitutions(),
+                dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(),
                 dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.active(), dto.createdAt(), dto.updatedAt(),
                 dto.updatedBy(), currentSeasonTeamCount, currentSeasonLabel, currentSeasonPlayingConditionsUrl);
     }
@@ -147,8 +147,6 @@ public class LeagueServiceImpl implements LeagueService {
                 .name(request.name())
                 .source(request.source() != null ? request.source() : LeagueSource.INTERNAL)
                 .maxPlayingXiSize(request.maxPlayingXiSize() != null ? request.maxPlayingXiSize() : 11)
-                .allowSubstitutions(
-                        request.allowSubstitutions() != null && request.allowSubstitutions())
                 .minAge(request.minAge())
                 .maxAge(request.maxAge())
                 .ageCutoffDate(request.ageCutoffDate())
@@ -168,8 +166,6 @@ public class LeagueServiceImpl implements LeagueService {
         league.setSource(request.source() != null ? request.source() : LeagueSource.INTERNAL);
         league.setMaxPlayingXiSize(
                 request.maxPlayingXiSize() != null ? request.maxPlayingXiSize() : 11);
-        league.setAllowSubstitutions(
-                request.allowSubstitutions() != null && request.allowSubstitutions());
         league.setMinAge(request.minAge());
         league.setMaxAge(request.maxAge());
         league.setAgeCutoffDate(request.ageCutoffDate());

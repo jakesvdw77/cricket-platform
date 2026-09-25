@@ -7,7 +7,9 @@ import api from './axiosConfig'
 // structured-fields PUT) replaces this same row's fields in place (an upsert against the backend's
 // unique (league_id, season_id) key), the same "no history, just current state" posture
 // Sponsor.logoUrl/Team.logoUrl already have. documentUrl/uploadedAt are nullable as of `052` — a
-// row can now exist with structured fields saved and no PDF ever uploaded.
+// row can now exist with structured fields saved and no PDF ever uploaded. allowSubstitutions
+// moved here from League itself (052 amendment) — never enforced by any backend rule, and like
+// the rest of this record's fields, plausibly differs by season.
 export interface LeaguePlayingConditions {
   id: string
   leagueId: string
@@ -19,6 +21,7 @@ export interface LeaguePlayingConditions {
   powerplayOvers: number | null
   maxOversPerBowler: number | null
   fieldingRestrictionsNotes: string | null
+  allowSubstitutions: boolean
   pointsForWin: number | null
   pointsForLoss: number | null
   pointsForDraw: number | null
@@ -39,6 +42,7 @@ export interface PlayingConditionsPayload {
   powerplayOvers: number
   maxOversPerBowler: number | null
   fieldingRestrictionsNotes: string | null
+  allowSubstitutions: boolean
   pointsForWin: number
   pointsForLoss: number
   pointsForDraw: number

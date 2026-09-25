@@ -251,11 +251,6 @@ export default function LeagueDetailPage() {
                     value={`${league.minAge ?? 'Any'}–${league.maxAge ?? 'Any'}`}
                   />
                 )}
-                <DetailFieldRow
-                  icon={<SwapHorizOutlinedIcon />}
-                  label="Substitutions allowed"
-                  value={league.allowSubstitutions ? 'Yes' : 'No'}
-                />
               </DetailFieldGrid>
             ),
           },
@@ -306,6 +301,11 @@ export default function LeagueDetailPage() {
                       />
                     </Box>
                   )}
+                  <DetailFieldRow
+                    icon={<SwapHorizOutlinedIcon />}
+                    label="Substitutions allowed"
+                    value={playingConditionsPayload.allowSubstitutions ? 'Yes' : 'No'}
+                  />
                   <DetailFieldRow
                     icon={<EmojiEventsOutlinedIcon />}
                     label="Points for win"

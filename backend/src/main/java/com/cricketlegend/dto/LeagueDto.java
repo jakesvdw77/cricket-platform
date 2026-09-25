@@ -18,7 +18,6 @@ public record LeagueDto(
         String name,
         LeagueSource source,
         int maxPlayingXiSize,
-        boolean allowSubstitutions,
         Integer minAge,
         Integer maxAge,
         LocalDate ageCutoffDate,

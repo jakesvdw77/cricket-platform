@@ -11,6 +11,8 @@ import java.util.UUID;
  * fields saved and no PDF ever uploaded; {@code uploadedBy} was already nullable. Every structured
  * field is independently nullable too — see docs/specs/052-league-playing-conditions.md's Data
  * Model Changes for the "required together as a group by the write endpoint" nuance.
+ * {@code allowSubstitutions} moved here from {@code LeagueDto} (052 amendment) — never enforced by
+ * any backend rule, and like the rest of this record's fields, plausibly differs by season.
  */
 public record LeaguePlayingConditionsDto(
         UUID id,
@@ -23,6 +25,7 @@ public record LeaguePlayingConditionsDto(
         Integer powerplayOvers,
         Integer maxOversPerBowler,
         String fieldingRestrictionsNotes,
+        boolean allowSubstitutions,
         Integer pointsForWin,
         Integer pointsForLoss,
         Integer pointsForDraw,

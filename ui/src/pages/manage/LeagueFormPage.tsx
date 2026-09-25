@@ -357,7 +357,6 @@ export default function LeagueFormPage() {
                 ? {
                     name: league.name,
                     maxPlayingXiSize: league.maxPlayingXiSize,
-                    allowSubstitutions: league.allowSubstitutions,
                     minAge: league.minAge,
                     maxAge: league.maxAge,
                     ageCutoffDate: league.ageCutoffDate,

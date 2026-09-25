@@ -243,7 +243,6 @@ describe('MatchFormPage', () => {
           name: 'Premier League',
           source: 'INTERNAL',
           maxPlayingXiSize: 11,
-          allowSubstitutions: true,
           minAge: null,
           maxAge: null,
           ageCutoffDate: null,

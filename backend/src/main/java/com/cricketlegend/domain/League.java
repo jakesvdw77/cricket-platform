@@ -54,9 +54,6 @@ public class League {
     @Column(name = "max_playing_xi_size", nullable = false)
     private int maxPlayingXiSize;
 
-    @Column(name = "allow_substitutions", nullable = false)
-    private boolean allowSubstitutions;
-
     @Column(name = "min_age")
     private Integer minAge;
 

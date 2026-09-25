@@ -6,9 +6,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 /**
- * {@code name}/{@code source}/{@code maxPlayingXiSize}/{@code allowSubstitutions}/{@code
- * minAge}/{@code maxAge}/{@code ageCutoffDate} all exist with matching names on {@link League},
- * inferred by MapStruct. See docs/specs/029-league-management.md.
+ * {@code name}/{@code source}/{@code maxPlayingXiSize}/{@code minAge}/{@code maxAge}/{@code
+ * ageCutoffDate} all exist with matching names on {@link League}, inferred by MapStruct. See
+ * docs/specs/029-league-management.md.
  *
  * <p>{@code currentSeasonTeamCount}/{@code currentSeasonLabel}/{@code
  * currentSeasonPlayingConditionsUrl} (050) are derived, not present on {@link League} itself —

@@ -25,6 +25,7 @@ interface FormState {
   powerplayOvers: string
   maxOversPerBowler: string
   fieldingRestrictionsNotes: string
+  allowSubstitutions: boolean
   pointsForWin: string
   pointsForLoss: string
   pointsForDraw: string
@@ -77,6 +78,7 @@ function toFormState(initialValues?: PlayingConditionsPayload | null): FormState
     powerplayOvers: initialValues?.powerplayOvers != null ? String(initialValues.powerplayOvers) : '',
     maxOversPerBowler: initialValues?.maxOversPerBowler != null ? String(initialValues.maxOversPerBowler) : '',
     fieldingRestrictionsNotes: initialValues?.fieldingRestrictionsNotes ?? '',
+    allowSubstitutions: initialValues?.allowSubstitutions ?? false,
     pointsForWin: String(initialValues?.pointsForWin ?? DEFAULT_POINTS.pointsForWin),
     pointsForLoss: String(initialValues?.pointsForLoss ?? DEFAULT_POINTS.pointsForLoss),
     pointsForDraw: String(initialValues?.pointsForDraw ?? DEFAULT_POINTS.pointsForDraw),
@@ -165,6 +167,7 @@ export function PlayingConditionsForm({ initialValues, onSubmit, pending, error 
       powerplayOvers: Number(values.powerplayOvers),
       maxOversPerBowler: values.maxOversPerBowler.trim() ? Number(values.maxOversPerBowler) : null,
       fieldingRestrictionsNotes: values.fieldingRestrictionsNotes.trim() || null,
+      allowSubstitutions: values.allowSubstitutions,
       pointsForWin: Number(values.pointsForWin),
       pointsForLoss: Number(values.pointsForLoss),
       pointsForDraw: Number(values.pointsForDraw),
@@ -236,6 +239,19 @@ export function PlayingConditionsForm({ initialValues, onSubmit, pending, error 
                 multiline
                 minRows={3}
                 helperText="Optional — free text for circle/leg-side clauses too varied to model as fields"
+              />
+            </Box>
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={values.allowSubstitutions}
+                    onChange={(event) =>
+                      setValues((prev) => ({ ...prev, allowSubstitutions: event.target.checked }))
+                    }
+                  />
+                }
+                label="Allow substitutions (e.g. Vets cricket, where a twelfth man may fully bat/bowl)"
               />
             </Box>
           </Box>
