@@ -260,61 +260,6 @@ export default function LeagueDetailPage() {
             ),
           },
           {
-            heading: 'Teams',
-            content:
-              (seasonsQuery.data ?? []).length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No seasons yet — teams are affiliated to a league for a specific season.
-                </Typography>
-              ) : affiliationsForSeason.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No teams affiliated for this season yet.
-                </Typography>
-              ) : (
-                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
-                  {affiliationsForSeason.map((affiliation) => {
-                    const team = teamsById.get(affiliation.teamId)
-                    if (!team) {
-                      return null
-                    }
-                    return (
-                      <RecordCard
-                        key={affiliation.id}
-                        title={team.name}
-                        avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
-                        viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
-                        editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
-                      />
-                    )
-                  })}
-                </Box>
-              ),
-          },
-          {
-            heading: 'Fixtures',
-            note: (
-              <Button
-                variant="ghost"
-                size="sm"
-                startIcon={<ShareOutlinedIcon fontSize="small" />}
-                onClick={() => setShareOpen(true)}
-              >
-                Share
-              </Button>
-            ),
-            content:
-              (seasonsQuery.data ?? []).length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No seasons yet — matches are scheduled for a league and a specific season.
-                </Typography>
-              ) : (
-                <Stack spacing={3}>
-                  <NextMatchCountdown countdown={nextMatchCountdown} teamsById={teamsById} />
-                  <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
-                </Stack>
-              ),
-          },
-          {
             heading: 'Playing Conditions',
             note: (
               <Button
@@ -424,6 +369,61 @@ export default function LeagueDetailPage() {
                 )}
               </Stack>
             ),
+          },
+          {
+            heading: 'Teams',
+            content:
+              (seasonsQuery.data ?? []).length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No seasons yet — teams are affiliated to a league for a specific season.
+                </Typography>
+              ) : affiliationsForSeason.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No teams affiliated for this season yet.
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+                  {affiliationsForSeason.map((affiliation) => {
+                    const team = teamsById.get(affiliation.teamId)
+                    if (!team) {
+                      return null
+                    }
+                    return (
+                      <RecordCard
+                        key={affiliation.id}
+                        title={team.name}
+                        avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
+                        viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
+                        editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
+                      />
+                    )
+                  })}
+                </Box>
+              ),
+          },
+          {
+            heading: 'Fixtures',
+            note: (
+              <Button
+                variant="ghost"
+                size="sm"
+                startIcon={<ShareOutlinedIcon fontSize="small" />}
+                onClick={() => setShareOpen(true)}
+              >
+                Share
+              </Button>
+            ),
+            content:
+              (seasonsQuery.data ?? []).length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No seasons yet — matches are scheduled for a league and a specific season.
+                </Typography>
+              ) : (
+                <Stack spacing={3}>
+                  <NextMatchCountdown countdown={nextMatchCountdown} teamsById={teamsById} />
+                  <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
+                </Stack>
+              ),
           },
         ]}
       />

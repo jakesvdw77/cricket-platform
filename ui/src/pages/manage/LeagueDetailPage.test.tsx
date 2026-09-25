@@ -357,9 +357,9 @@ describe('LeagueDetailPage', () => {
 
   // docs/specs/051-league-schedule-sharing.md item 7: the Fixtures section's own "note" slot
   // Share button opens ShareScheduleDialog, rather than widening RecordDetailScreen's own
-  // link-only secondaryActions contract. docs/specs/052-league-playing-conditions.md adds a
-  // second, independent "Share" button (the Playing Conditions section's own captain-summary
-  // share) — the Fixtures section's own Share button is the first of the two on the page.
+  // link-only secondaryActions contract. The Playing Conditions section (moved to right after
+  // Details, ahead of Teams/Fixtures, per user request) renders its own independent Share button
+  // first on the page — the Fixtures section's own Share button is the second of the two.
   it('opens ShareScheduleDialog from the Fixtures section\'s Share button', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
@@ -371,7 +371,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
 
     const shareButtons = screen.getAllByRole('button', { name: 'Share' })
-    await user.click(shareButtons[0])
+    await user.click(shareButtons[1])
 
     expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
     expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
@@ -379,7 +379,9 @@ describe('LeagueDetailPage', () => {
 
   // docs/specs/052-league-playing-conditions.md: a second, independent Share flow — the Playing
   // Conditions section's own captain-summary share, opening PlayingConditionsShareDialog without
-  // ever touching the Fixtures section's own ShareScheduleDialog/shareOpen state.
+  // ever touching the Fixtures section's own ShareScheduleDialog/shareOpen state. This section now
+  // renders right after Details (ahead of Teams/Fixtures), so its Share button is the first of the
+  // two on the page.
   it('renders a Playing Conditions section with its own independent Share button', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
@@ -393,7 +395,7 @@ describe('LeagueDetailPage', () => {
 
     const shareButtons = screen.getAllByRole('button', { name: 'Share' })
     expect(shareButtons).toHaveLength(2)
-    await user.click(shareButtons[1])
+    await user.click(shareButtons[0])
 
     expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
     expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
