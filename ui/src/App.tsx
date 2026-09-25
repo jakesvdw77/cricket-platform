@@ -12,6 +12,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
 import ManagerDashboard from './pages/manage/ManagerDashboard'
 import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
+import ClubOverviewPage from './pages/manage/ClubOverviewPage'
 import ClubContactList from './pages/manage/ClubContactList'
 import ClubContactFormPage from './pages/manage/ClubContactFormPage'
 import ClubContactDetailPage from './pages/manage/ClubContactDetailPage'
@@ -29,7 +30,6 @@ import TeamList from './pages/manage/TeamList'
 import PlayerList from './pages/manage/PlayerList'
 import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerDetailPage from './pages/manage/PlayerDetailPage'
-import ManageFixturesHome from './pages/manage/ManageFixturesHome'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
 import LeagueDetailPage from './pages/manage/LeagueDetailPage'
@@ -120,7 +120,12 @@ function App() {
                 EmptyState placeholder pending 001's Section/Team model. */}
             <Route path="/manage" element={<ManagerHome />}>
               <Route index element={<ManagerDashboard />} />
-              <Route path="club-profile" element={<ManageClubProfilePage />} />
+              {/* docs/specs/056-club-profile-overview.md: club-profile is now the new consolidated,
+                  view-first overview page — the previous edit-first ManageClubProfilePage moves one
+                  level deeper, to club-profile/edit, reached via the overview's own "Edit profile"
+                  action. */}
+              <Route path="club-profile" element={<ClubOverviewPage />} />
+              <Route path="club-profile/edit" element={<ManageClubProfilePage />} />
               <Route path="club-contacts" element={<ClubContactList />} />
               <Route path="club-contacts/new" element={<ClubContactFormPage />} />
               {/* docs/specs/036-view-first-record-detail-screens.md: the new read-only view
@@ -162,8 +167,10 @@ function App() {
               <Route path="players/:playerId/edit" element={<PlayerFormPage />} />
               {/* docs/specs/029-league-management.md: League/Season/Match administration and
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
-                  nav cards finally get real screens. */}
-              <Route path="fixtures" element={<ManageFixturesHome />} />
+                  nav cards finally get real screens. docs/specs/056-club-profile-overview.md
+                  dissolved the "fixtures" index hub (ManageFixturesHome) entirely — Leagues/Matches
+                  are now reached directly from the dashboard, Seasons from the Club Profile
+                  overview; every fixtures/* sub-route below stays registered unchanged. */}
               <Route path="fixtures/leagues" element={<LeagueList />} />
               <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
               <Route path="fixtures/leagues/:leagueId" element={<LeagueDetailPage />} />
@@ -191,6 +198,10 @@ function App() {
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}
               />
+              {/* docs/specs/056-club-profile-overview.md: two new dashboard placeholders, same
+                  "Coming soon" EmptyState precedent as results/permissions above. */}
+              <Route path="gallery" element={<EmptyState title="Gallery" description="Coming soon." />} />
+              <Route path="notifications" element={<EmptyState title="Notifications" description="Coming soon." />} />
               <Route path="squads" element={<SquadPicker />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
               {/* docs/specs/034-availability-polls-dashboard.md: a real, club-wide list of every

@@ -128,6 +128,18 @@ describe('MatchList', () => {
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
   })
 
+  // docs/specs/056-club-profile-overview.md: MatchList's own backTo/backLabel prop *defaults*
+  // moved from /manage/fixtures ("Back to Fixtures") to /manage ("Back to Dashboard") — this
+  // confirms the default (no backTo/backLabel passed by the caller) renders the new target.
+  it('renders a "Back to Dashboard" link pointing at /manage by default', async () => {
+    listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    expect(screen.getByRole('link', { name: 'Back to Dashboard' })).toHaveAttribute('href', '/manage')
+  })
+
   // docs/specs/041-list-screen-header-actions.md: MatchList's default viewTo AND editTo are both
   // real routes, so its card is the one existing call site where RecordCard's revised
   // View+Edit-together rendering is actually reachable today.

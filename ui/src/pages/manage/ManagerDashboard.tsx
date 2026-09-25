@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
-import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
-import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
-import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
@@ -26,19 +25,24 @@ interface ManagerGroup {
   cards: ManagerCard[]
 }
 
+// docs/specs/056-club-profile-overview.md: the four separate club-level cards (Profile/Contacts/
+// Sponsors/Structure) collapse into one "Club Profile" card leading to the new consolidated
+// ClubOverviewPage; Leagues/Matches are promoted out of the dissolved "Leagues and Fixtures" hub
+// into their own direct cards; Gallery/Notifications join as new "Coming soon" placeholders,
+// matching the existing Results/Permissions precedent. Order matches the approved mockup exactly.
 const GROUPS: ManagerGroup[] = [
   {
     label: 'Club manager',
     cards: [
       { title: 'Club Profile', description: "Edit your club's details", to: '/manage/club-profile', icon: <BusinessOutlinedIcon /> },
-      { title: 'Club Contacts', description: "Manage your club's named contacts", to: '/manage/club-contacts', icon: <ContactsOutlinedIcon /> },
-      { title: 'Club Sponsors', description: "Manage your club's sponsors", to: '/manage/sponsors', icon: <HandshakeOutlinedIcon /> },
-      { title: 'Club Structure', description: "Define your club's own section tree", to: '/manage/sections', icon: <AccountTreeOutlinedIcon /> },
       { title: 'Teams', description: 'Register teams', to: '/manage/teams', icon: <GroupsOutlinedIcon /> },
       { title: 'Players', description: 'Manage the player roster', to: '/manage/players', icon: <SportsCricketOutlinedIcon /> },
-      { title: 'Leagues and Fixtures', description: 'Schedule matches and build playing XIs', to: '/manage/fixtures', icon: <EventOutlinedIcon /> },
+      { title: 'Leagues', description: "Create and manage your club's own leagues", to: '/manage/fixtures/leagues', icon: <EmojiEventsOutlinedIcon /> },
+      { title: 'Matches', description: 'Schedule fixtures and build playing XIs', to: '/manage/fixtures/matches', icon: <SportsCricketOutlinedIcon /> },
       { title: 'Results', description: 'Capture and review match results', to: '/manage/results', icon: <AssessmentOutlinedIcon /> },
       { title: 'Team Managers & Permissions', description: 'Add managers, manage access', to: '/manage/permissions', icon: <AdminPanelSettingsOutlinedIcon /> },
+      { title: 'Gallery', description: 'Share photos and highlights from your club', to: '/manage/gallery', icon: <PhotoLibraryOutlinedIcon /> },
+      { title: 'Notifications', description: 'Announcements and reminders for your club', to: '/manage/notifications', icon: <NotificationsNoneOutlinedIcon /> },
     ],
   },
   {
