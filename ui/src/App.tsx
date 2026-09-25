@@ -33,6 +33,8 @@ import ManageFixturesHome from './pages/manage/ManageFixturesHome'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
 import LeagueDetailPage from './pages/manage/LeagueDetailPage'
+import LeagueContactFormPage from './pages/manage/LeagueContactFormPage'
+import LeagueContactDetailPage from './pages/manage/LeagueContactDetailPage'
 import SeasonList from './pages/manage/SeasonList'
 import SeasonFormPage from './pages/manage/SeasonFormPage'
 import SeasonDetailPage from './pages/manage/SeasonDetailPage'
@@ -166,6 +168,16 @@ function App() {
               <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
               <Route path="fixtures/leagues/:leagueId" element={<LeagueDetailPage />} />
               <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              {/* docs/specs/054-league-contacts.md: a league's named contacts, one level deeper
+                  than fixtures/leagues/:leagueId/edit — no standalone list route, the list itself
+                  is embedded in LeagueFormPage's Contacts tab / LeagueDetailPage's Contacts
+                  section. */}
+              <Route path="fixtures/leagues/:leagueId/contacts/new" element={<LeagueContactFormPage />} />
+              <Route path="fixtures/leagues/:leagueId/contacts/:contactId" element={<LeagueContactDetailPage />} />
+              <Route
+                path="fixtures/leagues/:leagueId/contacts/:contactId/edit"
+                element={<LeagueContactFormPage />}
+              />
               <Route path="fixtures/seasons" element={<SeasonList />} />
               <Route path="fixtures/seasons/new" element={<SeasonFormPage />} />
               <Route path="fixtures/seasons/:seasonId" element={<SeasonDetailPage />} />

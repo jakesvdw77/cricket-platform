@@ -35,8 +35,10 @@ import type { Team } from '../../api/teamApi'
 import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
 import { listMatches } from '../../api/matchApi'
 import { getPlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { initialsFromName } from '../../utils/initials'
+import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../utils/leagueContact'
 import { resolveNextMatchCountdown } from '../../utils/nextMatchCountdown'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
@@ -109,6 +111,15 @@ export default function LeagueDetailPage() {
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'playing-conditions', selectedSeasonId],
     queryFn: () => getPlayingConditions(clubId as string, leagueId as string, selectedSeasonId),
     enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId),
+  })
+
+  // docs/specs/054-league-contacts.md: the Contacts section's own contact list — a league's
+  // contacts are a small, bounded collection, deliberately not paginated (same as
+  // listSponsorContacts).
+  const contactsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'],
+    queryFn: () => listLeagueContacts(clubId as string, leagueId as string),
+    enabled: Boolean(clubId) && Boolean(leagueId),
   })
 
   useEffect(() => {
@@ -459,6 +470,33 @@ export default function LeagueDetailPage() {
                   <NextMatchCountdown countdown={nextMatchCountdown} teamsById={teamsById} />
                   <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
                 </Stack>
+              ),
+          },
+          {
+            heading: 'Contacts',
+            content:
+              (contactsQuery.data ?? []).length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No contacts yet for this league.
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+                  {(contactsQuery.data ?? []).map((contact) => (
+                    <RecordCard
+                      key={contact.id}
+                      title={contactFullName(contact)}
+                      avatar={{ fallback: initialsFromName(contactFullName(contact)), shape: 'circular' }}
+                      badge={contactBadgeFor(contact)}
+                      fields={[
+                        { label: 'Role', value: contact.role },
+                        { label: 'Email', value: contact.contact.email },
+                        { label: 'Phone', value: contact.contact.phone },
+                      ]}
+                      viewTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}`}
+                      editTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}/edit`}
+                    />
+                  ))}
+                </Box>
               ),
           },
         ]}

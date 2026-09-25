@@ -11,6 +11,7 @@ import type { Team } from '../../api/teamApi'
 import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeaguePlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import type { LeagueContact } from '../../api/leagueContactApi'
 
 const listLeagues = vi.fn()
 const listSeasons = vi.fn()
@@ -18,6 +19,7 @@ const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
 const listMatches = vi.fn()
 const getPlayingConditions = vi.fn()
+const listLeagueContacts = vi.fn()
 
 vi.mock('../../api/leagueApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/leagueApi')>()
@@ -51,6 +53,11 @@ vi.mock('../../api/matchApi', () => ({
 vi.mock('../../api/leaguePlayingConditionsApi', () => ({
   getPlayingConditions: (clubId: string, leagueId: string, seasonId: string) =>
     getPlayingConditions(clubId, leagueId, seasonId),
+}))
+
+// docs/specs/054-league-contacts.md: the new Contacts section's own contact list.
+vi.mock('../../api/leagueContactApi', () => ({
+  listLeagueContacts: (clubId: string, leagueId: string) => listLeagueContacts(clubId, leagueId),
 }))
 
 function makeLeague(overrides: Partial<League> = {}): League {
@@ -172,6 +179,26 @@ function makeLeaguePlayingConditions(overrides: Partial<LeaguePlayingConditions>
   }
 }
 
+function makeContact(overrides: Partial<LeagueContact> = {}): LeagueContact {
+  return {
+    id: 'contact-1',
+    leagueId: 'league-1',
+    contact: {
+      firstName: 'Jane',
+      lastName: 'Smith',
+      email: 'jane.smith@example.com',
+      phone: '+27 21 555 0100',
+    },
+    role: 'League Administrator',
+    isPrimary: false,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSeasons.mockResolvedValue([])
@@ -179,6 +206,7 @@ beforeEach(() => {
   listLeagueAffiliations.mockResolvedValue([])
   listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
   getPlayingConditions.mockResolvedValue(null)
+  listLeagueContacts.mockResolvedValue([])
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -523,6 +551,55 @@ describe('LeagueDetailPage', () => {
       Object.values(LEAGUE_FORMAT_LABELS).forEach((label) => {
         expect(screen.queryByText(label)).not.toBeInTheDocument()
       })
+    })
+  })
+
+  // docs/specs/054-league-contacts.md: the new, last Contacts section — same list-plus-RecordCard-
+  // grid shape as the Teams section above, read-only (no inline "Add", per the plan's item 7).
+  describe('Contacts section', () => {
+    it('renders the Contacts section heading last, after Fixtures', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      const fixturesHeading = screen.getByText('Fixtures')
+      const contactsHeading = await screen.findByText('Contacts')
+
+      expect(
+        fixturesHeading.compareDocumentPosition(contactsHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    })
+
+    it('renders "No contacts yet for this league." when the league has no contacts', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+      listLeagueContacts.mockResolvedValue([])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(await screen.findByText('No contacts yet for this league.')).toBeInTheDocument()
+    })
+
+    it('renders each contact as a card with Role/Email/Phone fields, and View/Edit links into the League Contact routes', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+      listLeagueContacts.mockResolvedValue([
+        makeContact({ id: 'contact-1', role: 'League Administrator' }),
+      ])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
+      expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.getByText('League Administrator')).toBeInTheDocument()
+      expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
+      expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
+
+      const links = screen.getAllByRole('link', { name: 'View' }).map((link) => link.getAttribute('href'))
+      expect(links).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1')
+      const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
+      expect(editLinks).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1/edit')
     })
   })
 })

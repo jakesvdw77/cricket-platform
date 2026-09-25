@@ -35,9 +35,11 @@ import {
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import { getPlayingConditions, uploadPlayingConditions, updatePlayingConditions } from '../../api/leaguePlayingConditionsApi'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
+import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
+import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../utils/leagueContact'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
 import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
@@ -128,6 +130,14 @@ export default function LeagueFormPage() {
   const affiliationsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'],
     queryFn: () => listLeagueAffiliations(clubId as string, leagueId as string),
+    enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
+  })
+
+  // docs/specs/054-league-contacts.md: the Contacts tab's own contact list — a league's contacts
+  // are a small, bounded collection, deliberately not paginated (same as listSponsorContacts).
+  const contactsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'],
+    queryFn: () => listLeagueContacts(clubId as string, leagueId as string),
     enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
   })
 
@@ -346,6 +356,7 @@ export default function LeagueFormPage() {
               <Tab label="Teams" />
               <Tab label="Schedule" />
               <Tab label="Playing Conditions" />
+              <Tab label="Contacts" />
             </Tabs>
           </Box>
         )}
@@ -578,6 +589,52 @@ export default function LeagueFormPage() {
                 </Box>
               </Stack>
             )}
+          </Box>
+        )}
+
+        {isEdit && activeTab === 4 && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            {(contactsQuery.data ?? []).length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                No contacts yet for this league.
+              </Typography>
+            )}
+
+            {(contactsQuery.data ?? []).length > 0 && (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                  mb: 2,
+                }}
+              >
+                {(contactsQuery.data ?? []).map((contact) => (
+                  <RecordCard
+                    key={contact.id}
+                    title={contactFullName(contact)}
+                    avatar={{ fallback: initialsFromName(contactFullName(contact)), shape: 'circular' }}
+                    badge={contactBadgeFor(contact)}
+                    fields={[
+                      { label: 'Role', value: contact.role },
+                      { label: 'Email', value: contact.contact.email },
+                      { label: 'Phone', value: contact.contact.phone },
+                    ]}
+                    viewTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}`}
+                    editTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}/edit`}
+                  />
+                ))}
+              </Box>
+            )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<AddIcon fontSize="small" />}
+              onClick={() => navigate(`/manage/fixtures/leagues/${leagueId}/contacts/new`)}
+            >
+              Add Contact
+            </Button>
           </Box>
         )}
       </RecordFormScreen>
