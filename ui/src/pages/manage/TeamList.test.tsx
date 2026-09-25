@@ -254,13 +254,14 @@ describe('TeamList', () => {
   // precedent test for the View+Edit dual-render footer.
   // docs/specs/057-team-extended-profile.md: both links now carry the `?from=section` marker so
   // TeamDetailPage/TeamFormPage's own Back link routes here, not the club-wide directory.
-  it('renders View and Edit together on a card, both pointing at the team\'s own routes with ?from=section', async () => {
+  // docs/specs/059-record-card-click-to-view.md: View is now the title link, not a footer button.
+  it('renders the title as a link to viewTo and Edit as a link to editTo, both with ?from=section, no separate View link', async () => {
     listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 
     renderList('test-club-id', 'test-section-id')
 
     await screen.findByText('1st XI')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute(
       'href',
       '/manage/sections/test-section-id/teams/team-1?from=section',
     )
@@ -268,6 +269,7 @@ describe('TeamList', () => {
       'href',
       '/manage/sections/test-section-id/teams/team-1/edit?from=section',
     )
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
   it('the back link targets Club Structure', async () => {

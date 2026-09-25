@@ -191,7 +191,7 @@ describe('SponsorContactList', () => {
     renderList('test-club-id', 'test-sponsor-id')
 
     await screen.findByText('Jane Smith')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute(
       'href',
       '/manage/sponsors/test-sponsor-id/contacts/contact-1',
     )

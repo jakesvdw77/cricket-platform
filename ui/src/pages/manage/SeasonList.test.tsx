@@ -178,7 +178,7 @@ describe('SeasonList', () => {
     renderList('test-club-id')
 
     await screen.findByText('2026')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '2026' })).toHaveAttribute(
       'href',
       '/manage/fixtures/seasons/season-1',
     )

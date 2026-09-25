@@ -18,10 +18,23 @@ export interface NavTileProps {
 // brand-tinted gradient (theme.ts's pageBackgroundGradient), and a translucent tint card read as
 // indistinguishable from that background; an opaque, shadowed card reads as a surface floating
 // above it instead. Same treatment RecordCard uses for the same reason.
+//
+// The whole tile has always been a single RouterLink (there's only one destination, no
+// separate View/Edit split), but it carried no hover feedback — real user feedback that every
+// clickable card in the app should show the same hover halo RecordCard.tsx gained in
+// docs/specs/059-record-card-click-to-view.md, dashboard tiles included.
 export function NavTile({ title, description, icon, to }: NavTileProps) {
   return (
     <Box component={RouterLink} to={to} sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-      <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2 }}>
+      <MuiCard
+        sx={{
+          bgcolor: 'background.paper',
+          boxShadow: 2,
+          transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
+          outline: '1px solid transparent',
+          '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
+        }}
+      >
         <CardContent>
           <Box
             sx={{

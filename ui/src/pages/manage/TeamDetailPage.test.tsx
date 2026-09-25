@@ -330,10 +330,10 @@ describe('TeamDetailPage', () => {
     expect(screen.getByText('Sam Lee')).toBeInTheDocument()
     expect(screen.getByText('Captain')).toBeInTheDocument()
 
-    const viewLinks = screen.getAllByRole('link', { name: 'View' }).map((link) => link.getAttribute('href'))
-    expect(viewLinks).toContain('/manage/players/player-1')
+    expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/players/player-1')
     const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
     expect(editLinks).toContain('/manage/players/player-1/edit')
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
   it('the back link targets the club-wide directory when ?from=section is absent (the default)', async () => {

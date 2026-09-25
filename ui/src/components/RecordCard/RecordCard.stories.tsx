@@ -172,9 +172,12 @@ export const WithInitialsAvatar: Story = {
 }
 
 // docs/specs/036-view-first-record-detail-screens.md (rendering revised by
-// docs/specs/041-list-screen-header-actions.md): viewTo becomes the footer's primary action
-// ("View", VisibilityOutlined); since editTo is ALSO passed here, Edit renders right after it —
-// an admin with a real edit route doesn't have to go through View first.
+// docs/specs/041-list-screen-header-actions.md, then again by
+// docs/specs/059-record-card-click-to-view.md): viewTo no longer renders a dedicated footer "View"
+// button — the title itself becomes a "stretched link" whose click target is expanded (via CSS)
+// to cover the whole card, so clicking anywhere on the card (outside a button) navigates to
+// viewTo. Since editTo is ALSO passed here, Edit still renders alone in the footer — an admin
+// with a real edit route doesn't have to open the card first.
 export const WithViewTo: Story = {
   args: {
     title: 'Jane Smith',
@@ -190,8 +193,10 @@ export const WithViewTo: Story = {
   },
 }
 
-// docs/specs/041-list-screen-header-actions.md: a viewTo-only call site (no editTo) still shows
-// just View — no Edit shortcut to show.
+// docs/specs/041-list-screen-header-actions.md (footer behavior superseded by
+// docs/specs/059-record-card-click-to-view.md): a viewTo-only call site (no editTo) renders the
+// title as the card-wide click-to-view link, with no footer button at all — there's no Edit
+// shortcut to show, and View is no longer a separate button either.
 export const WithViewToOnly: Story = {
   args: {
     ...WithViewTo.args,

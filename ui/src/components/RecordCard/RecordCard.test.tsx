@@ -265,12 +265,10 @@ describe('RecordCard', () => {
     expect(screen.getByTestId('deactivate-icon')).toBeInTheDocument()
   })
 
-  // docs/specs/041-list-screen-header-actions.md: viewTo becomes the footer's primary action
-  // ("View", VisibilityOutlined); when editTo is ALSO passed, Edit renders right after it, so an
-  // admin with a real edit route doesn't have to go through View first (036's own original
-  // suppress-Edit-entirely decision, revised here — see 041's Non-goals for why this is safe to
-  // ship with no permission gate: nothing newly reachable, View already led to Edit).
-  it('renders View and Edit together when both viewTo and editTo are provided', () => {
+  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone —
+  // the card's title itself becomes the (stretched-link) navigation to viewTo. When editTo is ALSO
+  // passed, Edit still renders alongside it in the footer.
+  it('renders the title as a link to viewTo, with Edit alongside it, when both viewTo and editTo are provided', () => {
     render(
       <MemoryRouter initialEntries={['/manage/players']}>
         <Routes>
@@ -291,11 +289,13 @@ describe('RecordCard', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/p-1')
+    expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/players/p-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/p-1/edit')
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'View' })).not.toBeInTheDocument()
   })
 
-  it('renders View alone, with no Edit link, when only viewTo is provided', () => {
+  it('renders the title as a link to viewTo, with no Edit action at all, when only viewTo is provided', () => {
     render(
       <MemoryRouter initialEntries={['/manage/players']}>
         <Routes>
@@ -308,9 +308,136 @@ describe('RecordCard', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/p-1')
+    expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/players/p-1')
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  // jsdom has no layout/hit-testing engine, so a synthetic click fired on a DOM element that is a
+  // *sibling* of the title link (e.g. the description text) never bubbles to the link the way a
+  // real browser's click-through-the-::after-overlay does — the whole point of the stretched-link
+  // technique only manifests via real paint/stacking, which is exactly why the spec's own Test Plan
+  // also calls for an End-to-end (Playwright, real browser) check of this same scenario. What IS
+  // reliably provable at this tier: (1) the title renders as a real link whose click fires
+  // navigation (below, and via the href assertions above), and (2) the CSS that makes that link's
+  // click target cover the whole card — MuiCard's `position: relative` containing block and the
+  // link's own `::after` overlay (the link itself deliberately stays `position: static` — see the
+  // spec's own corrected UI Requirements) — is actually wired up on the rendered elements, not
+  // just present in source.
+  it('clicking the title (the card-wide stretched link) navigates to viewTo', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={
+              <RecordCard
+                title="Jane Smith"
+                editLabel="Edit"
+                editTo="/manage/players/p-1/edit"
+                viewTo="/manage/players/p-1"
+                description="Opening batter."
+              />
+            }
+          />
+          <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
+          <Route path="/manage/players/p-1/edit" element={<div>Player Edit Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('link', { name: 'Jane Smith' }))
+
+    expect(screen.getByText('Player Detail Page')).toBeInTheDocument()
+  })
+
+  it('wires the stretched-link CSS (MuiCard containing block + title link overlay) that makes the whole card clickable', () => {
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={<RecordCard title="Jane Smith" viewTo="/manage/players/p-1" editTo="/manage/players/p-1/edit" />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const titleLink = screen.getByRole('link', { name: 'Jane Smith' })
+    // The link itself is deliberately left position: static (the default, i.e. absent from its
+    // inline/class styles) — giving it its own position: relative would make IT the containing
+    // block for its own ::after (a pseudo-element's containing-block search starts at its own
+    // originating element), constraining the overlay to the link's own tiny box instead of letting
+    // the search skip past it to MuiCard. Verified empirically in a real browser.
+    expect(titleLink).not.toHaveStyle({ position: 'relative' })
+    // MuiCard is the .MuiCard-root ancestor — the containing block the link's ::after resolves
+    // `inset: 0` against, per docs/specs/059-record-card-click-to-view.md.
+    expect(titleLink.closest('.MuiCard-root')).toHaveStyle({ position: 'relative' })
+    // CardActions must also be positioned, or the ::after overlay paints above the Edit/secondary
+    // action buttons inside it and silently swallows their clicks (the stacking-order fix).
+    expect(document.querySelector('.MuiCardActions-root')).toHaveStyle({ position: 'relative' })
+  })
+
+  it('navigates to editTo (not viewTo) when Edit is clicked on a card with both', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={
+              <RecordCard
+                title="Jane Smith"
+                editLabel="Edit"
+                editTo="/manage/players/p-1/edit"
+                viewTo="/manage/players/p-1"
+              />
+            }
+          />
+          <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
+          <Route path="/manage/players/p-1/edit" element={<div>Player Edit Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('link', { name: 'Edit' }))
+
+    expect(screen.getByText('Player Edit Page')).toBeInTheDocument()
+    expect(screen.queryByText('Player Detail Page')).not.toBeInTheDocument()
+  })
+
+  it('fires secondaryAction.onClick without navigating when viewTo is also set', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(
+      <MemoryRouter initialEntries={['/manage/players']}>
+        <Routes>
+          <Route
+            path="/manage/players"
+            element={
+              <RecordCard
+                title="Jane Smith"
+                viewTo="/manage/players/p-1"
+                secondaryAction={{ label: 'Deactivate', pendingLabel: 'Deactivating…', pending: false, onClick }}
+              />
+            }
+          />
+          <Route path="/manage/players/p-1" element={<div>Player Detail Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Player Detail Page')).not.toBeInTheDocument()
+  })
+
+  it('renders no card-wide link at all when viewTo is not provided', () => {
+    render(<RecordCard title="Jane Smith" editLabel="Edit" onEdit={vi.fn()} />)
+
+    expect(screen.queryByRole('link', { name: 'Jane Smith' })).not.toBeInTheDocument()
   })
 
   // Existing editTo/onEdit-only call sites (anything not touched by 036) are unaffected — purely

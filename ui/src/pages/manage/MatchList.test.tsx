@@ -110,6 +110,7 @@ function renderPage(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="matches" element={<MatchList />} />
             <Route path="matches/new" element={<div>New Match Page</div>} />
+            <Route path="matches/:matchId" element={<div>Match Detail Page</div>} />
             <Route path="matches/:matchId/edit" element={<div>Edit Match Page</div>} />
           </Route>
         </Routes>
@@ -149,11 +150,36 @@ describe('MatchList', () => {
     renderPage('test-club-id')
 
     await screen.findByText('1st XI vs Riverside Occasionals')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
+    expect(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/matches/match-1',
+    )
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
       '/manage/fixtures/matches/match-1/edit',
     )
+  })
+
+  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
+  // card title is the click target. Extends the href-only assertion above with a real
+  // click-through, confirming the title link still resolves to the same route the old View button
+  // targeted, and Edit still navigates independently — a good regression case here specifically
+  // because this card also carries two secondary-action buttons (Select Team, Team Sheet), the
+  // exact scenario the stacking-order fix must not break.
+  it('clicking the card title navigates to the match view route, and Edit still navigates to the edit route', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1' })]))
+
+    const { unmount } = renderPage('test-club-id')
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    await user.click(screen.getByRole('link', { name: '1st XI vs Riverside Occasionals' }))
+    expect(await screen.findByText('Match Detail Page')).toBeInTheDocument()
+    unmount()
+
+    renderPage('test-club-id')
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    await user.click(screen.getByRole('link', { name: 'Edit' }))
+    expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
   })
 
   // docs/specs/037-match-improvements.md item 1

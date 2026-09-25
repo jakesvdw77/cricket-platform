@@ -137,16 +137,29 @@ describe('TeamCard', () => {
     expect(screen.getByLabelText('Facebook')).toBeInTheDocument()
   })
 
-  it('renders View and Edit links pointing at the given routes', () => {
+  it('renders the title as a link to viewTo and Edit as a link to editTo, with no separate View link', () => {
     renderCard({
       viewTo: '/manage/sections/section-1/teams/team-1',
       editTo: '/manage/sections/section-1/teams/team-1/edit',
     })
 
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1/edit',
     )
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/059-record-card-click-to-view.md: the stretched-link overlay sits above every
+  // plain, unpositioned sibling — a real bug caught in standards review, where this social-link
+  // row initially had no position: relative and would have silently swallowed its own clicks.
+  // Mirrors RecordCard.test.tsx's own "wires the stretched-link CSS" test.
+  it('wires position: relative on the social links row so the stretched-link overlay does not swallow its clicks', () => {
+    renderCard({ team: makeTeam({ socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/team' }] }) })
+
+    const facebookLink = screen.getByLabelText('Facebook')
+    expect(facebookLink.closest('.MuiCard-root')).toHaveStyle({ position: 'relative' })
+    expect(facebookLink.parentElement?.parentElement).toHaveStyle({ position: 'relative' })
   })
 })

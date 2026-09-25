@@ -69,6 +69,7 @@ function renderList(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="leagues" element={<LeagueList />} />
             <Route path="leagues/new" element={<div>Add League Page</div>} />
+            <Route path="leagues/:id" element={<div>League Detail Page</div>} />
             <Route path="leagues/:id/edit" element={<div>Edit League Page</div>} />
           </Route>
         </Routes>
@@ -198,7 +199,7 @@ describe('LeagueList', () => {
     renderList('test-club-id')
 
     await screen.findByText('Internal League')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Internal League' })).toHaveAttribute(
       'href',
       '/manage/fixtures/leagues/league-1',
     )
@@ -206,6 +207,27 @@ describe('LeagueList', () => {
       'href',
       '/manage/fixtures/leagues/league-1/edit',
     )
+  })
+
+  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
+  // card title is the click target. Extends the href-only assertion above with a real
+  // click-through, confirming the title link still resolves to the same route the old View button
+  // targeted, and Edit still navigates independently (both real browser-equivalent navigations,
+  // not just attribute checks).
+  it('clicking the card title navigates to the league view route, and Edit still navigates to the edit route', async () => {
+    const user = userEvent.setup()
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', name: 'Internal League' })])
+
+    const { unmount } = renderList('test-club-id')
+    await screen.findByText('Internal League')
+    await user.click(screen.getByRole('link', { name: 'Internal League' }))
+    expect(await screen.findByText('League Detail Page')).toBeInTheDocument()
+    unmount()
+
+    renderList('test-club-id')
+    await screen.findByText('Internal League')
+    await user.click(screen.getByRole('link', { name: 'Edit' }))
+    expect(await screen.findByText('Edit League Page')).toBeInTheDocument()
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

@@ -1,10 +1,19 @@
 import type { ReactNode } from 'react'
-import { Avatar, Card as MuiCard, CardActions, CardContent, Chip, Stack, Typography, Button as MuiButton } from '@mui/material'
+import {
+  Avatar,
+  Card as MuiCard,
+  CardActions,
+  CardContent,
+  Chip,
+  Link as MuiLink,
+  Stack,
+  Typography,
+  Button as MuiButton,
+} from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Button } from '../Button'
 
 export type RecordCardBadgeTone = 'positive' | 'neutral' | 'muted'
@@ -17,6 +26,13 @@ export interface RecordCardBadge {
 export interface RecordCardField {
   label: string
   value: ReactNode
+  // docs/specs/059-record-card-click-to-view.md: when `viewTo` is set, the card's title becomes a
+  // "stretched link" whose click target is expanded (via an absolutely-positioned ::after) to cover
+  // the whole card. If `value` here is itself interactive (e.g. 031-jersey-numbers.md's inline
+  // jersey-number Input on TeamFormPage.tsx's SquadPlayerCard), that element must be given its own
+  // `position: relative` (or another stacking context) so it paints above the stretched-link overlay
+  // — RecordCard can't add this itself, since it has no way to know in advance whether an arbitrary
+  // ReactNode passed as a field value is interactive.
 }
 
 // The leading visual in a card's header — a photo/logo when the record has one, MUI Avatar's own
@@ -75,11 +91,13 @@ export interface RecordCardProps {
   editLabel?: string
   onEdit?: () => void
   editTo?: string
-  // docs/specs/036-view-first-record-detail-screens.md: when present, this becomes the footer's
-  // primary action ("View", VisibilityOutlined). If `editTo` is ALSO passed, both render side by
-  // side (View, then Edit) — `onEdit` stays suppressed either way, since it's the bare-callback
-  // fallback for call sites with neither a real view nor edit route. Purely additive: any call
-  // site not passing this keeps its existing Edit-only footer unchanged.
+  // docs/specs/036-view-first-record-detail-screens.md: when present, the card's title becomes a
+  // "stretched link" to this route (docs/specs/059-record-card-click-to-view.md) — clicking
+  // anywhere on the card navigates here, replacing the earlier dedicated footer "View" button. If
+  // `editTo` is ALSO passed, the footer still renders Edit alongside the title link — `onEdit`
+  // stays suppressed either way, since it's the bare-callback fallback for call sites with neither
+  // a real view nor edit route. Purely additive: any call site not passing this keeps its existing
+  // Edit-only footer unchanged.
   viewTo?: string
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
@@ -151,7 +169,29 @@ export function RecordCard({
     // occupying that extra stretched space — so unequal content heights left View/Edit at different
     // vertical positions from one card to the next in the same row. flex: '1 1 auto' on CardContent
     // makes it the one element that grows into that space, leaving CardActions pinned to the bottom.
-    <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    // position: 'relative' makes this MuiCard the containing block the title link's stretched
+    // ::after resolves `inset: 0` against, per docs/specs/059-record-card-click-to-view.md — the
+    // ::after fills exactly this element, not the viewport or some other ancestor.
+    <MuiCard
+      sx={{
+        bgcolor: 'background.paper',
+        boxShadow: 2,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        // Real user feedback: with the explicit "View" button gone, a viewTo card otherwise gives
+        // no visual cue at all that it's clickable beyond the cursor changing on hover — mirrors
+        // the legacy Cricket Legend app's own hover "halo." transition keeps it from feeling
+        // abrupt; only applies to viewTo cards, since an editTo/onEdit-only card was never made
+        // click-anywhere (see this spec's Non-goals) and shouldn't imply it is.
+        ...(viewTo && {
+          transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
+          outline: '1px solid transparent',
+          '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
+        }),
+      }}
+    >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
@@ -172,9 +212,41 @@ export function RecordCard({
                 {avatar.fallback}
               </Avatar>
             )}
-            <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
-              {title}
-            </Typography>
+            {viewTo ? (
+              // The heading (h3) stays the outer element so this card keeps exactly the same
+              // heading semantics as before (screen-reader heading navigation, existing
+              // `getByRole('heading', ...)` queries across every consuming list's own tests) — the
+              // stretched-link technique is layered onto an inner MuiLink rather than replacing the
+              // heading itself.
+              //
+              // Deliberately does NOT set `position: 'relative'` on this link, even though the
+              // spec's own UI Requirements prose describes the link itself as carrying it — verified
+              // empirically (Playwright, real browser hit-testing) that doing so makes the *link*
+              // the nearest positioned ancestor for its own `::after` (a pseudo-element is generated
+              // as the last child of its originating element, so the containing-block search for an
+              // absolutely-positioned `::after` starts at, and immediately resolves to, that
+              // element's own `position: relative`, never reaching MuiCard). That constrains the
+              // stretched overlay to the link's own tiny box instead of the whole card — the
+              // opposite of this spec's goal. Leaving the link `position: static` (the default) lets
+              // the containing-block search skip over it and resolve to MuiCard (the outer
+              // `position: relative` element), which is what actually makes `inset: 0` cover the
+              // whole card.
+              <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
+                <MuiLink
+                  component={RouterLink}
+                  to={viewTo}
+                  color="inherit"
+                  underline="none"
+                  sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}
+                >
+                  {title}
+                </MuiLink>
+              </Typography>
+            ) : (
+              <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
+                {title}
+              </Typography>
+            )}
           </Stack>
           {/* docs/specs/040-announce-team.md: flexWrap added so `badge` plus a couple of
               `badges` entries (up to 3 chips) never force horizontal overflow at 375px. */}
@@ -243,7 +315,14 @@ export function RecordCard({
         )}
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0 }}>
+      {/* position: 'relative' is the stacking-order fix docs/specs/059-record-card-click-to-view.md
+          flags as the trickiest part of this spec: the title link's absolutely-positioned ::after
+          overlay (above) paints above every plain, unpositioned sibling in the same stacking
+          context regardless of DOM order — without this, every button below (secondary actions,
+          Edit) would silently stop receiving clicks, swallowed by that overlay. Giving CardActions
+          its own position lifts every button inside it above the overlay in one place, with no
+          explicit z-index and no per-button change needed. */}
+      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
         {allSecondaryActions.map((action, index) => (
           <Button
             key={index}
@@ -257,30 +336,18 @@ export function RecordCard({
           </Button>
         ))}
         {viewTo ? (
-          <>
+          editTo && (
             <MuiButton
               component={RouterLink}
-              to={viewTo}
+              to={editTo}
               variant="text"
               color="inherit"
               size="small"
-              startIcon={<VisibilityOutlinedIcon fontSize="small" />}
+              startIcon={<EditOutlinedIcon fontSize="small" />}
             >
-              View
+              {editLabel}
             </MuiButton>
-            {editTo && (
-              <MuiButton
-                component={RouterLink}
-                to={editTo}
-                variant="text"
-                color="inherit"
-                size="small"
-                startIcon={<EditOutlinedIcon fontSize="small" />}
-              >
-                {editLabel}
-              </MuiButton>
-            )}
-          </>
+          )
         ) : editTo ? (
           <MuiButton
             component={RouterLink}

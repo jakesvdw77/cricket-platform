@@ -197,7 +197,7 @@ describe('PlayerList', () => {
     renderList('test-club-id')
 
     await screen.findByText('Sipho Ndlovu')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
+    expect(screen.getByRole('link', { name: 'Sipho Ndlovu' })).toHaveAttribute('href', '/manage/players/player-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
   })
 
