@@ -457,7 +457,7 @@ describe('TeamFormPage', () => {
         await user.click(await screen.findByText(/Bob Jones/))
 
         await user.click(screen.getByRole('button', { name: 'Coach' }))
-        expect(screen.getByLabelText('Role')).toHaveValue('Coach')
+        expect(screen.getByLabelText('Team role')).toHaveValue('Coach')
 
         await user.click(screen.getByRole('button', { name: 'Link' }))
 
@@ -473,12 +473,12 @@ describe('TeamFormPage', () => {
         await user.click(screen.getByRole('tab', { name: 'Contacts' }))
         await user.click(await screen.findByRole('button', { name: '+ New contact' }))
 
-        // Two "Role" fields render simultaneously once the dialog opens — the dialog's own extra
-        // team-specific role field (rendered first) and ClubContactForm's own club-wide role
-        // field (rendered second, as part of the wrapped form).
-        const roleFields = screen.getAllByLabelText('Role')
-        await user.type(roleFields[0], 'Coach')
-        await user.type(roleFields[1], 'Manager')
+        // Two distinctly-labeled role fields render simultaneously once the dialog opens — the
+        // dialog's own extra "Team role" field (docs/specs/057) and ClubContactForm's own
+        // "Club role" field, as part of the wrapped form — real user feedback that two identically
+        // "Role"-labeled fields side by side read as a duplicate.
+        await user.type(screen.getByLabelText('Team role'), 'Coach')
+        await user.type(screen.getByLabelText('Club role'), 'Manager')
 
         await user.type(await screen.findByLabelText('First name'), 'Bob')
         await user.type(screen.getByLabelText('Last name'), 'Jones')

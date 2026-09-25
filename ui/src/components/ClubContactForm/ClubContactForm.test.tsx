@@ -72,7 +72,7 @@ describe('ClubContactForm', () => {
     await user.type(screen.getByLabelText('Last name'), 'Smith')
     await user.type(screen.getByLabelText('Email'), 'jane.smith@example.com')
     await user.type(screen.getByLabelText('Phone'), '+27 21 555 0100')
-    await user.type(screen.getByLabelText('Role'), 'Chairman')
+    await user.type(screen.getByLabelText('Club role'), 'Chairman')
 
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -100,7 +100,7 @@ describe('ClubContactForm', () => {
     await user.type(screen.getByLabelText('Last name'), 'Smith')
     await user.type(screen.getByLabelText('Email'), 'jane.smith@example.com')
     await user.type(screen.getByLabelText('Phone'), '+27 21 555 0100')
-    await user.type(screen.getByLabelText('Role'), 'Chairman')
+    await user.type(screen.getByLabelText('Club role'), 'Chairman')
     await user.click(screen.getByLabelText('Is primary contact'))
 
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -129,7 +129,7 @@ describe('ClubContactForm', () => {
     await user.type(screen.getByLabelText('Last name'), 'Smith')
     await user.type(screen.getByLabelText('Email'), 'jane.smith@example.com')
     await user.type(screen.getByLabelText('Phone'), '+27 21 555 0100')
-    await user.type(screen.getByLabelText('Role'), 'Chairman')
+    await user.type(screen.getByLabelText('Club role'), 'Chairman')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -157,7 +157,7 @@ describe('ClubContactForm', () => {
     expect(screen.getByLabelText('Last name')).toHaveValue('Contact')
     expect(screen.getByLabelText('Email')).toHaveValue('existing@example.com')
     expect(screen.getByLabelText('Phone')).toHaveValue('+27 21 555 0199')
-    expect(screen.getByLabelText('Role')).toHaveValue('Treasurer')
+    expect(screen.getByLabelText('Club role')).toHaveValue('Treasurer')
     expect(screen.getByLabelText('Is primary contact')).toBeChecked()
     expect(screen.getByRole('img', { name: 'Photo preview' })).toHaveAttribute('src', '/media/managed/existing.png')
   })

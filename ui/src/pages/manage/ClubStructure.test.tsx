@@ -421,7 +421,7 @@ describe('ClubStructure', () => {
     await user.type(screen.getByLabelText('Last name'), 'Jones')
     await user.type(screen.getByLabelText('Email'), 'bob.jones@example.com')
     await user.type(screen.getByLabelText('Phone'), '+27 21 555 0199')
-    await user.type(screen.getByLabelText('Role'), 'Coach')
+    await user.type(screen.getByLabelText('Club role'), 'Coach')
     await user.click(screen.getByRole('button', { name: 'Create & link' }))
 
     await waitFor(() => expect(createClubContact).toHaveBeenCalledTimes(1))

@@ -912,7 +912,7 @@ export default function TeamFormPage() {
             searchLabel="Search contacts"
             searchPlaceholder="Search by name or role"
             onLink={(option, role) => linkContactMutation.mutate({ contactId: option.id, role: role as string })}
-            extraField={{ label: 'Role', quickFillOptions: ROLE_QUICK_FILL }}
+            extraField={{ label: 'Team role', quickFillOptions: ROLE_QUICK_FILL }}
           />
 
           <CreateAndLinkRecordDialog<ClubContactPayload>
@@ -928,7 +928,7 @@ export default function TeamFormPage() {
               createAndLinkContactMutation.error,
               "Couldn't create and link this contact. Please try again.",
             )}
-            extraField={{ label: 'Role', quickFillOptions: ROLE_QUICK_FILL }}
+            extraField={{ label: 'Team role', quickFillOptions: ROLE_QUICK_FILL }}
           />
 
           <LinkExistingRecordDialog<Sponsor>
