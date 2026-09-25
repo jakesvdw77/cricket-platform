@@ -61,8 +61,8 @@ export default function ManageClubProfilePage() {
   return (
     <RecordFormScreen
       title="Club Profile"
-      backTo="/manage"
-      backLabel="Back to Dashboard"
+      backTo="/manage/club-profile"
+      backLabel="Back to Club Profile"
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
           {saveMutation.isError && (

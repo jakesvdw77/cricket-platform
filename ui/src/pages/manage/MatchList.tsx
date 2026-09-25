@@ -278,8 +278,8 @@ export interface MatchListProps {
 // every season, unlike Section/Team/Sponsor's small, bounded lists.
 export default function MatchList({
   title = 'Matches',
-  backTo = '/manage/fixtures',
-  backLabel = 'Back to Fixtures',
+  backTo = '/manage',
+  backLabel = 'Back to Dashboard',
   createLabel = 'Add Match',
   editTo = (matchId: string) => `/manage/fixtures/matches/${matchId}/edit`,
   viewTo = (matchId: string) => `/manage/fixtures/matches/${matchId}`,

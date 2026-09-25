@@ -93,6 +93,20 @@ describe('SeasonList', () => {
     expect(await screen.findByText('No seasons yet')).toBeInTheDocument()
   })
 
+  // docs/specs/056-club-profile-overview.md: the back link now returns to Club Profile rather
+  // than the old /manage/fixtures hub.
+  it('renders a "Back to Club Profile" link pointing at /manage/club-profile', async () => {
+    listSeasons.mockResolvedValueOnce([])
+
+    renderList('test-club-id')
+
+    await screen.findByText('No seasons yet')
+    expect(screen.getByRole('link', { name: 'Back to Club Profile' })).toHaveAttribute(
+      'href',
+      '/manage/club-profile',
+    )
+  })
+
   it('renders a card per season with its fields and an Inactive badge for a deactivated one', async () => {
     listSeasons.mockResolvedValueOnce([
       makeSeason({ id: 'season-1', label: '2026' }),
