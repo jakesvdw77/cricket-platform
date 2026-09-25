@@ -3,7 +3,9 @@ import api from './axiosConfig'
 // A club's own internal league — docs/specs/029-league-management.md. Single /manage-only
 // namespace (no /platform mirror, same precedent as Section/Team/Sponsor/Player):
 // AccessService.canAdministerClub already gives platform_admin a superset pass on these
-// endpoints. Never hard-deleted — deactivate/reactivate only.
+// endpoints. Never hard-deleted — deactivate/reactivate only. allowSubstitutions moved off this
+// entity to the per-season LeaguePlayingConditionsApi (052 amendment) — it was never enforced by
+// any backend rule and, unlike this long-lived row, plausibly differs by season.
 export type LeagueSource = 'INTERNAL' | 'EXTERNAL'
 
 export interface League {
@@ -12,7 +14,6 @@ export interface League {
   name: string
   source: LeagueSource
   maxPlayingXiSize: number
-  allowSubstitutions: boolean
   minAge: number | null
   maxAge: number | null
   ageCutoffDate: string | null
@@ -34,7 +35,6 @@ export interface LeaguePayload {
   name: string
   source?: LeagueSource | null
   maxPlayingXiSize?: number | null
-  allowSubstitutions?: boolean | null
   minAge?: number | null
   maxAge?: number | null
   ageCutoffDate?: string | null

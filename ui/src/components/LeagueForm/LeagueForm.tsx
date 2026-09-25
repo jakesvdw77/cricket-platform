@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Box, Checkbox, FormControlLabel } from '@mui/material'
+import { Box } from '@mui/material'
 import { Input } from '../Input'
 import type { LeaguePayload } from '../../api/leagueApi'
 
@@ -16,7 +16,6 @@ export interface LeagueFormProps {
 interface FormState {
   name: string
   maxPlayingXiSize: string
-  allowSubstitutions: boolean
   minAge: string
   maxAge: string
   ageCutoffDate: string
@@ -28,7 +27,6 @@ function toFormState(initialValues?: Partial<LeaguePayload>): FormState {
   return {
     name: initialValues?.name ?? '',
     maxPlayingXiSize: String(initialValues?.maxPlayingXiSize ?? 11),
-    allowSubstitutions: initialValues?.allowSubstitutions ?? false,
     minAge: initialValues?.minAge != null ? String(initialValues.minAge) : '',
     maxAge: initialValues?.maxAge != null ? String(initialValues.maxAge) : '',
     ageCutoffDate: initialValues?.ageCutoffDate ?? '',
@@ -81,7 +79,6 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
     const payload: LeaguePayload = {
       name: values.name.trim(),
       maxPlayingXiSize: Number(values.maxPlayingXiSize),
-      allowSubstitutions: values.allowSubstitutions,
       minAge: values.minAge.trim() ? Number(values.minAge) : null,
       maxAge: values.maxAge.trim() ? Number(values.maxAge) : null,
       ageCutoffDate: values.ageCutoffDate.trim() ? values.ageCutoffDate : null,
@@ -137,18 +134,6 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
         InputLabelProps={{ shrink: true }}
         helperText="Age as of this date — leave blank to use the match's own season start date"
       />
-
-      <Box sx={{ gridColumn: '1 / -1' }}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={values.allowSubstitutions}
-              onChange={(event) => setValues((prev) => ({ ...prev, allowSubstitutions: event.target.checked }))}
-            />
-          }
-          label="Allow substitutions (e.g. Vets cricket, where a twelfth man may fully bat/bowl)"
-        />
-      </Box>
     </Box>
   )
 }

@@ -7,8 +7,13 @@ import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import CakeOutlinedIcon from '@mui/icons-material/CakeOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
+import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
+import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { RecordCard } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
@@ -18,6 +23,7 @@ import { LeagueFixtures } from '../../components/LeagueFixtures'
 import { NextMatchCountdown } from '../../components/NextMatchCountdown'
 import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
+import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
 import { listLeagues } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
@@ -31,6 +37,8 @@ import { resolveNextMatchCountdown } from '../../utils/nextMatchCountdown'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
 import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
+import { generatePlayingConditionsSummaryPdf } from '../../utils/playingConditionsSummaryPdf'
+import { resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../utils/playingConditions'
 import { triggerDownload } from '../../utils/triggerDownload'
 import { badgeFor } from './LeagueList'
 
@@ -46,6 +54,10 @@ export default function LeagueDetailPage() {
   const theme = useTheme()
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
+  // docs/specs/052-league-playing-conditions.md — a second, independent Share flow (the captain
+  // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
+  // never share state.
+  const [playingConditionsShareOpen, setPlayingConditionsShareOpen] = useState(false)
 
   const {
     data: league,
@@ -162,6 +174,23 @@ export default function LeagueDetailPage() {
     triggerDownload(url, `${team.teamName}-schedule.ics`)
   }
 
+  // docs/specs/052-league-playing-conditions.md UI Requirements item 4/5 — the same "has this
+  // league+season's structured Playing Conditions ever been saved" signal PlayingConditionsForm's
+  // own initialValues derivation uses (maxOversPerInnings != null), shared here via
+  // resolvePlayingConditionsPayload so the two host pages never state it differently.
+  const playingConditionsPayload = resolvePlayingConditionsPayload(playingConditionsQuery.data)
+
+  // A second, independent Share handler for the captain summary — never touches
+  // generateLeagueSchedulePdf/handleSharePdf above, which belongs to the unrelated Schedule-sharing
+  // feature.
+  const handleSharePlayingConditionsPdf = async () => {
+    if (!playingConditionsPayload) {
+      return
+    }
+    const url = await generatePlayingConditionsSummaryPdf(league?.name ?? '', seasonLabel, playingConditionsPayload)
+    window.open(url, '_blank')
+  }
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -190,32 +219,19 @@ export default function LeagueDetailPage() {
         editTo={`/manage/fixtures/leagues/${league.id}/edit`}
         headerNote={
           (seasonsQuery.data ?? []).length > 0 ? (
-            <Stack direction="row" spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
-              <Input
-                select
-                label="Season"
-                value={selectedSeasonId}
-                onChange={(event) => setSelectedSeasonId(event.target.value)}
-                sx={{ maxWidth: 280 }}
-              >
-                {(seasonsQuery.data ?? []).map((season) => (
-                  <MenuItem key={season.id} value={season.id}>
-                    {season.label}
-                  </MenuItem>
-                ))}
-              </Input>
-
-              {playingConditionsQuery.data && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  startIcon={<DescriptionOutlinedIcon fontSize="small" />}
-                  onClick={() => window.open(playingConditionsQuery.data!.documentUrl, '_blank')}
-                >
-                  Playing Conditions
-                </Button>
-              )}
-            </Stack>
+            <Input
+              select
+              label="Season"
+              value={selectedSeasonId}
+              onChange={(event) => setSelectedSeasonId(event.target.value)}
+              sx={{ maxWidth: 280 }}
+            >
+              {(seasonsQuery.data ?? []).map((season) => (
+                <MenuItem key={season.id} value={season.id}>
+                  {season.label}
+                </MenuItem>
+              ))}
+            </Input>
           ) : undefined
         }
         sections={[
@@ -235,12 +251,123 @@ export default function LeagueDetailPage() {
                     value={`${league.minAge ?? 'Any'}–${league.maxAge ?? 'Any'}`}
                   />
                 )}
-                <DetailFieldRow
-                  icon={<SwapHorizOutlinedIcon />}
-                  label="Substitutions allowed"
-                  value={league.allowSubstitutions ? 'Yes' : 'No'}
-                />
               </DetailFieldGrid>
+            ),
+          },
+          {
+            heading: 'Playing Conditions',
+            note: (
+              <Button
+                variant="ghost"
+                size="sm"
+                startIcon={<ShareOutlinedIcon fontSize="small" />}
+                onClick={() => setPlayingConditionsShareOpen(true)}
+              >
+                Share
+              </Button>
+            ),
+            content: !playingConditionsPayload ? (
+              <Typography variant="body2" color="text.secondary">
+                No Playing Conditions set for this season yet.
+              </Typography>
+            ) : (
+              <Stack spacing={2.5}>
+                <DetailFieldGrid>
+                  <DetailFieldRow
+                    icon={<SportsCricketOutlinedIcon />}
+                    label="Max overs per innings"
+                    value={playingConditionsPayload.maxOversPerInnings}
+                  />
+                  <DetailFieldRow
+                    icon={<BoltOutlinedIcon />}
+                    label="Powerplay overs"
+                    value={playingConditionsPayload.powerplayOvers}
+                  />
+                  <DetailFieldRow
+                    icon={<TimerOutlinedIcon />}
+                    label="Max overs per bowler"
+                    value={
+                      playingConditionsPayload.maxOversPerBowler != null
+                        ? playingConditionsPayload.maxOversPerBowler
+                        : `${resolveEffectiveMaxOversPerBowler(playingConditionsPayload.maxOversPerInnings, null)} (auto)`
+                    }
+                  />
+                  {playingConditionsPayload.fieldingRestrictionsNotes && (
+                    <Box sx={{ gridColumn: '1 / -1' }}>
+                      <DetailFieldRow
+                        icon={<NotesOutlinedIcon />}
+                        label="Fielding restrictions notes"
+                        value={playingConditionsPayload.fieldingRestrictionsNotes}
+                      />
+                    </Box>
+                  )}
+                  <DetailFieldRow
+                    icon={<SwapHorizOutlinedIcon />}
+                    label="Substitutions allowed"
+                    value={playingConditionsPayload.allowSubstitutions ? 'Yes' : 'No'}
+                  />
+                  <DetailFieldRow
+                    icon={<EmojiEventsOutlinedIcon />}
+                    label="Points for win"
+                    value={playingConditionsPayload.pointsForWin}
+                  />
+                  <DetailFieldRow
+                    icon={<EmojiEventsOutlinedIcon />}
+                    label="Points for loss"
+                    value={playingConditionsPayload.pointsForLoss}
+                  />
+                  <DetailFieldRow
+                    icon={<EmojiEventsOutlinedIcon />}
+                    label="Points for draw"
+                    value={playingConditionsPayload.pointsForDraw}
+                  />
+                  <DetailFieldRow
+                    icon={<EmojiEventsOutlinedIcon />}
+                    label="Points for no result"
+                    value={playingConditionsPayload.pointsForNoResult}
+                  />
+                  <DetailFieldRow
+                    icon={<EmojiEventsOutlinedIcon />}
+                    label="Points for forfeit win"
+                    value={playingConditionsPayload.pointsForForfeitWin}
+                  />
+                  {playingConditionsPayload.bonusPointsEnabled && (
+                    <>
+                      <DetailFieldRow
+                        icon={<StarOutlineOutlinedIcon />}
+                        label="Bonus — early chase"
+                        value={`Before over ${playingConditionsPayload.bonusBattingOversThreshold}`}
+                      />
+                      <DetailFieldRow
+                        icon={<StarOutlineOutlinedIcon />}
+                        label="Bonus — bowling restriction"
+                        value={`${playingConditionsPayload.bonusBowlingRestrictionPercentage}% of target`}
+                      />
+                    </>
+                  )}
+                  {playingConditionsPayload.additionalNotes && (
+                    <Box sx={{ gridColumn: '1 / -1' }}>
+                      <DetailFieldRow
+                        icon={<NotesOutlinedIcon />}
+                        label="Additional notes"
+                        value={playingConditionsPayload.additionalNotes}
+                      />
+                    </Box>
+                  )}
+                </DetailFieldGrid>
+
+                {playingConditionsQuery.data?.documentUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    startIcon={<DescriptionOutlinedIcon fontSize="small" />}
+                    sx={{ alignSelf: 'flex-start' }}
+                    onClick={() => window.open(playingConditionsQuery.data!.documentUrl as string, '_blank')}
+                  >
+                    View full document
+                  </Button>
+                )}
+              </Stack>
             ),
           },
           {
@@ -310,6 +437,16 @@ export default function LeagueDetailPage() {
         onSharePdf={handleSharePdf}
         onSharePoster={handleSharePoster}
         onShareCalendar={handleShareCalendar}
+      />
+
+      <PlayingConditionsShareDialog
+        open={playingConditionsShareOpen}
+        onClose={() => setPlayingConditionsShareOpen(false)}
+        hasStructuredFields={Boolean(playingConditionsPayload)}
+        leagueName={league.name}
+        seasonLabel={seasonLabel}
+        conditions={playingConditionsPayload}
+        onSharePdf={handleSharePlayingConditionsPdf}
       />
     </>
   )

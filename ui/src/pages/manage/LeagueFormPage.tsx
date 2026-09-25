@@ -19,6 +19,8 @@ import { LeagueFixtures } from '../../components/LeagueFixtures'
 import { DocumentUpload } from '../../components/DocumentUpload'
 import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
+import { PlayingConditionsForm } from '../../components/PlayingConditionsForm'
+import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
@@ -31,13 +33,16 @@ import {
   unaffiliateLeagueTeam,
 } from '../../api/leagueAffiliationApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
-import { getPlayingConditions, uploadPlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import { getPlayingConditions, uploadPlayingConditions, updatePlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
 import { initialsFromName } from '../../utils/initials'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
 import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
+import { generatePlayingConditionsSummaryPdf } from '../../utils/playingConditionsSummaryPdf'
+import { resolvePlayingConditionsPayload } from '../../utils/playingConditions'
 import { triggerDownload } from '../../utils/triggerDownload'
 
 // One affiliated team, with its own unlink mutation — mirrors TeamFormPage's TeamSponsorCard
@@ -92,6 +97,10 @@ export default function LeagueFormPage() {
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  // docs/specs/052-league-playing-conditions.md — a second, independent Share flow (the captain
+  // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
+  // never share state.
+  const [playingConditionsShareOpen, setPlayingConditionsShareOpen] = useState(false)
 
   const {
     data: league,
@@ -208,6 +217,29 @@ export default function LeagueFormPage() {
     triggerDownload(url, `${team.teamName}-schedule.ics`)
   }
 
+  // docs/specs/052-league-playing-conditions.md UI Requirements item 4 — `maxOversPerInnings !=
+  // null` is the "has this league+season's structured Playing Conditions ever been saved" signal;
+  // shared by PlayingConditionsForm's own initialValues and PlayingConditionsShareDialog's
+  // hasStructuredFields/conditions props below.
+  const playingConditionsPayload = resolvePlayingConditionsPayload(playingConditionsQuery.data)
+
+  const updatePlayingConditionsMutation = useMutation({
+    mutationFn: (payload: PlayingConditionsPayload) =>
+      updatePlayingConditions(clubId as string, leagueId as string, selectedSeasonId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey }),
+  })
+
+  // A second, independent Share handler for the captain summary — never touches
+  // generateLeagueSchedulePdf/handleSharePdf above, which belongs to the unrelated Schedule-sharing
+  // feature.
+  const handleSharePlayingConditionsPdf = async () => {
+    if (!playingConditionsPayload) {
+      return
+    }
+    const url = await generatePlayingConditionsSummaryPdf(league?.name ?? '', seasonLabel, playingConditionsPayload)
+    window.open(url, '_blank')
+  }
+
   const affiliatedTeamIds = new Set(affiliationsForSeason.map((affiliation) => affiliation.teamId))
   const linkableTeams: Team[] = (teamsQuery.data ?? []).filter(
     (team) => team.active && !affiliatedTeamIds.has(team.id),
@@ -313,6 +345,7 @@ export default function LeagueFormPage() {
               <Tab label="Details" />
               <Tab label="Teams" />
               <Tab label="Schedule" />
+              <Tab label="Playing Conditions" />
             </Tabs>
           </Box>
         )}
@@ -324,7 +357,6 @@ export default function LeagueFormPage() {
                 ? {
                     name: league.name,
                     maxPlayingXiSize: league.maxPlayingXiSize,
-                    allowSubstitutions: league.allowSubstitutions,
                     minAge: league.minAge,
                     maxAge: league.maxAge,
                     ageCutoffDate: league.ageCutoffDate,
@@ -427,24 +459,6 @@ export default function LeagueFormPage() {
                   ))}
                 </Input>
 
-                <DocumentUpload
-                  label="Playing Conditions"
-                  value={
-                    playingConditionsQuery.data
-                      ? {
-                          documentUrl: playingConditionsQuery.data.documentUrl,
-                          uploadedAt: playingConditionsQuery.data.uploadedAt,
-                        }
-                      : null
-                  }
-                  onUpload={(file) =>
-                    uploadPlayingConditions(clubId as string, leagueId as string, selectedSeasonId, file).then(
-                      (response) => response.documentUrl,
-                    )
-                  }
-                  onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
-                />
-
                 <Stack direction="row" spacing={2} flexWrap="wrap">
                   <Button
                     variant="secondary"
@@ -469,6 +483,93 @@ export default function LeagueFormPage() {
                 </Stack>
 
                 <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
+              </Stack>
+            )}
+          </Box>
+        )}
+
+        {isEdit && activeTab === 3 && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            {(seasonsQuery.data ?? []).length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Create a season first — playing conditions are captured for a league and a specific season.
+              </Typography>
+            ) : (
+              <Stack spacing={4}>
+                <Input
+                  select
+                  label="Season"
+                  value={selectedSeasonId}
+                  onChange={(event) => setSelectedSeasonId(event.target.value)}
+                  sx={{ maxWidth: 280 }}
+                >
+                  {(seasonsQuery.data ?? []).map((season) => (
+                    <MenuItem key={season.id} value={season.id}>
+                      {season.label}
+                    </MenuItem>
+                  ))}
+                </Input>
+
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary', mb: 1.5 }}
+                  >
+                    Full Document
+                  </Typography>
+                  <DocumentUpload
+                    label="Playing Conditions"
+                    value={
+                      playingConditionsQuery.data?.documentUrl
+                        ? {
+                            documentUrl: playingConditionsQuery.data.documentUrl,
+                            uploadedAt: playingConditionsQuery.data.uploadedAt as string,
+                          }
+                        : null
+                    }
+                    onUpload={(file) =>
+                      uploadPlayingConditions(clubId as string, leagueId as string, selectedSeasonId, file).then(
+                        (response) => response.documentUrl,
+                      )
+                    }
+                    onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
+                  />
+                </Box>
+
+                <Box>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    flexWrap="wrap"
+                    useFlexGap
+                    spacing={2}
+                    sx={{ mb: 1.5 }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}
+                    >
+                      Match Format & Points
+                    </Typography>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      startIcon={<ShareOutlinedIcon fontSize="small" />}
+                      onClick={() => setPlayingConditionsShareOpen(true)}
+                    >
+                      Share
+                    </Button>
+                  </Stack>
+
+                  <PlayingConditionsForm
+                    key={selectedSeasonId}
+                    initialValues={playingConditionsPayload}
+                    onSubmit={(payload) => updatePlayingConditionsMutation.mutate(payload)}
+                    pending={updatePlayingConditionsMutation.isPending}
+                    error={updatePlayingConditionsMutation.isError ? updatePlayingConditionsMutation.error : undefined}
+                  />
+                </Box>
               </Stack>
             )}
           </Box>
@@ -500,6 +601,18 @@ export default function LeagueFormPage() {
           onSharePdf={handleSharePdf}
           onSharePoster={handleSharePoster}
           onShareCalendar={handleShareCalendar}
+        />
+      )}
+
+      {isEdit && league && (
+        <PlayingConditionsShareDialog
+          open={playingConditionsShareOpen}
+          onClose={() => setPlayingConditionsShareOpen(false)}
+          hasStructuredFields={Boolean(playingConditionsPayload)}
+          leagueName={league.name}
+          seasonLabel={seasonLabel}
+          conditions={playingConditionsPayload}
+          onSharePdf={handleSharePlayingConditionsPdf}
         />
       )}
     </>

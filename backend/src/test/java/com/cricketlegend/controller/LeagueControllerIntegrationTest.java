@@ -117,7 +117,6 @@ class LeagueControllerIntegrationTest {
                 {
                     "name": "Riverside Premier League (renamed)",
                     "maxPlayingXiSize": 12,
-                    "allowSubstitutions": true,
                     "minAge": 18,
                     "maxAge": 60
                 }
@@ -128,8 +127,7 @@ class LeagueControllerIntegrationTest {
                         .content(updateBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Riverside Premier League (renamed)"))
-                .andExpect(jsonPath("$.maxPlayingXiSize").value(12))
-                .andExpect(jsonPath("$.allowSubstitutions").value(true));
+                .andExpect(jsonPath("$.maxPlayingXiSize").value(12));
 
         mockMvc.perform(post(
                                 "/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/deactivate",
@@ -590,7 +588,6 @@ class LeagueControllerIntegrationTest {
                 .name(name)
                 .source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(11)
-                .allowSubstitutions(false)
                 .active(true)
                 .build();
     }

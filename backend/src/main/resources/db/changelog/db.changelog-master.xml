@@ -31,5 +31,7 @@
     <include file="db/changelog/v1/024-add-match-side-announced.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/025-add-match-external-opponent-logo.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/026-add-league-playing-conditions.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/027-add-league-playing-conditions-structured-fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/028-move-allow-substitutions-to-playing-conditions.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

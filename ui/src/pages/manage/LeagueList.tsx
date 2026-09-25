@@ -51,14 +51,6 @@ export function leagueRecordFields(league: League): RecordCardField[] {
   return fields
 }
 
-export function leagueChips(league: League): string[] {
-  const chips: string[] = []
-  if (league.allowSubstitutions) {
-    chips.push('Substitutions allowed')
-  }
-  return chips
-}
-
 // One RecordCard per league — Deactivate/Reactivate now lives on LeagueFormPage's own actions bar
 // (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
 // with "View" as its only footer action.
@@ -70,7 +62,6 @@ function LeagueCard({ league }: { league: League }) {
       badge={badgeFor(league)}
       badges={leagueSeasonBadges(league)}
       fields={leagueRecordFields(league)}
-      chips={leagueChips(league)}
       viewTo={`/manage/fixtures/leagues/${league.id}`}
       editTo={`/manage/fixtures/leagues/${league.id}/edit`}
       secondaryActions={[

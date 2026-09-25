@@ -1,17 +1,57 @@
 import { isAxiosError } from 'axios'
 import api from './axiosConfig'
 
-// A league+season's single Playing Conditions PDF — docs/specs/050-league-schedule-and-fixtures.md.
-// No version history: a re-upload replaces this same row's documentUrl/uploadedAt/uploadedBy in
-// place (an upsert against the backend's unique (league_id, season_id) key), the same
-// "no history, just current state" posture Sponsor.logoUrl/Team.logoUrl already have.
+// A league+season's Playing Conditions — docs/specs/050-league-schedule-and-fixtures.md's PDF
+// upload plus docs/specs/052-league-playing-conditions.md's structured match-format/points/
+// bonus-points fields, on the same row. No version history: a save (either the PDF upload or the
+// structured-fields PUT) replaces this same row's fields in place (an upsert against the backend's
+// unique (league_id, season_id) key), the same "no history, just current state" posture
+// Sponsor.logoUrl/Team.logoUrl already have. documentUrl/uploadedAt are nullable as of `052` — a
+// row can now exist with structured fields saved and no PDF ever uploaded. allowSubstitutions
+// moved here from League itself (052 amendment) — never enforced by any backend rule, and like
+// the rest of this record's fields, plausibly differs by season.
 export interface LeaguePlayingConditions {
   id: string
   leagueId: string
   seasonId: string
-  documentUrl: string
-  uploadedAt: string
+  documentUrl: string | null
+  uploadedAt: string | null
   uploadedBy: string | null
+  maxOversPerInnings: number | null
+  powerplayOvers: number | null
+  maxOversPerBowler: number | null
+  fieldingRestrictionsNotes: string | null
+  allowSubstitutions: boolean
+  pointsForWin: number | null
+  pointsForLoss: number | null
+  pointsForDraw: number | null
+  pointsForNoResult: number | null
+  pointsForForfeitWin: number | null
+  bonusPointsEnabled: boolean
+  bonusBattingOversThreshold: number | null
+  bonusBowlingRestrictionPercentage: number | null
+  additionalNotes: string | null
+}
+
+// The writable structured-fields subset — mirrors UpdateLeaguePlayingConditionsRequest.java
+// field-for-field. Saved as one whole form (docs/specs/052), so every field except
+// maxOversPerBowler/fieldingRestrictionsNotes/the two bonus-threshold fields/additionalNotes is
+// required at this type level.
+export interface PlayingConditionsPayload {
+  maxOversPerInnings: number
+  powerplayOvers: number
+  maxOversPerBowler: number | null
+  fieldingRestrictionsNotes: string | null
+  allowSubstitutions: boolean
+  pointsForWin: number
+  pointsForLoss: number
+  pointsForDraw: number
+  pointsForNoResult: number
+  pointsForForfeitWin: number
+  bonusPointsEnabled: boolean
+  bonusBattingOversThreshold: number | null
+  bonusBowlingRestrictionPercentage: number | null
+  additionalNotes: string | null
 }
 
 function playingConditionsPath(clubId: string, leagueId: string, seasonId: string): string {
@@ -52,5 +92,19 @@ export async function uploadPlayingConditions(
   const { data } = await api.post<LeaguePlayingConditions>(playingConditionsPath(clubId, leagueId, seasonId), formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return data
+}
+
+// JSON PUT — docs/specs/052-league-playing-conditions.md. Upserts against the same row the PDF
+// upload does: creates it on first save for this (leagueId, seasonId) pair if none exists yet,
+// otherwise updates the structured fields in place, leaving documentUrl/uploadedAt/uploadedBy
+// untouched.
+export async function updatePlayingConditions(
+  clubId: string,
+  leagueId: string,
+  seasonId: string,
+  payload: PlayingConditionsPayload,
+): Promise<LeaguePlayingConditions> {
+  const { data } = await api.put<LeaguePlayingConditions>(playingConditionsPath(clubId, leagueId, seasonId), payload)
   return data
 }

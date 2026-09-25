@@ -58,7 +58,6 @@ describe('LeagueForm', () => {
     renderLeagueForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Name'), 'Vets League')
-    await user.click(screen.getByLabelText(/allow substitutions/i))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -66,7 +65,6 @@ describe('LeagueForm', () => {
     expect(payload).toEqual({
       name: 'Vets League',
       maxPlayingXiSize: 11,
-      allowSubstitutions: true,
       minAge: null,
       maxAge: null,
       ageCutoffDate: null,
@@ -90,7 +88,6 @@ describe('LeagueForm', () => {
     expect(payload).toEqual({
       name: 'U15 League',
       maxPlayingXiSize: 11,
-      allowSubstitutions: false,
       minAge: 13,
       maxAge: 15,
       ageCutoffDate: '2026-12-31',
@@ -100,11 +97,10 @@ describe('LeagueForm', () => {
   it('prefills from initialValues', () => {
     renderLeagueForm({
       onSubmit: vi.fn(),
-      initialValues: { name: 'Existing League', maxPlayingXiSize: 12, allowSubstitutions: true },
+      initialValues: { name: 'Existing League', maxPlayingXiSize: 12 },
     })
 
     expect(screen.getByLabelText('Name')).toHaveValue('Existing League')
     expect(screen.getByLabelText('Playing XI size')).toHaveValue(12)
-    expect(screen.getByLabelText(/allow substitutions/i)).toBeChecked()
   })
 })

@@ -841,7 +841,6 @@ class MatchControllerIntegrationTest {
                 .name("Lakeside League")
                 .source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(11)
-                .allowSubstitutions(false)
                 .active(true)
                 .build();
     }

@@ -37,8 +37,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for LeagueServiceImpl's business rules from docs/specs/029-league-management.md:
- * create/update default {@code source}/{@code maxPlayingXiSize}/{@code allowSubstitutions} when
- * left null, the {@code minAge <= maxAge} validation, deactivate/reactivate's one-way transition
+ * create/update default {@code source}/{@code maxPlayingXiSize} when left null, the {@code
+ * minAge <= maxAge} validation, deactivate/reactivate's one-way transition
  * guard, and cross-club isolation. Per docs/standards/backend.md, every @Service method carrying
  * a business rule ships a unit test in the same change.
  *
@@ -78,12 +78,12 @@ class LeagueServiceImplTest {
     private LeagueDto dummyDto() {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
-                false, null, null, null, true, null, null, null, 0, null, null);
+                null, null, null, true, null, null, null, 0, null, null);
     }
 
     private League existingLeague(UUID id, UUID clubId, boolean active) {
         return League.builder().id(id).clubId(clubId).name("Premier League").source(LeagueSource.INTERNAL)
-                .maxPlayingXiSize(11).allowSubstitutions(false).active(active).build();
+                .maxPlayingXiSize(11).active(active).build();
     }
 
     private Season season(UUID id, UUID clubId, String label, LocalDate startDate, LocalDate endDate, Instant createdAt) {
@@ -97,16 +97,16 @@ class LeagueServiceImplTest {
     private LeagueDto baseDtoFor(League league) {
         return new LeagueDto(
                 league.getId(), league.getClubId(), league.getName(), league.getSource(),
-                league.getMaxPlayingXiSize(), league.isAllowSubstitutions(), league.getMinAge(),
+                league.getMaxPlayingXiSize(), league.getMinAge(),
                 league.getMaxAge(), league.getAgeCutoffDate(), league.isActive(), league.getCreatedAt(),
                 league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null);
     }
 
     @Test
-    void createDefaultsSourceMaxXiSizeAndAllowSubstitutionsWhenNull() {
+    void createDefaultsSourceAndMaxXiSizeWhenNull() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("Vets League", null, null, null, null, null, null);
+                new CreateLeagueRequest("Vets League", null, null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -117,7 +117,6 @@ class LeagueServiceImplTest {
         assertThat(saved.getClubId()).isEqualTo(clubId);
         assertThat(saved.getSource()).isEqualTo(LeagueSource.INTERNAL);
         assertThat(saved.getMaxPlayingXiSize()).isEqualTo(11);
-        assertThat(saved.isAllowSubstitutions()).isFalse();
         assertThat(saved.isActive()).isTrue();
     }
 
@@ -125,7 +124,7 @@ class LeagueServiceImplTest {
     void createWithACustomMaxPlayingXiSizeAndVetsFlagsIsPersisted() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("Vets League", LeagueSource.INTERNAL, 12, true, 35, null, null);
+                new CreateLeagueRequest("Vets League", LeagueSource.INTERNAL, 12, 35, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -134,7 +133,6 @@ class LeagueServiceImplTest {
 
         League saved = captor.getValue();
         assertThat(saved.getMaxPlayingXiSize()).isEqualTo(12);
-        assertThat(saved.isAllowSubstitutions()).isTrue();
         assertThat(saved.getMinAge()).isEqualTo(35);
     }
 
@@ -142,7 +140,7 @@ class LeagueServiceImplTest {
     void createWithMinAgeGreaterThanMaxAgeThrowsValidationExceptionAndNeverSaves() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("U15s", null, null, null, 20, 15, null);
+                new CreateLeagueRequest("U15s", null, null, 20, 15, null);
 
         assertThatThrownBy(() -> leagueService.create(clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -160,13 +158,12 @@ class LeagueServiceImplTest {
         when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
 
         UpdateLeagueRequest request =
-                new UpdateLeagueRequest("Renamed League", LeagueSource.INTERNAL, 12, true, 10, 20, null);
+                new UpdateLeagueRequest("Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null);
 
         leagueService.update(clubId, leagueId, request);
 
         assertThat(existing.getName()).isEqualTo("Renamed League");
         assertThat(existing.getMaxPlayingXiSize()).isEqualTo(12);
-        assertThat(existing.isAllowSubstitutions()).isTrue();
         assertThat(existing.getMinAge()).isEqualTo(10);
         assertThat(existing.getMaxAge()).isEqualTo(20);
     }
@@ -180,7 +177,7 @@ class LeagueServiceImplTest {
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
 
         UpdateLeagueRequest request =
-                new UpdateLeagueRequest("Renamed League", null, null, null, null, null, null);
+                new UpdateLeagueRequest("Renamed League", null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
                 .isInstanceOf(NotFoundException.class);

@@ -32,7 +32,7 @@ export const AgeRestrictedLeague: Story = {
 export const VetsLeague: Story = {
   args: {
     onSubmit: () => undefined,
-    initialValues: { name: 'Vets League', maxPlayingXiSize: 12, allowSubstitutions: true, minAge: 40 },
+    initialValues: { name: 'Vets League', maxPlayingXiSize: 12, minAge: 40 },
   },
 }
 

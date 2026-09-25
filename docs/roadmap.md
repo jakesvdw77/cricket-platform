@@ -134,6 +134,12 @@ Named for completeness — none of these are next, none have a target spec numbe
 
 ~~**Rolling `RecordCard`'s solid `background.paper` card treatment out to other `/manage` list screens.**~~ — resolved by `043-list-toolbar-gold-standard.md`: the surface moved from `MatchList`'s own wrapping `Box` into `ListToolbar` itself, so every list screen (not just Matches) gets it automatically.
 
+## Deferred by `052` — the rest of `League`'s per-season fields
+
+`052-league-playing-conditions.md`'s Rollout Notes (Amendment) moved `League.allowSubstitutions` to the per-season `LeaguePlayingConditions.allowSubstitutions` — confirmed by reading every call site to be purely informational display text, enforced by nothing, so the move was safe and mechanical within that spec's own PR.
+
+- **`League.maxPlayingXiSize`/`minAge`/`maxAge`/`ageCutoffDate` were flagged in the same discussion as having the identical "plausibly varies by season, not by League" shape** — but unlike `allowSubstitutions`, all four are genuinely enforced by `MatchSideServiceImpl` (squad-size cap, player age eligibility). Moving them means rewiring that validation to resolve the match's own `LeaguePlayingConditions` row (via `leagueId`+`seasonId`) instead of reading `League` directly, plus a real data migration for existing League-level values — deliberately not attempted as a drive-by alongside the zero-risk `allowSubstitutions` move. Real future spec if a club actually needs per-season squad-cap/age-eligibility rules (e.g. a league that changes its XI size or age bands year to year), not speculatively built now.
+
 ## Known tech debt (unscheduled, no owning spec)
 
 - **`Page<T>` serialized directly, not via a stable DTO.** Every paginated list endpoint (`ClubController`, `ProductController`, `SubscriptionController`, `LeadController`) returns Spring Data's `Page<T>` straight from the controller, which logs a startup/runtime warning that this JSON shape isn't guaranteed stable across Spring Data versions (`ration$PageModule$WarningLoggingModifier`, pointing at `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` or `PagedResourcesAssembler`). Predates `012-club-profile.md` — present since `008-product-catalog.md`'s first paginated endpoint, confirmed still on `master`. Harmless in practice so far (the shape has been stable), but the real fix is global (`@EnableSpringDataWebSupport`) and touches every paginated response's JSON shape app-wide, so it doesn't belong to any single feature spec — deferred until a pass is willing to touch all of them together.

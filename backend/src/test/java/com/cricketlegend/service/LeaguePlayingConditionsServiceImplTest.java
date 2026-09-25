@@ -14,7 +14,9 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.LeaguePlayingConditionsDto;
 import com.cricketlegend.dto.MediaUploadResponse;
+import com.cricketlegend.dto.UpdateLeaguePlayingConditionsRequest;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeaguePlayingConditionsMapper;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
@@ -130,7 +132,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .id(UUID.randomUUID()).leagueId(leagueId).seasonId(seasonId).documentUrl("/media/rules.pdf")
                 .uploadedAt(Instant.now()).build();
         LeaguePlayingConditionsDto dto = new LeaguePlayingConditionsDto(
-                existing.getId(), leagueId, seasonId, "/media/rules.pdf", existing.getUploadedAt(), null);
+                existing.getId(), leagueId, seasonId, "/media/rules.pdf", existing.getUploadedAt(), null, null,
+                null, null, null, false, null, null, null, null, null, false, null, null, null);
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
         when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
@@ -187,7 +190,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(UUID.randomUUID(), leagueId, seasonId, "/media/rules.pdf",
-                        Instant.now(), null));
+                        Instant.now(), null, null, null, null, null, false, null, null, null, null, null, false,
+                        null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, null);
 
@@ -210,7 +214,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(UUID.randomUUID(), leagueId, seasonId, "/media/rules.pdf",
-                        Instant.now(), uploadedBy));
+                        Instant.now(), uploadedBy, null, null, null, null, false, null, null, null, null, null,
+                        false, null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, uploadedBy);
 
@@ -243,7 +248,8 @@ class LeaguePlayingConditionsServiceImplTest {
                 .thenAnswer(invocation -> captor.getValue());
         when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
                 new LeaguePlayingConditionsDto(existingId, leagueId, seasonId, "/media/new-rules.pdf",
-                        Instant.now(), newUploadedBy));
+                        Instant.now(), newUploadedBy, null, null, null, null, false, null, null, null, null,
+                        null, false, null, null, null));
 
         service.upload(clubId, leagueId, seasonId, file, newUploadedBy);
 
@@ -252,5 +258,209 @@ class LeaguePlayingConditionsServiceImplTest {
         assertThat(saved.getDocumentUrl()).isEqualTo("/media/new-rules.pdf");
         assertThat(saved.getUploadedBy()).isEqualTo(newUploadedBy);
         verify(leaguePlayingConditionsRepository, org.mockito.Mockito.times(1)).save(any());
+    }
+
+    // --- update() ---
+
+    private UpdateLeaguePlayingConditionsRequest validRequest(boolean bonusPointsEnabled) {
+        return new UpdateLeaguePlayingConditionsRequest(
+                20,
+                6,
+                4,
+                "Fielding circle applies for the first 6 overs.",
+                true,
+                2,
+                0,
+                1,
+                1,
+                2,
+                bonusPointsEnabled,
+                bonusPointsEnabled ? 17 : null,
+                bonusPointsEnabled ? 80 : null,
+                "No DLS below 5 overs a side.");
+    }
+
+    private void stubValidLeagueAndSeason(UUID clubId, UUID leagueId, UUID seasonId) {
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+    }
+
+    @Test
+    void updateWithALeagueBelongingToADifferentClubThrowsNotFoundExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID otherClubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, otherClubId)));
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, validRequest(false)))
+                .isInstanceOf(NotFoundException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void updateWithASeasonBelongingToADifferentClubThrowsNotFoundExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID otherClubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, otherClubId)));
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, validRequest(false)))
+                .isInstanceOf(NotFoundException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void firstSaveForAPairWithNoExistingRowCreatesOneWithPdfFieldsAllNull() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
+                .thenReturn(Optional.empty());
+        ArgumentCaptor<LeaguePlayingConditions> captor = ArgumentCaptor.forClass(LeaguePlayingConditions.class);
+        when(leaguePlayingConditionsRepository.save(captor.capture()))
+                .thenAnswer(invocation -> captor.getValue());
+        when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
+                new LeaguePlayingConditionsDto(
+                        UUID.randomUUID(), leagueId, seasonId, null, null, null, 20, 6, 4, null, true, 2, 0, 1,
+                        1, 2, false, null, null, null));
+
+        service.update(clubId, leagueId, seasonId, validRequest(false));
+
+        LeaguePlayingConditions saved = captor.getValue();
+        assertThat(saved.getId()).isNull(); // no id yet — a genuinely new row, not an update
+        assertThat(saved.getLeagueId()).isEqualTo(leagueId);
+        assertThat(saved.getSeasonId()).isEqualTo(seasonId);
+        assertThat(saved.getDocumentUrl()).isNull();
+        assertThat(saved.getUploadedAt()).isNull();
+        assertThat(saved.getUploadedBy()).isNull();
+        assertThat(saved.getMaxOversPerInnings()).isEqualTo(20);
+        assertThat(saved.getPowerplayOvers()).isEqualTo(6);
+        assertThat(saved.getPointsForWin()).isEqualTo(2);
+        assertThat(saved.isAllowSubstitutions()).isTrue();
+    }
+
+    @Test
+    void saveAgainstARowThatAlreadyHasAPdfLeavesThePdfFieldsUntouched() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID existingId = UUID.randomUUID();
+        UUID uploadedBy = UUID.randomUUID();
+        Instant uploadedAt = Instant.now().minusSeconds(3600);
+        LeaguePlayingConditions existing = LeaguePlayingConditions.builder()
+                .id(existingId).leagueId(leagueId).seasonId(seasonId).documentUrl("/media/rules.pdf")
+                .uploadedAt(uploadedAt).uploadedBy(uploadedBy).build();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
+                .thenReturn(Optional.of(existing));
+        ArgumentCaptor<LeaguePlayingConditions> captor = ArgumentCaptor.forClass(LeaguePlayingConditions.class);
+        when(leaguePlayingConditionsRepository.save(captor.capture()))
+                .thenAnswer(invocation -> captor.getValue());
+        when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
+                new LeaguePlayingConditionsDto(
+                        existingId, leagueId, seasonId, "/media/rules.pdf", uploadedAt, uploadedBy, 20, 6, 4,
+                        null, true, 2, 0, 1, 1, 2, false, null, null, null));
+
+        service.update(clubId, leagueId, seasonId, validRequest(false));
+
+        LeaguePlayingConditions saved = captor.getValue();
+        assertThat(saved.getId()).isEqualTo(existingId); // same row, not a second one
+        assertThat(saved.getDocumentUrl()).isEqualTo("/media/rules.pdf");
+        assertThat(saved.getUploadedAt()).isEqualTo(uploadedAt);
+        assertThat(saved.getUploadedBy()).isEqualTo(uploadedBy);
+        assertThat(saved.getMaxOversPerInnings()).isEqualTo(20);
+    }
+
+    @Test
+    void powerplayOversGreaterThanMaxOversPerInningsThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
+                20, 21, null, null, false, 2, 0, 1, 1, 2, false, null, null, null);
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
+                .isInstanceOf(ValidationException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void maxOversPerBowlerGreaterThanMaxOversPerInningsThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
+                20, 6, 21, null, false, 2, 0, 1, 1, 2, false, null, null, null);
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
+                .isInstanceOf(ValidationException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void bonusPointsEnabledWithANullThresholdThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
+                20, 6, null, null, false, 2, 0, 1, 1, 2, true, null, 80, null);
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
+                .isInstanceOf(ValidationException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void bonusBattingOversThresholdGreaterThanMaxOversPerInningsThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
+                20, 6, null, null, false, 2, 0, 1, 1, 2, true, 21, 80, null);
+
+        assertThatThrownBy(() -> service.update(clubId, leagueId, seasonId, request))
+                .isInstanceOf(ValidationException.class);
+        verify(leaguePlayingConditionsRepository, never()).save(any());
+    }
+
+    @Test
+    void bonusPointsDisabledClearsBothThresholdFieldsRegardlessOfWhatTheRequestSent() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID existingId = UUID.randomUUID();
+        LeaguePlayingConditions existing = LeaguePlayingConditions.builder()
+                .id(existingId).leagueId(leagueId).seasonId(seasonId)
+                .bonusPointsEnabled(true).bonusBattingOversThreshold(17)
+                .bonusBowlingRestrictionPercentage(80).build();
+        stubValidLeagueAndSeason(clubId, leagueId, seasonId);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonId(leagueId, seasonId))
+                .thenReturn(Optional.of(existing));
+        ArgumentCaptor<LeaguePlayingConditions> captor = ArgumentCaptor.forClass(LeaguePlayingConditions.class);
+        when(leaguePlayingConditionsRepository.save(captor.capture()))
+                .thenAnswer(invocation -> captor.getValue());
+        when(leaguePlayingConditionsMapper.toDto(any(LeaguePlayingConditions.class))).thenReturn(
+                new LeaguePlayingConditionsDto(
+                        existingId, leagueId, seasonId, null, null, null, 20, 6, 4, null, false, 2, 0, 1, 1, 2,
+                        false, null, null, null));
+        // bonusPointsEnabled=false in the request, but the caller still sends stale threshold
+        // values — the service must ignore them and persist null for both regardless.
+        UpdateLeaguePlayingConditionsRequest request = new UpdateLeaguePlayingConditionsRequest(
+                20, 6, null, null, false, 2, 0, 1, 1, 2, false, 17, 80, null);
+
+        service.update(clubId, leagueId, seasonId, request);
+
+        LeaguePlayingConditions saved = captor.getValue();
+        assertThat(saved.isBonusPointsEnabled()).isFalse();
+        assertThat(saved.getBonusBattingOversThreshold()).isNull();
+        assertThat(saved.getBonusBowlingRestrictionPercentage()).isNull();
     }
 }

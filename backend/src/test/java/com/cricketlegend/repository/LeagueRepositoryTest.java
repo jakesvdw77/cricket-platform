@@ -36,7 +36,7 @@ class LeagueRepositoryTest {
 
     private League league(UUID clubId) {
         return League.builder().clubId(clubId).name("Premier League").source(LeagueSource.INTERNAL)
-                .maxPlayingXiSize(11).allowSubstitutions(false).active(true).build();
+                .maxPlayingXiSize(11).active(true).build();
     }
 
     @Test

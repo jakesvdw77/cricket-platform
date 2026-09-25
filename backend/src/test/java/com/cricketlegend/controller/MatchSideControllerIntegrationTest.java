@@ -482,7 +482,6 @@ class MatchSideControllerIntegrationTest {
                 .name("One-a-side League")
                 .source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(1)
-                .allowSubstitutions(false)
                 .active(true)
                 .build());
         Match match = matchRepository.save(Match.builder()
@@ -669,7 +668,6 @@ class MatchSideControllerIntegrationTest {
                 .name("U15s")
                 .source(LeagueSource.INTERNAL)
                 .maxPlayingXiSize(11)
-                .allowSubstitutions(false)
                 .minAge(13)
                 .maxAge(15)
                 .ageCutoffDate(ageCutoffDate)
