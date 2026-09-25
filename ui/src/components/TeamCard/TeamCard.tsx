@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import {
   Avatar,
   Box,
+  ButtonBase,
   Card as MuiCard,
   CardActions,
   CardContent,
@@ -13,6 +15,7 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
@@ -20,10 +23,14 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
+import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import { badgeSx } from '../RecordCard'
 import type { RecordCardBadge } from '../RecordCard'
 import { SocialLinksRow } from '../marketing/SocialLinksRow'
+import { RecordQuickViewDialog } from '../RecordQuickViewDialog'
 import { initialsFromName } from '../../utils/initials'
+import { listSponsorContacts } from '../../api/sponsorContactApi'
 import type { Team } from '../../api/teamApi'
 import type { Sponsor } from '../../api/sponsorApi'
 
@@ -86,6 +93,17 @@ export function TeamCard({
   editTo,
 }: TeamCardProps) {
   const socialLinks = team.socialLinks ?? []
+  const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
+  const selectedSponsor = sponsors.find((sponsor) => sponsor.id === openSponsorId) ?? null
+
+  // Only fetched once a sponsor's own quick-view dialog is open — mirrors TeamDetailPage.tsx's
+  // identical sponsor-contacts fetch, real user feedback that clicking a sponsor here should
+  // behave the same as clicking one on the Team View screen, not a lesser, click-through-less copy.
+  const sponsorContactsQuery = useQuery({
+    queryKey: ['managed-club', team.clubId, 'sponsors', openSponsorId, 'contacts'],
+    queryFn: () => listSponsorContacts(team.clubId, openSponsorId as string),
+    enabled: Boolean(openSponsorId),
+  })
 
   return (
     // height: '100%' + column flex — same fix RecordCard.tsx applies, per direct user feedback:
@@ -139,8 +157,18 @@ export function TeamCard({
               </MuiLink>
             </Typography>
           </Stack>
-          {badge && (
-            <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+          {/* Badge + social links share the top-right corner — real user feedback that social
+              icons buried near the bottom (after sponsors) read as an afterthought; moving them
+              up here, alongside the badge, surfaces them without adding a dedicated row.
+              position: relative is the same stretched-link stacking-order fix SocialLinksRow
+              gets everywhere else on this card — see the CardActions comment below. */}
+          {(badge || socialLinks.length > 0) && (
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 'none', position: 'relative' }}>
+              {badge && (
+                <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+              )}
+              {socialLinks.length > 0 && <SocialLinksRow links={socialLinks} size="small" />}
+            </Stack>
           )}
         </Stack>
 
@@ -162,34 +190,34 @@ export function TeamCard({
         </Stack>
 
         {sponsors.length > 0 && (
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          // position: relative — same stacking-order fix CardActions gets below: without it the
+          // stretched-link title overlay silently swallows clicks on these buttons.
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ position: 'relative' }}>
             {sponsors.map((sponsor) => (
-              <Avatar
+              <ButtonBase
                 key={sponsor.id}
-                src={sponsor.logoUrl ?? undefined}
-                variant="rounded"
+                onClick={() => setOpenSponsorId(sponsor.id)}
                 title={sponsor.name}
-                sx={{
-                  width: 28,
-                  height: 28,
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                  color: 'primary.dark',
-                }}
+                aria-label={`${sponsor.name} — Sponsor`}
+                sx={{ borderRadius: 1 }}
               >
-                {initialsFromName(sponsor.name)}
-              </Avatar>
+                <Avatar
+                  src={sponsor.logoUrl ?? undefined}
+                  variant="rounded"
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                    color: 'primary.dark',
+                  }}
+                >
+                  {initialsFromName(sponsor.name)}
+                </Avatar>
+              </ButtonBase>
             ))}
           </Stack>
-        )}
-
-        {/* position: relative — same stacking-order fix CardActions gets below: without it the
-            stretched-link title overlay silently swallows clicks on these real <a> icon buttons. */}
-        {socialLinks.length > 0 && (
-          <Box sx={{ position: 'relative' }}>
-            <SocialLinksRow links={socialLinks} />
-          </Box>
         )}
       </CardContent>
 
@@ -205,6 +233,48 @@ export function TeamCard({
           Edit
         </MuiButton>
       </CardActions>
+
+      <RecordQuickViewDialog
+        open={Boolean(selectedSponsor)}
+        onClose={() => setOpenSponsorId(null)}
+        avatar={{
+          imageUrl: selectedSponsor?.logoUrl,
+          fallback: initialsFromName(selectedSponsor ? selectedSponsor.name : ''),
+          shape: 'rounded',
+        }}
+        title={selectedSponsor ? selectedSponsor.name : ''}
+        fields={
+          selectedSponsor
+            ? [
+                { icon: <LanguageOutlinedIcon />, label: 'Website', value: selectedSponsor.website ?? 'Not set' },
+                { icon: <EmailOutlinedIcon />, label: 'Email', value: selectedSponsor.email ?? 'Not set' },
+                ...((sponsorContactsQuery.data ?? []).length > 0
+                  ? [
+                      {
+                        icon: <GroupsOutlinedIcon />,
+                        label: 'Sponsor Contacts',
+                        value: (
+                          <Stack spacing={1}>
+                            {(sponsorContactsQuery.data ?? []).map((sponsorContact) => (
+                              <Box key={sponsorContact.id}>
+                                <Typography variant="body2" fontWeight={600} component="div">
+                                  {sponsorContact.contact.firstName} {sponsorContact.contact.lastName}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {sponsorContact.role}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Stack>
+                        ),
+                      },
+                    ]
+                  : [])
+              ]
+            : []
+        }
+        editTo={selectedSponsor ? `/manage/sponsors/${selectedSponsor.id}/edit` : '/manage/sponsors'}
+      />
     </MuiCard>
   )
 }

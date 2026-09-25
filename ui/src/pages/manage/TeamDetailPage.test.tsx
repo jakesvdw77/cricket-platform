@@ -8,6 +8,7 @@ import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 import type { TeamContact } from '../../api/teamContactApi'
 import type { Sponsor } from '../../api/sponsorApi'
+import type { SponsorContact } from '../../api/sponsorContactApi'
 import type { Season } from '../../api/seasonApi'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { Page } from '../../api/productApi'
@@ -17,6 +18,7 @@ const listTeamsForClub = vi.fn()
 const listSections = vi.fn()
 const listTeamContacts = vi.fn()
 const listTeamSponsors = vi.fn()
+const listSponsorContacts = vi.fn()
 const listSeasons = vi.fn()
 const listSquad = vi.fn()
 const listMatches = vi.fn()
@@ -35,6 +37,10 @@ vi.mock('../../api/teamContactApi', () => ({
 
 vi.mock('../../api/teamSponsorApi', () => ({
   listTeamSponsors: (clubId: string, sectionId: string, teamId: string) => listTeamSponsors(clubId, sectionId, teamId),
+}))
+
+vi.mock('../../api/sponsorContactApi', () => ({
+  listSponsorContacts: (clubId: string, sponsorId: string) => listSponsorContacts(clubId, sponsorId),
 }))
 
 vi.mock('../../api/seasonApi', () => ({
@@ -116,6 +122,21 @@ function makeSponsor(overrides: Partial<Sponsor> = {}): Sponsor {
     logoUrl: null,
     bannerUrl: null,
     socialLinks: [],
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
+function makeSponsorContact(overrides: Partial<SponsorContact> = {}): SponsorContact {
+  return {
+    id: 'sponsor-contact-1',
+    sponsorId: 'sponsor-1',
+    contact: { firstName: 'Priya', lastName: 'Naidoo', email: 'priya@acme.example.com', phone: '+27 21 555 0200' },
+    role: 'Account Manager',
+    isPrimary: true,
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -206,6 +227,7 @@ beforeEach(() => {
   listSections.mockResolvedValue([])
   listTeamContacts.mockResolvedValue([])
   listTeamSponsors.mockResolvedValue([])
+  listSponsorContacts.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
   listSquad.mockResolvedValue([])
   listMatches.mockResolvedValue(makeMatchesPage([]))
@@ -316,6 +338,39 @@ describe('TeamDetailPage', () => {
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1/edit')
   })
 
+  it('lists the sponsor\'s own named contacts inside the Sponsors quick-view dialog', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
+    listSponsorContacts.mockResolvedValueOnce([
+      makeSponsorContact({ id: 'sc-1', contact: { firstName: 'Priya', lastName: 'Naidoo', email: 'priya@acme.example.com', phone: '' }, role: 'Account Manager' }),
+    ])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(screen.getByRole('button', { name: 'Acme Bank — Sponsor' }))
+
+    expect(await screen.findByText('Priya Naidoo')).toBeInTheDocument()
+    expect(screen.getByText('Account Manager')).toBeInTheDocument()
+    expect(listSponsorContacts).toHaveBeenCalledWith('test-club-id', 'sponsor-1')
+  })
+
+  it('shows no "Sponsor Contacts" field when the sponsor has none', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
+    listSponsorContacts.mockResolvedValueOnce([])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(screen.getByRole('button', { name: 'Acme Bank — Sponsor' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByText('Sponsor Contacts')).not.toBeInTheDocument()
+  })
+
   it('renders the Squad grid with the captain tile visually distinguished by a "Captain" label', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
@@ -331,9 +386,10 @@ describe('TeamDetailPage', () => {
     expect(screen.getByText('Captain')).toBeInTheDocument()
 
     expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/players/player-1')
-    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
-    expect(editLinks).toContain('/manage/players/player-1/edit')
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+    // Squad members are deliberately not directly editable from this read-only Team View screen —
+    // no Edit link on the squad tile itself, only the click-to-view link into the player's own record.
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('the back link targets the club-wide directory when ?from=section is absent (the default)', async () => {

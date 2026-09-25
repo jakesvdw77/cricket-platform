@@ -35,6 +35,7 @@ export interface SocialLink {
 
 export interface SocialLinksRowProps {
   links: SocialLink[]
+  size?: 'small' | 'medium'
 }
 
 // Partial by design — only the platforms with a real @mui/icons-material icon get an entry here.
@@ -60,7 +61,7 @@ const LABELS: Partial<Record<SocialPlatform, string>> = {
   pinterest: 'Pinterest',
 }
 
-export function SocialLinksRow({ links }: SocialLinksRowProps) {
+export function SocialLinksRow({ links, size = 'medium' }: SocialLinksRowProps) {
   return (
     <Stack direction="row" spacing={0.5}>
       {links.map(({ platform, url }) => {
@@ -75,6 +76,7 @@ export function SocialLinksRow({ links }: SocialLinksRowProps) {
             rel="noopener"
             aria-label={label}
             color="inherit"
+            size={size}
           >
             <Icon fontSize="small" />
           </IconButton>

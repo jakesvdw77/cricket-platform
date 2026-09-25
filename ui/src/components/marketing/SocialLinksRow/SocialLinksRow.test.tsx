@@ -27,6 +27,12 @@ describe('SocialLinksRow', () => {
     expect(link.querySelector('[data-testid="LinkIcon"]')).toBeInTheDocument()
   })
 
+  it('renders small icon buttons when size="small" is passed, for compact card headers', () => {
+    render(<SocialLinksRow links={[{ platform: 'facebook', url: 'https://facebook.com/cricketlegend' }]} size="small" />)
+
+    expect(screen.getByRole('link', { name: 'Facebook' })).toHaveClass('MuiIconButton-sizeSmall')
+  })
+
   it.each(['tiktok', 'threads', 'snapchat'] as const)(
     'falls back to the generic link icon for %s, a known SocialPlatform with no dedicated @mui/icons-material icon',
     (platform) => {

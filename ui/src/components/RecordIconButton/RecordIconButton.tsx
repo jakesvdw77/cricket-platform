@@ -1,10 +1,11 @@
-import { Avatar, IconButton } from '@mui/material'
+import { Avatar, ButtonBase, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 
 export interface RecordIconButtonProps {
   imageUrl?: string | null
   shape: 'circular' | 'rounded'
   label: string
+  name: string
   initials: string
   onClick: () => void
 }
@@ -15,9 +16,20 @@ export interface RecordIconButtonProps {
 // click-to-open-quick-view pattern for its own Contacts/Sponsors grids — per
 // docs/standards/frontend.md's reuse rule, a second near-identical call site is the signal to
 // share this rather than duplicate it a second time.
-export function RecordIconButton({ imageUrl, shape, label, initials, onClick }: RecordIconButtonProps) {
+//
+// `name` renders as a caption under the avatar — real user feedback on the Team detail page's
+// Contacts/Sponsors grids: an unlabeled row of avatars gave no way to tell who's who without
+// opening each one's quick-view dialog. `label`/`aria-label` stay as the fuller "name — role"
+// accessible name (unchanged); `name` is deliberately just the bare name, kept short under the
+// fixed avatar width.
+export function RecordIconButton({ imageUrl, shape, label, name, initials, onClick }: RecordIconButtonProps) {
   return (
-    <IconButton onClick={onClick} title={label} aria-label={label} sx={{ p: 0 }}>
+    <ButtonBase
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: 1, width: 84 }}
+    >
       <Avatar
         src={imageUrl ?? undefined}
         variant={shape}
@@ -32,6 +44,9 @@ export function RecordIconButton({ imageUrl, shape, label, initials, onClick }: 
       >
         {initials}
       </Avatar>
-    </IconButton>
+      <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%' }}>
+        {name}
+      </Typography>
+    </ButtonBase>
   )
 }
