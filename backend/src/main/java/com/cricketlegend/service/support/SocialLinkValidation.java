@@ -8,9 +8,11 @@ import java.util.Set;
 
 /**
  * Shared {@code socialLinks} validation for any entity embedding a {@code List<SocialLinkDto>}
- * (currently {@code ClubProfile} and {@code Sponsor}) — extracted per docs/standards/backend.md's
- * "shared logic lives in one place" rule after {@code ClubProfileServiceImpl} and {@code
- * SponsorServiceImpl} both needed the identical duplicate-platform check.
+ * (currently {@code ClubProfile}, {@code Sponsor}, and {@code League}) — extracted per
+ * docs/standards/backend.md's "shared logic lives in one place" rule after {@code
+ * ClubProfileServiceImpl} and {@code SponsorServiceImpl} both needed the identical
+ * duplicate-platform check; {@code LeagueServiceImpl} (docs/specs/053-league-extended-profile.md)
+ * reuses it unchanged as a third caller.
  */
 public final class SocialLinkValidation {
 

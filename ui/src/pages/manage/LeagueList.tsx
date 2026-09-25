@@ -10,7 +10,7 @@ import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { Button } from '../../components/Button'
-import { listLeagues } from '../../api/leagueApi'
+import { listLeagues, LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
 // Exported for LeagueDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
@@ -58,10 +58,11 @@ function LeagueCard({ league }: { league: League }) {
   return (
     <RecordCard
       title={league.name}
-      avatar={{ fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+      avatar={{ imageUrl: league.logoUrl, fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
       badge={badgeFor(league)}
       badges={leagueSeasonBadges(league)}
       fields={leagueRecordFields(league)}
+      chips={league.format ? [LEAGUE_FORMAT_LABELS[league.format]] : undefined}
       viewTo={`/manage/fixtures/leagues/${league.id}`}
       editTo={`/manage/fixtures/leagues/${league.id}/edit`}
       secondaryActions={[

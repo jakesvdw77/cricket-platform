@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueList from './LeagueList'
+import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
 const listLeagues = vi.fn()
@@ -11,11 +12,15 @@ const listLeagues = vi.fn()
 // Mirrors SponsorList.test.tsx's mock-every-export-individually pattern. No deactivate/
 // reactivate assertions here — docs/specs/038-move-deactivate-to-edit-screen.md relocated that
 // control off this card entirely, onto LeagueFormPage's own actions bar.
-vi.mock('../../api/leagueApi', () => ({
-  listLeagues: (clubId: string) => listLeagues(clubId),
-  deactivateLeague: vi.fn(),
-  reactivateLeague: vi.fn(),
-}))
+vi.mock('../../api/leagueApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/leagueApi')>()
+  return {
+    ...actual,
+    listLeagues: (clubId: string) => listLeagues(clubId),
+    deactivateLeague: vi.fn(),
+    reactivateLeague: vi.fn(),
+  }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -38,6 +43,12 @@ function makeLeague(overrides: Partial<League> = {}): League {
     currentSeasonTeamCount: 0,
     currentSeasonLabel: null,
     currentSeasonPlayingConditionsUrl: null,
+    format: null,
+    logoUrl: null,
+    phone: null,
+    website: null,
+    email: null,
+    socialLinks: [],
     ...overrides,
   }
 }
@@ -268,6 +279,56 @@ describe('LeagueList', () => {
 
       await screen.findByText('Internal League')
       expect(screen.queryByRole('button', { name: 'Playing Conditions' })).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/053-league-extended-profile.md: format renders as a plain RecordCard `chips` entry
+  // (via the shared LEAGUE_FORMAT_LABELS map), logoUrl wires into the card's avatar imageUrl —
+  // RecordCard.test.tsx already proves the avatar/chip rendering mechanics themselves, this only
+  // proves LeagueList wires league.format/league.logoUrl into those props correctly.
+  describe('format chip and logo avatar', () => {
+    it('renders exactly one chip with the format display label when format is set', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', format: 'ONE_DAY' })])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      expect(screen.getAllByText(LEAGUE_FORMAT_LABELS.ONE_DAY)).toHaveLength(1)
+    })
+
+    it('renders no chip row at all when format is unset', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', format: null })])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      Object.values(LEAGUE_FORMAT_LABELS).forEach((label) => {
+        expect(screen.queryByText(label)).not.toBeInTheDocument()
+      })
+    })
+
+    it('renders the logo image in the card avatar when logoUrl is set', async () => {
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', logoUrl: 'https://example.com/league-logo.png' }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      const avatar = document.querySelector('.MuiAvatar-root')
+      const img = avatar?.querySelector('img')
+      expect(img).toHaveAttribute('src', 'https://example.com/league-logo.png')
+    })
+
+    it('falls back to the trophy icon when logoUrl is unset', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', logoUrl: null })])
+
+      renderList('test-club-id')
+
+      await screen.findByText('Internal League')
+      const avatar = document.querySelector('.MuiAvatar-root')
+      expect(avatar?.querySelector('img')).not.toBeInTheDocument()
+      expect(avatar?.querySelector('svg')).toBeInTheDocument()
     })
   })
 })

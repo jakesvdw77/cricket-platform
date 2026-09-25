@@ -4389,6 +4389,28 @@ components:
         ageCutoffDate:
           type: string
           format: date
+        format:
+          type: string
+          enum:
+          - T20
+          - T30
+          - T45
+          - T50
+          - ONE_DAY
+          - THREE_DAY
+          - FIVE_DAY
+        logoUrl:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
     LeagueDto:
@@ -4419,6 +4441,28 @@ components:
         ageCutoffDate:
           type: string
           format: date
+        format:
+          type: string
+          enum:
+          - T20
+          - T30
+          - T45
+          - T50
+          - ONE_DAY
+          - THREE_DAY
+          - FIVE_DAY
+        logoUrl:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
         active:
           type: boolean
         createdAt:
@@ -4926,6 +4970,28 @@ components:
         ageCutoffDate:
           type: string
           format: date
+        format:
+          type: string
+          enum:
+          - T20
+          - T30
+          - T45
+          - T50
+          - ONE_DAY
+          - THREE_DAY
+          - FIVE_DAY
+        logoUrl:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
     LeaguePlayingConditionsDto:

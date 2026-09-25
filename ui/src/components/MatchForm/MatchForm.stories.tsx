@@ -53,6 +53,12 @@ function makeLeague(overrides: Partial<League> = {}): League {
     currentSeasonTeamCount: 2,
     currentSeasonLabel: '2026',
     currentSeasonPlayingConditionsUrl: null,
+    format: null,
+    logoUrl: null,
+    phone: null,
+    website: null,
+    email: null,
+    socialLinks: [],
     ...overrides,
   }
 }

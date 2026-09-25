@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Box, MenuItem, Stack, Typography } from '@mui/material'
+import { Box, Chip, MenuItem, Stack, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -14,6 +14,9 @@ import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
 import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
+import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { RecordCard } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
@@ -24,7 +27,8 @@ import { NextMatchCountdown } from '../../components/NextMatchCountdown'
 import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
 import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
-import { listLeagues } from '../../api/leagueApi'
+import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
+import { listLeagues, LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -214,7 +218,7 @@ export default function LeagueDetailPage() {
         title={league.name}
         backTo="/manage/fixtures/leagues"
         backLabel="Back to Leagues"
-        avatar={{ fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+        avatar={{ imageUrl: league.logoUrl, fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
         badge={badgeFor(league)}
         editTo={`/manage/fixtures/leagues/${league.id}/edit`}
         headerNote={
@@ -237,21 +241,53 @@ export default function LeagueDetailPage() {
         sections={[
           {
             heading: 'Details',
+            // docs/specs/053-league-extended-profile.md: format is purely descriptive — rendered
+            // as a small Chip in this section's note slot, the same slot pattern the Playing
+            // Conditions/Fixtures sections below already use for a compact per-section stat/action.
+            note: league.format ? <Chip size="small" label={LEAGUE_FORMAT_LABELS[league.format]} /> : undefined,
             content: (
-              <DetailFieldGrid>
-                <DetailFieldRow
-                  icon={<GroupsOutlinedIcon />}
-                  label="Playing XI size"
-                  value={league.maxPlayingXiSize}
-                />
-                {(league.minAge != null || league.maxAge != null) && (
+              // Mirrors SponsorDetailPage.tsx's identical phone/email/website + SocialLinksRow
+              // layout — position: relative anchors the absolutely-positioned social-links row,
+              // with extra bottom padding to clear it.
+              <Box sx={{ position: 'relative', pb: league.socialLinks.length > 0 ? 4 : 0 }}>
+                <DetailFieldGrid>
                   <DetailFieldRow
-                    icon={<CakeOutlinedIcon />}
-                    label="Age range"
-                    value={`${league.minAge ?? 'Any'}–${league.maxAge ?? 'Any'}`}
+                    icon={<GroupsOutlinedIcon />}
+                    label="Playing XI size"
+                    value={league.maxPlayingXiSize}
                   />
+                  {(league.minAge != null || league.maxAge != null) && (
+                    <DetailFieldRow
+                      icon={<CakeOutlinedIcon />}
+                      label="Age range"
+                      value={`${league.minAge ?? 'Any'}–${league.maxAge ?? 'Any'}`}
+                    />
+                  )}
+                  {league.phone && <DetailFieldRow icon={<PhoneOutlinedIcon />} label="Phone" value={league.phone} />}
+                  {league.email && <DetailFieldRow icon={<EmailOutlinedIcon />} label="Email" value={league.email} />}
+                  {league.website && (
+                    <DetailFieldRow icon={<LanguageOutlinedIcon />} label="Website" value={league.website} />
+                  )}
+                </DetailFieldGrid>
+
+                {league.socialLinks.length > 0 && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      right: 12,
+                      bottom: 12,
+                      '& .MuiIconButton-root': {
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: '50%',
+                        bgcolor: 'background.paper',
+                      },
+                    }}
+                  >
+                    <SocialLinksRow links={league.socialLinks} />
+                  </Box>
                 )}
-              </DetailFieldGrid>
+              </Box>
             ),
           },
           {

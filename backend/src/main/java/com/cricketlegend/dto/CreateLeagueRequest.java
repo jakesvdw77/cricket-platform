@@ -1,8 +1,11 @@
 package com.cricketlegend.dto;
 
+import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeagueSource;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * POST /api/v1/manage/clubs/{clubId}/leagues payload. {@code source} defaults to {@code INTERNAL}
@@ -17,6 +20,13 @@ import java.time.LocalDate;
  * informational display text, and — like a league's match-format/points rules — plausibly differs
  * by season, so it belongs on the per-(league,season) record, not this long-lived one. See
  * docs/specs/029-league-management.md.
+ *
+ * <p>{@code format}/{@code logoUrl}/{@code phone}/{@code website}/{@code email}/{@code
+ * socialLinks} (docs/specs/053-league-extended-profile.md) give {@code League} the same
+ * club-facing profile shape {@code CreateSponsorRequest} already has — every one optional.
+ * {@code @Valid} on {@code socialLinks} is mandatory here from the start — docs/specs/
+ * 022-club-social-media.md found a real bug where this annotation was missing, silently skipping
+ * validation of the nested list.
  */
 public record CreateLeagueRequest(
         @NotBlank String name,
@@ -24,5 +34,11 @@ public record CreateLeagueRequest(
         Integer maxPlayingXiSize,
         Integer minAge,
         Integer maxAge,
-        LocalDate ageCutoffDate) {
+        LocalDate ageCutoffDate,
+        LeagueFormat format,
+        String logoUrl,
+        String phone,
+        String website,
+        String email,
+        @Valid List<SocialLinkDto> socialLinks) {
 }

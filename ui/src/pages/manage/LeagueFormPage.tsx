@@ -360,6 +360,12 @@ export default function LeagueFormPage() {
                     minAge: league.minAge,
                     maxAge: league.maxAge,
                     ageCutoffDate: league.ageCutoffDate,
+                    format: league.format,
+                    logoUrl: league.logoUrl,
+                    phone: league.phone,
+                    website: league.website,
+                    email: league.email,
+                    socialLinks: league.socialLinks,
                   }
                 : undefined
             }
