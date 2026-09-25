@@ -2755,6 +2755,162 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts:
+    get:
+      tags:
+      - league-contact-controller
+      operationId: list_16
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueContactDto"
+    post:
+      tags:
+      - league-contact-controller
+      operationId: create_14
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueContactRequest"
+        required: true
+      responses:
+        "201":
+          description: League contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}:
+    put:
+      tags:
+      - league-contact-controller
+      operationId: update_14
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - league-contact-controller
+      operationId: reactivate_10
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - league-contact-controller
+      operationId: deactivate_9
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
   /api/v1/manage/clubs/{clubId}/contacts:
     get:
       tags:
@@ -3880,6 +4036,44 @@ components:
       required:
       - contact
       - role
+    UpdateLeagueContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
+    LeagueContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
     SponsorContactDto:
       type: object
       properties:
@@ -4739,6 +4933,18 @@ components:
       required:
       - name
     CreateSponsorContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
+    CreateLeagueContactRequest:
       type: object
       properties:
         contact:

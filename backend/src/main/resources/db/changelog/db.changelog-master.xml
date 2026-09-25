@@ -34,5 +34,6 @@
     <include file="db/changelog/v1/027-add-league-playing-conditions-structured-fields.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/028-move-allow-substitutions-to-playing-conditions.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/029-add-league-profile.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/030-add-league-contact.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

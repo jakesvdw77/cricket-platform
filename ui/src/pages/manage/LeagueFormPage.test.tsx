@@ -9,6 +9,7 @@ import type { Season } from '../../api/seasonApi'
 import type { Team } from '../../api/teamApi'
 import type { Match } from '../../api/matchApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import type { LeagueContact } from '../../api/leagueContactApi'
 
 const listLeagues = vi.fn()
 const createLeague = vi.fn()
@@ -24,6 +25,7 @@ const listMatches = vi.fn()
 const getPlayingConditions = vi.fn()
 const uploadPlayingConditions = vi.fn()
 const updatePlayingConditions = vi.fn()
+const listLeagueContacts = vi.fn()
 
 vi.mock('../../api/leagueApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/leagueApi')>()
@@ -67,6 +69,11 @@ vi.mock('../../api/leaguePlayingConditionsApi', () => ({
     uploadPlayingConditions(clubId, leagueId, seasonId, file),
   updatePlayingConditions: (clubId: string, leagueId: string, seasonId: string, payload: unknown) =>
     updatePlayingConditions(clubId, leagueId, seasonId, payload),
+}))
+
+// docs/specs/054-league-contacts.md: the new Contacts tab's own contact list.
+vi.mock('../../api/leagueContactApi', () => ({
+  listLeagueContacts: (clubId: string, leagueId: string) => listLeagueContacts(clubId, leagueId),
 }))
 
 function makeLeague(overrides: Partial<League> = {}): League {
@@ -150,6 +157,26 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
   }
 }
 
+function makeContact(overrides: Partial<LeagueContact> = {}): LeagueContact {
+  return {
+    id: 'contact-1',
+    leagueId: 'league-1',
+    contact: {
+      firstName: 'Jane',
+      lastName: 'Smith',
+      email: 'jane.smith@example.com',
+      phone: '+27 21 555 0100',
+    },
+    role: 'League Administrator',
+    isPrimary: false,
+    active: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSeasons.mockResolvedValue([])
@@ -157,6 +184,7 @@ beforeEach(() => {
   listLeagueAffiliations.mockResolvedValue([])
   listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
   getPlayingConditions.mockResolvedValue(null)
+  listLeagueContacts.mockResolvedValue([])
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -574,6 +602,99 @@ describe('LeagueFormPage', () => {
 
       expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
       expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/054-league-contacts.md: the new, last "Contacts" tab — only in edit mode, a
+  // RecordCard grid of the league's own named contacts, plus an "Add Contact" shortcut.
+  describe('Contacts tab', () => {
+    function renderContactsTab() {
+      return render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <MemoryRouter initialEntries={['/manage/fixtures/leagues/league-1/edit']}>
+            <Routes>
+              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
+                <Route path="leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              </Route>
+              <Route path="/manage/fixtures/leagues/:leagueId/contacts/new" element={<AddContactPageStub />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+    }
+
+    function AddContactPageStub() {
+      return <div>Add League Contact Page</div>
+    }
+
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+    })
+
+    it('does not render a Contacts tab in create mode', async () => {
+      renderPage('/manage/fixtures/leagues/new', 'test-club-id')
+
+      expect(await screen.findByText('Add League')).toBeInTheDocument()
+      expect(screen.queryByRole('tab', { name: 'Contacts' })).not.toBeInTheDocument()
+      expect(listLeagueContacts).not.toHaveBeenCalled()
+    })
+
+    it('renders the Contacts tab as the 5th tab, after Playing Conditions', async () => {
+      const user = userEvent.setup()
+      renderContactsTab()
+
+      await screen.findByText('Edit League')
+      // Switch off the Details tab first — LeagueForm renders its own nested "Basic Info"/
+      // "Branding"/"Social Media" Tabs while active, which would otherwise also match
+      // getAllByRole('tab') and pollute this assertion about the outer tab row.
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+      const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
+
+      expect(tabs).toEqual(['Details', 'Teams', 'Schedule', 'Playing Conditions', 'Contacts'])
+    })
+
+    it('lists the league\'s contacts as RecordCards with Role/Email/Phone fields', async () => {
+      const user = userEvent.setup()
+      listLeagueContacts.mockResolvedValue([
+        makeContact({ id: 'contact-1', role: 'League Administrator', isPrimary: true }),
+      ])
+
+      renderContactsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+
+      expect(listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
+      expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.getByText('League Administrator')).toBeInTheDocument()
+      expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
+      expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
+      expect(screen.getByText('Primary')).toBeInTheDocument()
+    })
+
+    it('renders "No contacts yet for this league." when there are none', async () => {
+      const user = userEvent.setup()
+      listLeagueContacts.mockResolvedValue([])
+
+      renderContactsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+
+      expect(await screen.findByText('No contacts yet for this league.')).toBeInTheDocument()
+    })
+
+    it('"Add Contact" navigates to the new League Contact route', async () => {
+      const user = userEvent.setup()
+      listLeagueContacts.mockResolvedValue([])
+
+      renderContactsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+      await user.click(await screen.findByRole('button', { name: 'Add Contact' }))
+
+      expect(await screen.findByText('Add League Contact Page')).toBeInTheDocument()
     })
   })
 
