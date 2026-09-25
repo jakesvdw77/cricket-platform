@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Breadcrumbs, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
 import type { TeamFormValues } from '../../components/TeamForm'
@@ -28,7 +30,7 @@ import type { Sponsor, SponsorPayload } from '../../api/sponsorApi'
 import { listTeamSponsors, linkTeamSponsor, unlinkTeamSponsor } from '../../api/teamSponsorApi'
 import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
-import { listSquad, addToSquad, removeFromSquad, updateSquadJerseyNumber } from '../../api/teamSquadApi'
+import { listSquad, addToSquad, removeFromSquad, updateSquadMember } from '../../api/teamSquadApi'
 import type { SquadMember } from '../../api/teamSquadApi'
 import { listSeasons } from '../../api/seasonApi'
 import { sponsorRecordFields } from '../../utils/sponsorRecordFields'
@@ -151,10 +153,19 @@ function ClubSponsorCard({ sponsor }: { sponsor: Sponsor }) {
 // player only affects that season's squad row, never the player record itself.
 //
 // docs/specs/031-jersey-numbers.md adds an inline-editable "Squad #" field — its own isolated
-// useMutation (calling the new updateSquadJerseyNumber), completely separate from `remove`'s, so
-// neither one card's pending/error state nor a sibling card's ever leaks across. A 409 (another
-// squad member already holds that number this season) surfaces via RecordCard's own `feedback`
-// prop rather than a page-level toast.
+// useMutation, completely separate from `remove`'s, so neither one card's pending/error state nor
+// a sibling card's ever leaks across. A 409 (another squad member already holds that number this
+// season) surfaces via RecordCard's own `feedback` prop rather than a page-level toast.
+//
+// docs/specs/057-team-extended-profile.md adds a captain-toggle control (its own third, equally
+// isolated useMutation) and renamed the underlying call from updateSquadJerseyNumber to
+// updateSquadMember — the backend's PUT is now a FULL-RESOURCE REPLACE of both `jerseyNumber` and
+// `isCaptain` (renamed request type: UpdateTeamSquadMemberRequest). This is the single biggest
+// implementation risk the spec flags, TWICE: the jersey-number-edit (inline blur-to-save) and the
+// captain-toggle (a button) are two separate, independently-triggered interactions, but BOTH call
+// this same full-resource PUT — each mutation below always sends the sibling field's CURRENT value
+// (from `member`, refreshed via onSuccess's invalidateSquad/refetch) alongside the one actually
+// changing. Never send one field without the other.
 function SquadPlayerCard({
   clubId,
   teamId,
@@ -162,6 +173,7 @@ function SquadPlayerCard({
   member,
   onRemoved,
   onJerseyNumberChanged,
+  onCaptainToggled,
 }: {
   clubId: string
   teamId: string
@@ -169,6 +181,7 @@ function SquadPlayerCard({
   member: SquadMember
   onRemoved: () => void
   onJerseyNumberChanged: () => void
+  onCaptainToggled: () => void
 }) {
   // The squad/remove/update endpoints are addressed by playerProfileId, not member.id (the
   // TeamSquadMember row's own id) — see teamSquadApi.ts's SquadMember doc comment.
@@ -180,9 +193,22 @@ function SquadPlayerCard({
   const [jerseyNumberInput, setJerseyNumberInput] = useState(numberToInput(member.squadJerseyNumber))
 
   const updateJerseyNumber = useMutation({
+    // Sends member.isCaptain (this row's CURRENT captain flag) alongside the jersey number that's
+    // actually changing — the full-resource-replace trap above.
     mutationFn: (jerseyNumber: number | null) =>
-      updateSquadJerseyNumber(clubId, teamId, seasonId, member.playerProfileId, jerseyNumber),
+      updateSquadMember(clubId, teamId, seasonId, member.playerProfileId, { jerseyNumber, isCaptain: member.isCaptain }),
     onSuccess: onJerseyNumberChanged,
+  })
+
+  const toggleCaptain = useMutation({
+    // Sends member.squadJerseyNumber (this row's CURRENT jersey number) alongside the isCaptain
+    // flag that's actually changing — the full-resource-replace trap above.
+    mutationFn: () =>
+      updateSquadMember(clubId, teamId, seasonId, member.playerProfileId, {
+        jerseyNumber: member.squadJerseyNumber,
+        isCaptain: !member.isCaptain,
+      }),
+    onSuccess: onCaptainToggled,
   })
 
   const playerName = `${member.firstName} ${member.lastName}`
@@ -198,6 +224,7 @@ function SquadPlayerCard({
     <RecordCard
       title={playerName}
       avatar={{ imageUrl: member.photoUrl, fallback: initialsFromName(playerName), shape: 'circular' }}
+      badge={member.isCaptain ? { label: 'Captain', tone: 'positive' } : undefined}
       fields={[
         ...playerRecordFields(member),
         {
@@ -230,10 +257,21 @@ function SquadPlayerCard({
         onClick: () => remove.mutate(),
         icon: <LinkOffOutlinedIcon fontSize="small" />,
       }}
+      secondaryActions={[
+        {
+          label: member.isCaptain ? 'Remove captain' : 'Make captain',
+          pendingLabel: 'Updating…',
+          pending: toggleCaptain.isPending,
+          onClick: () => toggleCaptain.mutate(),
+          icon: member.isCaptain ? <MilitaryTechIcon fontSize="small" /> : <MilitaryTechOutlinedIcon fontSize="small" />,
+        },
+      ]}
       feedback={
         updateJerseyNumber.isError
           ? { message: errorDetail(updateJerseyNumber.error, "Couldn't update this squad number. Please try again."), tone: 'error' }
-          : null
+          : toggleCaptain.isError
+            ? { message: errorDetail(toggleCaptain.error, "Couldn't update this team's captain. Please try again."), tone: 'error' }
+            : null
       }
     />
   )
@@ -253,6 +291,13 @@ function SquadPlayerCard({
 export default function TeamFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { sectionId, teamId } = useParams<{ sectionId?: string; teamId?: string }>()
+  const [searchParams] = useSearchParams()
+  // docs/specs/057-team-extended-profile.md's back-navigation fix: edit mode's route always
+  // carries sectionId (teamId never appears without it), so sectionId's presence alone can't
+  // disambiguate "reached via the section-scoped TeamList" from "reached via the club-wide
+  // TeamDirectory" the way it still correctly can for create mode. TeamList.tsx's own viewTo/editTo
+  // links append this `?from=section` marker; TeamDirectory.tsx's own links add none (the default).
+  const fromSection = searchParams.get('from') === 'section'
   const isEdit = Boolean(teamId)
   const isSectionScoped = Boolean(sectionId)
   const navigate = useNavigate()
@@ -324,10 +369,20 @@ export default function TeamFormPage() {
   const saveMutation = useMutation({
     mutationFn: (payload: TeamFormValues) => {
       const targetSectionId = isSectionScoped ? (sectionId as string) : (payload.sectionId as string)
-      if (isEdit && teamId && sectionId) {
-        return updateTeam(clubId as string, sectionId, teamId, { name: payload.name, logoUrl: payload.logoUrl })
+      // docs/specs/057-team-extended-profile.md: the three new profile fields ride along on the
+      // same create/update payload TeamForm already builds — mirrors LeagueFormPage's identical
+      // 053 extension.
+      const teamPayload = {
+        name: payload.name,
+        logoUrl: payload.logoUrl,
+        abbreviation: payload.abbreviation,
+        groundName: payload.groundName,
+        socialLinks: payload.socialLinks,
       }
-      return createTeam(clubId as string, targetSectionId, { name: payload.name, logoUrl: payload.logoUrl })
+      if (isEdit && teamId && sectionId) {
+        return updateTeam(clubId as string, sectionId, teamId, teamPayload)
+      }
+      return createTeam(clubId as string, targetSectionId, teamPayload)
     },
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sections', created.sectionId, 'teams'] })
@@ -477,6 +532,16 @@ export default function TeamFormPage() {
     enabled: Boolean(clubId) && Boolean(teamId) && isEdit && Boolean(selectedSquadSeasonId),
   })
 
+  // Sorted by name regardless of the server's own row order — direct user feedback that the
+  // squad's visible order shifted after toggling a captain (an unordered query has no stable
+  // natural order to begin with) read as a bug. Also the source of the Captain summary chip next
+  // to the Season picker, so it's always in lockstep with whichever season is selected.
+  const sortedSquad = useMemo(
+    () => [...(squadQuery.data ?? [])].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)),
+    [squadQuery.data],
+  )
+  const squadCaptain = sortedSquad.find((member) => member.isCaptain) ?? null
+
   // Only fetched while the "Add player" dialog is open — same pattern as clubContactsQuery above.
   const clubPlayersQuery = useQuery({
     queryKey: ['managed-club', clubId, 'players'],
@@ -536,7 +601,19 @@ export default function TeamFormPage() {
     )
   }
 
-  const backTo = isSectionScoped ? `/manage/sections/${sectionId}/teams` : '/manage/teams'
+  // docs/specs/057-team-extended-profile.md: edit mode's route always carries sectionId, so
+  // isSectionScoped alone can't tell a club-wide-directory-originated visit from a genuinely
+  // section-scoped one — the `fromSection` marker (set only by TeamList.tsx's own links) resolves
+  // that ambiguity. Create mode's sectionId presence is still a reliable, unambiguous signal on
+  // its own (TeamList's "Add Team" button only ever navigates to its own section-scoped create
+  // route; TeamDirectory's "Add Team" only ever navigates to the club-wide one) — unchanged.
+  const backTo = isEdit
+    ? fromSection
+      ? `/manage/sections/${sectionId}/teams`
+      : '/manage/teams'
+    : isSectionScoped
+      ? `/manage/sections/${sectionId}/teams`
+      : '/manage/teams'
   const showContactsAndSponsors = isEdit && Boolean(team) && Boolean(sectionId) && Boolean(teamId)
 
   return (
@@ -607,7 +684,17 @@ export default function TeamFormPage() {
 
         {activeTab === 0 && (
           <TeamForm
-            initialValues={team ? { name: team.name, logoUrl: team.logoUrl } : undefined}
+            initialValues={
+              team
+                ? {
+                    name: team.name,
+                    logoUrl: team.logoUrl,
+                    abbreviation: team.abbreviation,
+                    groundName: team.groundName,
+                    socialLinks: team.socialLinks,
+                  }
+                : undefined
+            }
             sections={isSectionScoped ? undefined : sections}
             clubLogoUrl={clubProfile?.logoUrl ?? null}
             onSubmit={(payload) => saveMutation.mutate(payload)}
@@ -732,19 +819,37 @@ export default function TeamFormPage() {
               </Typography>
             ) : (
               <>
-                <Input
-                  select
-                  label="Season"
-                  value={selectedSquadSeasonId}
-                  onChange={(event) => setSelectedSquadSeasonId(event.target.value)}
-                  sx={{ maxWidth: 280, mb: 2 }}
-                >
-                  {(seasonsQuery.data ?? []).map((season) => (
-                    <MenuItem key={season.id} value={season.id}>
-                      {season.label}
-                    </MenuItem>
-                  ))}
-                </Input>
+                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                  <Input
+                    select
+                    label="Season"
+                    value={selectedSquadSeasonId}
+                    onChange={(event) => setSelectedSquadSeasonId(event.target.value)}
+                    sx={{ maxWidth: 280 }}
+                  >
+                    {(seasonsQuery.data ?? []).map((season) => (
+                      <MenuItem key={season.id} value={season.id}>
+                        {season.label}
+                      </MenuItem>
+                    ))}
+                  </Input>
+
+                  {/* Direct user feedback: the per-card Captain badge was too easy to miss buried
+                      in the squad grid — this label next to the Season picker is the at-a-glance
+                      answer to "who's captain this season" without scanning every card. */}
+                  {squadCaptain ? (
+                    <Chip
+                      size="small"
+                      icon={<MilitaryTechIcon fontSize="small" />}
+                      color="primary"
+                      label={`Captain: ${squadCaptain.firstName} ${squadCaptain.lastName}`}
+                    />
+                  ) : (
+                    (squadQuery.data ?? []).length > 0 && (
+                      <Chip size="small" variant="outlined" label="No captain set" />
+                    )
+                  )}
+                </Stack>
 
                 {(squadQuery.data ?? []).length === 0 && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -761,7 +866,11 @@ export default function TeamFormPage() {
                       mb: 2,
                     }}
                   >
-                    {(squadQuery.data ?? []).map((member) => (
+                    {/* Sorted by name — direct user feedback that the squad's own fetch order
+                        visibly reshuffled after toggling a captain (an unordered backend query has
+                        no stable natural order), which read as a bug. Sorting client-side, always,
+                        removes that dependency on the server's own row order entirely. */}
+                    {sortedSquad.map((member) => (
                       <SquadPlayerCard
                         key={member.id}
                         clubId={clubId as string}
@@ -770,6 +879,7 @@ export default function TeamFormPage() {
                         member={member}
                         onRemoved={invalidateSquad}
                         onJerseyNumberChanged={invalidateSquad}
+                        onCaptainToggled={invalidateSquad}
                       />
                     ))}
                   </Box>
@@ -802,7 +912,7 @@ export default function TeamFormPage() {
             searchLabel="Search contacts"
             searchPlaceholder="Search by name or role"
             onLink={(option, role) => linkContactMutation.mutate({ contactId: option.id, role: role as string })}
-            extraField={{ label: 'Role', quickFillOptions: ROLE_QUICK_FILL }}
+            extraField={{ label: 'Team role', quickFillOptions: ROLE_QUICK_FILL }}
           />
 
           <CreateAndLinkRecordDialog<ClubContactPayload>
@@ -818,7 +928,7 @@ export default function TeamFormPage() {
               createAndLinkContactMutation.error,
               "Couldn't create and link this contact. Please try again.",
             )}
-            extraField={{ label: 'Role', quickFillOptions: ROLE_QUICK_FILL }}
+            extraField={{ label: 'Team role', quickFillOptions: ROLE_QUICK_FILL }}
           />
 
           <LinkExistingRecordDialog<Sponsor>

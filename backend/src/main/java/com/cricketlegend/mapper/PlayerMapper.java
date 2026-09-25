@@ -78,6 +78,7 @@ public class PlayerMapper {
                 player.active(),
                 player.sectionIds(),
                 player.jerseyNumber(),
-                member.getJerseyNumber());
+                member.getJerseyNumber(),
+                member.isCaptain());
     }
 }

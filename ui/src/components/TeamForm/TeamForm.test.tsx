@@ -68,7 +68,7 @@ describe('TeamForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('submits {name, logoUrl: null} with no sectionId when the sections prop is omitted and no logo was uploaded', async () => {
+  it('submits {name, logoUrl: null, abbreviation: null, groundName: null, socialLinks: []} with no sectionId when the sections prop is omitted and nothing else was filled in', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderTeamForm({ onSubmit })
@@ -78,7 +78,29 @@ describe('TeamForm', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as TeamFormValues
-    expect(payload).toEqual({ name: '1st XI', logoUrl: null })
+    expect(payload).toEqual({
+      name: '1st XI',
+      logoUrl: null,
+      abbreviation: null,
+      groundName: null,
+      socialLinks: [],
+    })
+  })
+
+  it('submits trimmed abbreviation/groundName, blank -> null, matching the backend full-replace semantics', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderTeamForm({ onSubmit })
+
+    await user.type(screen.getByLabelText('Name'), '1st XI')
+    await user.type(screen.getByLabelText('Abbreviation'), 'ICL')
+    await user.type(screen.getByLabelText('Ground'), 'Irene Country Club')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const payload = onSubmit.mock.calls[0][0] as TeamFormValues
+    expect(payload.abbreviation).toBe('ICL')
+    expect(payload.groundName).toBe('Irene Country Club')
   })
 
   it('requires a section to be chosen when the sections prop is supplied, and does not submit without one', async () => {
@@ -108,7 +130,14 @@ describe('TeamForm', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as TeamFormValues
-    expect(payload).toEqual({ name: '2nd XI', sectionId: 'section-2', logoUrl: null })
+    expect(payload).toEqual({
+      name: '2nd XI',
+      sectionId: 'section-2',
+      logoUrl: null,
+      abbreviation: null,
+      groundName: null,
+      socialLinks: [],
+    })
   })
 
   it('prefills from initialValues', () => {
@@ -120,35 +149,61 @@ describe('TeamForm', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Existing Team')
   })
 
-  describe('logo field', () => {
-    it('renders the logo upload control in both create and edit modes', () => {
+  it('prefills abbreviation/ground from initialValues on the Basic Info tab, and renders SocialLinksFields on the Social Media tab', async () => {
+    const user = userEvent.setup()
+    renderTeamForm({
+      onSubmit: vi.fn(),
+      initialValues: { name: 'Existing Team', abbreviation: 'ICL', groundName: 'Irene Country Club' },
+    })
+
+    expect(screen.getByLabelText('Abbreviation')).toHaveValue('ICL')
+    expect(screen.getByLabelText('Ground')).toHaveValue('Irene Country Club')
+
+    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+    expect(screen.getByText('No social links added yet.')).toBeInTheDocument()
+  })
+
+  // docs/specs/057-team-extended-profile.md: Basic Info/Branding/Social Media inner Tabs, mirroring
+  // LeagueForm — direct user feedback that Social Media (and, by the same shape, Logo/Branding)
+  // belongs on its own tab like every other form in this codebase, not a flat field at the bottom.
+  describe('logo field (Branding tab)', () => {
+    it('renders the logo upload control in both create and edit modes', async () => {
+      const user = userEvent.setup()
       renderTeamForm({ onSubmit: vi.fn() })
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.getByText('Logo')).toBeInTheDocument()
 
       renderTeamForm({ onSubmit: vi.fn(), initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' } })
+      await user.click(screen.getAllByRole('tab', { name: 'Branding' })[1])
       expect(screen.getAllByText('Logo').length).toBeGreaterThan(0)
     })
 
-    it('shows the club-logo fallback caption when the team has no logo of its own and clubLogoUrl is supplied', () => {
+    it('shows the club-logo fallback caption when the team has no logo of its own and clubLogoUrl is supplied', async () => {
+      const user = userEvent.setup()
       renderTeamForm({ onSubmit: vi.fn(), clubLogoUrl: 'https://cdn.example.com/club.png' })
 
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.getByText(/using your club's logo/i)).toBeInTheDocument()
     })
 
-    it('does not show the fallback caption when the team already has its own logo', () => {
+    it('does not show the fallback caption when the team already has its own logo', async () => {
+      const user = userEvent.setup()
       renderTeamForm({
         onSubmit: vi.fn(),
         initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
         clubLogoUrl: 'https://cdn.example.com/club.png',
       })
 
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Reset to club logo' })).toBeInTheDocument()
     })
 
-    it('does not show the fallback caption or reset action when neither a team nor a club logo exists', () => {
+    it('does not show the fallback caption or reset action when neither a team nor a club logo exists', async () => {
+      const user = userEvent.setup()
       renderTeamForm({ onSubmit: vi.fn() })
 
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Reset to club logo' })).not.toBeInTheDocument()
     })
@@ -162,6 +217,7 @@ describe('TeamForm', () => {
         clubLogoUrl: 'https://cdn.example.com/club.png',
       })
 
+      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       await user.click(screen.getByRole('button', { name: 'Reset to club logo' }))
 
       expect(screen.getByText(/using your club's logo/i)).toBeInTheDocument()

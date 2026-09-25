@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
+import { TeamCard } from '../../components/TeamCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -12,8 +12,10 @@ import { listTeamsForSection } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
+import { listSeasons } from '../../api/seasonApi'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
-import { initialsFromName } from '../../utils/initials'
+import { pickDefaultSeasonId } from '../../utils/defaultSeason'
+import { useTeamCardData } from '../../hooks/useTeamCardData'
 
 const TEAMS_QUERY_KEY = (clubId?: string, sectionId?: string) => ['managed-club', clubId, 'sections', sectionId, 'teams']
 
@@ -22,21 +24,6 @@ function badgeFor(team: Team): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
-}
-
-// One RecordCard per team — Deactivate/Reactivate now lives on TeamFormPage's own actions bar
-// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
-// with "View" as its only footer action.
-function TeamCard({ sectionId, team }: { sectionId: string; team: Team }) {
-  return (
-    <RecordCard
-      title={team.name}
-      avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
-      badge={badgeFor(team)}
-      viewTo={`/manage/sections/${sectionId}/teams/${team.id}`}
-      editTo={`/manage/sections/${sectionId}/teams/${team.id}/edit`}
-    />
-  )
 }
 
 // Reads sectionId from the route and clubId from ManagerHome's Outlet context (docs/specs/
@@ -67,6 +54,15 @@ export default function TeamList() {
     queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
+
+  const { data: seasons } = useQuery({
+    queryKey: ['managed-club', clubId, 'seasons'],
+    queryFn: () => listSeasons(clubId as string),
+    enabled: Boolean(clubId),
+  })
+
+  const currentSeasonId = pickDefaultSeasonId(seasons ?? [])
+  const teamCardData = useTeamCardData(clubId, teams ?? [], currentSeasonId)
 
   const section = sections?.find((candidate) => candidate.id === sectionId)
 
@@ -145,9 +141,28 @@ export default function TeamList() {
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
           }}
         >
-          {visibleTeams.map((team) => (
-            <TeamCard key={team.id} sectionId={sectionId} team={team} />
-          ))}
+          {visibleTeams.map((team) => {
+            const cardData = teamCardData[team.id]
+            return (
+              <TeamCard
+                key={team.id}
+                team={team}
+                sectionName={section?.name ?? 'Unknown section'}
+                badge={badgeFor(team)}
+                captainName={cardData?.captainName}
+                managerName={cardData?.managerName}
+                coachName={cardData?.coachName}
+                playerCount={cardData?.playerCount ?? 0}
+                matchCount={cardData?.matchCount ?? 0}
+                sponsors={cardData?.sponsors ?? []}
+                // docs/specs/057-team-extended-profile.md: the ?from=section marker — TeamDetailPage/
+                // TeamFormPage read it to route Back to this section-scoped list rather than the
+                // club-wide directory (the default/no-marker case, see TeamDirectory.tsx).
+                viewTo={`/manage/sections/${sectionId}/teams/${team.id}?from=section`}
+                editTo={`/manage/sections/${sectionId}/teams/${team.id}/edit?from=section`}
+              />
+            )
+          })}
         </Box>
       )}
 

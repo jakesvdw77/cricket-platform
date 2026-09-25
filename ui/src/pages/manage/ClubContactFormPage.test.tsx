@@ -94,7 +94,7 @@ describe('ClubContactFormPage', () => {
     await user.type(screen.getByLabelText('Last name'), 'Smith')
     await user.type(screen.getByLabelText('Email'), 'jane.smith@example.com')
     await user.type(screen.getByLabelText('Phone'), '+27 21 555 0100')
-    await user.type(screen.getByLabelText('Role'), 'Chairman')
+    await user.type(screen.getByLabelText('Club role'), 'Chairman')
     await user.click(screen.getByRole('button', { name: 'Create contact' }))
 
     expect(createClubContact).toHaveBeenCalledTimes(1)

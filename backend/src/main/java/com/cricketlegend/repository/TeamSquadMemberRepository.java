@@ -26,4 +26,11 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
 
     boolean existsByTeamIdAndSeasonIdAndJerseyNumberAndIdNot(
             UUID teamId, UUID seasonId, Integer jerseyNumber, UUID excludeId);
+
+    /**
+     * The current captain (at most one, per {@code ux_team_squad_captain}) for {@code teamId}'s
+     * squad in {@code seasonId} — used by {@code TeamSquadServiceImpl.unsetOtherCaptains}
+     * (docs/specs/057-team-extended-profile.md) to find who to un-mark when a new captain is set.
+     */
+    List<TeamSquadMember> findByTeamIdAndSeasonIdAndIsCaptainTrue(UUID teamId, UUID seasonId);
 }

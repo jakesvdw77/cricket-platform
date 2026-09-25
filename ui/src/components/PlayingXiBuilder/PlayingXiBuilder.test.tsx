@@ -37,6 +37,7 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     sectionIds: [],
     jerseyNumber: null,
     squadJerseyNumber: null,
+    isCaptain: false,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,

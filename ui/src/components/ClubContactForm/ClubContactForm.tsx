@@ -146,8 +146,13 @@ export function ClubContactForm({ initialValues, onSubmit }: ClubContactFormProp
         error={Boolean(errors.phone)}
         helperText={errors.phone}
       />
+      {/* "Club role" (not just "Role") — real user confusion in the create-and-link-from-Team flow,
+          where this form renders directly below CreateAndLinkRecordDialog's own team-specific
+          "Team role" field: two identically-labeled "Role" inputs right next to each other reads as
+          a duplicate, when they're actually two independent fields (this one is the contact's
+          standing, club-wide role; the other is only this particular team-link's role). */}
       <Input
-        label="Role"
+        label="Club role"
         value={values.role}
         onChange={handleChange('role')}
         error={Boolean(errors.role)}

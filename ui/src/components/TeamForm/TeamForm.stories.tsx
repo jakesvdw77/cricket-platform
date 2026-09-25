@@ -67,6 +67,19 @@ export const EditExistingTeam: Story = {
   },
 }
 
+// docs/specs/057-team-extended-profile.md: the three new profile fields, prefilled.
+export const WithProfileFields: Story = {
+  args: {
+    onSubmit: () => undefined,
+    initialValues: {
+      name: '1st XI',
+      abbreviation: 'ICL',
+      groundName: 'Irene Country Club',
+      socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/irene1stxi' }],
+    },
+  },
+}
+
 // No team logo of its own yet — falls back to showing the club's logo as an unambiguous default
 // (docs/specs/027-team-profile.md).
 export const FallsBackToClubLogo: Story = {

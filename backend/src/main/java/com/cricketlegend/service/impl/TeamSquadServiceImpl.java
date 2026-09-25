@@ -47,6 +47,14 @@ import org.springframework.transaction.annotation.Transactional;
  * if the player isn't currently in that season's squad, rejects a negative number ({@link
  * ValidationException}, 400), and rejects a number another squad member already holds for this
  * team+season ({@link DuplicateSquadJerseyNumberException}, 409).
+ *
+ * <p>Per docs/specs/057-team-extended-profile.md: {@code update} also accepts {@code isCaptain}.
+ * When {@code true}, {@link #unsetOtherCaptains} un-marks whoever else currently holds the
+ * captaincy for this {@code (teamId, seasonId)} via {@code saveAndFlush} (the same Hibernate
+ * flush-ordering fix {@code SponsorContactServiceImpl.unsetOtherActivePrimaries}/{@code
+ * ClubContactServiceImpl.unsetOtherActivePrimaries} already established), then this member's own
+ * {@code isCaptain} is set {@code true}; when {@code false}, it's just set {@code false} - no
+ * other row is touched.
  */
 @Service
 public class TeamSquadServiceImpl implements TeamSquadService {
@@ -124,7 +132,13 @@ public class TeamSquadServiceImpl implements TeamSquadService {
     @Override
     @Transactional
     public TeamSquadMemberDto update(
-            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber) {
+            Authentication authentication,
+            UUID clubId,
+            UUID teamId,
+            UUID seasonId,
+            UUID playerId,
+            Integer jerseyNumber,
+            boolean isCaptain) {
         Team team = findTeamOrThrowForClub(clubId, teamId);
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
@@ -147,6 +161,12 @@ public class TeamSquadServiceImpl implements TeamSquadService {
         }
 
         member.setJerseyNumber(jerseyNumber);
+        if (isCaptain) {
+            unsetOtherCaptains(teamId, seasonId, member.getId());
+            member.setCaptain(true);
+        } else {
+            member.setCaptain(false);
+        }
         member = teamSquadMemberRepository.save(member);
 
         return toSquadMemberDto(member);
@@ -167,6 +187,28 @@ public class TeamSquadServiceImpl implements TeamSquadService {
 
         teamSquadMemberRepository.deleteByTeamIdAndSeasonIdAndPlayerProfileId(
                 teamId, seasonId, playerId);
+    }
+
+    /**
+     * Unsets {@code isCaptain} on every other squad member for {@code (teamId, seasonId)} — the
+     * auto-unset behavior the spec requires, silent, not a {@link ConflictException}. Uses {@code
+     * saveAndFlush}, not {@code save}: Hibernate's default flush ordering applies every pending
+     * {@code INSERT} in a transaction before any pending {@code UPDATE}, regardless of
+     * registration order — so this member's own (already-captain) row save would otherwise hit
+     * Postgres while this unset is still a queued, unflushed update, tripping the partial unique
+     * index {@code ux_team_squad_captain} instead of silently succeeding. Flushing here forces the
+     * unset to commit to the DB before the caller's own save proceeds. See {@code
+     * ClubContactServiceImpl.unsetOtherActivePrimaries}'s Javadoc for the full mechanism this
+     * applies from day one.
+     */
+    private void unsetOtherCaptains(UUID teamId, UUID seasonId, UUID excludeMemberId) {
+        for (TeamSquadMember existing :
+                teamSquadMemberRepository.findByTeamIdAndSeasonIdAndIsCaptainTrue(teamId, seasonId)) {
+            if (!existing.getId().equals(excludeMemberId)) {
+                existing.setCaptain(false);
+                teamSquadMemberRepository.saveAndFlush(existing);
+            }
+        }
     }
 
     private TeamSquadMemberDto toSquadMemberDto(UUID playerProfileId, TeamSquadMember member) {

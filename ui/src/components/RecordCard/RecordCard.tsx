@@ -145,8 +145,14 @@ export function RecordCard({
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
 
   return (
-    <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2 }}>
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    // height: '100%' + column flex, direct user feedback: a row of these cards sits in a CSS grid
+    // (grid's own default align-items: stretch already equalizes each card's outer height to the
+    // row's tallest), but without this the footer (CardActions) just trailed the content instead of
+    // occupying that extra stretched space — so unequal content heights left View/Edit at different
+    // vertical positions from one card to the next in the same row. flex: '1 1 auto' on CardContent
+    // makes it the one element that grows into that space, leaving CardActions pinned to the bottom.
+    <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
             {avatar && (

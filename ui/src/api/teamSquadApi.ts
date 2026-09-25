@@ -23,6 +23,9 @@ export interface SquadMember extends Player {
   // wicketkeeper/twelfth-man ids) is expressed against this field, not `id`.
   playerProfileId: string
   squadJerseyNumber: number | null
+  // docs/specs/057-team-extended-profile.md: read-only, mapped from TeamSquadMember.isCaptain —
+  // at most one true per (teamId, seasonId).
+  isCaptain: boolean
 }
 
 export async function listSquad(clubId: string, teamId: string, seasonId: string): Promise<SquadMember[]> {
@@ -40,16 +43,29 @@ export async function addToSquad(
   return data
 }
 
-// docs/specs/031-jersey-numbers.md's new PUT endpoint — TeamSquadMember's first-ever update,
-// updating only this squad member's own jerseyNumber. `null` clears it back out.
-export async function updateSquadJerseyNumber(
+// docs/specs/031-jersey-numbers.md's PUT endpoint — TeamSquadMember's first-ever update.
+// docs/specs/057-team-extended-profile.md renamed the backend request type from
+// UpdateTeamSquadMemberJerseyNumberRequest to UpdateTeamSquadMemberRequest and made it a
+// full-resource replace of BOTH `jerseyNumber` and `isCaptain` — this is the single biggest
+// implementation risk the spec flags: the jersey-number-edit (inline blur-to-save) and
+// captain-toggle (a button) are two separate, independently-triggered UI interactions, but both
+// now call this same full-resource PUT. EVERY caller must always send both fields — the sibling
+// field's current value alongside the one actually changing — or it will silently clear/reset
+// whichever field wasn't included. Renamed from updateSquadJerseyNumber accordingly, since
+// "jersey number" alone is no longer an accurate name for what this call replaces.
+export interface UpdateSquadMemberPayload {
+  jerseyNumber: number | null
+  isCaptain: boolean
+}
+
+export async function updateSquadMember(
   clubId: string,
   teamId: string,
   seasonId: string,
   playerId: string,
-  jerseyNumber: number | null,
+  payload: UpdateSquadMemberPayload,
 ): Promise<SquadMember> {
-  const { data } = await api.put<SquadMember>(`${squadPath(clubId, teamId, seasonId)}/${playerId}`, { jerseyNumber })
+  const { data } = await api.put<SquadMember>(`${squadPath(clubId, teamId, seasonId)}/${playerId}`, payload)
   return data
 }
 

@@ -18,6 +18,7 @@ import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
+import { RecordIconButton } from '../../components/RecordIconButton'
 import { badgeSx } from '../../components/RecordCard'
 import { getManagedClubProfile } from '../../api/clubApi'
 import type { Address, ClubProfileType } from '../../api/clubApi'
@@ -79,43 +80,6 @@ function CardHeaderRow({ title, action }: { title: string; action?: ReactNode })
       </Typography>
       {action}
     </Stack>
-  )
-}
-
-// One tappable avatar icon for the Contacts/Sponsors grids — extracted once both grids turned out
-// to be near-identical (image-or-initials avatar + tooltip + click-to-open-quick-view), per
-// docs/standards/frontend.md's duplicate-markup threshold, rather than left as two ~20-line blocks
-// differing only in shape/image field/tooltip text.
-function RecordIconButton({
-  imageUrl,
-  shape,
-  label,
-  initials,
-  onClick,
-}: {
-  imageUrl: string | null
-  shape: 'circular' | 'rounded'
-  label: string
-  initials: string
-  onClick: () => void
-}) {
-  return (
-    <IconButton onClick={onClick} title={label} aria-label={label} sx={{ p: 0 }}>
-      <Avatar
-        src={imageUrl ?? undefined}
-        variant={shape}
-        sx={{
-          width: 44,
-          height: 44,
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-          color: 'primary.dark',
-        }}
-      >
-        {initials}
-      </Avatar>
-    </IconButton>
   )
 }
 

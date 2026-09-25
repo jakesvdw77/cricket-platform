@@ -79,10 +79,16 @@ export function CreateAndLinkRecordDialog<TPayload>({
       <DialogContent>
         {extraField && (
           <Stack spacing={1} sx={{ mb: 2 }}>
+            {/* mt: 1 — this is the first control in DialogContent, and an MUI outlined TextField's
+                shrunk label sits partially above its own border; with no clearance above it, the
+                label text visually clips against the dialog's top edge (real user report: "that
+                first label is also cut off"). LinkExistingRecordDialog's own first field already
+                carries this same mt: 1 for the identical reason — mirrored here, not rediscovered. */}
             <Input
               label={extraField.label}
               value={extraValue}
               onChange={(event) => setExtraValue(event.target.value)}
+              sx={{ mt: 1 }}
             />
             {extraField.quickFillOptions && extraField.quickFillOptions.length > 0 && (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>

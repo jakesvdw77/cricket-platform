@@ -22,6 +22,11 @@ import lombok.Setter;
  * {@code @ElementCollection}, matching {@link TeamSponsor}/{@link SectionContact}/{@link
  * PlayerSection}'s precedent. Unique on {@code (team_id, season_id, player_profile_id)} — the same
  * player can be (re)added independently for each season. See docs/specs/029-league-management.md.
+ *
+ * <p>{@link #isCaptain} (docs/specs/057-team-extended-profile.md) marks at most one squad member
+ * as {@code teamId}/{@code seasonId}'s captain — same auto-unset-the-previous-one +
+ * partial-unique-index ({@code ux_team_squad_captain}) pattern {@code SponsorContact}/{@code
+ * LeagueContact}'s own {@code isPrimary} already establishes.
  */
 @Entity
 @Table(name = "team_squad_member")
@@ -47,6 +52,9 @@ public class TeamSquadMember {
 
     @Column(name = "jersey_number")
     private Integer jerseyNumber;
+
+    @Column(name = "is_captain", nullable = false)
+    private boolean isCaptain;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

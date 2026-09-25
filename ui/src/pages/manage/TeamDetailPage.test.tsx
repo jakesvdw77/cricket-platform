@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamDetailPage from './TeamDetailPage'
@@ -9,6 +10,8 @@ import type { TeamContact } from '../../api/teamContactApi'
 import type { Sponsor } from '../../api/sponsorApi'
 import type { Season } from '../../api/seasonApi'
 import type { SquadMember } from '../../api/teamSquadApi'
+import type { Page } from '../../api/productApi'
+import type { Match } from '../../api/matchApi'
 
 const listTeamsForClub = vi.fn()
 const listSections = vi.fn()
@@ -16,6 +19,7 @@ const listTeamContacts = vi.fn()
 const listTeamSponsors = vi.fn()
 const listSeasons = vi.fn()
 const listSquad = vi.fn()
+const listMatches = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string) => listTeamsForClub(clubId),
@@ -41,6 +45,10 @@ vi.mock('../../api/teamSquadApi', () => ({
   listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
 }))
 
+vi.mock('../../api/matchApi', () => ({
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
     id: 'team-1',
@@ -48,6 +56,9 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
     sectionId: 'section-1',
     name: '1st XI',
     logoUrl: null,
+    abbreviation: null,
+    groundName: null,
+    socialLinks: [],
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -157,6 +168,35 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     updatedBy: null,
     playerProfileId: 'player-1',
     squadJerseyNumber: 9,
+    isCaptain: false,
+    ...overrides,
+  }
+}
+
+function makeMatchesPage(matches: Match[]): Page<Match> {
+  return { content: matches, totalElements: matches.length, totalPages: 1, number: 0, size: 200 }
+}
+
+function makeMatch(overrides: Partial<Match> = {}): Match {
+  return {
+    id: 'match-1',
+    clubId: 'test-club-id',
+    homeTeamId: 'team-1',
+    homeTeamName: null,
+    awayTeamId: 'team-9',
+    awayTeamName: null,
+    leagueId: null,
+    seasonId: 'season-1',
+    matchDate: '2026-02-01',
+    venue: null,
+    active: true,
+    homeSideAnnounced: false,
+    awaySideAnnounced: false,
+    homeTeamLogoUrl: null,
+    awayTeamLogoUrl: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: null,
     ...overrides,
   }
 }
@@ -168,6 +208,7 @@ beforeEach(() => {
   listTeamSponsors.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
   listSquad.mockResolvedValue([])
+  listMatches.mockResolvedValue(makeMatchesPage([]))
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -181,6 +222,7 @@ function renderPage(initialPath: string, clubId?: string) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
+            <Route path="teams" element={<div>Team Directory Page</div>} />
             <Route path="sections/:sectionId/teams" element={<div>Team List Page</div>} />
             <Route path="sections/:sectionId/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="sections/:sectionId/teams/:teamId/edit" element={<div>Edit Team Page</div>} />
@@ -202,76 +244,129 @@ describe('TeamDetailPage', () => {
     expect(listTeamsForClub).not.toHaveBeenCalled()
   })
 
-  it('loads the matching team and renders the section breadcrumb and "N players" stat pill', async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' }), makeTeam({ id: 'team-2' })])
-    listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
-    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
-    listSquad.mockResolvedValueOnce([makeSquadMember({ id: 'squad-1' }), makeSquadMember({ id: 'squad-2', playerProfileId: 'player-2' })])
-
-    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
-
-    expect(await screen.findByRole('heading', { name: '1st XI' })).toBeInTheDocument()
-    expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id')
-    expect(screen.getByText('Men')).toBeInTheDocument()
-    expect(await screen.findByText('2 players')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-
-    // The Squad card's own RecordCard rows render "Edit" links too (docs/specs/049 amendment,
-    // item 19), so this asserts containment against the full set rather than a single-match query.
-    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
-    expect(editLinks).toContain('/manage/sections/section-1/teams/team-1/edit')
-  })
-
-  it("renders this team's own linked Contacts/Sponsors/Squad as viewTo cards", async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
-    listTeamContacts.mockResolvedValueOnce([makeTeamContact()])
-    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
-    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
-    listSquad.mockResolvedValueOnce([makeSquadMember({ playerProfileId: 'player-1' })])
-
-    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
-
-    await screen.findByRole('heading', { name: '1st XI' })
-
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
-
-    const viewLinks = screen.getAllByRole('link', { name: 'View' }).map((link) => link.getAttribute('href'))
-    expect(viewLinks).toContain('/manage/club-contacts/contact-1')
-    expect(viewLinks).toContain('/manage/sponsors/sponsor-1')
-    expect(viewLinks).toContain('/manage/players/player-1')
-
-    expect(screen.getByText('Acme Bank')).toBeInTheDocument()
-    expect(screen.getByText('Sam Lee')).toBeInTheDocument()
-  })
-
-  // docs/specs/049-record-list-edit-action-rollout.md (amendment, items 17-19): the Contacts,
-  // Sponsors, and Squad cards each now pass editTo alongside viewTo, rendering View and Edit side
-  // by side — mirrors MatchList.test.tsx's own View+Edit precedent, one assertion per card section.
-  it('renders View and Edit together on the Contacts, Sponsors, and Squad cards, each pointing at that record\'s own routes', async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
-    listTeamContacts.mockResolvedValueOnce([makeTeamContact()])
-    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })])
-    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
-    listSquad.mockResolvedValueOnce([makeSquadMember({ playerProfileId: 'player-1' })])
-
-    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
-
-    await screen.findByRole('heading', { name: '1st XI' })
-    await screen.findByText('Jane Smith')
-
-    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
-    // The Team's own "Edit" action (RecordDetailScreen's own header link) is also present, so this
-    // asserts containment rather than an exact-length match.
-    expect(editLinks).toContain('/manage/club-contacts/contact-1/edit')
-    expect(editLinks).toContain('/manage/sponsors/sponsor-1/edit')
-    expect(editLinks).toContain('/manage/players/player-1/edit')
-  })
-
   it('renders an error state when the matching team id is not in the fetched list', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'some-other-id' })])
 
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     expect(await screen.findByText("Couldn't load this team")).toBeInTheDocument()
+  })
+
+  it('renders the header chips: section, ground, captain, player/match counts, and no "Details" heading', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', groundName: 'Irene Country Club' })])
+    listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listSquad.mockResolvedValueOnce([
+      makeSquadMember({ id: 'squad-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', isCaptain: true }),
+      makeSquadMember({ id: 'squad-2', playerProfileId: 'player-2', firstName: 'Sam', lastName: 'Lee', isCaptain: false }),
+    ])
+    listMatches.mockResolvedValueOnce(
+      makeMatchesPage([makeMatch({ homeTeamId: 'team-1' }), makeMatch({ id: 'match-2', homeTeamId: 'other', awayTeamId: 'team-9' })]),
+    )
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    expect(await screen.findByRole('heading', { name: '1st XI' })).toBeInTheDocument()
+    expect(screen.getByText('Men')).toBeInTheDocument()
+    expect(screen.getByText('Irene Country Club')).toBeInTheDocument()
+    expect(await screen.findByText('Captain: Jane Smith')).toBeInTheDocument()
+    expect(await screen.findByText('2 players')).toBeInTheDocument()
+    expect(await screen.findByText('1 matches')).toBeInTheDocument()
+    expect(screen.queryByText('Details')).not.toBeInTheDocument()
+  })
+
+  it('renders an Inactive badge chip for a deactivated team', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', active: false })])
+    listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+  })
+
+  it('opens the Contacts quick-view dialog with Role/Email/Phone fields, edit route intact', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listTeamContacts.mockResolvedValueOnce([makeTeamContact()])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(screen.getByRole('button', { name: 'Jane Smith — Manager' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
+    expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/club-contacts/contact-1/edit')
+  })
+
+  it('opens the Sponsors quick-view dialog with Website/Email fields, edit route intact', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listTeamSponsors.mockResolvedValueOnce([makeSponsor({ id: 'sponsor-1', name: 'Acme Bank', website: 'https://acme.example.com' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(screen.getByRole('button', { name: 'Acme Bank — Sponsor' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('https://acme.example.com')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1/edit')
+  })
+
+  it('renders the Squad grid with the captain tile visually distinguished by a "Captain" label', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listSquad.mockResolvedValueOnce([
+      makeSquadMember({ id: 'squad-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', isCaptain: true }),
+      makeSquadMember({ id: 'squad-2', playerProfileId: 'player-2', firstName: 'Sam', lastName: 'Lee', isCaptain: false }),
+    ])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByText('Jane Smith')
+    expect(screen.getByText('Sam Lee')).toBeInTheDocument()
+    expect(screen.getByText('Captain')).toBeInTheDocument()
+
+    const viewLinks = screen.getAllByRole('link', { name: 'View' }).map((link) => link.getAttribute('href'))
+    expect(viewLinks).toContain('/manage/players/player-1')
+    const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
+    expect(editLinks).toContain('/manage/players/player-1/edit')
+  })
+
+  it('the back link targets the club-wide directory when ?from=section is absent (the default)', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    const backLink = await screen.findByRole('link', { name: /Back to Teams/ })
+    expect(backLink).toHaveAttribute('href', '/manage/teams')
+  })
+
+  it('the back link targets the section-scoped Teams list when ?from=section is present', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1?from=section', 'test-club-id')
+
+    const backLink = await screen.findByRole('link', { name: /Back to Teams/ })
+    expect(backLink).toHaveAttribute('href', '/manage/sections/section-1/teams')
+  })
+
+  it('the header "Edit team" and Squad "Add player" actions both target the edit route', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    expect(screen.getByRole('link', { name: /Edit team/ })).toHaveAttribute(
+      'href',
+      '/manage/sections/section-1/teams/team-1/edit',
+    )
+    expect(screen.getByRole('link', { name: 'Add player' })).toHaveAttribute(
+      'href',
+      '/manage/sections/section-1/teams/team-1/edit',
+    )
   })
 })
