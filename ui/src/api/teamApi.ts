@@ -1,4 +1,5 @@
 import api from './axiosConfig'
+import type { SocialLink } from '../components/marketing/SocialLinksRow'
 
 // A named Team, placed under a Section — docs/specs/026-teams.md. Single /manage-only namespace
 // (no /platform mirror, same precedent as ClubContact/Sponsor/Section): AccessService.
@@ -13,19 +14,28 @@ export interface Team {
   // 027-team-profile.md). null means the team has no logo override of its own; the UI falls back
   // to showing the club's own logo, a UI-layer resolution, not a stored "inherited" state.
   logoUrl: string | null
+  // docs/specs/057-team-extended-profile.md: the same club-facing profile shape 053 already gave
+  // League — every one nullable/optional, reusing SocialLinkDto/SocialLink unchanged.
+  abbreviation: string | null
+  groundName: string | null
+  socialLinks: SocialLink[]
   active: boolean
   createdAt: string
   updatedAt: string
   updatedBy: string | null
 }
 
-// Same shape for create and update — CreateTeamRequest/UpdateTeamRequest are both {name, logoUrl?}
-// server-side (docs/specs/027-team-profile.md extends both, Flag #1). sectionId is never part of
-// the payload: it's fixed by the URL at create time and never editable afterwards (re-parenting is
-// out of scope, see the spec's Non-goals).
+// Same shape for create and update — CreateTeamRequest/UpdateTeamRequest are both
+// {name, logoUrl?, abbreviation?, groundName?, socialLinks?} server-side (docs/specs/
+// 027-team-profile.md extends both, Flag #1; docs/specs/057-team-extended-profile.md adds the
+// three profile fields). sectionId is never part of the payload: it's fixed by the URL at create
+// time and never editable afterwards (re-parenting is out of scope, see the spec's Non-goals).
 export interface TeamPayload {
   name: string
   logoUrl?: string | null
+  abbreviation?: string | null
+  groundName?: string | null
+  socialLinks?: SocialLink[]
 }
 
 function teamsPath(clubId: string, sectionId: string): string {

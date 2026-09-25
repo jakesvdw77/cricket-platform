@@ -17,6 +17,10 @@ import java.util.UUID;
  * independent of {@code jerseyNumber}, the player's standing number carried over from {@link
  * PlayerDto}). Replaces {@code PlayerDto} as {@code TeamSquadService.list}/{@code add}'s return
  * type. See docs/specs/031-jersey-numbers.md's API Contract section.
+ *
+ * <p>{@code isCaptain} (docs/specs/057-team-extended-profile.md, read-only, mapped from {@code
+ * TeamSquadMember.isCaptain}) marks whether this row is currently {@code teamId}/{@code
+ * seasonId}'s captain — at most one {@code true} per team+season.
  */
 public record TeamSquadMemberDto(
         UUID id,
@@ -42,5 +46,6 @@ public record TeamSquadMemberDto(
         boolean active,
         List<UUID> sectionIds,
         Integer jerseyNumber,
-        Integer squadJerseyNumber) {
+        Integer squadJerseyNumber,
+        boolean isCaptain) {
 }

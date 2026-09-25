@@ -8,12 +8,15 @@ import static org.mockito.Mockito.when;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateTeamRequest;
+import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.TeamDto;
 import com.cricketlegend.dto.UpdateTeamRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.TeamMapper;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
@@ -36,7 +39,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  * the plain one-way-transition-guard shape for deactivate/reactivate (mirrors {@code
  * ClubContactServiceImpl}, no hard-delete branch), the two-level {@code
  * findSectionOrThrowForClub}/{@code findTeamOrThrowForSection} cross-club/cross-section {@link
- * NotFoundException} isolation, and {@code listBySection}/{@code listByClub}.
+ * NotFoundException} isolation, and {@code listBySection}/{@code listByClub}. Also covers
+ * docs/specs/057-team-extended-profile.md's {@code abbreviation}/{@code groundName}/{@code
+ * socialLinks} profile fields on {@code create}/{@code update}, including the shared
+ * duplicate-social-link-platform rejection (mirrors {@code LeagueServiceImplTest}'s identical
+ * {@code 053} case).
  */
 @ExtendWith(MockitoExtension.class)
 class TeamServiceImplTest {
@@ -82,7 +89,8 @@ class TeamServiceImplTest {
 
     private TeamDto dummyDto() {
         return new TeamDto(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "1st XI", null, true, null, null, null);
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "1st XI", null, null, null,
+                List.of(), true, null, null, null);
     }
 
     // --- create ---
@@ -92,7 +100,7 @@ class TeamServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
-        CreateTeamRequest request = new CreateTeamRequest("1st XI", null);
+        CreateTeamRequest request = new CreateTeamRequest("1st XI", null, null, null, null);
         Team mapped = new Team();
         when(teamMapper.toEntity(request)).thenReturn(mapped);
         when(teamRepository.save(mapped)).thenReturn(mapped);
@@ -112,7 +120,7 @@ class TeamServiceImplTest {
         UUID sectionId = UUID.randomUUID();
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, otherClubId)));
 
-        CreateTeamRequest request = new CreateTeamRequest("1st XI", null);
+        CreateTeamRequest request = new CreateTeamRequest("1st XI", null, null, null, null);
 
         assertThatThrownBy(() -> teamService.create(clubId, sectionId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -125,7 +133,7 @@ class TeamServiceImplTest {
         UUID sectionId = UUID.randomUUID();
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.empty());
 
-        CreateTeamRequest request = new CreateTeamRequest("1st XI", null);
+        CreateTeamRequest request = new CreateTeamRequest("1st XI", null, null, null, null);
 
         assertThatThrownBy(() -> teamService.create(clubId, sectionId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -137,7 +145,7 @@ class TeamServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
-        CreateTeamRequest request = new CreateTeamRequest("1st XI", "https://example.com/logo.png");
+        CreateTeamRequest request = new CreateTeamRequest("1st XI", "https://example.com/logo.png", null, null, null);
         Team mapped = new Team();
         when(teamMapper.toEntity(request)).thenReturn(mapped);
         when(teamRepository.save(mapped)).thenReturn(mapped);
@@ -146,6 +154,51 @@ class TeamServiceImplTest {
         teamService.create(clubId, sectionId, request);
 
         assertThat(mapped.getLogoUrl()).isEqualTo("https://example.com/logo.png");
+    }
+
+    // --- 057: abbreviation/groundName/socialLinks profile fields ---
+
+    @Test
+    void createPersistsTheThreeNewProfileFieldsIncludingSocialLinks() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
+        SocialLinkDto linkDto = new SocialLinkDto("facebook", "https://facebook.com/1st-xi");
+        SocialLink mappedLink =
+                SocialLink.builder().platform("facebook").url("https://facebook.com/1st-xi").build();
+        CreateTeamRequest request =
+                new CreateTeamRequest("1st XI", null, "ICL", "Irene Country Club", List.of(linkDto));
+        Team mapped = new Team();
+        when(teamMapper.toEntity(request)).thenReturn(mapped);
+        when(teamMapper.toEntity(linkDto)).thenReturn(mappedLink);
+        when(teamRepository.save(mapped)).thenReturn(mapped);
+        when(teamMapper.toDto(mapped)).thenReturn(dummyDto());
+
+        teamService.create(clubId, sectionId, request);
+
+        assertThat(mapped.getAbbreviation()).isEqualTo("ICL");
+        assertThat(mapped.getGroundName()).isEqualTo("Irene Country Club");
+        assertThat(mapped.getSocialLinks()).containsExactly(mappedLink);
+    }
+
+    @Test
+    void createWithADuplicateSocialLinkPlatformThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        CreateTeamRequest request = new CreateTeamRequest(
+                "1st XI",
+                null,
+                null,
+                null,
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/a"),
+                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+
+        assertThatThrownBy(() -> teamService.create(clubId, sectionId, request))
+                .isInstanceOf(ValidationException.class);
+
+        verify(sectionRepository, never()).findById(ArgumentMatchers.any());
+        verify(teamRepository, never()).save(ArgumentMatchers.any());
     }
 
     // --- update ---
@@ -161,7 +214,7 @@ class TeamServiceImplTest {
         when(teamRepository.save(existing)).thenReturn(existing);
         when(teamMapper.toDto(existing)).thenReturn(dummyDto());
 
-        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null));
+        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null, null, null, null));
 
         assertThat(existing.getName()).isEqualTo("2nd XI");
     }
@@ -177,7 +230,7 @@ class TeamServiceImplTest {
         when(teamRepository.save(existing)).thenReturn(existing);
         when(teamMapper.toDto(existing)).thenReturn(dummyDto());
 
-        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("1st XI", "https://example.com/logo.png"));
+        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("1st XI", "https://example.com/logo.png", null, null, null));
 
         assertThat(existing.getLogoUrl()).isEqualTo("https://example.com/logo.png");
     }
@@ -194,9 +247,78 @@ class TeamServiceImplTest {
         when(teamRepository.save(existing)).thenReturn(existing);
         when(teamMapper.toDto(existing)).thenReturn(dummyDto());
 
-        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("1st XI", null));
+        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("1st XI", null, null, null, null));
 
         assertThat(existing.getLogoUrl()).isNull();
+    }
+
+    @Test
+    void updatePersistsTheThreeNewProfileFieldsIncludingSocialLinks() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
+        Team existing = team(teamId, sectionId, true);
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(existing));
+        when(teamRepository.save(existing)).thenReturn(existing);
+        when(teamMapper.toDto(existing)).thenReturn(dummyDto());
+        SocialLinkDto linkDto = new SocialLinkDto("instagram", "https://instagram.com/1st-xi");
+        SocialLink mappedLink =
+                SocialLink.builder().platform("instagram").url("https://instagram.com/1st-xi").build();
+        when(teamMapper.toEntity(linkDto)).thenReturn(mappedLink);
+
+        teamService.update(
+                clubId,
+                sectionId,
+                teamId,
+                new UpdateTeamRequest("1st XI", null, "ICL", "Irene Country Club", List.of(linkDto)));
+
+        assertThat(existing.getAbbreviation()).isEqualTo("ICL");
+        assertThat(existing.getGroundName()).isEqualTo("Irene Country Club");
+        assertThat(existing.getSocialLinks()).containsExactly(mappedLink);
+    }
+
+    @Test
+    void updateWithADuplicateSocialLinkPlatformThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UpdateTeamRequest request = new UpdateTeamRequest(
+                "1st XI",
+                null,
+                null,
+                null,
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/a"),
+                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+
+        assertThatThrownBy(() -> teamService.update(clubId, sectionId, teamId, request))
+                .isInstanceOf(ValidationException.class);
+
+        verify(sectionRepository, never()).findById(ArgumentMatchers.any());
+        verify(teamRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateWithAllThreeNewProfileFieldsOmittedRoundTripsAsNullAndEmpty() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, clubId)));
+        Team existing = team(teamId, sectionId, true);
+        existing.setAbbreviation("OLD");
+        existing.setGroundName("Old Ground");
+        existing.setSocialLinks(new java.util.ArrayList<>(
+                List.of(SocialLink.builder().platform("facebook").url("https://facebook.com/old").build())));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(existing));
+        when(teamRepository.save(existing)).thenReturn(existing);
+        when(teamMapper.toDto(existing)).thenReturn(dummyDto());
+
+        teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("1st XI", null, null, null, null));
+
+        assertThat(existing.getAbbreviation()).isNull();
+        assertThat(existing.getGroundName()).isNull();
+        assertThat(existing.getSocialLinks()).isEmpty();
     }
 
     @Test
@@ -208,7 +330,7 @@ class TeamServiceImplTest {
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(sectionId, otherClubId)));
 
         assertThatThrownBy(
-                        () -> teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null)))
+                        () -> teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null, null, null, null)))
                 .isInstanceOf(NotFoundException.class);
         verify(teamRepository, never()).findById(ArgumentMatchers.any());
     }
@@ -223,7 +345,7 @@ class TeamServiceImplTest {
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, otherSectionId, true)));
 
         assertThatThrownBy(
-                        () -> teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null)))
+                        () -> teamService.update(clubId, sectionId, teamId, new UpdateTeamRequest("2nd XI", null, null, null, null)))
                 .isInstanceOf(NotFoundException.class);
         verify(teamRepository, never()).save(ArgumentMatchers.any());
     }

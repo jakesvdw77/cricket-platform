@@ -212,4 +212,55 @@ class TeamSquadMemberRepositoryTest {
         assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), seasonB.getId()))
                 .hasSize(1);
     }
+
+    /**
+     * docs/specs/057-team-extended-profile.md's {@code ux_team_squad_captain} partial unique
+     * index — rejects a second simultaneous {@code is_captain} row for the same {@code
+     * (team_id, season_id)} at the DB level, inserted directly via the repository (bypassing
+     * {@code TeamSquadServiceImpl}'s own auto-unset) — mirrors {@code
+     * LeagueContactRepositoryTest}'s equivalent proof for {@code ux_league_contact_primary}.
+     */
+    @Test
+    void uxTeamSquadCaptainRejectsASecondSimultaneousCaptainForTheSameTeamAndSeasonAtTheDbLevel() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerA.getId())
+                .isCaptain(true).build());
+
+        TeamSquadMember secondCaptain = TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerB.getId())
+                .isCaptain(true).build();
+
+        assertThatThrownBy(() -> teamSquadMemberRepository.saveAndFlush(secondCaptain))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * The partial index's {@code WHERE is_captain} clause means a non-captain row never collides
+     * with an existing captain for the same team+season — the carve-out the index exists to
+     * allow, proven for real rather than just asserted in a Javadoc.
+     */
+    @Test
+    void uxTeamSquadCaptainAllowsAnyNumberOfNonCaptainRowsAlongsideAnExistingCaptain() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+        teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerA.getId())
+                .isCaptain(true).build());
+
+        TeamSquadMember nonCaptain = teamSquadMemberRepository.saveAndFlush(TeamSquadMember.builder()
+                .teamId(team.getId()).seasonId(season.getId()).playerProfileId(playerB.getId())
+                .isCaptain(false).build());
+
+        assertThat(nonCaptain.getId()).isNotNull();
+        assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), season.getId()))
+                .hasSize(2);
+    }
 }

@@ -35,15 +35,26 @@ public interface TeamSquadService {
     TeamSquadMemberDto add(Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId);
 
     /**
-     * Updates {@code playerId}'s squad membership {@code jerseyNumber} for {@code teamId}/{@code
-     * seasonId} — the only mutable attribute on this row. 404s if {@code teamId}/{@code seasonId}
-     * doesn't belong to {@code clubId}, or if the player isn't currently in that season's squad.
-     * Throws {@link com.cricketlegend.exception.ValidationException} if {@code jerseyNumber} is
-     * negative, and {@link com.cricketlegend.exception.DuplicateSquadJerseyNumberException} if
-     * another squad member already holds that number for this team's squad this season.
+     * Updates {@code playerId}'s squad membership {@code jerseyNumber}/{@code isCaptain} for
+     * {@code teamId}/{@code seasonId} — the only two mutable attributes on this row, per
+     * docs/specs/057-team-extended-profile.md's rename of the request DTO to {@code
+     * UpdateTeamSquadMemberRequest} (a full-resource replace of both fields together). 404s if
+     * {@code teamId}/{@code seasonId} doesn't belong to {@code clubId}, or if the player isn't
+     * currently in that season's squad. Throws {@link
+     * com.cricketlegend.exception.ValidationException} if {@code jerseyNumber} is negative, and
+     * {@link com.cricketlegend.exception.DuplicateSquadJerseyNumberException} if another squad
+     * member already holds that number for this team's squad this season. When {@code isCaptain}
+     * is {@code true}, silently un-marks whoever else currently holds the captaincy for {@code
+     * teamId}/{@code seasonId} — never a {@link com.cricketlegend.exception.ConflictException}.
      */
     TeamSquadMemberDto update(
-            Authentication authentication, UUID clubId, UUID teamId, UUID seasonId, UUID playerId, Integer jerseyNumber);
+            Authentication authentication,
+            UUID clubId,
+            UUID teamId,
+            UUID seasonId,
+            UUID playerId,
+            Integer jerseyNumber,
+            boolean isCaptain);
 
     /**
      * Removes {@code playerId} from {@code teamId}'s squad for {@code seasonId} (hard delete of

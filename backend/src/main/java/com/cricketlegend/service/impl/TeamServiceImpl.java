@@ -2,8 +2,10 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateTeamRequest;
+import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.TeamDto;
 import com.cricketlegend.dto.UpdateTeamRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -12,6 +14,8 @@ import com.cricketlegend.mapper.TeamMapper;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.TeamService;
+import com.cricketlegend.service.support.SocialLinkValidation;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -30,7 +34,12 @@ import org.springframework.transaction.annotation.Transactional;
  * cross-club/cross-section isolation at the data layer, not only relying on the controller's
  * {@code @PreAuthorize}; {@code deactivate}/{@code reactivate} mirror {@code
  * ClubContactServiceImpl}'s plain one-way-transition-guard shape — {@code Team} never
- * hard-deletes, unlike {@code SectionServiceImpl}'s one-off exception.
+ * hard-deletes, unlike {@code SectionServiceImpl}'s one-off exception. Per
+ * docs/specs/057-team-extended-profile.md: {@code create}/{@code update} also reject a duplicate
+ * {@code platform} within the request's {@code socialLinks} via the shared {@link
+ * com.cricketlegend.service.support.SocialLinkValidation}, also used by {@code
+ * LeagueServiceImpl}/{@code SponsorServiceImpl}/{@code ClubProfileServiceImpl}, and set the three
+ * new profile fields ({@code abbreviation}/{@code groundName}/{@code socialLinks}).
  */
 @Service
 public class TeamServiceImpl implements TeamService {
@@ -52,6 +61,7 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeamDto> listBySection(UUID clubId, UUID sectionId) {
         findSectionOrThrowForClub(clubId, sectionId);
         return teamRepository.findByClubIdAndSectionId(clubId, sectionId).stream()
@@ -60,6 +70,7 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeamDto> listByClub(Authentication authentication, UUID clubId, UUID sectionId) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         Set<UUID> narrowTo = null;
@@ -79,12 +90,16 @@ public class TeamServiceImpl implements TeamService {
     @Override
     @Transactional
     public TeamDto create(UUID clubId, UUID sectionId, CreateTeamRequest request) {
+        SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
         findSectionOrThrowForClub(clubId, sectionId);
 
         Team team = teamMapper.toEntity(request);
         team.setClubId(clubId);
         team.setSectionId(sectionId);
         team.setLogoUrl(request.logoUrl());
+        team.setAbbreviation(request.abbreviation());
+        team.setGroundName(request.groundName());
+        team.setSocialLinks(toSocialLinks(request.socialLinks()));
         team.setActive(true);
 
         return teamMapper.toDto(teamRepository.save(team));
@@ -93,10 +108,14 @@ public class TeamServiceImpl implements TeamService {
     @Override
     @Transactional
     public TeamDto update(UUID clubId, UUID sectionId, UUID teamId, UpdateTeamRequest request) {
+        SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
         findSectionOrThrowForClub(clubId, sectionId);
         Team team = findTeamOrThrowForSection(sectionId, teamId);
         team.setName(request.name());
         team.setLogoUrl(request.logoUrl());
+        team.setAbbreviation(request.abbreviation());
+        team.setGroundName(request.groundName());
+        team.setSocialLinks(toSocialLinks(request.socialLinks()));
 
         return teamMapper.toDto(teamRepository.save(team));
     }
@@ -123,6 +142,23 @@ public class TeamServiceImpl implements TeamService {
         }
         team.setActive(true);
         return teamMapper.toDto(teamRepository.save(team));
+    }
+
+    /**
+     * {@code Team} is built via {@code teamMapper.toEntity()} then mutated directly (never a
+     * full-entity mapper call for the update path), so {@code socialLinks} needs this small
+     * helper instead of relying on MapStruct's own list conversion — mirrors {@code
+     * LeagueServiceImpl.toSocialLinks}/{@code SponsorServiceImpl.toSocialLinks}.
+     */
+    private List<SocialLink> toSocialLinks(List<SocialLinkDto> dtos) {
+        if (dtos == null) {
+            return new ArrayList<>();
+        }
+        List<SocialLink> links = new ArrayList<>();
+        for (SocialLinkDto dto : dtos) {
+            links.add(teamMapper.toEntity(dto));
+        }
+        return links;
     }
 
     /**

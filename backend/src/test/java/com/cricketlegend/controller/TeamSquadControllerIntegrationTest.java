@@ -2,6 +2,7 @@ package com.cricketlegend.controller;
 
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -538,6 +539,137 @@ class TeamSquadControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"jerseyNumber\": 9}"))
                 .andExpect(status().isConflict());
+    }
+
+    /**
+     * docs/specs/057-team-extended-profile.md's rename of the {@code PUT} endpoint's request
+     * shape ({@code UpdateTeamSquadMemberJerseyNumberRequest} to {@code
+     * UpdateTeamSquadMemberRequest}, gaining {@code isCaptain}) — a real HTTP round trip proving
+     * {@code isCaptain} persists and is reflected on a subsequent {@code GET}, alongside {@code
+     * jerseyNumber} in the same full-resource payload.
+     */
+    @Test
+    void updatingASquadMembersCaptainFlagReturns200AndPersists() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person person = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile player = playerProfileRepository.save(newActivePlayerProfile(person.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                player.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 9, \"isCaptain\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.squadJerseyNumber").value(9))
+                .andExpect(jsonPath("$.isCaptain").value(true));
+
+        mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad",
+                                club.getId(),
+                                team.getId(),
+                                season.getId())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].squadJerseyNumber").value(9))
+                .andExpect(jsonPath("$[0].isCaptain").value(true));
+    }
+
+    /**
+     * The captain auto-unset case, through the real HTTP layer — mirrors {@code
+     * LeagueContactControllerIntegrationTest}'s {@code
+     * settingIsPrimaryTrueOnASecondContactUnsetsTheFirstContactsPrimaryFlagThroughTheHttpLayer}:
+     * setting {@code isCaptain: true} on a second squad member while a different one already
+     * holds it for the same team+season succeeds with no {@code 409}, and the first member's
+     * {@code isCaptain} flips to {@code false}.
+     */
+    @Test
+    void settingIsCaptainTrueOnASecondSquadMemberUnsetsTheFirstMembersCaptainFlagThroughTheHttpLayer()
+            throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Person personA = personRepository.save(newPlayerPerson("Jane", "Doe"));
+        PlayerProfile playerA =
+                playerProfileRepository.save(newActivePlayerProfile(personA.getId(), club.getId()));
+        Person personB = personRepository.save(newPlayerPerson("Joe", "Bloggs"));
+        PlayerProfile playerB =
+                playerProfileRepository.save(newActivePlayerProfile(personB.getId(), club.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerA.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}/add",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerB.getId())
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerA.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 1, \"isCaptain\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isCaptain").value(true));
+
+        // Marking playerB captain must succeed with no 409, even though playerA already holds it.
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad/{playerId}",
+                                club.getId(),
+                                team.getId(),
+                                season.getId(),
+                                playerB.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jerseyNumber\": 2, \"isCaptain\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isCaptain").value(true));
+
+        String listResponse = mockMvc.perform(get(
+                                "/api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad",
+                                club.getId(),
+                                team.getId(),
+                                season.getId())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        java.util.List<Boolean> playerACaptainFlags = com.jayway.jsonpath.JsonPath.read(
+                listResponse, "$[?(@.playerProfileId == '" + playerA.getId() + "')].isCaptain");
+        java.util.List<Boolean> playerBCaptainFlags = com.jayway.jsonpath.JsonPath.read(
+                listResponse, "$[?(@.playerProfileId == '" + playerB.getId() + "')].isCaptain");
+        assertThat(playerACaptainFlags).containsExactly(false);
+        assertThat(playerBCaptainFlags).containsExactly(true);
     }
 
     /** Cross-club {@code 403} isolation for the new {@code PUT} endpoint. */

@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
+import { TeamCard } from '../../components/TeamCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -13,9 +13,10 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
-import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
-import { initialsFromName } from '../../utils/initials'
+import { listSeasons } from '../../api/seasonApi'
+import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
+import { useTeamCardData } from '../../hooks/useTeamCardData'
 
 const CLUB_TEAMS_QUERY_KEY = (clubId?: string) => ['managed-club', clubId, 'teams']
 
@@ -26,23 +27,6 @@ export function badgeFor(team: Team): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
-}
-
-// One RecordCard per team — Deactivate/Reactivate now lives on TeamFormPage's own actions bar
-// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
-// with "View" as its only footer action. Called directly with the team's own sectionId (every
-// TeamDto already carries it) — no navigation into Club Structure needed.
-function TeamCard({ team, sectionBreadcrumb }: { team: Team; sectionBreadcrumb: string }) {
-  return (
-    <RecordCard
-      title={team.name}
-      avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
-      badge={badgeFor(team)}
-      fields={[{ label: 'Section', value: sectionBreadcrumb }]}
-      viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
-      editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
-    />
-  )
 }
 
 // Reads clubId from ManagerHome's Outlet context (docs/specs/020-club-manager-access.md) only —
@@ -79,19 +63,22 @@ export default function TeamDirectory() {
     enabled: Boolean(clubId),
   })
 
+  const { data: seasons } = useQuery({
+    queryKey: ['managed-club', clubId, 'seasons'],
+    queryFn: () => listSeasons(clubId as string),
+    enabled: Boolean(clubId),
+  })
+
+  const currentSeasonId = pickDefaultSeasonId(seasons ?? [])
+  const teamCardData = useTeamCardData(clubId, teams ?? [], currentSeasonId)
+
   const sectionsById = useMemo(() => {
     const map = new Map<string, Section>()
     ;(sections ?? []).forEach((section) => map.set(section.id, section))
     return map
   }, [sections])
 
-  const sectionBreadcrumbFor = (sectionId: string): string => {
-    const section = sectionsById.get(sectionId)
-    if (!section) {
-      return 'Unknown section'
-    }
-    return [...breadcrumbFor(section, sectionsById), section.name].join(' › ')
-  }
+  const sectionNameFor = (sectionId: string): string => sectionsById.get(sectionId)?.name ?? 'Unknown section'
 
   const visibleTeams = useMemo(() => {
     if (!teams) {
@@ -163,9 +150,25 @@ export default function TeamDirectory() {
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
           }}
         >
-          {visibleTeams.map((team) => (
-            <TeamCard key={team.id} team={team} sectionBreadcrumb={sectionBreadcrumbFor(team.sectionId)} />
-          ))}
+          {visibleTeams.map((team) => {
+            const cardData = teamCardData[team.id]
+            return (
+              <TeamCard
+                key={team.id}
+                team={team}
+                sectionName={sectionNameFor(team.sectionId)}
+                badge={badgeFor(team)}
+                captainName={cardData?.captainName}
+                managerName={cardData?.managerName}
+                coachName={cardData?.coachName}
+                playerCount={cardData?.playerCount ?? 0}
+                matchCount={cardData?.matchCount ?? 0}
+                sponsors={cardData?.sponsors ?? []}
+                viewTo={`/manage/sections/${team.sectionId}/teams/${team.id}`}
+                editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
+              />
+            )
+          })}
         </Box>
       )}
 

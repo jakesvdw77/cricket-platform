@@ -286,7 +286,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateTeamSquadMemberJerseyNumberRequest"
+              $ref: "#/components/schemas/UpdateTeamSquadMemberRequest"
         required: true
       responses:
         "200":
@@ -3865,12 +3865,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
-    UpdateTeamSquadMemberJerseyNumberRequest:
+    UpdateTeamSquadMemberRequest:
       type: object
       properties:
         jerseyNumber:
           type: integer
           format: int32
+        isCaptain:
+          type: boolean
     TeamSquadMemberDto:
       type: object
       properties:
@@ -3951,6 +3953,8 @@ components:
         squadJerseyNumber:
           type: integer
           format: int32
+        isCaptain:
+          type: boolean
     UpdateSponsorRequest:
       type: object
       properties:
@@ -4161,6 +4165,14 @@ components:
           type: string
         logoUrl:
           type: string
+        abbreviation:
+          type: string
+        groundName:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
     TeamDto:
@@ -4179,6 +4191,14 @@ components:
           type: string
         logoUrl:
           type: string
+        abbreviation:
+          type: string
+        groundName:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
         active:
           type: boolean
         createdAt:
@@ -4984,6 +5004,14 @@ components:
           type: string
         logoUrl:
           type: string
+        abbreviation:
+          type: string
+        groundName:
+          type: string
+        socialLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
     LinkTeamContactRequest:

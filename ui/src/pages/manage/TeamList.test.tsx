@@ -6,9 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamList from './TeamList'
 import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
+import type { Page } from '../../api/productApi'
+import type { Match } from '../../api/matchApi'
 
 const listTeamsForSection = vi.fn()
 const listSections = vi.fn()
+const listTeamContacts = vi.fn()
+const listTeamSponsors = vi.fn()
+const listSquad = vi.fn()
+const listSeasons = vi.fn()
+const listMatches = vi.fn()
 
 // Mirrors SponsorContactList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/teamApi', () => ({
@@ -21,9 +28,34 @@ vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
 
+vi.mock('../../api/teamContactApi', () => ({
+  listTeamContacts: (clubId: string, sectionId: string, teamId: string) => listTeamContacts(clubId, sectionId, teamId),
+}))
+
+vi.mock('../../api/teamSponsorApi', () => ({
+  listTeamSponsors: (clubId: string, sectionId: string, teamId: string) => listTeamSponsors(clubId, sectionId, teamId),
+}))
+
+vi.mock('../../api/teamSquadApi', () => ({
+  listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
+}))
+
+vi.mock('../../api/seasonApi', () => ({
+  listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
+vi.mock('../../api/matchApi', () => ({
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSections.mockResolvedValue([])
+  listTeamContacts.mockResolvedValue([])
+  listTeamSponsors.mockResolvedValue([])
+  listSquad.mockResolvedValue([])
+  listSeasons.mockResolvedValue([])
+  listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 } as Page<Match>)
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -33,6 +65,9 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
     sectionId: 'test-section-id',
     name: '1st XI',
     logoUrl: null,
+    abbreviation: null,
+    groundName: null,
+    socialLinks: [],
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -217,7 +252,9 @@ describe('TeamList', () => {
 
   // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
   // precedent test for the View+Edit dual-render footer.
-  it('renders View and Edit together on a card, both pointing at the team\'s own routes', async () => {
+  // docs/specs/057-team-extended-profile.md: both links now carry the `?from=section` marker so
+  // TeamDetailPage/TeamFormPage's own Back link routes here, not the club-wide directory.
+  it('renders View and Edit together on a card, both pointing at the team\'s own routes with ?from=section', async () => {
     listTeamsForSection.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
 
     renderList('test-club-id', 'test-section-id')
@@ -225,11 +262,11 @@ describe('TeamList', () => {
     await screen.findByText('1st XI')
     expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
       'href',
-      '/manage/sections/test-section-id/teams/team-1',
+      '/manage/sections/test-section-id/teams/team-1?from=section',
     )
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/manage/sections/test-section-id/teams/team-1/edit',
+      '/manage/sections/test-section-id/teams/team-1/edit?from=section',
     )
   })
 

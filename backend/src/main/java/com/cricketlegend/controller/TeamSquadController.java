@@ -1,7 +1,7 @@
 package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.TeamSquadMemberDto;
-import com.cricketlegend.dto.UpdateTeamSquadMemberJerseyNumberRequest;
+import com.cricketlegend.dto.UpdateTeamSquadMemberRequest;
 import com.cricketlegend.service.TeamSquadService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -22,7 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
  * teamId} + {@code seasonId} on {@code
  * /api/v1/manage/clubs/{clubId}/teams/{teamId}/seasons/{seasonId}/squad}. Returns {@link
  * TeamSquadMemberDto}, per docs/specs/031-jersey-numbers.md, which also adds {@link #update} —
- * this join row's first-ever mutation endpoint (its {@code jerseyNumber} only).
+ * this join row's first-ever mutation endpoint (its {@code jerseyNumber} only). Per
+ * docs/specs/057-team-extended-profile.md, {@link #update} now takes {@link
+ * UpdateTeamSquadMemberRequest} (renamed from {@code UpdateTeamSquadMemberJerseyNumberRequest}),
+ * a full-resource replace of both {@code jerseyNumber} and the new {@code isCaptain} flag.
  */
 @RestController
 public class TeamSquadController {
@@ -62,9 +65,9 @@ public class TeamSquadController {
             @PathVariable UUID teamId,
             @PathVariable UUID seasonId,
             @PathVariable UUID playerId,
-            @Valid @RequestBody UpdateTeamSquadMemberJerseyNumberRequest request) {
+            @Valid @RequestBody UpdateTeamSquadMemberRequest request) {
         return ResponseEntity.ok(teamSquadService.update(
-                authentication, clubId, teamId, seasonId, playerId, request.jerseyNumber()));
+                authentication, clubId, teamId, seasonId, playerId, request.jerseyNumber(), request.isCaptain()));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

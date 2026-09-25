@@ -39,6 +39,7 @@ function squadMember(overrides: Partial<SquadMember> & { playerProfileId: string
     updatedAt: '',
     updatedBy: null,
     squadJerseyNumber: null,
+    isCaptain: false,
     ...overrides,
   }
 }

@@ -113,6 +113,7 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     updatedBy: null,
     playerProfileId: 'player-1',
     squadJerseyNumber: null,
+    isCaptain: false,
     ...overrides,
   }
 }

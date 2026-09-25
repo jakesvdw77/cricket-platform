@@ -61,6 +61,17 @@ class TeamControllerIntegrationTest {
             }
             """;
 
+    private static final String EXTENDED_PROFILE_BODY = """
+            {
+                "name": "1st XI",
+                "abbreviation": "1XI",
+                "groundName": "Irene Country Club",
+                "socialLinks": [
+                    { "platform": "facebook", "url": "https://facebook.com/riverside-1st-xi" }
+                ]
+            }
+            """;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -430,6 +441,127 @@ class TeamControllerIntegrationTest {
                         .content(clearBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.logoUrl").doesNotExist());
+    }
+
+    /**
+     * docs/specs/057-team-extended-profile.md — a real HTTP round trip for the three new profile
+     * fields ({@code abbreviation}/{@code groundName}/{@code socialLinks}) on create, update and
+     * list, mirroring {@code LeagueControllerIntegrationTest}'s equivalent proof for {@code
+     * League}'s identical shape.
+     */
+    @Test
+    void clubAdminRoundTripsTheThreeExtendedProfileFieldsOnCreateUpdateAndList() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String createResponse = mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams",
+                                club.getId(),
+                                section.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(EXTENDED_PROFILE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("1st XI"))
+                .andExpect(jsonPath("$.abbreviation").value("1XI"))
+                .andExpect(jsonPath("$.groundName").value("Irene Country Club"))
+                .andExpect(jsonPath("$.socialLinks.length()").value(1))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/riverside-1st-xi"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String teamId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+
+        String updateBody = """
+                {
+                    "name": "1st XI",
+                    "abbreviation": "1sts",
+                    "groundName": "Riverside Oval",
+                    "socialLinks": [
+                        { "platform": "instagram", "url": "https://instagram.com/riverside-1st-xi" }
+                    ]
+                }
+                """;
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}",
+                                club.getId(),
+                                section.getId(),
+                                teamId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.abbreviation").value("1sts"))
+                .andExpect(jsonPath("$.groundName").value("Riverside Oval"))
+                .andExpect(jsonPath("$.socialLinks.length()").value(1))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("instagram"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://instagram.com/riverside-1st-xi"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/teams", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].abbreviation").value("1sts"))
+                .andExpect(jsonPath("$[0].groundName").value("Riverside Oval"))
+                .andExpect(jsonPath("$[0].socialLinks.length()").value(1))
+                .andExpect(jsonPath("$[0].socialLinks[0].platform").value("instagram"));
+    }
+
+    /**
+     * Same three-field round trip as {@link
+     * #clubAdminRoundTripsTheThreeExtendedProfileFieldsOnCreateUpdateAndList}, but through a
+     * {@code platform_admin} JWT — proves {@code AccessService.canAdministerClub}'s superset
+     * access claim extends to the expanded payload too.
+     */
+    @Test
+    void platformAdminRoundTripsTheThreeExtendedProfileFieldsOnCreateAndUpdate() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+
+        String createResponse = mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams",
+                                club.getId(),
+                                section.getId())
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(EXTENDED_PROFILE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.abbreviation").value("1XI"))
+                .andExpect(jsonPath("$.groundName").value("Irene Country Club"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String teamId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+
+        String updateBody = """
+                {
+                    "name": "1st XI",
+                    "abbreviation": "1sts",
+                    "groundName": "Riverside Oval",
+                    "socialLinks": [
+                        { "platform": "twitter", "url": "https://twitter.com/riverside-1st-xi" }
+                    ]
+                }
+                """;
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/sections/{sectionId}/teams/{teamId}",
+                                club.getId(),
+                                section.getId(),
+                                teamId)
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.abbreviation").value("1sts"))
+                .andExpect(jsonPath("$.groundName").value("Riverside Oval"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("twitter"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/teams", club.getId()).with(platformAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].abbreviation").value("1sts"))
+                .andExpect(jsonPath("$[0].socialLinks[0].platform").value("twitter"));
     }
 
     /**

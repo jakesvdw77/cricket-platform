@@ -6,9 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamDirectory from './TeamDirectory'
 import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
+import type { Page } from '../../api/productApi'
+import type { Match } from '../../api/matchApi'
 
 const listTeamsForClub = vi.fn()
 const listSections = vi.fn()
+const listTeamContacts = vi.fn()
+const listTeamSponsors = vi.fn()
+const listSquad = vi.fn()
+const listSeasons = vi.fn()
+const listMatches = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string, params: unknown) => listTeamsForClub(clubId, params),
@@ -20,12 +27,37 @@ vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
 
+vi.mock('../../api/teamContactApi', () => ({
+  listTeamContacts: (clubId: string, sectionId: string, teamId: string) => listTeamContacts(clubId, sectionId, teamId),
+}))
+
+vi.mock('../../api/teamSponsorApi', () => ({
+  listTeamSponsors: (clubId: string, sectionId: string, teamId: string) => listTeamSponsors(clubId, sectionId, teamId),
+}))
+
+vi.mock('../../api/teamSquadApi', () => ({
+  listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
+}))
+
+vi.mock('../../api/seasonApi', () => ({
+  listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
+vi.mock('../../api/matchApi', () => ({
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   // docs/specs/043-list-toolbar-gold-standard.md: TeamDirectory's Section filter now persists via
   // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
   // never leaks into the next.
   localStorage.clear()
+  listTeamContacts.mockResolvedValue([])
+  listTeamSponsors.mockResolvedValue([])
+  listSquad.mockResolvedValue([])
+  listSeasons.mockResolvedValue([])
+  listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 } as Page<Match>)
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -35,6 +67,9 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
     sectionId: 'section-1',
     name: '1st XI',
     logoUrl: null,
+    abbreviation: null,
+    groundName: null,
+    socialLinks: [],
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -119,7 +154,7 @@ describe('TeamDirectory', () => {
     expect(await screen.findByText('No teams yet')).toBeInTheDocument()
   })
 
-  it('renders every team with its joined section name from more than one section', async () => {
+  it('renders every team with its own leaf section name chip from more than one section', async () => {
     listTeamsForClub.mockResolvedValueOnce([
       makeTeam({ id: 'team-1', name: '1st XI', sectionId: 'section-1' }),
       makeTeam({ id: 'team-2', name: 'U13 A', sectionId: 'section-2' }),
@@ -137,7 +172,10 @@ describe('TeamDirectory', () => {
     expect(screen.getByText('Juniors — U13')).toBeInTheDocument()
   })
 
-  it('renders the full section-ancestry breadcrumb chain, not just the immediate section name', async () => {
+  // docs/specs/057-team-extended-profile.md's approved "Detailed" card only shows the leaf
+  // section's own name as a chip (not the full ancestry breadcrumb TeamCard used to show as a
+  // plain field) — a deliberate design decision, not a regression.
+  it('renders only the leaf section name as a chip, not the full ancestry breadcrumb', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: 'O/15 A', sectionId: 'o15' })])
     listSections.mockResolvedValueOnce([
       makeSection({ id: 'juniors', parentSectionId: null, name: 'Juniors' }),
@@ -147,7 +185,8 @@ describe('TeamDirectory', () => {
 
     renderDirectory('test-club-id')
 
-    expect(await screen.findByText('Juniors › Boys › O/15')).toBeInTheDocument()
+    expect(await screen.findByText('O/15')).toBeInTheDocument()
+    expect(screen.queryByText('Juniors › Boys › O/15')).not.toBeInTheDocument()
   })
 
   it('renders a muted Inactive badge for a deactivated team', async () => {
@@ -210,7 +249,9 @@ describe('TeamDirectory', () => {
 
   // docs/specs/036-view-first-record-detail-screens.md: the card's primary footer action is now
   // "View" (into TeamDetailPage), not a direct Edit link — Edit lives on that view screen instead.
-  it('the view link on a team card targets the section-scoped view route', async () => {
+  // docs/specs/057-team-extended-profile.md: TeamDirectory's own links add no `?from=` marker (the
+  // club-wide-origin default) — unlike TeamList.tsx's own `?from=section` links.
+  it('the view link on a team card targets the section-scoped view route with no ?from= marker', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
     listSections.mockResolvedValueOnce([makeSection()])
 
@@ -304,5 +345,74 @@ describe('TeamDirectory', () => {
     const persisted = JSON.parse(localStorage.getItem('teamDirectory:filters:test-club-id') as string)
     expect(persisted).toEqual({ sectionId: 'section-1' })
     expect(persisted).not.toHaveProperty('search')
+  })
+
+  // docs/specs/057-team-extended-profile.md: the redesigned card's ground/captain/manager/coach
+  // rows and player/match-count pills, resolved client-side.
+  it('resolves and renders ground/captain/manager/coach/player-count/match-count on the card', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1', groundName: 'Irene Country Club' })])
+    listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
+    listSeasons.mockResolvedValueOnce([
+      { id: 'season-1', clubId: 'test-club-id', label: '2026', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    listSquad.mockResolvedValueOnce([
+      {
+        id: 'squad-1',
+        personId: 'person-1',
+        clubId: 'test-club-id',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        dateOfBirth: null,
+        gender: null,
+        photoUrl: null,
+        clubMembershipNumber: null,
+        medicalAidProvider: null,
+        medicalAidMemberNumber: null,
+        phone: null,
+        email: null,
+        altContactName: null,
+        altContactPhone: null,
+        battingStance: null,
+        bowlingArm: null,
+        bowlingType: null,
+        isWicketKeeper: false,
+        active: true,
+        sectionIds: [],
+        jerseyNumber: null,
+        createdAt: '',
+        updatedAt: '',
+        updatedBy: null,
+        playerProfileId: 'player-1',
+        squadJerseyNumber: null,
+        isCaptain: true,
+      },
+    ])
+    listTeamContacts.mockResolvedValueOnce([
+      {
+        id: 'tc-1',
+        contact: {
+          id: 'contact-1',
+          clubId: 'test-club-id',
+          contact: { firstName: 'Bob', lastName: 'Jones', email: 'bob@example.com', phone: '+27' },
+          role: 'Treasurer',
+          isPrimary: false,
+          active: true,
+          photoUrl: null,
+          createdAt: '',
+          updatedAt: '',
+          updatedBy: null,
+        },
+        role: 'Manager',
+        createdAt: '',
+      },
+    ])
+
+    renderDirectory('test-club-id')
+
+    await screen.findByText('1st XI')
+    expect(await screen.findByText(/Irene Country Club/)).toBeInTheDocument()
+    expect(await screen.findByText(/Jane Smith/)).toBeInTheDocument()
+    expect(await screen.findByText(/Bob Jones/)).toBeInTheDocument()
+    expect(await screen.findByText('1 players')).toBeInTheDocument()
   })
 })

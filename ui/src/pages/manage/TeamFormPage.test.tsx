@@ -34,7 +34,7 @@ const listSeasons = vi.fn()
 const listSquad = vi.fn()
 const addToSquad = vi.fn()
 const removeFromSquad = vi.fn()
-const updateSquadJerseyNumber = vi.fn()
+const updateSquadMember = vi.fn()
 const listPlayers = vi.fn()
 
 vi.mock('../../api/teamApi', () => ({
@@ -90,8 +90,13 @@ vi.mock('../../api/teamSquadApi', () => ({
     addToSquad(clubId, teamId, seasonId, playerId),
   removeFromSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
     removeFromSquad(clubId, teamId, seasonId, playerId),
-  updateSquadJerseyNumber: (clubId: string, teamId: string, seasonId: string, playerId: string, jerseyNumber: number | null) =>
-    updateSquadJerseyNumber(clubId, teamId, seasonId, playerId, jerseyNumber),
+  updateSquadMember: (
+    clubId: string,
+    teamId: string,
+    seasonId: string,
+    playerId: string,
+    payload: { jerseyNumber: number | null; isCaptain: boolean },
+  ) => updateSquadMember(clubId, teamId, seasonId, playerId, payload),
 }))
 
 vi.mock('../../api/playerApi', () => ({
@@ -112,7 +117,7 @@ beforeEach(() => {
   listSeasons.mockResolvedValue([])
   listSquad.mockResolvedValue([])
   listPlayers.mockResolvedValue([])
-  updateSquadJerseyNumber.mockResolvedValue(undefined)
+  updateSquadMember.mockResolvedValue(undefined)
 })
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
@@ -122,6 +127,9 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
     sectionId: 'test-section-id',
     name: '1st XI',
     logoUrl: null,
+    abbreviation: null,
+    groundName: null,
+    socialLinks: [],
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -237,6 +245,7 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     id: 'squad-row-1',
     playerProfileId: 'player-1',
     squadJerseyNumber: null,
+    isCaptain: false,
     ...overrides,
   }
 }
@@ -293,7 +302,13 @@ describe('TeamFormPage', () => {
       await user.type(screen.getByLabelText('Name'), '1st XI')
       await user.click(screen.getByRole('button', { name: 'Create team' }))
 
-      expect(createTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', { name: '1st XI', logoUrl: null })
+      expect(createTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', {
+        name: '1st XI',
+        logoUrl: null,
+        abbreviation: null,
+        groundName: null,
+        socialLinks: [],
+      })
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
     })
 
@@ -344,6 +359,9 @@ describe('TeamFormPage', () => {
       expect(updateTeam).toHaveBeenCalledWith('test-club-id', 'test-section-id', 'team-1', {
         name: '1st XI',
         logoUrl: 'https://cdn.example.com/team.png',
+        abbreviation: null,
+        groundName: null,
+        socialLinks: [],
       })
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
     })
@@ -595,14 +613,14 @@ describe('TeamFormPage', () => {
         expect(removeFromSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1')
       })
 
-      it("commits the inline squad-number edit on blur via updateSquadJerseyNumber", async () => {
+      it('commits the inline squad-number edit on blur via updateSquadMember, sending the CURRENT isCaptain value alongside it', async () => {
         const user = userEvent.setup()
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
         listSquad.mockResolvedValue([
-          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', isCaptain: true }),
         ])
-        updateSquadJerseyNumber.mockResolvedValue(
-          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', squadJerseyNumber: 7 }),
+        updateSquadMember.mockResolvedValue(
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', squadJerseyNumber: 7, isCaptain: true }),
         )
         renderEdit()
 
@@ -615,16 +633,21 @@ describe('TeamFormPage', () => {
         await user.type(jerseyInput, '7')
         await user.tab()
 
-        expect(updateSquadJerseyNumber).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1', 7)
+        // The full-resource-replace trap this spec flags twice: a jersey-number-only edit must
+        // still send the row's CURRENT isCaptain value, never omit it.
+        expect(updateSquadMember).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1', {
+          jerseyNumber: 7,
+          isCaptain: true,
+        })
       })
 
-      it('surfaces a 409 from updateSquadJerseyNumber as inline card feedback', async () => {
+      it('surfaces a 409 from updateSquadMember as inline card feedback', async () => {
         const user = userEvent.setup()
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
         listSquad.mockResolvedValue([
           makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
         ])
-        updateSquadJerseyNumber.mockRejectedValue({
+        updateSquadMember.mockRejectedValue({
           isAxiosError: true,
           response: { data: { detail: 'Another player already wears number 7 this season.' } },
         })
@@ -640,6 +663,52 @@ describe('TeamFormPage', () => {
         await user.tab()
 
         expect(await screen.findByText('Another player already wears number 7 this season.')).toBeInTheDocument()
+      })
+
+      it('the captain-toggle button calls updateSquadMember with BOTH the current jersey number and the new isCaptain value', async () => {
+        const user = userEvent.setup()
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([
+          makeSquadMember({
+            id: 'squad-row-1',
+            playerProfileId: 'player-1',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            squadJerseyNumber: 9,
+            isCaptain: false,
+          }),
+        ])
+        updateSquadMember.mockResolvedValue(
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', squadJerseyNumber: 9, isCaptain: true }),
+        )
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        await screen.findByText('Jane Smith')
+
+        await user.click(screen.getByRole('button', { name: 'Make captain' }))
+
+        expect(updateSquadMember).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-1', {
+          jerseyNumber: 9,
+          isCaptain: true,
+        })
+      })
+
+      it('renders a "Captain" badge and the "Remove captain" toggle label for the current captain', async () => {
+        listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+        listSquad.mockResolvedValue([
+          makeSquadMember({ id: 'squad-row-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', isCaptain: true }),
+        ])
+        const user = userEvent.setup()
+        renderEdit()
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        await screen.findByText('Jane Smith')
+
+        expect(screen.getByText('Captain')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove captain' })).toBeInTheDocument()
       })
 
       it('adds a player from the club\'s active players (not already in the squad) via addToSquad', async () => {
@@ -725,6 +794,36 @@ describe('TeamFormPage', () => {
         expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
       })
     })
+
+    // docs/specs/057-team-extended-profile.md: edit mode's route always carries sectionId, so it
+    // alone can't distinguish a club-wide-directory-originated visit from a genuinely
+    // section-scoped one — only the `?from=section` marker (set by TeamList.tsx's own links) can.
+    describe('back-link fix (docs/specs/057-team-extended-profile.md)', () => {
+      it('edit: back link targets the club-wide directory when ?from=section is absent (the default)', async () => {
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        const backLink = await screen.findByRole('link', { name: /Back to Teams/ })
+        expect(backLink).toHaveAttribute('href', '/manage/teams')
+      })
+
+      it('edit: back link targets the section-scoped Teams list when ?from=section is present', async () => {
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit?from=section', 'test-club-id')
+
+        const backLink = await screen.findByRole('link', { name: /Back to Teams/ })
+        expect(backLink).toHaveAttribute('href', '/manage/sections/test-section-id/teams')
+      })
+
+      it('section-scoped create: back link still targets the section-scoped Teams list (unaffected by the fix)', async () => {
+        renderPage('/manage/sections/test-section-id/teams/new', 'test-club-id')
+
+        const backLink = await screen.findByRole('link', { name: /Back to Teams/ })
+        expect(backLink).toHaveAttribute('href', '/manage/sections/test-section-id/teams')
+      })
+    })
   })
 
   describe('club-wide create mode (no sectionId in the route)', () => {
@@ -749,7 +848,13 @@ describe('TeamFormPage', () => {
       await user.type(screen.getByLabelText('Name'), '1st XI')
       await user.click(screen.getByRole('button', { name: 'Create team' }))
 
-      expect(createTeam).toHaveBeenCalledWith('test-club-id', 'section-2', { name: '1st XI', logoUrl: null })
+      expect(createTeam).toHaveBeenCalledWith('test-club-id', 'section-2', {
+        name: '1st XI',
+        logoUrl: null,
+        abbreviation: null,
+        groundName: null,
+        socialLinks: [],
+      })
       expect(await screen.findByText('Team Directory Page')).toBeInTheDocument()
     })
 
