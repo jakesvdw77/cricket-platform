@@ -54,6 +54,7 @@ function renderList(clubId?: string) {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="sponsors" element={<SponsorList />} />
             <Route path="sponsors/new" element={<div>Add Sponsor Page</div>} />
+            <Route path="sponsors/:id" element={<div>Sponsor Detail Page</div>} />
             <Route path="sponsors/:id/edit" element={<div>Edit Sponsor Page</div>} />
           </Route>
         </Routes>
@@ -183,8 +184,29 @@ describe('SponsorList', () => {
     renderList('test-club-id')
 
     await screen.findByText('Riverside Hardware')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1')
+    expect(screen.getByRole('link', { name: 'Riverside Hardware' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sponsors/sponsor-1/edit')
+  })
+
+  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
+  // card title is the click target. Extends the href-only assertion above with a real
+  // click-through, confirming the title link still resolves to the same route the old View button
+  // targeted, and Edit still navigates independently (both real browser-equivalent navigations,
+  // not just attribute checks).
+  it('clicking the card title navigates to the sponsor view route, and Edit still navigates to the edit route', async () => {
+    const user = userEvent.setup()
+    listSponsors.mockResolvedValue([makeSponsor({ id: 'sponsor-1' })])
+
+    const { unmount } = renderList('test-club-id')
+    await screen.findByText('Riverside Hardware')
+    await user.click(screen.getByRole('link', { name: 'Riverside Hardware' }))
+    expect(await screen.findByText('Sponsor Detail Page')).toBeInTheDocument()
+    unmount()
+
+    renderList('test-club-id')
+    await screen.findByText('Riverside Hardware')
+    await user.click(screen.getByRole('link', { name: 'Edit' }))
+    expect(await screen.findByText('Edit Sponsor Page')).toBeInTheDocument()
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on

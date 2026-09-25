@@ -247,30 +247,33 @@ describe('TeamDirectory', () => {
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
-  // docs/specs/036-view-first-record-detail-screens.md: the card's primary footer action is now
+  // docs/specs/036-view-first-record-detail-screens.md: the card's primary click target is
   // "View" (into TeamDetailPage), not a direct Edit link — Edit lives on that view screen instead.
+  // docs/specs/059-record-card-click-to-view.md: the title itself is now the "View" link (a
+  // stretched-link covering the whole card) — there is no separately-labeled "View" link/button.
   // docs/specs/057-team-extended-profile.md: TeamDirectory's own links add no `?from=` marker (the
   // club-wide-origin default) — unlike TeamList.tsx's own `?from=section` links.
-  it('the view link on a team card targets the section-scoped view route with no ?from= marker', async () => {
-    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
+  it('the title link on a team card targets the section-scoped view route with no ?from= marker', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1', name: '1st XI' })])
     listSections.mockResolvedValueOnce([makeSection()])
 
     renderDirectory('test-club-id')
 
-    const viewLink = await screen.findByRole('link', { name: 'View' })
+    const viewLink = await screen.findByRole('link', { name: '1st XI' })
     expect(viewLink).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
   })
 
   // docs/specs/049-record-list-edit-action-rollout.md (amendment, item 15): TeamDirectory's card
   // now passes editTo alongside viewTo — mirrors MatchList.test.tsx's own View+Edit precedent.
-  it('renders View and Edit together on a card, both pointing at the team\'s own routes', async () => {
+  // docs/specs/059-record-card-click-to-view.md: View is now the title link, not a footer button.
+  it('renders the title as a link to viewTo and Edit as a link to editTo, with no separate View link', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
     listSections.mockResolvedValueOnce([makeSection()])
 
     renderDirectory('test-club-id')
 
     await screen.findByText('1st XI')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1',
     )
@@ -278,6 +281,7 @@ describe('TeamDirectory', () => {
       'href',
       '/manage/sections/section-1/teams/team-1/edit',
     )
+    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {

@@ -1,0 +1,72 @@
+# 059 — RecordCard Click-to-View
+
+**Depends on:** `008-product-catalog.md` (`RecordCard`'s original shape), `036-view-first-record-detail-screens.md` (`viewTo`, the prop this spec's click behavior keys off), `049-record-list-edit-action-rollout.md` (the current, blanket-visible footer Edit action this spec makes room for by removing the explicit View button), `031-jersey-numbers.md` (the one existing card with a genuinely interactive field value — `TeamFormPage.tsx`'s `SquadPlayerCard`, the concrete case this spec's stacking rule must not break). Raised during `057-team-extended-profile.md`'s live testing, referencing the legacy Cricket Legend app's own click-anywhere-to-view card behavior — logged to `docs/roadmap.md` and specced here as its own follow-up, not built as a drive-by.
+
+**Status:** approved.
+
+## Problem & Goals
+
+Every `RecordCard` with a `viewTo` renders an explicit "View" button in its footer, alongside Edit and any secondary actions (Unlink, Deactivate, Communicate Team Sheet, etc.). On a card with several actions the footer gets crowded, and the explicit View button is redundant with what users already expect from nearly every other card-based UI: clicking anywhere on the card opens it. The legacy Cricket Legend app already worked this way.
+
+**Goals**
+- Clicking anywhere on a `RecordCard` that has a `viewTo` navigates to it — the same destination the current View button already targets, just without a dedicated button consuming footer space.
+- Every other interactive element already inside the card (Edit, secondary actions, and the one existing card with a nested interactive field value) keeps working exactly as before — a card-wide click target must never swallow clicks meant for something more specific inside it.
+- Applies to every `RecordCard` consumer at once (all `/manage` and `/admin` list/section screens that use it), not a per-screen pilot — `RecordCard` is the one shared component, so the fix belongs there.
+
+## Non-goals
+
+- **Cards with only `editTo`/`onEdit` and no `viewTo`** (e.g. `TeamFormPage.tsx`'s `TeamContactCard`/`TeamSponsorCard`/`SquadPlayerCard`/`ClubSponsorCard`, `LeagueFormPage.tsx`'s `AffiliatedTeamCard`, every `/admin` card, `AvailabilityPollsDashboard`'s `PollCard`) **do not become click-to-edit.** Silently navigating an admin into an edit screen from an accidental click is a materially worse mistake than landing on a read-only view screen — this spec only wires up `viewTo`, never `editTo`, as the card-wide click target. These cards' explicit Edit/secondary-action buttons are completely unchanged.
+- **No opt-out prop.** Confirmed by auditing every real `RecordCard` call site in this codebase: the one card with a genuinely interactive field value (`SquadPlayerCard`'s inline jersey-number `Input`) has no `viewTo` at all, so it's entirely unaffected by this change as things stand today. The stacking treatment below (Non-goals' companion Data Model... see UI Requirements) is applied generically inside `RecordCard` itself, not as a per-consumer escape hatch — if a future card genuinely needs both `viewTo` and a nested interactive field, the fix is giving that specific interactive element its own stacking context (documented below as an integration contract), not an opt-out.
+- **No change to which cards have `viewTo` in the first place.** This spec doesn't add `viewTo` to any card that lacks it today, or remove it from any that have it — purely a click-target/footer-layout change for the `viewTo` cards that already exist.
+- **No change to keyboard/tab navigation order.** The stretched-link technique (below) adds exactly one new focusable element (the card-wide link) at the point in the DOM where the title already sits — it doesn't reorder or remove any existing focusable element.
+
+## Data Model Changes
+
+None — this is a pure frontend presentational change.
+
+## API Contract
+
+None.
+
+## UI Requirements
+
+**`ui/src/components/RecordCard/RecordCard.tsx`** — adopt the standard "stretched link" technique (the same pattern commonly known from Bootstrap's `.stretched-link`; conceptually: a real, accessible link whose own text is small — here, the card's title — but whose *clickable area* is expanded via an absolutely-positioned `::after` pseudo-element covering the whole card):
+
+- When `viewTo` is set, the title `Typography` is wrapped in (or replaced by) a `RouterLink` to `viewTo`, styled to look identical to today's plain title text (no underline/color change — this is a navigational affordance, not a visible "this is a link" cue, matching how the whole card itself is now implicitly clickable). That link carries `sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}` — the `::after` pseudo-element expands the link's actual click/tap target to fill its nearest *positioned* ancestor, which must be the outer `MuiCard` itself (`MuiCard` needs `position: relative` added for this to work). **Corrected during build, verified empirically against a real browser (an earlier draft of this line wrongly said the link itself should also carry `position: relative` — it must not):** a pseudo-element is generated as the last child of its own originating element, so if that element (the link) is itself positioned, the containing-block search for its `::after` resolves immediately to the link's own tiny box and never reaches `MuiCard` — constraining the "stretched" click target to just the title text, the opposite of this spec's goal. The link must stay `position: static` (the CSS default — simply omit `position` from its `sx`) so the search skips over it and resolves to `MuiCard`.
+- The link's accessible name is exactly the title text (`{title}`, unchanged) — no separate `aria-label` needed, since a sighted or screen-reader user alike identifies "this card" by its title.
+- The footer's explicit "View" `MuiButton` is removed when `viewTo` is set. When `editTo` is *also* set, the footer now shows Edit alone (previously View, then Edit) — freeing the space the Problem & Goals section names. When `viewTo` is absent, the footer's Edit/secondary-action behavior is completely unchanged (Non-goals).
+- **The stacking-order integration contract, the trickiest part of this spec — get this precisely right**: an absolutely-positioned `::after` pseudo-element, once added, visually and interactively sits *above* every plain, unpositioned (`position: static`, the CSS default) sibling in the same stacking context, regardless of DOM order — so without further changes, every button in `CardActions` (View — now removed — Edit, every secondary action) and any interactive `field.value` (today: only `SquadPlayerCard`'s jersey-number `Input`) would become unclickable, silently swallowed by the stretched link overlay sitting on top of them. Fix: give `CardActions` itself `sx={{ position: 'relative' }}` (no explicit `zIndex` needed — an element with `position` set but no `z-index` still paints above a same-context sibling that has neither, per normal CSS stacking rules, as long as it comes later in DOM order than the pseudo-element's own painting point, which `CardActions` already does structurally). This one change lifts every button inside it (View button already removed, Edit, every secondary action) above the overlay in one place, with no per-button changes needed. A consuming page that renders its own interactive control inside a `field.value` (today: `TeamFormPage.tsx`'s `SquadPlayerCard`, via its jersey-number `Input`) is responsible for giving that specific element the same `position: relative` treatment itself — `RecordCard` cannot know in advance which arbitrary `ReactNode` a caller hands it is interactive, so this is a real, load-bearing integration contract for any future card with both `viewTo` and a custom interactive field, not something `RecordCard` can fully own on its own. Document this contract in `RecordCardField`'s own doc comment (mirroring the existing comment there that already flags `field.value` can be a form control) so a future spec adding a second such field doesn't rediscover it.
+- **`TeamFormPage.tsx`'s `SquadPlayerCard`** is unaffected either way (no `viewTo` on that card, per Non-goals) — no change needed there, but its existing jersey-number `Input` is the one real-world proof case worth a dedicated regression test (below) confirming this spec's change doesn't retroactively break it if a future spec ever adds `viewTo` to that card.
+
+No change to any individual `/manage`/`/admin` page beyond what `RecordCard` itself now does automatically for every `viewTo`-bearing card.
+
+**Mobile-first**, per `docs/standards/frontend.md`: the stretched-link technique is touch-target-agnostic (the whole card becomes the tap target, which is strictly larger than today's explicit View button, an accessibility improvement at every breakpoint) — no separate mobile-specific behavior needed.
+
+## Test Plan
+
+| Tier | Coverage |
+|---|---|
+| Component | `RecordCard.test.tsx` extended: a card with `viewTo` set — clicking the card body (outside any button) navigates to `viewTo`; clicking the Edit button still navigates to `editTo` and does *not* also trigger the View navigation; clicking a secondary action button still fires its own `onClick` and does not navigate; the footer renders Edit only (no separate View button) when both `viewTo` and `editTo` are set; a card with no `viewTo` renders exactly as before (Edit/secondary actions only, no card-wide link, clicking the card body does nothing). `TeamForm`'s/`TeamFormPage.tsx`'s `SquadPlayerCard` test — the inline jersey-number `Input` remains focusable and editable via click (regression proof the stacking fix doesn't break this real nested-interactive-field case, even though this particular card has no `viewTo` today). |
+| Contract | None — no API shape changed. |
+| End-to-end | Extends the existing golden path for two or three representative `viewTo`-bearing lists (e.g. Leagues, Sponsors) rather than every single one: clicking a card body (not a button) opens its detail view; clicking Edit on the same card still opens the edit screen. Not wired into CI, same precedent as every prior `/manage` spec. |
+
+## Acceptance Criteria
+
+- Clicking anywhere on a `RecordCard` with `viewTo` set — except on a button or another interactive element inside it — navigates to that `viewTo` route.
+- The footer no longer shows a separate "View" button on any card that has `viewTo`; Edit and any secondary actions render exactly as before, just with the freed space.
+- Every existing footer button (Edit, every secondary action) and `TeamFormPage.tsx`'s jersey-number `Input` remain fully clickable/editable — none of them silently stop working because of the new card-wide click target.
+- A `RecordCard` with no `viewTo` is visually and behaviorally identical to before this spec.
+- Keyboard navigation (Tab) still reaches every previously-reachable interactive element on the card, plus the new title link.
+
+## Rollout Notes
+
+- Ships as one PR, `RecordCard`-only — every consumer (Leagues, Sponsors, Players, Seasons, Club Contacts, Sponsor Contacts, Matches, admin Clubs/Products/Subscriptions, Availability Polls) picks up the new behavior automatically with no per-page changes, since none of them pass anything today that conflicts with it (confirmed by auditing every real call site during spec-authoring — the only card with both a `viewTo` and a custom interactive `field.value` combination is zero, today).
+- No feature flag — this is a footer-layout and click-target change, not a new capability; every affected screen already has `viewTo` wired to the exact same destination the removed View button used to target.
+- The stacking-order contract (UI Requirements) is the one piece of this spec worth extra build-time care — flagged three times in this document deliberately, matching how `057`'s full-resource-PUT trap was flagged, because both are the kind of bug a quick manual click-through can miss (the affected button still *looks* clickable, it just silently doesn't respond).
+- A human should update `docs/roadmap.md`'s "Whole-card-clickable-to-View" entry (added during `057`) to point at this spec once it ships, and remove the now-resolved bullet from "Known tech debt."
+
+**Amended during this PR's live testing (not in the original "RecordCard-only" scope above, both changes directed live by the user against the running app rather than through a separate spec cycle — the same posture `057`'s live-testing fixes used):**
+- **Hover affordance.** The user asked, mid-build, whether `viewTo` cards would get a hover highlight "like the legacy system" once the View button was gone — with no separate button left, a card gave no visual cue at all that it was clickable beyond the cursor changing. Added a subtle `box-shadow` lift + `outline-color` highlight on hover (`transition: box-shadow 0.15s ease, outline-color 0.15s ease`), applied only where the card is actually click-to-view.
+- **Extended past `RecordCard` to its hand-rolled look-alikes.** After the PR shipped, the user pointed out that the Teams screens still showed the old explicit View button — `TeamCard.tsx` (Teams list/directory cards) and `TeamDetailPage.tsx`'s `SquadPlayerTile` (the Squad grid) are bespoke components that mirror `RecordCard`'s shell but don't import/extend it (per `057`'s own comment: "not a RecordCard retrofit"), so they never inherited this spec's change. Both got the identical stretched-link + hover treatment applied directly. The user also asked for the dashboard cards to work the same way — `ManagerDashboard.tsx`'s `NavTile` was already a whole-card link (single destination, no View/Edit split), so it only needed the hover halo added for visual consistency.
+- This means the PR's real diff is wider than "RecordCard-only": it also touches `TeamCard.tsx`, `NavTile.tsx`, and `TeamDetailPage.tsx`. `docs/roadmap.md` now carries a follow-up item (see below) about the duplication this exposed, rather than this spec being re-scoped after the fact.
+- **Standards-review finding, fixed in the same PR**: `TeamCard.tsx`'s `SocialLinksRow` (real `<a>` icon buttons) sat inside `CardContent` below the stretched-link title without its own `position: relative`, so the overlay silently swallowed clicks on it — the exact stacking-order trap this spec's UI Requirements section calls out three times. Fixed by wrapping it in a `position: relative` `Box`, mirroring the `CardActions` fix.

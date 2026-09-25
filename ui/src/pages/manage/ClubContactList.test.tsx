@@ -249,7 +249,7 @@ describe('ClubContactList', () => {
     renderList('test-club-id')
 
     await screen.findByText('Jane Smith')
-    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/club-contacts/contact-1')
+    expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/club-contacts/contact-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
       '/manage/club-contacts/contact-1/edit',

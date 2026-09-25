@@ -6,6 +6,7 @@ import {
   CardActions,
   CardContent,
   Chip,
+  Link as MuiLink,
   Stack,
   Typography,
   Button as MuiButton,
@@ -13,7 +14,6 @@ import {
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
@@ -95,7 +95,23 @@ export function TeamCard({
     // positions across cards with different amounts of optional content (Ground/Captain/Manager/
     // Coach rows). flex: '1 1 auto' on CardContent grows to fill it, pinning CardActions to the
     // bottom.
-    <MuiCard sx={{ bgcolor: 'background.paper', boxShadow: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    //
+    // position: relative + hover halo mirror RecordCard.tsx's own click-to-view treatment
+    // (docs/specs/059-record-card-click-to-view.md) — real user feedback that this bespoke
+    // shell should behave identically to RecordCard, not just look like it.
+    <MuiCard
+      sx={{
+        bgcolor: 'background.paper',
+        boxShadow: 2,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
+        outline: '1px solid transparent',
+        '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
+      }}
+    >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
@@ -115,7 +131,12 @@ export function TeamCard({
               {initialsFromName(team.name)}
             </Avatar>
             <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
-              {team.name}
+              {/* Stretched-link title, same pattern as RecordCard.tsx: the link stays
+                  position: static (default) so its ::after resolves its containing block
+                  to MuiCard above, not to itself — see 059's spec for why. */}
+              <MuiLink component={RouterLink} to={viewTo} color="inherit" underline="none" sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}>
+                {team.name}
+              </MuiLink>
             </Typography>
           </Stack>
           {badge && (
@@ -163,20 +184,16 @@ export function TeamCard({
           </Stack>
         )}
 
-        {socialLinks.length > 0 && <SocialLinksRow links={socialLinks} />}
+        {/* position: relative — same stacking-order fix CardActions gets below: without it the
+            stretched-link title overlay silently swallows clicks on these real <a> icon buttons. */}
+        {socialLinks.length > 0 && (
+          <Box sx={{ position: 'relative' }}>
+            <SocialLinksRow links={socialLinks} />
+          </Box>
+        )}
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0 }}>
-        <MuiButton
-          component={RouterLink}
-          to={viewTo}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<VisibilityOutlinedIcon fontSize="small" />}
-        >
-          View
-        </MuiButton>
+      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
         <MuiButton
           component={RouterLink}
           to={editTo}

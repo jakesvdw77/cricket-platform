@@ -3,11 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, MenuItem, Stack, Typography } from '@mui/material'
+import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, MenuItem, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
@@ -70,6 +69,10 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
+        position: 'relative',
+        transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
+        outline: '1px solid transparent',
+        '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center">
@@ -90,7 +93,17 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="body2" fontWeight={600} noWrap>
-            {playerName}
+            {/* Stretched-link, same pattern as RecordCard.tsx (position: static on the link
+                itself so its ::after resolves its containing block to the outer Box above). */}
+            <MuiLink
+              component={RouterLink}
+              to={`/manage/players/${member.playerProfileId}`}
+              color="inherit"
+              underline="none"
+              sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}
+            >
+              {playerName}
+            </MuiLink>
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {member.squadJerseyNumber != null ? `#${member.squadJerseyNumber}` : 'No squad number'}
@@ -107,17 +120,7 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
         />
       )}
 
-      <Stack direction="row" spacing={1} justifyContent="flex-end">
-        <MuiButton
-          component={RouterLink}
-          to={`/manage/players/${member.playerProfileId}`}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<VisibilityOutlinedIcon fontSize="small" />}
-        >
-          View
-        </MuiButton>
+      <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ position: 'relative' }}>
         <MuiButton
           component={RouterLink}
           to={`/manage/players/${member.playerProfileId}/edit`}

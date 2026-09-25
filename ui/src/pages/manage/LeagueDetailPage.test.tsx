@@ -272,8 +272,7 @@ describe('LeagueDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Internal League' })
 
-    expect(screen.getByText('1st XI')).toBeInTheDocument()
-    expect(await screen.findByRole('link', { name: 'View' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: '1st XI' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1',
     )
@@ -594,12 +593,12 @@ describe('LeagueDetailPage', () => {
 
       await screen.findByRole('heading', { name: 'Internal League' })
       expect(listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
-      expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+      expect(await screen.findByRole('link', { name: 'Jane Smith' })).toBeInTheDocument()
       expect(screen.getByText('League Administrator')).toBeInTheDocument()
       expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
       expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
 
-      const links = screen.getAllByRole('link', { name: 'View' }).map((link) => link.getAttribute('href'))
+      const links = screen.getAllByRole('link', { name: 'Jane Smith' }).map((link) => link.getAttribute('href'))
       expect(links).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1')
       const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
       expect(editLinks).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1/edit')
