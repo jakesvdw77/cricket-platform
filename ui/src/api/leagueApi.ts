@@ -1,4 +1,5 @@
 import api from './axiosConfig'
+import type { SocialLink } from '../components/marketing/SocialLinksRow'
 
 // A club's own internal league — docs/specs/029-league-management.md. Single /manage-only
 // namespace (no /platform mirror, same precedent as Section/Team/Sponsor/Player):
@@ -7,6 +8,23 @@ import api from './axiosConfig'
 // entity to the per-season LeaguePlayingConditionsApi (052 amendment) — it was never enforced by
 // any backend rule and, unlike this long-lived row, plausibly differs by season.
 export type LeagueSource = 'INTERNAL' | 'EXTERNAL'
+
+// docs/specs/053-league-extended-profile.md: a purely descriptive tag — never validated against,
+// or cross-checked with, LeaguePlayingConditions' own match-format fields (see that spec's
+// Non-goals). A fixed, closed enum (LeagueFormat, backend), not a club-authored free-text string.
+export type LeagueFormat = 'T20' | 'T30' | 'T45' | 'T50' | 'ONE_DAY' | 'THREE_DAY' | 'FIVE_DAY'
+
+// Single source of display labels — LeagueForm/LeagueList/LeagueDetailPage all import this rather
+// than each keeping their own drifting copy.
+export const LEAGUE_FORMAT_LABELS: Record<LeagueFormat, string> = {
+  T20: 'T20',
+  T30: 'T30',
+  T45: 'T45',
+  T50: 'T50',
+  ONE_DAY: '1 Day',
+  THREE_DAY: '3 Day',
+  FIVE_DAY: '5 Day',
+}
 
 export interface League {
   id: string
@@ -27,6 +45,14 @@ export interface League {
   currentSeasonTeamCount: number
   currentSeasonLabel: string | null
   currentSeasonPlayingConditionsUrl: string | null
+  // docs/specs/053-league-extended-profile.md: League-level (not season-scoped — see that spec's
+  // Non-goals), the same club-facing profile shape ClubProfile/Sponsor already have.
+  format: LeagueFormat | null
+  logoUrl: string | null
+  phone: string | null
+  website: string | null
+  email: string | null
+  socialLinks: SocialLink[]
 }
 
 // Same shape for create and update — CreateLeagueRequest/UpdateLeagueRequest are byte-for-byte
@@ -38,6 +64,12 @@ export interface LeaguePayload {
   minAge?: number | null
   maxAge?: number | null
   ageCutoffDate?: string | null
+  format?: LeagueFormat | null
+  logoUrl?: string | null
+  phone?: string | null
+  website?: string | null
+  email?: string | null
+  socialLinks?: SocialLink[]
 }
 
 function leaguesPath(clubId: string): string {

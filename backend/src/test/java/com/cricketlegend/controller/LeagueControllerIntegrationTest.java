@@ -63,6 +63,20 @@ class LeagueControllerIntegrationTest {
             }
             """;
 
+    private static final String EXTENDED_PROFILE_BODY = """
+            {
+                "name": "Riverside Premier League",
+                "format": "T20",
+                "logoUrl": "/media/league-logo.png",
+                "phone": "0123456789",
+                "website": "https://riverside-premier.example",
+                "email": "info@riverside-premier.example",
+                "socialLinks": [
+                    { "platform": "facebook", "url": "https://facebook.com/riverside-premier" }
+                ]
+            }
+            """;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -144,6 +158,128 @@ class LeagueControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(true));
+    }
+
+    /**
+     * docs/specs/053-league-extended-profile.md — a real HTTP round trip for the five new
+     * profile fields ({@code format}/{@code logoUrl}/{@code phone}/{@code website}/{@code
+     * email}/{@code socialLinks}) on create, update and list, mirroring {@code
+     * SponsorControllerIntegrationTest}'s equivalent proof for {@code Sponsor}'s identical
+     * shape.
+     */
+    @Test
+    void clubAdminRoundTripsTheFiveExtendedProfileFieldsOnCreateUpdateAndList() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String createResponse = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/leagues", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(EXTENDED_PROFILE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Riverside Premier League"))
+                .andExpect(jsonPath("$.format").value("T20"))
+                .andExpect(jsonPath("$.logoUrl").value("/media/league-logo.png"))
+                .andExpect(jsonPath("$.phone").value("0123456789"))
+                .andExpect(jsonPath("$.website").value("https://riverside-premier.example"))
+                .andExpect(jsonPath("$.email").value("info@riverside-premier.example"))
+                .andExpect(jsonPath("$.socialLinks.length()").value(1))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://facebook.com/riverside-premier"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String leagueId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+
+        String updateBody = """
+                {
+                    "name": "Riverside Premier League",
+                    "format": "ONE_DAY",
+                    "logoUrl": "/media/league-logo-v2.png",
+                    "phone": "0987654321",
+                    "website": "https://riverside-premier-v2.example",
+                    "email": "updated@riverside-premier.example",
+                    "socialLinks": [
+                        { "platform": "instagram", "url": "https://instagram.com/riverside-premier" }
+                    ]
+                }
+                """;
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}", club.getId(), leagueId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.format").value("ONE_DAY"))
+                .andExpect(jsonPath("$.logoUrl").value("/media/league-logo-v2.png"))
+                .andExpect(jsonPath("$.phone").value("0987654321"))
+                .andExpect(jsonPath("$.website").value("https://riverside-premier-v2.example"))
+                .andExpect(jsonPath("$.email").value("updated@riverside-premier.example"))
+                .andExpect(jsonPath("$.socialLinks.length()").value(1))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("instagram"))
+                .andExpect(jsonPath("$.socialLinks[0].url").value("https://instagram.com/riverside-premier"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].format").value("ONE_DAY"))
+                .andExpect(jsonPath("$[0].logoUrl").value("/media/league-logo-v2.png"))
+                .andExpect(jsonPath("$[0].socialLinks.length()").value(1))
+                .andExpect(jsonPath("$[0].socialLinks[0].platform").value("instagram"));
+    }
+
+    /**
+     * Same five-field round trip as {@link
+     * #clubAdminRoundTripsTheFiveExtendedProfileFieldsOnCreateUpdateAndList}, but through a
+     * {@code platform_admin} JWT — proves {@code AccessService.canAdministerClub}'s superset
+     * access claim extends to the expanded payload, not just the original five fields.
+     */
+    @Test
+    void platformAdminRoundTripsTheFiveExtendedProfileFieldsOnCreateAndUpdate() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+
+        String createResponse = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/leagues", club.getId())
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(EXTENDED_PROFILE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.format").value("T20"))
+                .andExpect(jsonPath("$.logoUrl").value("/media/league-logo.png"))
+                .andExpect(jsonPath("$.phone").value("0123456789"))
+                .andExpect(jsonPath("$.website").value("https://riverside-premier.example"))
+                .andExpect(jsonPath("$.email").value("info@riverside-premier.example"))
+                .andExpect(jsonPath("$.socialLinks.length()").value(1))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("facebook"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String leagueId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
+
+        String updateBody = """
+                {
+                    "name": "Riverside Premier League",
+                    "format": "FIVE_DAY",
+                    "logoUrl": "/media/league-logo-v2.png",
+                    "phone": "0987654321",
+                    "website": "https://riverside-premier-v2.example",
+                    "email": "updated@riverside-premier.example",
+                    "socialLinks": [
+                        { "platform": "twitter", "url": "https://twitter.com/riverside-premier" }
+                    ]
+                }
+                """;
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}", club.getId(), leagueId)
+                        .with(platformAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.format").value("FIVE_DAY"))
+                .andExpect(jsonPath("$.logoUrl").value("/media/league-logo-v2.png"))
+                .andExpect(jsonPath("$.socialLinks[0].platform").value("twitter"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(platformAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].format").value("FIVE_DAY"))
+                .andExpect(jsonPath("$[0].socialLinks[0].platform").value("twitter"));
     }
 
     @Test

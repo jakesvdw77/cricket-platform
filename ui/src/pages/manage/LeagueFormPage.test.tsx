@@ -25,13 +25,17 @@ const getPlayingConditions = vi.fn()
 const uploadPlayingConditions = vi.fn()
 const updatePlayingConditions = vi.fn()
 
-vi.mock('../../api/leagueApi', () => ({
-  listLeagues: (clubId: string) => listLeagues(clubId),
-  createLeague: (clubId: string, payload: unknown) => createLeague(clubId, payload),
-  updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
-  deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
-  reactivateLeague: (clubId: string, leagueId: string) => reactivateLeague(clubId, leagueId),
-}))
+vi.mock('../../api/leagueApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/leagueApi')>()
+  return {
+    ...actual,
+    listLeagues: (clubId: string) => listLeagues(clubId),
+    createLeague: (clubId: string, payload: unknown) => createLeague(clubId, payload),
+    updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
+    deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
+    reactivateLeague: (clubId: string, leagueId: string) => reactivateLeague(clubId, leagueId),
+  }
+})
 
 vi.mock('../../api/seasonApi', () => ({
   listSeasons: (clubId: string) => listSeasons(clubId),
@@ -82,6 +86,12 @@ function makeLeague(overrides: Partial<League> = {}): League {
     currentSeasonTeamCount: 1,
     currentSeasonLabel: '2026',
     currentSeasonPlayingConditionsUrl: null,
+    format: null,
+    logoUrl: null,
+    phone: null,
+    website: null,
+    email: null,
+    socialLinks: [],
     ...overrides,
   }
 }
@@ -197,6 +207,42 @@ describe('LeagueFormPage', () => {
       expect.objectContaining({ name: 'Internal League' }),
     )
     expect(await screen.findByText('League List Page')).toBeInTheDocument()
+  })
+
+  // docs/specs/053-league-extended-profile.md: LeagueFormPage's initialValues object (passed to
+  // <LeagueForm>) must correctly thread the five new profile fields from the fetched league
+  // through to the form on the edit path — LeagueForm.test.tsx's own "prefills the Basic Info tab
+  // from initialValues" test already proves LeagueForm renders these correctly given the right
+  // props; this proves LeagueFormPage actually passes them.
+  it('edit mode: prefills the Basic Info tab with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
+    const user = userEvent.setup()
+    listLeagues.mockResolvedValue([
+      makeLeague({
+        id: 'league-1',
+        maxPlayingXiSize: 12,
+        format: 'T20',
+        phone: '+27 21 555 0177',
+        website: 'https://riverside.example.com',
+        email: 'league@riverside.example.com',
+        logoUrl: '/media/managed/league-logo.png',
+        socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/riverside-league' }],
+      }),
+    ])
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.getByLabelText('Playing XI size')).toHaveValue(12)
+    expect(screen.getByLabelText('Format')).toHaveTextContent('T20')
+    expect(screen.getByLabelText('Phone')).toHaveValue('+27 21 555 0177')
+    expect(screen.getByLabelText('Website')).toHaveValue('https://riverside.example.com')
+    expect(screen.getByLabelText('Email')).toHaveValue('league@riverside.example.com')
+
+    await user.click(screen.getByRole('tab', { name: 'Branding' }))
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+    expect(screen.getByDisplayValue('https://facebook.com/riverside-league')).toBeInTheDocument()
   })
 
   it('edit mode: renders Details/Teams tabs, listing affiliated teams for the selected season', async () => {

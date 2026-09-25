@@ -4,8 +4,10 @@ import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -17,7 +19,9 @@ import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import com.cricketlegend.service.support.SocialLinkValidation;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -40,7 +44,11 @@ import org.springframework.transaction.annotation.Transactional;
  * "current" {@link Season} once ({@link #resolveCurrentSeasonId}) and batch-computes each league's
  * {@code currentSeasonTeamCount}/{@code currentSeasonLabel}/{@code
  * currentSeasonPlayingConditionsUrl} in one round trip each (never per-league), reconstructing
- * each {@link LeagueDto} via {@link #withCurrentSeasonFields}.
+ * each {@link LeagueDto} via {@link #withCurrentSeasonFields}. Per
+ * docs/specs/053-league-extended-profile.md: {@code create}/{@code update} also reject a
+ * duplicate {@code platform} within the request's {@code socialLinks} via the shared {@link
+ * com.cricketlegend.service.support.SocialLinkValidation}, also used by {@code
+ * SponsorServiceImpl}/{@code ClubProfileServiceImpl}, and set the five new profile fields.
  */
 @Service
 public class LeagueServiceImpl implements LeagueService {
@@ -111,7 +119,8 @@ public class LeagueServiceImpl implements LeagueService {
         LeagueDto dto = leagueMapper.toDto(league);
         return new LeagueDto(
                 dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(),
-                dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.active(), dto.createdAt(), dto.updatedAt(),
+                dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.format(), dto.logoUrl(), dto.phone(),
+                dto.website(), dto.email(), dto.socialLinks(), dto.active(), dto.createdAt(), dto.updatedAt(),
                 dto.updatedBy(), currentSeasonTeamCount, currentSeasonLabel, currentSeasonPlayingConditionsUrl);
     }
 
@@ -141,6 +150,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional
     public LeagueDto create(UUID clubId, CreateLeagueRequest request) {
         validateAgeRange(request.minAge(), request.maxAge());
+        SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
 
         League league = League.builder()
                 .clubId(clubId)
@@ -150,6 +160,12 @@ public class LeagueServiceImpl implements LeagueService {
                 .minAge(request.minAge())
                 .maxAge(request.maxAge())
                 .ageCutoffDate(request.ageCutoffDate())
+                .format(request.format())
+                .logoUrl(request.logoUrl())
+                .phone(request.phone())
+                .website(request.website())
+                .email(request.email())
+                .socialLinks(toSocialLinks(request.socialLinks()))
                 .active(true)
                 .build();
 
@@ -160,6 +176,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional
     public LeagueDto update(UUID clubId, UUID leagueId, UpdateLeagueRequest request) {
         validateAgeRange(request.minAge(), request.maxAge());
+        SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
         League league = findOrThrowForClub(clubId, leagueId);
 
         league.setName(request.name());
@@ -169,6 +186,12 @@ public class LeagueServiceImpl implements LeagueService {
         league.setMinAge(request.minAge());
         league.setMaxAge(request.maxAge());
         league.setAgeCutoffDate(request.ageCutoffDate());
+        league.setFormat(request.format());
+        league.setLogoUrl(request.logoUrl());
+        league.setPhone(request.phone());
+        league.setWebsite(request.website());
+        league.setEmail(request.email());
+        league.setSocialLinks(toSocialLinks(request.socialLinks()));
 
         return leagueMapper.toDto(leagueRepository.save(league));
     }
@@ -214,5 +237,22 @@ public class LeagueServiceImpl implements LeagueService {
             throw new NotFoundException("League not found: " + leagueId);
         }
         return league;
+    }
+
+    /**
+     * {@code League} is built via {@code League.builder()}, not {@code leagueMapper.toEntity()}
+     * (there is no request-to-entity mapping method on {@link LeagueMapper}), so {@code
+     * socialLinks} needs this small helper instead of the mapper-level list conversion — mirrors
+     * {@code SponsorServiceImpl.toSocialLinks}.
+     */
+    private List<SocialLink> toSocialLinks(List<SocialLinkDto> dtos) {
+        if (dtos == null) {
+            return new ArrayList<>();
+        }
+        List<SocialLink> links = new ArrayList<>();
+        for (SocialLinkDto dto : dtos) {
+            links.add(leagueMapper.toEntity(dto));
+        }
+        return links;
     }
 }

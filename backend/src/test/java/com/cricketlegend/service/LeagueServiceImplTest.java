@@ -7,11 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -78,7 +81,7 @@ class LeagueServiceImplTest {
     private LeagueDto dummyDto() {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
-                null, null, null, true, null, null, null, 0, null, null);
+                null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null);
     }
 
     private League existingLeague(UUID id, UUID clubId, boolean active) {
@@ -98,7 +101,9 @@ class LeagueServiceImplTest {
         return new LeagueDto(
                 league.getId(), league.getClubId(), league.getName(), league.getSource(),
                 league.getMaxPlayingXiSize(), league.getMinAge(),
-                league.getMaxAge(), league.getAgeCutoffDate(), league.isActive(), league.getCreatedAt(),
+                league.getMaxAge(), league.getAgeCutoffDate(), league.getFormat(), league.getLogoUrl(),
+                league.getPhone(), league.getWebsite(), league.getEmail(), List.of(),
+                league.isActive(), league.getCreatedAt(),
                 league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null);
     }
 
@@ -106,7 +111,8 @@ class LeagueServiceImplTest {
     void createDefaultsSourceAndMaxXiSizeWhenNull() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("Vets League", null, null, null, null, null);
+                new CreateLeagueRequest(
+                        "Vets League", null, null, null, null, null, null, null, null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -118,13 +124,21 @@ class LeagueServiceImplTest {
         assertThat(saved.getSource()).isEqualTo(LeagueSource.INTERNAL);
         assertThat(saved.getMaxPlayingXiSize()).isEqualTo(11);
         assertThat(saved.isActive()).isTrue();
+        assertThat(saved.getFormat()).isNull();
+        assertThat(saved.getLogoUrl()).isNull();
+        assertThat(saved.getPhone()).isNull();
+        assertThat(saved.getWebsite()).isNull();
+        assertThat(saved.getEmail()).isNull();
+        assertThat(saved.getSocialLinks()).isEmpty();
     }
 
     @Test
     void createWithACustomMaxPlayingXiSizeAndVetsFlagsIsPersisted() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("Vets League", LeagueSource.INTERNAL, 12, 35, null, null);
+                new CreateLeagueRequest(
+                        "Vets League", LeagueSource.INTERNAL, 12, 35, null, null, null, null, null, null, null,
+                        null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -140,12 +154,124 @@ class LeagueServiceImplTest {
     void createWithMinAgeGreaterThanMaxAgeThrowsValidationExceptionAndNeverSaves() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
-                new CreateLeagueRequest("U15s", null, null, 20, 15, null);
+                new CreateLeagueRequest(
+                        "U15s", null, null, 20, 15, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.create(clubId, request))
                 .isInstanceOf(ValidationException.class);
 
         org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    // --- 053: format/logoUrl/phone/website/email/socialLinks profile fields ---
+
+    @Test
+    void createPersistsTheFiveNewProfileFieldsIncludingSocialLinks() {
+        UUID clubId = UUID.randomUUID();
+        SocialLinkDto linkDto = new SocialLinkDto("facebook", "https://facebook.com/premier-league");
+        SocialLink mappedLink =
+                SocialLink.builder().platform("facebook").url("https://facebook.com/premier-league").build();
+        when(leagueMapper.toEntity(linkDto)).thenReturn(mappedLink);
+        CreateLeagueRequest request = new CreateLeagueRequest(
+                "Premier League", null, null, null, null, null, LeagueFormat.T20, "/media/logo.png",
+                "0123456789", "https://premierleague.example", "info@premierleague.example",
+                List.of(linkDto));
+        ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
+        when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
+
+        leagueService.create(clubId, request);
+
+        League saved = captor.getValue();
+        assertThat(saved.getFormat()).isEqualTo(LeagueFormat.T20);
+        assertThat(saved.getLogoUrl()).isEqualTo("/media/logo.png");
+        assertThat(saved.getPhone()).isEqualTo("0123456789");
+        assertThat(saved.getWebsite()).isEqualTo("https://premierleague.example");
+        assertThat(saved.getEmail()).isEqualTo("info@premierleague.example");
+        assertThat(saved.getSocialLinks()).containsExactly(mappedLink);
+    }
+
+    @Test
+    void updatePersistsTheFiveNewProfileFieldsIncludingSocialLinks() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        League existing = existingLeague(leagueId, clubId, true);
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
+        when(leagueRepository.save(existing)).thenReturn(existing);
+        when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
+        SocialLinkDto linkDto = new SocialLinkDto("instagram", "https://instagram.com/premier-league");
+        SocialLink mappedLink =
+                SocialLink.builder().platform("instagram").url("https://instagram.com/premier-league").build();
+        when(leagueMapper.toEntity(linkDto)).thenReturn(mappedLink);
+
+        UpdateLeagueRequest request = new UpdateLeagueRequest(
+                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, LeagueFormat.ONE_DAY,
+                "/media/logo.png", "0123456789", "https://premierleague.example",
+                "info@premierleague.example", List.of(linkDto));
+
+        leagueService.update(clubId, leagueId, request);
+
+        assertThat(existing.getFormat()).isEqualTo(LeagueFormat.ONE_DAY);
+        assertThat(existing.getLogoUrl()).isEqualTo("/media/logo.png");
+        assertThat(existing.getPhone()).isEqualTo("0123456789");
+        assertThat(existing.getWebsite()).isEqualTo("https://premierleague.example");
+        assertThat(existing.getEmail()).isEqualTo("info@premierleague.example");
+        assertThat(existing.getSocialLinks()).containsExactly(mappedLink);
+    }
+
+    @Test
+    void createWithADuplicateSocialLinkPlatformThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        CreateLeagueRequest request = new CreateLeagueRequest(
+                "Premier League", null, null, null, null, null, null, null, null, null, null,
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/a"),
+                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+
+        assertThatThrownBy(() -> leagueService.create(clubId, request))
+                .isInstanceOf(ValidationException.class);
+
+        org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void updateWithADuplicateSocialLinkPlatformThrowsValidationExceptionAndNeverSaves() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UpdateLeagueRequest request = new UpdateLeagueRequest(
+                "Premier League", null, null, null, null, null, null, null, null, null, null,
+                List.of(
+                        new SocialLinkDto("facebook", "https://facebook.com/a"),
+                        new SocialLinkDto("facebook", "https://facebook.com/b")));
+
+        assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
+                .isInstanceOf(ValidationException.class);
+
+        org.mockito.Mockito.verify(leagueRepository, never()).findById(any());
+        org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void updateWithAllFiveNewProfileFieldsOmittedRoundTripsAsNullAndEmpty() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        League existing = existingLeague(leagueId, clubId, true);
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
+        when(leagueRepository.save(existing)).thenReturn(existing);
+        when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
+
+        UpdateLeagueRequest request = new UpdateLeagueRequest(
+                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, null, null, null, null,
+                null);
+
+        leagueService.update(clubId, leagueId, request);
+
+        assertThat(existing.getFormat()).isNull();
+        assertThat(existing.getLogoUrl()).isNull();
+        assertThat(existing.getPhone()).isNull();
+        assertThat(existing.getWebsite()).isNull();
+        assertThat(existing.getEmail()).isNull();
+        assertThat(existing.getSocialLinks()).isEmpty();
     }
 
     @Test
@@ -157,8 +283,8 @@ class LeagueServiceImplTest {
         when(leagueRepository.save(existing)).thenReturn(existing);
         when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
 
-        UpdateLeagueRequest request =
-                new UpdateLeagueRequest("Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null);
+        UpdateLeagueRequest request = new UpdateLeagueRequest(
+                "Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null, null, null, null, null, null, null);
 
         leagueService.update(clubId, leagueId, request);
 
@@ -176,8 +302,8 @@ class LeagueServiceImplTest {
         League existing = existingLeague(leagueId, otherClubId, true);
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
 
-        UpdateLeagueRequest request =
-                new UpdateLeagueRequest("Renamed League", null, null, null, null, null);
+        UpdateLeagueRequest request = new UpdateLeagueRequest(
+                "Renamed League", null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
                 .isInstanceOf(NotFoundException.class);

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueDetailPage from './LeagueDetailPage'
+import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 import type { Season } from '../../api/seasonApi'
 import type { Team } from '../../api/teamApi'
@@ -18,9 +19,13 @@ const listLeagueAffiliations = vi.fn()
 const listMatches = vi.fn()
 const getPlayingConditions = vi.fn()
 
-vi.mock('../../api/leagueApi', () => ({
-  listLeagues: (clubId: string) => listLeagues(clubId),
-}))
+vi.mock('../../api/leagueApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/leagueApi')>()
+  return {
+    ...actual,
+    listLeagues: (clubId: string) => listLeagues(clubId),
+  }
+})
 
 vi.mock('../../api/seasonApi', () => ({
   listSeasons: (clubId: string) => listSeasons(clubId),
@@ -65,6 +70,12 @@ function makeLeague(overrides: Partial<League> = {}): League {
     currentSeasonTeamCount: 1,
     currentSeasonLabel: '2026',
     currentSeasonPlayingConditionsUrl: null,
+    format: null,
+    logoUrl: null,
+    phone: null,
+    website: null,
+    email: null,
+    socialLinks: [],
     ...overrides,
   }
 }
@@ -459,5 +470,59 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText(/Before over/)).not.toBeInTheDocument()
     expect(screen.queryByText(/% of target/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'View full document' })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/053-league-extended-profile.md: phone/email/website DetailFieldRows, the
+  // SocialLinksRow, and the format Chip in the Details section's note slot — mirroring
+  // SponsorDetailPage.test.tsx's equivalent contact-fields assertions.
+  describe('extended profile fields', () => {
+    it('renders phone/email/website rows, the social links row, and the format chip when all are set', async () => {
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({
+          id: 'league-1',
+          format: 'T20',
+          phone: '+27 21 555 0199',
+          email: 'info@riverside-premier.example',
+          website: 'https://riverside-premier.example',
+          socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/riverside-premier' }],
+        }),
+      ])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(screen.getByText('+27 21 555 0199')).toBeInTheDocument()
+      expect(screen.getByText('info@riverside-premier.example')).toBeInTheDocument()
+      expect(screen.getByText('https://riverside-premier.example')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Facebook' })).toHaveAttribute(
+        'href',
+        'https://facebook.com/riverside-premier',
+      )
+      expect(screen.getByText(LEAGUE_FORMAT_LABELS.T20)).toBeInTheDocument()
+    })
+
+    it('renders none of the phone/email/website rows, no social links row, and no format chip when all are unset', async () => {
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({
+          id: 'league-1',
+          format: null,
+          phone: null,
+          email: null,
+          website: null,
+          socialLinks: [],
+        }),
+      ])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(screen.queryByText('Phone')).not.toBeInTheDocument()
+      expect(screen.queryByText('Email')).not.toBeInTheDocument()
+      expect(screen.queryByText('Website')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Facebook' })).not.toBeInTheDocument()
+      Object.values(LEAGUE_FORMAT_LABELS).forEach((label) => {
+        expect(screen.queryByText(label)).not.toBeInTheDocument()
+      })
+    })
   })
 })

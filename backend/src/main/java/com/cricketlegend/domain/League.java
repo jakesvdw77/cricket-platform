@@ -1,17 +1,22 @@
 package com.cricketlegend.domain;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +32,14 @@ import lombok.Setter;
  * deliberate divergence from {@link Section#getMinAge()}/{@link Section#getMaxAge()} — ENFORCED
  * here, unlike {@code Section}'s purely descriptive fields (see the spec's Problem &amp; Goals).
  * "Disable, never delete" — see {@link #active}. See docs/specs/029-league-management.md.
+ *
+ * <p>{@link #format}/{@link #logoUrl}/{@link #phone}/{@link #website}/{@link #email}/{@link
+ * #socialLinks} (docs/specs/053-league-extended-profile.md) give {@code League} the same
+ * club-facing profile shape {@link Sponsor}/{@code ClubProfile} already have — every one
+ * nullable/optional, single-valued per {@code League} regardless of season, purely cosmetic
+ * (no relationship to {@link LeaguePlayingConditions}). {@code socialLinks} reuses the {@link
+ * SocialLink} {@code @Embeddable}/{@code @ElementCollection} pattern {@link Sponsor#getSocialLinks()}
+ * already establishes, with its own owning table ({@code league_social_link}).
  */
 @Entity
 @Table(name = "league")
@@ -62,6 +75,23 @@ public class League {
 
     @Column(name = "age_cutoff_date")
     private LocalDate ageCutoffDate;
+
+    @Enumerated(EnumType.STRING)
+    private LeagueFormat format;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
+
+    private String phone;
+
+    private String website;
+
+    private String email;
+
+    @ElementCollection
+    @CollectionTable(name = "league_social_link", joinColumns = @JoinColumn(name = "league_id"))
+    @Builder.Default
+    private List<SocialLink> socialLinks = new ArrayList<>();
 
     @Column(nullable = false)
     private boolean active;
