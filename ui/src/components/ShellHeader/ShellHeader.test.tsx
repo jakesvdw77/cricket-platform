@@ -73,6 +73,6 @@ describe('ShellHeader', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('RI')).toBeInTheDocument()
+    expect(screen.getByText('RC')).toBeInTheDocument()
   })
 })

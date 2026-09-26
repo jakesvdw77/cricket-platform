@@ -24,9 +24,9 @@ describe('AvailabilityRespondentAvatars', () => {
 
     render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={3} />)
 
-    expect(screen.getByText('JA')).toBeInTheDocument()
-    expect(screen.getByText('BO')).toBeInTheDocument()
-    expect(screen.getByText('AM')).toBeInTheDocument()
+    expect(screen.getByText('JS')).toBeInTheDocument()
+    expect(screen.getByText('BJ')).toBeInTheDocument()
+    expect(screen.getByText('AL')).toBeInTheDocument()
   })
 
   it('renders a "+N" MUI overflow avatar beyond max', () => {
@@ -65,7 +65,7 @@ describe('AvailabilityRespondentAvatars', () => {
     render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={[]} count={0} />)
 
     expect(screen.getByText('0 Available')).toBeInTheDocument()
-    expect(screen.queryByText('JA')).not.toBeInTheDocument()
+    expect(screen.queryByText('JS')).not.toBeInTheDocument()
   })
 
   it('shows the respondent\'s squad display name in a tooltip', async () => {
@@ -76,7 +76,7 @@ describe('AvailabilityRespondentAvatars', () => {
 
     render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={1} />)
 
-    await user.hover(screen.getByText('JA'))
+    await user.hover(screen.getByText('JS'))
 
     expect(await screen.findByText('#7 Jane Smith')).toBeInTheDocument()
   })
@@ -136,7 +136,7 @@ describe('AvailabilityRespondentAvatars', () => {
 
     render(<AvailabilityRespondentAvatars status="AVAILABLE" respondents={respondents} count={9} layout="wrap" />)
 
-    for (const initials of ['JA', 'BO', 'AM', 'SA', 'LE', 'TO', 'KI', 'ZO', 'MA']) {
+    for (const initials of ['JS', 'BJ', 'AL', 'SP', 'LN', 'TB', 'KD', 'ZA', 'MF']) {
       expect(screen.getByText(initials)).toBeInTheDocument()
     }
     expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument()
