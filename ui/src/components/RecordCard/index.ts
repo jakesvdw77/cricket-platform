@@ -1,4 +1,4 @@
-export { RecordCard, badgeSx } from './RecordCard'
+export { RecordCard, badgeSx, avatarSx } from './RecordCard'
 export type {
   RecordCardProps,
   RecordCardAvatar,

@@ -139,10 +139,15 @@ describe('PlayerList', () => {
     expect(await screen.findByText('No players yet')).toBeInTheDocument()
   })
 
-  it('renders a card per player with the correct name, fields, chips, and active/inactive badge', async () => {
+  // docs/specs/061-player-card-avatar-redesign.md: PlayerList now renders the bespoke PlayerCard
+  // (jersey chip, section-name-plus-overflow corner chip, Inactive badge) rather than the old
+  // generic RecordCard fields (DOB, membership number) — PlayerCard's own content behavior
+  // (icon rows, corner chips) is unit-tested in PlayerCard.test.tsx; this only confirms PlayerList
+  // resolves and passes the right sectionNames/badge/jerseyNumber through to it per player.
+  it('renders a card per player with the correct name, section chips, jersey number, and active/inactive badge', async () => {
     listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' }), makeSection({ id: 'section-2', name: 'Open Men' })])
     listPlayers.mockResolvedValueOnce([
-      makePlayer({ id: 'player-1', sectionIds: ['section-1', 'section-2'] }),
+      makePlayer({ id: 'player-1', sectionIds: ['section-1', 'section-2'], jerseyNumber: 9 }),
       makePlayer({
         id: 'player-2',
         firstName: 'Past',
@@ -156,10 +161,9 @@ describe('PlayerList', () => {
     renderList('test-club-id')
 
     expect(await screen.findByText('Sipho Ndlovu')).toBeInTheDocument()
-    expect(screen.getByText('2010-04-12')).toBeInTheDocument()
-    expect(screen.getByText('RCC-042')).toBeInTheDocument()
+    expect(screen.getByText('#9')).toBeInTheDocument()
     expect(screen.getByText('U15')).toBeInTheDocument()
-    expect(screen.getByText('Open Men')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
 
     expect(screen.getByText('Past Player')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
