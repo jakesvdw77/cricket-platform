@@ -391,13 +391,15 @@ describe('TeamFormPage', () => {
       await screen.findByText('Edit Team')
       // Details tab is active by default — the form and its Save button render, Contacts/Sponsors
       // panel content doesn't.
-      expect(screen.getByLabelText('Name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toBeVisible()
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
       expect(screen.queryByText('No contacts linked to this team yet.')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Contacts' }))
       expect(await screen.findByText('No contacts linked to this team yet.')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+      // The Name field's own TeamForm stays mounted (not unmounted) so unsaved edits aren't lost
+      // switching tabs — it's just visually hidden (display: none) rather than removed from the DOM.
+      expect(screen.getByLabelText('Name')).not.toBeVisible()
       expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
@@ -406,8 +408,92 @@ describe('TeamFormPage', () => {
       expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('tab', { name: 'Details' }))
-      expect(await screen.findByLabelText('Name')).toBeInTheDocument()
+      expect(await screen.findByLabelText('Name')).toBeVisible()
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+    })
+
+    // Real user feedback: the nested Basic Info/Branding/Social Media inner Tabs TeamForm used to
+    // render on top of this page's own outer tabs read as confusing — Branding and Social Media
+    // are now this page's own top-level tabs instead, in this fixed order, and "Basic Info" no
+    // longer exists as a label anywhere (its content is what "Details" shows directly).
+    describe('flattened Details/Branding/Social Media tabs', () => {
+      it('edit mode: renders Details/Branding/Social Media/Contacts/Sponsors/Squad as tabs, in exactly that order', async () => {
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        const tabs = screen.getAllByRole('tab')
+        expect(tabs.map((tab) => tab.textContent)).toEqual(['Details', 'Branding', 'Social Media', 'Contacts', 'Sponsors', 'Squad'])
+        expect(screen.queryByText('Basic Info')).not.toBeInTheDocument()
+      })
+
+      it('create mode: renders Details/Branding/Social Media as tabs, but not Contacts/Sponsors/Squad', async () => {
+        renderPage('/manage/sections/test-section-id/teams/new', 'test-club-id')
+
+        await screen.findByText('Add Team')
+        const tabs = screen.getAllByRole('tab')
+        expect(tabs.map((tab) => tab.textContent)).toEqual(['Details', 'Branding', 'Social Media'])
+        expect(screen.queryByText('Basic Info')).not.toBeInTheDocument()
+      })
+
+      it('clicking "Details" shows the Name/Section/Abbreviation/Ground fields directly, with no "Basic Info" label anywhere', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        await user.click(screen.getByRole('tab', { name: 'Branding' }))
+        await user.click(screen.getByRole('tab', { name: 'Details' }))
+
+        expect(screen.getByLabelText('Name')).toBeVisible()
+        expect(screen.getByLabelText('Abbreviation')).toBeVisible()
+        expect(screen.getByLabelText('Ground')).toBeVisible()
+        expect(screen.queryByText('Basic Info')).not.toBeInTheDocument()
+      })
+
+      it('preserves an unsaved Name edit switching to the Contacts tab and back to Details (the state-preservation fix)', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id', name: '' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        await user.type(screen.getByLabelText('Name'), 'Unsaved Name Edit')
+
+        await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+        await screen.findByText('No contacts linked to this team yet.')
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }))
+
+        expect(await screen.findByLabelText('Name')).toHaveValue('Unsaved Name Edit')
+      })
+
+      it('shows the Save action on Details, Branding, and Social Media, but not on Contacts/Sponsors/Squad', async () => {
+        const user = userEvent.setup()
+        listTeamsForSection.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'test-section-id' })])
+
+        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+
+        await screen.findByText('Edit Team')
+        expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('tab', { name: 'Branding' }))
+        expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+        expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('tab', { name: 'Sponsors' }))
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('tab', { name: 'Squad' }))
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+      })
     })
 
     describe('edit mode: Contacts', () => {

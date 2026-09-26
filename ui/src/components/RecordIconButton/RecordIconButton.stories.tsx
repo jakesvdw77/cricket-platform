@@ -14,6 +14,7 @@ export const Circular: Story = {
   args: {
     shape: 'circular',
     label: 'Jane Smith — Manager',
+    name: 'Jane Smith',
     initials: 'JS',
     onClick: () => undefined,
   },
@@ -23,6 +24,7 @@ export const Rounded: Story = {
   args: {
     shape: 'rounded',
     label: 'Acme Bank — Sponsor',
+    name: 'Acme Bank',
     initials: 'AC',
     onClick: () => undefined,
   },

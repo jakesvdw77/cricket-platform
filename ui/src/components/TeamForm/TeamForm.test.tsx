@@ -27,10 +27,14 @@ function makeSection(overrides: Partial<Section> = {}): Section {
 // TeamFormPage) and targets the form via the native `form="…"` attribute — this mirrors that
 // wiring so the form's submit behaviour can still be exercised in isolation, same pattern as
 // ClubContactForm.test.tsx.
-function renderTeamForm(props: TeamFormProps, submitLabel = 'Submit') {
+//
+// `activeSection` defaults to 'details' since it's now a required prop that TeamFormPage's own
+// outer Tabs controls — tests that need Branding/Social Media content pass it explicitly rather
+// than clicking an in-component tab (there's no longer one to click).
+function renderTeamForm(props: Omit<TeamFormProps, 'activeSection'> & { activeSection?: TeamFormProps['activeSection'] }, submitLabel = 'Submit') {
   return render(
     <>
-      <TeamForm {...props} />
+      <TeamForm activeSection="details" {...props} />
       <button type="submit" form={TEAM_FORM_ID}>
         {submitLabel}
       </button>
@@ -149,8 +153,7 @@ describe('TeamForm', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Existing Team')
   })
 
-  it('prefills abbreviation/ground from initialValues on the Basic Info tab, and renders SocialLinksFields on the Social Media tab', async () => {
-    const user = userEvent.setup()
+  it('prefills abbreviation/ground from initialValues on the details section, and renders SocialLinksFields on the social section', () => {
     renderTeamForm({
       onSubmit: vi.fn(),
       initialValues: { name: 'Existing Team', abbreviation: 'ICL', groundName: 'Irene Country Club' },
@@ -159,51 +162,48 @@ describe('TeamForm', () => {
     expect(screen.getByLabelText('Abbreviation')).toHaveValue('ICL')
     expect(screen.getByLabelText('Ground')).toHaveValue('Irene Country Club')
 
-    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
+    renderTeamForm({ onSubmit: vi.fn(), activeSection: 'social' })
     expect(screen.getByText('No social links added yet.')).toBeInTheDocument()
   })
 
-  // docs/specs/057-team-extended-profile.md: Basic Info/Branding/Social Media inner Tabs, mirroring
-  // LeagueForm — direct user feedback that Social Media (and, by the same shape, Logo/Branding)
-  // belongs on its own tab like every other form in this codebase, not a flat field at the bottom.
-  describe('logo field (Branding tab)', () => {
-    it('renders the logo upload control in both create and edit modes', async () => {
-      const user = userEvent.setup()
-      renderTeamForm({ onSubmit: vi.fn() })
-      await user.click(screen.getByRole('tab', { name: 'Branding' }))
+  // docs/specs/057-team-extended-profile.md added these Branding/Social Media field-groups.
+  // Real-user feedback afterward found TeamForm's own nested inner Tabs confusing on top of
+  // TeamFormPage's own outer tabs — TeamFormPage now drives which group is visible via the
+  // `activeSection` prop instead of an in-component tab bar (there's no longer one to click).
+  describe('logo field (activeSection="branding")', () => {
+    it('renders the logo upload control in both create and edit modes', () => {
+      renderTeamForm({ onSubmit: vi.fn(), activeSection: 'branding' })
       expect(screen.getByText('Logo')).toBeInTheDocument()
 
-      renderTeamForm({ onSubmit: vi.fn(), initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' } })
-      await user.click(screen.getAllByRole('tab', { name: 'Branding' })[1])
+      renderTeamForm({
+        onSubmit: vi.fn(),
+        initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
+        activeSection: 'branding',
+      })
       expect(screen.getAllByText('Logo').length).toBeGreaterThan(0)
     })
 
-    it('shows the club-logo fallback caption when the team has no logo of its own and clubLogoUrl is supplied', async () => {
-      const user = userEvent.setup()
-      renderTeamForm({ onSubmit: vi.fn(), clubLogoUrl: 'https://cdn.example.com/club.png' })
+    it('shows the club-logo fallback caption when the team has no logo of its own and clubLogoUrl is supplied', () => {
+      renderTeamForm({ onSubmit: vi.fn(), clubLogoUrl: 'https://cdn.example.com/club.png', activeSection: 'branding' })
 
-      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.getByText(/using your club's logo/i)).toBeInTheDocument()
     })
 
-    it('does not show the fallback caption when the team already has its own logo', async () => {
-      const user = userEvent.setup()
+    it('does not show the fallback caption when the team already has its own logo', () => {
       renderTeamForm({
         onSubmit: vi.fn(),
         initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
         clubLogoUrl: 'https://cdn.example.com/club.png',
+        activeSection: 'branding',
       })
 
-      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Reset to club logo' })).toBeInTheDocument()
     })
 
-    it('does not show the fallback caption or reset action when neither a team nor a club logo exists', async () => {
-      const user = userEvent.setup()
-      renderTeamForm({ onSubmit: vi.fn() })
+    it('does not show the fallback caption or reset action when neither a team nor a club logo exists', () => {
+      renderTeamForm({ onSubmit: vi.fn(), activeSection: 'branding' })
 
-      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Reset to club logo' })).not.toBeInTheDocument()
     })
@@ -215,9 +215,9 @@ describe('TeamForm', () => {
         onSubmit,
         initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
         clubLogoUrl: 'https://cdn.example.com/club.png',
+        activeSection: 'branding',
       })
 
-      await user.click(screen.getByRole('tab', { name: 'Branding' }))
       await user.click(screen.getByRole('button', { name: 'Reset to club logo' }))
 
       expect(screen.getByText(/using your club's logo/i)).toBeInTheDocument()
@@ -226,6 +226,49 @@ describe('TeamForm', () => {
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ logoUrl: null }))
+    })
+  })
+
+  describe('onInvalid', () => {
+    it('calls onInvalid instead of managing its own tab state when client-side validation fails', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      const onInvalid = vi.fn()
+      renderTeamForm({ onSubmit, onInvalid })
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(await screen.findByText('Name is required')).toBeInTheDocument()
+      expect(onInvalid).toHaveBeenCalledTimes(1)
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('does not throw when validation fails and no onInvalid is supplied', async () => {
+      const user = userEvent.setup()
+      renderTeamForm({ onSubmit: vi.fn() })
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(await screen.findByText('Name is required')).toBeInTheDocument()
+    })
+  })
+
+  describe('hidden', () => {
+    it('renders the form with display: none when hidden is true, and display: grid when it is not', () => {
+      const { rerender } = renderTeamForm({ onSubmit: vi.fn(), hidden: true })
+
+      expect(screen.getByLabelText('Name').closest('form')).toHaveStyle({ display: 'none' })
+
+      rerender(
+        <>
+          <TeamForm onSubmit={vi.fn()} activeSection="details" hidden={false} />
+          <button type="submit" form={TEAM_FORM_ID}>
+            Submit
+          </button>
+        </>,
+      )
+
+      expect(screen.getByLabelText('Name').closest('form')).toHaveStyle({ display: 'grid' })
     })
   })
 })

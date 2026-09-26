@@ -36,10 +36,9 @@ const meta: Meta<typeof TeamForm> = {
   title: 'Components/TeamForm',
   component: TeamForm,
   parameters: { layout: 'padded' },
-  // TeamForm's <form> renders with display: 'contents' so its fields become direct grid items of
-  // the parent grid — decorate with the same grid RecordFormScreen provides in the real app (see
-  // ClubContactForm.stories.tsx's identical decorator) so this preview reflects the actual
-  // one/two-column layout.
+  // TeamForm's own <form> IS the grid (display: 'grid', spanning gridColumn: '1 / -1') — decorate
+  // with the same grid RecordFormScreen provides in the real app (see ClubContactForm.stories.tsx's
+  // identical decorator) so this preview reflects the actual one/two-column layout.
   decorators: [
     (Story) => (
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
@@ -57,6 +56,7 @@ type Story = StoryObj<typeof TeamForm>
 export const WithoutSectionPicker: Story = {
   args: {
     onSubmit: () => undefined,
+    activeSection: 'details',
   },
 }
 
@@ -64,6 +64,7 @@ export const EditExistingTeam: Story = {
   args: {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI' },
+    activeSection: 'details',
   },
 }
 
@@ -77,6 +78,7 @@ export const WithProfileFields: Story = {
       groundName: 'Irene Country Club',
       socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/irene1stxi' }],
     },
+    activeSection: 'details',
   },
 }
 
@@ -87,6 +89,7 @@ export const FallsBackToClubLogo: Story = {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI' },
     clubLogoUrl: 'https://placehold.co/120x120?text=Club',
+    activeSection: 'branding',
   },
 }
 
@@ -97,6 +100,7 @@ export const WithLogoOverride: Story = {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI', logoUrl: 'https://placehold.co/120x120?text=Team' },
     clubLogoUrl: 'https://placehold.co/120x120?text=Club',
+    activeSection: 'branding',
   },
 }
 
@@ -105,6 +109,7 @@ export const WithSectionPicker: Story = {
   args: {
     onSubmit: () => undefined,
     sections: SECTIONS,
+    activeSection: 'details',
   },
 }
 

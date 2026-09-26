@@ -303,11 +303,17 @@ export default function TeamFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  // Which tab is showing — Details is always tab 0; Contacts/Sponsors only exist once
-  // showContactsAndSponsors is true (edit mode), so this stays 0 for the lifetime of a create-mode
-  // page. Real-user feedback on the first version of this page (which stacked Details/Contacts/
-  // Sponsors vertically in one long scroll) asked for this — matches SponsorForm's own existing
-  // Tabs pattern (docs/specs/023-sponsors.md) rather than the earlier scroll-everything layout.
+  // Which tab is showing. Fixed 6-tab scheme, always in this order: 0 = Details, 1 = Branding,
+  // 2 = Social Media, 3 = Contacts, 4 = Sponsors, 5 = Squad. Details/Branding/Social Media always
+  // exist (both create and edit mode) and together drive the one always-mounted TeamForm instance
+  // below (its own `activeSection`/`hidden` props, not separate mounts, so unsaved edits survive
+  // switching tabs); Contacts/Sponsors/Squad only exist once showContactsAndSponsors is true (edit
+  // mode), so this stays 0-2 for the lifetime of a create-mode page. Real-user feedback on the
+  // first version of this page (which stacked Details/Contacts/Sponsors vertically in one long
+  // scroll) asked for tabs at all — matches SponsorForm's own existing Tabs pattern
+  // (docs/specs/023-sponsors.md). Real-user feedback afterward found TeamForm's OWN nested inner
+  // Tabs (Basic Info/Branding/Social Media) on top of these outer ones confusing, hence Branding
+  // and Social Media now living here as flat top-level tabs instead.
   const [activeTab, setActiveTab] = useState(0)
   const [contactLinkOpen, setContactLinkOpen] = useState(false)
   const [contactCreateOpen, setContactCreateOpen] = useState(false)
@@ -624,7 +630,7 @@ export default function TeamFormPage() {
         backLabel="Back to Teams"
         actions={
           <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-            {activeTab === 0 && (
+            {activeTab <= 2 && (
               <>
                 {saveMutation.isError && (
                   <Typography variant="body2" color="error.main">
@@ -661,47 +667,48 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {/* Tabs only exist once there's more than one thing to switch between — a brand-new team
-            (create mode, either route) has no id yet to attach contacts/sponsors to, so it just
-            renders the Details form directly below, exactly as before. */}
-        {showContactsAndSponsors && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_event, next: number) => setActiveTab(next)}
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
-            >
-              <Tab label="Details" />
-              <Tab label="Contacts" />
-              <Tab label="Sponsors" />
-              <Tab label="Squad" />
-            </Tabs>
-          </Box>
-        )}
+        {/* Always renders — Details/Branding/Social Media apply in both create and edit mode.
+            Contacts/Sponsors/Squad only exist once showContactsAndSponsors is true (edit mode) —
+            a brand-new team (create mode, either route) has no id yet to attach them to. */}
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_event, next: number) => setActiveTab(next)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+          >
+            <Tab label="Details" />
+            <Tab label="Branding" />
+            <Tab label="Social Media" />
+            {showContactsAndSponsors && <Tab label="Contacts" />}
+            {showContactsAndSponsors && <Tab label="Sponsors" />}
+            {showContactsAndSponsors && <Tab label="Squad" />}
+          </Tabs>
+        </Box>
 
-        {activeTab === 0 && (
-          <TeamForm
-            initialValues={
-              team
-                ? {
-                    name: team.name,
-                    logoUrl: team.logoUrl,
-                    abbreviation: team.abbreviation,
-                    groundName: team.groundName,
-                    socialLinks: team.socialLinks,
-                  }
-                : undefined
-            }
-            sections={isSectionScoped ? undefined : sections}
-            clubLogoUrl={clubProfile?.logoUrl ?? null}
-            onSubmit={(payload) => saveMutation.mutate(payload)}
-          />
-        )}
+        <TeamForm
+          initialValues={
+            team
+              ? {
+                  name: team.name,
+                  logoUrl: team.logoUrl,
+                  abbreviation: team.abbreviation,
+                  groundName: team.groundName,
+                  socialLinks: team.socialLinks,
+                }
+              : undefined
+          }
+          sections={isSectionScoped ? undefined : sections}
+          clubLogoUrl={clubProfile?.logoUrl ?? null}
+          onSubmit={(payload) => saveMutation.mutate(payload)}
+          onInvalid={() => setActiveTab(0)}
+          activeSection={activeTab === 1 ? 'branding' : activeTab === 2 ? 'social' : 'details'}
+          hidden={activeTab > 2}
+        />
 
-        {showContactsAndSponsors && activeTab === 1 && (
+        {showContactsAndSponsors && activeTab === 3 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             {(teamContactsQuery.data ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -742,7 +749,7 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {showContactsAndSponsors && activeTab === 2 && (
+        {showContactsAndSponsors && activeTab === 4 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
               This team's sponsors
@@ -811,7 +818,7 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {showContactsAndSponsors && activeTab === 3 && (
+        {showContactsAndSponsors && activeTab === 5 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             {(seasonsQuery.data ?? []).length === 0 ? (
               <Typography variant="body2" color="text.secondary">

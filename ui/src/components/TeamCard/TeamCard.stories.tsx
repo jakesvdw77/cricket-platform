@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TeamCard } from './TeamCard'
 import type { Team } from '../../api/teamApi'
 import type { Sponsor } from '../../api/sponsorApi'
@@ -47,12 +48,19 @@ const meta: Meta<typeof TeamCard> = {
   // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in
   // one globally; adding a second nested <MemoryRouter> throws ("You cannot render a <Router>
   // inside another <Router>"), same precedent RecordCard.stories.tsx already establishes.
+  // QueryClientProvider IS needed locally, same as ClubPicker.stories.tsx's own precedent —
+  // TeamCard now fetches a sponsor's own contacts (React Query) once its quick-view dialog opens.
   decorators: [
-    (Story) => (
-      <Box sx={{ maxWidth: 420 }}>
-        <Story />
-      </Box>
-    ),
+    (Story) => {
+      const queryClient = new QueryClient()
+      return (
+        <QueryClientProvider client={queryClient}>
+          <Box sx={{ maxWidth: 420 }}>
+            <Story />
+          </Box>
+        </QueryClientProvider>
+      )
+    },
   ],
 }
 export default meta

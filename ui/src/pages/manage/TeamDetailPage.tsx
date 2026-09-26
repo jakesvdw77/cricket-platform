@@ -14,13 +14,13 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
-import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
+import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
 import { badgeSx } from '../../components/RecordCard'
 import { listTeamsForClub } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
@@ -54,8 +54,10 @@ function CardHeaderRow({ title, action }: { title: string; action?: ReactNode })
 // One player tile in the full-width Squad grid — avatar, name, jersey number, the captain's tile
 // visually distinguished with a highlighted border/background plus a small "Captain" label
 // (docs/specs/057-team-extended-profile.md's UI Requirements, matching the approved mockup).
-// View/Edit still navigate to that player's own real routes, same as every other cross-linked
-// record on this page.
+// Deliberately view-only here — no Edit action on this read-only Team View screen (real user
+// feedback: a squad member shouldn't be directly editable from a page whose own header is itself
+// "View", not "Edit"). The name is still the click-to-view stretched link into that player's own
+// record, where Edit lives, same as every other cross-linked record on this page.
 function SquadPlayerTile({ member }: { member: SquadMember }) {
   const playerName = `${member.firstName} ${member.lastName}`
   return (
@@ -119,19 +121,6 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
           sx={{ alignSelf: 'flex-start', ...badgeSx('positive'), '& .MuiChip-icon': { color: 'inherit' } }}
         />
       )}
-
-      <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ position: 'relative' }}>
-        <MuiButton
-          component={RouterLink}
-          to={`/manage/players/${member.playerProfileId}/edit`}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<EditOutlinedIcon fontSize="small" />}
-        >
-          Edit
-        </MuiButton>
-      </Stack>
     </Box>
   )
 }
@@ -365,6 +354,7 @@ export default function TeamDetailPage() {
                     imageUrl={teamContact.contact.photoUrl}
                     shape="circular"
                     label={`${contactName} — ${teamContact.role}`}
+                    name={contactName}
                     initials={initialsFromName(contactName)}
                     onClick={() => setOpenContactId(teamContact.id)}
                   />
@@ -388,6 +378,7 @@ export default function TeamDetailPage() {
                   imageUrl={sponsor.logoUrl}
                   shape="rounded"
                   label={`${sponsor.name} — Sponsor`}
+                  name={sponsor.name}
                   initials={initialsFromName(sponsor.name)}
                   onClick={() => setOpenSponsorId(sponsor.id)}
                 />
@@ -473,25 +464,7 @@ export default function TeamDetailPage() {
         editTo={selectedContact ? `/manage/club-contacts/${selectedContact.contact.id}/edit` : '/manage/club-contacts'}
       />
 
-      <RecordQuickViewDialog
-        open={Boolean(selectedSponsor)}
-        onClose={() => setOpenSponsorId(null)}
-        avatar={{
-          imageUrl: selectedSponsor?.logoUrl,
-          fallback: initialsFromName(selectedSponsor ? selectedSponsor.name : ''),
-          shape: 'rounded',
-        }}
-        title={selectedSponsor ? selectedSponsor.name : ''}
-        fields={
-          selectedSponsor
-            ? [
-                { icon: <LanguageOutlinedIcon />, label: 'Website', value: selectedSponsor.website ?? 'Not set' },
-                { icon: <EmailOutlinedIcon />, label: 'Email', value: selectedSponsor.email ?? 'Not set' },
-              ]
-            : []
-        }
-        editTo={selectedSponsor ? `/manage/sponsors/${selectedSponsor.id}/edit` : '/manage/sponsors'}
-      />
+      <SponsorQuickViewDialog clubId={clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />
     </Box>
   )
 }

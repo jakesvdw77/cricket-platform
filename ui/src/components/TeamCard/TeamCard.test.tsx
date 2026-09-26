@@ -1,9 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TeamCard } from './TeamCard'
 import type { Team } from '../../api/teamApi'
 import type { Sponsor } from '../../api/sponsorApi'
+
+const listSponsorContacts = vi.fn()
+
+vi.mock('../../api/sponsorContactApi', () => ({
+  listSponsorContacts: (clubId: string, sponsorId: string) => listSponsorContacts(clubId, sponsorId),
+}))
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
@@ -43,22 +51,30 @@ function makeSponsor(overrides: Partial<Sponsor> = {}): Sponsor {
 }
 
 function renderCard(props: Partial<Parameters<typeof TeamCard>[0]> = {}) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <MemoryRouter>
-      <TeamCard
-        team={makeTeam()}
-        sectionName="Men"
-        playerCount={0}
-        matchCount={0}
-        viewTo="/manage/sections/section-1/teams/team-1"
-        editTo="/manage/sections/section-1/teams/team-1/edit"
-        {...props}
-      />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <TeamCard
+          team={makeTeam()}
+          sectionName="Men"
+          playerCount={0}
+          matchCount={0}
+          viewTo="/manage/sections/section-1/teams/team-1"
+          editTo="/manage/sections/section-1/teams/team-1/edit"
+          {...props}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
 describe('TeamCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    listSponsorContacts.mockResolvedValue([])
+  })
+
   it('renders the team name, section chip, and player/match count pills', () => {
     renderCard({ playerCount: 5, matchCount: 3 })
 
@@ -69,25 +85,12 @@ describe('TeamCard', () => {
   })
 
   it('renders an abbreviation chip only when set', () => {
-    const { rerender } = render(
-      <MemoryRouter>
-        <TeamCard
-          team={makeTeam({ abbreviation: 'ICL' })}
-          sectionName="Men"
-          playerCount={0}
-          matchCount={0}
-          viewTo="/x"
-          editTo="/x/edit"
-        />
-      </MemoryRouter>,
-    )
+    renderCard({ team: makeTeam({ abbreviation: 'ICL' }) })
     expect(screen.getByText('ICL')).toBeInTheDocument()
+  })
 
-    rerender(
-      <MemoryRouter>
-        <TeamCard team={makeTeam()} sectionName="Men" playerCount={0} matchCount={0} viewTo="/x" editTo="/x/edit" />
-      </MemoryRouter>,
-    )
+  it('renders no abbreviation chip when abbreviation is not set', () => {
+    renderCard({ team: makeTeam() })
     expect(screen.queryByText('ICL')).not.toBeInTheDocument()
   })
 
@@ -121,14 +124,33 @@ describe('TeamCard', () => {
   })
 
   it('renders sponsor icons only when sponsors are supplied', () => {
-    const { rerender } = renderCard({ sponsors: [makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })] })
+    renderCard({ sponsors: [makeSponsor({ id: 'sponsor-1', name: 'Acme Bank' })] })
     expect(screen.getByTitle('Acme Bank')).toBeInTheDocument()
+  })
 
-    rerender(
-      <MemoryRouter>
-        <TeamCard team={makeTeam()} sectionName="Men" playerCount={0} matchCount={0} viewTo="/x" editTo="/x/edit" />
-      </MemoryRouter>,
-    )
+  it('renders no sponsor icons when no sponsors are supplied', () => {
+    renderCard({ sponsors: [] })
+    expect(screen.queryByTitle('Acme Bank')).not.toBeInTheDocument()
+  })
+
+  // Real user feedback: sponsor logos looked static — clicking one now opens the same quick-view
+  // dialog (Website/Email/Sponsor Contacts) TeamDetailPage.tsx's own Sponsors grid opens.
+  it('opens a sponsor quick-view dialog on click, listing the sponsor\'s own named contacts', async () => {
+    const user = userEvent.setup()
+    listSponsorContacts.mockResolvedValueOnce([
+      { id: 'sc-1', sponsorId: 'sponsor-1', contact: { firstName: 'Priya', lastName: 'Naidoo', email: '', phone: '' }, role: 'Account Manager', isPrimary: true, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    renderCard({
+      sponsors: [makeSponsor({ id: 'sponsor-1', name: 'Acme Bank', website: 'https://acme.example.com' })],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Acme Bank — Sponsor' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('https://acme.example.com')).toBeInTheDocument()
+    expect(await screen.findByText('Priya Naidoo')).toBeInTheDocument()
+    expect(screen.getByText('Account Manager')).toBeInTheDocument()
+    expect(listSponsorContacts).toHaveBeenCalledWith('club-1', 'sponsor-1')
   })
 
   it('renders a social link icon row only when the team has social links', () => {

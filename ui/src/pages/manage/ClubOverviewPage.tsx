@@ -308,6 +308,7 @@ export default function ClubOverviewPage() {
                     imageUrl={contact.photoUrl}
                     shape="circular"
                     label={`${name} — ${contact.role}`}
+                    name={name}
                     initials={initialsFromName(name)}
                     onClick={() => setOpenContactId(contact.id)}
                   />
@@ -338,6 +339,7 @@ export default function ClubOverviewPage() {
                   imageUrl={sponsor.logoUrl}
                   shape="rounded"
                   label={`${sponsor.name} — Sponsor`}
+                  name={sponsor.name}
                   initials={initialsFromName(sponsor.name)}
                   onClick={() => setOpenSponsorId(sponsor.id)}
                 />
