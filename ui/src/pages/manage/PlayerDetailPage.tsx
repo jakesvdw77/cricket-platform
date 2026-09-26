@@ -21,42 +21,15 @@ import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { Card } from '../../components/Card'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
-import { badgeSx } from '../../components/RecordCard'
+import { avatarSx, badgeSx } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayers, listPlayerSections } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
-import type { Gender, BattingStance, BowlingArm, BowlingType } from '../../api/playerApi'
 import { initialsFromName } from '../../utils/initials'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
+import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
 import { badgeFor, fullName } from './PlayerList'
-
-const GENDER_LABEL: Record<Gender, string> = {
-  MALE: 'Male',
-  FEMALE: 'Female',
-}
-
-const BATTING_STANCE_LABEL: Record<BattingStance, string> = {
-  RIGHT_HANDED: 'Right-handed',
-  LEFT_HANDED: 'Left-handed',
-}
-
-const BOWLING_ARM_LABEL: Record<BowlingArm, string> = {
-  RIGHT_ARM: 'Right-arm',
-  LEFT_ARM: 'Left-arm',
-}
-
-const BOWLING_TYPE_LABEL: Record<BowlingType, string> = {
-  FAST: 'Fast',
-  FAST_MEDIUM: 'Fast-medium',
-  MEDIUM_FAST: 'Medium-fast',
-  MEDIUM: 'Medium',
-  OFF_BREAK: 'Off break',
-  LEG_BREAK: 'Leg break',
-  ORTHODOX_SPIN: 'Orthodox spin',
-  WRIST_SPIN: 'Wrist spin / Chinaman',
-  GOOGLY: 'Googly',
-}
 
 // The uppercase "section label" heading every card on this page uses — copied from
 // RecordDetailScreen.tsx's own section-heading markup (docs/specs/060-player-detail-redesign.md)
@@ -153,19 +126,7 @@ export default function PlayerDetailPage() {
 
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar
-              src={player.photoUrl ?? undefined}
-              variant="circular"
-              sx={{
-                width: 56,
-                height: 56,
-                flex: 'none',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                color: 'primary.dark',
-              }}
-            >
+            <Avatar src={player.photoUrl ?? undefined} variant="circular" sx={avatarSx(56)}>
               {initialsFromName(fullName(player))}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>

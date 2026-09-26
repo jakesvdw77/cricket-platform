@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { RecordCard } from '../../components/RecordCard'
 import type { RecordCardBadge } from '../../components/RecordCard'
+import { PlayerCard } from '../../components/PlayerCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -13,8 +13,6 @@ import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
-import { initialsFromName } from '../../utils/initials'
-import { playerRecordFields } from '../../utils/playerRecordFields'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 
 // Exported for PlayerDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
@@ -28,23 +26,6 @@ export function badgeFor(player: Player): RecordCardBadge | undefined {
     return { label: 'Inactive', tone: 'muted' }
   }
   return undefined
-}
-
-// One RecordCard per player — Deactivate/Reactivate now lives on PlayerFormPage's own actions bar
-// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
-// with "View" as its only footer action.
-function PlayerCard({ player, sectionNames }: { player: Player; sectionNames: string[] }) {
-  return (
-    <RecordCard
-      title={fullName(player)}
-      avatar={{ imageUrl: player.photoUrl, fallback: initialsFromName(fullName(player)), shape: 'circular' }}
-      badge={badgeFor(player)}
-      fields={playerRecordFields(player)}
-      chips={sectionNames}
-      viewTo={`/manage/players/${player.id}`}
-      editTo={`/manage/players/${player.id}/edit`}
-    />
-  )
 }
 
 // Reads clubId from ManagerHome's Outlet context (docs/specs/020-club-manager-access.md), same
@@ -168,7 +149,14 @@ export default function PlayerList() {
           }}
         >
           {visiblePlayers.map((player) => (
-            <PlayerCard key={player.id} player={player} sectionNames={sectionNamesFor(player)} />
+            <PlayerCard
+              key={player.id}
+              player={player}
+              sectionNames={sectionNamesFor(player)}
+              badge={badgeFor(player)}
+              viewTo={`/manage/players/${player.id}`}
+              editTo={`/manage/players/${player.id}/edit`}
+            />
           ))}
         </Box>
       )}
