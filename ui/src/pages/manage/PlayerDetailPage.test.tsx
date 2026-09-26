@@ -119,6 +119,7 @@ describe('PlayerDetailPage', () => {
 
     // Section chip now lives in the header, not under a "Sections" heading (removed entirely).
     expect(await screen.findByText('U15')).toBeInTheDocument()
+    expect(screen.queryByText('Sections')).not.toBeInTheDocument()
 
     expect(screen.getByText('2010-04-12')).toBeInTheDocument()
     expect(screen.getByText('Male')).toBeInTheDocument()
