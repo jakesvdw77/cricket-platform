@@ -130,7 +130,14 @@ export function PlayerCard({ player, sectionNames, badge, viewTo, editTo }: Play
               {sectionNames.length > 1 && (
                 <Chip size="small" variant="outlined" label={`+${sectionNames.length - 1}`} />
               )}
-              {badge && <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} />}
+              {badge && (
+                <Chip
+                  size="small"
+                  label={badge.label}
+                  variant={badge.tone === 'neutral' ? 'outlined' : 'filled'}
+                  sx={badgeSx(badge.tone)}
+                />
+              )}
             </Stack>
           )}
         </Stack>
