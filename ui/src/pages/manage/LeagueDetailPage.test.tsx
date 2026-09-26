@@ -245,24 +245,53 @@ describe('LeagueDetailPage', () => {
     expect(listLeagues).not.toHaveBeenCalled()
   })
 
-  it('loads the matching league and renders its Details fields read-only', async () => {
+  // docs/specs/062-league-detail-redesign.md: format/Playing XI size/age range move out of a
+  // "Details" section entirely and render as chips directly under the league's name — there is no
+  // longer a "Details" heading that owns these three facts.
+  it('loads the matching league and renders Playing XI size and age range as header chips, with the header Edit button pointing at the league\'s edit route', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' }), makeLeague({ id: 'league-2' })])
 
     renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
 
     expect(await screen.findByRole('heading', { name: 'Internal League' })).toBeInTheDocument()
     expect(listLeagues).toHaveBeenCalledWith('test-club-id')
-    expect(screen.getByText('11')).toBeInTheDocument()
+    expect(screen.getByText('Playing XI: 11')).toBeInTheDocument()
     expect(screen.getByText('13–17')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 
-    expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
   })
 
-  // docs/specs/049-record-list-edit-action-rollout.md (amendment, item 16): the Affiliated Teams
-  // card now passes editTo alongside viewTo, rendering View and Edit side by side — mirrors
-  // MatchList.test.tsx's own View+Edit precedent.
-  it('renders affiliated teams for the default season as View and Edit cards, both pointing at the team\'s own routes', async () => {
+  // docs/specs/062-league-detail-redesign.md Acceptance Criteria: the header's teams/fixtures count
+  // chip is deliberately re-derived from this page's own selected-season affiliationsForSeason/
+  // matchesQuery data, not League.currentSeasonTeamCount/currentSeasonLabel — those reflect the
+  // club's own "current" season specifically, which can differ from whichever season this page's
+  // picker has selected. currentSeasonTeamCount is set to a value the real season-scoped data
+  // contradicts, to prove the chip isn't reading it.
+  it('computes the header teams/fixtures count chip from the selected season\'s own data, not league.currentSeasonTeamCount', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', currentSeasonTeamCount: 99, currentSeasonLabel: '2099' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listLeagueAffiliations.mockResolvedValueOnce([makeAffiliation({ teamId: 'team-1', seasonId: 'season-1' })])
+    listMatches.mockResolvedValueOnce({
+      content: [makeMatch({ id: 'match-1' })],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 20,
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(await screen.findByText('1 team · 1 fixture')).toBeInTheDocument()
+    expect(screen.queryByText(/99/)).not.toBeInTheDocument()
+  })
+
+  // docs/specs/062-league-detail-redesign.md: the new page-local LeagueTeamTile has no Edit action
+  // on the tile itself — Edit lives one click away on the team's own detail page. The league's own
+  // header Edit button (asserted above) is the only Edit action this page renders.
+  it('renders affiliated teams for the default season as LeagueTeamTiles linking to the team\'s own detail page, with no Edit action on the tile', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1', name: '1st XI' })])
@@ -271,15 +300,16 @@ describe('LeagueDetailPage', () => {
     renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.getByText('Teams')).toBeInTheDocument()
 
     expect(await screen.findByRole('link', { name: '1st XI' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1',
     )
-    // The League's own "Edit" action (RecordDetailScreen's own header link) is also present, so
-    // this asserts containment rather than an exact-length match.
+    // Only the league's own header Edit link is present — no per-tile Edit link into the team's
+    // edit route.
     const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
-    expect(editLinks).toContain('/manage/sections/section-1/teams/team-1/edit')
+    expect(editLinks).toEqual(['/manage/fixtures/leagues/league-1/edit'])
   })
 
   it('renders an error state when the matching league id is not in the fetched list', async () => {
@@ -302,7 +332,27 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Affiliations')).not.toBeInTheDocument()
   })
 
-  it('renders a new Fixtures section showing LeagueFixtures for the selected season', async () => {
+  // docs/specs/062-league-detail-redesign.md: Schedule is now a visually-distinguished hero Card,
+  // the first thing rendered below the header, ahead of Details/Contacts/Teams/Playing Conditions.
+  it('renders the Schedule hero card first, ahead of Details/Contacts/Teams/Playing Conditions', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    const scheduleHeading = screen.getByText('Schedule')
+    const detailsHeading = screen.getByText('Details')
+    const contactsHeading = screen.getByText('Contacts')
+    const teamsHeading = screen.getByText('Teams')
+    const playingConditionsHeading = screen.getByText('Playing Conditions')
+
+    ;[detailsHeading, contactsHeading, teamsHeading, playingConditionsHeading].forEach((heading) => {
+      expect(scheduleHeading.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+  })
+
+  it('renders the Schedule hero showing LeagueFixtures for the selected season', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', name: '1st XI' })])
@@ -317,7 +367,7 @@ describe('LeagueDetailPage', () => {
     renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Internal League' })
-    expect(screen.getByText('Fixtures')).toBeInTheDocument()
+    expect(screen.getByText('Schedule')).toBeInTheDocument()
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
     expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
     expect(listMatches).toHaveBeenCalledWith(
@@ -326,7 +376,7 @@ describe('LeagueDetailPage', () => {
     )
   })
 
-  it('renders the LeagueFixtures empty state in the Fixtures section when the season has no matches', async () => {
+  it('renders the LeagueFixtures empty state in the Schedule hero when the season has no matches', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
 
@@ -395,12 +445,12 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Next match')).not.toBeInTheDocument()
   })
 
-  // docs/specs/051-league-schedule-sharing.md item 7: the Fixtures section's own "note" slot
-  // Share button opens ShareScheduleDialog, rather than widening RecordDetailScreen's own
-  // link-only secondaryActions contract. The Playing Conditions section (moved to right after
-  // Details, ahead of Teams/Fixtures, per user request) renders its own independent Share button
-  // first on the page — the Fixtures section's own Share button is the second of the two.
-  it('opens ShareScheduleDialog from the Fixtures section\'s Share button', async () => {
+  // docs/specs/051-league-schedule-sharing.md item 7 / docs/specs/062-league-detail-redesign.md:
+  // the Schedule hero's own Share button opens ShareScheduleDialog. The hero now renders first on
+  // the page (ahead of Details/Contacts/Teams/Playing Conditions), so its Share button is the
+  // first of the two "Share" buttons in DOM order — Playing Conditions' own Share button, now last
+  // on the page, is the second.
+  it('opens ShareScheduleDialog from the Schedule hero\'s Share button', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
@@ -411,7 +461,7 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
 
     const shareButtons = screen.getAllByRole('button', { name: 'Share' })
-    await user.click(shareButtons[1])
+    await user.click(shareButtons[0])
 
     expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
     expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
@@ -419,9 +469,9 @@ describe('LeagueDetailPage', () => {
 
   // docs/specs/052-league-playing-conditions.md: a second, independent Share flow — the Playing
   // Conditions section's own captain-summary share, opening PlayingConditionsShareDialog without
-  // ever touching the Fixtures section's own ShareScheduleDialog/shareOpen state. This section now
-  // renders right after Details (ahead of Teams/Fixtures), so its Share button is the first of the
-  // two on the page.
+  // ever touching the Schedule hero's own ShareScheduleDialog/shareOpen state. Playing Conditions
+  // now renders last on the page (docs/specs/062-league-detail-redesign.md), so its Share button
+  // is the second of the two on the page.
   it('renders a Playing Conditions section with its own independent Share button', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
@@ -435,7 +485,7 @@ describe('LeagueDetailPage', () => {
 
     const shareButtons = screen.getAllByRole('button', { name: 'Share' })
     expect(shareButtons).toHaveLength(2)
-    await user.click(shareButtons[0])
+    await user.click(shareButtons[1])
 
     expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
     expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
@@ -502,9 +552,10 @@ describe('LeagueDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'View full document' })).not.toBeInTheDocument()
   })
 
-  // docs/specs/053-league-extended-profile.md: phone/email/website DetailFieldRows, the
-  // SocialLinksRow, and the format Chip in the Details section's note slot — mirroring
-  // SponsorDetailPage.test.tsx's equivalent contact-fields assertions.
+  // docs/specs/053-league-extended-profile.md: phone/email/website DetailFieldRows and the
+  // SocialLinksRow inside the Details card, and the format Chip in the header's chip row
+  // (docs/specs/062-league-detail-redesign.md) — mirroring SponsorDetailPage.test.tsx's
+  // equivalent contact-fields assertions.
   describe('extended profile fields', () => {
     it('renders phone/email/website rows, the social links row, and the format chip when all are set', async () => {
       listLeagues.mockResolvedValueOnce([
@@ -556,23 +607,11 @@ describe('LeagueDetailPage', () => {
     })
   })
 
-  // docs/specs/054-league-contacts.md: the new, last Contacts section — same list-plus-RecordCard-
-  // grid shape as the Teams section above, read-only (no inline "Add", per the plan's item 7).
+  // docs/specs/062-league-detail-redesign.md: Contacts is rebuilt from a full-width RecordCard grid
+  // into a compact RecordIconButton icon row + RecordQuickViewDialog, paired beside Details in the
+  // two-column row — same pattern TeamDetailPage.test.tsx/ClubOverviewPage.test.tsx already assert
+  // for their own Contacts cards.
   describe('Contacts section', () => {
-    it('renders the Contacts section heading last, after Fixtures', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
-
-      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
-
-      await screen.findByRole('heading', { name: 'Internal League' })
-      const fixturesHeading = screen.getByText('Fixtures')
-      const contactsHeading = await screen.findByText('Contacts')
-
-      expect(
-        fixturesHeading.compareDocumentPosition(contactsHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    })
-
     it('renders "No contacts yet for this league." when the league has no contacts', async () => {
       listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
       listLeagueContacts.mockResolvedValue([])
@@ -583,25 +622,27 @@ describe('LeagueDetailPage', () => {
       expect(await screen.findByText('No contacts yet for this league.')).toBeInTheDocument()
     })
 
-    it('renders each contact as a card with Role/Email/Phone fields, and View/Edit links into the League Contact routes', async () => {
+    it('opens the Contacts quick-view dialog with Role/Email/Phone fields on click, edit route intact', async () => {
+      const user = userEvent.setup()
       listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
-      listLeagueContacts.mockResolvedValue([
-        makeContact({ id: 'contact-1', role: 'League Administrator' }),
-      ])
+      listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1', role: 'League Administrator' })])
 
       renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
 
       await screen.findByRole('heading', { name: 'Internal League' })
       expect(listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
-      expect(await screen.findByRole('link', { name: 'Jane Smith' })).toBeInTheDocument()
-      expect(screen.getByText('League Administrator')).toBeInTheDocument()
+
+      // The icon row renders a button (RecordIconButton), not a link — accessible name combines
+      // the contact's full name and role, same convention as TeamDetailPage's own Contacts card.
+      await user.click(await screen.findByRole('button', { name: 'Jane Smith — League Administrator' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
       expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
-
-      const links = screen.getAllByRole('link', { name: 'Jane Smith' }).map((link) => link.getAttribute('href'))
-      expect(links).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1')
-      const editLinks = screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))
-      expect(editLinks).toContain('/manage/fixtures/leagues/league-1/contacts/contact-1/edit')
+      expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+        'href',
+        '/manage/fixtures/leagues/league-1/contacts/contact-1/edit',
+      )
     })
   })
 })
