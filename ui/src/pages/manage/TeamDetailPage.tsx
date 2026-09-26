@@ -14,20 +14,19 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
-import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
+import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
 import { badgeSx } from '../../components/RecordCard'
 import { listTeamsForClub } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { listTeamContacts } from '../../api/teamContactApi'
 import { listTeamSponsors } from '../../api/teamSponsorApi'
-import { listSponsorContacts } from '../../api/sponsorContactApi'
 import { listSquad } from '../../api/teamSquadApi'
 import type { SquadMember } from '../../api/teamSquadApi'
 import { listSeasons } from '../../api/seasonApi'
@@ -185,14 +184,6 @@ export default function TeamDetailPage() {
     queryKey: ['managed-club', clubId, 'sections', sectionId, 'teams', teamId, 'sponsors'],
     queryFn: () => listTeamSponsors(clubId as string, sectionId as string, teamId as string),
     enabled: Boolean(clubId) && Boolean(sectionId) && Boolean(teamId),
-  })
-
-  // Only fetched once the Sponsor quick-view dialog is actually open — real user feedback that
-  // a sponsor's own named contacts should be visible from here too, not just website/email.
-  const sponsorContactsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'sponsors', openSponsorId, 'contacts'],
-    queryFn: () => listSponsorContacts(clubId as string, openSponsorId as string),
-    enabled: Boolean(clubId) && Boolean(openSponsorId),
   })
 
   const seasonsQuery = useQuery({
@@ -473,47 +464,7 @@ export default function TeamDetailPage() {
         editTo={selectedContact ? `/manage/club-contacts/${selectedContact.contact.id}/edit` : '/manage/club-contacts'}
       />
 
-      <RecordQuickViewDialog
-        open={Boolean(selectedSponsor)}
-        onClose={() => setOpenSponsorId(null)}
-        avatar={{
-          imageUrl: selectedSponsor?.logoUrl,
-          fallback: initialsFromName(selectedSponsor ? selectedSponsor.name : ''),
-          shape: 'rounded',
-        }}
-        title={selectedSponsor ? selectedSponsor.name : ''}
-        fields={
-          selectedSponsor
-            ? [
-                { icon: <LanguageOutlinedIcon />, label: 'Website', value: selectedSponsor.website ?? 'Not set' },
-                { icon: <EmailOutlinedIcon />, label: 'Email', value: selectedSponsor.email ?? 'Not set' },
-                ...((sponsorContactsQuery.data ?? []).length > 0
-                  ? [
-                      {
-                        icon: <GroupsOutlinedIcon />,
-                        label: 'Sponsor Contacts',
-                        value: (
-                          <Stack spacing={1}>
-                            {(sponsorContactsQuery.data ?? []).map((sponsorContact) => (
-                              <Box key={sponsorContact.id}>
-                                <Typography variant="body2" fontWeight={600} component="div">
-                                  {sponsorContact.contact.firstName} {sponsorContact.contact.lastName}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {sponsorContact.role}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Stack>
-                        ),
-                      },
-                    ]
-                  : [])
-              ]
-            : []
-        }
-        editTo={selectedSponsor ? `/manage/sponsors/${selectedSponsor.id}/edit` : '/manage/sponsors'}
-      />
+      <SponsorQuickViewDialog clubId={clubId} sponsor={selectedSponsor} onClose={() => setOpenSponsorId(null)} />
     </Box>
   )
 }
