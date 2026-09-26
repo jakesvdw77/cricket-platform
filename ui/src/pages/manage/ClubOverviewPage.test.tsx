@@ -216,7 +216,7 @@ describe('ClubOverviewPage', () => {
 
       await screen.findByRole('heading', { name: 'Riverside Cricket Club' })
       const avatar = document.querySelector('.MuiAvatar-root')
-      expect(avatar).toHaveTextContent('RI')
+      expect(avatar).toHaveTextContent('RC')
       expect(avatar?.querySelector('img')).not.toBeInTheDocument()
     })
   })
