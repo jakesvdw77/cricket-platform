@@ -2,21 +2,13 @@ import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { Avatar, Box, Divider, IconButton, Menu, MenuItem, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { initialsFromName } from '../../utils/initials'
 
 export interface AvatarMenuProps {
   name: string
   email?: string
   profileTo?: string
   onLogout: () => void
-}
-
-function initialsOf(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 }
 
 export function AvatarMenu({ name, email, profileTo = '/profile', onLogout }: AvatarMenuProps) {
@@ -29,7 +21,7 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout }: Av
     <>
       <IconButton onClick={handleOpen} aria-label="Account menu" size="small">
         <Avatar sx={{ width: 32, height: 32, fontSize: '0.75rem', fontWeight: 600, bgcolor: 'primary.main' }}>
-          {initialsOf(name)}
+          {initialsFromName(name)}
         </Avatar>
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
