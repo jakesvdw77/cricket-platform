@@ -1,5 +1,5 @@
 import { Avatar, ButtonBase, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { avatarSx } from '../RecordCard'
 
 export interface RecordIconButtonProps {
   imageUrl?: string | null
@@ -30,18 +30,7 @@ export function RecordIconButton({ imageUrl, shape, label, name, initials, onCli
       aria-label={label}
       sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, p: 0.5, borderRadius: 1, width: 84 }}
     >
-      <Avatar
-        src={imageUrl ?? undefined}
-        variant={shape}
-        sx={{
-          width: 44,
-          height: 44,
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-          color: 'primary.dark',
-        }}
-      >
+      <Avatar src={imageUrl ?? undefined} variant={shape} sx={avatarSx(44, '0.8125rem')}>
         {initials}
       </Avatar>
       <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%' }}>

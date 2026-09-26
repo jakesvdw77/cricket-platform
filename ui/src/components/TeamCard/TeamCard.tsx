@@ -13,7 +13,6 @@ import {
   Typography,
   Button as MuiButton,
 } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
@@ -22,7 +21,7 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
-import { badgeSx } from '../RecordCard'
+import { avatarSx, badgeSx } from '../RecordCard'
 import type { RecordCardBadge } from '../RecordCard'
 import { SocialLinksRow } from '../marketing/SocialLinksRow'
 import { SponsorQuickViewDialog } from '../SponsorQuickViewDialog'
@@ -120,19 +119,7 @@ export function TeamCard({
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar
-              src={team.logoUrl ?? undefined}
-              variant="rounded"
-              sx={{
-                width: 40,
-                height: 40,
-                flex: 'none',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                color: 'primary.dark',
-              }}
-            >
+            <Avatar src={team.logoUrl ?? undefined} variant="rounded" sx={avatarSx(56)}>
               {initialsFromName(team.name)}
             </Avatar>
             <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
@@ -188,18 +175,7 @@ export function TeamCard({
                 aria-label={`${sponsor.name} — Sponsor`}
                 sx={{ borderRadius: 1 }}
               >
-                <Avatar
-                  src={sponsor.logoUrl ?? undefined}
-                  variant="rounded"
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                    color: 'primary.dark',
-                  }}
-                >
+                <Avatar src={sponsor.logoUrl ?? undefined} variant="rounded" sx={avatarSx(28, '0.6875rem')}>
                   {initialsFromName(sponsor.name)}
                 </Avatar>
               </ButtonBase>

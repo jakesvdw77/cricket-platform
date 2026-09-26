@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { Avatar, Box, Divider, IconButton, Menu, MenuItem, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { avatarSx } from '../RecordCard'
 
 export interface AvatarMenuProps {
   name: string
@@ -28,9 +29,7 @@ export function AvatarMenu({ name, email, profileTo = '/profile', onLogout }: Av
   return (
     <>
       <IconButton onClick={handleOpen} aria-label="Account menu" size="small">
-        <Avatar sx={{ width: 32, height: 32, fontSize: '0.75rem', fontWeight: 600, bgcolor: 'primary.main' }}>
-          {initialsOf(name)}
-        </Avatar>
+        <Avatar sx={avatarSx(32, '0.75rem')}>{initialsOf(name)}</Avatar>
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
         <Box sx={{ px: 2, py: 1, minWidth: 180 }}>

@@ -21,7 +21,7 @@ import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
-import { badgeSx } from '../../components/RecordCard'
+import { avatarSx, badgeSx } from '../../components/RecordCard'
 import { listTeamsForClub } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
@@ -78,19 +78,7 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <Avatar
-          src={member.photoUrl ?? undefined}
-          variant="circular"
-          sx={{
-            width: 40,
-            height: 40,
-            flex: 'none',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-            color: 'primary.dark',
-          }}
-        >
+        <Avatar src={member.photoUrl ?? undefined} variant="circular" sx={avatarSx(40, '0.8125rem')}>
           {initialsFromName(playerName)}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
@@ -277,19 +265,7 @@ export default function TeamDetailPage() {
 
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar
-              src={team.logoUrl ?? undefined}
-              variant="rounded"
-              sx={{
-                width: 56,
-                height: 56,
-                flex: 'none',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                color: 'primary.dark',
-              }}
-            >
+            <Avatar src={team.logoUrl ?? undefined} variant="rounded" sx={avatarSx(56)}>
               {initialsFromName(team.name)}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>

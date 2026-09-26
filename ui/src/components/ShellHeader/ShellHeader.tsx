@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Avatar, Box, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { AvatarMenu } from '../AvatarMenu'
+import { avatarSx } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 
 export interface ShellHeaderProps {
@@ -56,15 +56,7 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
           <Avatar
             src={logoUrl ?? undefined}
             variant="rounded"
-            sx={{
-              width: dense ? 28 : 32,
-              height: dense ? 28 : 32,
-              flex: 'none',
-              fontSize: '0.6875rem',
-              fontWeight: 600,
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-              color: 'primary.dark',
-            }}
+            sx={avatarSx(dense ? 28 : 32, '0.6875rem')}
           >
             {initialsFromName(brand)}
           </Avatar>

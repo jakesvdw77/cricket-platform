@@ -5,6 +5,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import type { RecordCardAvatar, RecordCardBadge } from '../RecordCard'
+import { avatarSx } from '../RecordCard'
 import { PageHeaderBand } from '../PageHeaderBand'
 import { ContentCard } from '../ContentCard'
 
@@ -92,15 +93,7 @@ export function RecordDetailScreen({
               <Avatar
                 src={avatar.imageUrl ?? undefined}
                 variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'}
-                sx={{
-                  width: 56,
-                  height: 56,
-                  flex: 'none',
-                  fontSize: '1.125rem',
-                  fontWeight: 600,
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                  color: 'primary.dark',
-                }}
+                sx={avatarSx(56)}
               >
                 {avatar.fallback}
               </Avatar>

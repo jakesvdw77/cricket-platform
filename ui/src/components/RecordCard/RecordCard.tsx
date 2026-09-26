@@ -123,6 +123,24 @@ export interface RecordCardProps {
 // Shared by the singular `badge` and the plural `badges` below so both render identically —
 // extracted rather than duplicated inline once a second call site needed the exact same
 // tone-to-styling mapping (docs/specs/040-announce-team.md).
+// The shared solid-fill avatar treatment — real user feedback preferring AvatarMenu.tsx's
+// existing solid `primary.main` + white-text look over every other avatar site's independently
+// hand-rolled light tint (`alpha(primary.main, 0.14)` + `primary.dark`). `size` covers both list-
+// card and detail-header avatars alike (56px for a record's own primary avatar), `fontSize`
+// defaults to the size that pairs with a 56px avatar; smaller avatar contexts (icon grids, logo
+// rows, the account menu) pass their own existing fontSize explicitly.
+export function avatarSx(size: number, fontSize?: string) {
+  return {
+    width: size,
+    height: size,
+    flex: 'none' as const,
+    fontSize: fontSize ?? '1.125rem',
+    fontWeight: 600,
+    bgcolor: 'primary.main',
+    color: 'primary.contrastText',
+  }
+}
+
 export function badgeSx(tone: RecordCardBadgeTone) {
   if (tone === 'positive') {
     return {
@@ -199,15 +217,7 @@ export function RecordCard({
               <Avatar
                 src={avatar.imageUrl ?? undefined}
                 variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'}
-                sx={{
-                  width: 40,
-                  height: 40,
-                  flex: 'none',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                  color: 'primary.dark',
-                }}
+                sx={avatarSx(56)}
               >
                 {avatar.fallback}
               </Avatar>
