@@ -142,6 +142,6 @@ describe('ManagerHome', () => {
     renderManagerHome()
 
     expect(await screen.findByText('Riverside Cricket Club')).toBeInTheDocument()
-    expect(screen.getByText('RI')).toBeInTheDocument()
+    expect(screen.getByText('RC')).toBeInTheDocument()
   })
 })

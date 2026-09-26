@@ -127,10 +127,10 @@ describe('LeagueFixtures', () => {
     )
 
     expect(screen.getByText('Centurion Thursdays')).toBeInTheDocument()
-    // No <img> anywhere for the away side — the initials fallback ("CE", the first two letters of
-    // "Centurion Thursdays") renders as plain text inside the Avatar instead.
+    // No <img> anywhere for the away side — the initials fallback ("CT", first letter of each of
+    // "Centurion Thursdays"'s first two words) renders as plain text inside the Avatar instead.
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    expect(screen.getByText('CE')).toBeInTheDocument()
+    expect(screen.getByText('CT')).toBeInTheDocument()
   })
 
   it('groups matches under distinct date headings, ordering same-day matches earliest first', () => {

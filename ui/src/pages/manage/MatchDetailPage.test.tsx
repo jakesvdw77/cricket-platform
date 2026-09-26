@@ -305,7 +305,7 @@ describe('MatchDetailPage', () => {
     renderPage('/manage/fixtures/matches/match-1', 'test-club-id')
 
     expect(await screen.findByText('5 Available')).toBeInTheDocument()
-    for (const initials of ['JA', 'BO', 'AM', 'SA', 'LE']) {
+    for (const initials of ['JS', 'BJ', 'AL', 'SP', 'LN']) {
       expect(screen.getByText(initials)).toBeInTheDocument()
     }
     expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument()
