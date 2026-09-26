@@ -48,7 +48,7 @@ import { getPlayingConditions } from '../../api/leaguePlayingConditionsApi'
 import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { initialsFromName } from '../../utils/initials'
-import { fullName as contactFullName } from '../../utils/leagueContact'
+import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../utils/leagueContact'
 import { resolveNextMatchCountdown } from '../../utils/nextMatchCountdown'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
@@ -685,6 +685,14 @@ export default function LeagueDetailPage() {
         fields={
           selectedContact
             ? [
+                // docs/specs/062-league-detail-redesign.md's Contacts card drops the old RecordCard
+                // grid's persistent "Primary"/"Inactive" badge — this icon row has no badge slot to
+                // carry it. Restored here as a Status field inside the same on-click dialog Role/
+                // Email/Phone already require a click for, rather than silently losing the signal
+                // (a club admin could no longer tell who's the primary contact otherwise).
+                ...(contactBadgeFor(selectedContact)
+                  ? [{ icon: <StarOutlineOutlinedIcon />, label: 'Status', value: contactBadgeFor(selectedContact)!.label }]
+                  : []),
                 { icon: <BadgeOutlinedIcon />, label: 'Role', value: selectedContact.role },
                 { icon: <EmailOutlinedIcon />, label: 'Email', value: selectedContact.contact.email },
                 { icon: <PhoneOutlinedIcon />, label: 'Phone', value: selectedContact.contact.phone },

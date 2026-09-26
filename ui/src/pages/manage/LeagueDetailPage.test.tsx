@@ -312,6 +312,17 @@ describe('LeagueDetailPage', () => {
     expect(editLinks).toEqual(['/manage/fixtures/leagues/league-1/edit'])
   })
 
+  // docs/specs/062-league-detail-redesign.md Test Plan: the Active/Inactive badge (badgeFor(league),
+  // imported from LeagueList.tsx) renders in the header chip row when the league is inactive.
+  it('renders the Inactive badge in the header chip row when the league is inactive', async () => {
+    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', active: false })])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+  })
+
   it('renders an error state when the matching league id is not in the fetched list', async () => {
     listLeagues.mockResolvedValueOnce([makeLeague({ id: 'some-other-id' })])
 
@@ -605,6 +616,35 @@ describe('LeagueDetailPage', () => {
         expect(screen.queryByText(label)).not.toBeInTheDocument()
       })
     })
+
+    // docs/specs/062-league-detail-redesign.md: the header's age-range chip renders only when at
+    // least one of minAge/maxAge is set — the "unset" test above never covered this bound, since
+    // makeLeague()'s own defaults always set both.
+    it('renders no age-range chip when neither minAge nor maxAge is set', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', minAge: null, maxAge: null })])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      expect(screen.queryByText(/–/)).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/062-league-detail-redesign.md Acceptance Criteria: a league with none of format, age
+  // range, contacts, affiliated teams for the selected season, or seasons at all still renders the
+  // full page with no error — every card falls back to its own existing empty-state copy.
+  it('renders every card\'s empty-state fallback with no error when the league has no seasons, contacts, format, or age range set', async () => {
+    listLeagues.mockResolvedValueOnce([
+      makeLeague({ id: 'league-1', format: null, minAge: null, maxAge: null }),
+    ])
+
+    renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Internal League' })
+    expect(screen.getByText('No seasons yet — matches are scheduled for a league and a specific season.')).toBeInTheDocument()
+    expect(screen.getByText('No seasons yet — teams are affiliated to a league for a specific season.')).toBeInTheDocument()
+    expect(screen.getByText('No contacts yet for this league.')).toBeInTheDocument()
+    expect(screen.getByText('No Playing Conditions set for this season yet.')).toBeInTheDocument()
   })
 
   // docs/specs/062-league-detail-redesign.md: Contacts is rebuilt from a full-width RecordCard grid
@@ -643,6 +683,38 @@ describe('LeagueDetailPage', () => {
         'href',
         '/manage/fixtures/leagues/league-1/contacts/contact-1/edit',
       )
+    })
+
+    // docs/specs/062-league-detail-redesign.md: restores the old RecordCard grid's "Primary" badge
+    // (dropped by the icon row, which has no badge slot) as a Status field inside this same dialog —
+    // a standards-review finding, fixed here rather than silently shipped as a regression.
+    it('shows a Status field for the primary contact, and omits it for a non-primary one', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+      listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1', isPrimary: true })])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      await user.click(await screen.findByRole('button', { name: 'Jane Smith — League Administrator' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('Status')).toBeInTheDocument()
+      expect(screen.getByText('Primary')).toBeInTheDocument()
+    })
+
+    it('renders no Status field for a non-primary, active contact', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
+      listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1', isPrimary: false, active: true })])
+
+      renderPage('/manage/fixtures/leagues/league-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Internal League' })
+      await user.click(await screen.findByRole('button', { name: 'Jane Smith — League Administrator' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.queryByText('Status')).not.toBeInTheDocument()
     })
   })
 })
