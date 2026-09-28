@@ -11,6 +11,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
+import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import { NavTile } from '../../components/NavTile'
 
 interface ManagerCard {
@@ -51,6 +52,15 @@ const GROUPS: ManagerGroup[] = [
       { title: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: <GroupWorkOutlinedIcon /> },
       { title: 'Communication', description: 'Message the squad', to: '/manage/communication', icon: <ChatOutlinedIcon /> },
       { title: 'Availability Polls', description: "Ask who's available", to: '/manage/availability', icon: <EventAvailableOutlinedIcon /> },
+      // docs/specs/063-section-availability-and-flexible-squads.md Part A: a section-scoped ask
+      // for FLEXIBLE teams, alongside (not folded into) the per-match Availability Polls above.
+      // One shared round per section per day, covering both Morning/Afternoon brackets.
+      {
+        title: 'Section Availability',
+        description: "Ask a whole section who's available for the day",
+        to: '/manage/section-availability',
+        icon: <EventNoteOutlinedIcon />,
+      },
     ],
   },
 ]

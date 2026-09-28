@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Avatar, Box, Stack, Typography } from '@mui/material'
+import { Avatar, Box, MenuItem, Stack, Typography } from '@mui/material'
 import { Input } from '../Input'
 import { Button } from '../Button'
 import { MediaUpload } from '../MediaUpload'
@@ -8,6 +8,7 @@ import { SectionTreeSelect } from '../SectionTreeSelect'
 import { SocialLinksFields } from '../SocialLinksFields'
 import type { SocialLink } from '../marketing/SocialLinksRow'
 import type { Section } from '../../api/sectionApi'
+import type { SquadMode } from '../../api/teamApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see TeamFormPage), so its Save button targets this form via the native HTML
@@ -29,6 +30,10 @@ export interface TeamFormValues {
   abbreviation?: string | null
   groundName?: string | null
   socialLinks?: SocialLink[]
+  // docs/specs/063-section-availability-and-flexible-squads.md Part B: STATIC (today's season-squad
+  // model) by default; FLEXIBLE opts a team into a per-match squad built from section availability
+  // instead. Always sent on submit — the backend's CreateTeamRequest/UpdateTeamRequest require it.
+  squadMode: SquadMode
 }
 
 export interface TeamFormProps {
@@ -89,6 +94,7 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, activ
   const [abbreviation, setAbbreviation] = useState(initialValues?.abbreviation ?? '')
   const [groundName, setGroundName] = useState(initialValues?.groundName ?? '')
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(initialValues?.socialLinks ?? [])
+  const [squadMode, setSquadMode] = useState<SquadMode>(initialValues?.squadMode ?? 'STATIC')
   const [errors, setErrors] = useState<FormErrors>({})
 
   const requireSection = Boolean(sections)
@@ -125,6 +131,7 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, activ
       abbreviation: blankToNull(abbreviation),
       groundName: blankToNull(groundName),
       socialLinks,
+      squadMode,
     }
     onSubmit(payload)
   }
@@ -162,6 +169,20 @@ export function TeamForm({ initialValues, onSubmit, sections, clubLogoUrl, activ
             error={Boolean(errors.name)}
             helperText={errors.name ?? 'e.g. 1st XI'}
           />
+
+          {/* docs/specs/063-section-availability-and-flexible-squads.md Part B: the single switch
+              between 029's season-squad model and a per-match squad built from section
+              availability — placed right after Name, per the spec's own UI Requirements wording. */}
+          <Input
+            select
+            label="Squad mode"
+            value={squadMode}
+            onChange={(event) => setSquadMode(event.target.value as SquadMode)}
+            helperText="Flexible teams build their squad per match from section availability, instead of a season-long roster."
+          >
+            <MenuItem value="STATIC">Static season squad</MenuItem>
+            <MenuItem value="FLEXIBLE">Flexible per-match squad</MenuItem>
+          </Input>
 
           <Input
             label="Abbreviation"

@@ -384,6 +384,8 @@ export default function TeamFormPage() {
         abbreviation: payload.abbreviation,
         groundName: payload.groundName,
         socialLinks: payload.socialLinks,
+        // docs/specs/063-section-availability-and-flexible-squads.md Part B.
+        squadMode: payload.squadMode,
       }
       if (isEdit && teamId && sectionId) {
         return updateTeam(clubId as string, sectionId, teamId, teamPayload)
@@ -535,7 +537,9 @@ export default function TeamFormPage() {
   const squadQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSquadSeasonId, 'squad'],
     queryFn: () => listSquad(clubId as string, teamId as string, selectedSquadSeasonId),
-    enabled: Boolean(clubId) && Boolean(teamId) && isEdit && Boolean(selectedSquadSeasonId),
+    // docs/specs/063-section-availability-and-flexible-squads.md Part B: a FLEXIBLE team has no
+    // season squad at all — never fetched, since this tab renders the explanatory panel instead.
+    enabled: Boolean(clubId) && Boolean(teamId) && isEdit && Boolean(selectedSquadSeasonId) && team?.squadMode !== 'FLEXIBLE',
   })
 
   // Sorted by name regardless of the server's own row order — direct user feedback that the
@@ -697,6 +701,7 @@ export default function TeamFormPage() {
                   abbreviation: team.abbreviation,
                   groundName: team.groundName,
                   socialLinks: team.socialLinks,
+                  squadMode: team.squadMode,
                 }
               : undefined
           }
@@ -818,7 +823,19 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {showContactsAndSponsors && activeTab === 5 && (
+        {/* docs/specs/063-section-availability-and-flexible-squads.md Part B: a FLEXIBLE team has
+            no season-long roster at all — this tab becomes a short explanatory panel instead of
+            the season-squad UI below, rather than rendering it empty/broken. */}
+        {showContactsAndSponsors && activeTab === 5 && team?.squadMode === 'FLEXIBLE' && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <Typography variant="body2" color="text.secondary">
+              This team builds its squad per match, from section availability — see a specific
+              match's own Match Squad tab.
+            </Typography>
+          </Box>
+        )}
+
+        {showContactsAndSponsors && activeTab === 5 && team?.squadMode !== 'FLEXIBLE' && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             {(seasonsQuery.data ?? []).length === 0 ? (
               <Typography variant="body2" color="text.secondary">
