@@ -11,6 +11,7 @@ import com.cricketlegend.domain.LeagueAffiliation;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -57,7 +58,7 @@ class LeagueAffiliationRepositoryTest {
     private Team savedTeam(UUID clubId) {
         Section section = sectionRepository.save(Section.builder().clubId(clubId).name("Men").active(true).build());
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).build());
+                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
     }
 
     private League savedLeague(UUID clubId) {

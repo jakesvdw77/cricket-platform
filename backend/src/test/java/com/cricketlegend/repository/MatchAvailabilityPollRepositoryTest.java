@@ -10,6 +10,7 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,7 +59,7 @@ class MatchAvailabilityPollRepositoryTest {
     private Team savedTeam(UUID clubId) {
         Section section = sectionRepository.save(Section.builder().clubId(clubId).name("Men").active(true).build());
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).build());
+                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
     }
 
     private Season savedSeason(UUID clubId) {
@@ -107,7 +108,7 @@ class MatchAvailabilityPollRepositoryTest {
         Team homeTeam = savedTeam(club.getId());
         Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Women").active(true).build());
         Team awayTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("2nd XI").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("2nd XI").active(true).squadMode(SquadMode.STATIC).build());
         Season season = savedSeason(club.getId());
         Match match = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(homeTeam.getId())
                 .awayTeamId(awayTeam.getId()).seasonId(season.getId()).matchDate(Instant.now()).active(true).build());

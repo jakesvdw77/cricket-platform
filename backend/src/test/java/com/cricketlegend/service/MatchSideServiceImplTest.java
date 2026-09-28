@@ -34,9 +34,11 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
+import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.SeasonRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.impl.MatchSideServiceImpl;
 import java.time.Instant;
@@ -79,6 +81,12 @@ class MatchSideServiceImplTest {
     private TeamSquadMemberRepository teamSquadMemberRepository;
 
     @Mock
+    private MatchSquadMemberRepository matchSquadMemberRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
     private LeagueRepository leagueRepository;
 
     @Mock
@@ -104,6 +112,7 @@ class MatchSideServiceImplTest {
     void setUp() {
         service = new MatchSideServiceImpl(
                 matchRepository, matchSideRepository, matchSidePlayerRepository, teamSquadMemberRepository,
+                matchSquadMemberRepository, teamRepository,
                 leagueRepository, seasonRepository, playerProfileRepository, personRepository,
                 matchSideMapper, accessService);
         org.mockito.Mockito.lenient().when(matchSideMapper.toDto(any(), any())).thenReturn(null);

@@ -22,6 +22,7 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
@@ -810,7 +811,7 @@ class MatchSideControllerIntegrationTest {
     }
 
     private Team newTeam(UUID clubId, UUID sectionId, String name) {
-        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).build();
+        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).squadMode(SquadMode.STATIC).build();
     }
 
     private Season newSeason(UUID clubId, String label) {

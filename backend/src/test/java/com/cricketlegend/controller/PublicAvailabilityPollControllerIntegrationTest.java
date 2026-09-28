@@ -14,6 +14,7 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
@@ -91,7 +92,7 @@ class PublicAvailabilityPollControllerIntegrationTest {
                 Club.builder().name("Riverside CC").slug("riverside-cc").status(ClubStatus.ACTIVE).build());
         Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
         Team team = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
         Season season = seasonRepository.save(Season.builder().clubId(club.getId()).label("2026")
                 .startDate(LocalDate.of(2026, 1, 1)).endDate(LocalDate.of(2026, 12, 31)).active(true).build());
         Match match = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(team.getId())

@@ -19,6 +19,7 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Sponsor;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubContactRepository;
 import com.cricketlegend.repository.ClubRepository;
@@ -57,7 +58,8 @@ class TeamControllerIntegrationTest {
 
     private static final String TEAM_BODY = """
             {
-                "name": "1st XI"
+                "name": "1st XI",
+                "squadMode": "STATIC"
             }
             """;
 
@@ -68,7 +70,8 @@ class TeamControllerIntegrationTest {
                 "groundName": "Irene Country Club",
                 "socialLinks": [
                     { "platform": "facebook", "url": "https://facebook.com/riverside-1st-xi" }
-                ]
+                ],
+                "squadMode": "STATIC"
             }
             """;
 
@@ -132,7 +135,8 @@ class TeamControllerIntegrationTest {
 
         String updateBody = """
                 {
-                    "name": "1st XI (renamed)"
+                    "name": "1st XI (renamed)",
+                    "squadMode": "STATIC"
                 }
                 """;
         mockMvc.perform(put(
@@ -391,7 +395,8 @@ class TeamControllerIntegrationTest {
         String createBody = """
                 {
                     "name": "1st XI",
-                    "logoUrl": "https://example.com/logo.png"
+                    "logoUrl": "https://example.com/logo.png",
+                    "squadMode": "STATIC"
                 }
                 """;
         String createResponse = mockMvc.perform(post(
@@ -411,7 +416,8 @@ class TeamControllerIntegrationTest {
         String updateBody = """
                 {
                     "name": "1st XI",
-                    "logoUrl": "https://example.com/new-logo.png"
+                    "logoUrl": "https://example.com/new-logo.png",
+                    "squadMode": "STATIC"
                 }
                 """;
         mockMvc.perform(put(
@@ -428,7 +434,8 @@ class TeamControllerIntegrationTest {
         String clearBody = """
                 {
                     "name": "1st XI",
-                    "logoUrl": null
+                    "logoUrl": null,
+                    "squadMode": "STATIC"
                 }
                 """;
         mockMvc.perform(put(
@@ -481,7 +488,8 @@ class TeamControllerIntegrationTest {
                     "groundName": "Riverside Oval",
                     "socialLinks": [
                         { "platform": "instagram", "url": "https://instagram.com/riverside-1st-xi" }
-                    ]
+                    ],
+                    "squadMode": "STATIC"
                 }
                 """;
         mockMvc.perform(put(
@@ -542,7 +550,8 @@ class TeamControllerIntegrationTest {
                     "groundName": "Riverside Oval",
                     "socialLinks": [
                         { "platform": "twitter", "url": "https://twitter.com/riverside-1st-xi" }
-                    ]
+                    ],
+                    "squadMode": "STATIC"
                 }
                 """;
         mockMvc.perform(put(
@@ -1021,7 +1030,7 @@ class TeamControllerIntegrationTest {
     }
 
     private Team newTeam(UUID clubId, UUID sectionId, String name) {
-        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).build();
+        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).squadMode(SquadMode.STATIC).build();
     }
 
     private ClubContact newClubContact(UUID clubId) {

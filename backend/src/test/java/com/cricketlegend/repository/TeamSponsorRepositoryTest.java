@@ -8,6 +8,7 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Sponsor;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSponsor;
 import java.util.UUID;
@@ -57,7 +58,7 @@ class TeamSponsorRepositoryTest {
 
     private Team savedTeam(UUID clubId, UUID sectionId) {
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(sectionId).name("1st XI").active(true).build());
+                Team.builder().clubId(clubId).sectionId(sectionId).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
     }
 
     private Sponsor savedSponsor(UUID clubId) {

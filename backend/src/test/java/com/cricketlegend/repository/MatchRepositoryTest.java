@@ -11,6 +11,7 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.service.MatchService;
@@ -109,9 +110,9 @@ class MatchRepositoryTest {
         Section juniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
         Section open = sectionRepository.save(Section.builder().clubId(club.getId()).name("Open").active(true).build());
         Team juniorsTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("U15").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("U15").active(true).squadMode(SquadMode.STATIC).build());
         Team openTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(open.getId()).name("1st XI").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(open.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
         Instant now = Instant.now();
         Match inScopeHome = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(juniorsTeam.getId())
                 .awayTeamName("Away Occasionals").seasonId(season.getId()).matchDate(now).active(true).build());
@@ -166,9 +167,9 @@ class MatchRepositoryTest {
         Section juniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
         Section open = sectionRepository.save(Section.builder().clubId(club.getId()).name("Open").active(true).build());
         Team juniorsTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("U15").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("U15").active(true).squadMode(SquadMode.STATIC).build());
         Team openTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(open.getId()).name("1st XI").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(open.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
         Instant now = Instant.now();
         Match inScopeHome = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(juniorsTeam.getId())
                 .awayTeamName("Away Occasionals").seasonId(season.getId()).matchDate(now).active(true).build());
@@ -197,7 +198,7 @@ class MatchRepositoryTest {
         Season season = savedSeason(club.getId());
         Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Open").active(true).build());
         Team riverside = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("Riverside 1st XI").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("Riverside 1st XI").active(true).squadMode(SquadMode.STATIC).build());
         Match matchWithRealTeam = matchRepository.save(Match.builder().clubId(club.getId())
                 .homeTeamId(riverside.getId()).awayTeamName("Away Occasionals").seasonId(season.getId())
                 .matchDate(Instant.now()).active(true).build());
@@ -257,7 +258,7 @@ class MatchRepositoryTest {
         Season season = savedSeason(club.getId());
         Section juniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
         Team juniorsTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("Juniors Riverside").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(juniors.getId()).name("Juniors Riverside").active(true).squadMode(SquadMode.STATIC).build());
         League league = leagueRepository.save(League.builder().clubId(club.getId()).name("Junior League")
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
         Instant tomorrow = Instant.now().plus(1, ChronoUnit.DAYS);
@@ -299,9 +300,9 @@ class MatchRepositoryTest {
         Section sectionA = sectionRepository.save(Section.builder().clubId(club.getId()).name("Section A").active(true).build());
         Section sectionB = sectionRepository.save(Section.builder().clubId(club.getId()).name("Section B").active(true).build());
         Team teamAlpha = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(sectionA.getId()).name("Alpha").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(sectionA.getId()).name("Alpha").active(true).squadMode(SquadMode.STATIC).build());
         Team teamBeta = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(sectionB.getId()).name("Beta").active(true).build());
+                Team.builder().clubId(club.getId()).sectionId(sectionB.getId()).name("Beta").active(true).squadMode(SquadMode.STATIC).build());
         League leagueA = leagueRepository.save(League.builder().clubId(club.getId()).name("League A")
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
         League leagueB = leagueRepository.save(League.builder().clubId(club.getId()).name("League B")
@@ -321,5 +322,43 @@ class MatchRepositoryTest {
         assertThat(result.leagueIds()).containsExactly(leagueA.getId());
         assertThat(result.seasonIds()).containsExactly(seasonA.getId());
         assertThat(result.teamIds()).containsExactlyInAnyOrder(teamAlpha.getId(), teamBeta.getId());
+    }
+
+    // --- 063 (fixture-group-selection revision): findUpcomingFlexibleMatchesBySection ---
+
+    @Test
+    void findUpcomingFlexibleMatchesBySectionOnlyReturnsFutureFlexibleTeamMatchesInThatSection() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section juniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Juniors").active(true).build());
+        Section seniors = sectionRepository.save(Section.builder().clubId(club.getId()).name("Seniors").active(true).build());
+        Team flexibleJuniorTeam = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(juniors.getId())
+                .name("U15 Colts").active(true).squadMode(SquadMode.FLEXIBLE).build());
+        Team staticJuniorTeam = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(juniors.getId())
+                .name("U15 Panthers").active(true).squadMode(SquadMode.STATIC).build());
+        Team flexibleSeniorTeam = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(seniors.getId())
+                .name("1st XI").active(true).squadMode(SquadMode.FLEXIBLE).build());
+        Instant now = Instant.now();
+
+        Match futureFlexibleJuniorMatch = matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(flexibleJuniorTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(now.plus(2, ChronoUnit.DAYS)).active(true).build());
+        // Past — excluded regardless of squad mode.
+        matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(flexibleJuniorTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(now.minus(2, ChronoUnit.DAYS)).active(true).build());
+        // Future, but STATIC team — excluded.
+        matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(staticJuniorTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(now.plus(3, ChronoUnit.DAYS)).active(true).build());
+        // Future, FLEXIBLE, but a different section — excluded.
+        matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamId(flexibleSeniorTeam.getId()).awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(now.plus(1, ChronoUnit.DAYS)).active(true).build());
+
+        List<Match> result =
+                matchRepository.findUpcomingFlexibleMatchesBySection(club.getId(), juniors.getId(), now);
+
+        assertThat(result).extracting(Match::getId).containsExactly(futureFlexibleJuniorMatch.getId());
     }
 }

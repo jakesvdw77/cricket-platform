@@ -13,6 +13,8 @@ import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.PlayerAvailability;
+import com.cricketlegend.domain.SquadMode;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
@@ -20,11 +22,13 @@ import com.cricketlegend.dto.PlayerAvailabilityRowDto;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.TeamSquadModeMismatchException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchAvailabilityPollMapper;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.MatchAvailabilityPollServiceImpl;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -65,6 +69,9 @@ class MatchAvailabilityPollServiceImplTest {
     private PlayerAvailabilityRepository playerAvailabilityRepository;
 
     @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
     private AvailabilityPollSquadResolver squadResolver;
 
     @Mock
@@ -83,6 +90,7 @@ class MatchAvailabilityPollServiceImplTest {
                 matchRepository,
                 matchAvailabilityPollRepository,
                 playerAvailabilityRepository,
+                teamRepository,
                 squadResolver,
                 matchAvailabilityPollMapper,
                 accessService);
@@ -166,6 +174,29 @@ class MatchAvailabilityPollServiceImplTest {
         assertThatThrownBy(() -> service.create(
                         authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId)))
                 .isInstanceOf(ConflictException.class);
+
+        verify(matchAvailabilityPollRepository, never()).save(any());
+    }
+
+    /**
+     * docs/specs/063-section-availability-and-flexible-squads.md's amendment to this endpoint: a
+     * per-match poll no longer applies once a team uses section-level availability instead.
+     */
+    @Test
+    void createReturns400WhenTheRequestedTeamIsFlexibleSquadMode() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID homeTeamId = UUID.randomUUID();
+        UUID awayTeamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match match = match(clubId, matchId, homeTeamId, awayTeamId, seasonId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        Team flexibleTeam = Team.builder().id(homeTeamId).clubId(clubId).squadMode(SquadMode.FLEXIBLE).build();
+        when(teamRepository.findById(homeTeamId)).thenReturn(Optional.of(flexibleTeam));
+
+        assertThatThrownBy(() -> service.create(
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId)))
+                .isInstanceOf(TeamSquadModeMismatchException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
     }
