@@ -5,6 +5,8 @@ import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.PlayerAvailability;
+import com.cricketlegend.domain.SquadMode;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.AvailabilityRespondentDto;
 import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollDto;
@@ -15,11 +17,13 @@ import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PollClosedException;
+import com.cricketlegend.exception.TeamSquadModeMismatchException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchAvailabilityPollMapper;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.AvailabilityPollSquadResolver;
 import com.cricketlegend.service.MatchAvailabilityPollService;
 import java.util.ArrayList;
@@ -50,6 +54,13 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link NotFoundException} and closed-poll {@link PollClosedException} rules as the public write
  * path ({@code PublicAvailabilityPollServiceImpl.setAvailability}), just under
  * {@code @access.canAdministerClub} instead of being unauthenticated.
+ *
+ * <p>Per docs/specs/063-section-availability-and-flexible-squads.md's amendment: {@link #create}
+ * gains one new validation — a {@code 032}-style per-match poll no longer applies once a team uses
+ * section-level availability, so it 400s ({@link TeamSquadModeMismatchException}) if {@code
+ * request.teamId()}'s {@code Team.squadMode == FLEXIBLE}. No {@code clubId} ownership check on
+ * that lookup — a poll's team can legitimately be a cross-club opponent, the same allowance
+ * {@code 029}/{@link AvailabilityPollSquadResolver} already document.
  */
 @Service
 public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollService {
@@ -57,6 +68,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     private final MatchRepository matchRepository;
     private final MatchAvailabilityPollRepository matchAvailabilityPollRepository;
     private final PlayerAvailabilityRepository playerAvailabilityRepository;
+    private final TeamRepository teamRepository;
     private final AvailabilityPollSquadResolver squadResolver;
     private final MatchAvailabilityPollMapper matchAvailabilityPollMapper;
     private final AccessService accessService;
@@ -65,12 +77,14 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             MatchRepository matchRepository,
             MatchAvailabilityPollRepository matchAvailabilityPollRepository,
             PlayerAvailabilityRepository playerAvailabilityRepository,
+            TeamRepository teamRepository,
             AvailabilityPollSquadResolver squadResolver,
             MatchAvailabilityPollMapper matchAvailabilityPollMapper,
             AccessService accessService) {
         this.matchRepository = matchRepository;
         this.matchAvailabilityPollRepository = matchAvailabilityPollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
+        this.teamRepository = teamRepository;
         this.squadResolver = squadResolver;
         this.matchAvailabilityPollMapper = matchAvailabilityPollMapper;
         this.accessService = accessService;
@@ -102,6 +116,12 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         if (!isHome && !isAway) {
             throw new ValidationException(
                     "teamId " + teamId + " is not one of this match's own home/away team ids");
+        }
+        Team team = teamRepository.findById(teamId).orElse(null);
+        if (team != null && team.getSquadMode() == SquadMode.FLEXIBLE) {
+            throw new TeamSquadModeMismatchException(
+                    "Team " + teamId + " uses section-level availability (FLEXIBLE squad mode); "
+                            + "a per-match poll does not apply");
         }
         if (matchAvailabilityPollRepository.existsByMatchIdAndTeamId(matchId, teamId)) {
             throw new ConflictException(

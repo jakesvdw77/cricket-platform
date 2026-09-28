@@ -8,6 +8,8 @@ import com.cricketlegend.domain.MatchSidePlayer;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.SquadMode;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.AddMatchSidePlayerRequest;
 import com.cricketlegend.dto.CreateMatchSideRequest;
 import com.cricketlegend.dto.MatchSideDto;
@@ -25,9 +27,11 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
+import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.SeasonRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.MatchSideService;
 import java.time.LocalDate;
@@ -58,6 +62,12 @@ import org.springframework.transaction.annotation.Transactional;
  * requires the full new order's player-id set to exactly match the side's current players.
  * {@link #removePlayer} also clears {@code captainPlayerId}/{@code wicketKeeperPlayerId} if they
  * pointed at the removed player.
+ *
+ * <p>Per docs/specs/063-section-availability-and-flexible-squads.md's amendment: {@link
+ * #requireSquadMembership} now branches on the side's own {@code Team.squadMode} — {@code STATIC}
+ * resolves against {@code TeamSquadMember} exactly as {@code 029} built it, unchanged; {@code
+ * FLEXIBLE} resolves against {@code MatchSquadMember(match_id, team_id, player_profile_id)}
+ * instead. Same {@link PlayerNotInSquadException} either way, only the source table differs.
  */
 @Service
 public class MatchSideServiceImpl implements MatchSideService {
@@ -66,6 +76,8 @@ public class MatchSideServiceImpl implements MatchSideService {
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
+    private final MatchSquadMemberRepository matchSquadMemberRepository;
+    private final TeamRepository teamRepository;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final PlayerProfileRepository playerProfileRepository;
@@ -78,6 +90,8 @@ public class MatchSideServiceImpl implements MatchSideService {
             MatchSideRepository matchSideRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
+            MatchSquadMemberRepository matchSquadMemberRepository,
+            TeamRepository teamRepository,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             PlayerProfileRepository playerProfileRepository,
@@ -88,6 +102,8 @@ public class MatchSideServiceImpl implements MatchSideService {
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
+        this.matchSquadMemberRepository = matchSquadMemberRepository;
+        this.teamRepository = teamRepository;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.playerProfileRepository = playerProfileRepository;
@@ -156,7 +172,7 @@ public class MatchSideServiceImpl implements MatchSideService {
                         "twelfthManPlayerId " + request.twelfthManPlayerId()
                                 + " must not already be in this side's ordered XI");
             }
-            requireSquadMembership(side.getTeamId(), match.getSeasonId(), request.twelfthManPlayerId());
+            requireSquadMembership(match, side.getTeamId(), request.twelfthManPlayerId());
             requireAgeEligible(match, request.twelfthManPlayerId());
         }
 
@@ -180,7 +196,7 @@ public class MatchSideServiceImpl implements MatchSideService {
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         UUID playerId = request.playerProfileId();
 
-        requireSquadMembership(side.getTeamId(), match.getSeasonId(), playerId);
+        requireSquadMembership(match, side.getTeamId(), playerId);
 
         if (matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(sideId, playerId)) {
             throw new ConflictException("Player " + playerId + " is already added to side " + sideId);
@@ -375,9 +391,20 @@ public class MatchSideServiceImpl implements MatchSideService {
         return league.getMaxPlayingXiSize();
     }
 
-    private void requireSquadMembership(UUID teamId, UUID seasonId, UUID playerId) {
-        if (!teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
-                teamId, seasonId, playerId)) {
+    /**
+     * Per docs/specs/063-section-availability-and-flexible-squads.md: branches on {@code
+     * teamId}'s own {@code Team.squadMode} — {@code STATIC} (or a {@code Team} row that can't be
+     * resolved at all, e.g. a cross-club opponent) resolves against {@code TeamSquadMember}
+     * exactly as {@code 029} built it; {@code FLEXIBLE} resolves against {@code MatchSquadMember}
+     * instead, scoped to this exact {@code match}+{@code teamId}.
+     */
+    private void requireSquadMembership(Match match, UUID teamId, UUID playerId) {
+        SquadMode squadMode = teamRepository.findById(teamId).map(Team::getSquadMode).orElse(SquadMode.STATIC);
+        boolean inSquad = squadMode == SquadMode.FLEXIBLE
+                ? matchSquadMemberRepository.existsByMatchIdAndTeamIdAndPlayerProfileId(match.getId(), teamId, playerId)
+                : teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
+                        teamId, match.getSeasonId(), playerId);
+        if (!inSquad) {
             throw new PlayerNotInSquadException(playerName(playerId) + " is not in this team's squad for this season");
         }
     }

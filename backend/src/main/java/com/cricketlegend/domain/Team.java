@@ -4,6 +4,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -38,6 +40,12 @@ import lombok.Setter;
  * cosmetic. {@code socialLinks} reuses the {@link SocialLink} {@code @Embeddable}/{@code
  * @ElementCollection} pattern {@link League#getSocialLinks()} already establishes, with its own
  * owning table ({@code team_social_link}).
+ *
+ * <p>{@link #squadMode} (docs/specs/063-section-availability-and-flexible-squads.md, not null,
+ * default {@link SquadMode#STATIC}) is the single switch between {@code 029}'s season-long {@link
+ * TeamSquadMember} roster and this spec's per-fixture {@link MatchSquadMember} pool — every branch
+ * either model adds only ever fires on this field, matching {@link Section#getGender()}'s existing
+ * enum-column style.
  */
 @Entity
 @Table(name = "team")
@@ -76,6 +84,10 @@ public class Team {
 
     @Column(nullable = false)
     private boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "squad_mode", nullable = false)
+    private SquadMode squadMode;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -16,6 +16,13 @@ public interface PlayerSectionRepository extends JpaRepository<PlayerSection, UU
 
     List<PlayerSection> findByPlayerProfileId(UUID playerProfileId);
 
+    /**
+     * Every {@code PlayerProfile} tagged to {@code sectionId} — the "eligible for section"
+     * audience a {@link com.cricketlegend.domain.SectionAvailabilityWindow} asks, per
+     * docs/specs/063-section-availability-and-flexible-squads.md.
+     */
+    List<PlayerSection> findBySectionId(UUID sectionId);
+
     boolean existsByPlayerProfileIdAndSectionId(UUID playerProfileId, UUID sectionId);
 
     Optional<PlayerSection> findByPlayerProfileIdAndSectionId(UUID playerProfileId, UUID sectionId);

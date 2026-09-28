@@ -100,6 +100,7 @@ public class TeamServiceImpl implements TeamService {
         team.setAbbreviation(request.abbreviation());
         team.setGroundName(request.groundName());
         team.setSocialLinks(toSocialLinks(request.socialLinks()));
+        team.setSquadMode(request.squadMode());
         team.setActive(true);
 
         return teamMapper.toDto(teamRepository.save(team));
@@ -116,6 +117,7 @@ public class TeamServiceImpl implements TeamService {
         team.setAbbreviation(request.abbreviation());
         team.setGroundName(request.groundName());
         team.setSocialLinks(toSocialLinks(request.socialLinks()));
+        team.setSquadMode(request.squadMode());
 
         return teamMapper.toDto(teamRepository.save(team));
     }

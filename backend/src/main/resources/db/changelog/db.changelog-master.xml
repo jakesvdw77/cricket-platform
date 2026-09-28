@@ -36,5 +36,8 @@
     <include file="db/changelog/v1/029-add-league-profile.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/030-add-league-contact.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/031-add-team-profile-fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/032-add-section-availability-and-flexible-squads.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/033-add-section-availability-rounds.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/034-add-section-availability-fixture-selection.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

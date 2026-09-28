@@ -1,0 +1,500 @@
+package com.cricketlegend.service.impl;
+
+import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.AvailabilityStatus;
+import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SectionAvailabilityResponse;
+import com.cricketlegend.domain.SectionAvailabilityRound;
+import com.cricketlegend.domain.SectionAvailabilityWindow;
+import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
+import com.cricketlegend.domain.SquadMode;
+import com.cricketlegend.domain.Team;
+import com.cricketlegend.dto.CreateSectionAvailabilityRoundRequest;
+import com.cricketlegend.dto.SectionAvailabilityResponseRowDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundBracketDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundResponseRowDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
+import com.cricketlegend.dto.SectionAvailabilityRoundStatusDto;
+import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
+import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.MatchAlreadyPolledException;
+import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
+import com.cricketlegend.exception.ValidationException;
+import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
+import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
+import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
+import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
+import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
+import com.cricketlegend.repository.SectionRepository;
+import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.SectionAvailabilityAudienceResolver;
+import com.cricketlegend.service.SectionAvailabilityMatchResolver;
+import com.cricketlegend.service.SectionAvailabilityRoundService;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Business rules per docs/specs/063-section-availability-and-flexible-squads.md's Data Model
+ * Changes/API Contract (Part A, the fixture-group-selection revision): {@link #list} narrows to
+ * the caller's own accessible section set, additionally asserting {@link
+ * AccessService#assertCanAdministerSection} only when the {@code sectionId} filter is itself
+ * supplied; {@link #create} asserts directly against the request body's {@code sectionId}, 404s if
+ * that section belongs to a different club, validates every {@code matchId} resolves to a {@code
+ * FLEXIBLE} team in this section (400, {@link ValidationException}), 409s ({@link
+ * MatchAlreadyPolledException}) naming the conflicting match(es) if any selected match's own
+ * bracket already has a window, then atomically creates exactly the windows those matches need
+ * (one per distinct bracket) plus one {@link SectionAvailabilityWindowMatch} row per match, and
+ * computes {@code firstMatchDate}/{@code lastMatchDate}/{@code scheduledCloseAt}; {@link
+ * #updateDescription}/{@link #open}/{@link #close}/{@link #getResponses}/{@link #getMatches}/
+ * {@link #setPlayerStatus} each load the round first, then assert against its own {@code
+ * sectionId} before their own business logic, mirroring {@code TeamSquadServiceImpl}'s own call
+ * shape (load the resource, assert on its section, then validate). {@link #open}/{@link #close}
+ * cascade to every owned window's own {@code open} flag, kept in lockstep. {@link
+ * #setPlayerStatus} is the admin override, now {@code windowId}-keyed rather than {@code
+ * dayPart}-keyed (a round can own several windows sharing the same {@code dayPart} across
+ * different dates) — mirrors {@code MatchAvailabilityPollServiceImpl.setPlayerStatus}'s exact
+ * not-in-audience ({@link NotFoundException}, 404) then closed-bracket ({@link
+ * SectionAvailabilityWindowClosedException}, 409) rule order.
+ */
+@Service
+public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityRoundService {
+
+    private final SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository;
+    private final SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
+    private final SectionAvailabilityWindowMatchRepository sectionAvailabilityWindowMatchRepository;
+    private final SectionAvailabilityResponseRepository sectionAvailabilityResponseRepository;
+    private final SectionRepository sectionRepository;
+    private final TeamRepository teamRepository;
+    private final MatchRepository matchRepository;
+    private final LeagueRepository leagueRepository;
+    private final SectionAvailabilityAudienceResolver audienceResolver;
+    private final SectionAvailabilityMatchResolver matchResolver;
+    private final SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper;
+    private final AccessService accessService;
+
+    public SectionAvailabilityRoundServiceImpl(
+            SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository,
+            SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository,
+            SectionAvailabilityWindowMatchRepository sectionAvailabilityWindowMatchRepository,
+            SectionAvailabilityResponseRepository sectionAvailabilityResponseRepository,
+            SectionRepository sectionRepository,
+            TeamRepository teamRepository,
+            MatchRepository matchRepository,
+            LeagueRepository leagueRepository,
+            SectionAvailabilityAudienceResolver audienceResolver,
+            SectionAvailabilityMatchResolver matchResolver,
+            SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper,
+            AccessService accessService) {
+        this.sectionAvailabilityRoundRepository = sectionAvailabilityRoundRepository;
+        this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
+        this.sectionAvailabilityWindowMatchRepository = sectionAvailabilityWindowMatchRepository;
+        this.sectionAvailabilityResponseRepository = sectionAvailabilityResponseRepository;
+        this.sectionRepository = sectionRepository;
+        this.teamRepository = teamRepository;
+        this.matchRepository = matchRepository;
+        this.leagueRepository = leagueRepository;
+        this.audienceResolver = audienceResolver;
+        this.matchResolver = matchResolver;
+        this.sectionAvailabilityRoundMapper = sectionAvailabilityRoundMapper;
+        this.accessService = accessService;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SectionAvailabilityRoundDto> list(
+            Authentication authentication, UUID clubId, UUID sectionId, Boolean open) {
+        Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
+        Set<UUID> narrowTo = null;
+        if (sectionId != null) {
+            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
+            narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
+        }
+        final Set<UUID> narrowToFinal = narrowTo;
+
+        return sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
+                .filter(round ->
+                        accessibleSectionIds.isEmpty() || accessibleSectionIds.get().contains(round.getSectionId()))
+                .filter(round -> narrowToFinal == null || narrowToFinal.contains(round.getSectionId()))
+                .filter(round -> open == null || round.isOpen() == open)
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundDto create(
+            Authentication authentication, UUID clubId, CreateSectionAvailabilityRoundRequest request) {
+        accessService.assertCanAdministerSection(authentication, clubId, request.sectionId());
+        Section section = findSectionOrThrowForClub(clubId, request.sectionId());
+
+        Map<UUID, Match> matchesById = new LinkedHashMap<>();
+        Map<UUID, SectionAvailabilityMatchResolver.WindowKey> keyByMatchId = new LinkedHashMap<>();
+        for (UUID matchId : request.matchIds()) {
+            Match match = findMatchForCreateOrThrow(clubId, matchId, section.getId());
+            Team team = resolveFlexibleTeamForSection(match, section.getId());
+            matchesById.put(matchId, match);
+            keyByMatchId.put(matchId, matchResolver.resolveWindowKey(team, match));
+        }
+
+        List<UUID> conflicting = keyByMatchId.entrySet().stream()
+                .filter(entry -> sectionAvailabilityWindowRepository.existsBySectionIdAndWindowDateAndDayPart(
+                        entry.getValue().sectionId(), entry.getValue().windowDate(), entry.getValue().dayPart()))
+                .map(Map.Entry::getKey)
+                .toList();
+        if (!conflicting.isEmpty()) {
+            throw new MatchAlreadyPolledException(
+                    "The following matches are already covered by another poll: " + conflicting);
+        }
+
+        ZoneId zone = ZoneId.systemDefault();
+        Instant earliest = matchesById.values().stream()
+                .map(Match::getMatchDate)
+                .min(Comparator.naturalOrder())
+                .orElseThrow();
+        Instant latest = matchesById.values().stream()
+                .map(Match::getMatchDate)
+                .max(Comparator.naturalOrder())
+                .orElseThrow();
+
+        SectionAvailabilityRound round = SectionAvailabilityRound.builder()
+                .clubId(section.getClubId())
+                .sectionId(section.getId())
+                .description(request.description())
+                .firstMatchDate(earliest.atZone(zone).toLocalDate())
+                .lastMatchDate(latest.atZone(zone).toLocalDate())
+                .autoClose(request.autoClose())
+                .scheduledCloseAt(request.autoClose() ? earliest.minus(Duration.ofHours(24)) : null)
+                .open(true)
+                .build();
+        round = sectionAvailabilityRoundRepository.save(round);
+
+        Map<SectionAvailabilityMatchResolver.WindowKey, SectionAvailabilityWindow> windowsByKey =
+                new LinkedHashMap<>();
+        for (SectionAvailabilityMatchResolver.WindowKey key : new LinkedHashSet<>(keyByMatchId.values())) {
+            SectionAvailabilityWindow window = SectionAvailabilityWindow.builder()
+                    .clubId(section.getClubId())
+                    .sectionId(key.sectionId())
+                    .roundId(round.getId())
+                    .windowDate(key.windowDate())
+                    .dayPart(key.dayPart())
+                    .open(true)
+                    .build();
+            windowsByKey.put(key, sectionAvailabilityWindowRepository.save(window));
+        }
+
+        for (Map.Entry<UUID, SectionAvailabilityMatchResolver.WindowKey> entry : keyByMatchId.entrySet()) {
+            SectionAvailabilityWindow window = windowsByKey.get(entry.getValue());
+            sectionAvailabilityWindowMatchRepository.save(SectionAvailabilityWindowMatch.builder()
+                    .windowId(window.getId())
+                    .matchId(entry.getKey())
+                    .build());
+        }
+
+        return toDto(round);
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundDto updateDescription(
+            Authentication authentication,
+            UUID clubId,
+            UUID roundId,
+            UpdateSectionAvailabilityRoundDescriptionRequest request) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        round.setDescription(request.description());
+        round = sectionAvailabilityRoundRepository.save(round);
+        return toDto(round);
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundDto open(Authentication authentication, UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        if (round.isOpen()) {
+            throw new InvalidStatusTransitionException("Section availability round is already open: " + roundId);
+        }
+        round.setOpen(true);
+        round = sectionAvailabilityRoundRepository.save(round);
+        setWindowsOpen(round.getId(), true);
+        return toDto(round);
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundDto close(Authentication authentication, UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        if (!round.isOpen()) {
+            throw new InvalidStatusTransitionException("Section availability round is already closed: " + roundId);
+        }
+        round.setOpen(false);
+        round = sectionAvailabilityRoundRepository.save(round);
+        setWindowsOpen(round.getId(), false);
+        return toDto(round);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SectionAvailabilityRoundResponsesDto getResponses(Authentication authentication, UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        return buildResponsesDto(round);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SectionAvailabilityRoundMatchDto> getMatches(Authentication authentication, UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+
+        List<SectionAvailabilityWindow> windows = sectionAvailabilityWindowRepository.findByRoundId(round.getId());
+        Map<UUID, SectionAvailabilityWindow> windowById = windows.stream()
+                .collect(Collectors.toMap(SectionAvailabilityWindow::getId, window -> window));
+        List<UUID> windowIds = windows.stream().map(SectionAvailabilityWindow::getId).toList();
+
+        List<SectionAvailabilityRoundMatchDto> result = new ArrayList<>();
+        for (SectionAvailabilityWindowMatch windowMatch :
+                sectionAvailabilityWindowMatchRepository.findByWindowIdIn(windowIds)) {
+            SectionAvailabilityWindow window = windowById.get(windowMatch.getWindowId());
+            Match match = matchRepository.findById(windowMatch.getMatchId()).orElse(null);
+            if (window == null || match == null) {
+                continue;
+            }
+            addMatchRowIfQualifies(
+                    window, match, match.getHomeTeamId(), match.getAwayTeamId(), match.getAwayTeamName(), result);
+            addMatchRowIfQualifies(
+                    window, match, match.getAwayTeamId(), match.getHomeTeamId(), match.getHomeTeamName(), result);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundResponsesDto setPlayerStatus(
+            Authentication authentication,
+            UUID clubId,
+            UUID roundId,
+            UUID playerProfileId,
+            UUID windowId,
+            AvailabilityStatus status) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+
+        List<SectionAvailabilityResponseRowDto> audience = audienceResolver.resolveAudience(round.getSectionId());
+        boolean inAudience = audience.stream().anyMatch(row -> row.playerProfileId().equals(playerProfileId));
+        if (!inAudience) {
+            throw new NotFoundException(
+                    "Player " + playerProfileId + " is not part of this round's own audience");
+        }
+
+        SectionAvailabilityWindow window = sectionAvailabilityWindowRepository
+                .findById(windowId)
+                .filter(candidate -> candidate.getRoundId().equals(roundId))
+                .orElseThrow(() -> new NotFoundException(
+                        "Window " + windowId + " does not belong to round " + roundId));
+
+        if (!window.isOpen()) {
+            throw new SectionAvailabilityWindowClosedException(
+                    "Section availability round is closed: " + roundId);
+        }
+
+        SectionAvailabilityResponse response = sectionAvailabilityResponseRepository
+                .findByWindowIdAndPlayerProfileId(window.getId(), playerProfileId)
+                .orElseGet(() -> SectionAvailabilityResponse.builder()
+                        .windowId(window.getId())
+                        .playerProfileId(playerProfileId)
+                        .build());
+        response.setStatus(status);
+        sectionAvailabilityResponseRepository.save(response);
+
+        return buildResponsesDto(round);
+    }
+
+    private void setWindowsOpen(UUID roundId, boolean open) {
+        for (SectionAvailabilityWindow window : sectionAvailabilityWindowRepository.findByRoundId(roundId)) {
+            window.setOpen(open);
+            sectionAvailabilityWindowRepository.save(window);
+        }
+    }
+
+    private List<SectionAvailabilityWindow> sortedWindowsByRoundId(UUID roundId) {
+        return sectionAvailabilityWindowRepository.findByRoundId(roundId).stream()
+                .sorted(Comparator.comparing(SectionAvailabilityWindow::getWindowDate)
+                        .thenComparing(SectionAvailabilityWindow::getDayPart))
+                .toList();
+    }
+
+    private void addMatchRowIfQualifies(
+            SectionAvailabilityWindow window,
+            Match match,
+            UUID teamId,
+            UUID opponentTeamId,
+            String opponentFallbackName,
+            List<SectionAvailabilityRoundMatchDto> result) {
+        if (teamId == null) {
+            return;
+        }
+        Team team = teamRepository.findById(teamId).orElse(null);
+        if (team == null
+                || !team.getSectionId().equals(window.getSectionId())
+                || team.getSquadMode() != SquadMode.FLEXIBLE) {
+            return;
+        }
+        String opponentLabel = opponentTeamId != null
+                ? teamRepository.findById(opponentTeamId).map(Team::getName).orElse(opponentFallbackName)
+                : opponentFallbackName;
+        String leagueName = match.getLeagueId() == null ? null : findLeagueName(match.getLeagueId());
+        result.add(new SectionAvailabilityRoundMatchDto(
+                match.getId(),
+                teamId,
+                team.getName(),
+                opponentLabel,
+                match.getMatchDate(),
+                match.getVenue(),
+                leagueName,
+                window.getDayPart(),
+                window.getId()));
+    }
+
+    private String findLeagueName(UUID leagueId) {
+        return leagueRepository.findById(leagueId).map(League::getName).orElse(null);
+    }
+
+    private SectionAvailabilityRoundResponsesDto buildResponsesDto(SectionAvailabilityRound round) {
+        List<SectionAvailabilityResponseRowDto> audience = audienceResolver.resolveAudience(round.getSectionId());
+        List<SectionAvailabilityWindow> windows = sortedWindowsByRoundId(round.getId());
+
+        Map<UUID, Map<UUID, AvailabilityStatus>> statusByWindowThenPlayer = new LinkedHashMap<>();
+        List<SectionAvailabilityRoundBracketDto> brackets = new ArrayList<>();
+        for (SectionAvailabilityWindow window : windows) {
+            Map<UUID, AvailabilityStatus> statusByPlayerId =
+                    sectionAvailabilityResponseRepository.findByWindowId(window.getId()).stream()
+                            .collect(Collectors.toMap(
+                                    SectionAvailabilityResponse::getPlayerProfileId,
+                                    SectionAvailabilityResponse::getStatus));
+            statusByWindowThenPlayer.put(window.getId(), statusByPlayerId);
+            long coveredMatchCount =
+                    sectionAvailabilityWindowMatchRepository.findByWindowId(window.getId()).size();
+            brackets.add(new SectionAvailabilityRoundBracketDto(
+                    window.getDayPart(),
+                    window.getWindowDate(),
+                    window.getId(),
+                    countStatus(statusByPlayerId, AvailabilityStatus.AVAILABLE),
+                    countStatus(statusByPlayerId, AvailabilityStatus.UNAVAILABLE),
+                    countStatus(statusByPlayerId, AvailabilityStatus.UNSURE),
+                    audience.size() - statusByPlayerId.size(),
+                    coveredMatchCount));
+        }
+
+        List<SectionAvailabilityRoundResponseRowDto> rows = audience.stream()
+                .map(row -> new SectionAvailabilityRoundResponseRowDto(
+                        row.playerProfileId(),
+                        row.firstName(),
+                        row.lastName(),
+                        row.jerseyNumber(),
+                        windows.stream()
+                                .map(window -> new SectionAvailabilityRoundStatusDto(
+                                        window.getId(),
+                                        window.getDayPart(),
+                                        window.getWindowDate(),
+                                        statusByWindowThenPlayer.get(window.getId()).get(row.playerProfileId())))
+                                .toList()))
+                .toList();
+
+        return new SectionAvailabilityRoundResponsesDto(
+                round.getId(),
+                round.getSectionId(),
+                sectionName(round.getSectionId()),
+                round.getDescription(),
+                round.isOpen(),
+                brackets,
+                rows,
+                "/section-availability/" + round.getId());
+    }
+
+    private long countStatus(Map<UUID, AvailabilityStatus> statusByPlayerId, AvailabilityStatus status) {
+        return statusByPlayerId.values().stream().filter(value -> value == status).count();
+    }
+
+    private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round) {
+        SectionAvailabilityRoundResponsesDto responses = buildResponsesDto(round);
+        return sectionAvailabilityRoundMapper.toDto(round, responses.sectionName(), responses.brackets());
+    }
+
+    private String sectionName(UUID sectionId) {
+        return sectionRepository.findById(sectionId).map(Section::getName).orElse(null);
+    }
+
+    private Section findSectionOrThrowForClub(UUID clubId, UUID sectionId) {
+        Section section = sectionRepository
+                .findById(sectionId)
+                .orElseThrow(() -> new NotFoundException("Section not found: " + sectionId));
+        if (!section.getClubId().equals(clubId)) {
+            throw new NotFoundException("Section not found: " + sectionId);
+        }
+        return section;
+    }
+
+    private SectionAvailabilityRound findRoundOrThrowForClub(UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = sectionAvailabilityRoundRepository
+                .findById(roundId)
+                .orElseThrow(() -> new NotFoundException("Section availability round not found: " + roundId));
+        if (!round.getClubId().equals(clubId)) {
+            throw new NotFoundException("Section availability round not found: " + roundId);
+        }
+        return round;
+    }
+
+    private Match findMatchForCreateOrThrow(UUID clubId, UUID matchId, UUID sectionId) {
+        Match match = matchRepository.findById(matchId).orElse(null);
+        if (match == null || !match.getClubId().equals(clubId)) {
+            throw new ValidationException(
+                    "matchId " + matchId + " is not a real match of a FLEXIBLE team in section " + sectionId);
+        }
+        return match;
+    }
+
+    private Team resolveFlexibleTeamForSection(Match match, UUID sectionId) {
+        Team homeTeam = match.getHomeTeamId() == null
+                ? null
+                : teamRepository.findById(match.getHomeTeamId()).orElse(null);
+        if (homeTeam != null
+                && homeTeam.getSectionId().equals(sectionId)
+                && homeTeam.getSquadMode() == SquadMode.FLEXIBLE) {
+            return homeTeam;
+        }
+        Team awayTeam = match.getAwayTeamId() == null
+                ? null
+                : teamRepository.findById(match.getAwayTeamId()).orElse(null);
+        if (awayTeam != null
+                && awayTeam.getSectionId().equals(sectionId)
+                && awayTeam.getSquadMode() == SquadMode.FLEXIBLE) {
+            return awayTeam;
+        }
+        throw new ValidationException(
+                "Match " + match.getId() + " does not resolve to a FLEXIBLE team in section " + sectionId);
+    }
+}

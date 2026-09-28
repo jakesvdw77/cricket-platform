@@ -1,0 +1,32 @@
+package com.cricketlegend.repository;
+
+import com.cricketlegend.domain.MatchSquadMember;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/**
+ * The per-fixture squad pool for a {@code FLEXIBLE} {@link com.cricketlegend.domain.Team} — see
+ * docs/specs/063-section-availability-and-flexible-squads.md. {@link
+ * #findBySectionAvailabilityWindowIdAndPlayerProfileId} is the Part C "already picked elsewhere"
+ * pre-check, the service-layer counterpart to the DB-level {@code
+ * (section_availability_window_id, player_profile_id)} unique constraint.
+ */
+public interface MatchSquadMemberRepository extends JpaRepository<MatchSquadMember, UUID> {
+
+    List<MatchSquadMember> findByMatchIdAndTeamId(UUID matchId, UUID teamId);
+
+    boolean existsByMatchIdAndTeamIdAndPlayerProfileId(UUID matchId, UUID teamId, UUID playerProfileId);
+
+    Optional<MatchSquadMember> findByMatchIdAndTeamIdAndPlayerProfileId(
+            UUID matchId, UUID teamId, UUID playerProfileId);
+
+    Optional<MatchSquadMember> findBySectionAvailabilityWindowIdAndPlayerProfileId(
+            UUID sectionAvailabilityWindowId, UUID playerProfileId);
+
+    boolean existsByMatchIdAndTeamIdAndJerseyNumberAndIdNot(
+            UUID matchId, UUID teamId, Integer jerseyNumber, UUID excludeId);
+
+    void deleteByMatchIdAndTeamIdAndPlayerProfileId(UUID matchId, UUID teamId, UUID playerProfileId);
+}

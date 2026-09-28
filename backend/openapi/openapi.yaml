@@ -6,11 +6,42 @@ servers:
 - url: http://localhost:8082
   description: Generated server url
 paths:
+  /api/v1/public/section-availability-rounds/{roundId}/players/{playerProfileId}:
+    put:
+      tags:
+      - public-section-availability-round-controller
+      operationId: setAvailability
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerProfileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetSectionAvailabilityRoundPlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicSectionAvailabilityRoundDto"
   /api/v1/public/polls/{pollId}/players/{playerProfileId}:
     put:
       tags:
       - public-availability-poll-controller
-      operationId: setAvailability
+      operationId: setAvailability_1
       parameters:
       - name: pollId
         in: path
@@ -431,6 +462,74 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TeamDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}:
+    put:
+      tags:
+      - section-availability-round-controller
+      operationId: updateDescription
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSectionAvailabilityRoundDescriptionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/players/{playerProfileId}:
+    put:
+      tags:
+      - section-availability-round-controller
+      operationId: setPlayerStatus
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerProfileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetSectionAvailabilityRoundPlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundResponsesDto"
   /api/v1/manage/clubs/{clubId}/seasons/{seasonId}:
     put:
       tags:
@@ -548,6 +647,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}:
+    put:
+      tags:
+      - match-squad-controller
+      operationId: updateJerseyNumber
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchSquadJerseyNumberRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSquadMemberDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}:
     put:
       tags:
@@ -669,7 +811,7 @@ paths:
     put:
       tags:
       - match-availability-poll-controller
-      operationId: setPlayerStatus
+      operationId: setPlayerStatus_1
       parameters:
       - name: clubId
         in: path
@@ -739,11 +881,156 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
+    get:
+      tags:
+      - league-playing-conditions-controller
+      operationId: get_5
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
+    put:
+      tags:
+      - league-playing-conditions-controller
+      operationId: update_12
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaguePlayingConditionsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
+    post:
+      tags:
+      - league-playing-conditions-controller
+      operationId: upload
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}:
+    put:
+      tags:
+      - league-contact-controller
+      operationId: update_13
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueContactRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
   /api/v1/manage/clubs/{clubId}/contacts/{contactId}:
     put:
       tags:
       - club-contact-controller
-      operationId: update_12
+      operationId: update_14
       parameters:
       - name: clubId
         in: path
@@ -920,7 +1207,7 @@ paths:
     post:
       tags:
       - media-controller
-      operationId: upload
+      operationId: upload_1
       requestBody:
         content:
           multipart/form-data:
@@ -1779,11 +2066,117 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds:
+    get:
+      tags:
+      - section-availability-round-controller
+      operationId: list_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: open
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionAvailabilityRoundDto"
+    post:
+      tags:
+      - section-availability-round-controller
+      operationId: create_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSectionAvailabilityRoundRequest"
+        required: true
+      responses:
+        "201":
+          description: Section availability round created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/open:
+    post:
+      tags:
+      - section-availability-round-controller
+      operationId: open
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/close:
+    post:
+      tags:
+      - section-availability-round-controller
+      operationId: close
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundDto"
   /api/v1/manage/clubs/{clubId}/seasons:
     get:
       tags:
       - season-controller
-      operationId: list_6
+      operationId: list_7
       parameters:
       - name: clubId
         in: path
@@ -1803,7 +2196,7 @@ paths:
     post:
       tags:
       - season-controller
-      operationId: create_7
+      operationId: create_8
       parameters:
       - name: clubId
         in: path
@@ -1878,7 +2271,7 @@ paths:
     get:
       tags:
       - player-controller
-      operationId: list_7
+      operationId: list_8
       parameters:
       - name: clubId
         in: path
@@ -1904,7 +2297,7 @@ paths:
     post:
       tags:
       - player-controller
-      operationId: create_8
+      operationId: create_9
       parameters:
       - name: clubId
         in: path
@@ -2033,7 +2426,7 @@ paths:
     get:
       tags:
       - match-controller
-      operationId: list_8
+      operationId: list_9
       parameters:
       - name: clubId
         in: path
@@ -2085,7 +2478,7 @@ paths:
     post:
       tags:
       - match-controller
-      operationId: create_9
+      operationId: create_10
       parameters:
       - name: clubId
         in: path
@@ -2106,11 +2499,81 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}/remove:
+    post:
+      tags:
+      - match-squad-controller
+      operationId: remove_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}/add:
+    post:
+      tags:
+      - match-squad-controller
+      operationId: add_1
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSquadMemberDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides:
     get:
       tags:
       - match-side-controller
-      operationId: list_9
+      operationId: list_10
       parameters:
       - name: clubId
         in: path
@@ -2328,7 +2791,7 @@ paths:
     get:
       tags:
       - match-availability-poll-controller
-      operationId: list_10
+      operationId: list_11
       parameters:
       - name: clubId
         in: path
@@ -2354,7 +2817,7 @@ paths:
     post:
       tags:
       - match-availability-poll-controller
-      operationId: create_10
+      operationId: create_11
       parameters:
       - name: clubId
         in: path
@@ -2385,7 +2848,7 @@ paths:
     post:
       tags:
       - match-availability-poll-controller
-      operationId: open
+      operationId: open_1
       parameters:
       - name: clubId
         in: path
@@ -2416,7 +2879,7 @@ paths:
     post:
       tags:
       - match-availability-poll-controller
-      operationId: close
+      operationId: close_1
       parameters:
       - name: clubId
         in: path
@@ -2472,7 +2935,7 @@ paths:
     get:
       tags:
       - league-controller
-      operationId: list_11
+      operationId: list_12
       parameters:
       - name: clubId
         in: path
@@ -2492,7 +2955,7 @@ paths:
     post:
       tags:
       - league-controller
-      operationId: create_11
+      operationId: create_12
       parameters:
       - name: clubId
         in: path
@@ -2513,114 +2976,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
-  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
-    get:
-      tags:
-      - league-playing-conditions-controller
-      operationId: get_5
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: seasonId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
-    post:
-      tags:
-      - league-playing-conditions-controller
-      operationId: upload_1
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: seasonId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-              required:
-              - file
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
-    put:
-      tags:
-      - league-playing-conditions-controller
-      operationId: update_13
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: seasonId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateLeaguePlayingConditionsRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeaguePlayingConditionsDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/reactivate:
     post:
       tags:
@@ -2671,6 +3026,125 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts:
+    get:
+      tags:
+      - league-contact-controller
+      operationId: list_13
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueContactDto"
+    post:
+      tags:
+      - league-contact-controller
+      operationId: create_13
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueContactRequest"
+        required: true
+      responses:
+        "201":
+          description: League contact created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/reactivate:
+    post:
+      tags:
+      - league-contact-controller
+      operationId: reactivate_9
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/deactivate:
+    post:
+      tags:
+      - league-contact-controller
+      operationId: deactivate_8
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueContactDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/affiliations:
     get:
       tags:
@@ -2755,167 +3229,11 @@ paths:
       responses:
         "200":
           description: OK
-  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts:
-    get:
-      tags:
-      - league-contact-controller
-      operationId: list_16
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LeagueContactDto"
-    post:
-      tags:
-      - league-contact-controller
-      operationId: create_14
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateLeagueContactRequest"
-        required: true
-      responses:
-        "201":
-          description: League contact created
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeagueContactDto"
-  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}:
-    put:
-      tags:
-      - league-contact-controller
-      operationId: update_14
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateLeagueContactRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeagueContactDto"
-  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/reactivate:
-    post:
-      tags:
-      - league-contact-controller
-      operationId: reactivate_10
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeagueContactDto"
-  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/contacts/{contactId}/deactivate:
-    post:
-      tags:
-      - league-contact-controller
-      operationId: deactivate_9
-      parameters:
-      - name: clubId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: leagueId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: contactId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LeagueContactDto"
   /api/v1/manage/clubs/{clubId}/contacts:
     get:
       tags:
       - club-contact-controller
-      operationId: list_12
+      operationId: list_14
       parameters:
       - name: clubId
         in: path
@@ -2935,7 +3253,7 @@ paths:
     post:
       tags:
       - club-contact-controller
-      operationId: create_12
+      operationId: create_14
       parameters:
       - name: clubId
         in: path
@@ -2960,7 +3278,7 @@ paths:
     post:
       tags:
       - club-contact-controller
-      operationId: reactivate_9
+      operationId: reactivate_10
       parameters:
       - name: clubId
         in: path
@@ -2985,7 +3303,7 @@ paths:
     post:
       tags:
       - club-contact-controller
-      operationId: deactivate_8
+      operationId: deactivate_9
       parameters:
       - name: clubId
         in: path
@@ -3010,7 +3328,7 @@ paths:
     post:
       tags:
       - lead-controller
-      operationId: create_13
+      operationId: create_15
       requestBody:
         content:
           application/json:
@@ -3024,6 +3342,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeadDto"
+  /api/v1/public/section-availability-rounds/{roundId}:
+    get:
+      tags:
+      - public-section-availability-round-controller
+      operationId: getRound
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicSectionAvailabilityRoundDto"
   /api/v1/public/polls/{pollId}:
     get:
       tags:
@@ -3068,7 +3405,7 @@ paths:
     get:
       tags:
       - person-controller
-      operationId: list_13
+      operationId: list_15
       parameters:
       - name: search
         in: query
@@ -3103,7 +3440,7 @@ paths:
     get:
       tags:
       - lead-controller
-      operationId: list_14
+      operationId: list_16
       parameters:
       - name: status
         in: query
@@ -3170,7 +3507,7 @@ paths:
     get:
       tags:
       - team-squad-controller
-      operationId: list_15
+      operationId: list_17
       parameters:
       - name: clubId
         in: path
@@ -3310,6 +3647,33 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TeamContactDto"
+  /api/v1/manage/clubs/{clubId}/sections/{sectionId}/section-availability-fixture-groups:
+    get:
+      tags:
+      - section-availability-round-controller
+      operationId: fixtureGroups
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionAvailabilityFixtureGroupDto"
   /api/v1/manage/clubs/{clubId}/sections/{sectionId}/contacts:
     get:
       tags:
@@ -3337,6 +3701,58 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ClubContactDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/responses:
+    get:
+      tags:
+      - section-availability-round-controller
+      operationId: getResponses
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundResponsesDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/matches:
+    get:
+      tags:
+      - section-availability-round-controller
+      operationId: getMatches
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectionAvailabilityRoundMatchDto"
   /api/v1/manage/clubs/{clubId}/players/{playerId}/sections:
     get:
       tags:
@@ -3364,11 +3780,42 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad:
+    get:
+      tags:
+      - match-squad-controller
+      operationId: get_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSquadDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/responses:
     get:
       tags:
       - match-availability-poll-controller
-      operationId: getResponses
+      operationId: getResponses_1
       parameters:
       - name: clubId
         in: path
@@ -3472,6 +3919,74 @@ paths:
                   $ref: "#/components/schemas/OpenAvailabilityPollDto"
 components:
   schemas:
+    SetSectionAvailabilityRoundPlayerRequest:
+      type: object
+      properties:
+        windowId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+      required:
+      - status
+      - windowId
+    PublicSectionAvailabilityRoundDto:
+      type: object
+      properties:
+        roundId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        sectionName:
+          type: string
+        open:
+          type: boolean
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityRoundResponseRowDto"
+    SectionAvailabilityRoundResponseRowDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: integer
+          format: int32
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityRoundStatusDto"
+    SectionAvailabilityRoundStatusDto:
+      type: object
+      properties:
+        windowId:
+          type: string
+          format: uuid
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        windowDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
     SetPlayerAvailabilityRequest:
       type: object
       properties:
@@ -4040,44 +4555,6 @@ components:
       required:
       - contact
       - role
-    UpdateLeagueContactRequest:
-      type: object
-      properties:
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-      required:
-      - contact
-      - role
-    LeagueContactDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        leagueId:
-          type: string
-          format: uuid
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-        active:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        updatedBy:
-          type: string
-          format: uuid
     SponsorContactDto:
       type: object
       properties:
@@ -4173,8 +4650,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
+        squadMode:
+          type: string
+          enum:
+          - STATIC
+          - FLEXIBLE
       required:
       - name
+      - squadMode
     TeamDto:
       type: object
       properties:
@@ -4201,6 +4684,11 @@ components:
             $ref: "#/components/schemas/SocialLinkDto"
         active:
           type: boolean
+        squadMode:
+          type: string
+          enum:
+          - STATIC
+          - FLEXIBLE
         createdAt:
           type: string
           format: date-time
@@ -4210,6 +4698,97 @@ components:
         updatedBy:
           type: string
           format: uuid
+    UpdateSectionAvailabilityRoundDescriptionRequest:
+      type: object
+      properties:
+        description:
+          type: string
+      required:
+      - description
+    SectionAvailabilityRoundBracketDto:
+      type: object
+      properties:
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        windowDate:
+          type: string
+          format: date
+        windowId:
+          type: string
+          format: uuid
+        availableCount:
+          type: integer
+          format: int64
+        unavailableCount:
+          type: integer
+          format: int64
+        unsureCount:
+          type: integer
+          format: int64
+        noResponseCount:
+          type: integer
+          format: int64
+        coveredMatchCount:
+          type: integer
+          format: int64
+    SectionAvailabilityRoundDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        sectionName:
+          type: string
+        description:
+          type: string
+        firstMatchDate:
+          type: string
+          format: date
+        lastMatchDate:
+          type: string
+          format: date
+        autoClose:
+          type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time
+        open:
+          type: boolean
+        brackets:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityRoundBracketDto"
+    SectionAvailabilityRoundResponsesDto:
+      type: object
+      properties:
+        roundId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        sectionName:
+          type: string
+        description:
+          type: string
+        open:
+          type: boolean
+        brackets:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityRoundBracketDto"
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityRoundResponseRowDto"
+        publicPath:
+          type: string
     UpdateSeasonRequest:
       type: object
       properties:
@@ -4477,6 +5056,94 @@ components:
         updatedBy:
           type: string
           format: uuid
+    UpdateMatchSquadJerseyNumberRequest:
+      type: object
+      properties:
+        jerseyNumber:
+          type: integer
+          format: int32
+    MatchSquadMemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        playerProfileId:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        photoUrl:
+          type: string
+        clubMembershipNumber:
+          type: string
+        medicalAidProvider:
+          type: string
+        medicalAidMemberNumber:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        altContactName:
+          type: string
+        altContactPhone:
+          type: string
+        battingStance:
+          type: string
+          enum:
+          - RIGHT_HANDED
+          - LEFT_HANDED
+        bowlingArm:
+          type: string
+          enum:
+          - RIGHT_ARM
+          - LEFT_ARM
+        bowlingType:
+          type: string
+          enum:
+          - FAST
+          - FAST_MEDIUM
+          - MEDIUM_FAST
+          - MEDIUM
+          - OFF_BREAK
+          - LEG_BREAK
+          - ORTHODOX_SPIN
+          - WRIST_SPIN
+          - GOOGLY
+        isWicketKeeper:
+          type: boolean
+        active:
+          type: boolean
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        jerseyNumber:
+          type: integer
+          format: int32
+        squadJerseyNumber:
+          type: integer
+          format: int32
+        isCaptain:
+          type: boolean
     UpdateMatchSideRequest:
       type: object
       properties:
@@ -4695,6 +5362,163 @@ components:
           type: string
         currentSeasonPlayingConditionsUrl:
           type: string
+    UpdateLeaguePlayingConditionsRequest:
+      type: object
+      properties:
+        maxOversPerInnings:
+          type: integer
+          format: int32
+        powerplayOvers:
+          type: integer
+          format: int32
+        maxOversPerBowler:
+          type: integer
+          format: int32
+        fieldingRestrictionsNotes:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        allowSubstitutions:
+          type: boolean
+        pointsForWin:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForLoss:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForDraw:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForNoResult:
+          type: integer
+          format: int32
+          minimum: 0
+        pointsForForfeitWin:
+          type: integer
+          format: int32
+          minimum: 0
+        bonusPointsEnabled:
+          type: boolean
+        bonusBattingOversThreshold:
+          type: integer
+          format: int32
+          minimum: 1
+        bonusBowlingRestrictionPercentage:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+        additionalNotes:
+          type: string
+          maxLength: 4000
+          minLength: 0
+      required:
+      - maxOversPerInnings
+      - pointsForDraw
+      - pointsForForfeitWin
+      - pointsForLoss
+      - pointsForNoResult
+      - pointsForWin
+      - powerplayOvers
+    LeaguePlayingConditionsDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        documentUrl:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedBy:
+          type: string
+          format: uuid
+        maxOversPerInnings:
+          type: integer
+          format: int32
+        powerplayOvers:
+          type: integer
+          format: int32
+        maxOversPerBowler:
+          type: integer
+          format: int32
+        fieldingRestrictionsNotes:
+          type: string
+        allowSubstitutions:
+          type: boolean
+        pointsForWin:
+          type: integer
+          format: int32
+        pointsForLoss:
+          type: integer
+          format: int32
+        pointsForDraw:
+          type: integer
+          format: int32
+        pointsForNoResult:
+          type: integer
+          format: int32
+        pointsForForfeitWin:
+          type: integer
+          format: int32
+        bonusPointsEnabled:
+          type: boolean
+        bonusBattingOversThreshold:
+          type: integer
+          format: int32
+        bonusBowlingRestrictionPercentage:
+          type: integer
+          format: int32
+        additionalNotes:
+          type: string
+    UpdateLeagueContactRequest:
+      type: object
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+      required:
+      - contact
+      - role
+    LeagueContactDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
+          type: string
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
     UpdateClubContactRequest:
       type: object
       properties:
@@ -4964,18 +5788,6 @@ components:
       required:
       - contact
       - role
-    CreateLeagueContactRequest:
-      type: object
-      properties:
-        contact:
-          $ref: "#/components/schemas/ContactDto"
-        role:
-          type: string
-        isPrimary:
-          type: boolean
-      required:
-      - contact
-      - role
     CreateSectionRequest:
       type: object
       properties:
@@ -5012,8 +5824,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
+        squadMode:
+          type: string
+          enum:
+          - STATIC
+          - FLEXIBLE
       required:
       - name
+      - squadMode
     LinkTeamContactRequest:
       type: object
       properties:
@@ -5021,6 +5839,25 @@ components:
           type: string
       required:
       - role
+    CreateSectionAvailabilityRoundRequest:
+      type: object
+      properties:
+        sectionId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        matchIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        autoClose:
+          type: boolean
+      required:
+      - description
+      - matchIds
+      - sectionId
     CreateSeasonRequest:
       type: object
       properties:
@@ -5228,123 +6065,18 @@ components:
             $ref: "#/components/schemas/SocialLinkDto"
       required:
       - name
-    LeaguePlayingConditionsDto:
+    CreateLeagueContactRequest:
       type: object
       properties:
-        id:
+        contact:
+          $ref: "#/components/schemas/ContactDto"
+        role:
           type: string
-          format: uuid
-        leagueId:
-          type: string
-          format: uuid
-        seasonId:
-          type: string
-          format: uuid
-        documentUrl:
-          type: string
-        uploadedAt:
-          type: string
-          format: date-time
-        uploadedBy:
-          type: string
-          format: uuid
-        maxOversPerInnings:
-          type: integer
-          format: int32
-        powerplayOvers:
-          type: integer
-          format: int32
-        maxOversPerBowler:
-          type: integer
-          format: int32
-        fieldingRestrictionsNotes:
-          type: string
-        allowSubstitutions:
+        isPrimary:
           type: boolean
-        pointsForWin:
-          type: integer
-          format: int32
-        pointsForLoss:
-          type: integer
-          format: int32
-        pointsForDraw:
-          type: integer
-          format: int32
-        pointsForNoResult:
-          type: integer
-          format: int32
-        pointsForForfeitWin:
-          type: integer
-          format: int32
-        bonusPointsEnabled:
-          type: boolean
-        bonusBattingOversThreshold:
-          type: integer
-          format: int32
-        bonusBowlingRestrictionPercentage:
-          type: integer
-          format: int32
-        additionalNotes:
-          type: string
-    UpdateLeaguePlayingConditionsRequest:
-      type: object
-      properties:
-        maxOversPerInnings:
-          type: integer
-          format: int32
-        powerplayOvers:
-          type: integer
-          format: int32
-        maxOversPerBowler:
-          type: integer
-          format: int32
-        fieldingRestrictionsNotes:
-          type: string
-          maxLength: 2000
-        allowSubstitutions:
-          type: boolean
-        pointsForWin:
-          type: integer
-          format: int32
-          minimum: 0
-        pointsForLoss:
-          type: integer
-          format: int32
-          minimum: 0
-        pointsForDraw:
-          type: integer
-          format: int32
-          minimum: 0
-        pointsForNoResult:
-          type: integer
-          format: int32
-          minimum: 0
-        pointsForForfeitWin:
-          type: integer
-          format: int32
-          minimum: 0
-        bonusPointsEnabled:
-          type: boolean
-        bonusBattingOversThreshold:
-          type: integer
-          format: int32
-          minimum: 1
-        bonusBowlingRestrictionPercentage:
-          type: integer
-          format: int32
-          minimum: 1
-          maximum: 100
-        additionalNotes:
-          type: string
-          maxLength: 4000
       required:
-      - maxOversPerInnings
-      - pointsForDraw
-      - pointsForForfeitWin
-      - pointsForLoss
-      - pointsForNoResult
-      - pointsForWin
-      - powerplayOvers
+      - contact
+      - role
     CreateLeagueAffiliationRequest:
       type: object
       properties:
@@ -5470,18 +6202,18 @@ components:
         pageSize:
           type: integer
           format: int32
-        paged:
-          type: boolean
         unpaged:
+          type: boolean
+        paged:
           type: boolean
     SortObject:
       type: object
       properties:
         empty:
           type: boolean
-        sorted:
-          type: boolean
         unsorted:
+          type: boolean
+        sorted:
           type: boolean
     PageProductDto:
       type: object
@@ -5651,6 +6383,79 @@ components:
         createdAt:
           type: string
           format: date-time
+    SectionAvailabilityFixtureGroupDto:
+      type: object
+      properties:
+        suggestedDescription:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionAvailabilityFixtureMatchDto"
+    SectionAvailabilityFixtureMatchDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        opponentLabel:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        leagueName:
+          type: string
+        alreadyPolled:
+          type: boolean
+        existingRoundId:
+          type: string
+          format: uuid
+        existingRoundDescription:
+          type: string
+    SectionAvailabilityRoundMatchDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        opponentLabel:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        leagueName:
+          type: string
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        windowId:
+          type: string
+          format: uuid
     PageMatchDto:
       type: object
       properties:
@@ -5683,6 +6488,62 @@ components:
           type: boolean
         empty:
           type: boolean
+    MatchSquadCandidateDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: integer
+          format: int32
+        pickedElsewhere:
+          $ref: "#/components/schemas/MatchSquadPickedElsewhereDto"
+    MatchSquadDto:
+      type: object
+      properties:
+        sectionId:
+          type: string
+          format: uuid
+        windowDate:
+          type: string
+          format: date
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        windowId:
+          type: string
+          format: uuid
+        windowOpen:
+          type: boolean
+        roundId:
+          type: string
+          format: uuid
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSquadCandidateDto"
+        selected:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSquadMemberDto"
+    MatchSquadPickedElsewhereDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
     MatchFilterOptionsDto:
       type: object
       properties:
