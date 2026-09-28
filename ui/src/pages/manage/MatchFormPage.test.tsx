@@ -34,6 +34,11 @@ const closePoll = vi.fn()
 const getPollResponses = vi.fn()
 const createPlayer = vi.fn()
 const addToSquad = vi.fn()
+const getMatchSquad = vi.fn()
+const addToMatchSquad = vi.fn()
+const removeFromMatchSquad = vi.fn()
+const updateMatchSquadJerseyNumber = vi.fn()
+const getRoundResponses = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
@@ -94,6 +99,24 @@ vi.mock('../../api/matchAvailabilityApi', () => ({
   openPoll: (clubId: string, matchId: string, pollId: string) => openPoll(clubId, matchId, pollId),
   closePoll: (clubId: string, matchId: string, pollId: string) => closePoll(clubId, matchId, pollId),
   getPollResponses: (clubId: string, matchId: string, pollId: string) => getPollResponses(clubId, matchId, pollId),
+}))
+
+// docs/specs/063-section-availability-and-flexible-squads.md Part B/C/D: a FLEXIBLE side's own
+// squad pool (Match Squad tab) and, via its resolved roundId, 033's tinting source (Part D) —
+// only the two exports MatchSideTab itself reads from each module are wired to a real fn, the
+// rest of matchSquadApi's surface is exercised by MatchSquadPicker's own tests, not here.
+vi.mock('../../api/matchSquadApi', () => ({
+  getMatchSquad: (clubId: string, matchId: string, teamId: string) => getMatchSquad(clubId, matchId, teamId),
+  addToMatchSquad: (clubId: string, matchId: string, teamId: string, playerId: string) =>
+    addToMatchSquad(clubId, matchId, teamId, playerId),
+  removeFromMatchSquad: (clubId: string, matchId: string, teamId: string, playerId: string) =>
+    removeFromMatchSquad(clubId, matchId, teamId, playerId),
+  updateMatchSquadJerseyNumber: (clubId: string, matchId: string, teamId: string, playerId: string, jerseyNumber: number | null) =>
+    updateMatchSquadJerseyNumber(clubId, matchId, teamId, playerId, jerseyNumber),
+}))
+
+vi.mock('../../api/sectionAvailabilityApi', () => ({
+  getRoundResponses: (clubId: string, roundId: string) => getRoundResponses(clubId, roundId),
 }))
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -792,6 +815,165 @@ describe('MatchFormPage', () => {
     // label — "Open a poll for this side" here creates a poll for team-2 (away), not team-1.
     await user.click(screen.getByRole('button', { name: /open a poll for this side/i }))
     expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-2')
+  })
+
+  // docs/specs/063-section-availability-and-flexible-squads.md Part D (fixture-group-selection
+  // revision): MatchSideTab's own poll/responses fetch branches on team.squadMode - the trickiest
+  // piece of wiring in the follow-up build pass (resolves roundId/windowId from the Match Squad
+  // response, fetches getRoundResponses, picks the statuses entry keyed by that exact windowId)
+  // and, until now, entirely unverified at the component-test level.
+  describe('Playing XI tab: 033 tinting source branches on squadMode (063 Part D)', () => {
+    it('a FLEXIBLE side reads tinting from the statuses entry matching this side\'s own resolved windowId via getRoundResponses, not listPolls', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listTeamsForClub.mockResolvedValue([
+        { id: 'team-1', clubId: 'test-club-id', sectionId: 'section-1', name: '1st XI', logoUrl: null, active: true, squadMode: 'FLEXIBLE', createdAt: '', updatedAt: '', updatedBy: null },
+        { id: 'team-2', clubId: 'test-club-id', sectionId: 'section-1', name: '2nd XI', logoUrl: null, active: true, squadMode: 'STATIC', createdAt: '', updatedAt: '', updatedBy: null },
+      ])
+      listMatchSides.mockResolvedValue([
+        makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
+      ])
+      getMatchSquad.mockResolvedValue({
+        sectionId: 'section-1',
+        windowDate: '2026-06-01',
+        dayPart: 'MORNING',
+        windowId: 'window-1',
+        windowOpen: true,
+        roundId: 'round-1',
+        candidates: [],
+        selected: [
+          {
+            id: 'msm-1',
+            playerProfileId: 'player-1',
+            personId: 'person-1',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            squadJerseyNumber: null,
+            isCaptain: false,
+          },
+        ],
+      })
+      // This side's own resolved windowId is 'window-1' (from getMatchSquad above) - the FLEXIBLE
+      // fetch must pick the statuses entry keyed by that exact windowId (UNAVAILABLE), never the
+      // other bracket's entry (AVAILABLE), for this side.
+      getRoundResponses.mockResolvedValue({
+        roundId: 'round-1',
+        sectionId: 'section-1',
+        sectionName: 'Juniors',
+        description: 'Sun 1 Jun - Juniors fixtures',
+        open: true,
+        brackets: [],
+        responses: [
+          {
+            playerProfileId: 'player-1',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            jerseyNumber: null,
+            statuses: [
+              { windowId: 'window-1', dayPart: 'MORNING', windowDate: '2026-06-01', status: 'UNAVAILABLE' },
+              { windowId: 'window-2', dayPart: 'AFTERNOON', windowDate: '2026-06-01', status: 'AVAILABLE' },
+            ],
+          },
+        ],
+        publicPath: '/section-availability/round-1',
+      })
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+
+      expect(await screen.findByText('Unavailable for this match')).toBeInTheDocument()
+      expect(getRoundResponses).toHaveBeenCalledWith('test-club-id', 'round-1')
+      expect(listPolls).not.toHaveBeenCalled()
+    })
+
+    it('a STATIC side keeps reading tinting from listPolls/getPollResponses, unaffected by the round-based fetch', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listMatchSides.mockResolvedValue([
+        makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
+      ])
+      listSquad.mockResolvedValue([makeSquadMember({ playerProfileId: 'player-1' })])
+      listPolls.mockResolvedValue([
+        { id: 'poll-1', teamId: 'team-1', open: true, availableCount: 0, unavailableCount: 1, unsureCount: 0, noResponseCount: 0 },
+      ])
+      getPollResponses.mockResolvedValue({
+        pollId: 'poll-1',
+        teamId: 'team-1',
+        open: true,
+        availableCount: 0,
+        unavailableCount: 1,
+        unsureCount: 0,
+        noResponseCount: 0,
+        responses: [
+          { playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'UNAVAILABLE' },
+        ],
+        publicPath: '/poll/poll-1',
+      })
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+
+      expect(await screen.findByText('Unavailable for this match')).toBeInTheDocument()
+      expect(getMatchSquad).not.toHaveBeenCalled()
+      expect(getRoundResponses).not.toHaveBeenCalled()
+    })
+  })
+
+  // docs/specs/063-section-availability-and-flexible-squads.md's fixture-group-selection
+  // revision: the "no window yet" shortcut links changed route shape twice this session (first to
+  // a since-deleted /section-availability/new page, then to the fixture-group review living on the
+  // existing /manage/section-availability route) — asserting the exact current href here, not a
+  // substring, so a future stale route change can't silently pass.
+  describe('"no window yet" shortcuts link to the current fixture-group review route', () => {
+    beforeEach(() => {
+      listTeamsForClub.mockResolvedValue([
+        { id: 'team-1', clubId: 'test-club-id', sectionId: 'section-1', name: '1st XI', logoUrl: null, active: true, squadMode: 'FLEXIBLE', createdAt: '', updatedAt: '', updatedBy: null },
+        { id: 'team-2', clubId: 'test-club-id', sectionId: 'section-1', name: '2nd XI', logoUrl: null, active: true, squadMode: 'STATIC', createdAt: '', updatedAt: '', updatedBy: null },
+      ])
+      listMatchSides.mockResolvedValue([
+        makeSide({ teamId: 'team-1', players: [] }),
+      ])
+      getMatchSquad.mockResolvedValue({
+        sectionId: 'section-1',
+        windowDate: null,
+        dayPart: null,
+        windowId: null,
+        windowOpen: false,
+        roundId: null,
+        candidates: [],
+        selected: [],
+      })
+    })
+
+    it('the Availability sub-tab\'s shortcut links to /manage/section-availability with this exact sectionId/matchId', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Availability' }))
+
+      const link = await screen.findByRole('link', { name: 'Open a section availability round' })
+      expect(link).toHaveAttribute('href', '/manage/section-availability?sectionId=section-1&matchId=match-1')
+    })
+
+    it('the Match Squad tab\'s shortcut links to /manage/section-availability with this exact sectionId/matchId', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Match Squad' }))
+
+      const link = await screen.findByRole('link', { name: 'Open a window for this bracket' })
+      expect(link).toHaveAttribute('href', '/manage/section-availability?sectionId=section-1&matchId=match-1')
+    })
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from MatchList's own card, plus

@@ -88,6 +88,7 @@ describe('TeamForm', () => {
       abbreviation: null,
       groundName: null,
       socialLinks: [],
+      squadMode: 'STATIC',
     })
   })
 
@@ -141,6 +142,7 @@ describe('TeamForm', () => {
       abbreviation: null,
       groundName: null,
       socialLinks: [],
+      squadMode: 'STATIC',
     })
   })
 
@@ -250,6 +252,47 @@ describe('TeamForm', () => {
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       expect(await screen.findByText('Name is required')).toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/063-section-availability-and-flexible-squads.md Part B: the squadMode field/toggle.
+  describe('squadMode', () => {
+    it('defaults to STATIC and submits it even when untouched', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderTeamForm({ onSubmit })
+
+      expect(screen.getByLabelText('Squad mode')).toHaveTextContent('Static season squad')
+
+      await user.type(screen.getByLabelText('Name'), '1st XI')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ squadMode: 'STATIC' }))
+    })
+
+    it('prefills from initialValues and round-trips FLEXIBLE on submit', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderTeamForm({ onSubmit, initialValues: { name: 'Existing Team', squadMode: 'FLEXIBLE' } })
+
+      expect(screen.getByLabelText('Squad mode')).toHaveTextContent('Flexible per-match squad')
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ squadMode: 'FLEXIBLE' }))
+    })
+
+    it('lets the admin switch from Static to Flexible via the select', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderTeamForm({ onSubmit })
+
+      await user.type(screen.getByLabelText('Name'), '1st XI')
+      await user.click(screen.getByLabelText('Squad mode'))
+      await user.click(await screen.findByRole('option', { name: 'Flexible per-match squad' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ squadMode: 'FLEXIBLE' }))
     })
   })
 
