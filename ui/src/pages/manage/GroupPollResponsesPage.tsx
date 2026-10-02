@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Chip, IconButton, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
+import { Box, Chip, IconButton, Stack, Typography } from '@mui/material'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
-import { Input } from '../../components/Input'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { badgeSx } from '../../components/RecordCard'
 import { SectionAvailabilityShareDialog } from '../../components/SectionAvailabilityShareDialog'
@@ -17,13 +15,8 @@ import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import { closesRowText } from './availability/pollHelpers'
-import { filterPlayers, groupBySlot } from './availability/responses/responseHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
-import { ResponsesByTimeSlot } from './availability/responses/ResponsesByTimeSlot'
-import { ResponsesByPlayer } from './availability/responses/ResponsesByPlayer'
-import { ResponsesSummary } from './availability/responses/ResponsesSummary'
-
-type View = 'slot' | 'player' | 'summary'
+import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
 
 // docs/specs/065-group-poll-responses-view.md: one group poll's responses on their own page (the
 // poll card's Responses button lands here), in three views behind a switch. The round's own
@@ -33,9 +26,6 @@ export default function GroupPollResponsesPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { roundId } = useParams<{ roundId?: string }>()
   const queryClient = useQueryClient()
-  // Neither the view nor the search is persisted: a fresh visit starts on By time slot.
-  const [view, setView] = useState<View>('slot')
-  const [search, setSearch] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
@@ -73,16 +63,6 @@ export default function GroupPollResponsesPage() {
   })
 
   const responses = responsesQuery.data
-  const filteredRows = useMemo(() => filterPlayers(responses?.responses ?? [], search), [responses, search])
-  const slots = useMemo(
-    () => (responses ? groupBySlot({ brackets: responses.brackets, responses: filteredRows }, matchesQuery.data ?? []) : []),
-    [responses, filteredRows, matchesQuery.data],
-  )
-  // Summary always shows the full totals, whatever the search says.
-  const summarySlots = useMemo(
-    () => (responses ? groupBySlot(responses, matchesQuery.data ?? []) : []),
-    [responses, matchesQuery.data],
-  )
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -118,93 +98,40 @@ export default function GroupPollResponsesPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <ManageScreenHeader
-        title={responses.description}
-        backTo="/manage/availability"
-        backLabel="Back to Availability Polls"
-        action={
-          <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
-            Share invite
-          </Button>
-        }
-      />
-
-      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-        <Chip
-          size="small"
-          label={responses.open ? 'Open' : 'Closed'}
-          variant="filled"
-          sx={badgeSx(responses.open ? 'positive' : 'muted')}
-        />
-        <Typography variant="body2" color="text.secondary">
-          {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
-        </Typography>
-        <IconButton size="small" aria-label="Edit close time" title="Edit close time" onClick={() => setCloseTimeOpen(true)}>
-          <EditOutlinedIcon fontSize="small" />
-        </IconButton>
-      </Stack>
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
-        <ToggleButtonGroup
-          value={view}
-          exclusive
-          size="small"
-          aria-label="Responses view"
-          onChange={(_event, next: View | null) => next && setView(next)}
-        >
-          <ToggleButton value="slot">Time slot</ToggleButton>
-          <ToggleButton value="player">Player</ToggleButton>
-          <ToggleButton value="summary">Summary</ToggleButton>
-        </ToggleButtonGroup>
-        <Box sx={{ flex: 1, maxWidth: { sm: 360 } }}>
-          <Input
-            label="Search players"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
+    <ResponsesPageShell
+      title={responses.description}
+      backTo="/manage/availability"
+      backLabel="Back to Availability Polls"
+      headerAction={
+        <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+          Share invite
+        </Button>
+      }
+      meta={
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Chip
+            size="small"
+            label={responses.open ? 'Open' : 'Closed'}
+            variant="filled"
+            sx={badgeSx(responses.open ? 'positive' : 'muted')}
           />
-        </Box>
-      </Stack>
-
-      {closed && (
-        <Typography variant="body2" color="text.secondary">
-          This poll is closed. Changes are recorded as a manager correction.
-        </Typography>
-      )}
-      {overrideMutation.isError && (
-        <Typography variant="body2" color="error.main" role="alert">
-          {errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.")}
-        </Typography>
-      )}
-
-      {responses.responses.length === 0 && (
-        <Typography variant="body2" color="text.secondary">
-          No eligible players for this section yet.
-        </Typography>
-      )}
-
-      {view === 'slot' && (
-        <ResponsesByTimeSlot
-          slots={slots}
-          override={override}
-        />
-      )}
-      {view === 'player' && responses.responses.length > 0 && (
-        <ResponsesByPlayer
-          rows={filteredRows}
-          brackets={slots.map((slot) => slot.bracket)}
-          override={override}
-        />
-      )}
-      {view === 'summary' && <ResponsesSummary slots={summarySlots} />}
-
+          <Typography variant="body2" color="text.secondary">
+            {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
+          </Typography>
+          <IconButton size="small" aria-label="Edit close time" title="Edit close time" onClick={() => setCloseTimeOpen(true)}>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      }
+      open={responses.open}
+      responses={{ brackets: responses.brackets, rows: responses.responses }}
+      matches={matchesQuery.data ?? []}
+      override={override}
+      overrideError={
+        overrideMutation.isError ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.") : null
+      }
+      emptyText="No eligible players for this section yet."
+    >
       <EditCloseTimeDialog
         open={closeTimeOpen}
         onClose={() => setCloseTimeOpen(false)}
@@ -217,6 +144,6 @@ export default function GroupPollResponsesPage() {
       />
 
       <SectionAvailabilityShareDialog open={shareOpen} onClose={() => setShareOpen(false)} round={round} />
-    </Box>
+    </ResponsesPageShell>
   )
 }
