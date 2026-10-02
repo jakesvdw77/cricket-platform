@@ -937,7 +937,7 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
-      await user.click(screen.getByRole('button', { name: /view responses/i }))
+      await user.click(screen.getByRole('button', { name: /^responses$/i }))
       expect(await screen.findByText('#7 Jane Smith')).toBeInTheDocument()
 
       const chips = screen.getAllByLabelText(/Set #7 Jane Smith's.*availability/i)

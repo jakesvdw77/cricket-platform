@@ -243,8 +243,8 @@ export function GroupPollCard({
             icon: <EventNoteOutlinedIcon fontSize="small" />,
           },
           {
-            label: responsesOpen ? 'Hide responses' : 'View responses',
-            pendingLabel: 'View responses',
+            label: responsesOpen ? 'Hide responses' : 'Responses',
+            pendingLabel: 'Responses',
             pending: false,
             onClick: () => setResponsesOpen((prev) => !prev),
             icon: <PeopleAltOutlinedIcon fontSize="small" />,
