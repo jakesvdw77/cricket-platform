@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { RecordCard } from './RecordCard'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
@@ -228,6 +229,14 @@ export const WithTitleEdit: Story = {
   args: {
     ...Active.args,
     titleEdit: { label: 'Edit description', onClick: () => {} },
+  },
+}
+
+// docs/specs/064-unified-availability-polls.md: an icon-only action in the top-right corner.
+export const WithCornerAction: Story = {
+  args: {
+    ...Active.args,
+    cornerAction: { label: 'Delete', pendingLabel: 'Deleting…', pending: false, onClick: () => {}, icon: <DeleteOutlineIcon fontSize="small" /> },
   },
 }
 

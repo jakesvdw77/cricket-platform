@@ -107,6 +107,10 @@ export interface RecordCardProps {
   // the card's edit affordance, so the footer Edit button is not rendered; `onEdit`/`editTo` are
   // ignored. Purely additive: call sites not passing it are unchanged.
   titleEdit?: { label: string; onClick: () => void }
+  // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
+  // card's top-right corner, after the badges, keeping the footer for the main actions. The
+  // action's `label` is its accessible name and tooltip; `icon` is required.
+  cornerAction?: RecordCardSecondaryAction & { icon: ReactNode }
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
   // card carrying both Deactivate/Reactivate (secondaryAction) and "Communicate Team Sheet"
@@ -183,6 +187,7 @@ export function RecordCard({
   editTo,
   viewTo,
   titleEdit,
+  cornerAction,
   secondaryAction,
   secondaryActions,
   feedback,
@@ -294,6 +299,19 @@ export function RecordCard({
                 sx={badgeSx(entry.tone)}
               />
             ))}
+            {cornerAction && (
+              <IconButton
+                size="small"
+                aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
+                title={cornerAction.label}
+                disabled={cornerAction.pending}
+                onClick={cornerAction.onClick}
+                // position: relative keeps it above any viewTo stretched-link overlay.
+                sx={{ position: 'relative', mt: -0.25 }}
+              >
+                {cornerAction.icon}
+              </IconButton>
+            )}
           </Stack>
         </Stack>
 

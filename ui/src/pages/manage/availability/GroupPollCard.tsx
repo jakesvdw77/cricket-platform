@@ -234,6 +234,13 @@ export function GroupPollCard({
             setEditOpen((prev) => !prev)
           },
         }}
+        cornerAction={{
+          label: 'Delete',
+          pendingLabel: 'Deleting…',
+          pending: deleteMutation.isPending,
+          onClick: () => setDeleteOpen(true),
+          icon: <DeleteOutlineIcon fontSize="small" />,
+        }}
         secondaryActions={[
           {
             label: matchesOpen ? 'Hide covered matches' : 'Covered matches',
@@ -255,13 +262,6 @@ export function GroupPollCard({
             pending: false,
             onClick: () => setShareOpen(true),
             icon: <ShareOutlinedIcon fontSize="small" />,
-          },
-          {
-            label: 'Delete',
-            pendingLabel: 'Deleting…',
-            pending: deleteMutation.isPending,
-            onClick: () => setDeleteOpen(true),
-            icon: <DeleteOutlineIcon fontSize="small" />,
           },
         ]}
         feedback={

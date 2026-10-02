@@ -57,6 +57,27 @@ describe('RecordCard', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
+  it('renders cornerAction as a labelled icon button in the header, with no footer button for it', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(
+      <RecordCard
+        title="Poll"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        cornerAction={{ label: 'Delete', pendingLabel: 'Deleting…', pending: false, onClick, icon: <span data-testid="trash" /> }}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Delete' })
+    expect(button).toHaveAttribute('title', 'Delete')
+    expect(button).not.toHaveTextContent('Delete')
+
+    await user.click(button)
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
   it('calls onEdit when the Edit action is clicked', async () => {
     const user = userEvent.setup()
     const onEdit = vi.fn()

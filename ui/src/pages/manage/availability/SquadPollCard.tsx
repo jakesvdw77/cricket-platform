@@ -117,14 +117,14 @@ export function SquadPollCard({
                 icon: open ? <LockOutlinedIcon fontSize="small" /> : <LockOpenOutlinedIcon fontSize="small" />,
               }
         }
+        cornerAction={{
+          label: 'Delete',
+          pendingLabel: 'Deleting…',
+          pending: deleteMutation.isPending,
+          onClick: () => setDeleteOpen(true),
+          icon: <DeleteOutlineIcon fontSize="small" />,
+        }}
         secondaryActions={[
-          {
-            label: 'Delete',
-            pendingLabel: 'Deleting…',
-            pending: deleteMutation.isPending,
-            onClick: () => setDeleteOpen(true),
-            icon: <DeleteOutlineIcon fontSize="small" />,
-          },
         ]}
         feedback={
           toggleMutation.isError
