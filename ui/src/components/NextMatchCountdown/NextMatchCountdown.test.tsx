@@ -14,7 +14,6 @@ const homeTeam: Team = {
   groundName: null,
   socialLinks: [],
   active: true,
-  squadMode: 'STATIC',
   createdAt: '',
   updatedAt: '',
   updatedBy: null,

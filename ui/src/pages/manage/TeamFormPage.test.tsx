@@ -131,7 +131,6 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
     groundName: null,
     socialLinks: [],
     active: true,
-    squadMode: 'STATIC',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
@@ -309,7 +308,6 @@ describe('TeamFormPage', () => {
         abbreviation: null,
         groundName: null,
         socialLinks: [],
-        squadMode: 'STATIC',
       })
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
     })
@@ -364,7 +362,6 @@ describe('TeamFormPage', () => {
         abbreviation: null,
         groundName: null,
         socialLinks: [],
-        squadMode: 'STATIC',
       })
       expect(await screen.findByText('Team List Page')).toBeInTheDocument()
     })
@@ -684,21 +681,19 @@ describe('TeamFormPage', () => {
         expect(listSquad).not.toHaveBeenCalled()
       })
 
-      // docs/specs/063-section-availability-and-flexible-squads.md Part B.
-      it('renders an explanatory panel instead of the season squad UI for a FLEXIBLE team', async () => {
+      // docs/specs/064-unified-availability-polls.md: every team shows the season squad (squadMode
+      // is gone) - no explanatory-panel branch any more.
+      it('always fetches and shows the season squad for any team', async () => {
         const user = userEvent.setup()
-        listTeamsForSection.mockResolvedValue([
-          makeTeam({ id: 'team-1', sectionId: 'test-section-id', squadMode: 'FLEXIBLE' }),
-        ])
         listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
-
-        renderPage('/manage/sections/test-section-id/teams/team-1/edit', 'test-club-id')
+        listSquad.mockResolvedValue([])
+        renderEdit()
 
         await screen.findByText('Edit Team')
         await user.click(screen.getByRole('tab', { name: 'Squad' }))
 
-        expect(await screen.findByText(/builds its squad per match/i)).toBeInTheDocument()
-        expect(listSquad).not.toHaveBeenCalled()
+        await waitFor(() => expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1'))
+        expect(screen.queryByText(/builds its squad per match/i)).not.toBeInTheDocument()
       })
 
       it('lists the squad for the selected season and removes a player via removeFromSquad', async () => {
@@ -960,7 +955,6 @@ describe('TeamFormPage', () => {
         abbreviation: null,
         groundName: null,
         socialLinks: [],
-        squadMode: 'STATIC',
       })
       expect(await screen.findByText('Team Directory Page')).toBeInTheDocument()
     })

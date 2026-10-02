@@ -123,6 +123,8 @@ function makePoll(overrides: Partial<MatchAvailabilityPoll> = {}): MatchAvailabi
     id: 'poll-1',
     teamId: 'team-1',
     open: true,
+    autoClose: true,
+    scheduledCloseAt: null,
     availableCount: 0,
     unavailableCount: 0,
     unsureCount: 0,

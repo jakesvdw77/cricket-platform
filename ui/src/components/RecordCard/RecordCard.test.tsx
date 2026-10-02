@@ -153,6 +153,21 @@ describe('RecordCard', () => {
     expect(outcome).toHaveStyle({ color: 'rgb(176, 64, 46)' }) // theme.ts's error.main (#b0402e)
   })
 
+  it('renders a muted feedback message in text.secondary', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <RecordCard
+          title="Riverside CC"
+          editLabel="Edit"
+          onEdit={vi.fn()}
+          feedback={{ message: 'Closed. Can no longer be reopened.', tone: 'muted' }}
+        />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByText('Closed. Can no longer be reopened.')).not.toHaveStyle({ color: 'rgb(176, 64, 46)' })
+  })
+
   it('renders neither secondaryAction nor feedback when both are omitted, matching ProductList.tsx\'s existing usage', () => {
     render(<RecordCard title="Club Standard" editLabel="Edit" onEdit={vi.fn()} />)
 

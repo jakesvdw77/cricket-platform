@@ -58,7 +58,7 @@ function baseProps(overrides: Partial<MatchSquadPickerProps> = {}): MatchSquadPi
     windowId: 'window-1',
     windowOpen: true,
     label: 'the home side',
-    createWindowHref: '/manage/section-availability?sectionId=section-1',
+    createWindowHref: '/manage/availability/new?type=group&sectionId=section-1',
     onAdd: vi.fn(),
     onRemove: vi.fn(),
     onUpdateJerseyNumber: vi.fn(),
@@ -80,7 +80,7 @@ describe('MatchSquadPicker', () => {
 
     expect(screen.getByText('No section availability window yet')).toBeInTheDocument()
     const link = screen.getByRole('link', { name: /open a window for this bracket/i })
-    expect(link).toHaveAttribute('href', '/manage/section-availability?sectionId=section-1')
+    expect(link).toHaveAttribute('href', '/manage/availability/new?type=group&sectionId=section-1')
   })
 
   it('renders available candidates and selected squad members in separate panes', () => {
