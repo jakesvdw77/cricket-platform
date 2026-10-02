@@ -44,6 +44,7 @@ import MatchDetailPage from './pages/manage/MatchDetailPage'
 import SquadPicker from './pages/manage/SquadPicker'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import NewPollPage from './pages/manage/NewPollPage'
+import GroupPollResponsesPage from './pages/manage/GroupPollResponsesPage'
 import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PublicSectionAvailabilityRound from './pages/view/PublicSectionAvailabilityRound'
 import PlayerHome from './pages/view/PlayerHome'
@@ -220,6 +221,9 @@ function App() {
               {/* docs/specs/064-unified-availability-polls.md: the create screen for both poll kinds
                   (squad or group) behind the dashboard's New poll button. */}
               <Route path="availability/new" element={<NewPollPage />} />
+              {/* docs/specs/065-group-poll-responses-view.md: one group poll's responses page,
+                  opened from the poll card's Responses button. */}
+              <Route path="availability/group/:roundId" element={<GroupPollResponsesPage />} />
               {/* 064: 063's own screen folded into the dashboard + NewPollPage - old links (and
                   bookmarks) land on the group branch, keeping ?sectionId=/matchId=. */}
               <Route path="section-availability" element={<SectionAvailabilityRedirect />} />

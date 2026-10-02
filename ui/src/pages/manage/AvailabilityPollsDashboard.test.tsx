@@ -9,7 +9,6 @@ import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import type {
   SectionAvailabilityRound,
   SectionAvailabilityRoundMatch,
-  SectionAvailabilityRoundResponses,
 } from '../../api/sectionAvailabilityApi'
 import type { Team } from '../../api/teamApi'
 
@@ -24,7 +23,6 @@ const closeRound = vi.fn()
 const deleteRound = vi.fn()
 const getRoundMatches = vi.fn()
 const getRoundResponses = vi.fn()
-const setRoundPlayerStatus = vi.fn()
 const updateRoundDescription = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSections = vi.fn()
@@ -49,8 +47,6 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
     deleteRound: (clubId: string, roundId: string) => deleteRound(clubId, roundId),
     getRoundMatches: (clubId: string, roundId: string) => getRoundMatches(clubId, roundId),
     getRoundResponses: (clubId: string, roundId: string) => getRoundResponses(clubId, roundId),
-    setRoundPlayerStatus: (clubId: string, roundId: string, playerProfileId: string, windowId: string, status: string) =>
-      setRoundPlayerStatus(clubId, roundId, playerProfileId, windowId, status),
     updateRoundDescription: (clubId: string, roundId: string, description: string) =>
       updateRoundDescription(clubId, roundId, description),
   }
@@ -72,7 +68,6 @@ beforeEach(() => {
   listClosedPolls.mockResolvedValue([])
   listRounds.mockResolvedValue([])
   getRoundMatches.mockResolvedValue([])
-  getRoundResponses.mockResolvedValue(makeResponses())
   // docs/specs/043-list-toolbar-gold-standard.md: this screen's Section filter persists via
   // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
   // never leaks into the next.
@@ -176,31 +171,6 @@ function makeRoundMatch(overrides: Partial<SectionAvailabilityRoundMatch> = {}):
   }
 }
 
-function makeResponses(overrides: Partial<SectionAvailabilityRoundResponses> = {}): SectionAvailabilityRoundResponses {
-  return {
-    roundId: 'round-1',
-    sectionId: 'section-1',
-    sectionName: 'U13 Boys',
-    description: 'Sat 6 Jun - U13 Boys fixtures',
-    open: true,
-    brackets: makeRound().brackets,
-    responses: [
-      {
-        playerProfileId: 'player-1',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        jerseyNumber: 7,
-        statuses: [
-          { windowId: 'window-1', dayPart: 'MORNING', windowDate: '2026-06-06', status: 'AVAILABLE' },
-          { windowId: 'window-2', dayPart: 'AFTERNOON', windowDate: '2026-06-06', status: null },
-        ],
-      },
-    ],
-    publicPath: '/section-availability/round-1',
-    ...overrides,
-  }
-}
-
 function conflictError(message: string) {
   return new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
     status: 409,
@@ -234,6 +204,7 @@ function renderDashboard(clubId?: string, initialUrl = '/manage/availability') {
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="availability" element={<AvailabilityPollsDashboard />} />
             <Route path="availability/new" element={<div>New Poll Page</div>} />
+            <Route path="availability/group/:roundId" element={<div>Group Poll Responses Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -929,22 +900,17 @@ describe('AvailabilityPollsDashboard', () => {
       expect(await screen.findByText('U13 Boys A vs Rivals CC')).toBeInTheDocument()
     })
 
-    it("sets a player's bracket status via the admin-override Chip menu, keyed by windowId", async () => {
+    it('navigates to the responses page when Responses is clicked (docs/specs/065)', async () => {
       const user = userEvent.setup()
       listRounds.mockResolvedValue([makeRound()])
-      setRoundPlayerStatus.mockResolvedValueOnce(makeResponses())
 
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
       await user.click(screen.getByRole('button', { name: /^responses$/i }))
-      expect(await screen.findByText('#7 Jane Smith')).toBeInTheDocument()
 
-      const chips = screen.getAllByLabelText(/Set #7 Jane Smith's.*availability/i)
-      await user.click(chips[1])
-      await user.click(await screen.findByRole('menuitem', { name: 'Unavailable' }))
-
-      expect(setRoundPlayerStatus).toHaveBeenCalledWith('test-club-id', 'round-1', 'player-1', 'window-2', 'UNAVAILABLE')
+      expect(await screen.findByText('Group Poll Responses Page')).toBeInTheDocument()
+      expect(getRoundResponses).not.toHaveBeenCalled()
     })
 
     it("opens the share dialog with the round's own public link embedded", async () => {

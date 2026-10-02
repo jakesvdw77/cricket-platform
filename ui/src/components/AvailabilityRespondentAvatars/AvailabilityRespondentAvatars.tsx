@@ -1,8 +1,7 @@
 import { Avatar, AvatarGroup, Box, Stack, Tooltip, Typography } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
-import { alpha } from '@mui/material/styles'
 import type { AvailabilityRespondent, AvailabilityStatus } from '../../api/matchAvailabilityApi'
-import { STATUS_COLOR, STATUS_LABEL } from '../../utils/availabilityStatus'
+import { STATUS_LABEL, statusTintSx } from '../../utils/availabilityStatus'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 import { initialsFromName } from '../../utils/initials'
 
@@ -36,8 +35,6 @@ export interface AvailabilityRespondentAvatarsProps {
 // initialsFromName (RecordCard/PlayerCard's own fallback convention) inside a Tooltip showing the
 // respondent's full squad display name (squadDisplayName.ts — "#{jersey} {name}").
 export function AvailabilityRespondentAvatars({ status, respondents, count, layout }: AvailabilityRespondentAvatarsProps) {
-  const tone = STATUS_COLOR[status]
-
   // Shared per-avatar sizing/tint/border — referenced by both the 'compact' AvatarGroup branch
   // (via its '& .MuiAvatar-root' selector, exactly as before) and the 'wrap' branch's individual
   // Avatars (applied directly, since there's no AvatarGroup wrapper to select through).
@@ -45,9 +42,7 @@ export function AvailabilityRespondentAvatars({ status, respondents, count, layo
     width: 28,
     height: 28,
     fontSize: '0.6875rem',
-    fontWeight: 600,
-    bgcolor: (theme) => alpha(theme.palette[tone].main, 0.12),
-    color: `${tone}.dark`,
+    ...statusTintSx(status),
     border: (theme) => `1px solid ${theme.palette.background.paper}`,
   }
 

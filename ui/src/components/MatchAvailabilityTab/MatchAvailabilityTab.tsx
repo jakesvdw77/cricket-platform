@@ -2,13 +2,12 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Chip, FormControlLabel, Menu, MenuItem, Stack, Switch, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { Button } from '../Button'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { EmptyState } from '../EmptyState'
 import type { AvailabilityStatus, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
-import { STATUS_COLOR, STATUS_LABEL } from '../../utils/availabilityStatus'
+import { STATUS_LABEL, statusTintSx } from '../../utils/availabilityStatus'
 import { CANNOT_REOPEN_MESSAGE, closePollDescription, closePollTitle } from '../../utils/pollClose'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 
@@ -268,11 +267,7 @@ function StatusMenuChip({
   const chipProps = status
     ? {
         label: STATUS_LABEL[status],
-        sx: {
-          bgcolor: (theme: Theme) => alpha(theme.palette[STATUS_COLOR[status]].main, 0.12),
-          color: `${STATUS_COLOR[status]}.dark`,
-          fontWeight: 600,
-        },
+        sx: statusTintSx(status),
       }
     : { label: 'No response', variant: 'outlined' as const }
 
