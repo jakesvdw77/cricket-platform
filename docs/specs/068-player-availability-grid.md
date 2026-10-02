@@ -1,7 +1,7 @@
 # 068 — Player Availability Grid
 
 **Depends on:** `064-unified-availability-polls.md` (squad and group polls, one poll per match), `063-section-availability-and-flexible-squads.md` (group polls: rounds, windows, `SectionAvailabilityResponse`, `MatchSquadMember`), `032-match-availability-polls.md` (squad polls, `PlayerAvailability`), `065`/`067` (the Responses pages a cell links to), `025`/`026`/`035` (sections, teams, section-scoped access), `029` (team squads), the league and season specs for `Match.leagueId`/`seasonId`.
-**Status:** draft, for review. Design: https://claude.ai/artifact/XmHwCXhsmRY3qECVf6hKmP (legacy reference: the legacy app's Team Availability "Per Player" tab).
+**Status:** approved (design approved by the user). Design: https://claude.ai/artifact/XmHwCXhsmRY3qECVf6hKmP (legacy reference: the legacy app's Team Availability "Per Player" tab).
 
 ## Problem & Goals
 
