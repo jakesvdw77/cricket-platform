@@ -177,6 +177,8 @@ export function PollCard({
         avatar={{ fallback: <EventAvailableOutlinedIcon fontSize="small" />, shape: 'rounded' }}
         badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: 'neutral' }}
         badges={badges}
+        // Long titles wrap to two lines instead of truncating in the ~320px card.
+        titleWrap
         // A pencil after a group poll's title edits its description (matches can't be changed after
         // creation, docs/specs/064 Non-goals); a squad poll's title is derived from its match.
         titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: () => setDescriptionOpen(true) } : undefined}

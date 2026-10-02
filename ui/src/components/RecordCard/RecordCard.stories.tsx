@@ -287,3 +287,22 @@ export const FooterButtonsNarrow: Story = {
     ),
   ],
 }
+
+// A long title wraps to two lines (ellipsis only beyond that) with the pencil right after it and the
+// delete icon top-right, in a poll-card-width column.
+export const WithTitleWrap: Story = {
+  args: {
+    ...Active.args,
+    title: 'Saturday 3 October - Over 40 fixtures',
+    titleWrap: true,
+    titleEdit: { label: 'Edit description', onClick: () => {} },
+    cornerAction: { label: 'Delete', pendingLabel: 'Deleting…', pending: false, onClick: () => {}, icon: <DeleteOutlineIcon fontSize="small" /> },
+  },
+  decorators: [
+    (StoryComponent) => (
+      <Box sx={{ width: 320 }}>
+        <StoryComponent />
+      </Box>
+    ),
+  ],
+}

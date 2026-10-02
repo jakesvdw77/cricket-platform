@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Autocomplete, InputAdornment, Menu, MenuItem } from '@mui/material'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import SearchIcon from '@mui/icons-material/Search'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
@@ -195,13 +196,22 @@ export function ListToolbar({
                   </Menu>
                 </>
               )}
-              <IconButton
-                onClick={sortToggle.onToggle}
-                aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
-                sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+              {/* The tooltip states the current sort and what a click does, built from the same
+                  asc/desc labels; the aria-label stays the action label so existing queries hold. */}
+              <Tooltip
+                describeChild
+                title={`Sorted by ${sortToggle.value === 'asc' ? sortToggle.ascLabel : sortToggle.descLabel}. Click for ${
+                  sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel
+                }.`}
               >
-                {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
-              </IconButton>
+                <IconButton
+                  onClick={sortToggle.onToggle}
+                  aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
+                  sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+                >
+                  {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
             </>
           ) : (
             <Input
