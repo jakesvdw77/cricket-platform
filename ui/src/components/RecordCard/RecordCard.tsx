@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import {
   Avatar,
+  ButtonBase,
+  Box,
   Card as MuiCard,
   CardActions,
   CardContent,
@@ -76,6 +78,17 @@ export interface RecordCardFeedback {
   tone: 'success' | 'error' | 'muted'
 }
 
+// docs/specs/066-poll-close-time-and-unified-cards.md: one button of the equal-column footer - an
+// icon above a short caption. `ariaLabel` is the accessible name when the caption alone is too
+// terse (e.g. caption 'Share', ariaLabel 'Share invite'); it defaults to the label.
+export interface RecordCardFooterButton {
+  label: string
+  ariaLabel?: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+}
+
 export interface RecordCardProps {
   title: string
   avatar?: RecordCardAvatar
@@ -119,6 +132,13 @@ export interface RecordCardProps {
   // itself stays byte-for-byte unchanged so every existing single-action call site keeps compiling.
   secondaryActions?: RecordCardSecondaryAction[]
   feedback?: RecordCardFeedback | null
+  // docs/specs/066: a free body slot rendered between the fields/chips and the feedback line - the
+  // poll card's slot summaries and Closes row. Purely additive: omitted, nothing changes.
+  children?: ReactNode
+  // docs/specs/066: when present, replaces the default footer with N equal-width columns (one per
+  // entry), each an icon above a short caption, so no button is clipped or wrapped at any card
+  // width - the unified poll card passes exactly four. Every other footer prop is then ignored.
+  footerButtons?: RecordCardFooterButton[]
 }
 
 // The grid unit for any record list (ProductList today, future Subscriptions/Discounts/
@@ -191,6 +211,8 @@ export function RecordCard({
   secondaryAction,
   secondaryActions,
   feedback,
+  children,
+  footerButtons,
 }: RecordCardProps) {
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
   // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
@@ -373,6 +395,8 @@ export function RecordCard({
           </Stack>
         )}
 
+        {children}
+
         {feedback && (
           <Typography variant="body2" color={FEEDBACK_COLOR[feedback.tone]}>
             {feedback.message}
@@ -387,21 +411,96 @@ export function RecordCard({
           Edit) would silently stop receiving clicks, swallowed by that overlay. Giving CardActions
           its own position lifts every button inside it above the overlay in one place, with no
           explicit z-index and no per-button change needed. */}
-      <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
-        {allSecondaryActions.map((action, index) => (
-          <Button
-            key={index}
-            variant="ghost"
-            size="sm"
-            disabled={action.pending}
-            onClick={action.onClick}
-            startIcon={action.icon}
-          >
-            {action.pending ? action.pendingLabel : action.label}
-          </Button>
-        ))}
-        {titleEdit ? null : viewTo ? (
-          editTo && (
+      {footerButtons ? (
+        // minmax(0, 1fr) columns + minWidth 0 keep the columns equal whatever the card width. The
+        // no-clip guarantee is the caller's: captions stay short (the longest is 'Responses', ~52px
+        // at 11px) and the poll grid never makes a card narrower than 320px (>= ~74px per column).
+        // The ellipsis below is only a last-resort safety net, never the expected path.
+        <CardActions
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${footerButtons.length}, minmax(0, 1fr))`,
+            gap: 0.5,
+            px: 1,
+            pb: 1,
+            pt: 0,
+            position: 'relative',
+            borderTop: 1,
+            borderColor: 'divider',
+            // CardActions' own 8px left margin between siblings would skew the equal columns.
+            '& > :not(:first-of-type)': { ml: 0 },
+          }}
+        >
+          {footerButtons.map((button, index) => (
+            <ButtonBase
+              key={`${index}-${button.label}`}
+              aria-label={button.ariaLabel ?? button.label}
+              title={button.ariaLabel ?? button.label}
+              disabled={button.disabled}
+              onClick={button.onClick}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 0.25,
+                minWidth: 0,
+                py: 1,
+                px: 0.25,
+                borderRadius: 1,
+                color: 'primary.dark',
+                '&:hover': { bgcolor: 'action.hover' },
+                '&.Mui-disabled': { opacity: 0.5 },
+                '&.Mui-focusVisible': { bgcolor: 'action.focus' },
+              }}
+            >
+              {button.icon}
+              <Box
+                component="span"
+                sx={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {button.label}
+              </Box>
+            </ButtonBase>
+          ))}
+        </CardActions>
+      ) : (
+        <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
+          {allSecondaryActions.map((action, index) => (
+            <Button
+              key={index}
+              variant="ghost"
+              size="sm"
+              disabled={action.pending}
+              onClick={action.onClick}
+              startIcon={action.icon}
+            >
+              {action.pending ? action.pendingLabel : action.label}
+            </Button>
+          ))}
+          {titleEdit ? null : viewTo ? (
+            editTo && (
+              <MuiButton
+                component={RouterLink}
+                to={editTo}
+                variant="text"
+                color="inherit"
+                size="small"
+                startIcon={<EditOutlinedIcon fontSize="small" />}
+              >
+                {editLabel}
+              </MuiButton>
+            )
+          ) : editTo ? (
             <MuiButton
               component={RouterLink}
               to={editTo}
@@ -412,24 +511,13 @@ export function RecordCard({
             >
               {editLabel}
             </MuiButton>
-          )
-        ) : editTo ? (
-          <MuiButton
-            component={RouterLink}
-            to={editTo}
-            variant="text"
-            color="inherit"
-            size="small"
-            startIcon={<EditOutlinedIcon fontSize="small" />}
-          >
-            {editLabel}
-          </MuiButton>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={onEdit} startIcon={<EditOutlinedIcon fontSize="small" />}>
-            {editLabel}
-          </Button>
-        )}
-      </CardActions>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={onEdit} startIcon={<EditOutlinedIcon fontSize="small" />}>
+              {editLabel}
+            </Button>
+          )}
+        </CardActions>
+      )}
     </MuiCard>
   )
 }

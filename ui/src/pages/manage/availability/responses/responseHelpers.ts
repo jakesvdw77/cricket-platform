@@ -106,7 +106,6 @@ export function groupBySlot(
 
 // What the page hands each view so a tap on a player can set their answer (or not, when closed).
 export interface OverrideProps {
-  disabled: boolean
   // `${playerProfileId}:${windowId}` of the in-flight override, so only that control is disabled.
   pendingKey: string | null
   // Resolves true once saved, false if it failed, so a view can move focus off a trigger that is

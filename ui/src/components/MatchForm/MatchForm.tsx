@@ -4,6 +4,7 @@ import { Box, MenuItem, ToggleButton, ToggleButtonGroup, Typography } from '@mui
 import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
 import type { MatchPayload } from '../../api/matchApi'
+import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { Team } from '../../api/teamApi'
@@ -49,22 +50,6 @@ interface FormState {
 }
 
 type FormErrors = Partial<Record<'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName' | 'seasonId' | 'matchDate', string>>
-
-// HTML <input type="datetime-local"> has no timezone of its own — treated as the browser's local
-// time on both read and write, converted to/from a real ISO Instant string (Match.matchDate) at
-// the form's edges only.
-function toDatetimeLocal(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-function fromDatetimeLocal(value: string): string {
-  return new Date(value).toISOString()
-}
 
 function toFormState(initialValues?: Partial<MatchPayload>): FormState {
   return {

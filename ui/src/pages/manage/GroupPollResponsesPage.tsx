@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Chip, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, Chip, IconButton, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
@@ -14,7 +15,8 @@ import { getRoundMatches, getRoundResponses, listRounds, setRoundPlayerStatus } 
 import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailabilityApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
-import { closesValue } from './availability/pollHelpers'
+import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
+import { closesRowText } from './availability/pollHelpers'
 import { filterPlayers, groupBySlot } from './availability/responses/responseHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesByTimeSlot } from './availability/responses/ResponsesByTimeSlot'
@@ -35,6 +37,7 @@ export default function GroupPollResponsesPage() {
   const [view, setView] = useState<View>('slot')
   const [search, setSearch] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
+  const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
 
   const roundsKey = ['managed-club', clubId, 'section-availability-rounds']
@@ -99,10 +102,8 @@ export default function GroupPollResponsesPage() {
     )
   }
 
-  const closes = closesValue(round.autoClose, round.scheduledCloseAt)
   const closed = !responses.open
   const override: OverrideProps = {
-    disabled: closed,
     pendingKey,
     onOverride: async (row, windowId, status) => {
       setPendingKey(`${row.playerProfileId}:${windowId}`)
@@ -137,8 +138,11 @@ export default function GroupPollResponsesPage() {
           sx={badgeSx(responses.open ? 'positive' : 'muted')}
         />
         <Typography variant="body2" color="text.secondary">
-          {responses.sectionName} · {closes === 'Manually' ? 'Closes manually' : `Closes ${closes}`}
+          {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
         </Typography>
+        <IconButton size="small" aria-label="Edit close time" title="Edit close time" onClick={() => setCloseTimeOpen(true)}>
+          <EditOutlinedIcon fontSize="small" />
+        </IconButton>
       </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
@@ -171,7 +175,7 @@ export default function GroupPollResponsesPage() {
 
       {closed && (
         <Typography variant="body2" color="text.secondary">
-          This poll is closed, so answers can't be changed.
+          This poll is closed. Changes are recorded as a manager correction.
         </Typography>
       )}
       {overrideMutation.isError && (
@@ -200,6 +204,17 @@ export default function GroupPollResponsesPage() {
         />
       )}
       {view === 'summary' && <ResponsesSummary slots={summarySlots} />}
+
+      <EditCloseTimeDialog
+        open={closeTimeOpen}
+        onClose={() => setCloseTimeOpen(false)}
+        clubId={clubId}
+        target={{ kind: 'GROUP', roundId: round.id }}
+        autoClose={round.autoClose}
+        scheduledCloseAt={round.scheduledCloseAt}
+        kickoff={round.firstMatchKickoff}
+        reopen={closed}
+      />
 
       <SectionAvailabilityShareDialog open={shareOpen} onClose={() => setShareOpen(false)} round={round} />
     </Box>

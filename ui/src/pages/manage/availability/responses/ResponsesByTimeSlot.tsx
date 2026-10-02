@@ -32,7 +32,7 @@ function PlayerRow({
       playerName={playerName(row)}
       slotLabel={slotHeading(slot.bracket)}
       status={status}
-      disabled={override.disabled || override.pendingKey === `${row.playerProfileId}:${slot.bracket.windowId}`}
+      disabled={override.pendingKey === `${row.playerProfileId}:${slot.bracket.windowId}`}
       onSelect={(next) => override.onOverride(row, slot.bracket.windowId, next)}
     >
       {(trigger) => (

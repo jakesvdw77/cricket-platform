@@ -5,10 +5,13 @@ import { Button } from '../Button'
 import { Input } from '../Input'
 import type { Match } from '../../api/matchApi'
 
+// Only what the invite text reads - so a squad poll card can share without fetching the full Match.
+export type PollShareMatch = Pick<Match, 'matchDate' | 'venue' | 'homeTeamName' | 'awayTeamName'>
+
 export interface PollShareDialogProps {
   open: boolean
   onClose: () => void
-  match: Match
+  match: PollShareMatch
   // The resolved display name of the side this poll is for (the caller already has this — either
   // a real Team's name or the match's own free-text side name).
   teamName: string
@@ -19,7 +22,7 @@ export interface PollShareDialogProps {
 // poll belongs to (the polled side is nearly always the club's own real Team) — a display nicety,
 // not authoritative business logic. Falls back to a generic label when both sides are real Teams,
 // since Match itself carries no display name for a real-Team side (only its id).
-function opponentLabel(match: Match, teamName: string): string {
+function opponentLabel(match: PollShareMatch, teamName: string): string {
   if (match.homeTeamName && match.homeTeamName !== teamName) {
     return match.homeTeamName
   }
@@ -29,7 +32,7 @@ function opponentLabel(match: Match, teamName: string): string {
   return 'the opposition'
 }
 
-function buildInviteText(match: Match, teamName: string, pollId: string): string {
+function buildInviteText(match: PollShareMatch, teamName: string, pollId: string): string {
   const link = `${window.location.origin}/poll/${pollId}`
   const matchDate = new Date(match.matchDate).toLocaleString()
   const lines = [

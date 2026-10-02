@@ -16,9 +16,8 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
-import { SquadPollCard } from './availability/SquadPollCard'
+import { PollCard } from './availability/PollCard'
 import { squadPollTitle } from './availability/pollHelpers'
-import { GroupPollCard } from './availability/GroupPollCard'
 
 type PollTypeFilter = 'ALL' | 'SQUAD' | 'GROUP'
 
@@ -242,14 +241,32 @@ export default function AvailabilityPollsDashboard() {
           sx={{
             display: 'grid',
             gap: 2,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+            // auto-fill with a 320px floor: a card is never narrower than 320px at any viewport or
+            // shell, which is what keeps the poll card's four footer columns unclipped (docs/specs/
+            // 066). 375px phone = 1 column, then 2 and 3 columns as width allows. stretch makes every
+            // card in a row the height of the tallest.
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            alignItems: 'stretch',
           }}
         >
           {visibleItems.map((item) =>
             item.kind === 'SQUAD' ? (
-              <SquadPollCard key={item.key} clubId={clubId} poll={item.poll} open={item.open} teamsById={teamsById} onChanged={invalidatePolls} />
+              <PollCard
+                key={item.key}
+                clubId={clubId}
+                item={{ kind: 'SQUAD', poll: item.poll }}
+                open={item.open}
+                teamsById={teamsById}
+                onChanged={invalidatePolls}
+              />
             ) : (
-              <GroupPollCard key={item.key} clubId={clubId} round={item.round} onChanged={invalidatePolls} />
+              <PollCard
+                key={item.key}
+                clubId={clubId}
+                item={{ kind: 'GROUP', round: item.round }}
+                teamsById={teamsById}
+                onChanged={invalidatePolls}
+              />
             ),
           )}
         </Box>

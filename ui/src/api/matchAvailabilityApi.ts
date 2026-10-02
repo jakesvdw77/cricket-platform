@@ -48,17 +48,37 @@ export async function listPolls(clubId: string, matchId: string): Promise<MatchA
   return data
 }
 
-// autoClose absent = the backend's own default (on) - 064.
+// autoClose absent = the backend's own default (on) - 064. scheduledCloseAt (ISO, docs/specs/066)
+// absent = the server default (kickoff minus 24h).
 export async function createPoll(
   clubId: string,
   matchId: string,
   teamId: string,
   autoClose?: boolean,
+  scheduledCloseAt?: string,
 ): Promise<MatchAvailabilityPoll> {
   const { data } = await api.post<MatchAvailabilityPoll>(pollsPath(clubId, matchId), {
     teamId,
     ...(autoClose !== undefined ? { autoClose } : {}),
+    ...(scheduledCloseAt ? { scheduledCloseAt } : {}),
   })
+  return data
+}
+
+// docs/specs/066: body of the PUT .../close-time endpoint. autoClose false stores no time.
+export interface UpdatePollCloseTimePayload {
+  autoClose: boolean
+  scheduledCloseAt: string | null
+}
+
+// Sets the close time of an open or closed squad poll; does not open or close it.
+export async function updatePollCloseTime(
+  clubId: string,
+  matchId: string,
+  pollId: string,
+  payload: UpdatePollCloseTimePayload,
+): Promise<MatchAvailabilityPoll> {
+  const { data } = await api.put<MatchAvailabilityPoll>(`${pollsPath(clubId, matchId)}/${pollId}/close-time`, payload)
   return data
 }
 
@@ -89,7 +109,7 @@ export async function getPollResponses(
 
 // Admin override — set a squad member's status directly from the Availability tab (added after
 // live review found no way to record a response relayed outside the poll link, e.g. a phone
-// call). Same closed-poll 409 rule as the public write path — admin included, no bypass.
+// call). Since docs/specs/066 this also works on a closed poll (a manager correction); the public path still 409s.
 export async function setPlayerStatus(
   clubId: string,
   matchId: string,
