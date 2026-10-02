@@ -120,6 +120,52 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
     }
 
     @Test
+    void aMorningAndAfternoonMatchOnTheSameDateClusterIntoOneGroup() {
+        UUID teamId = UUID.randomUUID();
+        UUID morningMatchId = UUID.randomUUID();
+        UUID afternoonMatchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match morningMatch = matchWithHomeTeam(morningMatchId, teamId, Instant.parse("2026-10-03T08:00:00Z"));
+        Match afternoonMatch = matchWithHomeTeam(afternoonMatchId, teamId, Instant.parse("2026-10-03T12:00:00Z"));
+        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(morningMatch, afternoonMatch));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, morningMatch)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING));
+        when(matchResolver.resolveWindowKey(team, afternoonMatch)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.AFTERNOON));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        List<SectionAvailabilityFixtureGroupDto> groups = resolver.resolveGroups(clubId, sectionId);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.get(0).matches()).extracting(SectionAvailabilityFixtureMatchDto::matchId)
+                .containsExactly(morningMatchId, afternoonMatchId);
+    }
+
+    @Test
+    void aMatchWhoseHomeAndAwayTeamAreTheSameTeamAppearsOnce() {
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(teamId).awayTeamId(teamId)
+                .matchDate(Instant.parse("2026-10-03T12:00:00Z")).build();
+        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(match));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, match)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.AFTERNOON));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        List<SectionAvailabilityFixtureGroupDto> groups = resolver.resolveGroups(clubId, sectionId);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.get(0).matches()).hasSize(1);
+    }
+
+    @Test
     void aTwoDayGapMatchStartsItsOwnGroup() {
         UUID teamId = UUID.randomUUID();
         UUID saturdayMatchId = UUID.randomUUID();

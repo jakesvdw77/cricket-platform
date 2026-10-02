@@ -82,7 +82,11 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
         List<Map.Entry<SectionAvailabilityFixtureMatchDto, LocalDate>> rows = new ArrayList<>();
         for (Match match : upcomingMatches) {
             addRowIfQualifies(sectionId, match, match.getHomeTeamId(), match.getAwayTeamId(), match.getAwayTeamName(), rows);
-            addRowIfQualifies(sectionId, match, match.getAwayTeamId(), match.getHomeTeamId(), match.getHomeTeamName(), rows);
+            // A match whose home and away team are the same id (or a section-internal derby) must
+            // still appear once: both sides resolve to the same section/date/day-part window.
+            if (!java.util.Objects.equals(match.getAwayTeamId(), match.getHomeTeamId())) {
+                addRowIfQualifies(sectionId, match, match.getAwayTeamId(), match.getHomeTeamId(), match.getHomeTeamName(), rows);
+            }
         }
         rows.sort(java.util.Comparator
                 .comparing((Map.Entry<SectionAvailabilityFixtureMatchDto, LocalDate> row) -> row.getValue())
@@ -96,7 +100,10 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
 
         for (Map.Entry<SectionAvailabilityFixtureMatchDto, LocalDate> row : rows) {
             LocalDate windowDate = row.getValue();
-            if (currentGroupLatestDate != null && windowDate.equals(currentGroupLatestDate.plusDays(1))) {
+            // Same calendar date (e.g. a Saturday morning and afternoon fixture) or the very next day
+            // joins the current group; anything later starts a new one.
+            if (currentGroupLatestDate != null
+                    && (windowDate.equals(currentGroupLatestDate) || windowDate.equals(currentGroupLatestDate.plusDays(1)))) {
                 currentGroupLatestDate = windowDate;
                 currentGroupRows.add(row);
                 continue;
