@@ -13,12 +13,13 @@ export const DAY_PART_LABEL: Record<DayPart, string> = {
 // own however many windows its selected matches actually resolved to (docs/specs/063's
 // fixture-group-selection revision), no longer a fixed Morning/Afternoon pair sharing one implied
 // date. Shared between the admin round list/responses view and the public round page rather than
-// a copy-pasted formatter in each.
-export function formatBracketLabel(windowDate: string, dayPart: DayPart): string {
+// a copy-pasted formatter in each. `separator` defaults to ' - ' so every existing caller is
+// unchanged; docs/specs/065's responses views pass ' · ' to match the rest of that page.
+export function formatBracketLabel(windowDate: string, dayPart: DayPart, separator = ' - '): string {
   const formattedDate = new Date(windowDate).toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
-  return `${formattedDate} - ${DAY_PART_LABEL[dayPart]}`
+  return `${formattedDate}${separator}${DAY_PART_LABEL[dayPart]}`
 }

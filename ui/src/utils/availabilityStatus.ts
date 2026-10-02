@@ -1,3 +1,5 @@
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import type { AvailabilityStatus } from '../api/matchAvailabilityApi'
 
 // Originally private to MatchAvailabilityTab.tsx; pulled out here per docs/specs/
@@ -16,4 +18,15 @@ export const STATUS_COLOR: Record<AvailabilityStatus, 'success' | 'error' | 'war
   AVAILABLE: 'success',
   UNAVAILABLE: 'error',
   UNSURE: 'warning',
+}
+
+// docs/specs/065: the tinted-status sx (12% tone background + the tone's dark text) as one helper
+// for the group poll responses views, instead of another inline copy of the same convention.
+export function statusTintSx(status: AvailabilityStatus) {
+  const tone = STATUS_COLOR[status]
+  return {
+    bgcolor: (theme: Theme) => alpha(theme.palette[tone].main, 0.12),
+    color: `${tone}.dark`,
+    fontWeight: 600,
+  }
 }

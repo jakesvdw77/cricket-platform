@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Box, Chip, Collapse, Menu, MenuItem, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
+import { useNavigate } from 'react-router-dom'
+import { Box, Collapse, Stack, Typography } from '@mui/material'
 import { isAxiosError } from 'axios'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
@@ -22,19 +21,13 @@ import {
   closeRound,
   deleteRound,
   getRoundMatches,
-  getRoundResponses,
-  setRoundPlayerStatus,
   updateRoundDescription,
 } from '../../../api/sectionAvailabilityApi'
-import type { SectionAvailabilityRound, SectionAvailabilityRoundResponseRow } from '../../../api/sectionAvailabilityApi'
-import type { AvailabilityStatus } from '../../../api/matchAvailabilityApi'
+import type { SectionAvailabilityRound } from '../../../api/sectionAvailabilityApi'
 import { errorDetail } from '../../../utils/errorDetail'
 import { formatBracketLabel } from '../../../utils/dayPart'
-import { STATUS_COLOR, STATUS_LABEL } from '../../../utils/availabilityStatus'
 import { CANNOT_REOPEN_MESSAGE, closePollDescription, closePollTitle } from '../../../utils/pollClose'
 import { canReopen, closesValue } from './pollHelpers'
-
-const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
 
 // However many brackets this round actually owns, one to several - no longer a fixed
 // Morning/Afternoon pair (docs/specs/063's fixture-group-selection revision).
@@ -50,81 +43,11 @@ function roundFields(round: SectionAvailabilityRound): RecordCardField[] {
   ]
 }
 
-function playerDisplayName(row: SectionAvailabilityRoundResponseRow): string {
-  const name = `${row.firstName} ${row.lastName}`
-  return row.jerseyNumber != null ? `#${row.jerseyNumber} ${name}` : name
-}
-
-// The admin-override entry point - mirrors MatchAvailabilityTab.tsx's own StatusMenuChip exactly
-// (a squad member's status Chip doubles as a menu trigger), just resolved per bracket (identified
-// by its own windowId, since a round can now own several windows sharing the same dayPart across
-// different dates) instead of per match/side. Disabled while the round is closed, matching the
-// backend's own rule (round open/close cascades to every underlying window in lockstep).
-function BracketStatusChip({
-  windowId,
-  dayPart,
-  windowDate,
-  status,
-  disabled,
-  pending,
-  playerName,
-  onSelect,
-}: {
-  windowId: string
-  dayPart: 'MORNING' | 'AFTERNOON'
-  windowDate: string
-  status: AvailabilityStatus | null
-  disabled: boolean
-  pending: boolean
-  playerName: string
-  onSelect: (windowId: string, status: AvailabilityStatus) => void
-}) {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
-  const label = formatBracketLabel(windowDate, dayPart)
-
-  const chipProps = status
-    ? {
-        label: `${label}: ${STATUS_LABEL[status]}`,
-        sx: {
-          bgcolor: (theme: Theme) => alpha(theme.palette[STATUS_COLOR[status]].main, 0.12),
-          color: `${STATUS_COLOR[status]}.dark`,
-          fontWeight: 600,
-        },
-      }
-    : { label: `${label}: No response`, variant: 'outlined' as const }
-
-  return (
-    <>
-      <Chip
-        {...chipProps}
-        size="small"
-        disabled={disabled || pending}
-        onClick={(event) => setAnchorEl(event.currentTarget)}
-        aria-label={`Set ${playerName}'s ${label.toLowerCase()} availability`}
-      />
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-        {STATUS_OPTIONS.map((option) => (
-          <MenuItem
-            key={option}
-            selected={option === status}
-            onClick={() => {
-              setAnchorEl(null)
-              onSelect(windowId, option)
-            }}
-          >
-            {STATUS_LABEL[option]}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
-  )
-}
-
 // Moved from the deleted SectionAvailabilityRounds.tsx's RoundCard (docs/specs/064-unified-
-// availability-polls.md): the same RecordCard plus its own expandable "covered matches"/"responses"
-// lists, inline description editor and share dialog, now with a 'Group poll' type badge, a Closes
-// row and a Delete action. Each card owns its own mutations so one card's pending state never
-// leaks onto another's.
+// availability-polls.md): the same RecordCard plus its own expandable "covered matches" list
+// (its Responses button opens docs/specs/065's own page), inline description editor and share
+// dialog, now with a 'Group poll' type badge, a Closes row and a Delete action. Each card owns
+// its own mutations so one card's pending state never leaks onto another's.
 export function GroupPollCard({
   clubId,
   round,
@@ -134,13 +57,11 @@ export function GroupPollCard({
   round: SectionAvailabilityRound
   onChanged: () => void
 }) {
-  const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [matchesOpen, setMatchesOpen] = useState(false)
-  const [responsesOpen, setResponsesOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState(round.description)
-  const [settingKey, setSettingKey] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [closeOpen, setCloseOpen] = useState(false)
   // The server's own 409 message when picked match squad members block the delete.
@@ -189,22 +110,6 @@ export function GroupPollCard({
     enabled: matchesOpen,
   })
 
-  const responsesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', round.id, 'responses'],
-    queryFn: () => getRoundResponses(clubId, round.id),
-    enabled: responsesOpen,
-  })
-
-  const setStatusMutation = useMutation({
-    mutationFn: ({ playerProfileId, windowId, status }: { playerProfileId: string; windowId: string; status: AvailabilityStatus }) =>
-      setRoundPlayerStatus(clubId, round.id, playerProfileId, windowId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds', round.id, 'responses'] })
-      onChanged()
-    },
-    onSettled: () => setSettingKey(null),
-  })
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <RecordCard
@@ -250,10 +155,11 @@ export function GroupPollCard({
             icon: <EventNoteOutlinedIcon fontSize="small" />,
           },
           {
-            label: responsesOpen ? 'Hide responses' : 'Responses',
+            label: 'Responses',
             pendingLabel: 'Responses',
             pending: false,
-            onClick: () => setResponsesOpen((prev) => !prev),
+            // docs/specs/065: the responses live on their own page now, not an in-card expansion.
+            onClick: () => navigate(`/manage/availability/group/${round.id}`),
             icon: <PeopleAltOutlinedIcon fontSize="small" />,
           },
           {
@@ -338,59 +244,6 @@ export function GroupPollCard({
                   </Stack>
                 )
               })}
-            </Stack>
-          )}
-        </Box>
-      </Collapse>
-
-      <Collapse in={responsesOpen}>
-        <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, bgcolor: 'background.paper' }}>
-          {responsesQuery.isLoading && (
-            <Typography variant="body2" color="text.secondary">
-              Loading responses…
-            </Typography>
-          )}
-          {!responsesQuery.isLoading && (responsesQuery.data?.responses ?? []).length === 0 && (
-            <Typography variant="body2" color="text.secondary">
-              No eligible players for this section yet.
-            </Typography>
-          )}
-          {!responsesQuery.isLoading && (responsesQuery.data?.responses ?? []).length > 0 && (
-            <Stack spacing={1}>
-              {(responsesQuery.data?.responses ?? []).map((row) => (
-                <Stack
-                  key={row.playerProfileId}
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  flexWrap="wrap"
-                  useFlexGap
-                  spacing={1}
-                  sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}
-                >
-                  <Typography variant="body2" fontWeight={600} noWrap>
-                    {playerDisplayName(row)}
-                  </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {row.statuses.map((entry) => (
-                      <BracketStatusChip
-                        key={entry.windowId}
-                        windowId={entry.windowId}
-                        dayPart={entry.dayPart}
-                        windowDate={entry.windowDate}
-                        status={entry.status}
-                        disabled={!round.open}
-                        pending={settingKey === `${row.playerProfileId}:${entry.windowId}`}
-                        playerName={playerDisplayName(row)}
-                        onSelect={(windowId, status) => {
-                          setSettingKey(`${row.playerProfileId}:${windowId}`)
-                          setStatusMutation.mutate({ playerProfileId: row.playerProfileId, windowId, status })
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                </Stack>
-              ))}
             </Stack>
           )}
         </Box>
