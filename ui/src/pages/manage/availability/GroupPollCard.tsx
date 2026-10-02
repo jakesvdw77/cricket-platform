@@ -10,7 +10,6 @@ import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { RecordCard } from '../../../components/RecordCard'
 import type { RecordCardField } from '../../../components/RecordCard'
@@ -226,17 +225,14 @@ export function GroupPollCard({
                 icon: round.open ? <LockOutlinedIcon fontSize="small" /> : <LockOpenOutlinedIcon fontSize="small" />,
               }
         }
+        // The card's own Edit action edits the description (matches can't be changed after creation,
+        // docs/specs/064-unified-availability-polls.md Non-goals), so there is one Edit, not two.
+        editLabel={editOpen ? 'Hide description editor' : 'Edit description'}
+        onEdit={() => {
+          setDescriptionDraft(round.description)
+          setEditOpen((prev) => !prev)
+        }}
         secondaryActions={[
-          {
-            label: editOpen ? 'Hide description editor' : 'Edit description',
-            pendingLabel: 'Edit description',
-            pending: false,
-            onClick: () => {
-              setDescriptionDraft(round.description)
-              setEditOpen((prev) => !prev)
-            },
-            icon: <EditOutlinedIcon fontSize="small" />,
-          },
           {
             label: matchesOpen ? 'Hide covered matches' : 'View covered matches',
             pendingLabel: 'View covered matches',
