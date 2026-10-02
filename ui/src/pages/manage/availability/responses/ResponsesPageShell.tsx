@@ -75,13 +75,14 @@ export function ResponsesPageShell({
           exclusive
           size="small"
           aria-label="Responses view"
+          sx={{ flex: 'none', alignSelf: { xs: 'stretch', sm: 'center' } }}
           onChange={(_event, next: View | null) => next && setView(next)}
         >
           <ToggleButton value="slot">Time slot</ToggleButton>
           <ToggleButton value="player">Player</ToggleButton>
           <ToggleButton value="summary">Summary</ToggleButton>
         </ToggleButtonGroup>
-        <Box sx={{ flex: 1, maxWidth: { sm: 360 } }}>
+        <Box sx={{ flex: { sm: '1 1 0' }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
           <Input
             label="Search players"
             value={search}

@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SectionAvailabilityShareDialog } from './SectionAvailabilityShareDialog'
 import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 
@@ -77,5 +77,66 @@ describe('SectionAvailabilityShareDialog', () => {
   it('renders nothing visible when closed', () => {
     render(<SectionAvailabilityShareDialog open={false} onClose={vi.fn()} round={makeRound()} />)
     expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+  })
+
+  describe('copy to clipboard', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    function mockClipboard(writeText: (text: string) => Promise<void>) {
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    }
+
+    it('Copy message copies the full text as shown and the button briefly reads Copied', async () => {
+      const user = userEvent.setup()
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      mockClipboard(writeText)
+      render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+      const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+
+      expect(writeText).toHaveBeenCalledWith(textarea.value)
+      expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('Message copied.')
+    })
+
+    it('Copy link copies just the poll link', async () => {
+      const user = userEvent.setup()
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      mockClipboard(writeText)
+      render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+
+      expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/section-availability/round-1`)
+      expect(await screen.findByRole('status')).toHaveTextContent('Link copied.')
+    })
+
+    it('falls back to execCommand when the clipboard API rejects', async () => {
+      const user = userEvent.setup()
+      mockClipboard(vi.fn().mockRejectedValue(new Error('denied')))
+      const execCommand = vi.fn().mockReturnValue(true)
+      document.execCommand = execCommand
+      render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+      await user.click(screen.getByRole('button', { name: 'Copy message' }))
+
+      await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'))
+      expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+    })
+
+    it('tells the admin to copy manually when both routes fail', async () => {
+      const user = userEvent.setup()
+      mockClipboard(vi.fn().mockRejectedValue(new Error('denied')))
+      document.execCommand = vi.fn().mockReturnValue(false)
+      render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+
+      expect(await screen.findByRole('status')).toHaveTextContent(/copy it manually/i)
+      expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    })
   })
 })

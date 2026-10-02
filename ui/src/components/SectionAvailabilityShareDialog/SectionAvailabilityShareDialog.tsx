@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
 import { Button } from '../Button'
 import { Input } from '../Input'
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 
 export interface SectionAvailabilityShareDialogProps {
@@ -34,6 +37,8 @@ function buildInviteText(round: SectionAvailabilityRound): string {
 // range. Channel-agnostic: plain, copy-paste-into-any-chat text, not a real send integration.
 export function SectionAvailabilityShareDialog({ open, onClose, round }: SectionAvailabilityShareDialogProps) {
   const [text, setText] = useState('')
+  const { copy, copiedKey, failed } = useCopyToClipboard()
+  const link = `${window.location.origin}/section-availability/${round.id}`
 
   // Regenerates fresh invite text every time the dialog opens, so a previous edit never leaks into
   // a later open - same reset-on-open pattern PollShareDialog already uses.
@@ -64,9 +69,21 @@ export function SectionAvailabilityShareDialog({ open, onClose, round }: Section
             multiline
             minRows={8}
           />
+          {/* Polite live region announcing the copy outcome; visible text is the button label. */}
+          <Typography variant="caption" color={failed ? 'error.main' : 'text.secondary'} role="status" aria-live="polite">
+            {copiedKey === 'message' && 'Message copied.'}
+            {copiedKey === 'link' && 'Link copied.'}
+            {failed && "Couldn't copy automatically - select the text and copy it manually."}
+          </Typography>
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2, '& > :not(:first-of-type)': { ml: 0 } }}>
+        <Button startIcon={<ContentCopyOutlinedIcon />} onClick={() => copy(text, 'message')}>
+          {copiedKey === 'message' ? 'Copied' : 'Copy message'}
+        </Button>
+        <Button variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
+          {copiedKey === 'link' ? 'Copied' : 'Copy link'}
+        </Button>
         <Button variant="ghost" startIcon={<RefreshOutlinedIcon />} onClick={handleRegenerate}>
           Regenerate
         </Button>

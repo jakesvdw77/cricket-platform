@@ -120,6 +120,11 @@ export interface RecordCardProps {
   // the card's edit affordance, so the footer Edit button is not rendered; `onEdit`/`editTo` are
   // ignored. Purely additive: call sites not passing it are unchanged.
   titleEdit?: { label: string; onClick: () => void }
+  // Let the title wrap to up to two lines (ellipsis only beyond that) instead of the single-line
+  // `noWrap` ellipsis - for cards whose titles are long sentences (the poll card). The title area
+  // then flexes (flex 1, minWidth 0) so a titleEdit pencil stays right after the text and the
+  // corner action / badges stay top-right. Purely additive: omitted, nothing changes.
+  titleWrap?: boolean
   // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
   // card's top-right corner, after the badges, keeping the footer for the main actions. The
   // action's `label` is its accessible name and tooltip; `icon` is required.
@@ -207,6 +212,7 @@ export function RecordCard({
   editTo,
   viewTo,
   titleEdit,
+  titleWrap,
   cornerAction,
   secondaryAction,
   secondaryActions,
@@ -214,6 +220,19 @@ export function RecordCard({
   children,
   footerButtons,
 }: RecordCardProps) {
+  const titleTypographyProps = titleWrap
+    ? {
+        sx: {
+          minWidth: 0,
+          flex: '0 1 auto',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical' as const,
+          overflow: 'hidden',
+          overflowWrap: 'anywhere' as const,
+        },
+      }
+    : { noWrap: true }
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
   // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
   const badgeChips = (
@@ -265,7 +284,12 @@ export function RecordCard({
     >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1.5}
+            sx={{ minWidth: 0, ...(titleWrap && { flex: 1 }) }}
+          >
             {avatar && (
               <Avatar
                 src={avatar.imageUrl ?? undefined}
@@ -294,7 +318,7 @@ export function RecordCard({
               // the containing-block search skip over it and resolve to MuiCard (the outer
               // `position: relative` element), which is what actually makes `inset: 0` cover the
               // whole card.
-              <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
+              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
                 <MuiLink
                   component={RouterLink}
                   to={viewTo}
@@ -306,7 +330,7 @@ export function RecordCard({
                 </MuiLink>
               </Typography>
             ) : (
-              <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
+              <Typography variant="subtitle1" component="h3" fontWeight={600} {...titleTypographyProps}>
                 {title}
               </Typography>
             )}

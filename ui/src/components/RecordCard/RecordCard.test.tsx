@@ -44,6 +44,32 @@ describe('RecordCard', () => {
     expect(screen.queryByRole('button', { name: /active|retired|draft/i })).not.toBeInTheDocument()
   })
 
+  it('titleWrap lets the title wrap (no single-line noWrap), while the default title stays noWrap', () => {
+    const { rerender } = render(<RecordCard title="Saturday 3 October - Over 40 fixtures" editLabel="Edit" onEdit={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Saturday 3 October - Over 40 fixtures' })).toHaveClass('MuiTypography-noWrap')
+
+    rerender(<RecordCard title="Saturday 3 October - Over 40 fixtures" editLabel="Edit" onEdit={vi.fn()} titleWrap />)
+    const heading = screen.getByRole('heading', { name: 'Saturday 3 October - Over 40 fixtures' })
+    expect(heading).not.toHaveClass('MuiTypography-noWrap')
+    expect(heading).toHaveStyle({ display: '-webkit-box', overflow: 'hidden' })
+  })
+
+  it('titleWrap keeps the titleEdit pencil after the title and the corner action present', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(
+      <RecordCard
+        title="Saturday 3 October - Over 40 fixtures"
+        titleWrap
+        titleEdit={{ label: 'Edit description', onClick }}
+        cornerAction={{ label: 'Delete', pendingLabel: 'Deleting', pending: false, onClick: vi.fn(), icon: <span>x</span> }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Edit description' }))
+    expect(onClick).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  })
+
   it('titleEdit renders a pencil button after the title, calls its handler, and replaces the footer Edit button', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()

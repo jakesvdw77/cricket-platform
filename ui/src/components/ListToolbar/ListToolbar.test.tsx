@@ -198,6 +198,30 @@ describe('ListToolbar', () => {
       )
       expect(screen.getByRole('button', { name: 'Sort ascending' })).toBeInTheDocument()
     })
+
+    it('shows a tooltip stating the current sort and what a click does, keeping the aria-label', async () => {
+      const user = userEvent.setup()
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{
+            value: 'asc',
+            ascLabel: 'Match date, soonest first',
+            descLabel: 'Match date, latest first',
+            onToggle: () => undefined,
+          }}
+        />,
+      )
+
+      const button = screen.getByRole('button', { name: 'Match date, latest first' })
+      await user.hover(button)
+      expect(
+        await screen.findByRole('tooltip', {
+          name: 'Sorted by Match date, soonest first. Click for Match date, latest first.',
+        }),
+      ).toBeInTheDocument()
+    })
   })
 
   // docs/specs/043-list-toolbar-gold-standard.md: the new compact field picker, additive on top
