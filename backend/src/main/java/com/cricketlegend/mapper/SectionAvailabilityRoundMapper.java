@@ -3,6 +3,7 @@ package com.cricketlegend.mapper;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.dto.SectionAvailabilityRoundBracketDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundDto;
+import java.time.Instant;
 import java.util.List;
 import org.mapstruct.Mapper;
 
@@ -18,5 +19,7 @@ import org.mapstruct.Mapper;
 public interface SectionAvailabilityRoundMapper {
 
     SectionAvailabilityRoundDto toDto(
-            SectionAvailabilityRound round, String sectionName, List<SectionAvailabilityRoundBracketDto> brackets);
+            SectionAvailabilityRound round, String sectionName,
+            Instant firstMatchKickoff,
+            List<SectionAvailabilityRoundBracketDto> brackets);
 }

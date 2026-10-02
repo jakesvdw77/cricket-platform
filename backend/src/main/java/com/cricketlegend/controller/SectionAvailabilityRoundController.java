@@ -6,6 +6,7 @@ import com.cricketlegend.dto.SectionAvailabilityRoundDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
 import com.cricketlegend.dto.SetSectionAvailabilityRoundPlayerRequest;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
 import com.cricketlegend.service.SectionAvailabilityFixtureGroupResolver;
 import com.cricketlegend.service.SectionAvailabilityRoundService;
@@ -112,6 +113,18 @@ public class SectionAvailabilityRoundController {
     public ResponseEntity<SectionAvailabilityRoundDto> close(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
         return ResponseEntity.ok(sectionAvailabilityRoundService.close(authentication, clubId, roundId));
+    }
+
+    /** docs/specs/066-poll-close-time-and-unified-cards.md: edit the close time of an open or closed group poll. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PutMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/close-time")
+    public ResponseEntity<SectionAvailabilityRoundDto> updateRoundCloseTime(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID roundId,
+            @Valid @RequestBody UpdatePollCloseTimeRequest request) {
+        return ResponseEntity.ok(
+                sectionAvailabilityRoundService.updateCloseTime(authentication, clubId, roundId, request));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

@@ -3,6 +3,7 @@ package com.cricketlegend.repository;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +32,9 @@ public interface SectionAvailabilityWindowRepository extends JpaRepository<Secti
      * bracket is only ever addressed by its own {@code windowId} from here on.
      */
     List<SectionAvailabilityWindow> findByRoundId(UUID roundId);
+
+    /** Batched {@link #findByRoundId} for the group-poll list (docs/specs/066): one query for many rounds. */
+    List<SectionAvailabilityWindow> findByRoundIdIn(Collection<UUID> roundIds);
 
     void deleteByRoundId(UUID roundId);
 }

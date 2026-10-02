@@ -18,13 +18,13 @@ import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponseRowDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundStatusDto;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ReopenWindowPassedException;
 import com.cricketlegend.exception.RoundHasMatchSquadException;
-import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
 import com.cricketlegend.repository.LeagueRepository;
@@ -79,14 +79,19 @@ import org.springframework.transaction.annotation.Transactional;
  * cascade to every owned window's own {@code open} flag, kept in lockstep. {@link
  * #setPlayerStatus} is the admin override, now {@code windowId}-keyed rather than {@code
  * dayPart}-keyed (a round can own several windows sharing the same {@code dayPart} across
- * different dates) — mirrors {@code MatchAvailabilityPollServiceImpl.setPlayerStatus}'s exact
- * not-in-audience ({@link NotFoundException}, 404) then closed-bracket ({@link
- * SectionAvailabilityWindowClosedException}, 409) rule order.
+ * different dates) — mirrors {@code MatchAvailabilityPollServiceImpl.setPlayerStatus}'s
+ * not-in-audience ({@link NotFoundException}, 404) rule; unlike the public path it is accepted on
+ * a closed round (docs/specs/066, a manager correction).
  *
  * <p>Per docs/specs/064-unified-availability-polls.md: {@link #delete} removes a round child-first
  * (409 {@link RoundHasMatchSquadException} while any squad member is picked against its windows)
  * and {@link #closeDueAutoClosePolls} is the scheduled auto-close job's internal entry point,
  * cascading through {@code setWindowsOpen} like a manual close.
+ *
+ * <p>Per docs/specs/066: {@link #updateCloseTime} edits the close time (open or closed, never
+ * changing {@code open}) via {@link AutoCloseSchedule#validateCloseTime} against the earliest
+ * covered kickoff; {@link #create} uses the same rule for an explicit {@code scheduledCloseAt};
+ * every DTO carries {@code firstMatchKickoff}.
  */
 @Service
 public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityRoundService {
@@ -165,7 +170,13 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                             SectionAvailabilityRound::getLastMatchDate, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(CLOSED_ROUNDS_LIMIT);
         }
-        return rounds.map(this::toDto).toList();
+        List<SectionAvailabilityRound> visible = rounds.toList();
+        // One batched walk for every returned round instead of three queries per round.
+        Map<UUID, Instant> kickoffByRoundId = earliestKickoffs(
+                visible.stream().map(SectionAvailabilityRound::getId).toList());
+        return visible.stream()
+                .map(round -> toDto(round, kickoffByRoundId.get(round.getId())))
+                .toList();
     }
 
     @Override
@@ -223,7 +234,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                 .firstMatchDate(earliest.atZone(zone).toLocalDate())
                 .lastMatchDate(latest.atZone(zone).toLocalDate())
                 .autoClose(request.autoClose())
-                .scheduledCloseAt(AutoCloseSchedule.scheduledCloseAt(request.autoClose(), earliest))
+                .scheduledCloseAt(AutoCloseSchedule.resolveCreateCloseTime(
+                        request.autoClose(), request.scheduledCloseAt(), earliest, Instant.now()))
                 .open(true)
                 .build();
         round = sectionAvailabilityRoundRepository.save(round);
@@ -250,7 +262,23 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                     .build());
         }
 
-        return toDto(round);
+        return toDto(round, earliest);
+    }
+
+    @Override
+    @Transactional
+    public SectionAvailabilityRoundDto updateCloseTime(
+            Authentication authentication, UUID clubId, UUID roundId, UpdatePollCloseTimeRequest request) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        Instant earliest = earliestKickoff(round.getId());
+        Instant validated = AutoCloseSchedule.validateCloseTime(
+                request.autoClose(), request.scheduledCloseAt(), earliest, Instant.now());
+        // Only the close time changes; open/closed state is a separate action (open/close).
+        round.setAutoClose(request.autoClose());
+        round.setScheduledCloseAt(validated);
+        round = sectionAvailabilityRoundRepository.save(round);
+        return toDto(round, earliest);
     }
 
     @Override
@@ -355,25 +383,68 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
         accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
 
-        List<SectionAvailabilityWindow> windows = sectionAvailabilityWindowRepository.findByRoundId(round.getId());
-        Map<UUID, SectionAvailabilityWindow> windowById = windows.stream()
-                .collect(Collectors.toMap(SectionAvailabilityWindow::getId, window -> window));
-        List<UUID> windowIds = windows.stream().map(SectionAvailabilityWindow::getId).toList();
-
         List<SectionAvailabilityRoundMatchDto> result = new ArrayList<>();
-        for (SectionAvailabilityWindowMatch windowMatch :
-                sectionAvailabilityWindowMatchRepository.findByWindowIdIn(windowIds)) {
-            SectionAvailabilityWindow window = windowById.get(windowMatch.getWindowId());
-            Match match = matchRepository.findById(windowMatch.getMatchId()).orElse(null);
-            if (window == null || match == null) {
-                continue;
-            }
+        for (Map.Entry<SectionAvailabilityWindow, Match> windowed : loadWindowedMatches(List.of(round.getId()))) {
+            SectionAvailabilityWindow window = windowed.getKey();
+            Match match = windowed.getValue();
             addMatchRowIfQualifies(
                     window, match, match.getHomeTeamId(), match.getAwayTeamId(), match.getAwayTeamName(), result);
             addMatchRowIfQualifies(
                     window, match, match.getAwayTeamId(), match.getHomeTeamId(), match.getHomeTeamName(), result);
         }
         return result;
+    }
+
+    /**
+     * The one walk windows -> {@code section_availability_window_match} -> {@link Match} for any
+     * number of rounds (three batched queries regardless of count), returned as (window, match)
+     * pairs; shared by {@link #getMatches}, {@link #earliestKickoff} and {@link #earliestKickoffs}.
+     */
+    private List<Map.Entry<SectionAvailabilityWindow, Match>> loadWindowedMatches(List<UUID> roundIds) {
+        if (roundIds.isEmpty()) {
+            return List.of();
+        }
+        List<SectionAvailabilityWindow> windows = sectionAvailabilityWindowRepository.findByRoundIdIn(roundIds);
+        Map<UUID, SectionAvailabilityWindow> windowById = windows.stream()
+                .collect(Collectors.toMap(SectionAvailabilityWindow::getId, window -> window));
+        if (windowById.isEmpty()) {
+            return List.of();
+        }
+        List<SectionAvailabilityWindowMatch> windowMatches =
+                sectionAvailabilityWindowMatchRepository.findByWindowIdIn(windowById.keySet());
+        Map<UUID, Match> matchById = matchRepository
+                .findAllById(windowMatches.stream()
+                        .map(SectionAvailabilityWindowMatch::getMatchId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Match::getId, match -> match));
+
+        List<Map.Entry<SectionAvailabilityWindow, Match>> result = new ArrayList<>();
+        for (SectionAvailabilityWindowMatch windowMatch : windowMatches) {
+            SectionAvailabilityWindow window = windowById.get(windowMatch.getWindowId());
+            Match match = matchById.get(windowMatch.getMatchId());
+            if (window != null && match != null) {
+                result.add(Map.entry(window, match));
+            }
+        }
+        return result;
+    }
+
+    /** Earliest covered match kickoff per round id; rounds covering no match are absent. */
+    private Map<UUID, Instant> earliestKickoffs(List<UUID> roundIds) {
+        Map<UUID, Instant> result = new LinkedHashMap<>();
+        for (Map.Entry<SectionAvailabilityWindow, Match> windowed : loadWindowedMatches(roundIds)) {
+            result.merge(
+                    windowed.getKey().getRoundId(),
+                    windowed.getValue().getMatchDate(),
+                    (a, b) -> a.isBefore(b) ? a : b);
+        }
+        return result;
+    }
+
+    /** Earliest covered match kickoff of one round, or {@code null} when it covers none. */
+    private Instant earliestKickoff(UUID roundId) {
+        return earliestKickoffs(List.of(roundId)).get(roundId);
     }
 
     @Override
@@ -401,10 +472,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                 .orElseThrow(() -> new NotFoundException(
                         "Window " + windowId + " does not belong to round " + roundId));
 
-        if (!window.isOpen()) {
-            throw new SectionAvailabilityWindowClosedException(
-                    "Section availability round is closed: " + roundId);
-        }
+        // Admin override is accepted on a closed round too (docs/specs/066): a manager correction.
+        // The public endpoint keeps refusing closed-window writes.
 
         SectionAvailabilityResponse response = sectionAvailabilityResponseRepository
                 .findByWindowIdAndPlayerProfileId(window.getId(), playerProfileId)
@@ -523,8 +592,13 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     }
 
     private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round) {
+        return toDto(round, earliestKickoff(round.getId()));
+    }
+
+    private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round, Instant firstMatchKickoff) {
         SectionAvailabilityRoundResponsesDto responses = buildResponsesDto(round);
-        return sectionAvailabilityRoundMapper.toDto(round, responses.sectionName(), responses.brackets());
+        return sectionAvailabilityRoundMapper.toDto(
+                round, responses.sectionName(), firstMatchKickoff, responses.brackets());
     }
 
     private String sectionName(UUID sectionId) {

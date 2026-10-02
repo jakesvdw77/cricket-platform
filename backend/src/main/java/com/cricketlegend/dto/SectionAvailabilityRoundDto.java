@@ -8,7 +8,9 @@ import java.util.UUID;
 /**
  * Admin list/create/open/close/description-edit row for a {@code SectionAvailabilityRound} —
  * {@code brackets} is however many windows this round actually owns, one to several, no longer a
- * fixed pair (see Data Model Changes, the fixture-group-selection revision). See
+ * fixed pair (see Data Model Changes, the fixture-group-selection revision). {@code
+ * firstMatchKickoff} is the exact earliest covered match kickoff (docs/specs/066), used by clients
+ * for the default close time and its validation. See
  * docs/specs/063-section-availability-and-flexible-squads.md.
  */
 public record SectionAvailabilityRoundDto(
@@ -20,6 +22,7 @@ public record SectionAvailabilityRoundDto(
         LocalDate lastMatchDate,
         boolean autoClose,
         Instant scheduledCloseAt,
+        Instant firstMatchKickoff,
         boolean open,
         List<SectionAvailabilityRoundBracketDto> brackets) {
 }
