@@ -8,6 +8,7 @@ const ROUND: SectionAvailabilityRound = {
   sectionName: 'U13 Boys',
   description: 'Sat 3 - Sun 4 Oct - U13 Boys fixtures',
   firstMatchDate: '2026-10-03',
+  firstMatchKickoff: '2026-10-03T09:00:00Z',
   lastMatchDate: '2026-10-04',
   autoClose: true,
   scheduledCloseAt: '2026-10-02T09:00:00Z',

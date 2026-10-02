@@ -58,7 +58,7 @@ import {
   unannounceMatchSide,
 } from '../../api/matchSideApi'
 import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
-import { canReopen } from '../../utils/pollClose'
+import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
 import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { getRoundResponses } from '../../api/sectionAvailabilityApi'
@@ -673,6 +673,7 @@ function MatchAvailabilityPanel({
 }) {
   const queryClient = useQueryClient()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
 
   // docs/specs/064-unified-availability-polls.md: coverage, not a team setting, decides what this
   // tab shows - a squad poll's own tab, a 'covered by a group poll' panel, or (nothing covers it)
@@ -791,8 +792,20 @@ function MatchAvailabilityPanel({
         }
         errorMessage={errorMessage}
         autoClose={poll?.autoClose ?? false}
-        canReopen={poll ? canReopen(poll) : true}
+        onReopen={() => setReopenDialogOpen(true)}
       />
+      {poll && (
+        <EditCloseTimeDialog
+          open={reopenDialogOpen}
+          onClose={() => setReopenDialogOpen(false)}
+          clubId={clubId}
+          target={{ kind: 'SQUAD', matchId, pollId: poll.id }}
+          autoClose={poll.autoClose}
+          scheduledCloseAt={poll.scheduledCloseAt}
+          kickoff={match.matchDate}
+          reopen
+        />
+      )}
       {poll && (
         <PollShareDialog
           open={shareDialogOpen}

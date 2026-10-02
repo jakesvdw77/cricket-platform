@@ -1,5 +1,6 @@
 package com.cricketlegend.service.support;
 
+import com.cricketlegend.exception.InvalidCloseTimeException;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -25,5 +26,43 @@ public final class AutoCloseSchedule {
 
     public static Instant scheduledCloseAt(boolean autoClose, Instant earliestMatchDate) {
         return autoClose ? earliestMatchDate.minus(CLOSE_BEFORE_MATCH) : null;
+    }
+
+    /**
+     * The close time to store on create: an explicit {@code requested} time (Autoclose on) goes
+     * through {@link #validateCloseTime}; when absent the default ({@link #scheduledCloseAt}, kickoff
+     * minus 24h) is kept; Autoclose off always yields {@code null}.
+     */
+    public static Instant resolveCreateCloseTime(
+            boolean autoClose, Instant requested, Instant earliestKickoff, Instant now) {
+        if (autoClose && requested != null) {
+            return validateCloseTime(true, requested, earliestKickoff, now);
+        }
+        return scheduledCloseAt(autoClose, earliestKickoff);
+    }
+
+    /**
+     * The one close-time rule (docs/specs/066-poll-close-time-and-unified-cards.md), shared by the
+     * create and edit paths of both poll kinds. Returns the value to store: {@code null} when
+     * Autoclose is off (any supplied time is ignored), otherwise {@code scheduledCloseAt}.
+     *
+     * @throws InvalidCloseTimeException (400) when Autoclose is on and the time is missing, not
+     *     strictly after {@code now}, or after {@code earliestKickoff} (equal to kickoff is allowed)
+     */
+    public static Instant validateCloseTime(
+            boolean autoClose, Instant scheduledCloseAt, Instant earliestKickoff, Instant now) {
+        if (!autoClose) {
+            return null;
+        }
+        if (scheduledCloseAt == null) {
+            throw new InvalidCloseTimeException("A closing time is required when Autoclose is on.");
+        }
+        if (!scheduledCloseAt.isAfter(now)) {
+            throw new InvalidCloseTimeException("Choose a closing time in the future.");
+        }
+        if (earliestKickoff != null && scheduledCloseAt.isAfter(earliestKickoff)) {
+            throw new InvalidCloseTimeException("Choose a closing time before the first match starts.");
+        }
+        return scheduledCloseAt;
     }
 }

@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../ConfirmDialog'
 import { EmptyState } from '../EmptyState'
 import type { AvailabilityStatus, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
 import { STATUS_LABEL, statusTintSx } from '../../utils/availabilityStatus'
-import { CANNOT_REOPEN_MESSAGE, closePollDescription, closePollTitle } from '../../utils/pollClose'
+import { closePollDescription, closePollTitle } from '../../utils/pollClose'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 
 const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
@@ -28,7 +28,7 @@ export interface MatchAvailabilityTabProps {
   onShareInvite: () => void
   // Admin override, added after live review found no way to record a response relayed outside
   // the poll link (e.g. a phone call) — clicking a squad member's own status Chip opens a menu to
-  // set it directly. Disabled while the poll is closed, matching the backend's own rule.
+  // set it directly. Since docs/specs/066 it also works on a closed poll (a manager correction).
   onSetPlayerStatus: (playerProfileId: string, status: AvailabilityStatus) => void
   // docs/specs/064-unified-availability-polls.md: an extra action rendered beside 'Open squad poll'
   // in the no-poll prompt (MatchFormPage passes the 'Open group poll' link) - nothing else here
@@ -44,9 +44,9 @@ export interface MatchAvailabilityTabProps {
   // docs/specs/064: whether this (closed) poll's own Autoclose is on - only changes the wording of
   // the 'Close this poll?' confirmation. Defaults off.
   autoClose?: boolean
-  // docs/specs/064: false once an autoclosing poll is past its automatic close time - the switch
-  // can no longer reopen it, and a muted note says so. Defaults true.
-  canReopen?: boolean
+  // docs/specs/066: the closed poll's 'Reopen…' button - the caller opens the Edit close time
+  // dialog in reopen mode (components/** can't import it from pages/**). Falls back to onOpen.
+  onReopen?: () => void
 }
 
 // docs/specs/032-match-availability-polls.md's genuinely new admin-facing visual pattern — a
@@ -70,7 +70,7 @@ export function MatchAvailabilityTab({
   settingPlayerId = null,
   errorMessage,
   autoClose: pollAutoClose = false,
-  canReopen = true,
+  onReopen,
 }: MatchAvailabilityTabProps) {
   const [autoClose, setAutoClose] = useState(true)
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
@@ -117,35 +117,40 @@ export function MatchAvailabilityTab({
 
       {!poll.open && (
         <Alert severity="warning">
-          This poll is closed — the public page is read-only. Reopen it to accept new responses.
+          This poll is closed. Changes are recorded as a manager correction; the public page stays read-only until you reopen it.
         </Alert>
       )}
 
       <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center" justifyContent="space-between">
-        <FormControlLabel
-          control={
-            <Switch
-              checked={poll.open}
-              disabled={isOpenPending || isClosePending || (!poll.open && !canReopen)}
-              onChange={(_event, checked) => (checked ? onOpen() : setCloseConfirmOpen(true))}
-            />
-          }
-          label={
-            <Typography variant="body2" fontWeight={600} color={poll.open ? 'primary.main' : 'text.secondary'}>
-              {isOpenPending ? 'Reopening…' : isClosePending ? 'Closing…' : poll.open ? 'Poll open' : 'Poll closed'}
+        {poll.open ? (
+          <FormControlLabel
+            control={
+              <Switch
+                checked
+                disabled={isClosePending}
+                onChange={() => setCloseConfirmOpen(true)}
+              />
+            }
+            label={
+              <Typography variant="body2" fontWeight={600} color="primary.main">
+                {isClosePending ? 'Closing…' : 'Poll open'}
+              </Typography>
+            }
+          />
+        ) : (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Typography variant="body2" fontWeight={600} color="text.secondary">
+              Poll closed
             </Typography>
-          }
-        />
+            <Button variant="secondary" size="sm" disabled={isOpenPending} onClick={onReopen ?? onOpen}>
+              {isOpenPending ? 'Reopening…' : 'Reopen…'}
+            </Button>
+          </Stack>
+        )}
         <Button variant="ghost" startIcon={<ShareOutlinedIcon />} onClick={onShareInvite}>
           Share invite
         </Button>
       </Stack>
-
-      {!poll.open && !canReopen && (
-        <Typography variant="body2" color="text.secondary">
-          {CANNOT_REOPEN_MESSAGE}
-        </Typography>
-      )}
 
       <ConfirmDialog
         open={closeConfirmOpen}
@@ -199,7 +204,6 @@ export function MatchAvailabilityTab({
             </Typography>
             <StatusMenuChip
               status={row.status}
-              disabled={!poll.open}
               pending={settingPlayerId === row.playerProfileId}
               playerName={squadDisplayName(row)}
               onSelect={(status) => onSetPlayerStatus(row.playerProfileId, status)}
@@ -247,17 +251,14 @@ function SummaryTile({
 }
 
 // The admin-override entry point: a squad member's status Chip doubles as a menu trigger.
-// Disabled while the poll is closed (mirrors the backend's own PollClosedException rule) rather
-// than opening a menu whose every option would just fail on click.
+// Enabled on a closed poll too since docs/specs/066 (a manager correction).
 function StatusMenuChip({
   status,
-  disabled,
   pending,
   playerName,
   onSelect,
 }: {
   status: AvailabilityStatus | null
-  disabled: boolean
   pending: boolean
   playerName: string
   onSelect: (status: AvailabilityStatus) => void
@@ -276,7 +277,7 @@ function StatusMenuChip({
       <Chip
         {...chipProps}
         size="small"
-        disabled={disabled || pending}
+        disabled={pending}
         onClick={(event) => setAnchorEl(event.currentTarget)}
         aria-label={`Set ${playerName}'s availability`}
       />

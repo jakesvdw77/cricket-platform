@@ -9,7 +9,8 @@ import { getFixtureGroups } from '../../../api/sectionAvailabilityApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import { errorDetail } from '../../../utils/errorDetail'
-import { closeTimeForMatch, formatCloseTime, formatMatchDateTime, matchLabel } from './pollHelpers'
+import { fromDatetimeLocal, toDatetimeLocal } from '../../../utils/datetimeLocal'
+import { defaultCloseTime, formatMatchDateTime, matchLabel, validateCloseTime } from './pollHelpers'
 import { CoveredByNote } from './CoveredByNote'
 
 // docs/specs/064-unified-availability-polls.md: NewPollPage's Squad branch - one team, one or more
@@ -34,6 +35,9 @@ export function SquadPollBranch({
   // exclusions (reset on team change) avoids re-seeding a selection set whenever data arrives.
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set())
   const [autoClose, setAutoClose] = useState(true)
+  // docs/specs/066: per-match 'Closes at' values the manager edited (datetime-local strings), keyed
+  // by matchId; a match without an entry shows its own default (kickoff minus 24h, or 1h).
+  const [editedCloseAt, setEditedCloseAt] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<string[]>([])
 
   // listTeamsForClub is already narrowed server-side to the caller's own section scope (035).
@@ -61,11 +65,18 @@ export function SquadPollBranch({
 
   const isTicked = (match: SectionAvailabilityFixtureMatch) => !match.alreadyPolled && !excludedIds.has(match.matchId)
   const tickedMatches = matches.filter(isTicked)
+  const closeAtFor = (match: SectionAvailabilityFixtureMatch) =>
+    editedCloseAt[match.matchId] ?? toDatetimeLocal(defaultCloseTime(match.matchDate).toISOString())
+  const closeAtError = (match: SectionAvailabilityFixtureMatch) =>
+    validateCloseTime(autoClose, closeAtFor(match) ? fromDatetimeLocal(closeAtFor(match)) : null, match.matchDate)
+  const hasCloseTimeError = tickedMatches.some((match) => Boolean(closeAtError(match)))
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const results = await Promise.allSettled(
-        tickedMatches.map((match) => createPoll(clubId, match.matchId, teamId, autoClose)),
+        tickedMatches.map((match) =>
+          createPoll(clubId, match.matchId, teamId, autoClose, autoClose && closeAtFor(match) ? fromDatetimeLocal(closeAtFor(match)) : undefined),
+        ),
       )
       const failures = results
         .map((result, index) => ({ result, match: tickedMatches[index] }))
@@ -102,6 +113,7 @@ export function SquadPollBranch({
   const selectTeam = (nextTeamId: string) => {
     setTeamId(nextTeamId)
     setExcludedIds(new Set())
+    setEditedCloseAt({})
     setErrors([])
   }
 
@@ -162,9 +174,16 @@ export function SquadPollBranch({
                   {match.leagueName ? ` - ${match.leagueName}` : ''}
                 </Typography>
                 {isTicked(match) && autoClose && (
-                  <Typography variant="caption" color="text.secondary">
-                    Closes {formatCloseTime(closeTimeForMatch(match.matchDate))}
-                  </Typography>
+                  <Input
+                    label={`Closes at for ${matchLabel(match)}`}
+                    type="datetime-local"
+                    value={closeAtFor(match)}
+                    onChange={(event) => setEditedCloseAt((prev) => ({ ...prev, [match.matchId]: event.target.value }))}
+                    error={Boolean(closeAtError(match))}
+                    helperText={closeAtError(match)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ mt: 1 }}
+                  />
                 )}
                 <CoveredByNote match={match} />
               </Stack>
@@ -180,7 +199,7 @@ export function SquadPollBranch({
             label="Autoclose"
           />
           <Typography variant="caption" color="text.secondary">
-            Each poll closes by itself 24 hours before its match. Switch off to close them manually.
+            Each poll closes by itself at the time shown (24 hours before its match unless you change it). Switch off to close them manually.
           </Typography>
         </Stack>
       )}
@@ -195,7 +214,7 @@ export function SquadPollBranch({
 
       {matches.length > 0 && (
         <Box>
-          <Button disabled={count === 0 || createMutation.isPending} onClick={() => createMutation.mutate()}>
+          <Button disabled={count === 0 || hasCloseTimeError || createMutation.isPending} onClick={() => createMutation.mutate()}>
             {createMutation.isPending ? 'Opening…' : `Open ${count} poll${count === 1 ? '' : 's'}`}
           </Button>
         </Box>

@@ -61,7 +61,7 @@ export function ResponsesByPlayer({
                         playerName={playerName(row)}
                         slotLabel={slotHeading(bracket)}
                         status={status}
-                        disabled={override.disabled || override.pendingKey === `${row.playerProfileId}:${bracket.windowId}`}
+                        disabled={override.pendingKey === `${row.playerProfileId}:${bracket.windowId}`}
                         onSelect={(next) => override.onOverride(row, bracket.windowId, next)}
                       >
                         {(trigger) => (

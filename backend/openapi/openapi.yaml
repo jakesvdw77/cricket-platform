@@ -550,6 +550,37 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SectionAvailabilityRoundResponsesDto"
+  /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/close-time:
+    put:
+      tags:
+      - section-availability-round-controller
+      operationId: updateRoundCloseTime
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePollCloseTimeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionAvailabilityRoundDto"
   /api/v1/manage/clubs/{clubId}/seasons/{seasonId}:
     put:
       tags:
@@ -870,6 +901,43 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchAvailabilityPollResponsesDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close-time:
+    put:
+      tags:
+      - match-availability-poll-controller
+      operationId: updatePollCloseTime
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePollCloseTimeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchAvailabilityPollDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}:
     put:
       tags:
@@ -4821,6 +4889,9 @@ components:
         scheduledCloseAt:
           type: string
           format: date-time
+        firstMatchKickoff:
+          type: string
+          format: date-time
         open:
           type: boolean
         brackets:
@@ -4852,6 +4923,14 @@ components:
             $ref: "#/components/schemas/SectionAvailabilityRoundResponseRowDto"
         publicPath:
           type: string
+    UpdatePollCloseTimeRequest:
+      type: object
+      properties:
+        autoClose:
+          type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time
     UpdateSeasonRequest:
       type: object
       properties:
@@ -5911,6 +5990,9 @@ components:
             format: uuid
         autoClose:
           type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time
       required:
       - description
       - matchIds
@@ -6053,6 +6135,9 @@ components:
           format: uuid
         autoClose:
           type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time
       required:
       - teamId
     MatchAvailabilityPollDto:

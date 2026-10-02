@@ -3,6 +3,7 @@ package com.cricketlegend.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,11 +14,14 @@ import java.util.UUID;
  * real match of a team in this section; {@code 404} if {@code sectionId} belongs
  * to a different club; {@code 409} ({@code MatchAlreadyPolledException}) naming the conflicting
  * match(es) if any selected {@code matchId}'s own bracket already has a window. See
- * docs/specs/063-section-availability-and-flexible-squads.md.
+ * docs/specs/063-section-availability-and-flexible-squads.md. Optional {@code scheduledCloseAt}
+ * (docs/specs/066) overrides the default close time (earliest match minus 24h) when {@code autoClose}
+ * is true; validated like the close-time PUT, ignored when {@code autoClose} is false.
  */
 public record CreateSectionAvailabilityRoundRequest(
         @NotNull UUID sectionId,
         @NotBlank String description,
         @NotEmpty List<UUID> matchIds,
-        boolean autoClose) {
+        boolean autoClose,
+        Instant scheduledCloseAt) {
 }

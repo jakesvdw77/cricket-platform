@@ -2,6 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import { Box, Typography } from '@mui/material'
 import { RecordCard } from './RecordCard'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
@@ -254,4 +258,32 @@ export const TabletViewport: Story = {
 export const DesktopViewport: Story = {
   args: Active.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
+}
+
+const FOOTER_BUTTONS = [
+  { label: 'Close', icon: <LockOutlinedIcon fontSize="small" />, onClick: () => {} },
+  { label: 'Matches', icon: <EventNoteOutlinedIcon fontSize="small" />, onClick: () => {} },
+  { label: 'Responses', icon: <PeopleAltOutlinedIcon fontSize="small" />, onClick: () => {} },
+  { label: 'Share', ariaLabel: 'Share invite', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => {} },
+]
+
+// docs/specs/066: the body slot plus the equal-column icon-over-caption footer.
+export const WithBodyAndFooterButtons: Story = {
+  args: {
+    ...Active.args,
+    children: <Typography variant="body2">Body slot content</Typography>,
+    footerButtons: FOOTER_BUTTONS,
+  },
+}
+
+// The footer at the narrowest card a 375px phone gives (343px) and the 3-column desktop card (~273px).
+export const FooterButtonsNarrow: Story = {
+  args: WithBodyAndFooterButtons.args,
+  decorators: [
+    (StoryComponent) => (
+      <Box sx={{ width: 273 }}>
+        <StoryComponent />
+      </Box>
+    ),
+  ],
 }

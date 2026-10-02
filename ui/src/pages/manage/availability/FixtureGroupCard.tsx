@@ -7,13 +7,8 @@ import { createRound } from '../../../api/sectionAvailabilityApi'
 import type { SectionAvailabilityFixtureGroup } from '../../../api/sectionAvailabilityApi'
 import { errorDetail } from '../../../utils/errorDetail'
 import { DAY_PART_LABEL } from '../../../utils/dayPart'
-import {
-  computeScheduledCloseAt,
-  formatCloseTime,
-  formatDateRange,
-  formatMatchDateTime,
-  matchLabel,
-} from './pollHelpers'
+import { fromDatetimeLocal, toDatetimeLocal } from '../../../utils/datetimeLocal'
+import { defaultCloseTime, formatDateRange, formatMatchDateTime, matchLabel, validateCloseTime } from './pollHelpers'
 import { CoveredByNote } from './CoveredByNote'
 
 // Moved from the deleted SectionAvailabilityRounds.tsx with unchanged behaviour (docs/specs/064-
@@ -42,8 +37,24 @@ export function FixtureGroupCard({
 }) {
   const [description, setDescription] = useState(group.suggestedDescription)
   const [autoClose, setAutoClose] = useState(true)
+  // docs/specs/066: null until the manager edits the field - until then it follows the default
+  // (earliest ticked fixture minus 24h, or minus 1h when that is past), recomputed as ticks change.
+  const [editedCloseAt, setEditedCloseAt] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(group.matches.filter((match) => !match.alreadyPolled).map((match) => match.matchId)),
+  )
+
+  const earliestKickoff =
+    group.matches
+      .filter((match) => selectedIds.has(match.matchId))
+      .map((match) => match.matchDate)
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null
+  const defaultCloseAtValue = earliestKickoff ? toDatetimeLocal(defaultCloseTime(earliestKickoff).toISOString()) : ''
+  const closeAtValue = editedCloseAt ?? defaultCloseAtValue
+  const closeAtError = validateCloseTime(
+    autoClose,
+    closeAtValue ? fromDatetimeLocal(closeAtValue) : null,
+    earliestKickoff,
   )
 
   const createMutation = useMutation({
@@ -53,6 +64,7 @@ export function FixtureGroupCard({
         description: description.trim(),
         matchIds: Array.from(selectedIds),
         autoClose,
+        ...(autoClose && closeAtValue ? { scheduledCloseAt: fromDatetimeLocal(closeAtValue) } : {}),
       }),
     onSuccess: onCreated,
   })
@@ -69,8 +81,8 @@ export function FixtureGroupCard({
     })
   }
 
-  const scheduledCloseAt = autoClose ? computeScheduledCloseAt(group.matches, selectedIds) : null
-  const canSubmit = selectedIds.size > 0 && description.trim().length > 0 && !createMutation.isPending
+  const canSubmit =
+    selectedIds.size > 0 && description.trim().length > 0 && !closeAtError && !createMutation.isPending
   const highlighted = Boolean(highlightMatchId) && group.matches.some((match) => match.matchId === highlightMatchId)
 
   return (
@@ -90,10 +102,16 @@ export function FixtureGroupCard({
             control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
             label="Autoclose"
           />
-          {autoClose && scheduledCloseAt && (
-            <Typography variant="caption" color="text.secondary">
-              Automatically closes {formatCloseTime(scheduledCloseAt)} - 24 hours before the earliest selected fixture.
-            </Typography>
+          {autoClose && (
+            <Input
+              label="Closes at"
+              type="datetime-local"
+              value={closeAtValue}
+              onChange={(event) => setEditedCloseAt(event.target.value)}
+              error={Boolean(closeAtError)}
+              helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
+              InputLabelProps={{ shrink: true }}
+            />
           )}
         </Stack>
 

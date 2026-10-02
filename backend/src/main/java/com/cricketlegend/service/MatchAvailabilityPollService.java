@@ -5,6 +5,7 @@ import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollDto;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +33,18 @@ public interface MatchAvailabilityPollService {
     MatchAvailabilityPollDto close(Authentication authentication, UUID clubId, UUID matchId, UUID pollId);
 
     /**
+     * Sets or clears a poll's close time (docs/specs/066-poll-close-time-and-unified-cards.md) on an
+     * open or closed poll; never changes {@code open}. 400 ({@code InvalidCloseTimeException}) on a
+     * missing/past/after-kickoff time.
+     */
+    MatchAvailabilityPollDto updateCloseTime(
+            Authentication authentication,
+            UUID clubId,
+            UUID matchId,
+            UUID pollId,
+            UpdatePollCloseTimeRequest request);
+
+    /**
      * Deletes a squad poll and its {@code PlayerAvailability} rows, freeing the match for a new
      * poll of either kind (docs/specs/064-unified-availability-polls.md). Same section-scoped gate
      * as the poll's other admin endpoints.
@@ -51,9 +64,8 @@ public interface MatchAvailabilityPollService {
 
     // Admin override — set a squad member's status directly from the Availability tab, added after
     // a live review found no way for the admin to record a response relayed outside the poll link
-    // (e.g. a phone call). Same not-in-squad 404 / closed-poll 409 rules as the public write path,
-    // reusing the identical PollClosedException — an admin override still respects a closed poll,
-    // matching this feature's own "closing a poll locks it, full stop, admin included" decision.
+    // (e.g. a phone call). Same not-in-squad 404 rule as the public write path; unlike the public
+    // path it is accepted on a closed poll (docs/specs/066: a manager correction).
     MatchAvailabilityPollResponsesDto setPlayerStatus(
             Authentication authentication,
             UUID clubId,

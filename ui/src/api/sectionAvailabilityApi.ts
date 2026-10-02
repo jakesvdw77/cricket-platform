@@ -33,6 +33,9 @@ export interface SectionAvailabilityRound {
   description: string
   firstMatchDate: string
   lastMatchDate: string
+  // docs/specs/066: the ISO instant of the earliest covered match - the base of the default close
+  // time and of the 'not after the first kickoff' rule.
+  firstMatchKickoff: string
   autoClose: boolean
   scheduledCloseAt: string | null
   open: boolean
@@ -45,6 +48,14 @@ export interface CreateSectionAvailabilityRoundPayload {
   description: string
   matchIds: string[]
   autoClose: boolean
+  // docs/specs/066: ISO instant; absent = the server default (earliest kickoff minus 24h).
+  scheduledCloseAt?: string
+}
+
+// docs/specs/066: body of both PUT .../close-time endpoints. autoClose false stores no time.
+export interface UpdateCloseTimePayload {
+  autoClose: boolean
+  scheduledCloseAt: string | null
 }
 
 // One player's status for one specific bracket a round owns - replaces the pre-fixture-group-
@@ -174,6 +185,16 @@ export async function updateRoundDescription(
   return data
 }
 
+// docs/specs/066: sets the close time of an open or closed group poll; does not open or close it.
+export async function updateRoundCloseTime(
+  clubId: string,
+  roundId: string,
+  payload: UpdateCloseTimePayload,
+): Promise<SectionAvailabilityRound> {
+  const { data } = await api.put<SectionAvailabilityRound>(`${roundsPath(clubId)}/${roundId}/close-time`, payload)
+  return data
+}
+
 // docs/specs/064: deletes a group poll with its windows/links/responses; 409 (message surfaced to
 // the user) when match squad members were picked from it.
 export async function deleteRound(clubId: string, roundId: string): Promise<void> {
@@ -204,8 +225,8 @@ export async function getRoundMatches(clubId: string, roundId: string): Promise<
 // matchAvailabilityApi.ts's own setPlayerStatus (032's real, already-shipped override endpoint,
 // added after live review found no way to record a response relayed outside the app, e.g. a phone
 // call). Identifies the bracket by windowId directly rather than dayPart alone, since a round can
-// now own several windows sharing the same dayPart across different dates. Same closed-round 409
-// rule as the public write path - admin included, no bypass.
+// now own several windows sharing the same dayPart across different dates. Since docs/specs/066 the
+// admin override also works on a closed round (a manager correction); the public path still 409s.
 export async function setRoundPlayerStatus(
   clubId: string,
   roundId: string,

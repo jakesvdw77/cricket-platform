@@ -5,6 +5,7 @@ import com.cricketlegend.dto.CreateSectionAvailabilityRoundRequest;
 import com.cricketlegend.dto.SectionAvailabilityRoundDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
 import java.time.Instant;
 import java.util.List;
@@ -34,6 +35,14 @@ public interface SectionAvailabilityRoundService {
     SectionAvailabilityRoundDto open(Authentication authentication, UUID clubId, UUID roundId);
 
     SectionAvailabilityRoundDto close(Authentication authentication, UUID clubId, UUID roundId);
+
+    /**
+     * Sets or clears a group poll's close time (docs/specs/066-poll-close-time-and-unified-cards.md)
+     * on an open or closed round; never changes {@code open}. Validated against the earliest
+     * covered match kickoff; 400 ({@code InvalidCloseTimeException}) when missing/past/too late.
+     */
+    SectionAvailabilityRoundDto updateCloseTime(
+            Authentication authentication, UUID clubId, UUID roundId, UpdatePollCloseTimeRequest request);
 
     /**
      * Deletes a group poll child-first (responses, window-match links, windows, the round), freeing

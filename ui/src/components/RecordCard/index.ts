@@ -7,4 +7,5 @@ export type {
   RecordCardField,
   RecordCardSecondaryAction,
   RecordCardFeedback,
+  RecordCardFooterButton,
 } from './RecordCard'

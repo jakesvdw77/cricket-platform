@@ -7,15 +7,15 @@ import { STATUS_ORDER } from './responseHelpers'
 
 export interface StatusOverrideTriggerProps {
   onClick: (event: MouseEvent<HTMLElement>) => void
-  // aria-disabled, not `disabled`, so the trigger keeps keyboard focus while pending/closed.
+  // aria-disabled, not `disabled`, so the trigger keeps keyboard focus while an override is saving.
   'aria-disabled': boolean
   'aria-label': string
 }
 
-// docs/specs/065: the admin-override entry point, extracted from GroupPollCard's old
+// docs/specs/065: the admin-override entry point, extracted from the old group card's
 // BracketStatusChip. Wraps whatever the caller renders as the trigger (a player row or a status
 // chip) with the status Menu: Available / Unsure / Unavailable, the current answer selected.
-// Disabled while the poll is closed, matching the backend's closed-round rule.
+// Disabled only while that one answer is being saved (managers can also correct a closed poll).
 export function StatusOverrideMenu({
   playerName,
   slotLabel,

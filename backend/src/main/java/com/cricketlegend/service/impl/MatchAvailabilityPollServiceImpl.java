@@ -11,12 +11,12 @@ import com.cricketlegend.dto.MatchAvailabilityPollDto;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
 import com.cricketlegend.dto.PlayerAvailabilityRowDto;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
-import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.PollClosedException;
-import com.cricketlegend.exception.ReopenWindowPassedException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
+import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ReopenWindowPassedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchAvailabilityPollMapper;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
@@ -54,9 +54,10 @@ import org.springframework.transaction.annotation.Transactional;
  * 404 a legitimate cross-club-opponent-Team poll — see the resolver's own Javadoc) and overlays
  * each member's current {@link PlayerAvailability} status, {@code null} for no response yet.
  * {@link #setPlayerStatus} is the admin override added after `032` shipped — same not-in-squad
- * {@link NotFoundException} and closed-poll {@link PollClosedException} rules as the public write
- * path ({@code PublicAvailabilityPollServiceImpl.setAvailability}), just under
- * {@code @access.canAdministerClub} instead of being unauthenticated.
+ * {@link NotFoundException} rule as the public write path ({@code
+ * PublicAvailabilityPollServiceImpl.setAvailability}), just under {@code @access.canAdministerClub}
+ * instead of being unauthenticated; unlike the public path it is accepted on a closed poll
+ * (docs/specs/066-poll-close-time-and-unified-cards.md, a manager correction).
  *
  * <p>Per docs/specs/064-unified-availability-polls.md: {@link #create} 409s ({@link
  * MatchAlreadyPolledException}) if a group poll already covers the match (via the shared {@link
@@ -64,6 +65,10 @@ import org.springframework.transaction.annotation.Transactional;
  * scheduledCloseAt} via the shared {@link AutoCloseSchedule}; {@link #delete} removes a poll and
  * its responses; {@link #closeDueAutoClosePolls} is the internal, auth-free entry point of the
  * scheduled auto-close job.
+ *
+ * <p>Per docs/specs/066: {@link #updateCloseTime} edits a poll's close time (open or closed, never
+ * changing {@code open}) through {@link AutoCloseSchedule#validateCloseTime}, which {@link
+ * #create} also uses when the request carries an explicit {@code scheduledCloseAt}.
  */
 @Service
 public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollService {
@@ -141,10 +146,31 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 .teamId(teamId)
                 .open(true)
                 .autoClose(autoClose)
-                .scheduledCloseAt(AutoCloseSchedule.scheduledCloseAt(autoClose, match.getMatchDate()))
+                .scheduledCloseAt(AutoCloseSchedule.resolveCreateCloseTime(
+                        autoClose, request.scheduledCloseAt(), match.getMatchDate(), Instant.now()))
                 .build();
         poll = matchAvailabilityPollRepository.save(poll);
 
+        return toDto(poll, match.getSeasonId());
+    }
+
+    @Override
+    @Transactional
+    public MatchAvailabilityPollDto updateCloseTime(
+            Authentication authentication,
+            UUID clubId,
+            UUID matchId,
+            UUID pollId,
+            UpdatePollCloseTimeRequest request) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
+        Instant validated = AutoCloseSchedule.validateCloseTime(
+                request.autoClose(), request.scheduledCloseAt(), match.getMatchDate(), Instant.now());
+        // Only the close time changes; open/closed state is a separate action (open/close).
+        poll.setAutoClose(request.autoClose());
+        poll.setScheduledCloseAt(validated);
+        poll = matchAvailabilityPollRepository.save(poll);
         return toDto(poll, match.getSeasonId());
     }
 
@@ -238,9 +264,8 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             throw new NotFoundException(
                     "Player " + playerProfileId + " is not part of this poll's own squad");
         }
-        if (!poll.isOpen()) {
-            throw new PollClosedException("Poll is closed: " + pollId);
-        }
+        // Admin override is accepted on a closed poll too (docs/specs/066): a manager correction.
+        // The public endpoint keeps refusing closed-poll writes.
 
         PlayerAvailability availability = playerAvailabilityRepository
                 .findByPollIdAndPlayerProfileId(pollId, playerProfileId)

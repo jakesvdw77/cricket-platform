@@ -2,9 +2,8 @@ import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 
-export { canReopen } from '../../../utils/pollClose'
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000
+const HOUR_IN_MS = 60 * 60 * 1000
+const DAY_IN_MS = 24 * HOUR_IN_MS
 
 // Moved out of the deleted SectionAvailabilityRounds.tsx unchanged (docs/specs/064-unified-
 // availability-polls.md) - shared by the group-poll fixture cards and the squad-poll branch.
@@ -32,39 +31,8 @@ export function formatCloseTime(date: Date): string {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-// docs/specs/064: the value of the 'Closes' row both card kinds show - the close date/time when
-// autoclose is on and one was computed, 'Manually' otherwise (so the row reads 'Closes manually').
-export function closesValue(autoClose: boolean, scheduledCloseAt: string | null): string {
-  if (autoClose && scheduledCloseAt) {
-    return formatCloseTime(new Date(scheduledCloseAt))
-  }
-  return 'Manually'
-}
-
-export function matchLabel(match: SectionAvailabilityFixtureMatch): string {
+export function matchLabel(match: Pick<SectionAvailabilityFixtureMatch, 'teamName' | 'opponentLabel'>): string {
   return `${match.teamName} vs ${match.opponentLabel}`
-}
-
-// A match's own kickoff minus 24 hours - a display preview of what the backend computes and stores
-// as scheduledCloseAt at creation time (docs/specs/063's Data Model Changes, 064 for squad polls).
-export function closeTimeForMatch(matchDate: string): Date {
-  return new Date(new Date(matchDate).getTime() - DAY_IN_MS)
-}
-
-// The earliest currently-ticked match's own kickoff minus 24 hours, recomputed client-side as
-// matches are ticked/unticked - purely a display preview of what the backend will itself compute
-// and store as scheduledCloseAt at creation time (docs/specs/063's Data Model Changes).
-export function computeScheduledCloseAt(
-  matches: SectionAvailabilityFixtureMatch[],
-  selectedIds: Set<string>,
-): Date | null {
-  const selectedTimes = matches
-    .filter((match) => selectedIds.has(match.matchId))
-    .map((match) => new Date(match.matchDate).getTime())
-  if (selectedTimes.length === 0) {
-    return null
-  }
-  return closeTimeForMatch(new Date(Math.min(...selectedTimes)).toISOString())
 }
 
 // docs/specs/064: where the 'covered by' link of an already-polled match points - a squad poll
@@ -90,4 +58,73 @@ export function squadPollTitle(poll: OpenAvailabilityPoll, teamsById: Map<string
   const homeTeamName = sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
   const awayTeamName = sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
   return `${homeTeamName} vs ${awayTeamName}`
+}
+
+// docs/specs/066: the close time the UI proposes - the kickoff minus 24 hours (the rule from 064),
+// or minus 1 hour when that is already in the past (a match less than a day away).
+export function defaultCloseTime(kickoff: string | Date, now: Date = new Date()): Date {
+  const kickoffMs = new Date(kickoff).getTime()
+  const dayBefore = kickoffMs - DAY_IN_MS
+  return new Date(dayBefore > now.getTime() ? dayBefore : kickoffMs - HOUR_IN_MS)
+}
+
+// The server's exact 400 messages (docs/specs/066's close-time rules), mirrored so the form can
+// show them inline before the request is sent.
+export const CLOSE_TIME_REQUIRED_MESSAGE = 'A closing time is required when Autoclose is on.'
+export const CLOSE_TIME_PAST_MESSAGE = 'Choose a closing time in the future.'
+export const CLOSE_TIME_AFTER_KICKOFF_MESSAGE = 'Choose a closing time before the first match starts.'
+
+// Mirrors the server rule: autoClose off needs no time; otherwise a time is required, after now and
+// not after the earliest covered kickoff. Returns the message, or null when valid. `closeTime` is
+// an ISO string, or null/'' when the field is empty/unparseable.
+export function validateCloseTime(
+  autoClose: boolean,
+  closeTime: string | null,
+  kickoff: string | null,
+  now: Date = new Date(),
+): string | null {
+  if (!autoClose) {
+    return null
+  }
+  if (!closeTime || Number.isNaN(new Date(closeTime).getTime())) {
+    return CLOSE_TIME_REQUIRED_MESSAGE
+  }
+  const closeMs = new Date(closeTime).getTime()
+  if (closeMs <= now.getTime()) {
+    return CLOSE_TIME_PAST_MESSAGE
+  }
+  if (kickoff && closeMs > new Date(kickoff).getTime()) {
+    return CLOSE_TIME_AFTER_KICKOFF_MESSAGE
+  }
+  return null
+}
+
+// The text of the card's Closes row: 'Closes <date time>' / 'Closes manually' while open,
+// 'Closed <date>' / 'Closed manually' once closed.
+export function closesRowText(open: boolean, autoClose: boolean, scheduledCloseAt: string | null): string {
+  const hasTime = autoClose && Boolean(scheduledCloseAt)
+  if (open) {
+    return hasTime ? `Closes ${formatCloseTime(new Date(scheduledCloseAt as string))}` : 'Closes manually'
+  }
+  if (!hasTime) {
+    return 'Closed manually'
+  }
+  const date = new Date(scheduledCloseAt as string).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+  return `Closed ${date}`
+}
+
+// docs/specs/064/066: the squad poll's match Availability tab, on the side this poll is for - the
+// destination of both the card's Responses button and the Matches dialog's match link.
+export function squadPollHref(poll: OpenAvailabilityPoll): string {
+  const side = poll.teamId === poll.homeTeamId ? 'home' : 'away'
+  return `/manage/fixtures/matches/${poll.matchId}/edit?tab=availability&side=${side}`
+}
+
+// The 'Home' / 'Away' badge of a squad poll.
+export function squadPollSideLabel(poll: OpenAvailabilityPoll): 'Home' | 'Away' {
+  return poll.teamId === poll.homeTeamId ? 'Home' : 'Away'
 }

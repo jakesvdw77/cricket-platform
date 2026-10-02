@@ -222,7 +222,19 @@ class SectionAvailabilityRoundControllerIntegrationTest {
                 .andExpect(jsonPath("$.open").value(false))
                 .andExpect(jsonPath("$.responses[0].statuses[0].status").value("AVAILABLE"));
 
-        // A public write against a closed round is rejected.
+        // The admin override is accepted on a closed round (066, a manager correction).
+        mockMvc.perform(put(
+                                "/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/players/{playerId}",
+                                club.getId(),
+                                roundId,
+                                playerId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"windowId\": \"" + windowId + "\", \"status\": \"UNSURE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responses[0].statuses[0].status").value("UNSURE"));
+
+        // A public write against a closed round is still rejected.
         mockMvc.perform(put(
                                 "/api/v1/public/section-availability-rounds/{roundId}/players/{playerId}",
                                 roundId,

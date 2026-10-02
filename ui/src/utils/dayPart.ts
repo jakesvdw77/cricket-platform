@@ -23,3 +23,13 @@ export function formatBracketLabel(windowDate: string, dayPart: DayPart, separat
   })
   return `${formattedDate}${separator}${DAY_PART_LABEL[dayPart]}`
 }
+
+// The browser-side twin of the backend's SectionAvailabilityMatchResolverImpl.dayPartOf: a match
+// whose local time-of-day is before 12:00 noon is MORNING, noon and later is AFTERNOON. The backend
+// splits the kickoff Instant using ZoneId.systemDefault() (the server's zone - no per-club time
+// zone concept yet); here the same split uses the browser's local zone via Date's local getters,
+// which matches whenever the manager's browser is in the server's zone (the single-zone clubs this
+// product serves today). docs/specs/066-poll-close-time-and-unified-cards.md.
+export function dayPartForDate(date: Date): DayPart {
+  return date.getHours() < 12 ? 'MORNING' : 'AFTERNOON'
+}

@@ -5,6 +5,7 @@ import com.cricketlegend.dto.MatchAvailabilityPollDto;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
 import com.cricketlegend.dto.SetPlayerAvailabilityRequest;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.service.MatchAvailabilityPollService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -89,6 +90,19 @@ public class MatchAvailabilityPollController {
             @PathVariable UUID matchId,
             @PathVariable UUID pollId) {
         return ResponseEntity.ok(matchAvailabilityPollService.close(authentication, clubId, matchId, pollId));
+    }
+
+    /** docs/specs/066-poll-close-time-and-unified-cards.md: edit the close time of an open or closed poll. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PutMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close-time")
+    public ResponseEntity<MatchAvailabilityPollDto> updatePollCloseTime(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID matchId,
+            @PathVariable UUID pollId,
+            @Valid @RequestBody UpdatePollCloseTimeRequest request) {
+        return ResponseEntity.ok(
+                matchAvailabilityPollService.updateCloseTime(authentication, clubId, matchId, pollId, request));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

@@ -31,6 +31,7 @@ const listPolls = vi.fn()
 const createPoll = vi.fn()
 const openPoll = vi.fn()
 const closePoll = vi.fn()
+const updatePollCloseTime = vi.fn()
 const getPollResponses = vi.fn()
 const createPlayer = vi.fn()
 const addToSquad = vi.fn()
@@ -99,6 +100,8 @@ vi.mock('../../api/matchAvailabilityApi', () => ({
     createPoll(clubId, matchId, teamId, autoClose),
   openPoll: (clubId: string, matchId: string, pollId: string) => openPoll(clubId, matchId, pollId),
   closePoll: (clubId: string, matchId: string, pollId: string) => closePoll(clubId, matchId, pollId),
+  updatePollCloseTime: (clubId: string, matchId: string, pollId: string, payload: unknown) =>
+    updatePollCloseTime(clubId, matchId, pollId, payload),
   getPollResponses: (clubId: string, matchId: string, pollId: string) => getPollResponses(clubId, matchId, pollId),
 }))
 
@@ -789,6 +792,43 @@ describe('MatchFormPage', () => {
     const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
     expect(textarea.value).toContain('/poll/poll-1')
     expect(textarea.value).toContain('Riverside Oval')
+  })
+
+  // docs/specs/066: a closed squad poll is reopened from its own tab through the Edit close time
+  // dialog (a new close time is saved first), and a manager can still correct answers on it.
+  it('Availability tab: a closed poll offers Reopen…, which saves the close time then reopens it, and keeps answers editable', async () => {
+    const user = userEvent.setup()
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listPolls.mockResolvedValue([
+      { id: 'poll-1', teamId: 'team-1', open: false, autoClose: false, scheduledCloseAt: null, availableCount: 1, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
+    ])
+    getPollResponses.mockResolvedValue({
+      pollId: 'poll-1',
+      teamId: 'team-1',
+      open: false,
+      availableCount: 1,
+      unavailableCount: 0,
+      unsureCount: 0,
+      noResponseCount: 0,
+      responses: [{ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'AVAILABLE' }],
+      publicPath: '/poll/poll-1',
+    })
+    updatePollCloseTime.mockResolvedValue({})
+    openPoll.mockResolvedValue({})
+
+    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+    await user.click(screen.getByRole('tab', { name: 'Availability' }))
+    expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /jane smith's availability/i })).not.toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Reopen…' }))
+    expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+
+    await waitFor(() => expect(openPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1'))
+    expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null })
   })
 
   // docs/specs/034-availability-polls-dashboard.md: AvailabilityPollsDashboard's own "Manage

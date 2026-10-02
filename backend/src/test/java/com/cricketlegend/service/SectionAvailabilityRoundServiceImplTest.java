@@ -24,11 +24,12 @@ import com.cricketlegend.dto.SectionAvailabilityResponseRowDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
 import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
+import com.cricketlegend.exception.InvalidCloseTimeException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
 import com.cricketlegend.repository.LeagueRepository;
@@ -42,6 +43,7 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.SectionAvailabilityRoundServiceImpl;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -64,7 +66,7 @@ import org.springframework.security.core.Authentication;
  * open}/{@code close} transitions and their "already in that state" guards (409), cascading to
  * every owned window; {@code getResponses} merges each bracket's own status into one per-player
  * row; {@code setPlayerStatus} (admin override) rejects a not-in-audience player (404) then a
- * closed bracket (409), now {@code windowId}-keyed.
+ * closed bracket (accepted since 066), now {@code windowId}-keyed.
  */
 @ExtendWith(MockitoExtension.class)
 class SectionAvailabilityRoundServiceImplTest {
@@ -156,7 +158,7 @@ class SectionAvailabilityRoundServiceImplTest {
     private void stubEmptyBracketsFor(UUID sectionId) {
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(UUID.randomUUID(), sectionId)));
         when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
-        when(sectionAvailabilityRoundMapper.toDto(any(), any(), any())).thenAnswer(invocation -> {
+        when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any())).thenAnswer(invocation -> {
             SectionAvailabilityRound round = invocation.getArgument(0);
             return new SectionAvailabilityRoundDto(
                     round.getId(),
@@ -167,6 +169,7 @@ class SectionAvailabilityRoundServiceImplTest {
                     round.getLastMatchDate(),
                     round.isAutoClose(),
                     round.getScheduledCloseAt(),
+                    invocation.getArgument(2),
                     round.isOpen(),
                     List.of());
         });
@@ -366,7 +369,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 authentication,
                 clubId,
                 new CreateSectionAvailabilityRoundRequest(
-                        sectionId, "Weekend fixtures", List.of(saturdayMatchId, sundayMatchId), true));
+                        sectionId, "Weekend fixtures", List.of(saturdayMatchId, sundayMatchId), true, null));
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
         ArgumentCaptor<SectionAvailabilityWindow> windowCaptor = ArgumentCaptor.forClass(SectionAvailabilityWindow.class);
@@ -426,7 +429,7 @@ class SectionAvailabilityRoundServiceImplTest {
         service.create(
                 authentication,
                 clubId,
-                new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), false));
+                new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), false, null));
 
         ArgumentCaptor<SectionAvailabilityRound> roundCaptor = ArgumentCaptor.forClass(SectionAvailabilityRound.class);
         verify(sectionAvailabilityRoundRepository).save(roundCaptor.capture());
@@ -447,7 +450,7 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThatThrownBy(() -> service.create(
                         authentication,
                         clubId,
-                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
+                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true, null)))
                 .isInstanceOf(ValidationException.class);
         verify(sectionAvailabilityRoundRepository, never()).save(any());
     }
@@ -469,7 +472,7 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThatThrownBy(() -> service.create(
                         authentication,
                         clubId,
-                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
+                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true, null)))
                 .isInstanceOf(ValidationException.class);
         verify(sectionAvailabilityRoundRepository, never()).save(any());
     }
@@ -495,7 +498,7 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThatThrownBy(() -> service.create(
                         authentication,
                         clubId,
-                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
+                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true, null)))
                 .isInstanceOf(MatchAlreadyPolledException.class);
         verify(sectionAvailabilityRoundRepository, never()).save(any());
     }
@@ -509,7 +512,7 @@ class SectionAvailabilityRoundServiceImplTest {
                         authentication,
                         UUID.randomUUID(),
                         new CreateSectionAvailabilityRoundRequest(
-                                sectionId, "Fixtures", List.of(UUID.randomUUID()), true)))
+                                sectionId, "Fixtures", List.of(UUID.randomUUID()), true, null)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -680,12 +683,11 @@ class SectionAvailabilityRoundServiceImplTest {
                 .venue("Away Ground")
                 .build();
         when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(openRound));
-        when(sectionAvailabilityWindowRepository.findByRoundId(roundId)).thenReturn(List.of(morning, afternoon));
+        when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(morning, afternoon));
         when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(List.of(
                 SectionAvailabilityWindowMatch.builder().windowId(morningWindowId).matchId(morningMatchId).build(),
                 SectionAvailabilityWindowMatch.builder().windowId(afternoonWindowId).matchId(afternoonMatchId).build()));
-        when(matchRepository.findById(morningMatchId)).thenReturn(Optional.of(morningMatch));
-        when(matchRepository.findById(afternoonMatchId)).thenReturn(Optional.of(afternoonMatch));
+        when(matchRepository.findAllById(any())).thenReturn(List.of(morningMatch, afternoonMatch));
         when(teamRepository.findById(morningTeamId)).thenReturn(Optional.of(morningTeam));
         when(teamRepository.findById(afternoonTeamId)).thenReturn(Optional.of(afternoonTeam));
 
@@ -732,24 +734,33 @@ class SectionAvailabilityRoundServiceImplTest {
     }
 
     @Test
-    void setPlayerStatusRejectsAWriteAgainstAClosedBracket() {
+    void setPlayerStatusAcceptsAnAdminOverrideAgainstAClosedBracketAndKeepsItClosed() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID roundId = UUID.randomUUID();
         UUID windowId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        SectionAvailabilityRound openRound = round(roundId, clubId, sectionId, true);
+        SectionAvailabilityRound closedRound = round(roundId, clubId, sectionId, false);
         SectionAvailabilityWindow closedWindow = SectionAvailabilityWindow.builder()
                 .id(windowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING).open(false).build();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(openRound));
+        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(closedRound));
         when(audienceResolver.resolveAudience(sectionId))
                 .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Alice", "A", null, null)));
         when(sectionAvailabilityWindowRepository.findById(windowId)).thenReturn(Optional.of(closedWindow));
+        when(sectionAvailabilityResponseRepository.findByWindowIdAndPlayerProfileId(windowId, playerId))
+                .thenReturn(Optional.empty());
+        when(sectionAvailabilityWindowRepository.findByRoundId(roundId)).thenReturn(List.of(closedWindow));
+        when(sectionAvailabilityResponseRepository.findByWindowId(windowId)).thenReturn(List.of());
+        when(sectionAvailabilityWindowMatchRepository.findByWindowId(any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.setPlayerStatus(
-                        authentication, clubId, roundId, playerId, windowId, AvailabilityStatus.AVAILABLE))
-                .isInstanceOf(SectionAvailabilityWindowClosedException.class);
-        verify(sectionAvailabilityResponseRepository, never()).save(any());
+        service.setPlayerStatus(
+                authentication, clubId, roundId, playerId, windowId, AvailabilityStatus.AVAILABLE);
+
+        ArgumentCaptor<SectionAvailabilityResponse> captor = ArgumentCaptor.forClass(SectionAvailabilityResponse.class);
+        verify(sectionAvailabilityResponseRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
+        assertThat(closedRound.isOpen()).isFalse();
+        assertThat(closedWindow.isOpen()).isFalse();
     }
 
     @Test
@@ -806,7 +817,7 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThatThrownBy(() -> service.create(
                         authentication,
                         clubId,
-                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
+                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true, null)))
                 .isInstanceOf(MatchAlreadyPolledException.class)
                 .hasMessageContaining("U15 Colts v Occasionals");
         verify(sectionAvailabilityRoundRepository, never()).save(any());
@@ -889,5 +900,304 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThat(w2.isOpen()).isFalse();
         verify(sectionAvailabilityWindowRepository).save(w1);
         verify(sectionAvailabilityWindowRepository).save(w2);
+    }
+
+    // --- 066: close time ---
+
+    private static final Instant FAR_KICKOFF = Instant.now().plus(30, ChronoUnit.DAYS);
+
+    /** A round with one window covering two matches; the earliest kicks off at FAR_KICKOFF. */
+    private SectionAvailabilityRound roundWithWindowsAndMatches(UUID clubId, UUID roundId, boolean open) {
+        UUID sectionId = UUID.randomUUID();
+        UUID windowId = UUID.randomUUID();
+        UUID earlyMatchId = UUID.randomUUID();
+        UUID lateMatchId = UUID.randomUUID();
+        SectionAvailabilityRound round = round(roundId, clubId, sectionId, open);
+        round.setScheduledCloseAt(Instant.now().minusSeconds(3600));
+        SectionAvailabilityWindow window = SectionAvailabilityWindow.builder()
+                .id(windowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING).open(open).build();
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundRepository.findById(roundId))
+                .thenReturn(Optional.of(round));
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityRoundRepository.save(any(SectionAvailabilityRound.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
+                .thenReturn(List.of(window));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundIdIn(any()))
+                .thenReturn(List.of(window));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.save(any(SectionAvailabilityWindow.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any()))
+                .thenReturn(List.of(
+                        SectionAvailabilityWindowMatch.builder().windowId(windowId).matchId(lateMatchId).build(),
+                        SectionAvailabilityWindowMatch.builder().windowId(windowId).matchId(earlyMatchId).build()));
+        org.mockito.Mockito.lenient().when(matchRepository.findAllById(any())).thenReturn(List.of(
+                Match.builder().id(lateMatchId).matchDate(FAR_KICKOFF.plus(1, ChronoUnit.DAYS)).build(),
+                Match.builder().id(earlyMatchId).matchDate(FAR_KICKOFF).build()));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowMatchRepository.findByWindowId(any()))
+                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(sectionRepository.findById(sectionId))
+                .thenReturn(Optional.of(section(clubId, sectionId)));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    SectionAvailabilityRound r = invocation.getArgument(0);
+                    return new SectionAvailabilityRoundDto(
+                            r.getId(), r.getSectionId(), null, r.getDescription(), r.getFirstMatchDate(),
+                            r.getLastMatchDate(), r.isAutoClose(), r.getScheduledCloseAt(),
+                            invocation.getArgument(2), r.isOpen(), List.of());
+                });
+        return round;
+    }
+
+    @Test
+    void updateCloseTimeSavesAValidTimeOnAnOpenRoundAndKeepsItOpen() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = roundWithWindowsAndMatches(clubId, roundId, true);
+        Instant closeAt = FAR_KICKOFF.minus(2, ChronoUnit.DAYS);
+
+        SectionAvailabilityRoundDto dto = service.updateCloseTime(
+                authentication, clubId, roundId, new UpdatePollCloseTimeRequest(true, closeAt));
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, round.getSectionId());
+        assertThat(round.isAutoClose()).isTrue();
+        assertThat(round.getScheduledCloseAt()).isEqualTo(closeAt);
+        assertThat(round.isOpen()).isTrue();
+        assertThat(dto.scheduledCloseAt()).isEqualTo(closeAt);
+        assertThat(dto.firstMatchKickoff()).isEqualTo(FAR_KICKOFF);
+    }
+
+    @Test
+    void updateCloseTimeAllowsATimeEqualToTheEarliestKickoffAcrossAllWindows() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = roundWithWindowsAndMatches(clubId, roundId, true);
+
+        service.updateCloseTime(authentication, clubId, roundId, new UpdatePollCloseTimeRequest(true, FAR_KICKOFF));
+
+        assertThat(round.getScheduledCloseAt()).isEqualTo(FAR_KICKOFF);
+    }
+
+    @Test
+    void updateCloseTimeWithAutoCloseFalseClearsTheTime() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = roundWithWindowsAndMatches(clubId, roundId, true);
+
+        service.updateCloseTime(
+                authentication,
+                clubId,
+                roundId,
+                new UpdatePollCloseTimeRequest(false, FAR_KICKOFF.minus(1, ChronoUnit.DAYS)));
+
+        assertThat(round.isAutoClose()).isFalse();
+        assertThat(round.getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void updateCloseTimeRejectsAPastTime() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = roundWithWindowsAndMatches(clubId, roundId, true);
+        Instant before = round.getScheduledCloseAt();
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        clubId,
+                        roundId,
+                        new UpdatePollCloseTimeRequest(true, Instant.now().minusSeconds(5))))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time in the future.");
+        assertThat(round.getScheduledCloseAt()).isEqualTo(before);
+        verify(sectionAvailabilityRoundRepository, never()).save(any());
+    }
+
+    @Test
+    void updateCloseTimeRejectsATimeAfterTheEarliestKickoff() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        roundWithWindowsAndMatches(clubId, roundId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        clubId,
+                        roundId,
+                        new UpdatePollCloseTimeRequest(true, FAR_KICKOFF.plusSeconds(1))))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time before the first match starts.");
+    }
+
+    @Test
+    void updateCloseTimeRejectsAutoCloseOnWithoutATime() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        roundWithWindowsAndMatches(clubId, roundId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication, clubId, roundId, new UpdatePollCloseTimeRequest(true, null)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("A closing time is required when Autoclose is on.");
+    }
+
+    @Test
+    void updateCloseTimeOnAClosedRoundKeepsItClosedAndThenOpenSucceeds() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = roundWithWindowsAndMatches(clubId, roundId, false);
+        assertThatThrownBy(() -> service.open(authentication, clubId, roundId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class);
+
+        service.updateCloseTime(
+                authentication,
+                clubId,
+                roundId,
+                new UpdatePollCloseTimeRequest(true, Instant.now().plus(2, ChronoUnit.HOURS)));
+        assertThat(round.isOpen()).isFalse();
+
+        service.open(authentication, clubId, roundId);
+        assertThat(round.isOpen()).isTrue();
+    }
+
+    @Test
+    void updateCloseTimeReturns404WhenTheRoundBelongsToADifferentClub() {
+        UUID roundId = UUID.randomUUID();
+        roundWithWindowsAndMatches(UUID.randomUUID(), roundId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        UUID.randomUUID(),
+                        roundId,
+                        new UpdatePollCloseTimeRequest(true, FAR_KICKOFF.minus(1, ChronoUnit.DAYS))))
+                .isInstanceOf(NotFoundException.class);
+        verify(sectionAvailabilityRoundRepository, never()).save(any());
+    }
+
+    private SectionAvailabilityRound createRoundWithScheduledCloseAt(boolean autoClose, Instant scheduledCloseAt) {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId, sectionId, "U15 Colts");
+        Match match = Match.builder()
+                .id(matchId).clubId(clubId).homeTeamId(teamId).awayTeamName("Occasionals")
+                .matchDate(FAR_KICKOFF).build();
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(clubId, sectionId)));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, match))
+                .thenReturn(new SectionAvailabilityMatchResolver.WindowKey(
+                        sectionId, java.time.LocalDate.of(2026, 9, 26), DayPart.MORNING));
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityWindowRepository.existsBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(false);
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityRoundRepository.save(any(SectionAvailabilityRound.class)))
+                .thenAnswer(invocation -> {
+                    SectionAvailabilityRound saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    return saved;
+                });
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityWindowRepository.save(any(SectionAvailabilityWindow.class)))
+                .thenAnswer(invocation -> {
+                    SectionAvailabilityWindow saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    return saved;
+                });
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityWindowMatchRepository.save(any(SectionAvailabilityWindowMatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundId(any()))
+                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any()))
+                .thenReturn(null);
+
+        service.create(
+                authentication,
+                clubId,
+                new CreateSectionAvailabilityRoundRequest(
+                        sectionId, "Fixtures", List.of(matchId), autoClose, scheduledCloseAt));
+
+        ArgumentCaptor<SectionAvailabilityRound> captor = ArgumentCaptor.forClass(SectionAvailabilityRound.class);
+        verify(sectionAvailabilityRoundRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    @Test
+    void createWithAnExplicitScheduledCloseAtStoresIt() {
+        Instant closeAt = FAR_KICKOFF.minus(3, ChronoUnit.DAYS);
+
+        SectionAvailabilityRound saved = createRoundWithScheduledCloseAt(true, closeAt);
+
+        assertThat(saved.getScheduledCloseAt()).isEqualTo(closeAt);
+    }
+
+    @Test
+    void createWithoutScheduledCloseAtKeepsTheTwentyFourHourDefault() {
+        SectionAvailabilityRound saved = createRoundWithScheduledCloseAt(true, null);
+
+        assertThat(saved.getScheduledCloseAt()).isEqualTo(FAR_KICKOFF.minus(24, ChronoUnit.HOURS));
+    }
+
+    @Test
+    void createWithAutoCloseFalseIgnoresAScheduledCloseAt() {
+        SectionAvailabilityRound saved =
+                createRoundWithScheduledCloseAt(false, FAR_KICKOFF.minus(3, ChronoUnit.DAYS));
+
+        assertThat(saved.isAutoClose()).isFalse();
+        assertThat(saved.getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void createWithAPastScheduledCloseAtThrowsInvalidCloseTimeAndSavesNothing() {
+        assertThatThrownBy(() -> createRoundWithScheduledCloseAt(true, Instant.now().minusSeconds(60)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time in the future.");
+        verify(sectionAvailabilityRoundRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithAScheduledCloseAtAfterTheEarliestKickoffThrowsInvalidCloseTime() {
+        assertThatThrownBy(() -> createRoundWithScheduledCloseAt(true, FAR_KICKOFF.plusSeconds(1)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time before the first match starts.");
+    }
+
+    @Test
+    void listComputesFirstMatchKickoffForAllRoundsWithOneBatchedWalk() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        SectionAvailabilityRound r1 = round(UUID.randomUUID(), clubId, sectionId, true);
+        SectionAvailabilityRound r2 = round(UUID.randomUUID(), clubId, sectionId, true);
+        SectionAvailabilityWindow w1 = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
+                .roundId(r1.getId()).sectionId(sectionId).dayPart(DayPart.MORNING).open(true).build();
+        SectionAvailabilityWindow w2 = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
+                .roundId(r2.getId()).sectionId(sectionId).dayPart(DayPart.MORNING).open(true).build();
+        UUID m1 = UUID.randomUUID();
+        UUID m1b = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+        when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(List.of(r1, r2));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(w1, w2));
+        when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
+        when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(List.of(
+                SectionAvailabilityWindowMatch.builder().windowId(w1.getId()).matchId(m1).build(),
+                SectionAvailabilityWindowMatch.builder().windowId(w1.getId()).matchId(m1b).build(),
+                SectionAvailabilityWindowMatch.builder().windowId(w2.getId()).matchId(m2).build()));
+        Instant early = Instant.parse("2026-10-10T09:00:00Z");
+        when(matchRepository.findAllById(any())).thenReturn(List.of(
+                Match.builder().id(m1).matchDate(early.plusSeconds(7200)).build(),
+                Match.builder().id(m1b).matchDate(early).build(),
+                Match.builder().id(m2).matchDate(early.plusSeconds(86400)).build()));
+        stubEmptyBracketsFor(sectionId);
+
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null);
+
+        assertThat(result).extracting(SectionAvailabilityRoundDto::firstMatchKickoff)
+                .containsExactly(early, early.plusSeconds(86400));
+        verify(sectionAvailabilityWindowRepository, times(1)).findByRoundIdIn(any());
+        verify(matchRepository, times(1)).findAllById(any());
     }
 }
