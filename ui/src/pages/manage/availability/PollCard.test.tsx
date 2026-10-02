@@ -136,11 +136,11 @@ describe('PollCard - squad poll', () => {
     expect(footerNames()).toEqual(FOOTER)
   })
 
-  it('Responses goes to the match Availability tab on the poll side', async () => {
+  it("Responses goes to the squad poll's own Responses page", async () => {
     const user = userEvent.setup()
-    renderCard({ kind: 'SQUAD', poll: { ...poll, teamId: 'team-away', awayTeamId: 'team-away' } })
+    renderCard({ kind: 'SQUAD', poll })
     await user.click(screen.getByRole('button', { name: 'Responses' }))
-    expect(await screen.findByText('At /manage/fixtures/matches/match-1/edit?tab=availability&side=away')).toBeInTheDocument()
+    expect(await screen.findByText('At /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
   })
 
   it('Share opens the invite dialog with the poll link and the side\'s team name', async () => {

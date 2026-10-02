@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Team } from '../../../api/teamApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import {
   CLOSE_TIME_AFTER_KICKOFF_MESSAGE,
@@ -7,6 +8,8 @@ import {
   closesRowText,
   coveredPollHref,
   defaultCloseTime,
+  squadPollOpponentName,
+  squadPollTeamName,
   validateCloseTime,
 } from './pollHelpers'
 
@@ -81,5 +84,25 @@ describe('closesRowText', () => {
   it('reads Closed <date> for a closed autoclosing poll and Closed manually otherwise', () => {
     expect(closesRowText(false, true, '2026-10-04T10:00:00Z')).toMatch(/^Closed .+/)
     expect(closesRowText(false, false, null)).toBe('Closed manually')
+  })
+})
+
+describe('squadPollTeamName / squadPollOpponentName', () => {
+  const teamsById = new Map<string, Team>([['team-a', { id: 'team-a', name: 'Club A' } as Team]])
+  const homePoll = { teamId: 'team-a', homeTeamId: 'team-a', homeTeamName: null, awayTeamId: null, awayTeamName: 'Rivals CC' }
+  const awayPoll = { teamId: 'team-a', homeTeamId: null, homeTeamName: 'Rivals CC', awayTeamId: 'team-a', awayTeamName: null }
+
+  it('names the polled home side and its away opponent', () => {
+    expect(squadPollTeamName(homePoll, teamsById)).toBe('Club A')
+    expect(squadPollOpponentName(homePoll, teamsById)).toBe('Rivals CC')
+  })
+
+  it('names the polled away side and its home opponent', () => {
+    expect(squadPollTeamName(awayPoll, teamsById)).toBe('Club A')
+    expect(squadPollOpponentName(awayPoll, teamsById)).toBe('Rivals CC')
+  })
+
+  it('falls back to Unknown team for a club side missing from the team list', () => {
+    expect(squadPollTeamName(homePoll, new Map())).toBe('Unknown team')
   })
 })

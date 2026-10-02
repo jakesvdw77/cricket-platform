@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import AvailabilityPollsDashboard from './AvailabilityPollsDashboard'
@@ -207,6 +207,11 @@ function LocationProbe() {
   return <div>{`Match page ${location.pathname}${location.search}`}</div>
 }
 
+function SquadResponsesProbe() {
+  const { matchId, pollId } = useParams()
+  return <div>{`Squad responses page ${matchId} ${pollId}`}</div>
+}
+
 function renderDashboard(clubId?: string, initialUrl = '/manage/availability') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -218,6 +223,7 @@ function renderDashboard(clubId?: string, initialUrl = '/manage/availability') {
             <Route path="availability/new" element={<div>New Poll Page</div>} />
             <Route path="fixtures/matches/:matchId/edit" element={<LocationProbe />} />
             <Route path="availability/group/:roundId" element={<div>Group Poll Responses Page</div>} />
+            <Route path="availability/squad/:matchId/:pollId" element={<SquadResponsesProbe />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -276,7 +282,7 @@ describe('AvailabilityPollsDashboard', () => {
     expect(screen.getAllByRole('button').filter((b) => ['Close', 'Matches', 'Responses', 'Share invite'].includes(b.getAttribute('aria-label') ?? '')).map((b) => b.getAttribute('aria-label'))).toEqual(['Close', 'Matches', 'Responses', 'Share invite'])
   })
 
-  it("a squad card's Responses button goes to its match's Availability tab on the right side", async () => {
+  it("a squad card's Responses button goes to the squad poll's Responses page", async () => {
     const user = userEvent.setup()
     listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-home', name: 'Home Team' })])
     listOpenPolls.mockResolvedValueOnce([
@@ -294,7 +300,7 @@ describe('AvailabilityPollsDashboard', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Responses' }))
     expect(
-      await screen.findByText('Match page /manage/fixtures/matches/match-2/edit?tab=availability&side=away'),
+      await screen.findByText('Squad responses page match-2 poll-away'),
     ).toBeInTheDocument()
   })
 
