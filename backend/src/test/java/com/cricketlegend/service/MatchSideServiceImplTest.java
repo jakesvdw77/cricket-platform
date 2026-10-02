@@ -38,7 +38,7 @@ import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.SeasonRepository;
-import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.impl.MatchSideServiceImpl;
 import java.time.Instant;
@@ -84,7 +84,7 @@ class MatchSideServiceImplTest {
     private MatchSquadMemberRepository matchSquadMemberRepository;
 
     @Mock
-    private TeamRepository teamRepository;
+    private MatchPollCoverageService coverageService;
 
     @Mock
     private LeagueRepository leagueRepository;
@@ -112,10 +112,13 @@ class MatchSideServiceImplTest {
     void setUp() {
         service = new MatchSideServiceImpl(
                 matchRepository, matchSideRepository, matchSidePlayerRepository, teamSquadMemberRepository,
-                matchSquadMemberRepository, teamRepository,
+                matchSquadMemberRepository, coverageService,
                 leagueRepository, seasonRepository, playerProfileRepository, personRepository,
                 matchSideMapper, accessService);
         org.mockito.Mockito.lenient().when(matchSideMapper.toDto(any(), any())).thenReturn(null);
+        org.mockito.Mockito.lenient()
+                .when(coverageService.resolve(any(), any()))
+                .thenReturn(MatchPollCoverageService.Coverage.NONE);
     }
 
     private Match matchWithoutLeague(UUID clubId, UUID matchId, UUID homeTeamId, UUID awayTeamId, UUID seasonId) {
@@ -900,5 +903,111 @@ class MatchSideServiceImplTest {
                         authentication, clubId, matchId, new CreateMatchSideRequest(homeTeamId)))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         verify(matchSideRepository, never()).save(any());
+    }
+
+    // --- 064: requireSquadMembership resolves by coverage ---
+
+    private MatchSide stubSideAndMatch(Match match, UUID teamId) {
+        MatchSide matchSide = side(UUID.randomUUID(), match.getId(), teamId);
+        when(matchRepository.findById(match.getId())).thenReturn(Optional.of(match));
+        when(matchSideRepository.findById(matchSide.getId())).thenReturn(Optional.of(matchSide));
+        return matchSide;
+    }
+
+    private MatchPollCoverageService.Coverage groupCoverage() {
+        return new MatchPollCoverageService.Coverage(
+                MatchPollCoverageService.Kind.GROUP, null, UUID.randomUUID(), UUID.randomUUID(), "Sat");
+    }
+
+    @Test
+    void addPlayerOnAGroupCoveredMatchChecksMatchSquadMemberNotTeamSquadMember() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchSide matchSide = stubSideAndMatch(match, teamId);
+        when(coverageService.resolve(matchId, teamId)).thenReturn(groupCoverage());
+        when(matchSquadMemberRepository.existsByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId))
+                .thenReturn(true);
+        when(matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(true); // stops after the squad check with the not-already-added Conflict
+
+        assertThatThrownBy(() -> service.addPlayer(
+                        authentication, clubId, matchId, matchSide.getId(),
+                        new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN)))
+                .isInstanceOf(ConflictException.class);
+
+        verify(teamSquadMemberRepository, never())
+                .existsByTeamIdAndSeasonIdAndPlayerProfileId(any(), any(), any());
+    }
+
+    @Test
+    void addPlayerOnAGroupCoveredMatchWhoIsNotAPickedMatchSquadMemberThrowsPlayerNotInSquadException() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        MatchSide matchSide = stubSideAndMatch(match, teamId);
+        when(coverageService.resolve(matchId, teamId)).thenReturn(groupCoverage());
+        when(matchSquadMemberRepository.existsByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.addPlayer(
+                        authentication, clubId, matchId, matchSide.getId(),
+                        new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN)))
+                .isInstanceOf(PlayerNotInSquadException.class);
+
+        verify(teamSquadMemberRepository, never())
+                .existsByTeamIdAndSeasonIdAndPlayerProfileId(any(), any(), any());
+        verify(matchSidePlayerRepository, never()).save(any());
+    }
+
+    @Test
+    void addPlayerOnAnUncoveredMatchChecksTeamSquadMemberNotMatchSquadMember() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchSide matchSide = stubSideAndMatch(match, teamId);
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(true);
+        when(matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(matchSide.getId(), playerId))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.addPlayer(
+                        authentication, clubId, matchId, matchSide.getId(),
+                        new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN)))
+                .isInstanceOf(ConflictException.class);
+
+        verify(matchSquadMemberRepository, never())
+                .existsByMatchIdAndTeamIdAndPlayerProfileId(any(), any(), any());
+    }
+
+    @Test
+    void addPlayerOnASquadPollCoveredMatchStillUsesTheTeamSquad() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Match match = matchWithoutLeague(clubId, matchId, teamId, UUID.randomUUID(), seasonId);
+        MatchSide matchSide = stubSideAndMatch(match, teamId);
+        when(coverageService.resolve(matchId, teamId))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.SQUAD, UUID.randomUUID(), null, null, "x"));
+        when(teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(teamId, seasonId, playerId))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.addPlayer(
+                        authentication, clubId, matchId, matchSide.getId(),
+                        new AddMatchSidePlayerRequest(playerId, PlayingRole.BATSMAN)))
+                .isInstanceOf(PlayerNotInSquadException.class);
+        verify(matchSquadMemberRepository, never())
+                .existsByMatchIdAndTeamIdAndPlayerProfileId(any(), any(), any());
     }
 }

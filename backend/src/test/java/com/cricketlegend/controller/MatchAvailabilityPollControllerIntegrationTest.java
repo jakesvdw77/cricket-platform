@@ -19,7 +19,6 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
@@ -347,6 +346,51 @@ class MatchAvailabilityPollControllerIntegrationTest {
     }
 
     @Test
+    void openReturns409WithAReasonOnceTheAutomaticCloseTimeHasPassedButSucceedsBeforeIt() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match pastMatch = newMatchWithoutLeague(club.getId(), team.getId(), season.getId());
+        pastMatch.setMatchDate(java.time.Instant.now().plusSeconds(3600)); // closes 24h before: already due
+        pastMatch = matchRepository.save(pastMatch);
+        Match futureMatch = newMatchWithoutLeague(club.getId(), team.getId(), season.getId());
+        futureMatch.setMatchDate(java.time.Instant.now().plus(10, java.time.temporal.ChronoUnit.DAYS));
+        futureMatch = matchRepository.save(futureMatch);
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String pastPollId = createPoll(admin, club.getId(), pastMatch.getId(), team.getId());
+        String futurePollId = createPoll(admin, club.getId(), futureMatch.getId(), team.getId());
+        for (String[] ids : new String[][] {
+            {pastMatch.getId().toString(), pastPollId}, {futureMatch.getId().toString(), futurePollId}
+        }) {
+            mockMvc.perform(post(
+                                    "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close",
+                                    club.getId(),
+                                    ids[0],
+                                    ids[1])
+                            .with(admin))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/open",
+                                club.getId(),
+                                pastMatch.getId(),
+                                pastPollId)
+                        .with(admin))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail")
+                        .value("This poll can no longer be reopened because its automatic close time has passed."));
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/open",
+                                club.getId(),
+                                futureMatch.getId(),
+                                futurePollId)
+                        .with(admin))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void closeReturns409WhenAlreadyClosed() throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section section = sectionRepository.save(newSection(club.getId(), "Men"));
@@ -601,6 +645,97 @@ class MatchAvailabilityPollControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].matchId").value(juniorsMatch.getId().toString()));
     }
 
+    // --- 064: GET /availability-polls/closed ---
+
+    @Test
+    void listClosedReturnsOnlyClosedPollsWithTheOpenEndpointsShape() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match closedMatch = matchRepository.save(newMatchWithoutLeague(club.getId(), team.getId(), season.getId()));
+        Match openMatch = matchRepository.save(newMatchWithoutLeague(club.getId(), team.getId(), season.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        String closedPollId = createPoll(admin, club.getId(), closedMatch.getId(), team.getId());
+        createPoll(admin, club.getId(), openMatch.getId(), team.getId());
+        mockMvc.perform(post(
+                                "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close",
+                                club.getId(),
+                                closedMatch.getId(),
+                                closedPollId)
+                        .with(admin))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability-polls/closed", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].pollId").value(closedPollId))
+                .andExpect(jsonPath("$[0].matchId").value(closedMatch.getId().toString()));
+    }
+
+    @Test
+    void listClosedReturns403ForADifferentClubsAdmin() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", clubX.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability-polls/closed", clubY.getId()).with(admin))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listClosedWithASectionIdOutsideASectionAdminsReachIs403AndAnotherClubsSectionIs404() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club otherClub = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        Section otherClubSection = sectionRepository.save(newSection(otherClub.getId(), "Men"));
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", club.getId(), juniors.getId());
+        JwtRequestPostProcessor clubAdmin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability-polls/closed", club.getId())
+                        .param("sectionId", open.getId().toString())
+                        .with(sectionAdmin))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability-polls/closed", club.getId())
+                        .param("sectionId", otherClubSection.getId().toString())
+                        .with(clubAdmin))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listClosedNarrowsToASectionScopedAdminsOwnSection() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Section juniors = sectionRepository.save(newSection(club.getId(), "Juniors"));
+        Section open = sectionRepository.save(newSection(club.getId(), "Open"));
+        Team juniorsTeam = teamRepository.save(newTeam(club.getId(), juniors.getId(), "U15"));
+        Team openTeam = teamRepository.save(newTeam(club.getId(), open.getId(), "1st XI"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match juniorsMatch = matchRepository.save(newMatchWithoutLeague(club.getId(), juniorsTeam.getId(), season.getId()));
+        Match openMatch = matchRepository.save(newMatchWithoutLeague(club.getId(), openTeam.getId(), season.getId()));
+        JwtRequestPostProcessor clubAdmin = grantClubAdmin("club-admin-sub", club.getId());
+        String juniorsPollId = createPoll(clubAdmin, club.getId(), juniorsMatch.getId(), juniorsTeam.getId());
+        String openPollId = createPoll(clubAdmin, club.getId(), openMatch.getId(), openTeam.getId());
+        for (String[] ids : new String[][] {
+            {juniorsMatch.getId().toString(), juniorsPollId}, {openMatch.getId().toString(), openPollId}
+        }) {
+            mockMvc.perform(post(
+                                    "/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/close",
+                                    club.getId(),
+                                    ids[0],
+                                    ids[1])
+                            .with(clubAdmin))
+                    .andExpect(status().isOk());
+        }
+        JwtRequestPostProcessor sectionAdmin = grantSectionAdmin("juniors-admin-sub", club.getId(), juniors.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability-polls/closed", club.getId())
+                        .with(sectionAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].matchId").value(juniorsMatch.getId().toString()));
+    }
+
     private String createPoll(JwtRequestPostProcessor admin, UUID clubId, UUID matchId, UUID teamId)
             throws Exception {
         String response = mockMvc.perform(post(
@@ -670,7 +805,7 @@ class MatchAvailabilityPollControllerIntegrationTest {
     }
 
     private Team newTeam(UUID clubId, UUID sectionId, String name) {
-        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).squadMode(SquadMode.STATIC).build();
+        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).build();
     }
 
     private Season newSeason(UUID clubId, String label) {

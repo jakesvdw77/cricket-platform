@@ -15,7 +15,6 @@ import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -99,7 +98,7 @@ class MatchSquadMemberRepositoryTest {
 
     private Team savedTeam(UUID clubId, UUID sectionId, String name) {
         return teamRepository.save(Team.builder().clubId(clubId).sectionId(sectionId).name(name)
-                .active(true).squadMode(SquadMode.FLEXIBLE).build());
+                .active(true).build());
     }
 
     private Match savedMatch(UUID clubId, UUID seasonId, UUID homeTeamId) {
