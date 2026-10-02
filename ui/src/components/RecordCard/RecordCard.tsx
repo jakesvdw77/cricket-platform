@@ -193,6 +193,23 @@ export function RecordCard({
   feedback,
 }: RecordCardProps) {
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
+  // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
+  const badgeChips = (
+    <>
+      {badge && (
+        <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+      )}
+      {badges?.map((entry, index) => (
+        <Chip
+          key={index}
+          size="small"
+          label={entry.label}
+          variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
+          sx={badgeSx(entry.tone)}
+        />
+      ))}
+    </>
+  )
 
   return (
     // height: '100%' + column flex, direct user feedback: a row of these cards sits in a CSS grid
@@ -285,35 +302,34 @@ export function RecordCard({
             )}
           </Stack>
           {/* docs/specs/040-announce-team.md: flexWrap added so `badge` plus a couple of
-              `badges` entries (up to 3 chips) never force horizontal overflow at 375px. */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
-            {badge && (
-              <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
-            )}
-            {badges?.map((entry, index) => (
-              <Chip
-                key={index}
-                size="small"
-                label={entry.label}
-                variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
-                sx={badgeSx(entry.tone)}
-              />
-            ))}
-            {cornerAction && (
-              <IconButton
-                size="small"
-                aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
-                title={cornerAction.label}
-                disabled={cornerAction.pending}
-                onClick={cornerAction.onClick}
-                // position: relative keeps it above any viewTo stretched-link overlay.
-                sx={{ position: 'relative', mt: -0.25 }}
-              >
-                {cornerAction.icon}
-              </IconButton>
-            )}
-          </Stack>
+              `badges` entries (up to 3 chips) never force horizontal overflow at 375px.
+              docs/specs/064-unified-availability-polls.md: a card with a `cornerAction` shows only
+              that icon here and moves the badges to their own row below, so the title keeps the
+              full header width instead of being truncated. */}
+          {cornerAction ? (
+            <IconButton
+              size="small"
+              aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
+              title={cornerAction.label}
+              disabled={cornerAction.pending}
+              onClick={cornerAction.onClick}
+              // position: relative keeps it above any viewTo stretched-link overlay.
+              sx={{ position: 'relative', flexShrink: 0, mt: -0.5, mr: -0.5 }}
+            >
+              {cornerAction.icon}
+            </IconButton>
+          ) : (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+              {badgeChips}
+            </Stack>
+          )}
         </Stack>
+
+        {cornerAction && (badge || (badges && badges.length > 0)) && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {badgeChips}
+          </Stack>
+        )}
 
         {description && (
           <Typography
