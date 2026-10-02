@@ -560,4 +560,68 @@ describe('RecordCard', () => {
     const input = screen.getByLabelText('squad number')
     expect(input.closest('p')).toBeNull()
   })
+
+  describe('children and footerButtons (docs/specs/066)', () => {
+    const buttons = () => [
+      { label: 'Close', icon: <span>c</span>, onClick: vi.fn() },
+      { label: 'Matches', icon: <span>m</span>, onClick: vi.fn() },
+      { label: 'Responses', icon: <span>r</span>, onClick: vi.fn() },
+      { label: 'Share', ariaLabel: 'Share invite', icon: <span>s</span>, onClick: vi.fn() },
+    ]
+
+    it('renders children in the body between the fields and the feedback', () => {
+      render(
+        <RecordCard
+          title="Poll"
+          fields={[{ label: 'Price', value: 'Free' }]}
+          feedback={{ message: 'Saved', tone: 'success' }}
+          editLabel="Edit"
+          onEdit={vi.fn()}
+        >
+          <p>Body slot</p>
+        </RecordCard>,
+      )
+      const field = screen.getByText('Price')
+      const body = screen.getByText('Body slot')
+      const feedback = screen.getByText('Saved')
+      expect(field.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(body.compareDocumentPosition(feedback) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('renders one equal-width column per footer button with a caption and an accessible name', () => {
+      const entries = buttons()
+      render(<RecordCard title="Poll" footerButtons={entries} />)
+      const names = screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+      expect(names).toEqual(['Close', 'Matches', 'Responses', 'Share invite'])
+      expect(screen.getByText('Share')).toBeInTheDocument()
+      const footer = screen.getByRole('button', { name: 'Close' }).parentElement as HTMLElement
+      expect(footer).toHaveStyle({ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' })
+    })
+
+    it('replaces the default Edit footer and fires each button callback', async () => {
+      const user = userEvent.setup()
+      const entries = buttons()
+      render(<RecordCard title="Poll" editLabel="Edit" onEdit={vi.fn()} footerButtons={entries} />)
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Share invite' }))
+      expect(entries[3].onClick).toHaveBeenCalledTimes(1)
+      expect(entries[0].onClick).not.toHaveBeenCalled()
+    })
+
+    it('is a full-height flex column with the footer pinned below the growing body', () => {
+      render(<RecordCard title="Poll" footerButtons={buttons()} />)
+      const card = screen.getByRole('heading', { name: 'Poll' }).closest('.MuiCard-root') as HTMLElement
+      expect(card).toHaveStyle({ height: '100%', display: 'flex', flexDirection: 'column' })
+      const body = card.querySelector('.MuiCardContent-root') as HTMLElement
+      expect(body).toHaveStyle({ flex: '1 1 auto' })
+      const footer = screen.getByRole('button', { name: 'Close' }).parentElement as HTMLElement
+      expect(footer.previousElementSibling).toBe(body)
+      expect(footer).toHaveStyle({ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' })
+    })
+
+    it('disables a footer button', () => {
+      render(<RecordCard title="Poll" footerButtons={[{ label: 'Close', icon: <span>c</span>, onClick: vi.fn(), disabled: true }]} />)
+      expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled()
+    })
+  })
 })

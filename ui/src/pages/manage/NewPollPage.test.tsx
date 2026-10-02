@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
@@ -8,6 +8,7 @@ import NewPollPage from './NewPollPage'
 import type { SectionAvailabilityFixtureGroup, SectionAvailabilityFixtureMatch } from '../../api/sectionAvailabilityApi'
 import type { Section } from '../../api/sectionApi'
 import type { Team } from '../../api/teamApi'
+import { toDatetimeLocal } from '../../utils/datetimeLocal'
 
 const getFixtureGroups = vi.fn()
 const createRound = vi.fn()
@@ -27,8 +28,8 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
 })
 
 vi.mock('../../api/matchAvailabilityApi', () => ({
-  createPoll: (clubId: string, matchId: string, teamId: string, autoClose?: boolean) =>
-    createPoll(clubId, matchId, teamId, autoClose),
+  createPoll: (clubId: string, matchId: string, teamId: string, autoClose?: boolean, scheduledCloseAt?: string) =>
+    createPoll(clubId, matchId, teamId, autoClose, scheduledCloseAt),
 }))
 
 vi.mock('../../api/teamApi', () => ({
@@ -77,7 +78,7 @@ function makeMatch(overrides: Partial<SectionAvailabilityFixtureMatch> = {}): Se
     teamId: 'team-1',
     teamName: 'U13 Boys A',
     opponentLabel: 'Rivals CC',
-    matchDate: '2026-06-06T09:00:00Z',
+    matchDate: '2030-06-06T09:00:00Z',
     dayPart: 'MORNING',
     leagueName: 'Junior League',
     alreadyPolled: false,
@@ -95,7 +96,7 @@ function makeGroup(overrides: Partial<SectionAvailabilityFixtureGroup> = {}): Se
     endDate: '2026-06-07',
     matches: [
       makeMatch(),
-      makeMatch({ matchId: 'match-2', opponentLabel: 'United CC', matchDate: '2026-06-07T09:00:00Z' }),
+      makeMatch({ matchId: 'match-2', opponentLabel: 'United CC', matchDate: '2030-06-07T09:00:00Z' }),
     ],
     ...overrides,
   }
@@ -204,7 +205,7 @@ describe('NewPollPage', () => {
         makeGroup({
           matches: [
             makeMatch(),
-            makeMatch({ matchId: 'match-2', opponentLabel: 'United CC', matchDate: '2026-06-07T09:00:00Z' }),
+            makeMatch({ matchId: 'match-2', opponentLabel: 'United CC', matchDate: '2030-06-07T09:00:00Z' }),
             makeMatch({
               matchId: 'match-3',
               opponentLabel: 'Covered CC',
@@ -232,7 +233,13 @@ describe('NewPollPage', () => {
       expect(screen.getByLabelText('Include U13 Boys A vs United CC')).toBeChecked()
       expect(screen.queryByText('U13 Boys B vs Other CC')).not.toBeInTheDocument()
       expect(getFixtureGroups).toHaveBeenCalledWith('test-club-id', 'section-1')
-      expect(screen.getAllByText(/^Closes /)).toHaveLength(2)
+      // docs/specs/066: each ticked row has its own editable 'Closes at', defaulting to kickoff - 24h.
+      expect(screen.getByLabelText('Closes at for U13 Boys A vs Rivals CC')).toHaveValue(
+        toDatetimeLocal('2030-06-05T09:00:00.000Z'),
+      )
+      expect(screen.getByLabelText('Closes at for U13 Boys A vs United CC')).toHaveValue(
+        toDatetimeLocal('2030-06-06T09:00:00.000Z'),
+      )
       expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeEnabled()
     })
 
@@ -262,8 +269,8 @@ describe('NewPollPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Open 2 polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
-      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true)
-      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-2', 'team-1', true)
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T09:00:00.000Z')
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-2', 'team-1', true, '2030-06-06T09:00:00.000Z')
       expect(await screen.findByText('Polls Dashboard')).toBeInTheDocument()
     })
 
@@ -284,7 +291,7 @@ describe('NewPollPage', () => {
       await user.click(screen.getByRole('button', { name: 'Open 1 poll' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(1))
-      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true)
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T09:00:00.000Z')
     })
 
     it('Autoclose switch (default on, with the helper text) sends autoClose false when turned off and hides the close times', async () => {
@@ -297,16 +304,36 @@ describe('NewPollPage', () => {
       await screen.findByLabelText('Include U13 Boys A vs Rivals CC')
       expect(screen.getByRole('checkbox', { name: 'Autoclose' })).toBeChecked()
       expect(
-        screen.getByText('Each poll closes by itself 24 hours before its match. Switch off to close them manually.'),
+        screen.getByText(/Each poll closes by itself at the time shown/),
       ).toBeInTheDocument()
 
       await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-      expect(screen.queryByText(/^Closes /)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Closes at for/)).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Open 2 polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
-      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', false)
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', false, undefined)
+    })
+
+    it('sends an edited per-match close time and blocks a close time after that match starts', async () => {
+      const user = userEvent.setup()
+      getFixtureGroups.mockResolvedValue(squadGroups())
+      createPoll.mockResolvedValue({})
+      renderPage('/manage/availability/new?type=squad')
+
+      await pickTeam(user)
+      const field = await screen.findByLabelText('Closes at for U13 Boys A vs Rivals CC')
+      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-07T09:00:00.000Z') } })
+      expect(await screen.findByText('Choose a closing time before the first match starts.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeDisabled()
+
+      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-05T20:00:00.000Z') } })
+      await user.click(screen.getByRole('button', { name: 'Open 2 polls' }))
+
+      await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true, '2030-06-05T20:00:00.000Z')
+      expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-2', 'team-1', true, '2030-06-06T09:00:00.000Z')
     })
 
     it('surfaces a 409 from createPoll inline and stays on the page', async () => {
@@ -438,6 +465,8 @@ describe('NewPollPage', () => {
           description: 'Sat 6 - Sun 7 Jun - U13 Boys fixtures',
           matchIds: ['match-1'],
           autoClose: true,
+          // Unticking match-2 moves the default to match-1's own kickoff - 24h.
+          scheduledCloseAt: '2030-06-05T09:00:00.000Z',
         }),
       )
       expect(await screen.findByText('Polls Dashboard')).toBeInTheDocument()
@@ -487,30 +516,63 @@ describe('NewPollPage', () => {
       )
     })
 
-    it('toggling Autoclose off hides the computed close-time preview', async () => {
+    it('toggling Autoclose off hides the Closes at field and sends no close time', async () => {
       const user = userEvent.setup()
       getFixtureGroups.mockResolvedValueOnce([makeGroup()])
+      createRound.mockResolvedValueOnce({})
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      expect(screen.getByText(/Automatically closes/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Closes at')).toBeInTheDocument()
 
       await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-      expect(screen.queryByText(/Automatically closes/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Closes at')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' }))
+      await waitFor(() => expect(createRound).toHaveBeenCalledTimes(1))
+      expect(createRound.mock.calls[0][1]).toEqual({
+        sectionId: 'section-1',
+        description: 'Sat 6 - Sun 7 Jun - U13 Boys fixtures',
+        matchIds: ['match-1', 'match-2'],
+        autoClose: false,
+      })
     })
 
-    it('recomputes the Autoclose close-time preview when a different match is unticked', async () => {
+    it('defaults Closes at to 24 hours before the earliest ticked match and recomputes it when ticks change', async () => {
       const user = userEvent.setup()
       getFixtureGroups.mockResolvedValueOnce([makeGroup()])
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      const closeTimeText = () => screen.getByText(/Automatically closes/).textContent
-      const initialCloseTime = closeTimeText()
+      expect(screen.getByLabelText('Closes at')).toHaveValue(toDatetimeLocal('2030-06-05T09:00:00.000Z'))
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
+      expect(screen.getByLabelText('Closes at')).toHaveValue(toDatetimeLocal('2030-06-06T09:00:00.000Z'))
+    })
 
-      expect(closeTimeText()).not.toEqual(initialCloseTime)
+    it('keeps an edited close time when ticks change, sends it, and rejects one in the past', async () => {
+      const user = userEvent.setup()
+      getFixtureGroups.mockResolvedValueOnce([makeGroup()])
+      createRound.mockResolvedValueOnce({})
+      renderPage(GROUP_PATH)
+
+      await screen.findByText('U13 Boys A vs Rivals CC')
+      const field = screen.getByLabelText('Closes at')
+      fireEvent.change(field, { target: { value: '2020-01-01T09:00' } })
+      expect(await screen.findByText('Choose a closing time in the future.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' })).toBeDisabled()
+
+      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-05T18:00:00.000Z') } })
+      await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
+      expect(field).toHaveValue(toDatetimeLocal('2030-06-05T18:00:00.000Z'))
+
+      await user.click(screen.getByRole('button', { name: 'Open poll for 1 selected fixture' }))
+      await waitFor(() =>
+        expect(createRound).toHaveBeenCalledWith(
+          'test-club-id',
+          expect.objectContaining({ scheduledCloseAt: '2030-06-05T18:00:00.000Z' }),
+        ),
+      )
     })
 
     it('the submit action is disabled once every match is unchecked, re-enabling on reselect', async () => {

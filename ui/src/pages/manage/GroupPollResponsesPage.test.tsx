@@ -16,6 +16,8 @@ const listRounds = vi.fn()
 const getRoundResponses = vi.fn()
 const getRoundMatches = vi.fn()
 const setRoundPlayerStatus = vi.fn()
+const updateRoundCloseTime = vi.fn()
+const openRound = vi.fn()
 
 vi.mock('../../api/sectionAvailabilityApi', async () => {
   const actual = await vi.importActual<typeof import('../../api/sectionAvailabilityApi')>('../../api/sectionAvailabilityApi')
@@ -24,6 +26,8 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
     listRounds: (clubId: string, params: unknown) => listRounds(clubId, params),
     getRoundResponses: (clubId: string, roundId: string) => getRoundResponses(clubId, roundId),
     getRoundMatches: (clubId: string, roundId: string) => getRoundMatches(clubId, roundId),
+    updateRoundCloseTime: (clubId: string, roundId: string, payload: unknown) => updateRoundCloseTime(clubId, roundId, payload),
+    openRound: (clubId: string, roundId: string) => openRound(clubId, roundId),
     setRoundPlayerStatus: (clubId: string, roundId: string, playerProfileId: string, windowId: string, status: string) =>
       setRoundPlayerStatus(clubId, roundId, playerProfileId, windowId, status),
   }
@@ -42,6 +46,7 @@ function makeRound(overrides: Partial<SectionAvailabilityRound> = {}): SectionAv
     description: 'Sat 6 Jun - U13 Boys fixtures',
     firstMatchDate: '2026-06-06T09:00:00Z',
     lastMatchDate: '2026-06-06T09:00:00Z',
+    firstMatchKickoff: '2026-06-06T09:00:00Z',
     autoClose: true,
     scheduledCloseAt: '2026-06-05T09:00:00Z',
     open: true,
@@ -408,18 +413,24 @@ describe('GroupPollResponsesPage', () => {
     expect(await screen.findByText('Round is closed.')).toBeInTheDocument()
   })
 
-  it('disables overrides and explains why when the poll is closed', async () => {
+  it('keeps overrides enabled on a closed poll and notes that changes are manager corrections', async () => {
+    const user = userEvent.setup()
     listRounds.mockResolvedValue([makeRound({ open: false })])
     getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+    setRoundPlayerStatus.mockResolvedValue(makeResponses({ open: false }))
     renderPage()
     await loaded()
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
-    expect(screen.getByText("This poll is closed, so answers can't be changed.")).toBeInTheDocument()
-    expect(within(column('Morning', 'Available')).getByLabelText(/Set Jane Smith's.*morning availability/i)).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    const chip = within(column('Morning', 'Available')).getByLabelText(/Set Jane Smith's.*morning availability/i)
+    expect(chip).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(chip)
+    await user.click(await screen.findByRole('menuitem', { name: 'Unsure' }))
+    await waitFor(() => expect(setRoundPlayerStatus).toHaveBeenCalledWith('test-club-id', 'round-1', 'player-1', 'window-1', 'UNSURE'))
   })
 
-  it('disables the By player chips too when the poll is closed', async () => {
+  it('keeps the By player chips enabled when the poll is closed', async () => {
     const user = userEvent.setup()
     listRounds.mockResolvedValue([makeRound({ open: false })])
     getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
@@ -427,12 +438,39 @@ describe('GroupPollResponsesPage', () => {
     await loaded()
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
-    expect(screen.getByText("This poll is closed, so answers can't be changed.")).toBeInTheDocument()
-    const chip = screen.getByLabelText(/Set Jane Smith's.*afternoon availability/i)
-    expect(chip).toHaveAttribute('aria-disabled', 'true')
-    await user.click(chip)
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
-    expect(setRoundPlayerStatus).not.toHaveBeenCalled()
+    expect(screen.getByText('This poll is closed. Changes are recorded as a manager correction.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Set Jane Smith's.*afternoon availability/i)).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('opens Edit close time from the header pencil and saves the chosen close time', async () => {
+    const user = userEvent.setup()
+    updateRoundCloseTime.mockResolvedValue(makeRound())
+    renderPage()
+    await loaded()
+
+    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    expect(await screen.findByRole('heading', { name: 'Edit close time' })).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(updateRoundCloseTime).toHaveBeenCalledWith('test-club-id', 'round-1', { autoClose: false, scheduledCloseAt: null }),
+    )
+  })
+
+  it('opens the dialog in Reopen mode on a closed poll', async () => {
+    const user = userEvent.setup()
+    listRounds.mockResolvedValue([makeRound({ open: false, autoClose: false, scheduledCloseAt: null })])
+    getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+    updateRoundCloseTime.mockResolvedValue(makeRound({ autoClose: false, scheduledCloseAt: null }))
+    openRound.mockResolvedValue(makeRound({ autoClose: false, scheduledCloseAt: null }))
+    renderPage()
+    await loaded()
+
+    await user.click(screen.getByRole('button', { name: 'Edit close time' }))
+    expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await waitFor(() => expect(openRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
   })
 
   it('opens the share dialog', async () => {

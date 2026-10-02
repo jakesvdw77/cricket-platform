@@ -94,7 +94,7 @@ describe('MatchAvailabilityTab', () => {
     await user.click(screen.getByRole('checkbox'))
     expect(onClose).not.toHaveBeenCalled()
     expect(await screen.findByText('Close this poll?')).toBeInTheDocument()
-    expect(screen.getByText(/until its automatic close time/i)).toBeInTheDocument()
+    expect(screen.getByText(/choosing a new close time/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close poll' }))
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -112,22 +112,27 @@ describe('MatchAvailabilityTab', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('disables the switch and shows a muted note when a closed poll can no longer be reopened', () => {
-    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), canReopen: false })} />)
+  it('shows a closed banner and a Reopen… button that calls onReopen (docs/specs/066)', async () => {
+    const user = userEvent.setup()
+    const onReopen = vi.fn()
+    const onOpen = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), onReopen, onOpen })} />)
 
-    expect(screen.getByRole('checkbox')).toBeDisabled()
-    expect(screen.getByText('Closed. Can no longer be reopened.')).toBeInTheDocument()
+    expect(screen.getByText(/this poll is closed\. changes are recorded as a manager correction/i)).toBeInTheDocument()
+    expect(screen.getByText(/^poll closed$/i)).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reopen…' }))
+    expect(onReopen).toHaveBeenCalledTimes(1)
+    expect(onOpen).not.toHaveBeenCalled()
   })
 
-  it('shows a closed banner and calls onOpen when toggling the switch on for a closed poll', async () => {
+  it('falls back to onOpen for Reopen… when no onReopen is given', async () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
     render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), onOpen })} />)
 
-    expect(screen.getByText(/this poll is closed/i)).toBeInTheDocument()
-    expect(screen.getByText(/^poll closed$/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox'))
-    expect(onOpen).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Reopen…' }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
   it('opens the share dialog action via onShareInvite', async () => {
@@ -161,11 +166,15 @@ describe('MatchAvailabilityTab', () => {
     expect(onSetPlayerStatus).toHaveBeenCalledWith('p4', 'AVAILABLE')
   })
 
-  it('disables the status Chip for every row when the poll is closed', () => {
-    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }) })} />)
+  it('keeps the status Chips enabled when the poll is closed so a manager can correct an answer', async () => {
+    const user = userEvent.setup()
+    const onSetPlayerStatus = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), onSetPlayerStatus })} />)
 
-    expect(screen.getByRole('button', { name: /jane smith's availability/i })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: /set sam patel's availability/i })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: /jane smith's availability/i })).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: /set sam patel's availability/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Available' }))
+    expect(onSetPlayerStatus).toHaveBeenCalledWith('p4', 'AVAILABLE')
   })
 
   it('shows a pending state only on the row currently being saved', () => {
