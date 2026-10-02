@@ -65,6 +65,14 @@ export const Closed: Story = {
   },
 }
 
+export const ClosedCannotReopen: Story = {
+  args: {
+    ...NoPollYet.args,
+    poll: { ...OPEN_MIXED_POLL, open: false },
+    canReopen: false,
+  },
+}
+
 export const Loading: Story = {
   args: {
     ...NoPollYet.args,

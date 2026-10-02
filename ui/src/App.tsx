@@ -43,7 +43,7 @@ import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
 import SquadPicker from './pages/manage/SquadPicker'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
-import SectionAvailabilityRounds from './pages/manage/SectionAvailabilityRounds'
+import NewPollPage from './pages/manage/NewPollPage'
 import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PublicSectionAvailabilityRound from './pages/view/PublicSectionAvailabilityRound'
 import PlayerHome from './pages/view/PlayerHome'
@@ -57,6 +57,7 @@ import SubscriptionList from './pages/admin/SubscriptionList'
 import SubscriptionFormPage from './pages/admin/SubscriptionFormPage'
 import EmailSettings from './pages/admin/EmailSettings'
 import { EmptyState } from './components/EmptyState'
+import SectionAvailabilityRedirect from './pages/manage/SectionAvailabilityRedirect'
 
 const queryClient = new QueryClient()
 
@@ -216,12 +217,12 @@ function App() {
                   currently-open availability poll, replacing the earlier "go find the match
                   yourself" stub. */}
               <Route path="availability" element={<AvailabilityPollsDashboard />} />
-              {/* docs/specs/063-section-availability-and-flexible-squads.md Part A: this spec's
-                  own independent admin screen/nav entry point, deliberately not folded into the
-                  dashboard above (see the spec's Rollout Notes). The proposed-fixture-groups
-                  review and the open-rounds list live on this one page together, not a separate
-                  route - a dialog/second page left no room to review a real fixture list. */}
-              <Route path="section-availability" element={<SectionAvailabilityRounds />} />
+              {/* docs/specs/064-unified-availability-polls.md: the create screen for both poll kinds
+                  (squad or group) behind the dashboard's New poll button. */}
+              <Route path="availability/new" element={<NewPollPage />} />
+              {/* 064: 063's own screen folded into the dashboard + NewPollPage - old links (and
+                  bookmarks) land on the group branch, keeping ?sectionId=/matchId=. */}
+              <Route path="section-availability" element={<SectionAvailabilityRedirect />} />
               <Route path="profile" element={<EmptyState title="Profile" description="Coming soon." />} />
             </Route>
 

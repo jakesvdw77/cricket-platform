@@ -3,8 +3,8 @@ import type { Player } from './playerApi'
 import type { DayPart } from './sectionAvailabilityApi'
 
 // docs/specs/063-section-availability-and-flexible-squads.md Part B/C: the per-fixture squad pool
-// for a FLEXIBLE team, replacing what teamSquadApi.ts's TeamSquadMember does for a STATIC team's
-// season squad. `GET .../squad` resolves this side's own (section, date, day-part) bracket and, if
+// for a side covered by a group poll (064), replacing what teamSquadApi.ts's TeamSquadMember does
+// for a side without one (the season squad). `GET .../squad` resolves this side's own (section, date, day-part) bracket and, if
 // a SectionAvailabilityWindow already exists for it, returns the live candidate pool (everyone who
 // said Available for that bracket) alongside the current picks.
 export interface MatchSquadPickedElsewhere {

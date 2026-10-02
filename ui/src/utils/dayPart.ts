@@ -1,8 +1,8 @@
 import type { DayPart } from '../api/sectionAvailabilityApi'
 
 // docs/specs/063-section-availability-and-flexible-squads.md's fixed two-value DayPart vocabulary
-// - shared display label between the admin SectionAvailabilityRounds list, the public
-// PublicSectionAvailabilityRound page, and MatchFormPage's own FLEXIBLE-side info panels, rather
+// - shared display label between the admin availability polls list, the public
+// PublicSectionAvailabilityRound page, and MatchFormPage's group-poll-covered side panels, rather
 // than a copy-pasted map in each.
 export const DAY_PART_LABEL: Record<DayPart, string> = {
   MORNING: 'Morning',

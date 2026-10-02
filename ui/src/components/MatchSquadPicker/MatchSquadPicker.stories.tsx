@@ -76,7 +76,7 @@ export const NoWindowYet: Story = {
     windowId: null,
     windowOpen: false,
     label: 'the home side',
-    createWindowHref: '/manage/section-availability?sectionId=section-1',
+    createWindowHref: '/manage/availability/new?type=group&sectionId=section-1&matchId=match-1',
     onAdd: noop,
     onRemove: noop,
     onUpdateJerseyNumber: noop,

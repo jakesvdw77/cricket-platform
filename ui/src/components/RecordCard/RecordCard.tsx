@@ -68,9 +68,11 @@ export interface RecordCardSecondaryAction {
 // Generic inline outcome message for a card-level action (e.g. secondaryAction's result) — the
 // same "coloured Typography for the outcome" pattern already used in EmailSettings.tsx, not a
 // new Alert/Snackbar component.
+const FEEDBACK_COLOR = { success: 'success.main', error: 'error.main', muted: 'text.secondary' } as const
+
 export interface RecordCardFeedback {
   message: string
-  tone: 'success' | 'error'
+  tone: 'success' | 'error' | 'muted'
 }
 
 export interface RecordCardProps {
@@ -319,7 +321,7 @@ export function RecordCard({
         )}
 
         {feedback && (
-          <Typography variant="body2" color={feedback.tone === 'success' ? 'success.main' : 'error.main'}>
+          <Typography variant="body2" color={FEEDBACK_COLOR[feedback.tone]}>
             {feedback.message}
           </Typography>
         )}

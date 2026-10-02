@@ -116,7 +116,6 @@ function placeholderTeam(clubId: string, name: string): Team {
     groundName: null,
     socialLinks: [],
     active: true,
-    squadMode: 'STATIC',
     createdAt: '',
     updatedAt: '',
     updatedBy: null,

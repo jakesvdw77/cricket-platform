@@ -92,10 +92,11 @@ export interface SectionAvailabilityRoundMatch {
 }
 
 // One candidate match row within a proposed SectionAvailabilityFixtureGroup  - 
-// alreadyPolled/existingRoundId/existingRoundDescription are only populated when a
-// SectionAvailabilityWindow already exists for this match's own resolved bracket (from any
-// round, open or closed), so the UI can render it disabled with a link to the poll that already
-// covers it.
+// alreadyPolled/existingPoll* are only populated when the match is already covered by a poll of
+// either kind (docs/specs/064-unified-availability-polls.md), so the UI can render it disabled with
+// a link to the poll that covers it. existingPollId is the squad poll id (SQUAD) or the group
+// round id (GROUP); existingPollLabel is the group description, or 'Team v Opponent' for a squad
+// poll.
 export interface SectionAvailabilityFixtureMatch {
   matchId: string
   teamId: string
@@ -105,8 +106,9 @@ export interface SectionAvailabilityFixtureMatch {
   dayPart: DayPart
   leagueName: string | null
   alreadyPolled: boolean
-  existingRoundId: string | null
-  existingRoundDescription: string | null
+  existingPollType: 'SQUAD' | 'GROUP' | null
+  existingPollId: string | null
+  existingPollLabel: string | null
 }
 
 // One proposed group per SectionAvailabilityFixtureGroupResolver's own distinct-calendar-date-
@@ -145,7 +147,7 @@ export async function listRounds(clubId: string, params: ListRoundsParams = {}):
   return data
 }
 
-// Read-only, no side effects - a section's own real, upcoming FLEXIBLE-team fixtures, grouped by
+// Read-only, no side effects - a section's own real, upcoming fixtures (any team of the section, 064), grouped by
 // consecutive/same-calendar-date clustering, for the fixture-group review page to propose a new
 // round from.
 export async function getFixtureGroups(clubId: string, sectionId: string): Promise<SectionAvailabilityFixtureGroup[]> {
@@ -170,6 +172,12 @@ export async function updateRoundDescription(
 ): Promise<SectionAvailabilityRound> {
   const { data } = await api.put<SectionAvailabilityRound>(`${roundsPath(clubId)}/${roundId}`, { description })
   return data
+}
+
+// docs/specs/064: deletes a group poll with its windows/links/responses; 409 (message surfaced to
+// the user) when match squad members were picked from it.
+export async function deleteRound(clubId: string, roundId: string): Promise<void> {
+  await api.delete(`${roundsPath(clubId)}/${roundId}`)
 }
 
 export async function openRound(clubId: string, roundId: string): Promise<SectionAvailabilityRound> {

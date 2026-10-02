@@ -58,6 +58,7 @@ import {
   unannounceMatchSide,
 } from '../../api/matchSideApi'
 import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
+import { canReopen } from '../../utils/pollClose'
 import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
 import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { getRoundResponses } from '../../api/sectionAvailabilityApi'
@@ -107,6 +108,33 @@ function isSideNonEmpty(matchSide: MatchSide): boolean {
   )
 }
 
+// docs/specs/064-unified-availability-polls.md: which poll (if any) covers one side of this match,
+// resolved from data rather than a team setting (063's removed squadMode). `groupCovered` = the
+// squad endpoint returned a non-null windowId; `squadPoll` = a 032 poll exists for this side
+// (the two are mutually exclusive, enforced server-side). Always enabled for a real-Team side;
+// both queries use the shared keys MatchSideTab/MatchAvailabilityPanel/MatchSquadPanel already
+// use, so React Query dedupes the requests across tabs.
+function useSideCoverage(clubId: string | undefined, matchId: string | undefined, teamId: string | null | undefined) {
+  const enabled = Boolean(clubId) && Boolean(matchId) && Boolean(teamId)
+
+  const matchSquadQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
+    queryFn: () => getMatchSquad(clubId as string, matchId as string, teamId as string),
+    enabled,
+  })
+
+  const pollsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'],
+    queryFn: () => listPolls(clubId as string, matchId as string),
+    enabled,
+  })
+
+  const groupCovered = Boolean(matchSquadQuery.data?.windowId)
+  const squadPoll = groupCovered ? null : ((pollsQuery.data ?? []).find((candidate) => candidate.teamId === teamId) ?? null)
+
+  return { matchSquadQuery, pollsQuery, groupCovered, squadPoll }
+}
+
 // One Playing XI tab's content — data fetching/mutations live here (React Query, not inside
 // PlayingXiBuilder itself, per docs/standards/frontend.md's "server state in the page" rule).
 // Creates the MatchSide on first use if none exists yet, per docs/specs/029-league-management.md.
@@ -149,12 +177,14 @@ function MatchSideTab({
     skippedCount: number
   } | null>(null)
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part D: a FLEXIBLE team's playing
-  // XI is drawn from the match's own picked MatchSquadMember pool, not the team's season-long
-  // TeamSquadMember roster — everything below branches on this exactly once, then reads
-  // `effectiveSquad`/`availabilityByPlayerId` rather than re-checking `isFlexible` per call site.
-  const team = teamsById.get(teamId)
-  const isFlexible = team?.squadMode === 'FLEXIBLE'
+  // docs/specs/063-section-availability-and-flexible-squads.md Part D, re-keyed by
+  // docs/specs/064-unified-availability-polls.md: a group-covered side's playing XI is drawn from
+  // the match's own picked MatchSquadMember pool, otherwise from the team's season-long
+  // TeamSquadMember roster (tinted by a squad poll's answers when one exists) — everything below
+  // branches on coverage exactly once, then reads `effectiveSquad`/`availabilityByPlayerId`
+  // rather than re-checking it per call site.
+  const coverage = useSideCoverage(clubId, matchId, teamId)
+  const isGroupCovered = coverage.groupCovered
 
   const sidesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'],
@@ -164,19 +194,17 @@ function MatchSideTab({
   const squadQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
     queryFn: () => listSquad(clubId, teamId, seasonId),
-    enabled: !isFlexible,
+    // Held back until coverage resolves so a group-covered side never fetches a roster it
+    // won't use.
+    enabled: !coverage.matchSquadQuery.isLoading && !isGroupCovered,
   })
 
-  // Same queryKey/queryFn MatchSquadPanel below uses for this exact side — React Query dedupes by
-  // key, so switching between the Availability/Match Squad/Playing XI tabs never re-fetches this
-  // more than once per side (docs/specs/063's own "no second network call" requirement).
-  const matchSquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
-    queryFn: () => getMatchSquad(clubId, matchId, teamId),
-    enabled: isFlexible,
-  })
+  // Shared with useSideCoverage/MatchSquadPanel (same queryKey) — React Query dedupes by key, so
+  // switching between the Availability/Match Squad/Playing XI tabs never re-fetches this more
+  // than once per side (docs/specs/063's own "no second network call" requirement).
+  const matchSquadQuery = coverage.matchSquadQuery
 
-  const effectiveSquad: SquadMember[] = isFlexible ? (matchSquadQuery.data?.selected ?? []) : squadQuery.data ?? []
+  const effectiveSquad: SquadMember[] = isGroupCovered ? (matchSquadQuery.data?.selected ?? []) : squadQuery.data ?? []
 
   const invalidateSides = () =>
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'] })
@@ -234,13 +262,14 @@ function MatchSideTab({
   // docs/specs/037-match-improvements.md item 8: creates a brand-new Player then adds them to
   // this side's squad — two sequential calls in one mutation, matching TeamFormPage.tsx's existing
   // createAndLinkContactMutation/createAndLinkSponsorMutation shape. docs/specs/
-  // 063-section-availability-and-flexible-squads.md Part D: a FLEXIBLE side has no season squad to
-  // add to at all — the new player goes straight into this match's own MatchSquadMember pool
-  // instead, or the season TeamSquadMember roster for a STATIC side, unchanged.
+  // 063-section-availability-and-flexible-squads.md Part D, as reshaped by 064-unified-availability-
+  // polls.md: a side covered by a group poll (isGroupCovered) adds the new player straight into
+  // this match's own MatchSquadMember pool; any other side adds to the season TeamSquadMember
+  // roster, unchanged.
   const createAndLinkPlayerMutation = useMutation({
     mutationFn: async (payload: PlayerPayload) => {
       const player = await createPlayer(clubId, payload)
-      if (isFlexible) {
+      if (isGroupCovered) {
         await addToMatchSquad(clubId, matchId, teamId, player.id)
       } else {
         await addToSquad(clubId, teamId, seasonId, player.id)
@@ -252,7 +281,7 @@ function MatchSideTab({
       // selectable in PlayingXiBuilder's "Add player" Autocomplete immediately, without a page
       // reload.
       queryClient.invalidateQueries({
-        queryKey: isFlexible
+        queryKey: isGroupCovered
           ? ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad']
           : ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
       })
@@ -400,19 +429,13 @@ function MatchSideTab({
   // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
   // loading guard below — indicators simply appear once/if this resolves, XI building is never
   // blocked or delayed waiting on poll data. docs/specs/063-section-availability-and-flexible-
-  // squads.md Part D (fixture-group-selection revision): STATIC keeps this exact fetch; FLEXIBLE
-  // instead reads this side's own round-level responses (resolved via matchSquadQuery's own
+  // squads.md Part D (fixture-group-selection revision): a side with its own squad poll keeps this
+  // exact fetch; a side covered by a group poll instead reads this side's own round-level responses (resolved via matchSquadQuery's own
   // roundId, no second network call for the round lookup itself), picking out the statuses entry
   // whose own windowId matches this side's own resolved window (windowId, not dayPart alone, is
   // the only unambiguous key now that a round can own several windows sharing the same dayPart
   // across different dates).
-  const pollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'],
-    queryFn: () => listPolls(clubId, matchId),
-    enabled: !isFlexible,
-  })
-
-  const poll = isFlexible ? null : (pollsQuery.data ?? []).find((candidate) => candidate.teamId === teamId) ?? null
+  const poll = coverage.squadPoll
 
   const responsesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'polls', poll?.id, 'responses'],
@@ -426,12 +449,12 @@ function MatchSideTab({
   const roundResponsesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'section-availability-rounds', roundId, 'responses'],
     queryFn: () => getRoundResponses(clubId, roundId as string),
-    enabled: isFlexible && Boolean(roundId),
+    enabled: isGroupCovered && Boolean(roundId),
   })
 
   const availabilityByPlayerId = useMemo(() => {
     const map = new Map<string, AvailabilityStatus>()
-    if (isFlexible) {
+    if (isGroupCovered) {
       ;(roundResponsesQuery.data?.responses ?? []).forEach((row) => {
         const status = row.statuses.find((entry) => entry.windowId === windowId)?.status ?? null
         if (status) {
@@ -446,11 +469,12 @@ function MatchSideTab({
       })
     }
     return map
-  }, [isFlexible, roundResponsesQuery.data, responsesQuery.data, windowId])
+  }, [isGroupCovered, roundResponsesQuery.data, responsesQuery.data, windowId])
 
   if (
     sidesQuery.isLoading ||
-    (isFlexible ? matchSquadQuery.isLoading : squadQuery.isLoading) ||
+    matchSquadQuery.isLoading ||
+    (!isGroupCovered && squadQuery.isLoading) ||
     createSideMutation.isPending ||
     !side
   ) {
@@ -637,7 +661,7 @@ function MatchAvailabilityPanel({
   match,
   label,
   teamName,
-  team,
+  side,
 }: {
   clubId: string
   matchId: string
@@ -645,29 +669,24 @@ function MatchAvailabilityPanel({
   match: Match
   label: string
   teamName: string
-  team: Team | undefined
+  side: 'home' | 'away'
 }) {
   const queryClient = useQueryClient()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const isFlexible = team?.squadMode === 'FLEXIBLE'
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part D: same queryKey/queryFn
-  // MatchSideTab/MatchSquadPanel use for this exact side — resolves this side's own bracket
-  // (sectionId/windowDate/dayPart) and, when it exists, the SectionAvailabilityWindow's id, no
-  // second network call for the lookup itself.
-  const matchSquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
-    queryFn: () => getMatchSquad(clubId, matchId, teamId),
-    enabled: isFlexible,
+  // docs/specs/064-unified-availability-polls.md: coverage, not a team setting, decides what this
+  // tab shows - a squad poll's own tab, a 'covered by a group poll' panel, or (nothing covers it)
+  // both ways to open one.
+  const { matchSquadQuery, pollsQuery, groupCovered, squadPoll: poll } = useSideCoverage(clubId, matchId, teamId)
+
+  const roundId = matchSquadQuery.data?.roundId ?? null
+  // Same queryKey MatchSideTab's roundResponsesQuery uses - supplies the covering poll's
+  // description without a second request.
+  const roundQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', roundId, 'responses'],
+    queryFn: () => getRoundResponses(clubId, roundId as string),
+    enabled: groupCovered && Boolean(roundId),
   })
-
-  const pollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'],
-    queryFn: () => listPolls(clubId, matchId),
-    enabled: !isFlexible,
-  })
-
-  const poll = isFlexible ? null : (pollsQuery.data ?? []).find((candidate) => candidate.teamId === teamId) ?? null
 
   const responsesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId, 'polls', poll?.id, 'responses'],
@@ -677,12 +696,16 @@ function MatchAvailabilityPanel({
 
   // Invalidating the base 'polls' key also invalidates the more specific
   // [...'polls', pollId, 'responses'] query below (React Query's default partial-key matching),
-  // so a single invalidation covers both the list and the currently-open detail view.
-  const invalidatePolls = () =>
+  // so a single invalidation covers both the list and the currently-open detail view. The squad
+  // endpoint is invalidated too: opening/deleting a poll changes this side's coverage.
+  const invalidatePolls = () => {
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
+  }
 
   const createMutation = useMutation({
-    mutationFn: () => createPoll(clubId, matchId, teamId),
+    mutationFn: (autoClose: boolean) => createPoll(clubId, matchId, teamId, autoClose),
     onSuccess: invalidatePolls,
   })
   const openMutation = useMutation({
@@ -708,40 +731,54 @@ function MatchAvailabilityPanel({
       )
       .find((message): message is string => Boolean(message)) ?? null
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part D (fixture-group-selection
-  // revision): a FLEXIBLE side has no per-match poll at all - a short informational panel
-  // replaces MatchAvailabilityTab entirely, linking to the resolved SectionAvailabilityRound when
-  // one already covers this side's own bracket, or, when it doesn't yet, a shortcut straight to
-  // SectionAvailabilityRounds' own proposed-fixture-groups review (this exact section
-  // pre-selected, this exact matchId pre-checked), not a blind "create for this date" form.
-  if (isFlexible) {
-    const squad = matchSquadQuery.data
-    const sectionAvailabilityHref = squad
-      ? squad.windowId
-        ? `/manage/section-availability?sectionId=${squad.sectionId}`
-        : `/manage/section-availability?sectionId=${squad.sectionId}&matchId=${matchId}`
-      : '/manage/section-availability'
-
+  // docs/specs/064: a group-covered side has no per-match poll of its own - a short panel names
+  // the covering group poll, with a link to the polls list and a shortcut to this side's Match
+  // Squad tab.
+  if (groupCovered) {
+    const description = roundQuery.data?.description
     return (
       <EmptyState
-        title="Section-level availability"
-        description={`${teamName} uses section-level availability instead of a per-match poll - players respond once for the whole poll, covering every fixture the admin selected into it, not per match.`}
+        title="Covered by a group poll"
+        description={
+          description
+            ? `${teamName} is covered by the group poll "${description}" - players answer once for every fixture in it. Pick this match's squad from the people who said yes.`
+            : `${teamName} is covered by a group poll - players answer once for every fixture in it. Pick this match's squad from the people who said yes.`
+        }
         action={
-          <MuiButton component={RouterLink} to={sectionAvailabilityHref} variant="contained">
-            {squad?.windowId ? 'View section availability round' : 'Open a section availability round'}
-          </MuiButton>
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap justifyContent="center">
+            <MuiButton component={RouterLink} to="/manage/availability?showClosed=true" variant="outlined">
+              View poll
+            </MuiButton>
+            <MuiButton
+              component={RouterLink}
+              to={`/manage/fixtures/matches/${matchId}/edit?tab=match-squad&side=${side}`}
+              variant="contained"
+            >
+              Pick match squad
+            </MuiButton>
+          </Stack>
         }
       />
     )
   }
+
+  // Nothing covers this side yet: MatchAvailabilityTab's own prompt creates a squad poll in place;
+  // the group-poll shortcut into NewPollPage sits alongside it (this section/match pre-selected).
+  const sectionId = matchSquadQuery.data?.sectionId
+  const groupPollHref = `/manage/availability/new?type=group${sectionId ? `&sectionId=${sectionId}` : ''}&matchId=${matchId}`
 
   return (
     <>
       <MatchAvailabilityTab
         label={label}
         poll={poll ? responsesQuery.data ?? null : null}
-        isLoading={pollsQuery.isLoading || (Boolean(poll) && responsesQuery.isLoading)}
-        onCreate={() => createMutation.mutate()}
+        isLoading={pollsQuery.isLoading || matchSquadQuery.isLoading || (Boolean(poll) && responsesQuery.isLoading)}
+        onCreate={(autoClose) => createMutation.mutate(autoClose)}
+        secondaryEmptyAction={
+          <MuiButton component={RouterLink} to={groupPollHref} variant="outlined">
+            Open group poll
+          </MuiButton>
+        }
         onOpen={() => openMutation.mutate()}
         onClose={() => closeMutation.mutate()}
         onShareInvite={() => setShareDialogOpen(true)}
@@ -753,6 +790,8 @@ function MatchAvailabilityPanel({
           setPlayerStatusMutation.isPending ? setPlayerStatusMutation.variables?.playerProfileId ?? null : null
         }
         errorMessage={errorMessage}
+        autoClose={poll?.autoClose ?? false}
+        canReopen={poll ? canReopen(poll) : true}
       />
       {poll && (
         <PollShareDialog
@@ -767,8 +806,8 @@ function MatchAvailabilityPanel({
   )
 }
 
-// docs/specs/063-section-availability-and-flexible-squads.md Part B/C: one FLEXIBLE side's own
-// Match Squad tab content — data fetching/mutations live here (React Query, not inside
+// docs/specs/063-section-availability-and-flexible-squads.md Part B/C: one group-poll-covered
+// side's own Match Squad tab content — data fetching/mutations live here (React Query, not inside
 // MatchSquadPicker itself, per docs/standards/frontend.md's "server state in the page" rule),
 // mirroring MatchAvailabilityPanel's own shape. Same queryKey/queryFn as MatchSideTab's own
 // matchSquadQuery and MatchAvailabilityPanel's own matchSquadQuery for this exact side — React
@@ -836,13 +875,9 @@ function MatchSquadPanel({
   }
 
   const squad = squadQuery.data
-  // Links straight to SectionAvailabilityRounds' own proposed-fixture-groups review with this
-  // exact matchId pre-checked, not a blind "create for this date" form
-  // (docs/specs/063-section-availability-and-flexible-squads.md's fixture-group-selection
-  // revision).
-  const createWindowHref = squad.windowId
-    ? `/manage/section-availability?sectionId=${squad.sectionId}`
-    : `/manage/section-availability?sectionId=${squad.sectionId}&matchId=${matchId}`
+  // Links to NewPollPage's group branch with this exact section and matchId (docs/specs/064,
+  // replacing 063's /manage/section-availability) - not a blind "create for this date" form.
+  const createWindowHref = `/manage/availability/new?type=group&sectionId=${squad.sectionId}&matchId=${matchId}`
 
   return (
     <MatchSquadPicker
@@ -874,7 +909,7 @@ export default function MatchFormPage() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
   const [activeAvailabilitySubTab, setActiveAvailabilitySubTab] = useState(0)
-  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C.
+  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C (064: shown for group-poll-covered sides).
   const [activeMatchSquadSubTab, setActiveMatchSquadSubTab] = useState(0)
 
   const matchQuery = useQuery({
@@ -982,16 +1017,16 @@ export default function MatchFormPage() {
   const homeAvailabilitySubIndex = match?.homeTeamId ? 0 : undefined
   const awayAvailabilitySubIndex = match?.awayTeamId ? (homeAvailabilitySubIndex !== undefined ? 1 : 0) : undefined
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C: a fifth top-level tab,
-  // rendered only when at least one real-Team side is FLEXIBLE — a match squad only ever makes
-  // sense for a FLEXIBLE side, mirroring the availability tab's own "at least one real Team" gate.
-  const homeTeam = match?.homeTeamId ? teamsById.get(match.homeTeamId) : undefined
-  const awayTeam = match?.awayTeamId ? teamsById.get(match.awayTeamId) : undefined
-  const hasFlexibleSide = homeTeam?.squadMode === 'FLEXIBLE' || awayTeam?.squadMode === 'FLEXIBLE'
-  const matchSquadTabIndex = hasXiTabs && hasFlexibleSide ? nextTabIndex++ : undefined
-  const matchSquadHomeSubIndex = homeTeam?.squadMode === 'FLEXIBLE' ? 0 : undefined
-  const matchSquadAwaySubIndex =
-    awayTeam?.squadMode === 'FLEXIBLE' ? (matchSquadHomeSubIndex !== undefined ? 1 : 0) : undefined
+  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C, re-keyed by
+  // docs/specs/064-unified-availability-polls.md: a fifth top-level tab, rendered only when at
+  // least one real-Team side is group-covered (resolved from the squad endpoint, not a team
+  // setting) — a match squad only ever makes sense for a group-covered side.
+  const homeCoverage = useSideCoverage(clubId, matchId, match?.homeTeamId)
+  const awayCoverage = useSideCoverage(clubId, matchId, match?.awayTeamId)
+  const hasGroupCoveredSide = homeCoverage.groupCovered || awayCoverage.groupCovered
+  const matchSquadTabIndex = hasXiTabs && hasGroupCoveredSide ? nextTabIndex++ : undefined
+  const matchSquadHomeSubIndex = homeCoverage.groupCovered ? 0 : undefined
+  const matchSquadAwaySubIndex = awayCoverage.groupCovered ? (matchSquadHomeSubIndex !== undefined ? 1 : 0) : undefined
 
   // SquadPicker's cards route straight into a match's Playing XI tab (?tab=playing-xi) rather
   // than Details — jumps to whichever XI tab exists first (home, else away) once the match (and
@@ -1023,6 +1058,22 @@ export default function MatchFormPage() {
     // activeTab/activeAvailabilitySubTab change caused by the admin's own tab clicks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, availabilityTabIndex, homeAvailabilitySubIndex, awayAvailabilitySubIndex])
+
+  // docs/specs/064: the covered-by-a-group-poll panel's "Pick match squad" action - one more
+  // recognized deep-link shape (?tab=match-squad&side=home|away), same mechanism as the two above.
+  useEffect(() => {
+    if (searchParams.get('tab') === 'match-squad' && matchSquadTabIndex !== undefined) {
+      setActiveTab(matchSquadTabIndex)
+      const side = searchParams.get('side')
+      if (side === 'home' && matchSquadHomeSubIndex !== undefined) {
+        setActiveMatchSquadSubTab(matchSquadHomeSubIndex)
+      } else if (side === 'away' && matchSquadAwaySubIndex !== undefined) {
+        setActiveMatchSquadSubTab(matchSquadAwaySubIndex)
+      }
+    }
+    // Only re-evaluated when the deep-link target itself becomes available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, matchSquadTabIndex, matchSquadHomeSubIndex, matchSquadAwaySubIndex])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -1164,7 +1215,7 @@ export default function MatchFormPage() {
               match={match}
               label="the home side"
               teamName={sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)}
-              team={homeTeam}
+              side="home"
             />
           )}
 
@@ -1176,7 +1227,7 @@ export default function MatchFormPage() {
               match={match}
               label="the away side"
               teamName={sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)}
-              team={awayTeam}
+              side="away"
             />
           )}
         </Box>
