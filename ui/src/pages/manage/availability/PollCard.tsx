@@ -28,9 +28,8 @@ import { PollMatchesDialog } from './PollMatchesDialog'
 import {
   closesRowText,
   formatMatchDateTime,
-  sideDisplayName,
-  squadPollHref,
   squadPollSideLabel,
+  squadPollTeamName,
   squadPollTitle,
 } from './pollHelpers'
 import type { PollItem } from './pollItem'
@@ -163,12 +162,7 @@ export function PollCard({
       ? `${item.round.sectionName} · ${matchCountLabel(item.round.brackets.reduce((sum, bracket) => sum + bracket.coveredMatchCount, 0))}`
       : `${formatMatchDateTime(item.poll.matchDate)} · ${item.poll.venue ?? 'Venue TBC'}`
 
-  const squadTeamName =
-    item.kind === 'SQUAD'
-      ? item.poll.teamId === item.poll.homeTeamId
-        ? sideDisplayName(item.poll.homeTeamId, item.poll.homeTeamName, teamsById)
-        : sideDisplayName(item.poll.awayTeamId, item.poll.awayTeamName, teamsById)
-      : ''
+  const squadTeamName = item.kind === 'SQUAD' ? squadPollTeamName(item.poll, teamsById) : ''
 
   const badges = [
     { label: isOpen ? 'Open' : 'Closed', tone: isOpen ? ('positive' as const) : ('muted' as const) },
@@ -201,9 +195,13 @@ export function PollCard({
           {
             label: 'Responses',
             icon: <PeopleAltOutlinedIcon fontSize="small" />,
-            // docs/specs/065: a group poll's responses live on their own page; a squad poll's on its
-            // match's Availability tab.
-            onClick: () => navigate(item.kind === 'GROUP' ? `/manage/availability/group/${item.round.id}` : squadPollHref(item.poll)),
+            // docs/specs/065 + 067: each poll kind's responses live on their own page.
+            onClick: () =>
+              navigate(
+                item.kind === 'GROUP'
+                  ? `/manage/availability/group/${item.round.id}`
+                  : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`,
+              ),
           },
           { label: 'Share', ariaLabel: 'Share invite', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => setShareOpen(true) },
         ]}

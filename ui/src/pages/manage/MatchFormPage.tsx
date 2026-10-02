@@ -1053,9 +1053,9 @@ export default function MatchFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasXiTabs, homeXiTabIndex, awayXiTabIndex])
 
-  // docs/specs/034-availability-polls-dashboard.md: AvailabilityPollsDashboard's own "Manage
-  // responses" action routes straight into this match's Availability tab, on the correct side's
-  // sub-tab — the exact same deep-link mechanism as ?tab=playing-xi above, one more recognized
+  // docs/specs/034-availability-polls-dashboard.md: a deep link into this match's Availability
+  // tab on the correct side's sub-tab (reached from the squad Responses page's Open match link, the
+  // Matches dialog and coveredPollHref; the dashboard's Responses button now opens its own page, 067) — the exact same deep-link mechanism as ?tab=playing-xi above, one more recognized
   // query-string shape rather than a new deep-linking system.
   useEffect(() => {
     if (searchParams.get('tab') === 'availability' && availabilityTabIndex !== undefined) {

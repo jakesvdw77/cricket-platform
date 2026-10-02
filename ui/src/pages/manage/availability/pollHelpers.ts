@@ -54,7 +54,7 @@ export function sideDisplayName(teamId: string | null, teamName: string | null, 
   return teamName ?? 'TBC'
 }
 
-export function squadPollTitle(poll: OpenAvailabilityPoll, teamsById: Map<string, Team>): string {
+export function squadPollTitle(poll: Pick<OpenAvailabilityPoll, 'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName'>, teamsById: Map<string, Team>): string {
   const homeTeamName = sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
   const awayTeamName = sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
   return `${homeTeamName} vs ${awayTeamName}`
@@ -117,14 +117,30 @@ export function closesRowText(open: boolean, autoClose: boolean, scheduledCloseA
   return `Closed ${date}`
 }
 
-// docs/specs/064/066: the squad poll's match Availability tab, on the side this poll is for - the
-// destination of both the card's Responses button and the Matches dialog's match link.
-export function squadPollHref(poll: OpenAvailabilityPoll): string {
+// docs/specs/064/066/067: the squad poll's match Availability tab, on the side this poll is for - the
+// destination of the Matches dialog's match link and the Responses page's Open match link.
+export function squadPollHref(poll: Pick<OpenAvailabilityPoll, 'matchId' | 'teamId' | 'homeTeamId'>): string {
   const side = poll.teamId === poll.homeTeamId ? 'home' : 'away'
   return `/manage/fixtures/matches/${poll.matchId}/edit?tab=availability&side=${side}`
 }
 
 // The 'Home' / 'Away' badge of a squad poll.
-export function squadPollSideLabel(poll: OpenAvailabilityPoll): 'Home' | 'Away' {
+export function squadPollSideLabel(poll: Pick<OpenAvailabilityPoll, 'teamId' | 'homeTeamId'>): 'Home' | 'Away' {
   return poll.teamId === poll.homeTeamId ? 'Home' : 'Away'
+}
+
+type SquadSides = Pick<OpenAvailabilityPoll, 'teamId' | 'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName'>
+
+// docs/specs/067: the name of the side a squad poll is for (the share invite greets this team) and
+// of the other side (the slot's opponent), shared by the card and the Responses page.
+export function squadPollTeamName(poll: SquadSides, teamsById: Map<string, Team>): string {
+  return poll.teamId === poll.homeTeamId
+    ? sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
+    : sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
+}
+
+export function squadPollOpponentName(poll: SquadSides, teamsById: Map<string, Team>): string {
+  return poll.teamId === poll.homeTeamId
+    ? sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
+    : sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
 }
