@@ -19,6 +19,8 @@ import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
 import com.cricketlegend.dto.PlayerAvailabilityRowDto;
 import com.cricketlegend.exception.ConflictException;
+import com.cricketlegend.dto.UpdatePollCloseTimeRequest;
+import com.cricketlegend.exception.InvalidCloseTimeException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
@@ -139,7 +141,7 @@ class MatchAvailabilityPollServiceImplTest {
                 });
         when(squadResolver.resolveSquadRows(eq(homeTeamId), eq(seasonId))).thenReturn(List.of());
 
-        service.create(authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null));
+        service.create(authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null, null));
 
         ArgumentCaptor<MatchAvailabilityPoll> savedCaptor = ArgumentCaptor.forClass(MatchAvailabilityPoll.class);
         verify(matchAvailabilityPollRepository).save(savedCaptor.capture());
@@ -161,7 +163,7 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
 
         assertThatThrownBy(() -> service.create(
-                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(unrelatedTeamId, null)))
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(unrelatedTeamId, null, null)))
                 .isInstanceOf(ValidationException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -179,7 +181,7 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchAvailabilityPollRepository.existsByMatchIdAndTeamId(matchId, homeTeamId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(
-                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null)))
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null, null)))
                 .isInstanceOf(ConflictException.class);
 
         verify(matchAvailabilityPollRepository, never()).save(any());
@@ -200,7 +202,7 @@ class MatchAvailabilityPollServiceImplTest {
                         MatchPollCoverageService.Kind.GROUP, null, UUID.randomUUID(), UUID.randomUUID(), "Sat 3 Oct"));
 
         assertThatThrownBy(() -> service.create(
-                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null)))
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null, null)))
                 .isInstanceOf(MatchAlreadyPolledException.class)
                 .hasMessageContaining("Sat 3 Oct");
 
@@ -217,7 +219,7 @@ class MatchAvailabilityPollServiceImplTest {
                         authentication,
                         UUID.randomUUID(),
                         matchId,
-                        new CreateMatchAvailabilityPollRequest(UUID.randomUUID(), null)))
+                        new CreateMatchAvailabilityPollRequest(UUID.randomUUID(), null, null)))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -237,7 +239,7 @@ class MatchAvailabilityPollServiceImplTest {
                 .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
 
         assertThatThrownBy(() -> service.create(
-                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null)))
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, null, null)))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         verify(matchAvailabilityPollRepository, never()).save(any());
     }
@@ -454,7 +456,7 @@ class MatchAvailabilityPollServiceImplTest {
     }
 
     @Test
-    void setPlayerStatusRejectsAWriteAgainstAClosedPoll() {
+    void setPlayerStatusAcceptsAnAdminOverrideAgainstAClosedPollAndKeepsItClosed() {
         UUID clubId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
@@ -467,11 +469,16 @@ class MatchAvailabilityPollServiceImplTest {
         when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(closedPoll));
         when(squadResolver.resolveSquadRows(teamId, seasonId))
                 .thenReturn(List.of(new PlayerAvailabilityRowDto(playerId, "Jane", "Smith", null, null)));
+        when(playerAvailabilityRepository.findByPollIdAndPlayerProfileId(pollId, playerId))
+                .thenReturn(Optional.empty());
+        when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.setPlayerStatus(
-                        authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE))
-                .isInstanceOf(com.cricketlegend.exception.PollClosedException.class);
-        verify(playerAvailabilityRepository, never()).save(any());
+        service.setPlayerStatus(authentication, clubId, matchId, pollId, playerId, AvailabilityStatus.AVAILABLE);
+
+        ArgumentCaptor<PlayerAvailability> captor = ArgumentCaptor.forClass(PlayerAvailability.class);
+        verify(playerAvailabilityRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
+        assertThat(closedPoll.isOpen()).isFalse();
     }
 
     // --- listOpenForClub (034/035) ---
@@ -784,7 +791,7 @@ class MatchAvailabilityPollServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(squadResolver.resolveSquadRows(any(), any())).thenReturn(List.of());
 
-        service.create(authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, autoClose));
+        service.create(authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(homeTeamId, autoClose, null));
 
         ArgumentCaptor<MatchAvailabilityPoll> captor = ArgumentCaptor.forClass(MatchAvailabilityPoll.class);
         verify(matchAvailabilityPollRepository).save(captor.capture());
@@ -883,6 +890,213 @@ class MatchAvailabilityPollServiceImplTest {
         Instant now = Instant.now();
         when(matchAvailabilityPollRepository.findDueForAutoClose(now)).thenReturn(List.of());
         assertThat(service.closeDueAutoClosePolls(now)).isZero();
+        verify(matchAvailabilityPollRepository, never()).save(any());
+    }
+
+    // --- 066: close time (create with scheduledCloseAt, updateCloseTime) ---
+
+    private static final Instant FAR_KICKOFF = Instant.now().plus(30, ChronoUnit.DAYS);
+
+    private MatchAvailabilityPoll createWithScheduledCloseAt(Boolean autoClose, Instant scheduledCloseAt) {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID homeTeamId = UUID.randomUUID();
+        Match match = match(clubId, matchId, homeTeamId, UUID.randomUUID(), UUID.randomUUID());
+        match.setMatchDate(FAR_KICKOFF);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        org.mockito.Mockito.lenient()
+                .when(matchAvailabilityPollRepository.save(any(MatchAvailabilityPoll.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(squadResolver.resolveSquadRows(any(), any())).thenReturn(List.of());
+
+        service.create(
+                authentication,
+                clubId,
+                matchId,
+                new CreateMatchAvailabilityPollRequest(homeTeamId, autoClose, scheduledCloseAt));
+
+        ArgumentCaptor<MatchAvailabilityPoll> captor = ArgumentCaptor.forClass(MatchAvailabilityPoll.class);
+        verify(matchAvailabilityPollRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    @Test
+    void createWithAnExplicitScheduledCloseAtStoresIt() {
+        Instant closeAt = FAR_KICKOFF.minus(3, ChronoUnit.DAYS);
+
+        MatchAvailabilityPoll saved = createWithScheduledCloseAt(true, closeAt);
+
+        assertThat(saved.isAutoClose()).isTrue();
+        assertThat(saved.getScheduledCloseAt()).isEqualTo(closeAt);
+    }
+
+    @Test
+    void createWithoutScheduledCloseAtKeepsTheTwentyFourHourDefault() {
+        MatchAvailabilityPoll saved = createWithScheduledCloseAt(true, null);
+
+        assertThat(saved.getScheduledCloseAt()).isEqualTo(FAR_KICKOFF.minus(24, ChronoUnit.HOURS));
+    }
+
+    @Test
+    void createWithAutoCloseFalseIgnoresAScheduledCloseAt() {
+        MatchAvailabilityPoll saved = createWithScheduledCloseAt(false, FAR_KICKOFF.minus(3, ChronoUnit.DAYS));
+
+        assertThat(saved.isAutoClose()).isFalse();
+        assertThat(saved.getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void createWithAPastScheduledCloseAtThrowsInvalidCloseTime() {
+        assertThatThrownBy(() -> createWithScheduledCloseAt(true, Instant.now().minusSeconds(60)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time in the future.");
+        verify(matchAvailabilityPollRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithAScheduledCloseAtAfterKickoffThrowsInvalidCloseTime() {
+        assertThatThrownBy(() -> createWithScheduledCloseAt(true, FAR_KICKOFF.plusSeconds(1)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time before the first match starts.");
+    }
+
+    private MatchAvailabilityPoll pollForCloseTimeEdit(UUID clubId, UUID matchId, UUID pollId, boolean open) {
+        UUID teamId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, UUID.randomUUID(), UUID.randomUUID());
+        match.setMatchDate(FAR_KICKOFF);
+        MatchAvailabilityPoll poll = poll(pollId, matchId, teamId, open);
+        poll.setAutoClose(true);
+        poll.setScheduledCloseAt(Instant.now().minusSeconds(3600));
+        org.mockito.Mockito.lenient().when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        org.mockito.Mockito.lenient().when(matchAvailabilityPollRepository.findById(pollId)).thenReturn(Optional.of(poll));
+        org.mockito.Mockito.lenient()
+                .when(matchAvailabilityPollRepository.save(any(MatchAvailabilityPoll.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(squadResolver.resolveSquadRows(any(), any())).thenReturn(List.of());
+        return poll;
+    }
+
+    @Test
+    void updateCloseTimeSavesAValidTimeOnAnOpenPollAndKeepsItOpen() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = pollForCloseTimeEdit(clubId, matchId, pollId, true);
+        Instant closeAt = FAR_KICKOFF.minus(2, ChronoUnit.DAYS);
+
+        service.updateCloseTime(
+                authentication, clubId, matchId, pollId, new UpdatePollCloseTimeRequest(true, closeAt));
+
+        assertThat(poll.isAutoClose()).isTrue();
+        assertThat(poll.getScheduledCloseAt()).isEqualTo(closeAt);
+        assertThat(poll.isOpen()).isTrue();
+        verify(matchAvailabilityPollRepository).save(poll);
+    }
+
+    @Test
+    void updateCloseTimeWithAutoCloseFalseClearsTheTimeEvenIfOneIsSent() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = pollForCloseTimeEdit(clubId, matchId, pollId, true);
+
+        service.updateCloseTime(
+                authentication,
+                clubId,
+                matchId,
+                pollId,
+                new UpdatePollCloseTimeRequest(false, FAR_KICKOFF.minus(1, ChronoUnit.DAYS)));
+
+        assertThat(poll.isAutoClose()).isFalse();
+        assertThat(poll.getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void updateCloseTimeRejectsAPastTime() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = pollForCloseTimeEdit(clubId, matchId, pollId, true);
+        Instant before = poll.getScheduledCloseAt();
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        clubId,
+                        matchId,
+                        pollId,
+                        new UpdatePollCloseTimeRequest(true, Instant.now().minusSeconds(5))))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time in the future.");
+        assertThat(poll.getScheduledCloseAt()).isEqualTo(before);
+        verify(matchAvailabilityPollRepository, never()).save(any());
+    }
+
+    @Test
+    void updateCloseTimeRejectsATimeAfterKickoff() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        pollForCloseTimeEdit(clubId, matchId, pollId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        clubId,
+                        matchId,
+                        pollId,
+                        new UpdatePollCloseTimeRequest(true, FAR_KICKOFF.plusSeconds(1))))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("Choose a closing time before the first match starts.");
+    }
+
+    @Test
+    void updateCloseTimeRejectsAutoCloseOnWithoutATime() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        pollForCloseTimeEdit(clubId, matchId, pollId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication, clubId, matchId, pollId, new UpdatePollCloseTimeRequest(true, null)))
+                .isInstanceOf(InvalidCloseTimeException.class)
+                .hasMessage("A closing time is required when Autoclose is on.");
+    }
+
+    @Test
+    void updateCloseTimeOnAClosedPollKeepsItClosedAndThenOpenSucceeds() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = pollForCloseTimeEdit(clubId, matchId, pollId, false);
+        // Reopen is refused while the old close time is in the past.
+        assertThatThrownBy(() -> service.open(authentication, clubId, matchId, pollId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class);
+
+        service.updateCloseTime(
+                authentication,
+                clubId,
+                matchId,
+                pollId,
+                new UpdatePollCloseTimeRequest(true, Instant.now().plus(2, ChronoUnit.HOURS)));
+        assertThat(poll.isOpen()).isFalse();
+
+        service.open(authentication, clubId, matchId, pollId);
+        assertThat(poll.isOpen()).isTrue();
+    }
+
+    @Test
+    void updateCloseTimeReturns404WhenTheMatchBelongsToADifferentClub() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        pollForCloseTimeEdit(UUID.randomUUID(), matchId, pollId, true);
+
+        assertThatThrownBy(() -> service.updateCloseTime(
+                        authentication,
+                        clubId,
+                        matchId,
+                        pollId,
+                        new UpdatePollCloseTimeRequest(true, FAR_KICKOFF.minus(1, ChronoUnit.DAYS))))
+                .isInstanceOf(NotFoundException.class);
         verify(matchAvailabilityPollRepository, never()).save(any());
     }
 }

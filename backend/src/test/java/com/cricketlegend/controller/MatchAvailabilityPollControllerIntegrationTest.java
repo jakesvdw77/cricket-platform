@@ -479,7 +479,7 @@ class MatchAvailabilityPollControllerIntegrationTest {
     }
 
     @Test
-    void setPlayerStatusReturns409WhenThePollIsClosed() throws Exception {
+    void setPlayerStatusIsAcceptedOnAClosedPollWhileThePublicEndpointStays409() throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section section = sectionRepository.save(newSection(club.getId(), "Men"));
         Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
@@ -505,6 +505,12 @@ class MatchAvailabilityPollControllerIntegrationTest {
                         .with(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\": \"AVAILABLE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableCount").value(1));
+
+        mockMvc.perform(put("/api/v1/public/polls/{pollId}/players/{playerProfileId}", pollId, playerId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"UNSURE\"}"))
                 .andExpect(status().isConflict());
     }
 

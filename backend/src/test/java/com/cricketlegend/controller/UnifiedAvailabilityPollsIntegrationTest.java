@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -509,6 +510,237 @@ class UnifiedAvailabilityPollsIntegrationTest {
                 "SELECT column_name FROM information_schema.columns WHERE table_name = 'match_availability_poll'",
                 String.class);
         assertThat(pollColumns).contains("auto_close", "scheduled_close_at");
+    }
+
+    // ---------------------------------------------------------------- 066 close time
+
+    private String squadCloseTimeUrl() {
+        return "/api/v1/manage/clubs/{c}/matches/{m}/polls/{p}/close-time";
+    }
+
+    private org.springframework.test.web.servlet.ResultActions putSquadCloseTime(
+            JwtRequestPostProcessor who, UUID clubId, UUID matchId, String pollId, String body) throws Exception {
+        return mockMvc.perform(put(squadCloseTimeUrl(), clubId, matchId, pollId)
+                .with(who)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions putRoundCloseTime(
+            JwtRequestPostProcessor who, UUID clubId, String roundId, String body) throws Exception {
+        return mockMvc.perform(put(
+                        "/api/v1/manage/clubs/{c}/section-availability-rounds/{r}/close-time", clubId, roundId)
+                .with(who)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    private static String closeBody(boolean autoClose, Instant at) {
+        return "{\"autoClose\": " + autoClose + ", \"scheduledCloseAt\": " + (at == null ? "null" : "\"" + at + "\"")
+                + "}";
+    }
+
+    @Test
+    void putSquadCloseTimeSavesValidatesAndClearsAndNeverChangesOpen() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        String pollId = createSquadPoll(admin, f);
+        UUID id = UUID.fromString(pollId);
+        Instant kickoff = f.match.getMatchDate();
+        Instant closeAt = Instant.now().plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId, closeBody(true, closeAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.autoClose").value(true))
+                .andExpect(jsonPath("$.open").value(true));
+        assertThat(pollRepository.findById(id).orElseThrow().getScheduledCloseAt()).isEqualTo(closeAt);
+
+        // equal to kickoff is allowed
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId, closeBody(true, kickoff))
+                .andExpect(status().isOk());
+
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId,
+                        closeBody(true, Instant.now().minusSeconds(60)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Choose a closing time in the future."));
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId, closeBody(true, kickoff.plusSeconds(60)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Choose a closing time before the first match starts."));
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId, closeBody(true, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("A closing time is required when Autoclose is on."));
+
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId, closeBody(false, closeAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.autoClose").value(false))
+                .andExpect(jsonPath("$.scheduledCloseAt").doesNotExist());
+        assertThat(pollRepository.findById(id).orElseThrow().getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void putSquadCloseTimeOnAClosedPollKeepsItClosedAndAllowsReopenWithAFutureTime() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        MatchAvailabilityPoll poll = savePoll(f.match, f.team, false, true, Instant.now().minusSeconds(3600));
+        String pollId = poll.getId().toString();
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/matches/{m}/polls/{p}/open",
+                        f.club.getId(), f.match.getId(), pollId).with(admin))
+                .andExpect(status().isConflict());
+
+        putSquadCloseTime(admin, f.club.getId(), f.match.getId(), pollId,
+                        closeBody(true, Instant.now().plus(2, ChronoUnit.HOURS)))
+                .andExpect(status().isOk());
+        assertThat(pollRepository.findById(poll.getId()).orElseThrow().isOpen()).isFalse();
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/matches/{m}/polls/{p}/open",
+                        f.club.getId(), f.match.getId(), pollId).with(admin))
+                .andExpect(status().isOk());
+        assertThat(pollRepository.findById(poll.getId()).orElseThrow().isOpen()).isTrue();
+    }
+
+    @Test
+    void putSquadCloseTimeIsGatedBySectionAndClub() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        String pollId = createSquadPoll(admin, f);
+        String body = closeBody(true, Instant.now().plus(1, ChronoUnit.HOURS));
+
+        Section otherSection = sectionRepository.save(newSection(f.club.getId(), "Open"));
+        putSquadCloseTime(grantSectionAdmin("open-admin-sub", otherSection.getId()),
+                        f.club.getId(), f.match.getId(), pollId, body)
+                .andExpect(status().isForbidden());
+
+        Club otherClub = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor otherAdmin = grantClubAdmin("other-admin-sub", otherClub.getId());
+        putSquadCloseTime(otherAdmin, f.club.getId(), f.match.getId(), pollId, body)
+                .andExpect(status().isForbidden());
+        putSquadCloseTime(otherAdmin, otherClub.getId(), f.match.getId(), pollId, body)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createSquadPollAcceptsAnExplicitScheduledCloseAtAndRejectsAPastOne() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        Instant closeAt = Instant.now().plus(3, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/matches/{m}/polls", f.club.getId(), f.match.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"teamId\": \"" + f.team.getId() + "\", \"autoClose\": true, "
+                                + "\"scheduledCloseAt\": \"" + Instant.now().minusSeconds(60) + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        String body = mockMvc.perform(post("/api/v1/manage/clubs/{c}/matches/{m}/polls", f.club.getId(), f.match.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"teamId\": \"" + f.team.getId() + "\", \"autoClose\": true, "
+                                + "\"scheduledCloseAt\": \"" + closeAt + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = com.jayway.jsonpath.JsonPath.read(body, "$.id");
+        assertThat(pollRepository.findById(UUID.fromString(id)).orElseThrow().getScheduledCloseAt())
+                .isEqualTo(closeAt);
+    }
+
+    @Test
+    void putRoundCloseTimeSavesValidatesAgainstTheEarliestKickoffAndKeepsOpenState() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        String created = createRound(admin, f, f.match.getId());
+        String roundId = com.jayway.jsonpath.JsonPath.read(created, "$.id");
+        UUID id = UUID.fromString(roundId);
+        Instant kickoff = f.match.getMatchDate();
+        // firstMatchKickoff is the covered match's exact kickoff.
+        Object kick = com.jayway.jsonpath.JsonPath.read(created, "$.firstMatchKickoff");
+        assertThat(kick).isNotNull();
+        Instant closeAt = Instant.now().plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, closeAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.open").value(true))
+                .andExpect(jsonPath("$.firstMatchKickoff").exists());
+        assertThat(roundRepository.findById(id).orElseThrow().getScheduledCloseAt()).isEqualTo(closeAt);
+
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, kickoff)).andExpect(status().isOk());
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, Instant.now().minusSeconds(60)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Choose a closing time in the future."));
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, kickoff.plusSeconds(60)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Choose a closing time before the first match starts."));
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, null))
+                .andExpect(status().isBadRequest());
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(false, closeAt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scheduledCloseAt").doesNotExist());
+        assertThat(roundRepository.findById(id).orElseThrow().getScheduledCloseAt()).isNull();
+    }
+
+    @Test
+    void putRoundCloseTimeOnAClosedRoundKeepsItClosedAndAllowsReopen() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        String roundId = createRoundId(admin, f);
+        UUID id = UUID.fromString(roundId);
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/section-availability-rounds/{r}/close",
+                        f.club.getId(), roundId).with(admin)).andExpect(status().isOk());
+        SectionAvailabilityRound round = roundRepository.findById(id).orElseThrow();
+        round.setScheduledCloseAt(Instant.now().minusSeconds(3600));
+        roundRepository.save(round);
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/section-availability-rounds/{r}/open",
+                        f.club.getId(), roundId).with(admin)).andExpect(status().isConflict());
+
+        putRoundCloseTime(admin, f.club.getId(), roundId, closeBody(true, Instant.now().plus(2, ChronoUnit.HOURS)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.open").value(false));
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/section-availability-rounds/{r}/open",
+                        f.club.getId(), roundId).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.open").value(true));
+    }
+
+    @Test
+    void putRoundCloseTimeIsGatedBySectionAndClub() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        String roundId = createRoundId(admin, f);
+        String body = closeBody(true, Instant.now().plus(1, ChronoUnit.HOURS));
+
+        Section otherSection = sectionRepository.save(newSection(f.club.getId(), "Open"));
+        putRoundCloseTime(grantSectionAdmin("open-admin-sub", otherSection.getId()), f.club.getId(), roundId, body)
+                .andExpect(status().isForbidden());
+
+        Club otherClub = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor otherAdmin = grantClubAdmin("other-admin-sub", otherClub.getId());
+        putRoundCloseTime(otherAdmin, f.club.getId(), roundId, body).andExpect(status().isForbidden());
+        putRoundCloseTime(otherAdmin, otherClub.getId(), roundId, body).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createRoundAcceptsAnExplicitScheduledCloseAtAndRejectsAPastOne() throws Exception {
+        Fixture f = fixture();
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
+        Instant closeAt = Instant.now().plus(3, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+        String base = "{\"sectionId\": \"" + f.section.getId() + "\", \"description\": \"Fx\", "
+                + "\"matchIds\": [\"" + f.match.getId() + "\"], \"autoClose\": true, \"scheduledCloseAt\": \"";
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{c}/section-availability-rounds", f.club.getId())
+                        .with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + Instant.now().minusSeconds(60) + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        String body = mockMvc.perform(post("/api/v1/manage/clubs/{c}/section-availability-rounds", f.club.getId())
+                        .with(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content(base + closeAt + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = com.jayway.jsonpath.JsonPath.read(body, "$.id");
+        assertThat(roundRepository.findById(UUID.fromString(id)).orElseThrow().getScheduledCloseAt())
+                .isEqualTo(closeAt);
     }
 
     // ---------------------------------------------------------------- helpers
