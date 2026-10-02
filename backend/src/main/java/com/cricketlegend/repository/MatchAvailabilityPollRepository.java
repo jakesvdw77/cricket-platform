@@ -1,6 +1,7 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.MatchAvailabilityPoll;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,4 +29,21 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
     @Query("SELECT p FROM MatchAvailabilityPoll p WHERE p.open = true "
             + "AND p.matchId IN (SELECT m.id FROM Match m WHERE m.clubId = :clubId)")
     List<MatchAvailabilityPoll> findOpenByMatchClubId(@Param("clubId") UUID clubId);
+
+    /**
+     * Every closed poll whose owning {@code Match.clubId} equals {@code clubId}, most recent match
+     * date first — backs {@code GET /availability-polls/closed}. Unbounded here; the service caps
+     * the (section-filtered) result at the 50 most recent.
+     */
+    @Query("SELECT p FROM MatchAvailabilityPoll p, Match m WHERE p.open = false AND m.id = p.matchId "
+            + "AND m.clubId = :clubId ORDER BY m.matchDate DESC")
+    List<MatchAvailabilityPoll> findClosedByMatchClubId(@Param("clubId") UUID clubId);
+
+    /**
+     * Open polls whose autoclose time has passed — backs the scheduled auto-close job
+     * (docs/specs/064-unified-availability-polls.md).
+     */
+    @Query("SELECT p FROM MatchAvailabilityPoll p WHERE p.open = true AND p.autoClose = true "
+            + "AND p.scheduledCloseAt IS NOT NULL AND p.scheduledCloseAt <= :now")
+    List<MatchAvailabilityPoll> findDueForAutoClose(@Param("now") Instant now);
 }

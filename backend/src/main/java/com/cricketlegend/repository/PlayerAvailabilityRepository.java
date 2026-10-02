@@ -11,5 +11,7 @@ public interface PlayerAvailabilityRepository extends JpaRepository<PlayerAvaila
 
     List<PlayerAvailability> findByPollId(UUID pollId);
 
+    void deleteByPollId(UUID pollId);
+
     Optional<PlayerAvailability> findByPollIdAndPlayerProfileId(UUID pollId, UUID playerProfileId);
 }

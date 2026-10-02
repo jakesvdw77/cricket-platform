@@ -16,10 +16,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * The per-fixture squad pool for a {@code FLEXIBLE} {@link Team} — replaces what {@link
- * TeamSquadMember} does for a {@code STATIC} team's season squad. Starts empty per match, no
- * pre-seeding. {@link #teamId} must equal this match's own {@code homeTeamId}/{@code awayTeamId},
- * and that {@link Team} must be {@code squadMode == FLEXIBLE}, enforced at the service layer.
+ * The per-fixture squad pool for a match covered by a group availability poll — used instead
+ * of {@link TeamSquadMember}'s season squad for such a match (docs/specs/064). Starts empty per
+ * match, no pre-seeding. {@link #teamId} must equal this match's own {@code homeTeamId}/{@code
+ * awayTeamId}, and the match must be covered by a group poll for that team, enforced at the
+ * service layer.
  * {@link #sectionAvailabilityWindowId} is resolved once at add-time from {@code (team.sectionId,
  * match.matchDate's date+day-part)} — a later reschedule leaves this pointing at the original
  * bracket, an accepted limitation (see the spec's Non-goals).

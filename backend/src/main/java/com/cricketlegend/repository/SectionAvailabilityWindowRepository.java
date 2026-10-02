@@ -31,4 +31,6 @@ public interface SectionAvailabilityWindowRepository extends JpaRepository<Secti
      * bracket is only ever addressed by its own {@code windowId} from here on.
      */
     List<SectionAvailabilityWindow> findByRoundId(UUID roundId);
+
+    void deleteByRoundId(UUID roundId);
 }

@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Replaces the old live time-based scan for the one place a live view of "what's out there" is
  * still genuinely needed: proposing what a *new* {@code SectionAvailabilityRound} could cover.
- * Given a {@code sectionId}, it: (1) finds every {@code FLEXIBLE}-team {@code Match} in that
+ * Given a {@code sectionId}, it: (1) finds every {@code Match} of a team in that
  * section with a future {@code matchDate} (naturally small and bounded — one section's own
  * upcoming fixtures — needing no further limit or pagination); (2) for each, resolves its own
  * {@code (date, day-part)} bracket key (reusing {@link SectionAvailabilityMatchResolver

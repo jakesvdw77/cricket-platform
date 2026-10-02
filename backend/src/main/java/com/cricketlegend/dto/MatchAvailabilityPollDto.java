@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -15,5 +16,7 @@ public record MatchAvailabilityPollDto(
         long availableCount,
         long unavailableCount,
         long unsureCount,
-        long noResponseCount) {
+        long noResponseCount,
+        boolean autoClose,
+        Instant scheduledCloseAt) {
 }

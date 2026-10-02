@@ -1,6 +1,5 @@
 package com.cricketlegend.dto;
 
-import com.cricketlegend.domain.SquadMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -16,9 +15,6 @@ import java.util.UUID;
  * <p>{@code abbreviation}/{@code groundName}/{@code socialLinks} (docs/specs/
  * 057-team-extended-profile.md) give {@code Team} the same club-facing profile shape {@code
  * LeagueDto} already has — every one nullable/optional, reusing {@link SocialLinkDto} unchanged.
- *
- * <p>{@code squadMode} (docs/specs/063-section-availability-and-flexible-squads.md) is the single
- * switch between {@code 029}'s season-long roster and this spec's per-fixture squad pool.
  */
 public record TeamDto(
         UUID id,
@@ -30,7 +26,6 @@ public record TeamDto(
         String groundName,
         List<SocialLinkDto> socialLinks,
         boolean active,
-        SquadMode squadMode,
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy) {

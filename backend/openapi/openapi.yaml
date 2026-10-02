@@ -493,6 +493,26 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SectionAvailabilityRoundDto"
+    delete:
+      tags:
+      - section-availability-round-controller
+      operationId: deleteRound
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Section availability round deleted
   /api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}/players/{playerProfileId}:
     put:
       tags:
@@ -3917,6 +3937,60 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OpenAvailabilityPollDto"
+  /api/v1/manage/clubs/{clubId}/availability-polls/closed:
+    get:
+      tags:
+      - match-availability-poll-controller
+      operationId: listClosed
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenAvailabilityPollDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}:
+    delete:
+      tags:
+      - match-availability-poll-controller
+      operationId: deletePoll
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Availability poll deleted
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -4650,14 +4724,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
-        squadMode:
-          type: string
-          enum:
-          - STATIC
-          - FLEXIBLE
       required:
       - name
-      - squadMode
     TeamDto:
       type: object
       properties:
@@ -4684,11 +4752,6 @@ components:
             $ref: "#/components/schemas/SocialLinkDto"
         active:
           type: boolean
-        squadMode:
-          type: string
-          enum:
-          - STATIC
-          - FLEXIBLE
         createdAt:
           type: string
           format: date-time
@@ -5824,14 +5887,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SocialLinkDto"
-        squadMode:
-          type: string
-          enum:
-          - STATIC
-          - FLEXIBLE
       required:
       - name
-      - squadMode
     LinkTeamContactRequest:
       type: object
       properties:
@@ -5994,6 +6051,8 @@ components:
         teamId:
           type: string
           format: uuid
+        autoClose:
+          type: boolean
       required:
       - teamId
     MatchAvailabilityPollDto:
@@ -6019,6 +6078,11 @@ components:
         noResponseCount:
           type: integer
           format: int64
+        autoClose:
+          type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time
     CreateLeagueRequest:
       type: object
       properties:
@@ -6211,9 +6275,9 @@ components:
       properties:
         empty:
           type: boolean
-        unsorted:
-          type: boolean
         sorted:
+          type: boolean
+        unsorted:
           type: boolean
     PageProductDto:
       type: object
@@ -6423,10 +6487,15 @@ components:
           type: string
         alreadyPolled:
           type: boolean
-        existingRoundId:
+        existingPollType:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        existingPollId:
           type: string
           format: uuid
-        existingRoundDescription:
+        existingPollLabel:
           type: string
     SectionAvailabilityRoundMatchDto:
       type: object
@@ -6631,3 +6700,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AvailabilityRespondentDto"
+        autoClose:
+          type: boolean
+        scheduledCloseAt:
+          type: string
+          format: date-time

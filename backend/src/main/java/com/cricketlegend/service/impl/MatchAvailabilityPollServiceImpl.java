@@ -5,8 +5,6 @@ import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.PlayerAvailability;
-import com.cricketlegend.domain.SquadMode;
-import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.AvailabilityRespondentDto;
 import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollDto;
@@ -17,15 +15,18 @@ import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PollClosedException;
-import com.cricketlegend.exception.TeamSquadModeMismatchException;
+import com.cricketlegend.exception.ReopenWindowPassedException;
+import com.cricketlegend.exception.MatchAlreadyPolledException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchAvailabilityPollMapper;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
-import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.AvailabilityPollSquadResolver;
 import com.cricketlegend.service.MatchAvailabilityPollService;
+import com.cricketlegend.service.MatchPollCoverageService;
+import com.cricketlegend.service.support.AutoCloseSchedule;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +35,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,20 +58,25 @@ import org.springframework.transaction.annotation.Transactional;
  * path ({@code PublicAvailabilityPollServiceImpl.setAvailability}), just under
  * {@code @access.canAdministerClub} instead of being unauthenticated.
  *
- * <p>Per docs/specs/063-section-availability-and-flexible-squads.md's amendment: {@link #create}
- * gains one new validation — a {@code 032}-style per-match poll no longer applies once a team uses
- * section-level availability, so it 400s ({@link TeamSquadModeMismatchException}) if {@code
- * request.teamId()}'s {@code Team.squadMode == FLEXIBLE}. No {@code clubId} ownership check on
- * that lookup — a poll's team can legitimately be a cross-club opponent, the same allowance
- * {@code 029}/{@link AvailabilityPollSquadResolver} already document.
+ * <p>Per docs/specs/064-unified-availability-polls.md: {@link #create} 409s ({@link
+ * MatchAlreadyPolledException}) if a group poll already covers the match (via the shared {@link
+ * MatchPollCoverageService}), stores {@code autoClose} (default true) and computes {@code
+ * scheduledCloseAt} via the shared {@link AutoCloseSchedule}; {@link #delete} removes a poll and
+ * its responses; {@link #closeDueAutoClosePolls} is the internal, auth-free entry point of the
+ * scheduled auto-close job.
  */
 @Service
 public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollService {
 
+    private static final Logger log = LoggerFactory.getLogger(MatchAvailabilityPollServiceImpl.class);
+
+    /** Server-side cap on {@link #listClosedForClub}: the 50 most recent closed polls. */
+    public static final int CLOSED_POLLS_LIMIT = 50;
+
     private final MatchRepository matchRepository;
     private final MatchAvailabilityPollRepository matchAvailabilityPollRepository;
     private final PlayerAvailabilityRepository playerAvailabilityRepository;
-    private final TeamRepository teamRepository;
+    private final MatchPollCoverageService coverageService;
     private final AvailabilityPollSquadResolver squadResolver;
     private final MatchAvailabilityPollMapper matchAvailabilityPollMapper;
     private final AccessService accessService;
@@ -77,14 +85,14 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             MatchRepository matchRepository,
             MatchAvailabilityPollRepository matchAvailabilityPollRepository,
             PlayerAvailabilityRepository playerAvailabilityRepository,
-            TeamRepository teamRepository,
+            MatchPollCoverageService coverageService,
             AvailabilityPollSquadResolver squadResolver,
             MatchAvailabilityPollMapper matchAvailabilityPollMapper,
             AccessService accessService) {
         this.matchRepository = matchRepository;
         this.matchAvailabilityPollRepository = matchAvailabilityPollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
-        this.teamRepository = teamRepository;
+        this.coverageService = coverageService;
         this.squadResolver = squadResolver;
         this.matchAvailabilityPollMapper = matchAvailabilityPollMapper;
         this.accessService = accessService;
@@ -117,19 +125,24 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             throw new ValidationException(
                     "teamId " + teamId + " is not one of this match's own home/away team ids");
         }
-        Team team = teamRepository.findById(teamId).orElse(null);
-        if (team != null && team.getSquadMode() == SquadMode.FLEXIBLE) {
-            throw new TeamSquadModeMismatchException(
-                    "Team " + teamId + " uses section-level availability (FLEXIBLE squad mode); "
-                            + "a per-match poll does not apply");
+        MatchPollCoverageService.Coverage coverage = coverageService.resolve(matchId, teamId);
+        if (coverage.kind() == MatchPollCoverageService.Kind.GROUP) {
+            throw new MatchAlreadyPolledException("Match " + matchId + " is already covered by group poll '"
+                    + coverage.label() + "' (" + coverage.roundId() + ")");
         }
         if (matchAvailabilityPollRepository.existsByMatchIdAndTeamId(matchId, teamId)) {
             throw new ConflictException(
                     "A poll for team " + teamId + " already exists on match " + matchId);
         }
 
-        MatchAvailabilityPoll poll =
-                MatchAvailabilityPoll.builder().matchId(matchId).teamId(teamId).open(true).build();
+        boolean autoClose = request.autoClose() == null || request.autoClose();
+        MatchAvailabilityPoll poll = MatchAvailabilityPoll.builder()
+                .matchId(matchId)
+                .teamId(teamId)
+                .open(true)
+                .autoClose(autoClose)
+                .scheduledCloseAt(AutoCloseSchedule.scheduledCloseAt(autoClose, match.getMatchDate()))
+                .build();
         poll = matchAvailabilityPollRepository.save(poll);
 
         return toDto(poll, match.getSeasonId());
@@ -143,6 +156,11 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
         if (poll.isOpen()) {
             throw new InvalidStatusTransitionException("Poll is already open: " + pollId);
+        }
+        // Reopening is only allowed until the automatic close time, else the auto-close job would
+        // undo it within minutes.
+        if (!AutoCloseSchedule.canReopen(poll.isAutoClose(), poll.getScheduledCloseAt(), Instant.now())) {
+            throw new ReopenWindowPassedException("This poll can no longer be reopened because its automatic close time has passed.");
         }
         poll.setOpen(true);
         poll = matchAvailabilityPollRepository.save(poll);
@@ -161,6 +179,33 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         poll.setOpen(false);
         poll = matchAvailabilityPollRepository.save(poll);
         return toDto(poll, match.getSeasonId());
+    }
+
+    @Override
+    @Transactional
+    public void delete(Authentication authentication, UUID clubId, UUID matchId, UUID pollId) {
+        Match match = findMatchOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        MatchAvailabilityPoll poll = findPollOrThrowForMatch(matchId, pollId);
+        // No ON DELETE CASCADE on these tables: responses first, then the poll.
+        playerAvailabilityRepository.deleteByPollId(poll.getId());
+        matchAvailabilityPollRepository.delete(poll);
+    }
+
+    @Override
+    @Transactional
+    public int closeDueAutoClosePolls(Instant now) {
+        List<MatchAvailabilityPoll> due = matchAvailabilityPollRepository.findDueForAutoClose(now);
+        for (MatchAvailabilityPoll poll : due) {
+            poll.setOpen(false);
+            matchAvailabilityPollRepository.save(poll);
+        }
+        if (due.isEmpty()) {
+            log.debug("Auto-closed 0 squad availability poll(s)");
+        } else {
+            log.info("Auto-closed {} squad availability poll(s)", due.size());
+        }
+        return due.size();
     }
 
     @Override
@@ -213,8 +258,44 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Transactional(readOnly = true)
     public List<OpenAvailabilityPollDto> listOpenForClub(
             Authentication authentication, UUID clubId, UUID sectionId) {
-        List<MatchAvailabilityPoll> openPolls = matchAvailabilityPollRepository.findOpenByMatchClubId(clubId);
-        Set<UUID> matchIds = openPolls.stream().map(MatchAvailabilityPoll::getMatchId).collect(Collectors.toSet());
+        List<OpenAvailabilityPollDto> result = listScopedPolls(
+                authentication,
+                clubId,
+                sectionId,
+                matchAvailabilityPollRepository.findOpenByMatchClubId(clubId),
+                Integer.MAX_VALUE);
+        result.sort(Comparator.comparing(OpenAvailabilityPollDto::matchDate));
+        return result;
+    }
+
+    /**
+     * Closed squad polls, most recent match first, capped at {@link #CLOSED_POLLS_LIMIT} (the 50
+     * most recent that the caller can reach — closed history is otherwise unbounded). Same
+     * section-scope narrowing and response shape as {@link #listOpenForClub}.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenAvailabilityPollDto> listClosedForClub(
+            Authentication authentication, UUID clubId, UUID sectionId) {
+        // The repository query is already ordered by match date descending; the scoped filter and
+        // the cap both preserve that order.
+        return listScopedPolls(
+                authentication,
+                clubId,
+                sectionId,
+                matchAvailabilityPollRepository.findClosedByMatchClubId(clubId),
+                CLOSED_POLLS_LIMIT);
+    }
+
+    /**
+     * Shared by the open and closed listings: resolves each poll's match, applies the caller's
+     * accessible-section scope and the optional explicit {@code sectionId} narrowing (validated
+     * first), keeps at most {@code limit} polls in input order, then builds their DTOs — the
+     * expensive squad/response resolution only runs for the polls that survive the cap.
+     */
+    private List<OpenAvailabilityPollDto> listScopedPolls(
+            Authentication authentication, UUID clubId, UUID sectionId, List<MatchAvailabilityPoll> polls, int limit) {
+        Set<UUID> matchIds = polls.stream().map(MatchAvailabilityPoll::getMatchId).collect(Collectors.toSet());
         Map<UUID, Match> matchesById = matchRepository.findAllById(matchIds).stream()
                 .collect(Collectors.toMap(Match::getId, match -> match));
 
@@ -227,7 +308,10 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         }
 
         List<OpenAvailabilityPollDto> result = new ArrayList<>();
-        for (MatchAvailabilityPoll poll : openPolls) {
+        for (MatchAvailabilityPoll poll : polls) {
+            if (result.size() >= limit) {
+                break;
+            }
             Match match = matchesById.get(poll.getMatchId());
             if (match == null) {
                 continue;
@@ -243,8 +327,6 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             }
             result.add(toOpenPollDto(poll, match));
         }
-
-        result.sort(Comparator.comparing(OpenAvailabilityPollDto::matchDate));
         return result;
     }
 
@@ -270,7 +352,9 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 countNoResponse(rows),
                 available,
                 unavailable,
-                unsure);
+                unsure,
+                poll.isAutoClose(),
+                poll.getScheduledCloseAt());
     }
 
     private List<AvailabilityRespondentDto> respondents(List<PlayerAvailabilityRowDto> rows, AvailabilityStatus status) {

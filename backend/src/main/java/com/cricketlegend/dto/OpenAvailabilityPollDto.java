@@ -29,5 +29,7 @@ public record OpenAvailabilityPollDto(
         long noResponseCount,
         List<AvailabilityRespondentDto> availableRespondents,
         List<AvailabilityRespondentDto> unavailableRespondents,
-        List<AvailabilityRespondentDto> unsureRespondents) {
+        List<AvailabilityRespondentDto> unsureRespondents,
+        boolean autoClose,
+        Instant scheduledCloseAt) {
 }

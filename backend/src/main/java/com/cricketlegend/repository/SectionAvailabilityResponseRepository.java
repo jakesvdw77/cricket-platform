@@ -1,6 +1,7 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.SectionAvailabilityResponse;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SectionAvailabilityResponseRepository extends JpaRepository<SectionAvailabilityResponse, UUID> {
 
     List<SectionAvailabilityResponse> findByWindowId(UUID windowId);
+
+    void deleteByWindowIdIn(Collection<UUID> windowIds);
 
     Optional<SectionAvailabilityResponse> findByWindowIdAndPlayerProfileId(UUID windowId, UUID playerProfileId);
 }

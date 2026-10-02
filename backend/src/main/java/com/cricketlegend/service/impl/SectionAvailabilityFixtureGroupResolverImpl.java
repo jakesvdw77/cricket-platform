@@ -1,11 +1,11 @@
 package com.cricketlegend.service.impl;
 
+import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.SectionAvailabilityFixtureGroupDto;
 import com.cricketlegend.dto.SectionAvailabilityFixtureMatchDto;
@@ -15,6 +15,7 @@ import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.SectionAvailabilityFixtureGroupResolver;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import java.time.Instant;
@@ -33,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * See {@link SectionAvailabilityFixtureGroupResolver} and
  * docs/specs/063-section-availability-and-flexible-squads.md. Every candidate row is resolved
- * per-side (a match qualifies once per {@code FLEXIBLE} team of this section it involves — home,
+ * per-side (a match qualifies once per team of this section it involves — home,
  * away, or in the rare intra-section-derby case, both), mirroring the pre-revision {@code
  * SectionAvailabilityRoundServiceImpl}'s own per-side match-row shape.
  */
@@ -51,6 +52,7 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
     private final SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
     private final SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository;
     private final SectionAvailabilityMatchResolver matchResolver;
+    private final MatchPollCoverageService coverageService;
 
     public SectionAvailabilityFixtureGroupResolverImpl(
             MatchRepository matchRepository,
@@ -59,7 +61,8 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
             LeagueRepository leagueRepository,
             SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository,
             SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository,
-            SectionAvailabilityMatchResolver matchResolver) {
+            SectionAvailabilityMatchResolver matchResolver,
+            MatchPollCoverageService coverageService) {
         this.matchRepository = matchRepository;
         this.teamRepository = teamRepository;
         this.sectionRepository = sectionRepository;
@@ -67,13 +70,14 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
         this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
         this.sectionAvailabilityRoundRepository = sectionAvailabilityRoundRepository;
         this.matchResolver = matchResolver;
+        this.coverageService = coverageService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<SectionAvailabilityFixtureGroupDto> resolveGroups(UUID clubId, UUID sectionId) {
         List<Match> upcomingMatches =
-                matchRepository.findUpcomingFlexibleMatchesBySection(clubId, sectionId, Instant.now());
+                matchRepository.findUpcomingMatchesBySection(clubId, sectionId, Instant.now());
 
         // Each row pairs a candidate match dto with its own resolved windowDate — a plain
         // Map.Entry rather than a private nested type, so this class doesn't introduce a second
@@ -132,7 +136,7 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
             return;
         }
         Team team = teamRepository.findById(teamId).orElse(null);
-        if (team == null || !team.getSectionId().equals(sectionId) || team.getSquadMode() != SquadMode.FLEXIBLE) {
+        if (team == null || !team.getSectionId().equals(sectionId)) {
             return;
         }
         String opponentLabel = opponentTeamId != null
@@ -143,18 +147,30 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
         SectionAvailabilityMatchResolver.WindowKey key = matchResolver.resolveWindowKey(team, match);
         Optional<SectionAvailabilityWindow> existingWindow = sectionAvailabilityWindowRepository
                 .findBySectionIdAndWindowDateAndDayPart(key.sectionId(), key.windowDate(), key.dayPart());
-        boolean alreadyPolled = existingWindow.isPresent();
-        UUID existingRoundId = null;
-        String existingRoundDescription = null;
-        if (alreadyPolled) {
+        // Coverage is match+team scoped (docs/specs/064): a squad poll covers only its own team's
+        // side, so in an intra-section derby one side's poll must not disable the other side's row;
+        // a group poll (any window link) covers every involved team. A group window already
+        // occupying this match's bracket also blocks it (round creation rejects such a bracket),
+        // so it is flagged too, naming that window's round.
+        MatchPollCoverageService.Coverage coverage = coverageService.resolve(match.getId(), teamId);
+        AvailabilityPollType existingPollType = null;
+        UUID existingPollId = null;
+        String existingPollLabel = null;
+        if (coverage.covered()) {
+            existingPollType = coverage.kind() == MatchPollCoverageService.Kind.SQUAD
+                    ? AvailabilityPollType.SQUAD
+                    : AvailabilityPollType.GROUP;
+            existingPollId = coverage.coveringPollId();
+            existingPollLabel = coverage.label();
+        } else if (existingWindow.isPresent()) {
             SectionAvailabilityRound existingRound = sectionAvailabilityRoundRepository
                     .findById(existingWindow.get().getRoundId())
                     .orElse(null);
-            if (existingRound != null) {
-                existingRoundId = existingRound.getId();
-                existingRoundDescription = existingRound.getDescription();
-            }
+            existingPollType = AvailabilityPollType.GROUP;
+            existingPollId = existingWindow.get().getRoundId();
+            existingPollLabel = existingRound == null ? null : existingRound.getDescription();
         }
+        boolean alreadyPolled = existingPollType != null;
 
         SectionAvailabilityFixtureMatchDto dto = new SectionAvailabilityFixtureMatchDto(
                 match.getId(),
@@ -165,8 +181,9 @@ public class SectionAvailabilityFixtureGroupResolverImpl implements SectionAvail
                 key.dayPart(),
                 leagueName,
                 alreadyPolled,
-                existingRoundId,
-                existingRoundDescription);
+                existingPollType,
+                existingPollId,
+                existingPollLabel);
         rows.add(new AbstractMap.SimpleEntry<>(dto, key.windowDate()));
     }
 

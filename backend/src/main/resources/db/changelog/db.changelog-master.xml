@@ -39,5 +39,6 @@
     <include file="db/changelog/v1/032-add-section-availability-and-flexible-squads.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/033-add-section-availability-rounds.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/034-add-section-availability-fixture-selection.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/035-unify-availability-polls.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

@@ -9,7 +9,6 @@ import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
 import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateSectionAvailabilityRoundRequest;
 import com.cricketlegend.dto.SectionAvailabilityResponseRowDto;
@@ -23,21 +22,25 @@ import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.ReopenWindowPassedException;
+import com.cricketlegend.exception.RoundHasMatchSquadException;
 import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.SectionAvailabilityAudienceResolver;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import com.cricketlegend.service.SectionAvailabilityRoundService;
-import java.time.Duration;
+import com.cricketlegend.service.support.AutoCloseSchedule;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -50,6 +53,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,10 +65,11 @@ import org.springframework.transaction.annotation.Transactional;
  * the caller's own accessible section set, additionally asserting {@link
  * AccessService#assertCanAdministerSection} only when the {@code sectionId} filter is itself
  * supplied; {@link #create} asserts directly against the request body's {@code sectionId}, 404s if
- * that section belongs to a different club, validates every {@code matchId} resolves to a {@code
- * FLEXIBLE} team in this section (400, {@link ValidationException}), 409s ({@link
- * MatchAlreadyPolledException}) naming the conflicting match(es) if any selected match's own
- * bracket already has a window, then atomically creates exactly the windows those matches need
+ * that section belongs to a different club, validates every {@code matchId} resolves to a team in
+ * this section (400, {@link ValidationException}), 409s ({@link MatchAlreadyPolledException})
+ * naming the conflicting match(es) if any selected match is already covered by a poll of either
+ * kind (docs/specs/064-unified-availability-polls.md, via {@link MatchPollCoverageService}) or its
+ * own bracket already has a window, then atomically creates exactly the windows those matches need
  * (one per distinct bracket) plus one {@link SectionAvailabilityWindowMatch} row per match, and
  * computes {@code firstMatchDate}/{@code lastMatchDate}/{@code scheduledCloseAt}; {@link
  * #updateDescription}/{@link #open}/{@link #close}/{@link #getResponses}/{@link #getMatches}/
@@ -76,9 +82,19 @@ import org.springframework.transaction.annotation.Transactional;
  * different dates) — mirrors {@code MatchAvailabilityPollServiceImpl.setPlayerStatus}'s exact
  * not-in-audience ({@link NotFoundException}, 404) then closed-bracket ({@link
  * SectionAvailabilityWindowClosedException}, 409) rule order.
+ *
+ * <p>Per docs/specs/064-unified-availability-polls.md: {@link #delete} removes a round child-first
+ * (409 {@link RoundHasMatchSquadException} while any squad member is picked against its windows)
+ * and {@link #closeDueAutoClosePolls} is the scheduled auto-close job's internal entry point,
+ * cascading through {@code setWindowsOpen} like a manual close.
  */
 @Service
 public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityRoundService {
+
+    private static final Logger log = LoggerFactory.getLogger(SectionAvailabilityRoundServiceImpl.class);
+
+    /** Server-side cap on {@code list(..., open=false)}: the 50 most recent closed rounds. */
+    public static final int CLOSED_ROUNDS_LIMIT = 50;
 
     private final SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository;
     private final SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
@@ -91,6 +107,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     private final SectionAvailabilityAudienceResolver audienceResolver;
     private final SectionAvailabilityMatchResolver matchResolver;
     private final SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper;
+    private final MatchSquadMemberRepository matchSquadMemberRepository;
+    private final MatchPollCoverageService coverageService;
     private final AccessService accessService;
 
     public SectionAvailabilityRoundServiceImpl(
@@ -105,6 +123,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             SectionAvailabilityAudienceResolver audienceResolver,
             SectionAvailabilityMatchResolver matchResolver,
             SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper,
+            MatchSquadMemberRepository matchSquadMemberRepository,
+            MatchPollCoverageService coverageService,
             AccessService accessService) {
         this.sectionAvailabilityRoundRepository = sectionAvailabilityRoundRepository;
         this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
@@ -117,6 +137,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         this.audienceResolver = audienceResolver;
         this.matchResolver = matchResolver;
         this.sectionAvailabilityRoundMapper = sectionAvailabilityRoundMapper;
+        this.matchSquadMemberRepository = matchSquadMemberRepository;
+        this.coverageService = coverageService;
         this.accessService = accessService;
     }
 
@@ -132,13 +154,18 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         }
         final Set<UUID> narrowToFinal = narrowTo;
 
-        return sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
+        var rounds = sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
                 .filter(round ->
                         accessibleSectionIds.isEmpty() || accessibleSectionIds.get().contains(round.getSectionId()))
                 .filter(round -> narrowToFinal == null || narrowToFinal.contains(round.getSectionId()))
-                .filter(round -> open == null || round.isOpen() == open)
-                .map(this::toDto)
-                .toList();
+                .filter(round -> open == null || round.isOpen() == open);
+        if (Boolean.FALSE.equals(open)) {
+            // Closed history is unbounded: most recent first, capped at the 50 most recent.
+            rounds = rounds.sorted(Comparator.comparing(
+                            SectionAvailabilityRound::getLastMatchDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(CLOSED_ROUNDS_LIMIT);
+        }
+        return rounds.map(this::toDto).toList();
     }
 
     @Override
@@ -152,9 +179,21 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         Map<UUID, SectionAvailabilityMatchResolver.WindowKey> keyByMatchId = new LinkedHashMap<>();
         for (UUID matchId : request.matchIds()) {
             Match match = findMatchForCreateOrThrow(clubId, matchId, section.getId());
-            Team team = resolveFlexibleTeamForSection(match, section.getId());
+            Team team = resolveSectionTeam(match, section.getId());
             matchesById.put(matchId, match);
             keyByMatchId.put(matchId, matchResolver.resolveWindowKey(team, match));
+        }
+
+        List<String> alreadyCovered = new ArrayList<>();
+        for (UUID matchId : matchesById.keySet()) {
+            MatchPollCoverageService.Coverage coverage = coverageService.resolveAny(matchId);
+            if (coverage.covered()) {
+                alreadyCovered.add(matchId + " (" + coverage.kind() + " poll: " + coverage.label() + ")");
+            }
+        }
+        if (!alreadyCovered.isEmpty()) {
+            throw new MatchAlreadyPolledException(
+                    "The following matches are already covered by another poll: " + alreadyCovered);
         }
 
         List<UUID> conflicting = keyByMatchId.entrySet().stream()
@@ -184,7 +223,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                 .firstMatchDate(earliest.atZone(zone).toLocalDate())
                 .lastMatchDate(latest.atZone(zone).toLocalDate())
                 .autoClose(request.autoClose())
-                .scheduledCloseAt(request.autoClose() ? earliest.minus(Duration.ofHours(24)) : null)
+                .scheduledCloseAt(AutoCloseSchedule.scheduledCloseAt(request.autoClose(), earliest))
                 .open(true)
                 .build();
         round = sectionAvailabilityRoundRepository.save(round);
@@ -236,6 +275,11 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         if (round.isOpen()) {
             throw new InvalidStatusTransitionException("Section availability round is already open: " + roundId);
         }
+        // Reopening is only allowed until the automatic close time, else the auto-close job would
+        // undo it within minutes.
+        if (!AutoCloseSchedule.canReopen(round.isAutoClose(), round.getScheduledCloseAt(), Instant.now())) {
+            throw new ReopenWindowPassedException("This poll can no longer be reopened because its automatic close time has passed.");
+        }
         round.setOpen(true);
         round = sectionAvailabilityRoundRepository.save(round);
         setWindowsOpen(round.getId(), true);
@@ -254,6 +298,47 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         round = sectionAvailabilityRoundRepository.save(round);
         setWindowsOpen(round.getId(), false);
         return toDto(round);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Authentication authentication, UUID clubId, UUID roundId) {
+        SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
+        accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
+
+        List<UUID> windowIds = sectionAvailabilityWindowRepository.findByRoundId(roundId).stream()
+                .map(SectionAvailabilityWindow::getId)
+                .toList();
+        if (!windowIds.isEmpty() && matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(windowIds)) {
+            throw new RoundHasMatchSquadException(
+                    "This group poll cannot be deleted while match squad members are picked from it. "
+                            + "Remove the picked squad members from its matches first, then delete the poll.");
+        }
+
+        // No ON DELETE CASCADE on these tables: children first.
+        if (!windowIds.isEmpty()) {
+            sectionAvailabilityResponseRepository.deleteByWindowIdIn(windowIds);
+            sectionAvailabilityWindowMatchRepository.deleteByWindowIdIn(windowIds);
+        }
+        sectionAvailabilityWindowRepository.deleteByRoundId(roundId);
+        sectionAvailabilityRoundRepository.delete(round);
+    }
+
+    @Override
+    @Transactional
+    public int closeDueAutoClosePolls(Instant now) {
+        List<SectionAvailabilityRound> due = sectionAvailabilityRoundRepository.findDueForAutoClose(now);
+        for (SectionAvailabilityRound round : due) {
+            round.setOpen(false);
+            sectionAvailabilityRoundRepository.save(round);
+            setWindowsOpen(round.getId(), false);
+        }
+        if (due.isEmpty()) {
+            log.debug("Auto-closed 0 group availability poll(s)");
+        } else {
+            log.info("Auto-closed {} group availability poll(s)", due.size());
+        }
+        return due.size();
     }
 
     @Override
@@ -358,9 +443,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             return;
         }
         Team team = teamRepository.findById(teamId).orElse(null);
-        if (team == null
-                || !team.getSectionId().equals(window.getSectionId())
-                || team.getSquadMode() != SquadMode.FLEXIBLE) {
+        if (team == null || !team.getSectionId().equals(window.getSectionId())) {
             return;
         }
         String opponentLabel = opponentTeamId != null
@@ -472,29 +555,24 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         Match match = matchRepository.findById(matchId).orElse(null);
         if (match == null || !match.getClubId().equals(clubId)) {
             throw new ValidationException(
-                    "matchId " + matchId + " is not a real match of a FLEXIBLE team in section " + sectionId);
+                    "matchId " + matchId + " is not a real match of a team in section " + sectionId);
         }
         return match;
     }
 
-    private Team resolveFlexibleTeamForSection(Match match, UUID sectionId) {
+    private Team resolveSectionTeam(Match match, UUID sectionId) {
         Team homeTeam = match.getHomeTeamId() == null
                 ? null
                 : teamRepository.findById(match.getHomeTeamId()).orElse(null);
-        if (homeTeam != null
-                && homeTeam.getSectionId().equals(sectionId)
-                && homeTeam.getSquadMode() == SquadMode.FLEXIBLE) {
+        if (homeTeam != null && homeTeam.getSectionId().equals(sectionId)) {
             return homeTeam;
         }
         Team awayTeam = match.getAwayTeamId() == null
                 ? null
                 : teamRepository.findById(match.getAwayTeamId()).orElse(null);
-        if (awayTeam != null
-                && awayTeam.getSectionId().equals(sectionId)
-                && awayTeam.getSquadMode() == SquadMode.FLEXIBLE) {
+        if (awayTeam != null && awayTeam.getSectionId().equals(sectionId)) {
             return awayTeam;
         }
-        throw new ValidationException(
-                "Match " + match.getId() + " does not resolve to a FLEXIBLE team in section " + sectionId);
+        throw new ValidationException("Match " + match.getId() + " does not resolve to a team in section " + sectionId);
     }
 }

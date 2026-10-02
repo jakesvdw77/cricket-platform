@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -88,6 +89,15 @@ public class SectionAvailabilityRoundController {
             @Valid @RequestBody UpdateSectionAvailabilityRoundDescriptionRequest request) {
         return ResponseEntity.ok(
                 sectionAvailabilityRoundService.updateDescription(authentication, clubId, roundId, request));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @DeleteMapping("/api/v1/manage/clubs/{clubId}/section-availability-rounds/{roundId}")
+    @ApiResponse(responseCode = "204", description = "Section availability round deleted")
+    public ResponseEntity<Void> deleteRound(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID roundId) {
+        sectionAvailabilityRoundService.delete(authentication, clubId, roundId);
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

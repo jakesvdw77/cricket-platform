@@ -5,6 +5,7 @@ import com.cricketlegend.dto.CreateMatchAvailabilityPollRequest;
 import com.cricketlegend.dto.MatchAvailabilityPollDto;
 import com.cricketlegend.dto.MatchAvailabilityPollResponsesDto;
 import com.cricketlegend.dto.OpenAvailabilityPollDto;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,21 @@ public interface MatchAvailabilityPollService {
     MatchAvailabilityPollDto open(Authentication authentication, UUID clubId, UUID matchId, UUID pollId);
 
     MatchAvailabilityPollDto close(Authentication authentication, UUID clubId, UUID matchId, UUID pollId);
+
+    /**
+     * Deletes a squad poll and its {@code PlayerAvailability} rows, freeing the match for a new
+     * poll of either kind (docs/specs/064-unified-availability-polls.md). Same section-scoped gate
+     * as the poll's other admin endpoints.
+     */
+    void delete(Authentication authentication, UUID clubId, UUID matchId, UUID pollId);
+
+    /**
+     * Internal, auth-free entry point of the scheduled auto-close job: closes every poll with
+     * {@code open = true AND auto_close = true AND scheduled_close_at <= now}. Idempotent.
+     *
+     * @return how many polls were closed
+     */
+    int closeDueAutoClosePolls(Instant now);
 
     MatchAvailabilityPollResponsesDto getResponses(
             Authentication authentication, UUID clubId, UUID matchId, UUID pollId);
@@ -58,4 +74,11 @@ public interface MatchAvailabilityPollService {
      * 403 outside the caller's own reach).
      */
     List<OpenAvailabilityPollDto> listOpenForClub(Authentication authentication, UUID clubId, UUID sectionId);
+
+    /**
+     * Closed squad polls for the club, most recent match date first, capped at the 50 most recent
+     * (closed history is otherwise unbounded). Same section-scope narrowing and response shape as
+     * {@link #listOpenForClub}.
+     */
+    List<OpenAvailabilityPollDto> listClosedForClub(Authentication authentication, UUID clubId, UUID sectionId);
 }

@@ -107,8 +107,9 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
     List<Match> findByClubIdAndMatchDateBetween(UUID clubId, Instant from, Instant to);
 
     /**
-     * Every future match for {@code clubId} where either side is a {@code FLEXIBLE}-squad-mode
-     * {@code Team} belonging to {@code sectionId} — naturally small and bounded (one section's own
+     * Every future match for {@code clubId} where either side is a {@code Team} belonging to
+     * {@code sectionId} (docs/specs/064-unified-availability-polls.md dropped the squad-mode
+     * predicate — every team can be polled either way) — naturally small and bounded (one section's own
      * upcoming fixtures), needing no further limit or pagination. Backs {@code
      * SectionAvailabilityFixtureGroupResolver}'s own proposal query, the fixture-group-selection
      * revision's one genuinely new query in this area. Ordered {@code matchDate} ascending, ready
@@ -116,11 +117,9 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
      * docs/specs/063-section-availability-and-flexible-squads.md.
      */
     @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.matchDate >= :from AND ("
-            + "m.homeTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId = :sectionId "
-            + "AND t.squadMode = com.cricketlegend.domain.SquadMode.FLEXIBLE) "
-            + "OR m.awayTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId = :sectionId "
-            + "AND t.squadMode = com.cricketlegend.domain.SquadMode.FLEXIBLE)) "
+            + "m.homeTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId = :sectionId) "
+            + "OR m.awayTeamId IN (SELECT t.id FROM Team t WHERE t.sectionId = :sectionId)) "
             + "ORDER BY m.matchDate ASC")
-    List<Match> findUpcomingFlexibleMatchesBySection(
+    List<Match> findUpcomingMatchesBySection(
             @Param("clubId") UUID clubId, @Param("sectionId") UUID sectionId, @Param("from") Instant from);
 }
