@@ -46,6 +46,14 @@ public class MatchAvailabilityPoll {
     @Column(nullable = false)
     private boolean open;
 
+    /** docs/specs/064: Autoclose on closes the poll 24h before the match; enforced by the scheduled job. */
+    @Column(name = "auto_close", nullable = false)
+    @Builder.Default
+    private boolean autoClose = true;
+
+    @Column(name = "scheduled_close_at")
+    private Instant scheduledCloseAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

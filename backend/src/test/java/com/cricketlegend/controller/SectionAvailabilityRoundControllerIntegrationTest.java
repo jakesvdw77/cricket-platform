@@ -19,7 +19,6 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -119,7 +118,8 @@ class SectionAvailabilityRoundControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].matches[0].alreadyPolled").value(true))
-                .andExpect(jsonPath("$[0].matches[0].existingRoundId").exists());
+                .andExpect(jsonPath("$[0].matches[0].existingPollType").value("GROUP"))
+                .andExpect(jsonPath("$[0].matches[0].existingPollId").exists());
     }
 
     @Test
@@ -296,7 +296,6 @@ class SectionAvailabilityRoundControllerIntegrationTest {
                 .sectionId(section.getId())
                 .name(teamName)
                 .active(true)
-                .squadMode(SquadMode.FLEXIBLE)
                 .build());
         Instant matchDate = LocalDate.now(ZoneId.systemDefault())
                 .plus(2, ChronoUnit.DAYS)

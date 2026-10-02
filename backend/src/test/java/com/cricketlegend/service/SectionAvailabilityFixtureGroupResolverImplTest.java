@@ -5,12 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.SectionAvailabilityFixtureGroupDto;
 import com.cricketlegend.dto.SectionAvailabilityFixtureMatchDto;
@@ -20,6 +20,7 @@ import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.impl.SectionAvailabilityFixtureGroupResolverImpl;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -64,6 +65,9 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
     @Mock
     private SectionAvailabilityMatchResolver matchResolver;
 
+    @Mock
+    private MatchPollCoverageService coverageService;
+
     private SectionAvailabilityFixtureGroupResolverImpl resolver;
 
     private final UUID clubId = UUID.randomUUID();
@@ -78,13 +82,17 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
                 leagueRepository,
                 sectionAvailabilityWindowRepository,
                 sectionAvailabilityRoundRepository,
-                matchResolver);
+                matchResolver,
+                coverageService);
+        org.mockito.Mockito.lenient()
+                .when(coverageService.resolve(any(), any()))
+                .thenReturn(MatchPollCoverageService.Coverage.NONE);
         when(sectionRepository.findById(sectionId))
                 .thenReturn(Optional.of(Section.builder().id(sectionId).clubId(clubId).name("Under 13").active(true).build()));
     }
 
     private Team flexibleTeam(UUID id) {
-        return Team.builder().id(id).sectionId(sectionId).name("U13 Colts").squadMode(SquadMode.FLEXIBLE).build();
+        return Team.builder().id(id).sectionId(sectionId).name("U13 Colts").build();
     }
 
     private Match matchWithHomeTeam(UUID matchId, UUID teamId, Instant matchDate) {
@@ -100,7 +108,7 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
         Team team = flexibleTeam(teamId);
         Match saturdayMatch = matchWithHomeTeam(saturdayMatchId, teamId, Instant.parse("2026-10-03T09:00:00Z"));
         Match sundayMatch = matchWithHomeTeam(sundayMatchId, teamId, Instant.parse("2026-10-04T09:00:00Z"));
-        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
                 .thenReturn(List.of(saturdayMatch, sundayMatch));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(matchResolver.resolveWindowKey(team, saturdayMatch)).thenReturn(
@@ -120,6 +128,52 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
     }
 
     @Test
+    void aMorningAndAfternoonMatchOnTheSameDateClusterIntoOneGroup() {
+        UUID teamId = UUID.randomUUID();
+        UUID morningMatchId = UUID.randomUUID();
+        UUID afternoonMatchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match morningMatch = matchWithHomeTeam(morningMatchId, teamId, Instant.parse("2026-10-03T08:00:00Z"));
+        Match afternoonMatch = matchWithHomeTeam(afternoonMatchId, teamId, Instant.parse("2026-10-03T12:00:00Z"));
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(morningMatch, afternoonMatch));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, morningMatch)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING));
+        when(matchResolver.resolveWindowKey(team, afternoonMatch)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.AFTERNOON));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        List<SectionAvailabilityFixtureGroupDto> groups = resolver.resolveGroups(clubId, sectionId);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.get(0).matches()).extracting(SectionAvailabilityFixtureMatchDto::matchId)
+                .containsExactly(morningMatchId, afternoonMatchId);
+    }
+
+    @Test
+    void aMatchWhoseHomeAndAwayTeamAreTheSameTeamAppearsOnce() {
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(teamId).awayTeamId(teamId)
+                .matchDate(Instant.parse("2026-10-03T12:00:00Z")).build();
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(match));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, match)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.AFTERNOON));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        List<SectionAvailabilityFixtureGroupDto> groups = resolver.resolveGroups(clubId, sectionId);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.get(0).matches()).hasSize(1);
+    }
+
+    @Test
     void aTwoDayGapMatchStartsItsOwnGroup() {
         UUID teamId = UUID.randomUUID();
         UUID saturdayMatchId = UUID.randomUUID();
@@ -127,7 +181,7 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
         Team team = flexibleTeam(teamId);
         Match saturdayMatch = matchWithHomeTeam(saturdayMatchId, teamId, Instant.parse("2026-10-03T09:00:00Z"));
         Match tuesdayMatch = matchWithHomeTeam(tuesdayMatchId, teamId, Instant.parse("2026-10-06T18:00:00Z"));
-        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
                 .thenReturn(List.of(saturdayMatch, tuesdayMatch));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(matchResolver.resolveWindowKey(team, saturdayMatch)).thenReturn(
@@ -156,7 +210,7 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
         Match match = matchWithHomeTeam(matchId, teamId, Instant.parse("2026-10-03T09:00:00Z"));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING);
-        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
                 .thenReturn(List.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
@@ -176,24 +230,85 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
         assertThat(groups).hasSize(1);
         SectionAvailabilityFixtureMatchDto row = groups.get(0).matches().get(0);
         assertThat(row.alreadyPolled()).isTrue();
-        assertThat(row.existingRoundId()).isEqualTo(existingRoundId);
-        assertThat(row.existingRoundDescription()).isEqualTo("Already open poll");
+        assertThat(row.existingPollType()).isEqualTo(AvailabilityPollType.GROUP);
+        assertThat(row.existingPollId()).isEqualTo(existingRoundId);
+        assertThat(row.existingPollLabel()).isEqualTo("Already open poll");
     }
 
     @Test
-    void aMatchIsExcludedWhenItsTeamIsNotAFlexibleTeamOfTheRequestedSection() {
+    void aMatchIsExcludedWhenItsTeamIsNotATeamOfTheRequestedSection() {
         UUID teamId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         Match match = matchWithHomeTeam(matchId, teamId, Instant.parse("2026-10-03T09:00:00Z"));
-        // A STATIC team somehow returned by the repository query (defensive branch — the real repo
-        // query already filters this, this proves the resolver's own defensive re-check too).
-        Team staticTeam = Team.builder().id(teamId).sectionId(sectionId).name("1st XI").squadMode(SquadMode.STATIC).build();
-        when(matchRepository.findUpcomingFlexibleMatchesBySection(eq(clubId), eq(sectionId), any()))
+        Team otherSectionTeam = Team.builder().id(teamId).sectionId(UUID.randomUUID()).name("1st XI").build();
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
                 .thenReturn(List.of(match));
-        when(teamRepository.findById(teamId)).thenReturn(Optional.of(staticTeam));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(otherSectionTeam));
 
         List<SectionAvailabilityFixtureGroupDto> groups = resolver.resolveGroups(clubId, sectionId);
 
         assertThat(groups).isEmpty();
+    }
+
+    @Test
+    void aMatchCoveredByASquadPollIsFlaggedAlreadyPolledWithTheSquadPollReference() {
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID squadPollId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match match = matchWithHomeTeam(matchId, teamId, Instant.parse("2026-10-03T09:00:00Z"));
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(match));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, match)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(coverageService.resolve(matchId, teamId))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.SQUAD, squadPollId, null, null, "U13 Colts v Occasionals"));
+
+        SectionAvailabilityFixtureMatchDto row =
+                resolver.resolveGroups(clubId, sectionId).get(0).matches().get(0);
+
+        assertThat(row.alreadyPolled()).isTrue();
+        assertThat(row.existingPollType()).isEqualTo(AvailabilityPollType.SQUAD);
+        assertThat(row.existingPollId()).isEqualTo(squadPollId);
+        assertThat(row.existingPollLabel()).isEqualTo("U13 Colts v Occasionals");
+    }
+
+    @Test
+    void inAnIntraSectionDerbyASquadPollOnOneSideDoesNotDisableTheOtherSidesRow() {
+        UUID homeTeamId = UUID.randomUUID();
+        UUID awayTeamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID squadPollId = UUID.randomUUID();
+        Team home = flexibleTeam(homeTeamId);
+        Team away = Team.builder().id(awayTeamId).sectionId(sectionId).name("U13 Cubs").build();
+        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(homeTeamId).awayTeamId(awayTeamId)
+                .matchDate(Instant.parse("2026-10-03T09:00:00Z")).build();
+        SectionAvailabilityMatchResolver.WindowKey key =
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING);
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(match));
+        when(teamRepository.findById(homeTeamId)).thenReturn(Optional.of(home));
+        when(teamRepository.findById(awayTeamId)).thenReturn(Optional.of(away));
+        when(matchResolver.resolveWindowKey(any(), eq(match))).thenReturn(key);
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(coverageService.resolve(matchId, homeTeamId))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.SQUAD, squadPollId, null, null, "Home poll"));
+
+        List<SectionAvailabilityFixtureMatchDto> rows =
+                resolver.resolveGroups(clubId, sectionId).get(0).matches();
+
+        assertThat(rows).hasSize(2);
+        SectionAvailabilityFixtureMatchDto homeRow =
+                rows.stream().filter(r -> r.teamId().equals(homeTeamId)).findFirst().orElseThrow();
+        SectionAvailabilityFixtureMatchDto awayRow =
+                rows.stream().filter(r -> r.teamId().equals(awayTeamId)).findFirst().orElseThrow();
+        assertThat(homeRow.alreadyPolled()).isTrue();
+        assertThat(awayRow.alreadyPolled()).isFalse();
     }
 }

@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.security.core.Authentication;
 
 /**
- * The per-fixture squad pool for a {@code FLEXIBLE} {@link com.cricketlegend.domain.Team} — see
+ * The per-fixture squad pool for a group-poll-covered match of a {@link com.cricketlegend.domain.Team} — see
  * docs/specs/063-section-availability-and-flexible-squads.md's API Contract (Part B/C).
  */
 public interface MatchSquadService {

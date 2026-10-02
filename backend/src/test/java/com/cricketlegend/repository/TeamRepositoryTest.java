@@ -7,7 +7,6 @@ import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -49,7 +48,7 @@ class TeamRepositoryTest {
 
     private Team team(UUID clubId, UUID sectionId, String name) {
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).squadMode(SquadMode.STATIC).build());
+                Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).build());
     }
 
     @Test
@@ -100,8 +99,7 @@ class TeamRepositoryTest {
                 .clubId(UUID.randomUUID())
                 .sectionId(section.getId())
                 .name("1st XI")
-                .active(true)
-                .squadMode(SquadMode.STATIC).build();
+                .active(true).build();
 
         assertThatThrownBy(() -> teamRepository.saveAndFlush(orphan))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -114,8 +112,7 @@ class TeamRepositoryTest {
                 .clubId(club.getId())
                 .sectionId(UUID.randomUUID())
                 .name("1st XI")
-                .active(true)
-                .squadMode(SquadMode.STATIC).build();
+                .active(true).build();
 
         assertThatThrownBy(() -> teamRepository.saveAndFlush(orphan))
                 .isInstanceOf(DataIntegrityViolationException.class);

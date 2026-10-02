@@ -31,8 +31,8 @@ export interface MatchSquadPickerProps {
   // The side's label used in copy, e.g. "the home side" — mirrors MatchAvailabilityTab's own
   // `label` prop shape.
   label: string
-  // Pre-filled "create this window" shortcut — /manage/section-availability with
-  // sectionId/windowDate/dayPart query params already resolved by the caller.
+  // Pre-filled "open a group poll" shortcut — /manage/availability/new?type=group with
+  // sectionId/matchId query params already resolved by the caller (docs/specs/064).
   createWindowHref: string
   onAdd: (playerProfileId: string) => void
   onRemove: (playerProfileId: string) => void

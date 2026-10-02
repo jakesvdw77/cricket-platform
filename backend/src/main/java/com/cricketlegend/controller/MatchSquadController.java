@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * docs/specs/063-section-availability-and-flexible-squads.md: the per-fixture squad pool for a
- * {@code FLEXIBLE} {@code Team}, on {@code
+ * group-poll-covered match of a {@code Team}, on {@code
  * /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad}, mirroring {@link
  * TeamSquadController}'s exact shape. {@code @PreAuthorize} here is the broad {@code
  * canAccessClub} gate — the actual section-scoped check happens in the service layer, since a

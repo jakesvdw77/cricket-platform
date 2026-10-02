@@ -1,19 +1,22 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.MatchSquadMember;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * The per-fixture squad pool for a {@code FLEXIBLE} {@link com.cricketlegend.domain.Team} — see
+ * The per-fixture squad pool for a group-poll-covered match of a {@link com.cricketlegend.domain.Team} — see
  * docs/specs/063-section-availability-and-flexible-squads.md. {@link
  * #findBySectionAvailabilityWindowIdAndPlayerProfileId} is the Part C "already picked elsewhere"
  * pre-check, the service-layer counterpart to the DB-level {@code
  * (section_availability_window_id, player_profile_id)} unique constraint.
  */
 public interface MatchSquadMemberRepository extends JpaRepository<MatchSquadMember, UUID> {
+
+    boolean existsBySectionAvailabilityWindowIdIn(Collection<UUID> sectionAvailabilityWindowIds);
 
     List<MatchSquadMember> findByMatchIdAndTeamId(UUID matchId, UUID teamId);
 

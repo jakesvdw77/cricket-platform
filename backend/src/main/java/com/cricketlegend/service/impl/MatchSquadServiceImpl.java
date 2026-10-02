@@ -9,7 +9,6 @@ import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
 import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.MatchSquadCandidateDto;
 import com.cricketlegend.dto.MatchSquadDto;
@@ -20,7 +19,6 @@ import com.cricketlegend.exception.DuplicateMatchSquadJerseyNumberException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PlayerAlreadyPickedForWindowException;
 import com.cricketlegend.exception.SectionAvailabilityWindowRequiredException;
-import com.cricketlegend.exception.TeamSquadModeMismatchException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.MatchRepository;
@@ -31,6 +29,7 @@ import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchSquadService;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import java.util.ArrayList;
@@ -50,12 +49,11 @@ import org.springframework.transaction.annotation.Transactional;
  * first (confirming it's one of the match's own home/away sides, {@link ValidationException},
  * matching {@code MatchSideServiceImpl.createSide}'s identical check, and belongs to {@code
  * clubId}), then asserts {@link AccessService#assertCanAdministerSection} before any other
- * business validation, mirroring {@code TeamSquadServiceImpl}'s own call shape, then requires
- * {@code squadMode == FLEXIBLE} ({@link TeamSquadModeMismatchException}, 400). {@link #add}
- * additionally requires a {@code SectionAvailabilityWindow} to already exist for the resolved
- * {@code (team.sectionId, match.matchDate's date, match.matchDate's day-part)} bracket ({@link
- * SectionAvailabilityWindowRequiredException}, 400, via the shared {@link
- * SectionAvailabilityMatchResolver#resolveWindowKey}), then a real, active player of this club
+ * business validation, mirroring {@code TeamSquadServiceImpl}'s own call shape. Per
+ * docs/specs/064-unified-availability-polls.md there is no squad-mode gate: {@link #get} returns
+ * {@code windowId == null} for a match no group poll covers, and {@link #add} requires the match to
+ * be group-covered (a {@code section_availability_window_match} row, resolved via the shared {@link
+ * MatchPollCoverageService}) — {@link SectionAvailabilityWindowRequiredException}, 400 — then a real, active player of this club
  * ({@link NotFoundException}, 404), then rejects a player already picked for this same resolved
  * window elsewhere ({@link PlayerAlreadyPickedForWindowException}, 409 — the service-layer,
  * clean-error-message counterpart to the DB's own {@code
@@ -75,6 +73,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
     private final SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
     private final SectionAvailabilityResponseRepository sectionAvailabilityResponseRepository;
     private final SectionAvailabilityMatchResolver matchResolver;
+    private final MatchPollCoverageService coverageService;
     private final PlayerProfileRepository playerProfileRepository;
     private final PersonRepository personRepository;
     private final PlayerSectionRepository playerSectionRepository;
@@ -88,6 +87,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
             SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository,
             SectionAvailabilityResponseRepository sectionAvailabilityResponseRepository,
             SectionAvailabilityMatchResolver matchResolver,
+            MatchPollCoverageService coverageService,
             PlayerProfileRepository playerProfileRepository,
             PersonRepository personRepository,
             PlayerSectionRepository playerSectionRepository,
@@ -99,6 +99,7 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
         this.sectionAvailabilityResponseRepository = sectionAvailabilityResponseRepository;
         this.matchResolver = matchResolver;
+        this.coverageService = coverageService;
         this.playerProfileRepository = playerProfileRepository;
         this.personRepository = personRepository;
         this.playerSectionRepository = playerSectionRepository;
@@ -112,7 +113,6 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
-        requireFlexible(team);
 
         return buildSquadDto(team, match);
     }
@@ -123,7 +123,6 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
-        requireFlexible(team);
 
         SectionAvailabilityWindow window = findWindowOrThrowRequired(team, match);
         PlayerProfile profile = findActivePlayerOrThrowForClub(clubId, playerId);
@@ -161,7 +160,6 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
-        requireFlexible(team);
 
         matchSquadMemberRepository
                 .findByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId)
@@ -177,7 +175,6 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         Team team = findTeamOrThrowForMatchSide(clubId, match, teamId);
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
-        requireFlexible(team);
 
         MatchSquadMember member = matchSquadMemberRepository
                 .findByMatchIdAndTeamIdAndPlayerProfileId(matchId, teamId, playerId)
@@ -200,26 +197,23 @@ public class MatchSquadServiceImpl implements MatchSquadService {
         return toMemberDto(member);
     }
 
-    private void requireFlexible(Team team) {
-        if (team.getSquadMode() != SquadMode.FLEXIBLE) {
-            throw new TeamSquadModeMismatchException(
-                    "Team " + team.getId() + " is not FLEXIBLE squad mode");
-        }
+    private SectionAvailabilityWindow findWindowOrThrowRequired(Team team, Match match) {
+        return resolveCoveringWindow(match, team)
+                .orElseThrow(() -> new SectionAvailabilityWindowRequiredException(
+                        "Match " + match.getId() + " is not covered by a group availability poll"));
     }
 
-    private SectionAvailabilityWindow findWindowOrThrowRequired(Team team, Match match) {
-        SectionAvailabilityMatchResolver.WindowKey key = matchResolver.resolveWindowKey(team, match);
-        return sectionAvailabilityWindowRepository
-                .findBySectionIdAndWindowDateAndDayPart(key.sectionId(), key.windowDate(), key.dayPart())
-                .orElseThrow(() -> new SectionAvailabilityWindowRequiredException(
-                        "No section availability window exists yet for section " + key.sectionId() + " on "
-                                + key.windowDate() + " (" + key.dayPart() + ")"));
+    private Optional<SectionAvailabilityWindow> resolveCoveringWindow(Match match, Team team) {
+        MatchPollCoverageService.Coverage coverage = coverageService.resolve(match.getId(), team.getId());
+        if (coverage.kind() != MatchPollCoverageService.Kind.GROUP) {
+            return Optional.empty();
+        }
+        return sectionAvailabilityWindowRepository.findById(coverage.windowId());
     }
 
     private MatchSquadDto buildSquadDto(Team team, Match match) {
         SectionAvailabilityMatchResolver.WindowKey key = matchResolver.resolveWindowKey(team, match);
-        Optional<SectionAvailabilityWindow> windowOpt = sectionAvailabilityWindowRepository
-                .findBySectionIdAndWindowDateAndDayPart(key.sectionId(), key.windowDate(), key.dayPart());
+        Optional<SectionAvailabilityWindow> windowOpt = resolveCoveringWindow(match, team);
 
         List<MatchSquadMemberDto> selected = matchSquadMemberRepository
                 .findByMatchIdAndTeamId(match.getId(), team.getId()).stream()

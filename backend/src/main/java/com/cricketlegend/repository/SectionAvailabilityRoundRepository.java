@@ -1,9 +1,12 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.SectionAvailabilityRound;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Small, bounded, unpaginated — same {@code TeamServiceImpl.listByClub}-style in-memory-filter
@@ -17,4 +20,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SectionAvailabilityRoundRepository extends JpaRepository<SectionAvailabilityRound, UUID> {
 
     List<SectionAvailabilityRound> findByClubId(UUID clubId);
+
+    /**
+     * Open rounds whose autoclose time has passed — backs the scheduled auto-close job
+     * (docs/specs/064-unified-availability-polls.md).
+     */
+    @Query("SELECT r FROM SectionAvailabilityRound r WHERE r.open = true AND r.autoClose = true "
+            + "AND r.scheduledCloseAt IS NOT NULL AND r.scheduledCloseAt <= :now")
+    List<SectionAvailabilityRound> findDueForAutoClose(@Param("now") Instant now);
 }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Box, Stack, Typography } from '@mui/material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Box, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
 import MenuItem from '@mui/material/MenuItem'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -35,6 +35,9 @@ import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 // 0 (the default) is now ascending. Both entries stay in this array for the underlying
 // value/label pairing ListToolbar's sortToggle switches between; the icon toggle itself replaces
 // the old Select rendering (see the ListToolbar sortToggle prop below).
+// In-memory only (resets on a full page reload) — see the upcomingOnly state in MatchList below.
+let restoreShowPastOnReturn = false
+
 const SORT_OPTIONS = [
   { value: 'matchDate,asc', label: 'Match date (soonest first)' },
   { value: 'matchDate,desc', label: 'Match date (latest first)' },
@@ -113,7 +116,6 @@ function placeholderTeam(clubId: string, name: string): Team {
     groundName: null,
     socialLinks: [],
     active: true,
-    squadMode: 'STATIC',
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
@@ -303,11 +305,22 @@ export default function MatchList({
   // shape as sectionId above — combinable with it and with search/upcomingOnly in any combination.
   const [leagueId, setLeagueId] = useState<string | null>(null)
   const [seasonId, setSeasonId] = useState<string | null>(null)
-  // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only — no
-  // UI control to change it this pass (see spec's Non-goals). A future "Show past matches" toggle
-  // is just flipping this boolean, so it's kept as real state (and in the query key below) rather
-  // than a hard-coded inline `true`.
-  const [upcomingOnly] = useState(true)
+  // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only. The
+  // "Show past matches" switch in the toolbar flips this, so a match saved with a wrong date (and
+  // therefore hidden from the default view) can still be found and corrected.
+  // Kept across a round-trip into a match's own page (edit/view, then Save/Cancel back to this
+  // list) but never across a fresh visit: the flag is only written on unmount while heading to a
+  // /manage/fixtures/matches/<id>... route, and every other way of leaving overwrites it with false.
+  const [upcomingOnly, setUpcomingOnly] = useState(() => !restoreShowPastOnReturn)
+  const upcomingOnlyRef = useRef(upcomingOnly)
+  upcomingOnlyRef.current = upcomingOnly
+  useEffect(
+    () => () => {
+      restoreShowPastOnReturn =
+        !upcomingOnlyRef.current && /^\/manage\/fixtures\/matches\/[^/]+/.test(window.location.pathname)
+    },
+    [],
+  )
 
   // docs/specs/042-match-list-filters-and-search.md: real, backend-driven search — MatchController
   // now has a `search` query param and actually applies it (previously a documented no-op).
@@ -318,7 +331,7 @@ export default function MatchList({
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, sort, sectionId, leagueId, seasonId])
+  }, [debouncedSearch, sort, sectionId, leagueId, seasonId, upcomingOnly])
 
   // docs/specs/042-match-list-filters-and-search.md: Section/League/Season selections (never
   // search) persist per club across visits — the first localStorage call site in this codebase,
@@ -536,6 +549,11 @@ export default function MatchList({
                 </MenuItem>
               ))}
             </Input>
+            <FormControlLabel
+              control={<Switch checked={!upcomingOnly} onChange={(event) => setUpcomingOnly(!event.target.checked)} />}
+              label="Show past matches"
+              sx={{ whiteSpace: 'nowrap', mr: 0 }}
+            />
           </Stack>
         }
         filtersMinWidth={180}
@@ -572,7 +590,14 @@ export default function MatchList({
       )}
 
       {!hasMatches && !isSearching && (
-        <EmptyState title="No matches yet" description="Schedule your club's first match to get started." />
+        <EmptyState
+          title={upcomingOnly ? 'No upcoming matches' : 'No matches yet'}
+          description={
+            upcomingOnly
+              ? 'Nothing scheduled ahead. Turn on "Show past matches" to see earlier fixtures, or schedule a new one.'
+              : "Schedule your club's first match to get started."
+          }
+        />
       )}
 
       {hasMatches && data.totalPages > 1 && (

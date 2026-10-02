@@ -63,7 +63,7 @@ describe('ManagerDashboard', () => {
     expect(screen.getByText('Announcements and reminders for your club')).toBeInTheDocument()
   })
 
-  it('the "Team manager" group carries its existing cards, plus Section Availability (063)', () => {
+  it('the "Team manager" group carries its existing cards, with no separate Section Availability card (064)', () => {
     render(
       <MemoryRouter>
         <ManagerDashboard />
@@ -73,11 +73,8 @@ describe('ManagerDashboard', () => {
     expect(screen.getByText('Squads').closest('a')).toHaveAttribute('href', '/manage/squads')
     expect(screen.getByText('Communication').closest('a')).toHaveAttribute('href', '/manage/communication')
     expect(screen.getByText('Availability Polls').closest('a')).toHaveAttribute('href', '/manage/availability')
-    // docs/specs/063-section-availability-and-flexible-squads.md Part A: a new nav entry point,
-    // deliberately not folded into the Availability Polls card above.
-    expect(screen.getByText('Section Availability').closest('a')).toHaveAttribute(
-      'href',
-      '/manage/section-availability',
-    )
+    // docs/specs/064-unified-availability-polls.md: group polls are created from the Availability
+    // Polls screen now, so the old second entry point is gone.
+    expect(screen.queryByText('Section Availability')).not.toBeInTheDocument()
   })
 })

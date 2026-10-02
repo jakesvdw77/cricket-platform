@@ -19,7 +19,6 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -319,8 +318,7 @@ class MatchSquadControllerIntegrationTest {
     }
 
     private Team newFlexibleTeam(UUID clubId, UUID sectionId, String name) {
-        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true)
-                .squadMode(SquadMode.FLEXIBLE).build();
+        return Team.builder().clubId(clubId).sectionId(sectionId).name(name).active(true).build();
     }
 
     /** A future match (needed by the fixture-group resolver a round's own creation relies on). */

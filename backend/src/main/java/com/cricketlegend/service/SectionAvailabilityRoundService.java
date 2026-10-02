@@ -6,6 +6,7 @@ import com.cricketlegend.dto.SectionAvailabilityRoundDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundMatchDto;
 import com.cricketlegend.dto.SectionAvailabilityRoundResponsesDto;
 import com.cricketlegend.dto.UpdateSectionAvailabilityRoundDescriptionRequest;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -33,6 +34,22 @@ public interface SectionAvailabilityRoundService {
     SectionAvailabilityRoundDto open(Authentication authentication, UUID clubId, UUID roundId);
 
     SectionAvailabilityRoundDto close(Authentication authentication, UUID clubId, UUID roundId);
+
+    /**
+     * Deletes a group poll child-first (responses, window-match links, windows, the round), freeing
+     * its matches and brackets (docs/specs/064-unified-availability-polls.md). 409 {@code
+     * RoundHasMatchSquadException} while any {@code MatchSquadMember} exists for its windows.
+     */
+    void delete(Authentication authentication, UUID clubId, UUID roundId);
+
+    /**
+     * Internal, auth-free entry point of the scheduled auto-close job: closes every round with
+     * {@code open = true AND auto_close = true AND scheduled_close_at <= now}, cascading to every
+     * window like a manual close. Idempotent.
+     *
+     * @return how many rounds were closed
+     */
+    int closeDueAutoClosePolls(Instant now);
 
     SectionAvailabilityRoundResponsesDto getResponses(Authentication authentication, UUID clubId, UUID roundId);
 

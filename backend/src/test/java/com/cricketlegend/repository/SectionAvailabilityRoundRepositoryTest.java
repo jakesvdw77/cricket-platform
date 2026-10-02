@@ -10,6 +10,7 @@ import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -122,5 +123,25 @@ class SectionAvailabilityRoundRepositoryTest {
 
         assertThatThrownBy(() -> sectionAvailabilityWindowRepository.saveAndFlush(orphan))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void findDueForAutoCloseReturnsOnlyOpenAutoCloseRoundsWhoseScheduledCloseAtHasPassed() {
+        Club club = savedClub("riverside-cc");
+        Section section = savedSection(club.getId());
+        Instant now = Instant.parse("2026-10-02T12:00:00Z");
+        SectionAvailabilityRound due = sectionAvailabilityRoundRepository.save(
+                roundBuilder(club.getId(), section.getId()).scheduledCloseAt(now.minusSeconds(60)).build());
+        sectionAvailabilityRoundRepository.save(
+                roundBuilder(club.getId(), section.getId()).scheduledCloseAt(now.plusSeconds(3600)).build());
+        sectionAvailabilityRoundRepository.save(
+                roundBuilder(club.getId(), section.getId()).open(false).scheduledCloseAt(now.minusSeconds(60)).build());
+        sectionAvailabilityRoundRepository.save(
+                roundBuilder(club.getId(), section.getId()).autoClose(false).scheduledCloseAt(now.minusSeconds(60)).build());
+        sectionAvailabilityRoundRepository.save(roundBuilder(club.getId(), section.getId()).build());
+
+        assertThat(sectionAvailabilityRoundRepository.findDueForAutoClose(now))
+                .extracting(SectionAvailabilityRound::getId)
+                .containsExactly(due.getId());
     }
 }

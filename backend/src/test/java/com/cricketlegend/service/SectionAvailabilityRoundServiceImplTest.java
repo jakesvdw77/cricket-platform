@@ -18,7 +18,6 @@ import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
 import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateSectionAvailabilityRoundRequest;
 import com.cricketlegend.dto.SectionAvailabilityResponseRowDto;
@@ -34,6 +33,7 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
@@ -103,6 +103,12 @@ class SectionAvailabilityRoundServiceImplTest {
     private SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper;
 
     @Mock
+    private MatchSquadMemberRepository matchSquadMemberRepository;
+
+    @Mock
+    private MatchPollCoverageService coverageService;
+
+    @Mock
     private AccessService accessService;
 
     private SectionAvailabilityRoundServiceImpl service;
@@ -122,7 +128,12 @@ class SectionAvailabilityRoundServiceImplTest {
                 audienceResolver,
                 matchResolver,
                 sectionAvailabilityRoundMapper,
+                matchSquadMemberRepository,
+                coverageService,
                 accessService);
+        org.mockito.Mockito.lenient()
+                .when(coverageService.resolveAny(any()))
+                .thenReturn(MatchPollCoverageService.Coverage.NONE);
     }
 
     private Section section(UUID clubId, UUID sectionId) {
@@ -185,6 +196,83 @@ class SectionAvailabilityRoundServiceImplTest {
     }
 
     @Test
+    void listWithOpenFalseReturnsOnlyClosedRoundsMostRecentFirstCappedAtFifty() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        List<SectionAvailabilityRound> rounds = new java.util.ArrayList<>();
+        rounds.add(round(UUID.randomUUID(), clubId, sectionId, true)); // open: excluded
+        for (int i = 0; i < 60; i++) {
+            SectionAvailabilityRound closed = round(UUID.randomUUID(), clubId, sectionId, false);
+            closed.setLastMatchDate(java.time.LocalDate.of(2026, 1, 1).plusDays(i));
+            rounds.add(closed);
+        }
+        when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(rounds);
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
+        stubEmptyBracketsFor(sectionId);
+
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, false);
+
+        assertThat(result).hasSize(SectionAvailabilityRoundServiceImpl.CLOSED_ROUNDS_LIMIT);
+        assertThat(result).allMatch(dto -> !dto.open());
+        assertThat(result.get(0).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(59));
+        assertThat(result.get(49).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(10));
+    }
+
+    private SectionAvailabilityRound closedRoundWithSchedule(
+            UUID clubId, UUID roundId, boolean autoClose, java.time.Instant scheduledCloseAt) {
+        UUID sectionId = UUID.randomUUID();
+        SectionAvailabilityRound closedRound = round(roundId, clubId, sectionId, false);
+        closedRound.setAutoClose(autoClose);
+        closedRound.setScheduledCloseAt(scheduledCloseAt);
+        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(closedRound));
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityRoundRepository.save(any(SectionAvailabilityRound.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
+                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
+        return closedRound;
+    }
+
+    @Test
+    void openBeforeTheScheduledCloseTimeSucceedsAndKeepsTheSchedule() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        java.time.Instant closeAt = java.time.Instant.now().plusSeconds(7200);
+        SectionAvailabilityRound round = closedRoundWithSchedule(clubId, roundId, true, closeAt);
+
+        service.open(authentication, clubId, roundId);
+
+        assertThat(round.isOpen()).isTrue();
+        assertThat(round.getScheduledCloseAt()).isEqualTo(closeAt);
+    }
+
+    @Test
+    void openAtOrAfterTheScheduledCloseTimeThrowsReopenWindowPassed() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round =
+                closedRoundWithSchedule(clubId, roundId, true, java.time.Instant.now().minusSeconds(1));
+
+        assertThatThrownBy(() -> service.open(authentication, clubId, roundId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class);
+        assertThat(round.isOpen()).isFalse();
+        verify(sectionAvailabilityRoundRepository, never()).save(any(SectionAvailabilityRound.class));
+    }
+
+    @Test
+    void openIsAlwaysAllowedWhenAutoCloseIsOff() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = closedRoundWithSchedule(clubId, roundId, false, null);
+
+        service.open(authentication, clubId, roundId);
+
+        assertThat(round.isOpen()).isTrue();
+    }
+
+    @Test
     void listFiltersByTheOpenFlag() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
@@ -219,7 +307,7 @@ class SectionAvailabilityRoundServiceImplTest {
     // --- create ---
 
     private Team flexibleTeam(UUID id, UUID sectionId, String name) {
-        return Team.builder().id(id).sectionId(sectionId).name(name).squadMode(SquadMode.FLEXIBLE).build();
+        return Team.builder().id(id).sectionId(sectionId).name(name).build();
     }
 
     @Test
@@ -355,30 +443,6 @@ class SectionAvailabilityRoundServiceImplTest {
                 .matchDate(Instant.now()).build();
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(clubId, sectionId)));
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-
-        assertThatThrownBy(() -> service.create(
-                        authentication,
-                        clubId,
-                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
-                .isInstanceOf(ValidationException.class);
-        verify(sectionAvailabilityRoundRepository, never()).save(any());
-    }
-
-    @Test
-    void createReturns400WhenTheMatchsOwnTeamIsAttachedButNotFlexibleInThisSection() {
-        UUID clubId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID teamId = UUID.randomUUID();
-        UUID matchId = UUID.randomUUID();
-        // A real, resolvable team, but STATIC — the actual business rule this validation
-        // enforces, not just "no team attached at all" (the degenerate case above).
-        Team staticTeam = Team.builder().id(teamId).sectionId(sectionId).name("1st XI")
-                .squadMode(SquadMode.STATIC).build();
-        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(teamId).awayTeamName("Occasionals")
-                .matchDate(Instant.now()).build();
-        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(clubId, sectionId)));
-        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(teamRepository.findById(teamId)).thenReturn(Optional.of(staticTeam));
 
         assertThatThrownBy(() -> service.create(
                         authentication,
@@ -598,9 +662,9 @@ class SectionAvailabilityRoundServiceImplTest {
         SectionAvailabilityWindow afternoon = SectionAvailabilityWindow.builder()
                 .id(afternoonWindowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.AFTERNOON).open(true).build();
         Team morningTeam = Team.builder()
-                .id(morningTeamId).sectionId(sectionId).name("U15 Colts").squadMode(SquadMode.FLEXIBLE).build();
+                .id(morningTeamId).sectionId(sectionId).name("U15 Colts").build();
         Team afternoonTeam = Team.builder()
-                .id(afternoonTeamId).sectionId(sectionId).name("U15 Panthers").squadMode(SquadMode.FLEXIBLE).build();
+                .id(afternoonTeamId).sectionId(sectionId).name("U15 Panthers").build();
         Match morningMatch = Match.builder()
                 .id(morningMatchId)
                 .homeTeamId(morningTeamId)
@@ -717,5 +781,113 @@ class SectionAvailabilityRoundServiceImplTest {
         assertThat(captor.getValue().getPlayerProfileId()).isEqualTo(playerId);
         assertThat(captor.getValue().getStatus()).isEqualTo(AvailabilityStatus.UNAVAILABLE);
         assertThat(result.roundId()).isEqualTo(roundId);
+    }
+
+    // --- 064: cross-kind 409, delete, auto-close ---
+
+    @Test
+    void createReturns409WhenASelectedMatchAlreadyHasASquadPoll() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId, sectionId, "U15 Colts");
+        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(teamId).awayTeamName("Occasionals")
+                .matchDate(Instant.parse("2026-09-26T09:00:00Z")).build();
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(clubId, sectionId)));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, match)).thenReturn(new SectionAvailabilityMatchResolver.WindowKey(
+                sectionId, java.time.LocalDate.of(2026, 9, 26), DayPart.MORNING));
+        when(coverageService.resolveAny(matchId))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.SQUAD, UUID.randomUUID(), null, null, "U15 Colts v Occasionals"));
+
+        assertThatThrownBy(() -> service.create(
+                        authentication,
+                        clubId,
+                        new CreateSectionAvailabilityRoundRequest(sectionId, "Fixtures", List.of(matchId), true)))
+                .isInstanceOf(MatchAlreadyPolledException.class)
+                .hasMessageContaining("U15 Colts v Occasionals");
+        verify(sectionAvailabilityRoundRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteIsBlockedWhileMatchSquadMembersArePickedFromItsWindows() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        UUID windowId = UUID.randomUUID();
+        when(sectionAvailabilityRoundRepository.findById(roundId))
+                .thenReturn(Optional.of(round(roundId, clubId, sectionId, true)));
+        when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
+                .thenReturn(List.of(SectionAvailabilityWindow.builder().id(windowId).roundId(roundId).build()));
+        when(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(windowId))).thenReturn(true);
+
+        assertThatThrownBy(() -> service.delete(authentication, clubId, roundId))
+                .isInstanceOf(com.cricketlegend.exception.RoundHasMatchSquadException.class)
+                .hasMessageContaining("Remove the picked squad members");
+
+        verify(sectionAvailabilityResponseRepository, never()).deleteByWindowIdIn(any());
+        verify(sectionAvailabilityWindowMatchRepository, never()).deleteByWindowIdIn(any());
+        verify(sectionAvailabilityWindowRepository, never()).deleteByRoundId(any());
+        verify(sectionAvailabilityRoundRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteRemovesChildrenFirstThenTheRound() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        UUID windowId = UUID.randomUUID();
+        SectionAvailabilityRound round = round(roundId, clubId, sectionId, true);
+        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round));
+        when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
+                .thenReturn(List.of(SectionAvailabilityWindow.builder().id(windowId).roundId(roundId).build()));
+        when(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(windowId))).thenReturn(false);
+
+        service.delete(authentication, clubId, roundId);
+
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(
+                sectionAvailabilityResponseRepository,
+                sectionAvailabilityWindowMatchRepository,
+                sectionAvailabilityWindowRepository,
+                sectionAvailabilityRoundRepository);
+        order.verify(sectionAvailabilityResponseRepository).deleteByWindowIdIn(List.of(windowId));
+        order.verify(sectionAvailabilityWindowMatchRepository).deleteByWindowIdIn(List.of(windowId));
+        order.verify(sectionAvailabilityWindowRepository).deleteByRoundId(roundId);
+        order.verify(sectionAvailabilityRoundRepository).delete(round);
+    }
+
+    @Test
+    void deleteReturns404WhenRoundBelongsToADifferentClub() {
+        UUID roundId = UUID.randomUUID();
+        when(sectionAvailabilityRoundRepository.findById(roundId))
+                .thenReturn(Optional.of(round(roundId, UUID.randomUUID(), UUID.randomUUID(), true)));
+
+        assertThatThrownBy(() -> service.delete(authentication, UUID.randomUUID(), roundId))
+                .isInstanceOf(NotFoundException.class);
+        verify(sectionAvailabilityRoundRepository, never()).delete(any());
+    }
+
+    @Test
+    void closeDueAutoClosePollsClosesTheRoundAndEveryOneOfItsWindows() {
+        Instant now = Instant.parse("2026-09-26T10:00:00Z");
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound due = round(roundId, UUID.randomUUID(), UUID.randomUUID(), true);
+        SectionAvailabilityWindow w1 = SectionAvailabilityWindow.builder().id(UUID.randomUUID()).roundId(roundId).open(true).build();
+        SectionAvailabilityWindow w2 = SectionAvailabilityWindow.builder().id(UUID.randomUUID()).roundId(roundId).open(true).build();
+        when(sectionAvailabilityRoundRepository.findDueForAutoClose(now)).thenReturn(List.of(due));
+        when(sectionAvailabilityWindowRepository.findByRoundId(roundId)).thenReturn(List.of(w1, w2));
+
+        int closed = service.closeDueAutoClosePolls(now);
+
+        assertThat(closed).isEqualTo(1);
+        assertThat(due.isOpen()).isFalse();
+        assertThat(w1.isOpen()).isFalse();
+        assertThat(w2.isOpen()).isFalse();
+        verify(sectionAvailabilityWindowRepository).save(w1);
+        verify(sectionAvailabilityWindowRepository).save(w2);
     }
 }

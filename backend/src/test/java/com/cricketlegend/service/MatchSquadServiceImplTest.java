@@ -16,7 +16,6 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.MatchSquadDto;
 import com.cricketlegend.dto.MatchSquadMemberDto;
@@ -25,7 +24,6 @@ import com.cricketlegend.exception.DuplicateMatchSquadJerseyNumberException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PlayerAlreadyPickedForWindowException;
 import com.cricketlegend.exception.SectionAvailabilityWindowRequiredException;
-import com.cricketlegend.exception.TeamSquadModeMismatchException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.MatchRepository;
@@ -84,6 +82,9 @@ class MatchSquadServiceImplTest {
     private SectionAvailabilityMatchResolver matchResolver;
 
     @Mock
+    private MatchPollCoverageService coverageService;
+
+    @Mock
     private PlayerProfileRepository playerProfileRepository;
 
     @Mock
@@ -111,6 +112,7 @@ class MatchSquadServiceImplTest {
                 sectionAvailabilityWindowRepository,
                 sectionAvailabilityResponseRepository,
                 matchResolver,
+                coverageService,
                 playerProfileRepository,
                 personRepository,
                 playerSectionRepository,
@@ -118,14 +120,13 @@ class MatchSquadServiceImplTest {
                 accessService);
     }
 
-    private Team team(UUID id, UUID clubId, UUID sectionId, SquadMode squadMode) {
+    private Team team(UUID id, UUID clubId, UUID sectionId) {
         Team team = new Team();
         team.setId(id);
         team.setClubId(clubId);
         team.setSectionId(sectionId);
         team.setName("U15 Colts");
         team.setActive(true);
-        team.setSquadMode(squadMode);
         return team;
     }
 
@@ -158,36 +159,18 @@ class MatchSquadServiceImplTest {
     // --- add ---
 
     @Test
-    void addAgainstAStaticTeamThrowsTeamSquadModeMismatchException() {
-        UUID clubId = UUID.randomUUID();
-        UUID matchId = UUID.randomUUID();
-        UUID teamId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.STATIC);
-        Match match = match(matchId, clubId, teamId, UUID.randomUUID());
-        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
-        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-
-        assertThatThrownBy(() -> service.add(authentication, clubId, matchId, teamId, UUID.randomUUID()))
-                .isInstanceOf(TeamSquadModeMismatchException.class);
-        verify(matchSquadMemberRepository, never()).save(any());
-    }
-
-    @Test
     void addWithNoWindowYetForTheResolvedBracketThrowsSectionAvailabilityWindowRequiredException() {
         UUID clubId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
-        when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.empty());
+        when(coverageService.resolve(any(), any())).thenReturn(MatchPollCoverageService.Coverage.NONE);
 
         assertThatThrownBy(() -> service.add(authentication, clubId, matchId, teamId, UUID.randomUUID()))
                 .isInstanceOf(SectionAvailabilityWindowRequiredException.class);
@@ -201,19 +184,19 @@ class MatchSquadServiceImplTest {
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
-        when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
         when(playerProfileRepository.findById(playerId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.add(authentication, clubId, matchId, teamId, playerId))
@@ -227,20 +210,20 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         PlayerProfile profile = playerProfile(UUID.randomUUID(), clubId, true);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
-        when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
         UUID conflictingMatchId = UUID.randomUUID();
@@ -252,7 +235,7 @@ class MatchSquadServiceImplTest {
                         window.getId(), profile.getId()))
                 .thenReturn(Optional.of(existing));
         when(teamRepository.findById(conflictingTeamId))
-                .thenReturn(Optional.of(team(conflictingTeamId, clubId, sectionId, SquadMode.FLEXIBLE)));
+                .thenReturn(Optional.of(team(conflictingTeamId, clubId, sectionId)));
 
         assertThatThrownBy(() -> service.add(authentication, clubId, matchId, teamId, profile.getId()))
                 .isInstanceOf(PlayerAlreadyPickedForWindowException.class)
@@ -267,20 +250,20 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         PlayerProfile profile = playerProfile(UUID.randomUUID(), clubId, true);
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
-        when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
         // Already holds a row for this exact window, but via this exact match+team — filtered out
         // of the "picked elsewhere" check, falling through to the plain already-in-squad 409.
@@ -305,7 +288,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         PlayerProfile profile = playerProfile(UUID.randomUUID(), clubId, true);
         profile.setJerseyNumber(7);
@@ -313,13 +296,13 @@ class MatchSquadServiceImplTest {
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
-        when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
         when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
         when(matchSquadMemberRepository.findBySectionAvailabilityWindowIdAndPlayerProfileId(
                         window.getId(), profile.getId()))
@@ -351,7 +334,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -370,7 +353,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -392,7 +375,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -412,7 +395,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -431,7 +414,7 @@ class MatchSquadServiceImplTest {
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         MatchSquadMember member = MatchSquadMember.builder().id(memberId).matchId(matchId).teamId(teamId)
                 .playerProfileId(playerId).sectionAvailabilityWindowId(UUID.randomUUID()).jerseyNumber(3).build();
@@ -455,7 +438,7 @@ class MatchSquadServiceImplTest {
         UUID teamId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
-        Team team = team(teamId, clubId, UUID.randomUUID(), SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, UUID.randomUUID());
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         MatchSquadMember member = MatchSquadMember.builder().id(memberId).matchId(matchId).teamId(teamId)
                 .playerProfileId(playerId).sectionAvailabilityWindowId(UUID.randomUUID()).jerseyNumber(3).build();
@@ -485,16 +468,14 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         SectionAvailabilityMatchResolver.WindowKey key =
                 new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 9, 26), DayPart.MORNING);
         when(matchResolver.resolveWindowKey(team, match)).thenReturn(key);
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.empty());
+        when(coverageService.resolve(any(), any())).thenReturn(MatchPollCoverageService.Coverage.NONE);
         when(matchSquadMemberRepository.findByMatchIdAndTeamId(matchId, teamId)).thenReturn(List.of());
 
         MatchSquadDto dto = service.get(authentication, clubId, matchId, teamId);
@@ -516,7 +497,7 @@ class MatchSquadServiceImplTest {
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID roundId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -526,9 +507,10 @@ class MatchSquadServiceImplTest {
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(roundId)
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
         when(sectionAvailabilityResponseRepository.findByWindowId(window.getId())).thenReturn(List.of());
         when(matchSquadMemberRepository.findByMatchIdAndTeamId(matchId, teamId)).thenReturn(List.of());
 
@@ -545,7 +527,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -555,9 +537,10 @@ class MatchSquadServiceImplTest {
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
 
         PlayerProfile availablePlayer = playerProfile(UUID.randomUUID(), clubId, true);
         UUID unavailablePlayerId = UUID.randomUUID();
@@ -591,7 +574,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
@@ -601,9 +584,10 @@ class MatchSquadServiceImplTest {
         SectionAvailabilityWindow window = SectionAvailabilityWindow.builder().id(UUID.randomUUID())
                 .clubId(clubId).sectionId(sectionId).roundId(UUID.randomUUID())
                 .windowDate(key.windowDate()).dayPart(key.dayPart()).open(true).build();
-        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(
-                        sectionId, key.windowDate(), key.dayPart()))
-                .thenReturn(Optional.of(window));
+        when(coverageService.resolve(any(), any()))
+                .thenReturn(new MatchPollCoverageService.Coverage(
+                        MatchPollCoverageService.Kind.GROUP, null, window.getRoundId(), window.getId(), "round"));
+        when(sectionAvailabilityWindowRepository.findById(window.getId())).thenReturn(Optional.of(window));
 
         PlayerProfile availablePlayer = playerProfile(UUID.randomUUID(), clubId, true);
         when(sectionAvailabilityResponseRepository.findByWindowId(window.getId())).thenReturn(List.of(
@@ -622,7 +606,7 @@ class MatchSquadServiceImplTest {
         when(matchSquadMemberRepository.findBySectionAvailabilityWindowIdAndPlayerProfileId(
                         window.getId(), availablePlayer.getId()))
                 .thenReturn(Optional.of(pickedElsewhere));
-        Team otherTeam = team(otherTeamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team otherTeam = team(otherTeamId, clubId, sectionId);
         otherTeam.setName("U15 Panthers");
         when(teamRepository.findById(otherTeamId)).thenReturn(Optional.of(otherTeam));
         when(matchSquadMemberRepository.findByMatchIdAndTeamId(matchId, teamId)).thenReturn(List.of());
@@ -644,7 +628,7 @@ class MatchSquadServiceImplTest {
         UUID matchId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
-        Team team = team(teamId, clubId, sectionId, SquadMode.FLEXIBLE);
+        Team team = team(teamId, clubId, sectionId);
         Match match = match(matchId, clubId, teamId, UUID.randomUUID());
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));

@@ -8,8 +8,6 @@ import com.cricketlegend.domain.MatchSidePlayer;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.Season;
-import com.cricketlegend.domain.SquadMode;
-import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.AddMatchSidePlayerRequest;
 import com.cricketlegend.dto.CreateMatchSideRequest;
 import com.cricketlegend.dto.MatchSideDto;
@@ -31,8 +29,8 @@ import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.SeasonRepository;
-import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchSideService;
 import java.time.LocalDate;
 import java.time.Period;
@@ -63,11 +61,11 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link #removePlayer} also clears {@code captainPlayerId}/{@code wicketKeeperPlayerId} if they
  * pointed at the removed player.
  *
- * <p>Per docs/specs/063-section-availability-and-flexible-squads.md's amendment: {@link
- * #requireSquadMembership} now branches on the side's own {@code Team.squadMode} — {@code STATIC}
- * resolves against {@code TeamSquadMember} exactly as {@code 029} built it, unchanged; {@code
- * FLEXIBLE} resolves against {@code MatchSquadMember(match_id, team_id, player_profile_id)}
- * instead. Same {@link PlayerNotInSquadException} either way, only the source table differs.
+ * <p>Per docs/specs/064-unified-availability-polls.md: {@link #requireSquadMembership} branches on
+ * the match's poll <em>coverage</em> (shared {@link MatchPollCoverageService}), not a team setting
+ * — group-covered resolves against {@code MatchSquadMember(match_id, team_id, player_profile_id)};
+ * otherwise against {@code TeamSquadMember} exactly as {@code 029} built it. Same {@link
+ * PlayerNotInSquadException} either way, only the source table differs.
  */
 @Service
 public class MatchSideServiceImpl implements MatchSideService {
@@ -77,7 +75,7 @@ public class MatchSideServiceImpl implements MatchSideService {
     private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final MatchSquadMemberRepository matchSquadMemberRepository;
-    private final TeamRepository teamRepository;
+    private final MatchPollCoverageService coverageService;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final PlayerProfileRepository playerProfileRepository;
@@ -91,7 +89,7 @@ public class MatchSideServiceImpl implements MatchSideService {
             MatchSidePlayerRepository matchSidePlayerRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
             MatchSquadMemberRepository matchSquadMemberRepository,
-            TeamRepository teamRepository,
+            MatchPollCoverageService coverageService,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             PlayerProfileRepository playerProfileRepository,
@@ -103,7 +101,7 @@ public class MatchSideServiceImpl implements MatchSideService {
         this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.matchSquadMemberRepository = matchSquadMemberRepository;
-        this.teamRepository = teamRepository;
+        this.coverageService = coverageService;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.playerProfileRepository = playerProfileRepository;
@@ -392,15 +390,16 @@ public class MatchSideServiceImpl implements MatchSideService {
     }
 
     /**
-     * Per docs/specs/063-section-availability-and-flexible-squads.md: branches on {@code
-     * teamId}'s own {@code Team.squadMode} — {@code STATIC} (or a {@code Team} row that can't be
-     * resolved at all, e.g. a cross-club opponent) resolves against {@code TeamSquadMember}
-     * exactly as {@code 029} built it; {@code FLEXIBLE} resolves against {@code MatchSquadMember}
-     * instead, scoped to this exact {@code match}+{@code teamId}.
+     * Per docs/specs/064-unified-availability-polls.md: a match covered by a group poll for {@code
+     * teamId} resolves against {@code MatchSquadMember} (the players picked from that group poll),
+     * scoped to this exact {@code match}+{@code teamId}; otherwise (squad poll, or no poll at all,
+     * including a cross-club opponent team) it resolves against the season's {@code
+     * TeamSquadMember}, exactly as {@code 029} built it.
      */
     private void requireSquadMembership(Match match, UUID teamId, UUID playerId) {
-        SquadMode squadMode = teamRepository.findById(teamId).map(Team::getSquadMode).orElse(SquadMode.STATIC);
-        boolean inSquad = squadMode == SquadMode.FLEXIBLE
+        boolean groupCovered =
+                coverageService.resolve(match.getId(), teamId).kind() == MatchPollCoverageService.Kind.GROUP;
+        boolean inSquad = groupCovered
                 ? matchSquadMemberRepository.existsByMatchIdAndTeamIdAndPlayerProfileId(match.getId(), teamId, playerId)
                 : teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
                         teamId, match.getSeasonId(), playerId);

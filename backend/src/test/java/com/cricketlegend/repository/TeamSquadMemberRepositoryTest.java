@@ -10,7 +10,6 @@ import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import java.time.LocalDate;
@@ -66,7 +65,7 @@ class TeamSquadMemberRepositoryTest {
     private Team savedTeam(UUID clubId) {
         Section section = sectionRepository.save(Section.builder().clubId(clubId).name("Men").active(true).build());
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
+                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).build());
     }
 
     private Season savedSeason(UUID clubId) {

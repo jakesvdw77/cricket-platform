@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Alert, Box, Chip, FormControlLabel, Menu, MenuItem, Stack, Switch, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { Button } from '../Button'
+import { ConfirmDialog } from '../ConfirmDialog'
 import { EmptyState } from '../EmptyState'
 import type { AvailabilityStatus, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
 import { STATUS_COLOR, STATUS_LABEL } from '../../utils/availabilityStatus'
+import { CANNOT_REOPEN_MESSAGE, closePollDescription, closePollTitle } from '../../utils/pollClose'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 
 const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
@@ -18,7 +21,9 @@ export interface MatchAvailabilityTabProps {
   // null when this side has no poll yet — renders the "Open a poll" prompt instead.
   poll: MatchAvailabilityPollResponses | null
   isLoading?: boolean
-  onCreate: () => void
+  // docs/specs/064-unified-availability-polls.md: receives the Autoclose switch's value (default
+  // on) - the caller forwards it as createPoll's autoClose.
+  onCreate: (autoClose: boolean) => void
   onOpen: () => void
   onClose: () => void
   onShareInvite: () => void
@@ -26,6 +31,10 @@ export interface MatchAvailabilityTabProps {
   // the poll link (e.g. a phone call) — clicking a squad member's own status Chip opens a menu to
   // set it directly. Disabled while the poll is closed, matching the backend's own rule.
   onSetPlayerStatus: (playerProfileId: string, status: AvailabilityStatus) => void
+  // docs/specs/064-unified-availability-polls.md: an extra action rendered beside 'Open squad poll'
+  // in the no-poll prompt (MatchFormPage passes the 'Open group poll' link) - nothing else here
+  // knows about group polls.
+  secondaryEmptyAction?: ReactNode
   isCreatePending?: boolean
   isOpenPending?: boolean
   isClosePending?: boolean
@@ -33,6 +42,12 @@ export interface MatchAvailabilityTabProps {
   // that one row rather than blocking the whole list.
   settingPlayerId?: string | null
   errorMessage?: string | null
+  // docs/specs/064: whether this (closed) poll's own Autoclose is on - only changes the wording of
+  // the 'Close this poll?' confirmation. Defaults off.
+  autoClose?: boolean
+  // docs/specs/064: false once an autoclosing poll is past its automatic close time - the switch
+  // can no longer reopen it, and a muted note says so. Defaults true.
+  canReopen?: boolean
 }
 
 // docs/specs/032-match-availability-polls.md's genuinely new admin-facing visual pattern — a
@@ -49,12 +64,18 @@ export function MatchAvailabilityTab({
   onClose,
   onShareInvite,
   onSetPlayerStatus,
+  secondaryEmptyAction,
   isCreatePending = false,
   isOpenPending = false,
   isClosePending = false,
   settingPlayerId = null,
   errorMessage,
+  autoClose: pollAutoClose = false,
+  canReopen = true,
 }: MatchAvailabilityTabProps) {
+  const [autoClose, setAutoClose] = useState(true)
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
+
   if (isLoading) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -69,9 +90,23 @@ export function MatchAvailabilityTab({
         title="No availability poll yet"
         description={`Open a poll for ${label} so squad members can say whether they're available.`}
         action={
-          <Button onClick={onCreate} disabled={isCreatePending}>
-            {isCreatePending ? 'Opening…' : 'Open a poll for this side'}
-          </Button>
+          <Stack spacing={1} alignItems="center">
+            <FormControlLabel
+              control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
+              label="Autoclose"
+            />
+            <Typography variant="caption" color="text.secondary">
+              {autoClose
+                ? 'The poll closes by itself 24 hours before the match.'
+                : 'Switched off - close the poll manually.'}
+            </Typography>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap justifyContent="center">
+              <Button onClick={() => onCreate(autoClose)} disabled={isCreatePending}>
+                {isCreatePending ? 'Opening…' : 'Open squad poll'}
+              </Button>
+              {secondaryEmptyAction}
+            </Stack>
+          </Stack>
         }
       />
     )
@@ -92,8 +127,8 @@ export function MatchAvailabilityTab({
           control={
             <Switch
               checked={poll.open}
-              disabled={isOpenPending || isClosePending}
-              onChange={(_event, checked) => (checked ? onOpen() : onClose())}
+              disabled={isOpenPending || isClosePending || (!poll.open && !canReopen)}
+              onChange={(_event, checked) => (checked ? onOpen() : setCloseConfirmOpen(true))}
             />
           }
           label={
@@ -106,6 +141,26 @@ export function MatchAvailabilityTab({
           Share invite
         </Button>
       </Stack>
+
+      {!poll.open && !canReopen && (
+        <Typography variant="body2" color="text.secondary">
+          {CANNOT_REOPEN_MESSAGE}
+        </Typography>
+      )}
+
+      <ConfirmDialog
+        open={closeConfirmOpen}
+        title={closePollTitle()}
+        description={closePollDescription(pollAutoClose)}
+        confirmLabel="Close poll"
+        pendingLabel="Closing…"
+        pending={isClosePending}
+        onConfirm={() => {
+          setCloseConfirmOpen(false)
+          onClose()
+        }}
+        onClose={() => setCloseConfirmOpen(false)}
+      />
 
       <Box
         sx={{

@@ -1,115 +1,83 @@
 import { useMemo, useState } from 'react'
-import { Box } from '@mui/material'
-import { useOutletContext } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardField } from '../../components/RecordCard'
+import { Box, FormControlLabel, MenuItem, Stack, Switch } from '@mui/material'
+import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
-import { AvailabilityRespondentAvatars } from '../../components/AvailabilityRespondentAvatars'
-import { listOpenPolls } from '../../api/matchAvailabilityApi'
+import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
+import { listClosedPolls, listOpenPolls } from '../../api/matchAvailabilityApi'
 import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
+import { listRounds } from '../../api/sectionAvailabilityApi'
+import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
+import { SquadPollCard } from './availability/SquadPollCard'
+import { squadPollTitle } from './availability/pollHelpers'
+import { GroupPollCard } from './availability/GroupPollCard'
 
-// Same "resolve whichever side is null against the club's own team list" join MatchList.tsx's
-// sideName / MatchFormPage.tsx's sideDisplayName already use — not a new resolution helper.
-function sideDisplayName(teamId: string | null, teamName: string | null, teamsById: Map<string, Team>): string {
-  if (teamId) {
-    return teamsById.get(teamId)?.name ?? 'Unknown team'
-  }
-  return teamName ?? 'TBC'
-}
+type PollTypeFilter = 'ALL' | 'SQUAD' | 'GROUP'
 
-function editToFor(poll: OpenAvailabilityPoll): string {
-  const side = poll.teamId === poll.homeTeamId ? 'home' : 'away'
-  return `/manage/fixtures/matches/${poll.matchId}/edit?tab=availability&side=${side}`
-}
+// One entry of the merged list - sortDate is the soonest match the poll covers (a squad poll's
+// own match, a group poll's firstMatchDate).
+type PollListItem =
+  | { kind: 'SQUAD'; key: string; sortDate: number; poll: OpenAvailabilityPoll; open: boolean }
+  | { kind: 'GROUP'; key: string; sortDate: number; round: SectionAvailabilityRound }
 
-function pollFields(poll: OpenAvailabilityPoll): RecordCardField[] {
-  const fields: RecordCardField[] = [{ label: 'Date & time', value: new Date(poll.matchDate).toLocaleString() }]
-
-  if (poll.venue) {
-    fields.push({ label: 'Venue', value: poll.venue })
-  }
-
-  fields.push(
-    {
-      label: 'Available',
-      value: <AvailabilityRespondentAvatars status="AVAILABLE" respondents={poll.availableRespondents} count={poll.availableCount} />,
-    },
-    {
-      label: 'Unavailable',
-      value: (
-        <AvailabilityRespondentAvatars status="UNAVAILABLE" respondents={poll.unavailableRespondents} count={poll.unavailableCount} />
-      ),
-    },
-    {
-      label: 'Unsure',
-      value: <AvailabilityRespondentAvatars status="UNSURE" respondents={poll.unsureRespondents} count={poll.unsureCount} />,
-    },
-    { label: 'No response', value: poll.noResponseCount },
-  )
-
-  return fields
-}
-
-// One RecordCard per open poll — mirrors PlayerList/MatchList's own card shape.
-function PollCard({ poll, teamsById }: { poll: OpenAvailabilityPoll; teamsById: Map<string, Team> }) {
-  const homeTeamName = sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
-  const awayTeamName = sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
-  const title = `${homeTeamName} vs ${awayTeamName}`
-  const badgeLabel = poll.teamId === poll.homeTeamId ? 'Home' : 'Away'
-
-  return (
-    <RecordCard
-      title={title}
-      avatar={{ fallback: <EventAvailableOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-      badge={{ label: badgeLabel, tone: 'neutral' }}
-      fields={pollFields(poll)}
-      editLabel="Manage responses"
-      editTo={editToFor(poll)}
-    />
-  )
-}
-
-// docs/specs/034-availability-polls-dashboard.md: replaces the /manage/availability stub, a
-// club-wide read-summary-plus-navigate list of every currently-open availability poll — no
-// RecordFormScreen (this screen has no create action or form of its own, see the spec's own
-// dedicated UI Requirements sub-decision, unchanged by 043 below). docs/specs/
-// 043-list-toolbar-gold-standard.md deliberately reverses 034's original "no ListToolbar" call —
-// this screen now gets a real ListToolbar (Search + Sort by match date), still with no
-// createLabel/onCreate/ManageScreenHeader.action. docs/specs/035-section-scoped-access.md's own
-// SectionTreeSelect filter now lives in ListToolbar's filters slot, persisted the same way
-// PlayerList/TeamDirectory/MatchList's own filters already are.
+// docs/specs/064-unified-availability-polls.md: the one place every open poll lives. Extends
+// docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
+// list from the removed /manage/section-availability screen) into the standard record-list
+// pattern: ManageScreenHeader (with the New poll action), ListToolbar (search, sort toggle, Type
+// and Section filters) and a RecordCard grid mixing both kinds. The two open-poll queries are
+// merged client-side - open polls are bounded to what is live right now, as 034 already reasoned
+// (spec's Non-goals: no union endpoint). Type and Section persist via usePersistedListFilters
+// (docs/specs/043); search stays its own non-persisted useState. The 'Show closed polls' switch
+// (mirroring MatchList's 'Show past matches') also fetches closed polls into the same list; it is
+// never persisted, only preset by a ?showClosed=true link (the 'covered by' links).
 export default function AvailabilityPollsDashboard() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
-  // docs/specs/043-list-toolbar-gold-standard.md: Search is client-side only (listOpenPolls is
-  // unpaginated, like every other screen in this rollout) — a new, separate, non-persisted
-  // useState, never folded into the persisted filters below.
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  // docs/specs/042-match-list-filters-and-search.md's own default-ascending convention — soonest
-  // upcoming poll first.
+  const [searchParams] = useSearchParams()
+  const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
+  // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
+  // covered match first.
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
-  // docs/specs/035-section-scoped-access.md's existing filter, now persisted the same way
-  // MatchList's own filters already are (docs/specs/043-list-toolbar-gold-standard.md).
-  const [{ sectionId }, setFilters] = usePersistedListFilters(`availabilityPolls:filters:${clubId}`, {
+  const [{ sectionId, type }, setFilters] = usePersistedListFilters(`availabilityPolls:filters:${clubId}`, {
     sectionId: null as string | null,
+    type: 'ALL' as PollTypeFilter,
   })
 
-  const {
-    data: polls,
-    isLoading,
-    isError,
-  } = useQuery({
+  const wantSquad = type !== 'GROUP'
+  const wantGroup = type !== 'SQUAD'
+
+  const pollsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'availability-polls', 'open', sectionId],
     queryFn: () => listOpenPolls(clubId as string, { sectionId: sectionId ?? undefined }),
-    enabled: Boolean(clubId),
+    enabled: Boolean(clubId) && wantSquad,
+  })
+
+  const roundsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'open', sectionId],
+    queryFn: () => listRounds(clubId as string, { sectionId: sectionId ?? undefined, open: true }),
+    enabled: Boolean(clubId) && wantGroup,
+  })
+
+  const closedPollsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'availability-polls', 'closed', sectionId],
+    queryFn: () => listClosedPolls(clubId as string, { sectionId: sectionId ?? undefined }),
+    enabled: Boolean(clubId) && wantSquad && showClosed,
+  })
+
+  const closedRoundsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'closed', sectionId],
+    queryFn: () => listRounds(clubId as string, { sectionId: sectionId ?? undefined, open: false }),
+    enabled: Boolean(clubId) && wantGroup && showClosed,
   })
 
   const { data: teams } = useQuery({
@@ -130,38 +98,87 @@ export default function AvailabilityPollsDashboard() {
     return map
   }, [teams])
 
-  // docs/specs/043-list-toolbar-gold-standard.md: Search/Sort for the first time on this screen —
-  // both client-side, since listOpenPolls is unpaginated like every other screen in this rollout.
-  // Search matches on the same resolved home/away team names PollCard's own title already shows
-  // (via sideDisplayName, reused here rather than a new resolution helper).
-  const visiblePolls = useMemo(() => {
-    if (!polls) {
-      return []
-    }
+  const allItems = useMemo<PollListItem[]>(() => {
+    const squadItems: PollListItem[] = wantSquad
+      ? (pollsQuery.data ?? []).map((poll) => ({
+          kind: 'SQUAD',
+          key: `squad-${poll.pollId}`,
+          sortDate: new Date(poll.matchDate).getTime(),
+          poll,
+          open: true,
+        }))
+      : []
+    const closedSquadItems: PollListItem[] =
+      wantSquad && showClosed
+        ? (closedPollsQuery.data ?? []).map((poll) => ({
+            kind: 'SQUAD',
+            key: `squad-${poll.pollId}`,
+            sortDate: new Date(poll.matchDate).getTime(),
+            poll,
+            open: false,
+          }))
+        : []
+    const groupItems: PollListItem[] = wantGroup
+      ? (roundsQuery.data ?? []).map((round) => ({
+          kind: 'GROUP',
+          key: `group-${round.id}`,
+          sortDate: new Date(round.firstMatchDate).getTime(),
+          round,
+        }))
+      : []
+    const closedGroupItems: PollListItem[] =
+      wantGroup && showClosed
+        ? (closedRoundsQuery.data ?? []).map((round) => ({
+            kind: 'GROUP',
+            key: `group-${round.id}`,
+            sortDate: new Date(round.firstMatchDate).getTime(),
+            round,
+          }))
+        : []
+    return [...squadItems, ...closedSquadItems, ...groupItems, ...closedGroupItems]
+  }, [pollsQuery.data, roundsQuery.data, closedPollsQuery.data, closedRoundsQuery.data, wantSquad, wantGroup, showClosed])
 
+  // Search matches team/opponent names (the squad card's own resolved title) and a group poll's
+  // description and section name - client-side, as both sources are unpaginated.
+  const visibleItems = useMemo(() => {
     const term = search.trim().toLowerCase()
     const filtered = term
-      ? polls.filter((poll) => {
-          const homeTeamName = sideDisplayName(poll.homeTeamId, poll.homeTeamName, teamsById)
-          const awayTeamName = sideDisplayName(poll.awayTeamId, poll.awayTeamName, teamsById)
-          return homeTeamName.toLowerCase().includes(term) || awayTeamName.toLowerCase().includes(term)
+      ? allItems.filter((item) => {
+          const haystack =
+            item.kind === 'SQUAD'
+              ? squadPollTitle(item.poll, teamsById)
+              : `${item.round.description} ${item.round.sectionName}`
+          return haystack.toLowerCase().includes(term)
         })
-      : polls
-
-    const sorted = [...filtered].sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime())
-
+      : allItems
+    const sorted = [...filtered].sort((a, b) => a.sortDate - b.sortDate)
     return sort === 'desc' ? sorted.reverse() : sorted
-  }, [polls, search, sort, teamsById])
+  }, [allItems, search, sort, teamsById])
+
+  const invalidatePolls = () => {
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
+    // A squad poll's open/close/delete also shows on its match's own Availability tab and squad.
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+  }
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
+  const isLoading =
+    (wantSquad && (pollsQuery.isLoading || (showClosed && closedPollsQuery.isLoading))) ||
+    (wantGroup && (roundsQuery.isLoading || (showClosed && closedRoundsQuery.isLoading)))
+  const isError =
+    (wantSquad && (pollsQuery.isError || (showClosed && closedPollsQuery.isError))) ||
+    (wantGroup && (roundsQuery.isError || (showClosed && closedRoundsQuery.isError)))
+
   if (isLoading) {
     return null
   }
 
-  if (isError || !polls) {
+  if (isError) {
     return (
       <EmptyState
         title="Couldn't load availability polls"
@@ -170,17 +187,21 @@ export default function AvailabilityPollsDashboard() {
     )
   }
 
-  const hasPolls = polls.length > 0
   const isSearching = search.trim().length > 0
+  const pollWord = showClosed ? 'polls' : 'open polls'
+  const isFiltering = isSearching || type !== 'ALL' || sectionId !== null
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Availability Polls" />
+      <ManageScreenHeader
+        title="Availability Polls"
+        action={<Button onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
+      />
 
       <ListToolbar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by team name"
+        searchPlaceholder="Search by team, opponent or description"
         sortToggle={{
           value: sort,
           ascLabel: 'Match date, soonest first',
@@ -188,17 +209,35 @@ export default function AvailabilityPollsDashboard() {
           onToggle: () => setSort(sort === 'asc' ? 'desc' : 'asc'),
         }}
         filters={
-          <SectionTreeSelect
-            label="Section"
-            sections={sections ?? []}
-            value={sectionId}
-            onChange={(value) => setFilters({ sectionId: value })}
-            allowClear
-          />
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <Input
+              select
+              label="Type"
+              value={type}
+              onChange={(event) => setFilters({ type: event.target.value as PollTypeFilter })}
+            >
+              <MenuItem value="ALL">All polls</MenuItem>
+              <MenuItem value="SQUAD">Squad polls</MenuItem>
+              <MenuItem value="GROUP">Group polls</MenuItem>
+            </Input>
+            <SectionTreeSelect
+              label="Section"
+              sections={sections ?? []}
+              value={sectionId}
+              onChange={(value) => setFilters({ sectionId: value })}
+              allowClear
+            />
+            <FormControlLabel
+              control={<Switch checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} />}
+              label="Show closed polls"
+              sx={{ whiteSpace: 'nowrap', mr: 0 }}
+            />
+          </Stack>
         }
+        filtersMinWidth={180}
       />
 
-      {visiblePolls.length > 0 && (
+      {visibleItems.length > 0 && (
         <Box
           sx={{
             display: 'grid',
@@ -206,23 +245,32 @@ export default function AvailabilityPollsDashboard() {
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
           }}
         >
-          {visiblePolls.map((poll) => (
-            <PollCard key={poll.pollId} poll={poll} teamsById={teamsById} />
-          ))}
+          {visibleItems.map((item) =>
+            item.kind === 'SQUAD' ? (
+              <SquadPollCard key={item.key} clubId={clubId} poll={item.poll} open={item.open} teamsById={teamsById} onChanged={invalidatePolls} />
+            ) : (
+              <GroupPollCard key={item.key} clubId={clubId} round={item.round} onChanged={invalidatePolls} />
+            ),
+          )}
         </Box>
       )}
 
-      {visiblePolls.length === 0 && isSearching && (
+      {visibleItems.length === 0 && isFiltering && (
         <EmptyState
           title="No matching polls"
-          description={`No open polls match "${search.trim()}". Try a different search.`}
+          description={
+            isSearching
+              ? `No ${pollWord} match "${search.trim()}". Try a different search.`
+              : `No ${pollWord} match the current filters. Try a different type or section.`
+          }
         />
       )}
 
-      {!hasPolls && !isSearching && (
+      {visibleItems.length === 0 && !isFiltering && (
         <EmptyState
-          title="No open polls"
-          description="Open a poll for an upcoming match from its own Availability tab to see it here."
+          title={showClosed ? 'No polls' : 'No open polls'}
+          description="Open a squad poll for one team's match, or a group poll for a whole section's fixtures."
+          action={<Button onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
         />
       )}
     </Box>

@@ -10,7 +10,6 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
-import com.cricketlegend.domain.SquadMode;
 import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -59,7 +58,7 @@ class MatchAvailabilityPollRepositoryTest {
     private Team savedTeam(UUID clubId) {
         Section section = sectionRepository.save(Section.builder().clubId(clubId).name("Men").active(true).build());
         return teamRepository.save(
-                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).squadMode(SquadMode.STATIC).build());
+                Team.builder().clubId(clubId).sectionId(section.getId()).name("1st XI").active(true).build());
     }
 
     private Season savedSeason(UUID clubId) {
@@ -108,7 +107,7 @@ class MatchAvailabilityPollRepositoryTest {
         Team homeTeam = savedTeam(club.getId());
         Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Women").active(true).build());
         Team awayTeam = teamRepository.save(
-                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("2nd XI").active(true).squadMode(SquadMode.STATIC).build());
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("2nd XI").active(true).build());
         Season season = savedSeason(club.getId());
         Match match = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(homeTeam.getId())
                 .awayTeamId(awayTeam.getId()).seasonId(season.getId()).matchDate(Instant.now()).active(true).build());
@@ -148,6 +147,38 @@ class MatchAvailabilityPollRepositoryTest {
     }
 
     @Test
+    void findClosedByMatchClubIdReturnsOnlyClosedPollsOfTheClubOrderedByMatchDateDescending() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        Match older = matchOn(club, team, season, Instant.parse("2026-05-01T10:00:00Z"));
+        Match newer = matchOn(club, team, season, Instant.parse("2026-06-01T10:00:00Z"));
+        Match openMatch = matchOn(club, team, season, Instant.parse("2026-07-01T10:00:00Z"));
+        MatchAvailabilityPoll olderPoll = matchAvailabilityPollRepository.save(
+                MatchAvailabilityPoll.builder().matchId(older.getId()).teamId(team.getId()).open(false).build());
+        MatchAvailabilityPoll newerPoll = matchAvailabilityPollRepository.save(
+                MatchAvailabilityPoll.builder().matchId(newer.getId()).teamId(team.getId()).open(false).build());
+        matchAvailabilityPollRepository.save(
+                MatchAvailabilityPoll.builder().matchId(openMatch.getId()).teamId(team.getId()).open(true).build());
+
+        Club otherClub = savedClub("lakeside-cc");
+        Team otherTeam = savedTeam(otherClub.getId());
+        Season otherSeason = savedSeason(otherClub.getId());
+        Match otherClubMatch = matchOn(otherClub, otherTeam, otherSeason, Instant.parse("2026-08-01T10:00:00Z"));
+        matchAvailabilityPollRepository.save(MatchAvailabilityPoll.builder()
+                .matchId(otherClubMatch.getId()).teamId(otherTeam.getId()).open(false).build());
+
+        assertThat(matchAvailabilityPollRepository.findClosedByMatchClubId(club.getId()))
+                .extracting(MatchAvailabilityPoll::getId)
+                .containsExactly(newerPoll.getId(), olderPoll.getId());
+    }
+
+    private Match matchOn(Club club, Team team, Season season, Instant matchDate) {
+        return matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(team.getId())
+                .awayTeamName("Away Occasionals").seasonId(season.getId()).matchDate(matchDate).active(true).build());
+    }
+
+    @Test
     void uniqueConstraintRejectsASecondPollForTheSameTeamOnTheSameMatch() {
         Club club = savedClub("riverside-cc");
         Team team = savedTeam(club.getId());
@@ -161,5 +192,30 @@ class MatchAvailabilityPollRepositoryTest {
 
         assertThatThrownBy(() -> matchAvailabilityPollRepository.saveAndFlush(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void findDueForAutoCloseReturnsOnlyOpenAutoClosePollsWhoseScheduledCloseAtHasPassed() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        Instant now = Instant.parse("2026-10-02T12:00:00Z");
+        MatchAvailabilityPoll due = pollWith(club, team, season, true, true, now.minusSeconds(60));
+        pollWith(club, team, season, true, true, now.plusSeconds(3600)); // not yet due
+        pollWith(club, team, season, false, true, now.minusSeconds(60)); // already closed
+        pollWith(club, team, season, true, false, now.minusSeconds(60)); // autoClose off
+        pollWith(club, team, season, true, true, null); // no scheduled time
+
+        assertThat(matchAvailabilityPollRepository.findDueForAutoClose(now))
+                .extracting(MatchAvailabilityPoll::getId)
+                .containsExactly(due.getId());
+    }
+
+    private MatchAvailabilityPoll pollWith(
+            Club club, Team team, Season season, boolean open, boolean autoClose, Instant scheduledCloseAt) {
+        Match match = savedMatch(club.getId(), team.getId(), season.getId());
+        return matchAvailabilityPollRepository.save(MatchAvailabilityPoll.builder()
+                .matchId(match.getId()).teamId(team.getId()).open(open)
+                .autoClose(autoClose).scheduledCloseAt(scheduledCloseAt).build());
     }
 }

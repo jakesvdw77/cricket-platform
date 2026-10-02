@@ -45,8 +45,25 @@ describe('MatchAvailabilityTab', () => {
     render(<MatchAvailabilityTab {...baseProps({ poll: null, onCreate })} />)
 
     expect(screen.getByText(/no availability poll yet/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /open a poll for this side/i }))
-    expect(onCreate).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /open squad poll/i }))
+    expect(onCreate).toHaveBeenCalledWith(true)
+  })
+
+  it('passes autoClose false to onCreate once the Autoclose switch is turned off (docs/specs/064)', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ poll: null, onCreate })} />)
+
+    expect(screen.getByRole('checkbox', { name: 'Autoclose' })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
+    await user.click(screen.getByRole('button', { name: /open squad poll/i }))
+    expect(onCreate).toHaveBeenCalledWith(false)
+  })
+
+  it('renders the secondary empty-state action beside the squad poll button (docs/specs/064)', () => {
+    render(<MatchAvailabilityTab {...baseProps({ poll: null, secondaryEmptyAction: <a href="/x">Open group poll</a> })} />)
+
+    expect(screen.getByRole('link', { name: 'Open group poll' })).toBeInTheDocument()
   })
 
   it('renders the response-count summary for an open poll', () => {
@@ -68,14 +85,38 @@ describe('MatchAvailabilityTab', () => {
     expect(screen.getAllByText('No response').length).toBeGreaterThan(0)
   })
 
-  it('calls onClose when toggling the switch off an open poll', async () => {
+  it('asks for confirmation before calling onClose when toggling the switch off an open poll', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<MatchAvailabilityTab {...baseProps({ onClose })} />)
+    render(<MatchAvailabilityTab {...baseProps({ onClose, autoClose: true })} />)
 
     expect(screen.getByText(/^poll open$/i)).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox'))
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(await screen.findByText('Close this poll?')).toBeInTheDocument()
+    expect(screen.getByText(/until its automatic close time/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close poll' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancelling the close confirmation closes nothing, and the manual-close wording says "at any time"', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ onClose, autoClose: false })} />)
+
+    await user.click(screen.getByRole('checkbox'))
+    expect(await screen.findByText(/reopen it at any time/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('disables the switch and shows a muted note when a closed poll can no longer be reopened', () => {
+    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), canReopen: false })} />)
+
+    expect(screen.getByRole('checkbox')).toBeDisabled()
+    expect(screen.getByText('Closed. Can no longer be reopened.')).toBeInTheDocument()
   })
 
   it('shows a closed banner and calls onOpen when toggling the switch on for a closed poll', async () => {

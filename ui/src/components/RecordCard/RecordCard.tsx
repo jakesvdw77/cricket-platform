@@ -5,6 +5,7 @@ import {
   CardActions,
   CardContent,
   Chip,
+  IconButton,
   Link as MuiLink,
   Stack,
   Typography,
@@ -68,9 +69,11 @@ export interface RecordCardSecondaryAction {
 // Generic inline outcome message for a card-level action (e.g. secondaryAction's result) — the
 // same "coloured Typography for the outcome" pattern already used in EmailSettings.tsx, not a
 // new Alert/Snackbar component.
+const FEEDBACK_COLOR = { success: 'success.main', error: 'error.main', muted: 'text.secondary' } as const
+
 export interface RecordCardFeedback {
   message: string
-  tone: 'success' | 'error'
+  tone: 'success' | 'error' | 'muted'
 }
 
 export interface RecordCardProps {
@@ -99,6 +102,15 @@ export interface RecordCardProps {
   // a real view nor edit route. Purely additive: any call site not passing this keeps its existing
   // Edit-only footer unchanged.
   viewTo?: string
+  // docs/specs/064-unified-availability-polls.md: a pencil icon button right after the title, for a
+  // card whose only edit is a small inline one (the group poll card's description). When set it IS
+  // the card's edit affordance, so the footer Edit button is not rendered; `onEdit`/`editTo` are
+  // ignored. Purely additive: call sites not passing it are unchanged.
+  titleEdit?: { label: string; onClick: () => void }
+  // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
+  // card's top-right corner, after the badges, keeping the footer for the main actions. The
+  // action's `label` is its accessible name and tooltip; `icon` is required.
+  cornerAction?: RecordCardSecondaryAction & { icon: ReactNode }
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
   // card carrying both Deactivate/Reactivate (secondaryAction) and "Communicate Team Sheet"
@@ -174,11 +186,30 @@ export function RecordCard({
   onEdit,
   editTo,
   viewTo,
+  titleEdit,
+  cornerAction,
   secondaryAction,
   secondaryActions,
   feedback,
 }: RecordCardProps) {
   const allSecondaryActions = [...(secondaryAction ? [secondaryAction] : []), ...(secondaryActions ?? [])]
+  // The status chips, shared by the default top-right slot and the cornerAction layout's own row.
+  const badgeChips = (
+    <>
+      {badge && (
+        <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+      )}
+      {badges?.map((entry, index) => (
+        <Chip
+          key={index}
+          size="small"
+          label={entry.label}
+          variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
+          sx={badgeSx(entry.tone)}
+        />
+      ))}
+    </>
+  )
 
   return (
     // height: '100%' + column flex, direct user feedback: a row of these cards sits in a CSS grid
@@ -257,24 +288,48 @@ export function RecordCard({
                 {title}
               </Typography>
             )}
+            {titleEdit && (
+              <IconButton
+                size="small"
+                aria-label={titleEdit.label}
+                title={titleEdit.label}
+                onClick={titleEdit.onClick}
+                // position: relative keeps it above any viewTo stretched-link overlay.
+                sx={{ position: 'relative', flexShrink: 0 }}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            )}
           </Stack>
           {/* docs/specs/040-announce-team.md: flexWrap added so `badge` plus a couple of
-              `badges` entries (up to 3 chips) never force horizontal overflow at 375px. */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
-            {badge && (
-              <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
-            )}
-            {badges?.map((entry, index) => (
-              <Chip
-                key={index}
-                size="small"
-                label={entry.label}
-                variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
-                sx={badgeSx(entry.tone)}
-              />
-            ))}
-          </Stack>
+              `badges` entries (up to 3 chips) never force horizontal overflow at 375px.
+              docs/specs/064-unified-availability-polls.md: a card with a `cornerAction` shows only
+              that icon here and moves the badges to their own row below, so the title keeps the
+              full header width instead of being truncated. */}
+          {cornerAction ? (
+            <IconButton
+              size="small"
+              aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
+              title={cornerAction.label}
+              disabled={cornerAction.pending}
+              onClick={cornerAction.onClick}
+              // position: relative keeps it above any viewTo stretched-link overlay.
+              sx={{ position: 'relative', flexShrink: 0, mt: -0.5, mr: -0.5 }}
+            >
+              {cornerAction.icon}
+            </IconButton>
+          ) : (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+              {badgeChips}
+            </Stack>
+          )}
         </Stack>
+
+        {cornerAction && (badge || (badges && badges.length > 0)) && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {badgeChips}
+          </Stack>
+        )}
 
         {description && (
           <Typography
@@ -319,7 +374,7 @@ export function RecordCard({
         )}
 
         {feedback && (
-          <Typography variant="body2" color={feedback.tone === 'success' ? 'success.main' : 'error.main'}>
+          <Typography variant="body2" color={FEEDBACK_COLOR[feedback.tone]}>
             {feedback.message}
           </Typography>
         )}
@@ -345,7 +400,7 @@ export function RecordCard({
             {action.pending ? action.pendingLabel : action.label}
           </Button>
         ))}
-        {viewTo ? (
+        {titleEdit ? null : viewTo ? (
           editTo && (
             <MuiButton
               component={RouterLink}

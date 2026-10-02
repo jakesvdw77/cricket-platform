@@ -44,6 +44,40 @@ describe('RecordCard', () => {
     expect(screen.queryByRole('button', { name: /active|retired|draft/i })).not.toBeInTheDocument()
   })
 
+  it('titleEdit renders a pencil button after the title, calls its handler, and replaces the footer Edit button', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(<RecordCard title="Saturday fixtures" editLabel="Edit" onEdit={vi.fn()} titleEdit={{ label: 'Edit description', onClick }} />)
+
+    expect(screen.getByRole('heading', { name: 'Saturday fixtures' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit description' }))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders cornerAction as a labelled icon button in the header, with no footer button for it', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(
+      <RecordCard
+        title="Poll"
+        editLabel="Edit"
+        onEdit={vi.fn()}
+        cornerAction={{ label: 'Delete', pendingLabel: 'Deleting…', pending: false, onClick, icon: <span data-testid="trash" /> }}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Delete' })
+    expect(button).toHaveAttribute('title', 'Delete')
+    expect(button).not.toHaveTextContent('Delete')
+
+    await user.click(button)
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
   it('calls onEdit when the Edit action is clicked', async () => {
     const user = userEvent.setup()
     const onEdit = vi.fn()
@@ -151,6 +185,21 @@ describe('RecordCard', () => {
 
     const outcome = screen.getByText('Failed to resend welcome email: Connection refused')
     expect(outcome).toHaveStyle({ color: 'rgb(176, 64, 46)' }) // theme.ts's error.main (#b0402e)
+  })
+
+  it('renders a muted feedback message in text.secondary', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <RecordCard
+          title="Riverside CC"
+          editLabel="Edit"
+          onEdit={vi.fn()}
+          feedback={{ message: 'Closed. Can no longer be reopened.', tone: 'muted' }}
+        />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByText('Closed. Can no longer be reopened.')).not.toHaveStyle({ color: 'rgb(176, 64, 46)' })
   })
 
   it('renders neither secondaryAction nor feedback when both are omitted, matching ProductList.tsx\'s existing usage', () => {

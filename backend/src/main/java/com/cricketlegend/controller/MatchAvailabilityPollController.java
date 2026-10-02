@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,6 +57,18 @@ public class MatchAvailabilityPollController {
             @Valid @RequestBody CreateMatchAvailabilityPollRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(matchAvailabilityPollService.create(authentication, clubId, matchId, request));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @DeleteMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}")
+    @ApiResponse(responseCode = "204", description = "Availability poll deleted")
+    public ResponseEntity<Void> deletePoll(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID matchId,
+            @PathVariable UUID pollId) {
+        matchAvailabilityPollService.delete(authentication, clubId, matchId, pollId);
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -109,5 +122,18 @@ public class MatchAvailabilityPollController {
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID sectionId) {
         return ResponseEntity.ok(matchAvailabilityPollService.listOpenForClub(authentication, clubId, sectionId));
+    }
+
+    /**
+     * Closed squad polls, most recent match first, capped server-side at the 50 most recent (see
+     * {@code MatchAvailabilityPollServiceImpl.CLOSED_POLLS_LIMIT}). Mirrors {@link #listOpen}.
+     */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/availability-polls/closed")
+    public ResponseEntity<List<OpenAvailabilityPollDto>> listClosed(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID sectionId) {
+        return ResponseEntity.ok(matchAvailabilityPollService.listClosedForClub(authentication, clubId, sectionId));
     }
 }

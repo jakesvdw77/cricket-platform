@@ -9,6 +9,10 @@ export interface MatchAvailabilityPoll {
   id: string
   teamId: string
   open: boolean
+  // docs/specs/064-unified-availability-polls.md: squad polls get the same autoclose group polls
+  // have - scheduledCloseAt is kickoff minus 24h when autoClose, else null.
+  autoClose: boolean
+  scheduledCloseAt: string | null
   availableCount: number
   unavailableCount: number
   unsureCount: number
@@ -44,9 +48,24 @@ export async function listPolls(clubId: string, matchId: string): Promise<MatchA
   return data
 }
 
-export async function createPoll(clubId: string, matchId: string, teamId: string): Promise<MatchAvailabilityPoll> {
-  const { data } = await api.post<MatchAvailabilityPoll>(pollsPath(clubId, matchId), { teamId })
+// autoClose absent = the backend's own default (on) - 064.
+export async function createPoll(
+  clubId: string,
+  matchId: string,
+  teamId: string,
+  autoClose?: boolean,
+): Promise<MatchAvailabilityPoll> {
+  const { data } = await api.post<MatchAvailabilityPoll>(pollsPath(clubId, matchId), {
+    teamId,
+    ...(autoClose !== undefined ? { autoClose } : {}),
+  })
   return data
+}
+
+// docs/specs/064: deletes a squad poll and its responses, freeing the match for a new poll of
+// either kind.
+export async function deletePoll(clubId: string, matchId: string, pollId: string): Promise<void> {
+  await api.delete(`${pollsPath(clubId, matchId)}/${pollId}`)
 }
 
 export async function openPoll(clubId: string, matchId: string, pollId: string): Promise<MatchAvailabilityPoll> {
@@ -109,6 +128,8 @@ export interface OpenAvailabilityPoll {
   awayTeamName: string | null
   matchDate: string
   venue: string | null
+  autoClose: boolean
+  scheduledCloseAt: string | null
   availableCount: number
   unavailableCount: number
   unsureCount: number
@@ -129,6 +150,16 @@ export interface ListOpenPollsParams {
 // not by match history).
 export async function listOpenPolls(clubId: string, params: ListOpenPollsParams = {}): Promise<OpenAvailabilityPoll[]> {
   const { data } = await api.get<OpenAvailabilityPoll[]>(`/manage/clubs/${clubId}/availability-polls/open`, {
+    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+  })
+  return data
+}
+
+// docs/specs/064-unified-availability-polls.md: the dashboard's 'Show closed polls' switch - same
+// OpenAvailabilityPollDto shape as listOpenPolls, but closed polls only, capped server-side at
+// the 50 most recent so the list stays bounded.
+export async function listClosedPolls(clubId: string, params: ListOpenPollsParams = {}): Promise<OpenAvailabilityPoll[]> {
+  const { data } = await api.get<OpenAvailabilityPoll[]>(`/manage/clubs/${clubId}/availability-polls/closed`, {
     params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
   })
   return data

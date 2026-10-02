@@ -1,11 +1,6 @@
 import api from './axiosConfig'
 import type { SocialLink } from '../components/marketing/SocialLinksRow'
 
-// docs/specs/063-section-availability-and-flexible-squads.md Part B: the single switch between
-// 029's season-squad model (STATIC, default) and a per-match squad built from section-level
-// availability (FLEXIBLE) — see teamSquadApi.ts (STATIC) vs matchSquadApi.ts (FLEXIBLE).
-export type SquadMode = 'STATIC' | 'FLEXIBLE'
-
 // A named Team, placed under a Section — docs/specs/026-teams.md. Single /manage-only namespace
 // (no /platform mirror, same precedent as ClubContact/Sponsor/Section): AccessService.
 // canAdministerClub already gives platform_admin a superset pass on these endpoints. Never
@@ -25,18 +20,16 @@ export interface Team {
   groundName: string | null
   socialLinks: SocialLink[]
   active: boolean
-  // docs/specs/063-section-availability-and-flexible-squads.md: not null, defaults to STATIC.
-  squadMode: SquadMode
   createdAt: string
   updatedAt: string
   updatedBy: string | null
 }
 
 // Same shape for create and update — CreateTeamRequest/UpdateTeamRequest are both
-// {name, logoUrl?, abbreviation?, groundName?, socialLinks?, squadMode} server-side (docs/specs/
+// {name, logoUrl?, abbreviation?, groundName?, socialLinks?} server-side (docs/specs/
 // 027-team-profile.md extends both, Flag #1; docs/specs/057-team-extended-profile.md adds the
-// three profile fields; docs/specs/063-section-availability-and-flexible-squads.md adds squadMode,
-// @NotNull on both requests — the frontend always sends it, defaulting to STATIC). sectionId is
+// three profile fields; docs/specs/064-unified-availability-polls.md removed 063's squadMode —
+// coverage by a poll, not a team setting, now decides the squad source). sectionId is
 // never part of the payload: it's fixed by the URL at create time and never editable afterwards
 // (re-parenting is out of scope, see the spec's Non-goals).
 export interface TeamPayload {
@@ -45,7 +38,6 @@ export interface TeamPayload {
   abbreviation?: string | null
   groundName?: string | null
   socialLinks?: SocialLink[]
-  squadMode: SquadMode
 }
 
 function teamsPath(clubId: string, sectionId: string): string {
