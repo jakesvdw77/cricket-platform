@@ -5,6 +5,7 @@ import {
   CardActions,
   CardContent,
   Chip,
+  IconButton,
   Link as MuiLink,
   Stack,
   Typography,
@@ -101,6 +102,11 @@ export interface RecordCardProps {
   // a real view nor edit route. Purely additive: any call site not passing this keeps its existing
   // Edit-only footer unchanged.
   viewTo?: string
+  // docs/specs/064-unified-availability-polls.md: a pencil icon button right after the title, for a
+  // card whose only edit is a small inline one (the group poll card's description). When set it IS
+  // the card's edit affordance, so the footer Edit button is not rendered; `onEdit`/`editTo` are
+  // ignored. Purely additive: call sites not passing it are unchanged.
+  titleEdit?: { label: string; onClick: () => void }
   secondaryAction?: RecordCardSecondaryAction
   // Additional secondary actions beyond the single `secondaryAction` slot above — e.g. a match
   // card carrying both Deactivate/Reactivate (secondaryAction) and "Communicate Team Sheet"
@@ -176,6 +182,7 @@ export function RecordCard({
   onEdit,
   editTo,
   viewTo,
+  titleEdit,
   secondaryAction,
   secondaryActions,
   feedback,
@@ -258,6 +265,18 @@ export function RecordCard({
               <Typography variant="subtitle1" component="h3" fontWeight={600} noWrap>
                 {title}
               </Typography>
+            )}
+            {titleEdit && (
+              <IconButton
+                size="small"
+                aria-label={titleEdit.label}
+                title={titleEdit.label}
+                onClick={titleEdit.onClick}
+                // position: relative keeps it above any viewTo stretched-link overlay.
+                sx={{ position: 'relative', flexShrink: 0 }}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
             )}
           </Stack>
           {/* docs/specs/040-announce-team.md: flexWrap added so `badge` plus a couple of
@@ -347,7 +366,7 @@ export function RecordCard({
             {action.pending ? action.pendingLabel : action.label}
           </Button>
         ))}
-        {viewTo ? (
+        {titleEdit ? null : viewTo ? (
           editTo && (
             <MuiButton
               component={RouterLink}

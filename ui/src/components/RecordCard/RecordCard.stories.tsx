@@ -223,6 +223,14 @@ export const WithBadges: Story = {
   },
 }
 
+// docs/specs/064-unified-availability-polls.md: a pencil after the title replaces the footer Edit.
+export const WithTitleEdit: Story = {
+  args: {
+    ...Active.args,
+    titleEdit: { label: 'Edit description', onClick: () => {} },
+  },
+}
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280.
 export const MobileViewport: Story = {
   args: Active.args,

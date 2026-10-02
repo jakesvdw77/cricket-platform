@@ -44,6 +44,19 @@ describe('RecordCard', () => {
     expect(screen.queryByRole('button', { name: /active|retired|draft/i })).not.toBeInTheDocument()
   })
 
+  it('titleEdit renders a pencil button after the title, calls its handler, and replaces the footer Edit button', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(<RecordCard title="Saturday fixtures" editLabel="Edit" onEdit={vi.fn()} titleEdit={{ label: 'Edit description', onClick }} />)
+
+    expect(screen.getByRole('heading', { name: 'Saturday fixtures' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit description' }))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
   it('calls onEdit when the Edit action is clicked', async () => {
     const user = userEvent.setup()
     const onEdit = vi.fn()

@@ -225,17 +225,19 @@ export function GroupPollCard({
                 icon: round.open ? <LockOutlinedIcon fontSize="small" /> : <LockOpenOutlinedIcon fontSize="small" />,
               }
         }
-        // The card's own Edit action edits the description (matches can't be changed after creation,
-        // docs/specs/064-unified-availability-polls.md Non-goals), so there is one Edit, not two.
-        editLabel={editOpen ? 'Hide description editor' : 'Edit description'}
-        onEdit={() => {
-          setDescriptionDraft(round.description)
-          setEditOpen((prev) => !prev)
+        // A pencil after the title edits the description (matches can't be changed after creation,
+        // docs/specs/064-unified-availability-polls.md Non-goals); there is no footer Edit button.
+        titleEdit={{
+          label: editOpen ? 'Hide description editor' : 'Edit description',
+          onClick: () => {
+            setDescriptionDraft(round.description)
+            setEditOpen((prev) => !prev)
+          },
         }}
         secondaryActions={[
           {
-            label: matchesOpen ? 'Hide covered matches' : 'View covered matches',
-            pendingLabel: 'View covered matches',
+            label: matchesOpen ? 'Hide covered matches' : 'Covered matches',
+            pendingLabel: 'Covered matches',
             pending: false,
             onClick: () => setMatchesOpen((prev) => !prev),
             icon: <EventNoteOutlinedIcon fontSize="small" />,

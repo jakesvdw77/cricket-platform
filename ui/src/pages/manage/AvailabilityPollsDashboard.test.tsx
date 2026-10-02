@@ -913,7 +913,7 @@ describe('AvailabilityPollsDashboard', () => {
       await waitFor(() => expect(closeRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
     })
 
-    it('expands "View covered matches" and fetches matches for that round only', async () => {
+    it('expands "Covered matches" and fetches matches for that round only', async () => {
       const user = userEvent.setup()
       listRounds.mockResolvedValue([makeRound()])
       getRoundMatches.mockResolvedValue([makeRoundMatch()])
@@ -923,7 +923,7 @@ describe('AvailabilityPollsDashboard', () => {
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
       expect(getRoundMatches).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: /view covered matches/i }))
+      await user.click(screen.getByRole('button', { name: /^covered matches$/i }))
 
       expect(getRoundMatches).toHaveBeenCalledWith('test-club-id', 'round-1')
       expect(await screen.findByText('U13 Boys A vs Rivals CC')).toBeInTheDocument()
