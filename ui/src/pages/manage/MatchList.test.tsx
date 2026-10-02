@@ -183,13 +183,24 @@ describe('MatchList', () => {
   })
 
   // docs/specs/037-match-improvements.md item 1
-  it('sends upcomingOnly: true by default, with no UI toggle to change it', async () => {
-    listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
+  it('sends upcomingOnly: true by default, and "Show past matches" turns it off', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch()]))
 
     renderPage('test-club-id')
 
     await screen.findByText('1st XI vs Riverside Occasionals')
-    expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true }))
+    expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true }))
+
+    await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await waitFor(() =>
+      expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: false })),
+    )
+
+    await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await waitFor(() =>
+      expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true })),
+    )
   })
 
   // docs/specs/042-match-list-filters-and-search.md: the spec's whole reason for existing
