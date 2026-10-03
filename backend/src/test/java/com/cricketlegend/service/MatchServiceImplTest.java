@@ -80,6 +80,9 @@ class MatchServiceImplTest {
     private LeagueRepository leagueRepository;
 
     @Mock
+    private com.cricketlegend.repository.LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
+
+    @Mock
     private SeasonRepository seasonRepository;
 
     @Mock
@@ -106,6 +109,8 @@ class MatchServiceImplTest {
     void setUp() {
         matchService = new MatchServiceImpl(
                 matchRepository, matchSideRepository, matchSidePlayerRepository, matchPollCoverageService,
+                new com.cricketlegend.service.support.SelectionLimitsResolver(
+                        leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
                 accessService);
     }
@@ -715,7 +720,7 @@ class MatchServiceImplTest {
     }
 
     @Test
-    void listSetsPlayingXiSizeFromTheLeagueAndNullWithoutOne() {
+    void listSetsPlayingXiSizeToTheMostSelectableFromTheLeagueAndNullWithoutOne() {
         UUID leagueId = UUID.randomUUID();
         UUID t = UUID.randomUUID();
         Match withLeague = cardMatch(t, null, null, "Opp", leagueId);
