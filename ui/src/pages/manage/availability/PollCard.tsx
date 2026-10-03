@@ -241,17 +241,19 @@ export function PollCard({
             <Stack direction="row" alignItems="center" spacing={0.5}>
               <span>{closes.value}</span>
               {/* Only while open (Reopen in the footer opens the same dialog once closed). Its own
-                  position: relative keeps it above the card's stretched link; the negative vertical
-                  margin keeps the line no taller than a text-only DetailLine. */}
+                  position: relative keeps it above the card's stretched link; it is sized to the text line
+                  so the row is no taller than a text-only DetailLine. */}
               {isOpen && (
                 <IconButton
                   size="small"
                   aria-label="Edit close time"
                   title="Edit close time"
                   onClick={() => setCloseTimeOpen(true)}
-                  sx={{ position: 'relative', my: '-5px' }}
+                  // A 20px square (the body2 line height) so the date and the pencil share one line and
+                  // the value lines up with its label.
+                  sx={{ position: 'relative', p: '2px' }}
                 >
-                  <EditOutlinedIcon fontSize="small" />
+                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               )}
             </Stack>

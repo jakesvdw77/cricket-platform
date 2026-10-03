@@ -419,7 +419,7 @@ export function RecordCard({
                 {title}
               </Typography>
             )}
-            {titleEdit && (
+            {titleEdit && !cornerAction && (
               <IconButton
                 size="small"
                 aria-label={titleEdit.label}
@@ -438,17 +438,33 @@ export function RecordCard({
               that icon here and moves the badges to their own row below, so the title keeps the
               full header width instead of being truncated. */}
           {cornerAction ? (
-            <IconButton
-              size="small"
-              aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
-              title={cornerAction.label}
-              disabled={cornerAction.pending}
-              onClick={cornerAction.onClick}
-              // position: relative keeps it above any viewTo stretched-link overlay.
-              sx={{ position: 'relative', flexShrink: 0, mt: -0.5, mr: -0.5 }}
-            >
-              {cornerAction.icon}
-            </IconButton>
+            // The title pencil (when there is one) joins the corner action in one right-aligned cluster
+            // so the two icons sit flush against the card's right edge whatever the title length.
+            <Stack direction="row" alignItems="flex-start" sx={{ flexShrink: 0, mt: -0.5, mr: -0.5 }}>
+              {titleEdit && (
+                <IconButton
+                  size="small"
+                  aria-label={titleEdit.label}
+                  title={titleEdit.label}
+                  onClick={titleEdit.onClick}
+                  // position: relative keeps it above any viewTo stretched-link overlay.
+                  sx={{ position: 'relative', flexShrink: 0 }}
+                >
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+              <IconButton
+                size="small"
+                aria-label={cornerAction.pending ? cornerAction.pendingLabel : cornerAction.label}
+                title={cornerAction.label}
+                disabled={cornerAction.pending}
+                onClick={cornerAction.onClick}
+                // position: relative keeps it above any viewTo stretched-link overlay.
+                sx={{ position: 'relative', flexShrink: 0 }}
+              >
+                {cornerAction.icon}
+              </IconButton>
+            </Stack>
           ) : badgesAbove ? null : (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
               {badgeChips}
