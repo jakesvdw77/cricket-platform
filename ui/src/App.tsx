@@ -66,6 +66,7 @@ import EmailSettings from './pages/admin/EmailSettings'
 import { EmptyState } from './components/EmptyState'
 import SectionAvailabilityRedirect from './pages/manage/SectionAvailabilityRedirect'
 import AvailabilityHubLayout from './pages/manage/availability/AvailabilityHubLayout'
+import AvailabilityCoveragePage from './pages/manage/availability/coverage/AvailabilityCoveragePage'
 import PlayerAvailabilityRedirect from './pages/manage/availability/PlayerAvailabilityRedirect'
 
 const queryClient = new QueryClient()
@@ -234,11 +235,12 @@ function App() {
                   currently-open availability poll, replacing the earlier "go find the match
                   yourself" stub. */}
               {/* docs/specs/073-availability-hub.md: the Availability hub - one layout route (header +
-                  Polls | Players switch) around the two views; the sub-flow routes below stay
-                  siblings outside it (074 adds the Coverage child). */}
+                  Polls | Players | Coverage switch) around the three views; the sub-flow routes below stay
+                  siblings outside it. */}
               <Route path="availability" element={<AvailabilityHubLayout />}>
                 <Route index element={<AvailabilityPollsDashboard />} />
                 <Route path="players" element={<PlayerAvailabilityPage />} />
+                <Route path="coverage" element={<AvailabilityCoveragePage />} />
               </Route>
               {/* docs/specs/064-unified-availability-polls.md: the create screen for both poll kinds
                   (squad or group) behind the dashboard's New poll button. */}

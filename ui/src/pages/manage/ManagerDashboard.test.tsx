@@ -75,7 +75,7 @@ describe('ManagerDashboard', () => {
     // docs/specs/073: one Availability tile for the hub, replacing the two earlier tiles.
     expect(screen.getAllByText('Availability')).toHaveLength(1)
     expect(screen.getByText('Availability').closest('a')).toHaveAttribute('href', '/manage/availability')
-    expect(screen.getByText('Polls and who is free, game by game')).toBeInTheDocument()
+    expect(screen.getByText('Polls, who is free, and squad cover')).toBeInTheDocument()
     expect(screen.queryByText('Availability Polls')).not.toBeInTheDocument()
     expect(screen.queryByText('Player Availability')).not.toBeInTheDocument()
     // docs/specs/064-unified-availability-polls.md: group polls are created from the Availability

@@ -156,6 +156,16 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
 - **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
 
+## Deferred by `074` — Availability Coverage
+
+`074-availability-coverage.md` added the Coverage tab: one card per time slot with distinct available players against the places needed, per-team bars and a Covered / Tight / Short verdict, computed in the browser from the Players grid response. Still deferred:
+
+- **A dedicated backend endpoint for coverage** (exact per-slot audiences, club-wide counts, no 150-game/500-player caps, no dependence on the grid's row candidates), replacing the client-side computation once a club outgrows the grid's limits.
+- **Derby support.** The grid response must carry every own team of a game (both sides of a derby) so each team is counted.
+- **Per-player rotation hints** (which shared player to give to which team: games played, recent picks), beyond the "how many" hint.
+- **Considering picked players.** A player already picked for one team in a slot is not free for another; today `picked` is ignored.
+- **Follow-ups:** link a slot card to the Players view or its polls; per-team squad sizes beyond the playing XI (reserves).
+
 ## Notes from `073` — Availability hub
 
 `073-availability-hub.md` put Polls and Players under one Availability hub (one dashboard tile, a routed Polls | Players switch; `068`'s route moved to `/manage/availability/players`), made poll cards open their Responses page on click with a "Poll closes" row, and moved the sort control first on phones in the shared `ListToolbar`. The Coverage tab is added by `074`. No new deferred item arises from `073` itself.

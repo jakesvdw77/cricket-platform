@@ -50,8 +50,8 @@ const GROUPS: ManagerGroup[] = [
     cards: [
       { title: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: <GroupWorkOutlinedIcon /> },
       { title: 'Communication', description: 'Message the squad', to: '/manage/communication', icon: <ChatOutlinedIcon /> },
-      // docs/specs/073-availability-hub.md: one Availability tile for the hub (Polls and Players).
-      { title: 'Availability', description: 'Polls and who is free, game by game', to: '/manage/availability', icon: <EventAvailableOutlinedIcon /> },
+      // docs/specs/073-availability-hub.md: one Availability tile for the hub (Polls, Players and Coverage).
+      { title: 'Availability', description: 'Polls, who is free, and squad cover', to: '/manage/availability', icon: <EventAvailableOutlinedIcon /> },
       // docs/specs/064-unified-availability-polls.md: the former Section Availability card is gone -
       // group polls are now created from this screen's New poll button.
     ],
