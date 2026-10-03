@@ -150,6 +150,7 @@ describe('GroupPollResponsesPage', () => {
     await loaded()
 
     expect(screen.getByText('Open')).toBeInTheDocument()
+    expect(screen.getByText('Group poll')).toBeInTheDocument()
     expect(screen.getByText(/U13 Boys · Closes /)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /back to availability polls/i })).toHaveAttribute('href', '/manage/availability')
   })

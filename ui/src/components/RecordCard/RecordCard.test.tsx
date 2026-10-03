@@ -128,6 +128,20 @@ describe('RecordCard', () => {
     expect(mutedChip).not.toHaveClass('MuiChip-outlined')
   })
 
+  it('gives each poll badge tone its own filled colour while keeping the text label', () => {
+    const tones = ['squadPoll', 'groupPoll', 'open', 'closed', 'side'] as const
+    const backgrounds = tones.map((tone) => {
+      const { unmount } = render(<RecordCard title="Poll" badge={{ label: `label-${tone}`, tone }} editLabel="Edit" onEdit={vi.fn()} />)
+      const chip = screen.getByText(`label-${tone}`).closest('.MuiChip-root') as HTMLElement
+      expect(chip).toHaveClass('MuiChip-filled')
+      const background = getComputedStyle(chip).backgroundColor
+      expect(background).not.toBe('')
+      unmount()
+      return background
+    })
+    expect(new Set(backgrounds).size).toBe(tones.length)
+  })
+
   it('renders the Edit action as a router link when editTo is provided', () => {
     render(
       <MemoryRouter initialEntries={['/products']}>

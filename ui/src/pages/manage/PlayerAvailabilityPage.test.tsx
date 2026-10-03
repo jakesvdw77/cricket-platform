@@ -141,6 +141,23 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.getByText('2 players · 1 game')).toBeInTheDocument()
   })
 
+  it('lays the filters out as Season, Section, Team, League, then search and toggles in a second row', async () => {
+    renderPage()
+    await loaded()
+
+    const order = ['Season', 'Section', 'Team', 'League'].map((name) => screen.getByLabelText(name))
+    for (let i = 0; i < order.length - 1; i += 1) {
+      expect(order[i].compareDocumentPosition(order[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    const search = screen.getByPlaceholderText('Search players')
+    expect(order[3].compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const toggle = screen.getByRole('checkbox', { name: 'Show past games' })
+    expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      toggle.compareDocumentPosition(screen.getByRole('button', { name: 'Jump to today' })) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it('defaults the season via pickDefaultSeasonId and sends only the set params', async () => {
     renderPage()
     await loaded()

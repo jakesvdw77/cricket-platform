@@ -148,7 +148,7 @@ describe('PollCard - squad poll', () => {
     renderCard({ kind: 'SQUAD', poll })
     await user.click(screen.getByRole('button', { name: 'Share invite' }))
     const text = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
-    expect(text.value).toContain('Hi Home Team!')
+    expect(text.value).toContain('Availability: Home Team vs')
     expect(text.value).toContain('/poll/poll-1')
   })
 
