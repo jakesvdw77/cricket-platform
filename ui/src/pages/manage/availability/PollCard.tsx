@@ -166,8 +166,8 @@ export function PollCard({
   const squadTeamName = item.kind === 'SQUAD' ? squadPollTeamName(item.poll, teamsById) : ''
 
   const badges = [
-    { label: isOpen ? 'Open' : 'Closed', tone: isOpen ? ('positive' as const) : ('muted' as const) },
-    ...(item.kind === 'SQUAD' ? [{ label: squadPollSideLabel(item.poll), tone: 'muted' as const }] : []),
+    { label: isOpen ? 'Open' : 'Closed', tone: isOpen ? ('open' as const) : ('closed' as const) },
+    ...(item.kind === 'SQUAD' ? [{ label: squadPollSideLabel(item.poll), tone: 'side' as const }] : []),
   ]
 
   return (
@@ -176,7 +176,7 @@ export function PollCard({
         title={title}
         description={subtitle}
         avatar={{ fallback: <EventAvailableOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-        badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: 'neutral' }}
+        badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: item.kind === 'GROUP' ? 'groupPoll' : 'squadPoll' }}
         badges={badges}
         // Long titles wrap to two lines instead of truncating in the ~320px card.
         titleWrap
@@ -294,6 +294,8 @@ export function PollCard({
           match={item.poll}
           teamName={squadTeamName}
           pollId={item.poll.pollId}
+          autoClose={item.poll.autoClose}
+          scheduledCloseAt={item.poll.scheduledCloseAt}
         />
       )}
 

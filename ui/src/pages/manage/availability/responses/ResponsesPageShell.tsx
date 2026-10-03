@@ -75,7 +75,19 @@ export function ResponsesPageShell({
           exclusive
           size="small"
           aria-label="Responses view"
-          sx={{ flex: 'none', alignSelf: { xs: 'stretch', sm: 'center' } }}
+          sx={{
+            flex: 'none',
+            alignSelf: { xs: 'stretch', sm: 'center' },
+            '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'none' }, px: 2, whiteSpace: 'nowrap' },
+            // The selected view is the green fill (primary main + white text), not MUI's faint grey.
+            '& .MuiToggleButton-root.Mui-selected, & .MuiToggleButton-root.Mui-selected:hover': {
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              borderColor: 'primary.main',
+              fontWeight: 600,
+            },
+            '& .MuiToggleButton-root.Mui-selected:hover': { bgcolor: 'primary.dark' },
+          }}
           onChange={(_event, next: View | null) => next && setView(next)}
         >
           <ToggleButton value="slot">Time slot</ToggleButton>

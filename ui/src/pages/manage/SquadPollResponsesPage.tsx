@@ -167,14 +167,14 @@ export default function SquadPollResponsesPage() {
       meta={
         <Stack spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip size="small" label="Squad poll" variant="filled" sx={badgeSx('neutral')} />
+            <Chip size="small" label="Squad poll" variant="filled" sx={badgeSx('squadPoll')} />
             <Chip
               size="small"
               label={responses.open ? 'Open' : 'Closed'}
               variant="filled"
-              sx={badgeSx(responses.open ? 'positive' : 'muted')}
+              sx={badgeSx(responses.open ? 'open' : 'closed')}
             />
-            <Chip size="small" label={squadPollSideLabel(sides)} variant="filled" sx={badgeSx('muted')} />
+            <Chip size="small" label={squadPollSideLabel(sides)} variant="filled" sx={badgeSx('side')} />
           </Stack>
           <Typography variant="body2" color="text.secondary">
             {formatMatchDateTime(match.matchDate)} · {match.venue ?? 'Venue TBC'}
@@ -215,6 +215,8 @@ export default function SquadPollResponsesPage() {
         match={match}
         teamName={squadPollTeamName(sides, teamsById)}
         pollId={poll.id}
+        autoClose={poll.autoClose}
+        scheduledCloseAt={poll.scheduledCloseAt}
       />
     </ResponsesPageShell>
   )

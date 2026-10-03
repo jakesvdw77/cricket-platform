@@ -119,11 +119,12 @@ export default function GroupPollResponsesPage() {
       }
       meta={
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Chip size="small" label="Group poll" variant="filled" sx={badgeSx('groupPoll')} />
           <Chip
             size="small"
             label={responses.open ? 'Open' : 'Closed'}
             variant="filled"
-            sx={badgeSx(responses.open ? 'positive' : 'muted')}
+            sx={badgeSx(responses.open ? 'open' : 'closed')}
           />
           <Typography variant="body2" color="text.secondary">
             {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
