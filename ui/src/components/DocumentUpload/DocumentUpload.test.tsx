@@ -35,6 +35,22 @@ describe('DocumentUpload', () => {
     expect(screen.queryByRole('button', { name: 'Upload' })).not.toBeInTheDocument()
   })
 
+  it('shows displayName instead of the stored file name when provided', () => {
+    render(
+      <DocumentUpload
+        label="Playing Conditions"
+        value={{ documentUrl: '/media/2f6a1c9e-playing-conditions.pdf', uploadedAt: '2026-02-01T09:00:00Z' }}
+        displayName="Playing Conditions.pdf"
+        onUpload={vi.fn()}
+        onUploaded={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Playing Conditions.pdf')).toBeInTheDocument()
+    expect(screen.queryByText('2f6a1c9e-playing-conditions.pdf')).not.toBeInTheDocument()
+    expect(screen.getByText(/Uploaded/)).toBeInTheDocument()
+  })
+
   it('rejects a non-PDF file client-side without ever calling onUpload', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn()

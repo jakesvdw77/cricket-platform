@@ -136,6 +136,24 @@ describe('RecordCard', () => {
     expect(mutedChip).not.toHaveClass('MuiChip-outlined')
   })
 
+  it('renders the league format, season and active tones as filled chips with their labels', () => {
+    render(
+      <RecordCard
+        title="League"
+        badges={[
+          { label: 'T20', tone: 'format' },
+          { label: '2026/27', tone: 'season' },
+          { label: 'Active', tone: 'active' },
+        ]}
+        onEdit={vi.fn()}
+      />,
+    )
+    for (const label of ['T20', '2026/27', 'Active']) {
+      const chip = screen.getByText(label).closest('.MuiChip-root')
+      expect(chip).toHaveClass('MuiChip-filled')
+    }
+  })
+
   it('renders the noPoll tone as a dashed outlined chip with muted text and its label', () => {
     render(<RecordCard title="Match" badge={{ label: 'No poll', tone: 'noPoll' }} editLabel="Edit" onEdit={vi.fn()} />)
     const chip = screen.getByText('No poll').closest('.MuiChip-root') as HTMLElement
