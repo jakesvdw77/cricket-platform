@@ -4,7 +4,7 @@
 
 Approved via an HTML design mockup built and confirmed by the user this session (Artifact `https://claude.ai/artifact/Y6SN8mS2JP46F1Eq4RpbeK`) — this spec transcribes that approved design, it does not redesign it.
 
-**Status:** approved.
+**Status:** approved. Layout superseded by `072-league-view-pages.md` (the single page is split into routed Schedule, Teams and Conditions views under one header); this spec's data fetching, contact quick view and team tile carry over.
 
 ## Problem & Goals
 

@@ -80,6 +80,21 @@ export const PollBadges: Story = {
   },
 }
 
+// docs/specs/072-league-view-pages.md: the league badge tones.
+export const LeagueBadges: Story = {
+  args: {
+    title: 'TVL Division 1',
+    badgesAbove: true,
+    badges: [
+      { label: 'T20', tone: 'format' },
+      { label: '8 teams', tone: 'side' },
+      { label: '2026/27', tone: 'season' },
+      { label: 'Active', tone: 'active' },
+    ],
+    onEdit: () => undefined,
+  },
+}
+
 // docs/specs/069-match-card-redesign.md: the dashed-outline 'No poll' tone beside the filled ones.
 export const NoPollBadge: Story = {
   args: {

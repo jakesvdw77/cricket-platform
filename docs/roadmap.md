@@ -146,6 +146,16 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk CSV import** of league teams.
 - **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
 
+## Deferred by `072` — League view pages
+
+`072-league-view-pages.md` split `062`'s single League page into routed Schedule, Teams and Conditions views under one header, fixed the 20-match truncation and labelled the conditions PDF "Playing Conditions.pdf". Still deferred:
+
+- **Persist the original Playing Conditions PDF file name.** The label is a fixed display string; the uploader's file name is not stored.
+- **Show Playing XI size and age range on the Conditions view**, to land with draft `055` (which moves them onto `LeaguePlayingConditions`).
+- **Check `RecordDetailScreen`'s `sections` prop for any remaining consumer.** `072` removed the last `/manage` league user, as `062` had asked.
+- **Stale `LeagueDetailPage` mentions in code comments** (`utils/playingConditions.ts`, `utils/leagueContact.ts`, `NextMatchCountdown`, `LeagueFixtures`, `ShareScheduleDialog`, `api/leagueApi.ts`) can be cleaned up opportunistically.
+- **Push the purple format token and the new badge tones to Claude Design** (the design-token-sync push step needs a session with that tool).
+
 ## Deferred by `052` — the rest of `League`'s per-season fields
 
 `052-league-playing-conditions.md`'s Rollout Notes (Amendment) moved `League.allowSubstitutions` to the per-season `LeaguePlayingConditions.allowSubstitutions` — confirmed by reading every call site to be purely informational display text, enforced by nothing, so the move was safe and mechanical within that spec's own PR.

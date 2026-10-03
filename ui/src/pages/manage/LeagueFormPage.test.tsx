@@ -68,11 +68,21 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
 // docs/specs/050-league-schedule-and-fixtures.md: the new Schedule tab's own data — matches
 // (listMatches, reused unmodified from the existing matchApi) and Playing Conditions (the new
 // leaguePlayingConditionsApi module).
-vi.mock('../../api/matchApi', () => ({
-  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+// docs/specs/072-league-view-pages.md: matchApi stays real so the Schedule tab's listAllMatches paging
+// is genuinely exercised; only the HTTP layer is stubbed, routing each page request to the
+// `listMatches(clubId, params)` mock below.
+vi.mock('../../api/axiosConfig', () => ({
+  default: {
+    get: async (url: string, config: { params: unknown }) => ({
+      data: await listMatches(url.split('/')[3], config.params),
+    }),
+  },
 }))
 
-vi.mock('../../api/leaguePlayingConditionsApi', () => ({
+vi.mock('../../api/leaguePlayingConditionsApi', async () => ({
+  PLAYING_CONDITIONS_PDF_NAME: (
+    await vi.importActual<typeof import('../../api/leaguePlayingConditionsApi')>('../../api/leaguePlayingConditionsApi')
+  ).PLAYING_CONDITIONS_PDF_NAME,
   getPlayingConditions: (clubId: string, leagueId: string, seasonId: string) =>
     getPlayingConditions(clubId, leagueId, seasonId),
   uploadPlayingConditions: (clubId: string, leagueId: string, seasonId: string, file: File) =>
@@ -405,6 +415,50 @@ describe('LeagueFormPage', () => {
       )
     })
 
+    // docs/specs/072-league-view-pages.md: the Schedule tab loads every page of the season, not just
+    // the first 20 - 45 matches over pages of 200 here is forced to three by the stubbed totalPages.
+    it('loads every page of the season\'s matches, not just the first', async () => {
+      const user = userEvent.setup()
+      const pageContent = (page: number) => [
+        makeMatch({ id: `match-${page}`, homeTeamId: 'team-1', awayTeamName: `Opponent page ${page}` }),
+      ]
+      listMatches.mockImplementation(async (_clubId: string, params: { page: number }) => ({
+        content: pageContent(params.page),
+        totalElements: 3,
+        totalPages: 3,
+        number: params.page,
+        size: 200,
+      }))
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByText('Opponent page 0')).toBeInTheDocument()
+      expect(screen.getByText('Opponent page 1')).toBeInTheDocument()
+      expect(screen.getByText('Opponent page 2')).toBeInTheDocument()
+      expect(listMatches).toHaveBeenCalledTimes(3)
+      expect(listMatches).toHaveBeenLastCalledWith(
+        'test-club-id',
+        expect.objectContaining({ page: 2, size: 200, sort: 'matchDate,asc', leagueId: 'league-1', seasonId: 'season-1' }),
+      )
+    })
+
+    it('disables Share and shows no empty state while the matches are loading', async () => {
+      const user = userEvent.setup()
+      listMatches.mockReturnValue(new Promise(() => undefined))
+
+      renderScheduleTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+
+      expect(await screen.findByLabelText('Loading fixtures')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled()
+      expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
+    })
+
     it('renders the League Fixtures empty state when the selected season has no matches yet', async () => {
       const user = userEvent.setup()
 
@@ -429,7 +483,7 @@ describe('LeagueFormPage', () => {
     })
 
     // docs/specs/051-league-schedule-sharing.md item 8: the Share button, rendered alongside "Add
-    // Match" in the same row, opens the same ShareScheduleDialog used on LeagueDetailPage.tsx.
+    // Match" in the same row, opens the same ShareScheduleDialog used on the league Schedule view.
     it('"Share" button, alongside "Add Match", opens ShareScheduleDialog', async () => {
       const user = userEvent.setup()
 
@@ -526,7 +580,9 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
 
-      expect(await screen.findByText('2f6a1c9e-playing-conditions.pdf')).toBeInTheDocument()
+      // docs/specs/072-league-view-pages.md: the stored uuid file name is never shown.
+      expect(await screen.findByText('Playing Conditions.pdf')).toBeInTheDocument()
+      expect(screen.queryByText('2f6a1c9e-playing-conditions.pdf')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
     })
 

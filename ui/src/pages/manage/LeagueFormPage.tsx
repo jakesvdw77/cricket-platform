@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, MenuItem, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -27,14 +27,19 @@ import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
-import { listMatches } from '../../api/matchApi'
+import { listAllMatches } from '../../api/matchApi'
 import {
   listLeagueAffiliations,
   createLeagueAffiliation,
   unaffiliateLeagueTeam,
 } from '../../api/leagueAffiliationApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
-import { getPlayingConditions, uploadPlayingConditions, updatePlayingConditions } from '../../api/leaguePlayingConditionsApi'
+import {
+  getPlayingConditions,
+  uploadPlayingConditions,
+  updatePlayingConditions,
+  PLAYING_CONDITIONS_PDF_NAME,
+} from '../../api/leaguePlayingConditionsApi'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
@@ -144,10 +149,11 @@ export default function LeagueFormPage() {
 
   // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
   // list, rendered via the reusable LeagueFixtures component — reuses the existing
-  // listMatches(leagueId, seasonId) filter combination, no new endpoint.
+  // listAllMatches (docs/specs/072-league-view-pages.md: every page of the season, not just the first
+  // 20) filter combination, no new endpoint.
   const matchesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'matches', selectedSeasonId],
-    queryFn: () => listMatches(clubId as string, { page: 0, leagueId: leagueId as string, seasonId: selectedSeasonId }),
+    queryFn: () => listAllMatches(clubId as string, { leagueId: leagueId as string, seasonId: selectedSeasonId }),
     enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId) && isEdit,
   })
 
@@ -189,7 +195,7 @@ export default function LeagueFormPage() {
   )
 
   // docs/specs/051-league-schedule-sharing.md: same seasonLabel derivation as
-  // LeagueDetailPage.tsx — neither host page previously computed a plain season label string.
+  // the league Schedule view (LeagueScheduleView.tsx) — neither host page previously computed a plain season label string.
   const seasonLabel = useMemo(
     () => seasonsQuery.data?.find((season) => season.id === selectedSeasonId)?.label ?? '',
     [seasonsQuery.data, selectedSeasonId],
@@ -202,7 +208,7 @@ export default function LeagueFormPage() {
 
   const handleSharePdf = async (teamFilter: ShareScheduleTeamOption | null) => {
     const url = await generateLeagueSchedulePdf(
-      matchesQuery.data?.content ?? [],
+      matchesQuery.data ?? [],
       teamsById,
       league?.name ?? '',
       seasonLabel,
@@ -213,7 +219,7 @@ export default function LeagueFormPage() {
 
   const handleSharePoster = async (teamFilter: ShareScheduleTeamOption | null) => {
     const url = await generateLeagueSchedulePoster(
-      matchesQuery.data?.content ?? [],
+      matchesQuery.data ?? [],
       teamsById,
       league?.name ?? '',
       seasonLabel,
@@ -224,7 +230,7 @@ export default function LeagueFormPage() {
   }
 
   const handleShareCalendar = async (team: ShareScheduleTeamOption) => {
-    const url = generateLeagueScheduleIcs(matchesQuery.data?.content ?? [], teamsById, league?.name ?? '', seasonLabel, team)
+    const url = generateLeagueScheduleIcs(matchesQuery.data ?? [], teamsById, league?.name ?? '', seasonLabel, team)
     triggerDownload(url, `${team.teamName}-schedule.ics`)
   }
 
@@ -508,13 +514,18 @@ export default function LeagueFormPage() {
                     variant="secondary"
                     size="sm"
                     startIcon={<ShareOutlinedIcon fontSize="small" />}
+                    disabled={matchesQuery.isLoading}
                     onClick={() => setShareOpen(true)}
                   >
                     Share
                   </Button>
                 </Stack>
 
-                <LeagueFixtures matches={matchesQuery.data?.content ?? []} teamsById={teamsById} />
+                {matchesQuery.isLoading ? (
+                  <Skeleton variant="rounded" height={96} aria-label="Loading fixtures" />
+                ) : (
+                  <LeagueFixtures matches={matchesQuery.data ?? []} teamsById={teamsById} />
+                )}
               </Stack>
             )}
           </Box>
@@ -551,6 +562,7 @@ export default function LeagueFormPage() {
                   </Typography>
                   <DocumentUpload
                     label="Playing Conditions"
+                    displayName={PLAYING_CONDITIONS_PDF_NAME}
                     value={
                       playingConditionsQuery.data?.documentUrl
                         ? {

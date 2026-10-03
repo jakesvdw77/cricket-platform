@@ -32,6 +32,9 @@ export interface DocumentUploadProps {
   // `value`, since (unlike MediaUpload's plain form-state value) this control's value is normally
   // server state owned by the caller, not local form state.
   onUploaded: (documentUrl: string) => void
+  // docs/specs/072-league-view-pages.md: replaces the stored (uuid-prefixed) file name as the line
+  // shown for an uploaded document. Omitted, the name derived from the URL is shown as before.
+  displayName?: string
 }
 
 // The backend never preserves a document's original filename (MediaServiceImpl generates a UUID
@@ -42,7 +45,7 @@ function filenameFromUrl(url: string): string {
   return segments[segments.length - 1] || url
 }
 
-export function DocumentUpload({ label, value, onUpload, onUploaded }: DocumentUploadProps) {
+export function DocumentUpload({ label, value, onUpload, onUploaded, displayName }: DocumentUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,7 +115,7 @@ export function DocumentUpload({ label, value, onUpload, onUploaded }: DocumentU
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="body2" fontWeight={600} noWrap>
-              {value ? filenameFromUrl(value.documentUrl) : 'No document uploaded yet'}
+              {value ? (displayName ?? filenameFromUrl(value.documentUrl)) : 'No document uploaded yet'}
             </Typography>
             {value && (
               <Typography variant="caption" color="text.secondary">

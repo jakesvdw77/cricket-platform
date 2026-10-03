@@ -26,4 +26,35 @@ describe('RecordIconButton', () => {
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })
+
+  it('compact renders only a 32px avatar with no caption but keeps the accessible name', () => {
+    render(
+      <RecordIconButton compact shape="circular" label="Jane Smith — Manager" name="Jane Smith" initials="JS" onClick={vi.fn()} />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Jane Smith — Manager' })
+    expect(button).toHaveAttribute('title', 'Jane Smith — Manager')
+    expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument()
+    const avatar = screen.getByText('JS').closest('.MuiAvatar-root') as HTMLElement
+    expect(getComputedStyle(avatar).width).toBe('32px')
+    expect(getComputedStyle(avatar).height).toBe('32px')
+  })
+
+  it('compact still calls onClick', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(<RecordIconButton compact shape="circular" label="Jane" name="Jane" initials="J" onClick={onClick} />)
+
+    await user.click(screen.getByRole('button', { name: 'Jane' }))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('default (non-compact) is 44px with the caption', () => {
+    render(<RecordIconButton shape="circular" label="Jane" name="Jane" initials="J" onClick={vi.fn()} />)
+
+    const avatar = screen.getByText('J').closest('.MuiAvatar-root') as HTMLElement
+    expect(getComputedStyle(avatar).width).toBe('44px')
+    expect(screen.getByText('Jane')).toBeInTheDocument()
+  })
 })

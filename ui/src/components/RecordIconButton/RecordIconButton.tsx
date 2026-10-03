@@ -8,6 +8,9 @@ export interface RecordIconButtonProps {
   name: string
   initials: string
   onClick: () => void
+  // docs/specs/072-league-view-pages.md: render only a 32px avatar (no caption, no fixed width) for
+  // a dense inline row. Still a ButtonBase with the label as its title/aria-label. Default unchanged.
+  compact?: boolean
 }
 
 // One tappable avatar icon for a "tap to view" icon grid — extracted from ClubOverviewPage.tsx's
@@ -22,7 +25,16 @@ export interface RecordIconButtonProps {
 // opening each one's quick-view dialog. `label`/`aria-label` stay as the fuller "name — role"
 // accessible name (unchanged); `name` is deliberately just the bare name, kept short under the
 // fixed avatar width.
-export function RecordIconButton({ imageUrl, shape, label, name, initials, onClick }: RecordIconButtonProps) {
+export function RecordIconButton({ imageUrl, shape, label, name, initials, onClick, compact }: RecordIconButtonProps) {
+  if (compact) {
+    return (
+      <ButtonBase onClick={onClick} title={label} aria-label={label} sx={{ borderRadius: '50%', width: 'auto' }}>
+        <Avatar src={imageUrl ?? undefined} variant={shape} sx={avatarSx(32, '0.6875rem')}>
+          {initials}
+        </Avatar>
+      </ButtonBase>
+    )
+  }
   return (
     <ButtonBase
       onClick={onClick}

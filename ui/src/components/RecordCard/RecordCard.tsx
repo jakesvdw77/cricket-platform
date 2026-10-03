@@ -17,6 +17,7 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import { STRUCTURAL_PURPLE } from '../../theme'
 import { Button } from '../Button'
 
 // The first three are the original general-purpose tones. The poll tones are for the availability
@@ -33,6 +34,11 @@ export type RecordCardBadgeTone =
   | 'closed'
   | 'side'
   | 'noPoll'
+  // docs/specs/072-league-view-pages.md: the league card/header badges - format (purple), season
+  // (amber) and active (green tint).
+  | 'format'
+  | 'season'
+  | 'active'
 
 export interface RecordCardBadge {
   label: string
@@ -240,6 +246,9 @@ export function badgeSx(tone: RecordCardBadgeTone) {
   }
   if (tone === 'squadPoll') return tintedBadgeSx('primary', 'primary.dark')
   if (tone === 'groupPoll') return tintedBadgeSx('warning', 'warning.dark')
+  if (tone === 'format') return tintedBadgeSx('purple', 'purple.dark', 0.1)
+  if (tone === 'season') return tintedBadgeSx('warning', 'warning.dark')
+  if (tone === 'active') return tintedBadgeSx('success', 'success.dark')
   if (tone === 'side') return tintedBadgeSx('info', 'info.dark')
   if (tone === 'closed') return tintedBadgeSx('error', 'error.dark')
   if (tone === 'open') {
@@ -250,12 +259,20 @@ export function badgeSx(tone: RecordCardBadgeTone) {
 
 // A light tint of the palette colour with a matching border and a dark same-hue text, so the badge
 // stays legible on the white card.
-function tintedBadgeSx(palette: 'primary' | 'warning' | 'info' | 'error', color: string) {
+function tintedBadgeSx(
+  palette: 'primary' | 'warning' | 'info' | 'error' | 'success' | 'purple',
+  color: string,
+  fill = 0.14,
+) {
+  // The purple token falls back to the structural constant so a badge rendered outside the app's
+  // ThemeProvider (tests, stories) still resolves a colour.
+  const main = (theme: Theme) =>
+    palette === 'purple' ? (theme.palette.purple ?? STRUCTURAL_PURPLE).main : theme.palette[palette].main
   return {
-    bgcolor: (theme: Theme) => alpha(theme.palette[palette].main, 0.14),
-    color,
+    bgcolor: (theme: Theme) => alpha(main(theme), fill),
+    color: palette === 'purple' ? (theme: Theme) => (theme.palette.purple ?? STRUCTURAL_PURPLE).dark : color,
     border: 1,
-    borderColor: (theme: Theme) => alpha(theme.palette[palette].main, 0.5),
+    borderColor: (theme: Theme) => alpha(main(theme), 0.5),
     fontWeight: 600,
   }
 }

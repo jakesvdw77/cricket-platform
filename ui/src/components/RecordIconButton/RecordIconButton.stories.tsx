@@ -30,6 +30,10 @@ export const Rounded: Story = {
   },
 }
 
+export const Compact: Story = {
+  args: { ...Circular.args, compact: true },
+}
+
 export const MobileViewport: Story = {
   args: Circular.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
