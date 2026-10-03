@@ -3868,6 +3868,55 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SectionDto"
+  /api/v1/manage/clubs/{clubId}/player-availability:
+    get:
+      tags:
+      - player-availability-controller
+      operationId: listPlayerAvailability
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: includePast
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerAvailabilityDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad:
     get:
       tags:
@@ -6610,6 +6659,98 @@ components:
         windowId:
           type: string
           format: uuid
+    CellDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNSURE
+          - UNAVAILABLE
+          - NO_RESPONSE
+          - NOT_IN_POLL
+        picked:
+          type: boolean
+    GameColumnDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        label:
+          type: string
+        venue:
+          type: string
+        leagueId:
+          type: string
+          format: uuid
+        leagueName:
+          type: string
+        teamId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        pollType:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        pollId:
+          type: string
+          format: uuid
+        roundId:
+          type: string
+          format: uuid
+    PlayerAvailabilityDto:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameColumnDto"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerRowDto"
+        truncated:
+          type: boolean
+    PlayerRowDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: integer
+          format: int32
+        answeredCount:
+          type: integer
+          format: int32
+        pickedCount:
+          type: integer
+          format: int32
+        cells:
+          type: array
+          items:
+            $ref: "#/components/schemas/CellDto"
     PageMatchDto:
       type: object
       properties:

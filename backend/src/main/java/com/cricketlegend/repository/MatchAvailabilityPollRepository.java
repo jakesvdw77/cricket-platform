@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.Collection;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import java.time.Instant;
 import java.util.List;
@@ -46,4 +47,7 @@ public interface MatchAvailabilityPollRepository extends JpaRepository<MatchAvai
     @Query("SELECT p FROM MatchAvailabilityPoll p WHERE p.open = true AND p.autoClose = true "
             + "AND p.scheduledCloseAt IS NOT NULL AND p.scheduledCloseAt <= :now")
     List<MatchAvailabilityPoll> findDueForAutoClose(@Param("now") Instant now);
+
+    /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
+    List<MatchAvailabilityPoll> findByMatchIdIn(Collection<UUID> matchIds);
 }

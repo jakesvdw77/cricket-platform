@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Team;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -24,6 +25,13 @@ public interface SectionAvailabilityMatchResolver {
 
     /** The {@code (sectionId, windowDate, dayPart)} triple a given {@code team}+{@code match} resolves to. */
     WindowKey resolveWindowKey(Team team, Match match);
+
+    /**
+     * The one day-part rule: local time ({@code ZoneId.systemDefault()}) before noon is {@code
+     * MORNING}, otherwise {@code AFTERNOON}. Also used by the player availability grid
+     * (docs/specs/068-player-availability-grid.md) for games not covered by a group window.
+     */
+    DayPart dayPartOf(Instant matchDate);
 
     /** The identity of a {@code SectionAvailabilityWindow}, before it's known whether one actually exists yet. */
     record WindowKey(UUID sectionId, LocalDate windowDate, DayPart dayPart) {

@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.Collection;
 import com.cricketlegend.domain.PlayerAvailability;
 import java.util.List;
 import java.util.Optional;
@@ -14,4 +15,7 @@ public interface PlayerAvailabilityRepository extends JpaRepository<PlayerAvaila
     void deleteByPollId(UUID pollId);
 
     Optional<PlayerAvailability> findByPollIdAndPlayerProfileId(UUID pollId, UUID playerProfileId);
+
+    /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
+    List<PlayerAvailability> findByPollIdIn(Collection<UUID> pollIds);
 }

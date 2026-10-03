@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.Collection;
 import com.cricketlegend.domain.MatchSidePlayer;
 import java.util.List;
 import java.util.Optional;
@@ -18,4 +19,7 @@ public interface MatchSidePlayerRepository extends JpaRepository<MatchSidePlayer
     long countByMatchSideId(UUID matchSideId);
 
     void deleteByMatchSideIdAndPlayerProfileId(UUID matchSideId, UUID playerProfileId);
+
+    /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
+    List<MatchSidePlayer> findByMatchSideIdIn(Collection<UUID> matchSideIds);
 }

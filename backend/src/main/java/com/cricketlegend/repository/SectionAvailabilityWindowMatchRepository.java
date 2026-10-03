@@ -22,4 +22,7 @@ public interface SectionAvailabilityWindowMatchRepository extends JpaRepository<
     List<SectionAvailabilityWindowMatch> findByWindowId(UUID windowId);
 
     List<SectionAvailabilityWindowMatch> findByWindowIdIn(Collection<UUID> windowIds);
+
+    /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
+    List<SectionAvailabilityWindowMatch> findByMatchIdIn(Collection<UUID> matchIds);
 }
