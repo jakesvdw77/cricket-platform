@@ -705,6 +705,41 @@ class SectionAvailabilityRoundServiceImplTest {
                         tuple(afternoonMatchId, afternoonTeamId, "Visitors", afternoonWindowId));
     }
 
+    // 070: a league-team side has no teamId, so only the own team gets a row, labelled with the
+    // copied *TeamName.
+    @Test
+    void getMatchesLabelsALeagueTeamOpponentByItsCopiedNameAndGivesItNoRow() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        UUID windowId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        SectionAvailabilityRound openRound = round(roundId, clubId, sectionId, true);
+        SectionAvailabilityWindow window = SectionAvailabilityWindow.builder()
+                .id(windowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING).open(true).build();
+        Match match = Match.builder()
+                .id(matchId)
+                .homeTeamId(teamId)
+                .awayTeamName("Hillside CC")
+                .awayLeagueTeamId(UUID.randomUUID())
+                .matchDate(Instant.parse("2026-09-27T09:00:00Z"))
+                .build();
+        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(openRound));
+        when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(window));
+        when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(List.of(
+                SectionAvailabilityWindowMatch.builder().windowId(windowId).matchId(matchId).build()));
+        when(matchRepository.findAllById(any())).thenReturn(List.of(match));
+        when(teamRepository.findById(teamId))
+                .thenReturn(Optional.of(Team.builder().id(teamId).sectionId(sectionId).name("U15 Colts").build()));
+
+        List<SectionAvailabilityRoundMatchDto> result = service.getMatches(authentication, clubId, roundId);
+
+        assertThat(result)
+                .extracting(SectionAvailabilityRoundMatchDto::teamId, SectionAvailabilityRoundMatchDto::opponentLabel)
+                .containsExactly(tuple(teamId, "Hillside CC"));
+    }
+
     @Test
     void getMatchesReturns404WhenRoundBelongsToADifferentClub() {
         UUID roundId = UUID.randomUUID();

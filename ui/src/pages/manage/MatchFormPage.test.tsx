@@ -71,6 +71,21 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
   listLeagueAffiliations: (clubId: string, leagueId: string) => listLeagueAffiliations(clubId, leagueId),
 }))
 
+const activateSession = vi.fn()
+const listLeagueTeams = vi.fn()
+
+vi.mock('../../api/meApi', () => ({
+  activateSession: () => activateSession(),
+}))
+
+vi.mock('../../api/leagueTeamApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/leagueTeamApi')>()
+  return {
+    ...actual,
+    listLeagueTeams: (clubId: string, leagueId: string, seasonId: string) => listLeagueTeams(clubId, leagueId, seasonId),
+  }
+})
+
 vi.mock('../../api/teamSquadApi', () => ({
   listSquad: (clubId: string, teamId: string, seasonId: string) => listSquad(clubId, teamId, seasonId),
   addToSquad: (clubId: string, teamId: string, seasonId: string, playerId: string) =>
@@ -211,6 +226,8 @@ const UNCOVERED_SQUAD = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  activateSession.mockResolvedValue({ personId: null, personStatus: null, platformAdmin: false, clubAdminClubIds: [] })
+  listLeagueTeams.mockResolvedValue([])
   listTeamsForClub.mockResolvedValue([
     { id: 'team-1', clubId: 'test-club-id', sectionId: 'section-1', name: '1st XI', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
     { id: 'team-2', clubId: 'test-club-id', sectionId: 'section-1', name: '2nd XI', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },

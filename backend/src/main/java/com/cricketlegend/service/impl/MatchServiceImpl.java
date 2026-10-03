@@ -3,6 +3,7 @@ package com.cricketlegend.service.impl;
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
@@ -18,6 +19,7 @@ import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.LeagueTeamRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
@@ -74,6 +76,7 @@ public class MatchServiceImpl implements MatchService {
     private final MatchPollCoverageService matchPollCoverageService;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
+    private final LeagueTeamRepository leagueTeamRepository;
     private final TeamRepository teamRepository;
     private final SectionRepository sectionRepository;
     private final MatchMapper matchMapper;
@@ -86,6 +89,7 @@ public class MatchServiceImpl implements MatchService {
             MatchPollCoverageService matchPollCoverageService,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
+            LeagueTeamRepository leagueTeamRepository,
             TeamRepository teamRepository,
             SectionRepository sectionRepository,
             MatchMapper matchMapper,
@@ -96,6 +100,7 @@ public class MatchServiceImpl implements MatchService {
         this.matchPollCoverageService = matchPollCoverageService;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
+        this.leagueTeamRepository = leagueTeamRepository;
         this.teamRepository = teamRepository;
         this.sectionRepository = sectionRepository;
         this.matchMapper = matchMapper;
@@ -370,7 +375,8 @@ public class MatchServiceImpl implements MatchService {
                     homeClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.homeTeamId()) : null,
                     awayClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.awayTeamId()) : null,
                     dto.leagueId() == null ? null : xiSizeByLeagueId.get(dto.leagueId()),
-                    polls);
+                    polls,
+                    dto.homeLeagueTeamId(), dto.awayLeagueTeamId());
         });
     }
 
@@ -400,11 +406,20 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public MatchDto create(Authentication authentication, UUID clubId, CreateMatchRequest request) {
-        validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
+        validateSides(
+                request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
+                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
         validateLogoOnlyWithName(
-                request.homeTeamName(), request.homeTeamLogoUrl(), request.awayTeamName(), request.awayTeamLogoUrl());
+                request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
+                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
+        LeagueTeam homeLeagueTeam = resolveLeagueTeam(
+                clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
+                request.awayLeagueTeamId(), null, "home");
+        LeagueTeam awayLeagueTeam = resolveLeagueTeam(
+                clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
+                request.homeLeagueTeamId(), null, "away");
         accessService.assertCanAdministerAnySection(
                 authentication,
                 clubId,
@@ -413,11 +428,13 @@ public class MatchServiceImpl implements MatchService {
         Match match = Match.builder()
                 .clubId(clubId)
                 .homeTeamId(request.homeTeamId())
-                .homeTeamName(request.homeTeamName())
+                .homeTeamName(sideName(homeLeagueTeam, request.homeTeamName()))
                 .awayTeamId(request.awayTeamId())
-                .awayTeamName(request.awayTeamName())
-                .homeTeamLogoUrl(request.homeTeamLogoUrl())
-                .awayTeamLogoUrl(request.awayTeamLogoUrl())
+                .awayTeamName(sideName(awayLeagueTeam, request.awayTeamName()))
+                .homeLeagueTeamId(request.homeLeagueTeamId())
+                .awayLeagueTeamId(request.awayLeagueTeamId())
+                .homeTeamLogoUrl(sideLogo(homeLeagueTeam, request.homeTeamLogoUrl()))
+                .awayTeamLogoUrl(sideLogo(awayLeagueTeam, request.awayTeamLogoUrl()))
                 .leagueId(request.leagueId())
                 .seasonId(request.seasonId())
                 .matchDate(request.matchDate())
@@ -431,20 +448,33 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public MatchDto update(Authentication authentication, UUID clubId, UUID matchId, UpdateMatchRequest request) {
-        validateSides(request.homeTeamId(), request.homeTeamName(), request.awayTeamId(), request.awayTeamName());
+        // The stored match is loaded before side validation so an already-referenced (now
+        // inactive) league team may be kept unchanged — see resolveLeagueTeam.
+        Match match = findOrThrowForClub(clubId, matchId);
+        validateSides(
+                request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
+                request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
         validateLogoOnlyWithName(
-                request.homeTeamName(), request.homeTeamLogoUrl(), request.awayTeamName(), request.awayTeamLogoUrl());
+                request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
+                request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
+        LeagueTeam homeLeagueTeam = resolveLeagueTeam(
+                clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
+                request.awayLeagueTeamId(), match.getHomeLeagueTeamId(), "home");
+        LeagueTeam awayLeagueTeam = resolveLeagueTeam(
+                clubId, request.leagueId(), request.seasonId(), request.awayLeagueTeamId(),
+                request.homeLeagueTeamId(), match.getAwayLeagueTeamId(), "away");
 
-        Match match = findOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
         match.setHomeTeamId(request.homeTeamId());
-        match.setHomeTeamName(request.homeTeamName());
+        match.setHomeTeamName(sideName(homeLeagueTeam, request.homeTeamName()));
         match.setAwayTeamId(request.awayTeamId());
-        match.setAwayTeamName(request.awayTeamName());
-        match.setHomeTeamLogoUrl(request.homeTeamLogoUrl());
-        match.setAwayTeamLogoUrl(request.awayTeamLogoUrl());
+        match.setAwayTeamName(sideName(awayLeagueTeam, request.awayTeamName()));
+        match.setHomeLeagueTeamId(request.homeLeagueTeamId());
+        match.setAwayLeagueTeamId(request.awayLeagueTeamId());
+        match.setHomeTeamLogoUrl(sideLogo(homeLeagueTeam, request.homeTeamLogoUrl()));
+        match.setAwayTeamLogoUrl(sideLogo(awayLeagueTeam, request.awayTeamLogoUrl()));
         match.setLeagueId(request.leagueId());
         match.setSeasonId(request.seasonId());
         match.setMatchDate(request.matchDate());
@@ -485,9 +515,28 @@ public class MatchServiceImpl implements MatchService {
                 pageable.getPageNumber(), pageable.getPageSize(), Sort.by("matchDate").descending());
     }
 
-    private void validateSides(UUID homeTeamId, String homeTeamName, UUID awayTeamId, String awayTeamName) {
-        validateExactlyOneOfIdOrName(homeTeamId, homeTeamName, "home");
-        validateExactlyOneOfIdOrName(awayTeamId, awayTeamName, "away");
+    /**
+     * Per docs/specs/070-league-teams.md, each side is exactly one of: an own team ({@code
+     * *TeamId}, no league team), a league team ({@code *LeagueTeamId}, no {@code *TeamId}; any
+     * client-sent name/logo is ignored and overwritten from the league team), or a free-text
+     * opponent ({@code *TeamName}, no ids).
+     */
+    private void validateSides(
+            UUID homeTeamId, String homeTeamName, UUID homeLeagueTeamId,
+            UUID awayTeamId, String awayTeamName, UUID awayLeagueTeamId) {
+        validateSide(homeTeamId, homeTeamName, homeLeagueTeamId, "home");
+        validateSide(awayTeamId, awayTeamName, awayLeagueTeamId, "away");
+    }
+
+    private void validateSide(UUID teamId, String teamName, UUID leagueTeamId, String side) {
+        if (leagueTeamId != null) {
+            if (teamId != null) {
+                throw new ValidationException(
+                        side + "LeagueTeamId cannot be set alongside " + side + "TeamId");
+            }
+            return;
+        }
+        validateExactlyOneOfIdOrName(teamId, teamName, side);
     }
 
     private void validateExactlyOneOfIdOrName(UUID teamId, String teamName, String side) {
@@ -508,9 +557,16 @@ public class MatchServiceImpl implements MatchService {
      * #validateSides} from both {@link #create}/{@link #update}.
      */
     private void validateLogoOnlyWithName(
-            String homeTeamName, String homeTeamLogoUrl, String awayTeamName, String awayTeamLogoUrl) {
-        validateLogoOnlyWithName(homeTeamName, homeTeamLogoUrl, "home");
-        validateLogoOnlyWithName(awayTeamName, awayTeamLogoUrl, "away");
+            String homeTeamName, String homeTeamLogoUrl, UUID homeLeagueTeamId,
+            String awayTeamName, String awayTeamLogoUrl, UUID awayLeagueTeamId) {
+        // A league-team side's name/logo come from the league team (client values are ignored),
+        // so the free-text logo rule only applies to the other two kinds of side.
+        if (homeLeagueTeamId == null) {
+            validateLogoOnlyWithName(homeTeamName, homeTeamLogoUrl, "home");
+        }
+        if (awayLeagueTeamId == null) {
+            validateLogoOnlyWithName(awayTeamName, awayTeamLogoUrl, "away");
+        }
     }
 
     private void validateLogoOnlyWithName(String teamName, String teamLogoUrl, String side) {
@@ -530,6 +586,48 @@ public class MatchServiceImpl implements MatchService {
             throw new ValidationException("seasonId is required");
         }
         LeagueSeasonAccessValidation.assertSeasonBelongsToClub(seasonRepository, seasonId, clubId);
+    }
+
+    /**
+     * Per docs/specs/070-league-teams.md: resolves one side's league team (null when the side has
+     * none). The league team must exist and belong to this club via its league (404); the match
+     * must have a league whose id and season equal the league team's (400); the other side must
+     * not reference the same league team (400); an inactive league team may not be newly selected
+     * (400) unless it is the one already stored on this side of the match ({@code
+     * storedLeagueTeamId}, null on create).
+     */
+    private LeagueTeam resolveLeagueTeam(
+            UUID clubId, UUID matchLeagueId, UUID matchSeasonId, UUID leagueTeamId, UUID otherSideLeagueTeamId,
+            UUID storedLeagueTeamId, String side) {
+        if (leagueTeamId == null) {
+            return null;
+        }
+        if (leagueTeamId.equals(otherSideLeagueTeamId)) {
+            throw new ValidationException("Home and away cannot be the same league team");
+        }
+        LeagueTeam leagueTeam = leagueTeamRepository
+                .findById(leagueTeamId)
+                .orElseThrow(() -> new NotFoundException("League team not found: " + leagueTeamId));
+        LeagueSeasonAccessValidation.assertLeagueBelongsToClub(leagueRepository, leagueTeam.getLeagueId(), clubId);
+        if (matchLeagueId == null) {
+            throw new ValidationException(side + "LeagueTeamId requires the match to have a league");
+        }
+        if (!leagueTeam.getLeagueId().equals(matchLeagueId) || !leagueTeam.getSeasonId().equals(matchSeasonId)) {
+            throw new ValidationException(
+                    side + "LeagueTeamId must belong to the match's league and season");
+        }
+        if (!leagueTeam.isActive() && !leagueTeamId.equals(storedLeagueTeamId)) {
+            throw new ValidationException("League team is inactive: " + leagueTeamId);
+        }
+        return leagueTeam;
+    }
+
+    private String sideName(LeagueTeam leagueTeam, String requestedName) {
+        return leagueTeam == null ? requestedName : leagueTeam.getName();
+    }
+
+    private String sideLogo(LeagueTeam leagueTeam, String requestedLogoUrl) {
+        return leagueTeam == null ? requestedLogoUrl : leagueTeam.getLogoUrl();
     }
 
     private void validateTeamReferences(UUID homeTeamId, UUID awayTeamId) {

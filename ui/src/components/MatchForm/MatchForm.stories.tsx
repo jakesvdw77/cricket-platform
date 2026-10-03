@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
+import { MemoryRouter } from 'react-router-dom'
 import { MatchForm } from './MatchForm'
 import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import type { LeagueTeam } from '../../api/leagueTeamApi'
 
 function makeTeam(overrides: Partial<Team> = {}): Team {
   return {
@@ -92,15 +94,39 @@ const AFFILIATIONS: LeagueAffiliation[] = [
   makeAffiliation({ id: 'affiliation-2', teamId: 'team-2' }),
 ]
 
+function makeLeagueTeam(overrides: Partial<LeagueTeam> = {}): LeagueTeam {
+  return {
+    id: 'lt-1',
+    leagueId: 'league-1',
+    seasonId: 'season-1',
+    name: 'Centurion Brits CC',
+    abbreviation: 'CBC',
+    logoUrl: null,
+    active: true,
+    referencedByMatchCount: 0,
+    ...overrides,
+  }
+}
+
+// One inactive entry: only offered when a side already holds it (docs/specs/070-league-teams.md).
+const LEAGUE_TEAMS: LeagueTeam[] = [
+  makeLeagueTeam({ id: 'lt-1', name: 'Centurion Brits CC', abbreviation: 'CBC' }),
+  makeLeagueTeam({ id: 'lt-2', name: 'Laudium Cricket Club', abbreviation: 'LCC' }),
+  makeLeagueTeam({ id: 'lt-3', name: 'Ladium', abbreviation: 'LAD', active: false }),
+]
+
 const meta: Meta<typeof MatchForm> = {
   title: 'Components/MatchForm',
   component: MatchForm,
   parameters: { layout: 'padded' },
   decorators: [
+    // MemoryRouter: MatchSideFields renders a RouterLink in the empty league-team state.
     (Story) => (
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-        <Story />
-      </Box>
+      <MemoryRouter>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          <Story />
+        </Box>
+      </MemoryRouter>
     ),
   ],
 }
@@ -145,6 +171,50 @@ export const ExternalOpponent: Story = {
       awayTeamName: 'Riverside Occasionals',
       seasonId: 'season-1',
       matchDate: '2026-06-01T14:30:00.000Z',
+    },
+  },
+}
+
+// docs/specs/070-league-teams.md: a club admin gets the three-way toggle (My team / League team /
+// Other) per side.
+export const ThreeWayToggle: Story = {
+  args: { ...NewMatch.args, canUseLeagueTeams: true, leagueTeams: LEAGUE_TEAMS },
+}
+
+// League team mode: the grouped picker, Our teams then League teams. The home side already holds
+// the inactive Ladium, shown with its Inactive suffix.
+export const LeagueTeamPicker: Story = {
+  args: {
+    ...NewMatch.args,
+    canUseLeagueTeams: true,
+    leagueTeams: LEAGUE_TEAMS,
+    initialValues: {
+      seasonId: 'season-1',
+      leagueId: 'league-1',
+      homeTeamName: 'Ladium',
+      homeLeagueTeamId: 'lt-3',
+      awayTeamName: 'Centurion Brits CC',
+      awayLeagueTeamId: 'lt-1',
+    },
+  },
+}
+
+// No league or season chosen yet: the League team button is disabled with a hint.
+export const LeagueTeamNeedsLeagueAndSeason: Story = {
+  args: { ...NewMatch.args, canUseLeagueTeams: true, leagueTeams: [] },
+}
+
+// A league and season with no registered league teams: helper text plus a link to the league.
+export const LeagueTeamEmptyList: Story = {
+  args: {
+    ...NewMatch.args,
+    canUseLeagueTeams: true,
+    leagueTeams: [],
+    initialValues: {
+      seasonId: 'season-1',
+      leagueId: 'league-1',
+      homeTeamName: 'Pending',
+      homeLeagueTeamId: 'lt-x',
     },
   },
 }

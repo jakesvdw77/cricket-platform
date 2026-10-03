@@ -21,5 +21,7 @@ public record UpdateMatchRequest(
         UUID leagueId,
         @NotNull UUID seasonId,
         @NotNull Instant matchDate,
-        String venue) {
+        String venue,
+        UUID homeLeagueTeamId,
+        UUID awayLeagueTeamId) {
 }

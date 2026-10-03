@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -42,6 +42,8 @@ import type { Team } from '../../api/teamApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listLeagues } from '../../api/leagueApi'
 import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
+import { leagueTeamsQueryKey, listLeagueTeams } from '../../api/leagueTeamApi'
+import { activateSession } from '../../api/meApi'
 import { listSquad, addToSquad } from '../../api/teamSquadApi'
 import type { SquadMember } from '../../api/teamSquadApi'
 import { createPlayer } from '../../api/playerApi'
@@ -968,6 +970,28 @@ export default function MatchFormPage() {
     enabled: Boolean(clubId) && Boolean(leaguesQuery.data),
   })
 
+  // docs/specs/070-league-teams.md: the League team option (and its list endpoint) is club-admin
+  // only. MeAccess.clubAdminClubIds holds only CLUB-scope CLUB_ADMIN assignments (MeServiceImpl), so
+  // a section manager never matches. Same query key ManagerHome/PostLoginRedirect use.
+  const meQuery = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
+  const canUseLeagueTeams = Boolean(
+    clubId && meQuery.data && (meQuery.data.platformAdmin || meQuery.data.clubAdminClubIds.includes(clubId)),
+  )
+
+  // MatchForm owns the chosen League/Season; it reports them so the matching league teams (all,
+  // including inactive, so an already-held inactive pick still shows) can be fetched here.
+  const [formScope, setFormScope] = useState({ leagueId: '', seasonId: '' })
+  const handleScopeChange = useCallback(
+    (leagueId: string, seasonId: string) =>
+      setFormScope((prev) => (prev.leagueId === leagueId && prev.seasonId === seasonId ? prev : { leagueId, seasonId })),
+    [],
+  )
+  const leagueTeamsQuery = useQuery({
+    queryKey: leagueTeamsQueryKey(clubId as string, formScope.leagueId, formScope.seasonId),
+    queryFn: () => listLeagueTeams(clubId as string, formScope.leagueId, formScope.seasonId),
+    enabled: Boolean(clubId) && canUseLeagueTeams && Boolean(formScope.leagueId) && Boolean(formScope.seasonId),
+  })
+
   const saveMutation = useMutation({
     mutationFn: (payload: MatchPayload) => {
       if (isEdit && matchId) {
@@ -1164,6 +1188,8 @@ export default function MatchFormPage() {
                   awayTeamId: match.awayTeamId,
                   awayTeamName: match.awayTeamName,
                   awayTeamLogoUrl: match.awayTeamLogoUrl,
+                  homeLeagueTeamId: match.homeLeagueTeamId,
+                  awayLeagueTeamId: match.awayLeagueTeamId,
                   leagueId: match.leagueId,
                   seasonId: match.seasonId,
                   matchDate: match.matchDate,
@@ -1177,6 +1203,10 @@ export default function MatchFormPage() {
           seasons={seasonsQuery.data ?? []}
           leagues={leaguesQuery.data ?? []}
           affiliations={affiliationsQuery.data ?? []}
+          leagueTeams={leagueTeamsQuery.data ?? []}
+          leagueTeamsLoading={leagueTeamsQuery.isFetching}
+          canUseLeagueTeams={canUseLeagueTeams}
+          onScopeChange={handleScopeChange}
           onSubmit={(payload) => saveMutation.mutate(payload)}
         />
       )}

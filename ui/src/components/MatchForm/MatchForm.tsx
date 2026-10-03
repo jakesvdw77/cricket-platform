@@ -1,20 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Box, MenuItem, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Alert, Box, MenuItem } from '@mui/material'
 import { Input } from '../Input'
-import { MediaUpload } from '../MediaUpload'
+import { MatchSideFields } from './MatchSideFields'
+import type { SideMode, SideState } from './MatchSideFields'
 import type { MatchPayload } from '../../api/matchApi'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { Team } from '../../api/teamApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import type { LeagueTeam } from '../../api/leagueTeamApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see MatchFormPage), same pattern as LEAGUE_FORM_ID/SEASON_FORM_ID.
 export const MATCH_FORM_ID = 'match-form'
-
-type SideMode = 'team' | 'external'
 
 export interface MatchFormProps {
   initialValues?: Partial<MatchPayload>
@@ -28,39 +28,75 @@ export interface MatchFormProps {
   // League/Season, not just the currently-selected one) — narrows the Home/Away team pickers to
   // teams actually entered into the selected League for the selected Season, once both are picked.
   affiliations: LeagueAffiliation[]
+  // docs/specs/070-league-teams.md: the registered league teams (active and inactive) for the
+  // League and Season currently chosen in the form; the parent fetches them in response to
+  // onScopeChange. Omitted for a caller that cannot use league teams.
+  leagueTeams?: LeagueTeam[]
+  leagueTeamsLoading?: boolean
+  // Only club admins may read league teams (the list endpoint is club-admin only); everyone else
+  // keeps My team / Other.
+  canUseLeagueTeams?: boolean
+  // Called on mount and whenever the chosen league or season changes (either id may be '').
+  onScopeChange?: (leagueId: string, seasonId: string) => void
   onSubmit: (payload: MatchPayload) => void
 }
 
 interface FormState {
-  homeMode: SideMode
-  homeTeamId: string
-  homeTeamName: string
-  // docs/specs/050-league-schedule-and-fixtures.md: an external opponent's optional logo — empty
-  // string default matching homeTeamName's own convention, cleared whenever that side's toggle
-  // switches back to 'team'.
-  homeTeamLogoUrl: string
-  awayMode: SideMode
-  awayTeamId: string
-  awayTeamName: string
-  awayTeamLogoUrl: string
+  home: SideState
+  away: SideState
   leagueId: string
   seasonId: string
   matchDate: string
   venue: string
 }
 
-type FormErrors = Partial<Record<'homeTeamId' | 'homeTeamName' | 'awayTeamId' | 'awayTeamName' | 'seasonId' | 'matchDate', string>>
+type FormErrors = Partial<
+  Record<
+    | 'homeTeamId'
+    | 'homeTeamName'
+    | 'homeLeagueTeamId'
+    | 'awayTeamId'
+    | 'awayTeamName'
+    | 'awayLeagueTeamId'
+    | 'seasonId'
+    | 'matchDate',
+    string
+  >
+>
+
+// A stored league-team side opens on League team, free text on Other (not auto-matched to a
+// league team), otherwise My team.
+function toSideState(
+  teamId: string | null | undefined,
+  teamName: string | null | undefined,
+  logoUrl: string | null | undefined,
+  leagueTeamId: string | null | undefined,
+): SideState {
+  const mode: SideMode = leagueTeamId ? 'leagueTeam' : teamName ? 'external' : 'team'
+  return {
+    mode,
+    teamId: teamId ?? '',
+    teamName: teamName ?? '',
+    // The logo of a league-team side belongs to the league team, so it is not held in the form.
+    teamLogoUrl: mode === 'external' ? (logoUrl ?? '') : '',
+    leagueTeamId: leagueTeamId ?? '',
+  }
+}
 
 function toFormState(initialValues?: Partial<MatchPayload>): FormState {
   return {
-    homeMode: initialValues?.homeTeamName ? 'external' : 'team',
-    homeTeamId: initialValues?.homeTeamId ?? '',
-    homeTeamName: initialValues?.homeTeamName ?? '',
-    homeTeamLogoUrl: initialValues?.homeTeamLogoUrl ?? '',
-    awayMode: initialValues?.awayTeamName ? 'external' : 'team',
-    awayTeamId: initialValues?.awayTeamId ?? '',
-    awayTeamName: initialValues?.awayTeamName ?? '',
-    awayTeamLogoUrl: initialValues?.awayTeamLogoUrl ?? '',
+    home: toSideState(
+      initialValues?.homeTeamId,
+      initialValues?.homeTeamName,
+      initialValues?.homeTeamLogoUrl,
+      initialValues?.homeLeagueTeamId,
+    ),
+    away: toSideState(
+      initialValues?.awayTeamId,
+      initialValues?.awayTeamName,
+      initialValues?.awayTeamLogoUrl,
+      initialValues?.awayLeagueTeamId,
+    ),
     leagueId: initialValues?.leagueId ?? '',
     seasonId: initialValues?.seasonId ?? '',
     matchDate: initialValues?.matchDate ? toDatetimeLocal(initialValues.matchDate) : '',
@@ -71,17 +107,23 @@ function toFormState(initialValues?: Partial<MatchPayload>): FormState {
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {}
 
-  if (values.homeMode === 'team' && !values.homeTeamId) {
+  if (values.home.mode === 'team' && !values.home.teamId) {
     errors.homeTeamId = 'Choose a home team'
   }
-  if (values.homeMode === 'external' && !values.homeTeamName.trim()) {
+  if (values.home.mode === 'external' && !values.home.teamName.trim()) {
     errors.homeTeamName = 'Enter the opponent name'
   }
-  if (values.awayMode === 'team' && !values.awayTeamId) {
+  if (values.home.mode === 'leagueTeam' && !values.home.leagueTeamId) {
+    errors.homeLeagueTeamId = 'Choose a home league team'
+  }
+  if (values.away.mode === 'team' && !values.away.teamId) {
     errors.awayTeamId = 'Choose an away team'
   }
-  if (values.awayMode === 'external' && !values.awayTeamName.trim()) {
+  if (values.away.mode === 'external' && !values.away.teamName.trim()) {
     errors.awayTeamName = 'Enter the opponent name'
+  }
+  if (values.away.mode === 'leagueTeam' && !values.away.leagueTeamId) {
+    errors.awayLeagueTeamId = 'Choose an away league team'
   }
   if (!values.seasonId) {
     errors.seasonId = 'Season is required'
@@ -93,13 +135,60 @@ function validate(values: FormState): FormErrors {
   return errors
 }
 
-// Per side (Home/Away): a toggle between "One of our teams" (a Select over the current club's
-// own teams) and "External opponent" (free-text) — docs/specs/029-league-management.md's UI
-// Requirements. Season is required (squad membership is season-scoped); League stays optional
-// and independent.
-export function MatchForm({ initialValues, teams, seasons, leagues, affiliations, onSubmit }: MatchFormProps) {
+// What one side sends: exactly one of a team id, a free-text name (+ optional logo), or a league
+// team id alone (the server supplies name and logo).
+function sidePayload(side: SideState) {
+  return {
+    teamId: side.mode === 'team' ? side.teamId : null,
+    teamName: side.mode === 'external' ? side.teamName.trim() : null,
+    teamLogoUrl: side.mode === 'external' ? side.teamLogoUrl || null : null,
+    leagueTeamId: side.mode === 'leagueTeam' ? side.leagueTeamId : null,
+  }
+}
+
+// Per side (Home/Away): a three-way toggle between My team (a Select over the current club's own
+// teams), League team (docs/specs/070-league-teams.md, club admins only) and Other (free text) —
+// see MatchSideFields. Season is required (squad membership is season-scoped); League stays
+// optional and independent.
+export function MatchForm({
+  initialValues,
+  teams,
+  seasons,
+  leagues,
+  affiliations,
+  leagueTeams = [],
+  leagueTeamsLoading = false,
+  canUseLeagueTeams = false,
+  onScopeChange,
+  onSubmit,
+}: MatchFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
+  const [leagueTeamsNotice, setLeagueTeamsNotice] = useState(false)
+
+  const hasScope = Boolean(values.leagueId && values.seasonId)
+
+  useEffect(() => {
+    onScopeChange?.(values.leagueId, values.seasonId)
+  }, [onScopeChange, values.leagueId, values.seasonId])
+
+  const updateSide = (side: 'home' | 'away', patch: Partial<SideState>) => {
+    setValues((prev) => ({ ...prev, [side]: { ...prev[side], ...patch } }))
+  }
+
+  // A league team belongs to one league and season, so changing either clears a league-team side
+  // (the server would 400 otherwise) and tells the user.
+  const changeScope = (patch: Partial<Pick<FormState, 'leagueId' | 'seasonId'>>) => {
+    const clears = (side: SideState) => side.mode === 'leagueTeam' && side.leagueTeamId !== ''
+    setValues((prev) => {
+      const cleared = (side: SideState): SideState =>
+        clears(side) ? { ...side, mode: 'team', teamId: '', teamName: '', leagueTeamId: '' } : side
+      return { ...prev, ...patch, home: cleared(prev.home), away: cleared(prev.away) }
+    })
+    if (clears(values.home) || clears(values.away)) {
+      setLeagueTeamsNotice(true)
+    }
+  }
 
   // Only narrows once both League and Season are picked — LeagueAffiliation rows are always
   // season-scoped, so a League chosen before Season would otherwise (incorrectly) show zero
@@ -120,16 +209,16 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
   // (editing a match from before this narrowing existed, or a since-removed affiliation) — only
   // narrows what's offered for a NEW pick, never silently discards existing form state.
   const homeTeamOptions = useMemo(
-    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.homeTeamId)),
-    [teams, affiliatedTeamIds, values.homeTeamId],
+    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.home.teamId)),
+    [teams, affiliatedTeamIds, values.home.teamId],
   )
   const awayTeamOptions = useMemo(
-    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.awayTeamId)),
-    [teams, affiliatedTeamIds, values.awayTeamId],
+    () => (!affiliatedTeamIds ? teams : teams.filter((t) => affiliatedTeamIds.has(t.id) || t.id === values.away.teamId)),
+    [teams, affiliatedTeamIds, values.away.teamId],
   )
   const narrowedByAffiliation = affiliatedTeamIds !== null
 
-  const handleTextChange = (field: 'homeTeamName' | 'awayTeamName' | 'venue') => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleTextChange = (field: 'venue') => (event: ChangeEvent<HTMLInputElement>) => {
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
@@ -142,13 +231,17 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
       return
     }
 
+    const home = sidePayload(values.home)
+    const away = sidePayload(values.away)
     const payload: MatchPayload = {
-      homeTeamId: values.homeMode === 'team' ? values.homeTeamId : null,
-      homeTeamName: values.homeMode === 'external' ? values.homeTeamName.trim() : null,
-      homeTeamLogoUrl: values.homeMode === 'external' ? values.homeTeamLogoUrl || null : null,
-      awayTeamId: values.awayMode === 'team' ? values.awayTeamId : null,
-      awayTeamName: values.awayMode === 'external' ? values.awayTeamName.trim() : null,
-      awayTeamLogoUrl: values.awayMode === 'external' ? values.awayTeamLogoUrl || null : null,
+      homeTeamId: home.teamId,
+      homeTeamName: home.teamName,
+      homeTeamLogoUrl: home.teamLogoUrl,
+      homeLeagueTeamId: home.leagueTeamId,
+      awayTeamId: away.teamId,
+      awayTeamName: away.teamName,
+      awayTeamLogoUrl: away.teamLogoUrl,
+      awayLeagueTeamId: away.leagueTeamId,
       leagueId: values.leagueId || null,
       seasonId: values.seasonId,
       matchDate: fromDatetimeLocal(values.matchDate),
@@ -163,7 +256,7 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
         select
         label="Season"
         value={values.seasonId}
-        onChange={(event) => setValues((prev) => ({ ...prev, seasonId: event.target.value }))}
+        onChange={(event) => changeScope({ seasonId: event.target.value })}
         error={Boolean(errors.seasonId)}
         helperText={errors.seasonId}
       >
@@ -178,7 +271,7 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
         select
         label="League"
         value={values.leagueId}
-        onChange={(event) => setValues((prev) => ({ ...prev, leagueId: event.target.value }))}
+        onChange={(event) => changeScope({ leagueId: event.target.value })}
         helperText="Optional — leave blank for a standalone friendly"
       >
         <MenuItem value="">None</MenuItem>
@@ -201,127 +294,39 @@ export function MatchForm({ initialValues, teams, seasons, leagues, affiliations
 
       <Input label="Venue" value={values.venue} onChange={handleTextChange('venue')} helperText="Optional" />
 
-      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={600}>
-          Home side
-        </Typography>
-        <ToggleButtonGroup
-          value={values.homeMode}
-          exclusive
-          fullWidth
-          onChange={(_event, next: SideMode | null) =>
-            next &&
-            setValues((prev) => ({
-              ...prev,
-              homeMode: next,
-              ...(next === 'team' ? { homeTeamLogoUrl: '' } : {}),
-            }))
-          }
-        >
-          <ToggleButton value="team">One of our teams</ToggleButton>
-          <ToggleButton value="external">External opponent</ToggleButton>
-        </ToggleButtonGroup>
+      {leagueTeamsNotice && (
+        <Alert severity="info" sx={{ gridColumn: '1 / -1' }} onClose={() => setLeagueTeamsNotice(false)}>
+          League or season changed, so the league team was cleared. Choose the team again.
+        </Alert>
+      )}
 
-        {values.homeMode === 'team' ? (
-          <Input
-            select
-            label="Home team"
-            value={values.homeTeamId}
-            onChange={(event) => setValues((prev) => ({ ...prev, homeTeamId: event.target.value }))}
-            error={Boolean(errors.homeTeamId)}
-            helperText={
-              errors.homeTeamId ??
-              (narrowedByAffiliation
-                ? 'Only teams affiliated with this League for this Season'
-                : undefined)
-            }
-          >
-            {homeTeamOptions.map((team) => (
-              <MenuItem key={team.id} value={team.id}>
-                {team.name}
-              </MenuItem>
-            ))}
-          </Input>
-        ) : (
-          <>
-            <Input
-              label="Home opponent name"
-              value={values.homeTeamName}
-              onChange={handleTextChange('homeTeamName')}
-              error={Boolean(errors.homeTeamName)}
-              helperText={errors.homeTeamName ?? 'e.g. Riverside Occasionals'}
-            />
-            <MediaUpload
-              label="Logo"
-              value={values.homeTeamLogoUrl || null}
-              onUploaded={(url) => setValues((prev) => ({ ...prev, homeTeamLogoUrl: url }))}
-              variant="logo"
-              namespace="manage"
-            />
-          </>
-        )}
-      </Box>
+      <MatchSideFields
+        label="Home"
+        value={values.home}
+        errors={{ team: errors.homeTeamId, name: errors.homeTeamName, leagueTeam: errors.homeLeagueTeamId }}
+        onChange={(patch) => updateSide('home', patch)}
+        teamOptions={homeTeamOptions}
+        narrowedByAffiliation={narrowedByAffiliation}
+        leagueTeams={leagueTeams}
+        canUseLeagueTeams={canUseLeagueTeams}
+        hasScope={hasScope}
+        leagueId={values.leagueId}
+        leagueTeamsLoading={leagueTeamsLoading}
+      />
 
-      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={600}>
-          Away side
-        </Typography>
-        <ToggleButtonGroup
-          value={values.awayMode}
-          exclusive
-          fullWidth
-          onChange={(_event, next: SideMode | null) =>
-            next &&
-            setValues((prev) => ({
-              ...prev,
-              awayMode: next,
-              ...(next === 'team' ? { awayTeamLogoUrl: '' } : {}),
-            }))
-          }
-        >
-          <ToggleButton value="team">One of our teams</ToggleButton>
-          <ToggleButton value="external">External opponent</ToggleButton>
-        </ToggleButtonGroup>
-
-        {values.awayMode === 'team' ? (
-          <Input
-            select
-            label="Away team"
-            value={values.awayTeamId}
-            onChange={(event) => setValues((prev) => ({ ...prev, awayTeamId: event.target.value }))}
-            error={Boolean(errors.awayTeamId)}
-            helperText={
-              errors.awayTeamId ??
-              (narrowedByAffiliation
-                ? 'Only teams affiliated with this League for this Season'
-                : undefined)
-            }
-          >
-            {awayTeamOptions.map((team) => (
-              <MenuItem key={team.id} value={team.id}>
-                {team.name}
-              </MenuItem>
-            ))}
-          </Input>
-        ) : (
-          <>
-            <Input
-              label="Away opponent name"
-              value={values.awayTeamName}
-              onChange={handleTextChange('awayTeamName')}
-              error={Boolean(errors.awayTeamName)}
-              helperText={errors.awayTeamName ?? 'e.g. Riverside Occasionals'}
-            />
-            <MediaUpload
-              label="Logo"
-              value={values.awayTeamLogoUrl || null}
-              onUploaded={(url) => setValues((prev) => ({ ...prev, awayTeamLogoUrl: url }))}
-              variant="logo"
-              namespace="manage"
-            />
-          </>
-        )}
-      </Box>
+      <MatchSideFields
+        label="Away"
+        value={values.away}
+        errors={{ team: errors.awayTeamId, name: errors.awayTeamName, leagueTeam: errors.awayLeagueTeamId }}
+        onChange={(patch) => updateSide('away', patch)}
+        teamOptions={awayTeamOptions}
+        narrowedByAffiliation={narrowedByAffiliation}
+        leagueTeams={leagueTeams}
+        canUseLeagueTeams={canUseLeagueTeams}
+        hasScope={hasScope}
+        leagueId={values.leagueId}
+        leagueTeamsLoading={leagueTeamsLoading}
+      />
     </Box>
   )
 }

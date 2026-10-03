@@ -134,6 +134,18 @@ Named for completeness — none of these are next, none have a target spec numbe
 
 ~~**Rolling `RecordCard`'s solid `background.paper` card treatment out to other `/manage` list screens.**~~ — resolved by `043-list-toolbar-gold-standard.md`: the surface moved from `MatchList`'s own wrapping `Box` into `ListToolbar` itself, so every list screen (not just Matches) gets it automatically.
 
+## Deferred by `070` — League teams
+
+`070-league-teams.md` added per-league, per-season **league teams** (name, abbreviation, logo) that a match can pick as an opponent, with an explicit copy action between leagues and seasons. Club admin only. Still deferred:
+
+- **Standings, results and points tables** built on league teams, once match results exist (`029` Phase 1).
+- **Section-scoped or per-role access** to league teams (a section manager currently sees only My team and Other on the match form), once roles and permissions are built.
+- **A cross-club or platform-wide opponent directory**, and sharing league teams between clubs that play the same league.
+- **Tidy-up or merge of historical free-text opponent names** into league teams. The `042` autocomplete item above stays open for friendlies.
+- **Opponent rosters and players.**
+- **Bulk CSV import** of league teams.
+- **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
+
 ## Deferred by `052` — the rest of `League`'s per-season fields
 
 `052-league-playing-conditions.md`'s Rollout Notes (Amendment) moved `League.allowSubstitutions` to the per-season `LeaguePlayingConditions.allowSubstitutions` — confirmed by reading every call site to be purely informational display text, enforced by nothing, so the move was safe and mechanical within that spec's own PR.

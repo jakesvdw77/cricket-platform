@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchForm, MATCH_FORM_ID } from './MatchForm'
 import type { MatchFormProps } from './MatchForm'
@@ -8,6 +9,7 @@ import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import type { LeagueTeam } from '../../api/leagueTeamApi'
 
 // docs/specs/050-league-schedule-and-fixtures.md: MatchForm's per-side external-opponent logo
 // renders via the real MediaUpload component (namespace="manage"), so its own uploadManagedMedia
@@ -131,7 +133,7 @@ describe('MatchForm', () => {
     expect(screen.getByLabelText('League')).toBeInTheDocument()
   })
 
-  it('defaults each side to "One of our teams" and shows a team Select', () => {
+  it('defaults each side to "My team" and shows a team Select', () => {
     renderMatchForm()
     expect(screen.getByLabelText('Home team')).toBeInTheDocument()
     expect(screen.getByLabelText('Away team')).toBeInTheDocument()
@@ -141,8 +143,8 @@ describe('MatchForm', () => {
     const user = userEvent.setup()
     renderMatchForm()
 
-    // Both toggle groups render an "External opponent" button — click the first (Home)'s.
-    const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+    // Both toggle groups render an "Other" button — click the first (Home)'s.
+    const externalButtons = screen.getAllByRole('button', { name: 'Other' })
     await user.click(externalButtons[0])
 
     expect(screen.getByLabelText('Home opponent name')).toBeInTheDocument()
@@ -205,7 +207,7 @@ describe('MatchForm', () => {
     await user.click(screen.getByLabelText('Home team'))
     await user.click(await screen.findByRole('option', { name: '1st XI' }))
 
-    const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+    const externalButtons = screen.getAllByRole('button', { name: 'Other' })
     await user.click(externalButtons[1])
     await user.type(screen.getByLabelText('Away opponent name'), 'Riverside Occasionals')
 
@@ -272,40 +274,40 @@ describe('MatchForm', () => {
   // docs/specs/050-league-schedule-and-fixtures.md item 22: an external-opponent side's optional
   // logo, captured via the same MediaUpload control TeamForm already uses.
   describe('external-opponent logo', () => {
-    it('renders the Logo MediaUpload field only for a side in "External opponent" mode', async () => {
+    it('renders the Logo MediaUpload field only for a side in "Other" mode', async () => {
       const user = userEvent.setup()
       renderMatchForm()
 
-      // Both sides default to "One of our teams" — no Logo field anywhere yet.
+      // Both sides default to "My team" — no Logo field anywhere yet.
       expect(screen.queryByText('Logo')).not.toBeInTheDocument()
 
-      const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+      const externalButtons = screen.getAllByRole('button', { name: 'Other' })
       await user.click(externalButtons[0])
 
       expect(screen.getByText('Logo')).toBeInTheDocument()
       expect(screen.getByLabelText('Logo file')).toBeInTheDocument()
 
-      // Away side is still "One of our teams" — only one Logo field renders, not two.
+      // Away side is still "My team" — only one Logo field renders, not two.
       expect(screen.getAllByText('Logo')).toHaveLength(1)
     })
 
-    it('clears the side\'s uploaded logo when its toggle switches back to "One of our teams"', async () => {
+    it('clears the side\'s uploaded logo when its toggle switches back to "My team"', async () => {
       const user = userEvent.setup()
       uploadManagedMedia.mockResolvedValueOnce({ url: '/media/managed/opponent-logo.png' })
       renderMatchForm()
 
-      const externalButtons = screen.getAllByRole('button', { name: 'External opponent' })
+      const externalButtons = screen.getAllByRole('button', { name: 'Other' })
       await user.click(externalButtons[0])
 
       const file = new File(['logo'], 'logo.png', { type: 'image/png' })
       await user.upload(screen.getByLabelText('Logo file'), file)
       expect(await screen.findByRole('button', { name: 'Replace' })).toBeInTheDocument()
 
-      // Toggle home back to "One of our teams", then to "External opponent" again — the logo
+      // Toggle home back to "My team", then to "Other" again — the logo
       // must be gone (a fresh "Upload Logo" empty state, not "Replace").
-      const teamButtons = screen.getAllByRole('button', { name: 'One of our teams' })
+      const teamButtons = screen.getAllByRole('button', { name: 'My team' })
       await user.click(teamButtons[0])
-      await user.click(screen.getAllByRole('button', { name: 'External opponent' })[0])
+      await user.click(screen.getAllByRole('button', { name: 'Other' })[0])
 
       expect(screen.getByRole('button', { name: 'Upload Logo' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument()
@@ -323,7 +325,7 @@ describe('MatchForm', () => {
       await user.click(screen.getByLabelText('Home team'))
       await user.click(await screen.findByRole('option', { name: '1st XI' }))
 
-      await user.click(screen.getAllByRole('button', { name: 'External opponent' })[1])
+      await user.click(screen.getAllByRole('button', { name: 'Other' })[1])
       await user.type(screen.getByLabelText('Away opponent name'), 'Riverside Occasionals')
 
       const file = new File(['logo'], 'logo.png', { type: 'image/png' })
@@ -338,5 +340,177 @@ describe('MatchForm', () => {
       expect(payload.awayTeamLogoUrl).toEqual('/media/managed/riverside-logo.png')
       expect(payload.homeTeamLogoUrl).toBeNull()
     })
+  })
+})
+
+// docs/specs/070-league-teams.md: the third side option and its grouped picker.
+describe('MatchForm league teams', () => {
+  function makeLeagueTeam(overrides: Partial<LeagueTeam> = {}): LeagueTeam {
+    return {
+      id: 'lt-1',
+      leagueId: 'league-1',
+      seasonId: 'season-1',
+      name: 'Centurion Brits CC',
+      abbreviation: 'CBC',
+      logoUrl: null,
+      active: true,
+      referencedByMatchCount: 0,
+      ...overrides,
+    }
+  }
+
+  const LEAGUE_TEAMS = [
+    makeLeagueTeam({ id: 'lt-1', name: 'Centurion Brits CC' }),
+    makeLeagueTeam({ id: 'lt-2', name: 'Laudium Cricket Club', abbreviation: 'LCC' }),
+    makeLeagueTeam({ id: 'lt-3', name: 'Ladium', abbreviation: 'LAD', active: false }),
+  ]
+  const SCOPE = { seasonId: 'season-1', leagueId: 'league-1' }
+  const AFFILIATIONS = [makeAffiliation({ teamId: 'team-1' })]
+
+  function renderWithTeams(props: Partial<MatchFormProps> = {}) {
+    const merged: MatchFormProps = {
+      teams: TEAMS,
+      seasons: SEASONS,
+      leagues: LEAGUES,
+      affiliations: AFFILIATIONS,
+      leagueTeams: LEAGUE_TEAMS,
+      canUseLeagueTeams: true,
+      onSubmit: vi.fn(),
+      ...props,
+    }
+    render(
+      <MemoryRouter>
+        <MatchForm {...merged} />
+        <button type="submit" form={MATCH_FORM_ID}>
+          Submit
+        </button>
+      </MemoryRouter>,
+    )
+    return merged
+  }
+
+  it('shows a three-way toggle per side for a club admin', () => {
+    renderWithTeams()
+    expect(screen.getAllByRole('button', { name: 'My team' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'League team' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Other' })).toHaveLength(2)
+  })
+
+  it('keeps the two-way toggle for a non-admin', () => {
+    renderWithTeams({ canUseLeagueTeams: false })
+    expect(screen.queryByRole('button', { name: 'League team' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Other' })).toHaveLength(2)
+  })
+
+  it('disables League team with a hint until a league and season are chosen', () => {
+    renderWithTeams()
+    expect(screen.getAllByRole('button', { name: 'League team' })[0]).toBeDisabled()
+    expect(screen.getAllByText('Choose a league and season first to pick a league team.')).toHaveLength(2)
+  })
+
+  it('groups Our teams and League teams, listing only active league teams', async () => {
+    const user = userEvent.setup()
+    renderWithTeams({ initialValues: SCOPE })
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
+    await user.click(screen.getByLabelText('Home league team'))
+
+    expect(await screen.findByText('Our teams')).toBeInTheDocument()
+    expect(screen.getByText('League teams')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /1st XI/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /2nd XI/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Centurion Brits CC/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Laudium Cricket Club/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Ladium/ })).not.toBeInTheDocument()
+  })
+
+  it('submits only the league team id for a league-team side', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderWithTeams({ onSubmit, initialValues: { ...SCOPE, homeTeamId: 'team-1' } })
+
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[1])
+    await user.click(screen.getByLabelText('Away league team'))
+    await user.click(await screen.findByRole('option', { name: /Laudium Cricket Club/ }))
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload).toMatchObject({
+      homeTeamId: 'team-1',
+      homeLeagueTeamId: null,
+      awayTeamId: null,
+      awayTeamName: null,
+      awayTeamLogoUrl: null,
+      awayLeagueTeamId: 'lt-2',
+    })
+  })
+
+  it('treats choosing an Our teams entry exactly like My team', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderWithTeams({ onSubmit, initialValues: { ...SCOPE, awayTeamId: 'team-1' } })
+
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
+    await user.click(screen.getByLabelText('Home league team'))
+    await user.click(await screen.findByRole('option', { name: /1st XI/ }))
+
+    // The picker switches that side back to My team with the team selected.
+    expect(screen.getByLabelText('Home team')).toHaveTextContent('1st XI')
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload).toMatchObject({ homeTeamId: 'team-1', homeLeagueTeamId: null })
+  })
+
+  it('requires a league team once the League team toggle is chosen', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderWithTeams({ onSubmit, initialValues: SCOPE })
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(await screen.findByText('Choose a home league team')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows an empty-list helper linking to the league', async () => {
+    const user = userEvent.setup()
+    renderWithTeams({ initialValues: SCOPE, leagueTeams: [] })
+    await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
+    expect(screen.getByText('No league teams registered for this league and season.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Teams tab/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
+  })
+
+  it('opens a stored league-team side on League team, showing an inactive pick with its suffix', async () => {
+    const user = userEvent.setup()
+    renderWithTeams({
+      initialValues: { ...SCOPE, homeTeamName: 'Ladium', homeLeagueTeamId: 'lt-3', awayTeamName: 'Friendly XI' },
+    })
+    expect(screen.getByLabelText('Home league team')).toHaveTextContent('Ladium (Inactive)')
+    // A free-text side stays on Other.
+    expect(screen.getByLabelText('Away opponent name')).toHaveValue('Friendly XI')
+    await user.click(screen.getByLabelText('Home league team'))
+    expect(await screen.findByRole('option', { name: /Ladium \(Inactive\)/ })).toBeInTheDocument()
+  })
+
+  it('clears a league-team side with a notice when the season changes', async () => {
+    const user = userEvent.setup()
+    renderWithTeams({
+      seasons: [makeSeason({ id: 'season-1', label: '2026' }), makeSeason({ id: 'season-2', label: '2027' })],
+      initialValues: { ...SCOPE, homeTeamName: 'Centurion Brits CC', homeLeagueTeamId: 'lt-1', awayTeamId: 'team-1' },
+    })
+    expect(screen.getByLabelText('Home league team')).toHaveTextContent('Centurion Brits CC')
+
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2027' }))
+
+    expect(screen.getByText(/the league team was cleared/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Home league team')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Home team')).toBeInTheDocument()
+  })
+
+  it('reports the chosen league and season', () => {
+    const onScopeChange = vi.fn()
+    renderWithTeams({ initialValues: SCOPE, onScopeChange })
+    expect(onScopeChange).toHaveBeenCalledWith('league-1', 'season-1')
   })
 })

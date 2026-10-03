@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -122,4 +123,30 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             + "ORDER BY m.matchDate ASC")
     List<Match> findUpcomingMatchesBySection(
             @Param("clubId") UUID clubId, @Param("sectionId") UUID sectionId, @Param("from") Instant from);
+
+    /**
+     * Per docs/specs/070-league-teams.md's propagation rule: rewrites the denormalised home-side
+     * name/logo on every match whose {@code homeLeagueTeamId} is {@code leagueTeamId}. A bulk JPQL
+     * update bypasses {@code @PreUpdate}, so {@code updatedAt} is set here explicitly; the
+     * persistence context is flushed first and cleared afterwards so no stale {@link Match}
+     * survives in the session. Returns the number of rows updated.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Match m SET m.homeTeamName = :name, m.homeTeamLogoUrl = :logoUrl, m.updatedAt = :now "
+            + "WHERE m.homeLeagueTeamId = :leagueTeamId")
+    int propagateLeagueTeamToHomeSide(
+            @Param("leagueTeamId") UUID leagueTeamId,
+            @Param("name") String name,
+            @Param("logoUrl") String logoUrl,
+            @Param("now") Instant now);
+
+    /** The away-side counterpart of {@link #propagateLeagueTeamToHomeSide}. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Match m SET m.awayTeamName = :name, m.awayTeamLogoUrl = :logoUrl, m.updatedAt = :now "
+            + "WHERE m.awayLeagueTeamId = :leagueTeamId")
+    int propagateLeagueTeamToAwaySide(
+            @Param("leagueTeamId") UUID leagueTeamId,
+            @Param("name") String name,
+            @Param("logoUrl") String logoUrl,
+            @Param("now") Instant now);
 }

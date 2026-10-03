@@ -41,6 +41,10 @@ export interface Match {
   // comes from Team.logoUrl, resolved via *TeamId, never both at once).
   homeTeamLogoUrl: string | null
   awayTeamLogoUrl: string | null
+  // docs/specs/070-league-teams.md: set when that side is a registered league team (the name and
+  // logo above are then the league team's copied values). Optional so older fixtures stay valid.
+  homeLeagueTeamId?: string | null
+  awayLeagueTeamId?: string | null
   // docs/specs/069-match-card-redesign.md: list-response only (non-list endpoints return null / []).
   // Picked = players in that side's playing XI; null for a free-text or other-club side.
   homePickedCount: number | null
@@ -75,6 +79,10 @@ export interface MatchPayload {
   // *TeamName (never alongside the matching *TeamId) — 400 server-side otherwise.
   homeTeamLogoUrl?: string | null
   awayTeamLogoUrl?: string | null
+  // docs/specs/070-league-teams.md: a league-team side sends only its id (no team id; the server
+  // supplies name and logo).
+  homeLeagueTeamId?: string | null
+  awayLeagueTeamId?: string | null
   leagueId?: string | null
   seasonId: string
   matchDate: string

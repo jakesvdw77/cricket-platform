@@ -30,7 +30,10 @@ import lombok.Setter;
  * docs/specs/050-league-schedule-and-fixtures.md) are meaningful only alongside the matching side's
  * free-text {@code *TeamName} — a real {@code Team}'s logo already comes from {@code Team.logoUrl}
  * resolved via {@code *TeamId} — enforced at the service layer, same posture as the id/name
- * exclusivity above. "Disable, never delete" — see {@link #active}. See
+ * exclusivity above. {@link #homeLeagueTeamId}/{@link #awayLeagueTeamId} (nullable, per
+ * docs/specs/070-league-teams.md) reference a {@link LeagueTeam} and are only ever set alongside
+ * that side's {@code *TeamName} (the denormalised copy of the league team's name/logo) — never
+ * alongside a {@code *TeamId}. "Disable, never delete" — see {@link #active}. See
  * docs/specs/029-league-management.md.
  */
 @Entity
@@ -66,6 +69,12 @@ public class Match {
 
     @Column(name = "away_team_logo_url")
     private String awayTeamLogoUrl;
+
+    @Column(name = "home_league_team_id")
+    private UUID homeLeagueTeamId;
+
+    @Column(name = "away_league_team_id")
+    private UUID awayLeagueTeamId;
 
     @Column(name = "league_id")
     private UUID leagueId;

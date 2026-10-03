@@ -146,6 +146,27 @@ class MatchPollCoverageServiceImplTest {
         assertThat(coverage.coveringPollId()).isEqualTo(poll.getId());
     }
 
+    // 070: a league-team side has no teamId, so the opponent label comes from the copied name.
+    @Test
+    void resolveLabelUsesTheCopiedNameForALeagueTeamOpponent() {
+        MatchAvailabilityPoll poll =
+                MatchAvailabilityPoll.builder().id(UUID.randomUUID()).matchId(matchId).teamId(homeTeamId).build();
+        when(pollRepository.findByMatchIdAndTeamId(matchId, homeTeamId)).thenReturn(Optional.of(poll));
+        when(matchRepository.findById(matchId))
+                .thenReturn(Optional.of(Match.builder()
+                        .id(matchId)
+                        .homeTeamId(homeTeamId)
+                        .awayTeamName("Hillside CC")
+                        .awayLeagueTeamId(UUID.randomUUID())
+                        .build()));
+        when(teamRepository.findById(homeTeamId))
+                .thenReturn(Optional.of(Team.builder().id(homeTeamId).name("U15 Colts").build()));
+
+        Coverage coverage = service.resolve(matchId, homeTeamId);
+
+        assertThat(coverage.label()).isEqualTo("U15 Colts v Hillside CC");
+    }
+
     @Test
     void groupTakesPrecedenceOverASquadPoll() {
         stubGroupCoverage("Weekend");

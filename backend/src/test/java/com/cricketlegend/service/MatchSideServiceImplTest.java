@@ -191,6 +191,26 @@ class MatchSideServiceImplTest {
         verify(matchSideRepository, never()).save(any());
     }
 
+    // 070: a league-team side has no teamId, so it can never become a MatchSide/playing XI.
+    @Test
+    void createSideForALeagueTeamSideIsRejectedAndNeverSaved() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID ownTeamId = UUID.randomUUID();
+        UUID leagueTeamId = UUID.randomUUID();
+        Match match = Match.builder().id(matchId).clubId(clubId).homeTeamId(ownTeamId)
+                .awayTeamName("Hillside CC").awayLeagueTeamId(leagueTeamId)
+                .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        // Neither the league team's own id nor any other id equals the match's home/away team id.
+        assertThatThrownBy(() -> service.createSide(authentication, clubId, matchId, new CreateMatchSideRequest(leagueTeamId)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.createSide(authentication, clubId, matchId, new CreateMatchSideRequest(UUID.randomUUID())))
+                .isInstanceOf(ValidationException.class);
+        verify(matchSideRepository, never()).save(any());
+    }
+
     // --- addPlayer: squad membership ---
 
     @Test

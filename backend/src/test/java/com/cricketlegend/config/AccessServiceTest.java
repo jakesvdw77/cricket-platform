@@ -2,8 +2,10 @@ package com.cricketlegend.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
@@ -507,6 +509,41 @@ class AccessServiceTest {
     @Test
     void resolveMatchSectionIdsIsEmptyWhenNeitherSideResolvesToAnOwnClubTeam() {
         assertThat(accessService.resolveMatchSectionIds(clubId, null, null)).isEmpty();
+    }
+
+    // 070: a league-team side has teamId == null (name + *LeagueTeamId only), so callers pass null
+    // for it and it must contribute no section, exactly like a free-text opponent.
+    @Test
+    void resolveMatchSectionIdsContributesNoSectionForALeagueTeamSide() {
+        Match leagueTeamMatch = Match.builder()
+                .clubId(clubId)
+                .homeTeamName("Hillside CC")
+                .homeLeagueTeamId(UUID.randomUUID())
+                .awayTeamName("Oakwood CC")
+                .awayLeagueTeamId(UUID.randomUUID())
+                .build();
+
+        assertThat(accessService.resolveMatchSectionIds(
+                        clubId, leagueTeamMatch.getHomeTeamId(), leagueTeamMatch.getAwayTeamId()))
+                .isEmpty();
+        verifyNoInteractions(teamRepository);
+    }
+
+    @Test
+    void resolveMatchSectionIdsOnlyResolvesTheOwnTeamWhenTheOtherSideIsALeagueTeam() {
+        UUID ownTeamId = UUID.randomUUID();
+        UUID ownSectionId = UUID.randomUUID();
+        when(teamRepository.findById(ownTeamId))
+                .thenReturn(Optional.of(Team.builder().id(ownTeamId).clubId(clubId).sectionId(ownSectionId).build()));
+        Match match = Match.builder()
+                .clubId(clubId)
+                .homeTeamId(ownTeamId)
+                .awayTeamName("Hillside CC")
+                .awayLeagueTeamId(UUID.randomUUID())
+                .build();
+
+        assertThat(accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId()))
+                .containsExactly(ownSectionId);
     }
 
     // --- helpers ---

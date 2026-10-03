@@ -204,6 +204,40 @@ class PlayerAvailabilityServiceImplTest {
         assertThat(dto.players()).extracting(PlayerRowDto::playerProfileId).doesNotContain(inactive);
     }
 
+    // 070: a league-team side has no teamId, so the label uses its copied name and the club's own
+    // team (if any) stays the game's own team.
+    @Test
+    void aLeagueTeamOpponentIsLabelledByItsCopiedNameAndOwnTeamIsStillTheOtherSide() {
+        Match m = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamName("Hillside CC")
+                .homeLeagueTeamId(UUID.randomUUID()).awayTeamId(team.getId())
+                .seasonId(seasonId).matchDate(Instant.now().plus(1, ChronoUnit.DAYS)).venue("Ground").active(true)
+                .build();
+        games(m);
+        player("Anton", "Aaa", true, true);
+
+        PlayerAvailabilityDto dto = grid();
+
+        assertThat(dto.games()).hasSize(1);
+        assertThat(dto.games().get(0).label()).isEqualTo("Hillside CC v Villagers 1");
+        assertThat(dto.games().get(0).teamId()).isEqualTo(team.getId());
+    }
+
+    @Test
+    void aGameBetweenTwoLeagueTeamsIsLabelledFromBothCopiedNamesAndHasNoOwnTeam() {
+        Match m = Match.builder().id(UUID.randomUUID()).clubId(clubId)
+                .homeTeamName("Hillside CC").homeLeagueTeamId(UUID.randomUUID())
+                .awayTeamName("Oakwood CC").awayLeagueTeamId(UUID.randomUUID())
+                .seasonId(seasonId).matchDate(Instant.now().plus(1, ChronoUnit.DAYS)).venue("Ground").active(true)
+                .build();
+        games(m);
+
+        PlayerAvailabilityDto dto = grid();
+
+        assertThat(dto.games()).hasSize(1);
+        assertThat(dto.games().get(0).label()).isEqualTo("Hillside CC v Oakwood CC");
+        assertThat(dto.games().get(0).teamId()).isNull();
+    }
+
     @Test
     void squadCoveredGameUsesTheTeamSeasonSquadAndNotInPollOutsideIt() {
         Match m = match();

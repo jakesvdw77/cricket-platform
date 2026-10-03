@@ -43,6 +43,16 @@ vi.mock('../../api/seasonApi', () => ({
   listSeasons: (clubId: string) => listSeasons(clubId),
 }))
 
+const listLeagueTeams = vi.fn()
+
+vi.mock('../../api/leagueTeamApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/leagueTeamApi')>()
+  return {
+    ...actual,
+    listLeagueTeams: (clubId: string, leagueId: string, seasonId: string) => listLeagueTeams(clubId, leagueId, seasonId),
+  }
+})
+
 vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string) => listTeamsForClub(clubId),
 }))
@@ -186,6 +196,7 @@ function makeContact(overrides: Partial<LeagueContact> = {}): LeagueContact {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  listLeagueTeams.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
   listTeamsForClub.mockResolvedValue([])
   listLeagueAffiliations.mockResolvedValue([])
