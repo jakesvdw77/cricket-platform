@@ -6,8 +6,22 @@ export type PlayingRole = 'BATSMAN' | 'BOWLER' | 'ALL_ROUNDER'
 
 export interface MatchSidePlayer {
   playerProfileId: string
-  battingOrder: number
+  // docs/specs/076-team-selection.md: null while a selected player has no batting position yet (and
+  // always null for the 12th man).
+  battingOrder: number | null
   role: PlayingRole
+  // docs/specs/076-team-selection.md: lets a player picked via Whole section who is not on the
+  // team's season roster still be named. Nullable/optional (older responses omit them).
+  firstName?: string | null
+  lastName?: string | null
+}
+
+// docs/specs/076-team-selection.md section 4: what the league's playing conditions allow for this
+// side. maxSelected = battingPlaces + (twelfthManAllowed ? 1 : 0), at most 12.
+export interface SelectionLimits {
+  battingPlaces: number
+  twelfthManAllowed: boolean
+  maxSelected: number
 }
 
 export interface MatchSide {
@@ -19,6 +33,7 @@ export interface MatchSide {
   twelfthManPlayerId: string | null
   players: MatchSidePlayer[]
   announced: boolean
+  limits: SelectionLimits
 }
 
 function sidesPath(clubId: string, matchId: string): string {
@@ -84,13 +99,20 @@ export async function removeMatchSidePlayer(
   matchId: string,
   sideId: string,
   playerProfileId: string,
+  // docs/specs/076-team-selection.md: true only for Release, so removing a player from another
+  // team's announced side does not un-announce it. Default false keeps the 040 behaviour.
+  keepAnnounced = false,
 ): Promise<MatchSide> {
   const { data } = await api.post<MatchSide>(
     `${sidesPath(clubId, matchId)}/${sideId}/players/${playerProfileId}/remove`,
+    undefined,
+    keepAnnounced ? { params: { keepAnnounced: true } } : undefined,
   )
   return data
 }
 
+// docs/specs/076-team-selection.md: sets the full batting order. Listed players get positions
+// 1..k in list order; selected players not listed have no position.
 export async function reorderMatchSidePlayers(
   clubId: string,
   matchId: string,

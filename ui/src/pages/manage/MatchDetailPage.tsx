@@ -249,8 +249,9 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
   const noOwnTeam = own.length === 0
-  const league = match.leagueId ? leaguesById.get(match.leagueId) : undefined
-  const playingXiSize = league?.maxPlayingXiSize ?? null
+  // docs/specs/076-team-selection.md section 7: a league match's M is each side's own
+  // limits.maxSelected (a 12th man counts); a match with no league keeps 075's rule (no bar).
+  const hasLeague = Boolean(match.leagueId)
   const editTo = `${MATCHES_PATH}/${match.id}/edit`
 
   const detailItems: { label: string; icon: ReactNode; value: string }[] = [
@@ -496,7 +497,6 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
           {own.map((entry) => {
             const side = entry.side === 'home' ? homeSide : awaySide
             const squadQuery = entry.side === 'home' ? homeSquadQuery : awaySquadQuery
-            const coverage = entry.side === 'home' ? homeCoverageQuery.data : awayCoverageQuery.data
             return (
               <TeamCard
                 key={entry.side}
@@ -508,8 +508,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 announced={Boolean(side?.announced)}
                 announcedReady={sidesReady}
                 sidesReady={sidesReady}
-                playingXiSize={playingXiSize}
-                groupCovered={Boolean(coverage?.windowId)}
+                playingXiSize={hasLeague ? (side?.limits?.maxSelected ?? null) : null}
               />
             )
           })}
@@ -599,7 +598,6 @@ interface TeamCardProps {
   announcedReady: boolean
   sidesReady: boolean
   playingXiSize: number | null
-  groupCovered: boolean
 }
 
 function TeamCard({
@@ -612,7 +610,6 @@ function TeamCard({
   announcedReady,
   sidesReady,
   playingXiSize,
-  groupCovered,
 }: TeamCardProps) {
   const sideLabel = entry.side === 'home' ? 'Home' : 'Away'
   const players = side?.players ?? []
@@ -641,20 +638,6 @@ function TeamCard({
             />
           )}
         </Box>
-
-        {groupCovered && (
-          <Box>
-            <MuiButton
-              component={RouterLink}
-              to={`${editBase}?tab=match-squad&side=${entry.side}`}
-              variant="outlined"
-              size="small"
-              startIcon={<GroupsOutlinedIcon fontSize="small" />}
-            >
-              Pick match squad
-            </MuiButton>
-          </Box>
-        )}
 
         {sidesReady && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>

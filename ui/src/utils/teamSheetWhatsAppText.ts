@@ -22,8 +22,16 @@ export function getRoleEmoji(role: PlayingRole, isWicketKeeper: boolean): string
 // Same "raw UUID would be a visible defect" reasoning as teamSheetPdf.ts's own (unexported)
 // playerName() — kept as an identical, separately-defined local copy rather than importing a
 // private helper from a sibling module.
-function playerName(player: Player | undefined): string {
-  return player ? `${player.firstName} ${player.lastName}` : 'Unknown player'
+// docs/specs/076: roster entry first, then the side player's own name, then 'Unknown player'.
+function playerName(
+  player: Player | undefined,
+  sidePlayer?: { firstName?: string | null; lastName?: string | null },
+): string {
+  if (player) {
+    return `${player.firstName} ${player.lastName}`
+  }
+  const own = [sidePlayer?.firstName, sidePlayer?.lastName].filter(Boolean).join(' ')
+  return own || 'Unknown player'
 }
 
 interface RosterLine {
@@ -31,6 +39,9 @@ interface RosterLine {
   name: string
   isCaptain: boolean
   squadJerseyNumber: number | null
+  // docs/specs/076-team-selection.md: false for a selected player with no batting position yet,
+  // listed after the numbered ones without a number.
+  numbered: boolean
 }
 
 // Duplicates the same battingOrder-sort + squad join teamSheetPdf.ts's own (unexported)
@@ -41,11 +52,18 @@ function resolveRosterLines(side: TeamSheetSide): RosterLine[] {
   const squadById = new Map(side.squad.map((member) => [member.playerProfileId, member]))
   const players = side.side?.players ?? []
 
-  return [...players]
-    .sort((a, b) => a.battingOrder - b.battingOrder)
-    .map((entry) => ({
+  // The 12th man is excluded so the 12th Man callout does not repeat him.
+  const twelfthManPlayerId = side.side?.twelfthManPlayerId
+  const rows = players.filter((entry) => entry.playerProfileId !== twelfthManPlayerId)
+  const positioned = rows
+    .filter((entry) => entry.battingOrder != null)
+    .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+  const waiting = rows.filter((entry) => entry.battingOrder == null)
+
+  return [...positioned, ...waiting].map((entry) => ({
+      numbered: entry.battingOrder != null,
       emoji: getRoleEmoji(entry.role, side.side?.wicketKeeperPlayerId === entry.playerProfileId),
-      name: playerName(squadById.get(entry.playerProfileId)),
+      name: playerName(squadById.get(entry.playerProfileId), entry),
       isCaptain: side.side?.captainPlayerId === entry.playerProfileId,
       squadJerseyNumber: squadById.get(entry.playerProfileId)?.squadJerseyNumber ?? null,
     }))
@@ -56,7 +74,10 @@ function resolveCaptainName(side: TeamSheetSide): string | null {
   if (!captainPlayerId) {
     return null
   }
-  return playerName(side.squad.find((candidate) => candidate.playerProfileId === captainPlayerId))
+  return playerName(
+    side.squad.find((candidate) => candidate.playerProfileId === captainPlayerId),
+    side.side?.players.find((entry) => entry.playerProfileId === captainPlayerId),
+  )
 }
 
 function resolveTwelfthManName(side: TeamSheetSide): string | null {
@@ -64,7 +85,10 @@ function resolveTwelfthManName(side: TeamSheetSide): string | null {
   if (!twelfthManPlayerId) {
     return null
   }
-  return playerName(side.squad.find((candidate) => candidate.playerProfileId === twelfthManPlayerId))
+  return playerName(
+    side.squad.find((candidate) => candidate.playerProfileId === twelfthManPlayerId),
+    side.side?.players.find((entry) => entry.playerProfileId === twelfthManPlayerId),
+  )
 }
 
 // Builds a WhatsApp-formatted (*bold*/_italic_) plain-text team sheet for the given
@@ -91,11 +115,17 @@ export function generateTeamSheetWhatsAppText(match: Match, sides: TeamSheetSide
     if (roster.length === 0) {
       lines.push('_Team not yet announced_')
     } else {
-      roster.forEach((entry, index) => {
+      let position = 0
+      roster.forEach((entry) => {
         const numberedName =
           entry.squadJerseyNumber != null ? `#${entry.squadJerseyNumber} ${entry.name}` : entry.name
         const captainSuffix = entry.isCaptain ? ' *(C)*' : ''
-        lines.push(`${entry.emoji} ${index + 1}. ${numberedName}${captainSuffix}`)
+        if (entry.numbered) {
+          position += 1
+          lines.push(`${entry.emoji} ${position}. ${numberedName}${captainSuffix}`)
+        } else {
+          lines.push(`${entry.emoji} ${numberedName}${captainSuffix}`)
+        }
       })
     }
 
