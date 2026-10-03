@@ -32,6 +32,7 @@ export type RecordCardBadgeTone =
   | 'open'
   | 'closed'
   | 'side'
+  | 'noPoll'
 
 export interface RecordCardBadge {
   label: string
@@ -141,6 +142,15 @@ export interface RecordCardProps {
   // then flexes (flex 1, minWidth 0) so a titleEdit pencil stays right after the text and the
   // corner action / badges stay top-right. Purely additive: omitted, nothing changes.
   titleWrap?: boolean
+  // How many lines `titleWrap` clamps the title to before the ellipsis; defaults to 2. The poll card
+  // passes 3 so a long description-style title reads in full beside its pencil. Ignored without
+  // `titleWrap`. Purely additive.
+  titleLines?: number
+  // docs/specs/069-match-card-redesign.md: render the badge/badges chips in their own full-width,
+  // right-aligned wrapping row ABOVE the avatar + title header, so the title keeps the full card
+  // width instead of being squeezed by a right-hand badge cluster. The header's right-hand badges
+  // are then not rendered. Purely additive: omitted, nothing changes.
+  badgesAbove?: boolean
   // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
   // card's top-right corner, after the badges, keeping the footer for the main actions. The
   // action's `label` is its accessible name and tooltip; `icon` is required.
@@ -194,6 +204,11 @@ export function avatarSx(size: number, fontSize?: string) {
   }
 }
 
+// 'neutral' and 'noPoll' are the outlined tones; every other tone is a filled chip.
+function isOutlinedTone(tone: RecordCardBadgeTone) {
+  return tone === 'neutral' || tone === 'noPoll'
+}
+
 export function badgeSx(tone: RecordCardBadgeTone) {
   if (tone === 'positive') {
     return {
@@ -210,6 +225,17 @@ export function badgeSx(tone: RecordCardBadgeTone) {
       bgcolor: (theme: Theme) => alpha(theme.palette.text.secondary, 0.12),
       color: 'text.secondary',
       opacity: 0.7,
+    }
+  }
+  if (tone === 'noPoll') {
+    // 'No poll': a dashed outline with muted text, so the absence of a poll reads as an empty slot
+    // rather than a status. Rendered as an outlined chip (see isOutlinedTone).
+    return {
+      color: 'text.secondary',
+      borderStyle: 'dashed',
+      borderColor: 'text.disabled',
+      bgcolor: 'transparent',
+      fontWeight: 600,
     }
   }
   if (tone === 'squadPoll') return tintedBadgeSx('primary', 'primary.dark')
@@ -248,6 +274,8 @@ export function RecordCard({
   viewTo,
   titleEdit,
   titleWrap,
+  titleLines = 2,
+  badgesAbove,
   cornerAction,
   secondaryAction,
   secondaryActions,
@@ -261,7 +289,7 @@ export function RecordCard({
           minWidth: 0,
           flex: '0 1 auto',
           display: '-webkit-box',
-          WebkitLineClamp: 2,
+          WebkitLineClamp: titleLines,
           WebkitBoxOrient: 'vertical' as const,
           overflow: 'hidden',
           overflowWrap: 'anywhere' as const,
@@ -273,14 +301,14 @@ export function RecordCard({
   const badgeChips = (
     <>
       {badge && (
-        <Chip size="small" label={badge.label} variant={badge.tone === 'neutral' ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
+        <Chip size="small" label={badge.label} variant={isOutlinedTone(badge.tone) ? 'outlined' : 'filled'} sx={badgeSx(badge.tone)} />
       )}
       {badges?.map((entry, index) => (
         <Chip
           key={index}
           size="small"
           label={entry.label}
-          variant={entry.tone === 'neutral' ? 'outlined' : 'filled'}
+          variant={isOutlinedTone(entry.tone) ? 'outlined' : 'filled'}
           sx={badgeSx(entry.tone)}
         />
       ))}
@@ -318,6 +346,11 @@ export function RecordCard({
       }}
     >
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
+        {badgesAbove && (badge || (badges && badges.length > 0)) && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end" data-testid="badges-above">
+            {badgeChips}
+          </Stack>
+        )}
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack
             direction="row"
@@ -399,14 +432,14 @@ export function RecordCard({
             >
               {cornerAction.icon}
             </IconButton>
-          ) : (
+          ) : badgesAbove ? null : (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
               {badgeChips}
             </Stack>
           )}
         </Stack>
 
-        {cornerAction && (badge || (badges && badges.length > 0)) && (
+        {cornerAction && !badgesAbove && (badge || (badges && badges.length > 0)) && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {badgeChips}
           </Stack>
@@ -473,7 +506,8 @@ export function RecordCard({
       {footerButtons ? (
         // minmax(0, 1fr) columns + minWidth 0 keep the columns equal whatever the card width. The
         // no-clip guarantee is the caller's: captions stay short (the longest is 'Responses', ~52px
-        // at 11px) and the poll grid never makes a card narrower than 320px (>= ~74px per column).
+        // at 11px) and the shared card grid (utils/cardGrid.ts) never makes a card narrower than 380px
+        // (capped at 100% on a narrower phone), i.e. >= ~85px per column.
         // The ellipsis below is only a last-resort safety net, never the expected path.
         <CardActions
           sx={{

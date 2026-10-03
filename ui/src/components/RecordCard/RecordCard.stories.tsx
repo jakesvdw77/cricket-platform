@@ -80,6 +80,50 @@ export const PollBadges: Story = {
   },
 }
 
+// docs/specs/069-match-card-redesign.md: the dashed-outline 'No poll' tone beside the filled ones.
+export const NoPollBadge: Story = {
+  args: {
+    title: 'Villagers 1 vs CBC',
+    badges: [
+      { label: 'Not announced', tone: 'neutral' },
+      { label: 'Poll open', tone: 'open' },
+      { label: 'Poll closed', tone: 'closed' },
+      { label: 'No poll', tone: 'noPoll' },
+    ],
+    editLabel: 'Edit',
+    onEdit: () => undefined,
+  },
+}
+
+// docs/specs/069: badges in their own row above the header so a long title keeps the full width.
+export const BadgesAbove: Story = {
+  args: {
+    title: 'Irene Village Cricket Club First XI vs Riverside Occasionals',
+    titleWrap: true,
+    badgesAbove: true,
+    badges: [
+      { label: 'Not announced', tone: 'neutral' },
+      { label: 'Inactive', tone: 'muted' },
+      { label: 'Poll closed', tone: 'closed' },
+    ],
+    editLabel: 'Edit',
+    onEdit: () => undefined,
+  },
+}
+
+// A long description-style title (the poll card) clamped to three lines beside its pencil.
+export const LongTitleThreeLines: Story = {
+  args: {
+    title: 'Thursday 15 October - Over 40 fixtures and the extended friendly programme',
+    titleWrap: true,
+    titleLines: 3,
+    titleEdit: { label: 'Edit description', onClick: () => undefined },
+    badge: { label: 'Group poll', tone: 'groupPoll' },
+    editLabel: 'Edit',
+    onEdit: () => undefined,
+  },
+}
+
 export const MinimalSlots: Story = {
   args: {
     title: 'Club Free',

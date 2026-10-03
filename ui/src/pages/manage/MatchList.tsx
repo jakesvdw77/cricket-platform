@@ -3,21 +3,13 @@ import { Box, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
 import MenuItem from '@mui/material/MenuItem'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardBadge } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
-import { TeamSheetCommunicationDialog } from '../../components/TeamSheetCommunicationDialog'
-import type { TeamSheetPrintScope } from '../../components/TeamSheetCommunicationDialog'
 import { listMatches, listMatchFilterOptions } from '../../api/matchApi'
-import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listLeagues } from '../../api/leagueApi'
@@ -25,11 +17,9 @@ import type { League } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
 import { listSections } from '../../api/sectionApi'
-import { listMatchSides } from '../../api/matchSideApi'
-import { listSquad } from '../../api/teamSquadApi'
-import { matchFields } from '../../utils/matchRecordFields'
-import { generateTeamSheetPdf } from '../../utils/teamSheetPdf'
-import type { TeamSheetSide } from '../../utils/teamSheetPdf'
+import { MatchCard } from './matches/MatchCard'
+import { cardGridSx } from '../../utils/cardGrid'
+import { announcedBadges, badgeFor, sideName } from './matches/matchCardHelpers'
 
 // docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first — index
 // 0 (the default) is now ascending. Both entries stay in this array for the underlying
@@ -45,222 +35,9 @@ const SORT_OPTIONS = [
 
 const SEARCH_DEBOUNCE_MS = 300
 
-// docs/specs/037-match-improvements.md item 2: SquadPicker.tsx (029) already passes an `editTo`
-// that itself ends in `?tab=playing-xi` — a naive `${editTo}?tab=playing-xi` would double up the
-// query string (`?tab=playing-xi?tab=playing-xi`, which MatchFormPage's own `searchParams.get`
-// read would then fail to match exactly). Skips entirely when already present, else appends with
-// `&` when a (different) query string already exists.
-function withPlayingXiTab(url: string): string {
-  if (url.includes('tab=playing-xi')) {
-    return url
-  }
-  return `${url}${url.includes('?') ? '&' : '?'}tab=playing-xi`
-}
-
-// Exported for MatchDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
-// new read-only view screen's title/badge match this card's exactly, rather than a second copy.
-export function sideName(teamId: string | null, teamName: string | null, teamsById: Map<string, Team>): string {
-  if (teamId) {
-    return teamsById.get(teamId)?.name ?? 'Unknown team'
-  }
-  return teamName ?? 'TBC'
-}
-
-export function badgeFor(match: Match): RecordCardBadge | undefined {
-  if (!match.active) {
-    return { label: 'Inactive', tone: 'muted' }
-  }
-  return undefined
-}
-
-// docs/specs/040-announce-team.md: one badge per real-Team side (skipped entirely for a
-// free-text opponent side, since there's nothing to announce), prefixed with that side's own
-// resolved team name only when both sides are real Teams — unprefixed for the overwhelmingly
-// common one-real-side case, since the card's own title already names both teams.
-export function announcedBadges(match: Match, teamsById: Map<string, Team>): RecordCardBadge[] {
-  const badges: RecordCardBadge[] = []
-  const bothRealTeams = Boolean(match.homeTeamId) && Boolean(match.awayTeamId)
-
-  if (match.homeTeamId) {
-    const prefix = bothRealTeams ? `${sideName(match.homeTeamId, match.homeTeamName, teamsById)}: ` : ''
-    badges.push(
-      match.homeSideAnnounced
-        ? { label: `${prefix}Announced`, tone: 'positive' }
-        : { label: `${prefix}Not Announced`, tone: 'neutral' },
-    )
-  }
-
-  if (match.awayTeamId) {
-    const prefix = bothRealTeams ? `${sideName(match.awayTeamId, match.awayTeamName, teamsById)}: ` : ''
-    badges.push(
-      match.awaySideAnnounced
-        ? { label: `${prefix}Announced`, tone: 'positive' }
-        : { label: `${prefix}Not Announced`, tone: 'neutral' },
-    )
-  }
-
-  return badges
-}
-
-// A lightweight stand-in Team for a free-text opponent side (no real Team record exists) — only
-// `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by teamSheetPdf.ts/
-// TeamSheetCommunicationDialog, both of which prefer `teamName` for display anyway.
-function placeholderTeam(clubId: string, name: string): Team {
-  return {
-    id: '',
-    clubId,
-    sectionId: '',
-    name,
-    logoUrl: null,
-    abbreviation: null,
-    groundName: null,
-    socialLinks: [],
-    active: true,
-    createdAt: '',
-    updatedAt: '',
-    updatedBy: null,
-  }
-}
-
-// One RecordCard per match — Deactivate/Reactivate now lives on MatchFormPage's own actions bar
-// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; "Select Team"/"Communicate Team
-// Sheet" remain the card's own secondaryActions, untouched.
-function MatchCard({
-  clubId,
-  match,
-  teamsById,
-  leaguesById,
-  seasonsById,
-  editTo,
-  viewTo,
-}: {
-  clubId: string
-  match: Match
-  teamsById: Map<string, Team>
-  leaguesById: Map<string, League>
-  seasonsById: Map<string, Season>
-  editTo: string
-  // docs/specs/036-view-first-record-detail-screens.md: when present, the card's primary footer
-  // action becomes "View" (into MatchDetailPage) and editTo is suppressed — SquadPicker.tsx
-  // deliberately passes `undefined` here (via MatchList's own `viewTo={null}`) to keep its own
-  // "jump straight to the Playing XI tab" edit shortcut, unchanged.
-  viewTo?: string
-}) {
-  const navigate = useNavigate()
-  const [dialogOpen, setDialogOpen] = useState(false)
-
-  const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
-  const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
-  const title = `${homeTeamName} vs ${awayTeamName}`
-
-  // docs/specs/030-team-sheet-communication.md — "Communicate Team Sheet" data-fetching lives
-  // here (the host page), not inside TeamSheetCommunicationDialog itself, matching this
-  // codebase's existing LinkExistingRecordDialog/CreateAndLinkRecordDialog convention of a
-  // presentational dialog fed by the caller's own React Query state. Every query is
-  // `enabled: dialogOpen` so nothing fires until the admin actually opens the dialog.
-  const sidesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', match.id, 'sides'],
-    queryFn: () => listMatchSides(clubId, match.id),
-    enabled: dialogOpen,
-  })
-
-  // Same query-key shape as MatchFormPage.tsx's MatchSideTab, so both share one cache entry per
-  // team/season squad rather than each maintaining its own copy.
-  const homeSquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', match.homeTeamId as string, 'seasons', match.seasonId, 'squad'],
-    queryFn: () => listSquad(clubId, match.homeTeamId as string, match.seasonId),
-    enabled: dialogOpen && Boolean(match.homeTeamId),
-  })
-
-  const awaySquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', match.awayTeamId as string, 'seasons', match.seasonId, 'squad'],
-    queryFn: () => listSquad(clubId, match.awayTeamId as string, match.seasonId),
-    enabled: dialogOpen && Boolean(match.awayTeamId),
-  })
-
-  const sidesLoading =
-    dialogOpen &&
-    (sidesQuery.isLoading ||
-      (Boolean(match.homeTeamId) && homeSquadQuery.isLoading) ||
-      (Boolean(match.awayTeamId) && awaySquadQuery.isLoading))
-
-  // A fixed 2-tuple (home, then away) — TeamSheetCommunicationDialog's own prop type relies on
-  // this exact order/length, per its "index 0 is home, index 1 is away" invariant.
-  const teamSheetSides: [TeamSheetSide, TeamSheetSide] = [
-    {
-      team: (match.homeTeamId && teamsById.get(match.homeTeamId)) || placeholderTeam(clubId, homeTeamName),
-      teamName: homeTeamName,
-      side: sidesQuery.data?.find((side) => side.teamId === match.homeTeamId),
-      squad: homeSquadQuery.data ?? [],
-    },
-    {
-      team: (match.awayTeamId && teamsById.get(match.awayTeamId)) || placeholderTeam(clubId, awayTeamName),
-      teamName: awayTeamName,
-      side: sidesQuery.data?.find((side) => side.teamId === match.awayTeamId),
-      squad: awaySquadQuery.data ?? [],
-    },
-  ]
-
-  const subtitle = matchFields(match, leaguesById, seasonsById)
-    .map((field) => String(field.value))
-    .join(' · ')
-
-  // docs/specs/037-match-improvements.md item 2: a match between two free-text opponents has no
-  // Playing XI tab to jump into (029) — the shortcut is omitted entirely rather than shown
-  // disabled or landing on an empty tab.
-  const hasRealTeamSide = Boolean(match.homeTeamId) || Boolean(match.awayTeamId)
-
-  const handlePrint = async (scope: TeamSheetPrintScope) => {
-    const filteredSides =
-      scope === 'both' ? teamSheetSides : scope === 'home' ? [teamSheetSides[0]] : [teamSheetSides[1]]
-    const url = await generateTeamSheetPdf(match, filteredSides, subtitle)
-    window.open(url, '_blank')
-  }
-
-  return (
-    <>
-      <RecordCard
-        title={title}
-        avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-        badge={badgeFor(match)}
-        badges={announcedBadges(match, teamsById)}
-        fields={matchFields(match, leaguesById, seasonsById)}
-        editLabel="Edit"
-        editTo={editTo}
-        viewTo={viewTo}
-        secondaryActions={[
-          ...(hasRealTeamSide
-            ? [
-                {
-                  label: 'Select Team',
-                  pendingLabel: 'Select Team',
-                  pending: false,
-                  onClick: () => navigate(withPlayingXiTab(editTo)),
-                  icon: <GroupsOutlinedIcon fontSize="small" />,
-                },
-              ]
-            : []),
-          {
-            label: 'Team Sheet',
-            pendingLabel: 'Opening…',
-            pending: false,
-            onClick: () => setDialogOpen(true),
-            icon: <ShareOutlinedIcon fontSize="small" />,
-          },
-        ]}
-      />
-      <TeamSheetCommunicationDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        match={match}
-        sides={teamSheetSides}
-        sidesLoading={Boolean(sidesLoading)}
-        onPrint={handlePrint}
-        subtitle={subtitle}
-      />
-    </>
-  )
-}
+// Re-exported for MatchDetailPage.tsx (docs/specs/036) and the tests: the helpers moved to
+// matches/matchCardHelpers.ts with the card (docs/specs/069-match-card-redesign.md).
+export { sideName, badgeFor, announcedBadges }
 
 export interface MatchListProps {
   // SquadPicker (docs/specs/029-league-management.md) reuses this same paginated data source and
@@ -560,13 +337,7 @@ export default function MatchList({
       />
 
       {hasMatches && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-          }}
-        >
+        <Box sx={cardGridSx}>
           {data.content.map((match) => (
             <MatchCard
               key={match.id}

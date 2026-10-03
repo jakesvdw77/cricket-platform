@@ -17,6 +17,7 @@ import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { PollCard } from './availability/PollCard'
+import { cardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
 
 type PollTypeFilter = 'ALL' | 'SQUAD' | 'GROUP'
@@ -237,18 +238,7 @@ export default function AvailabilityPollsDashboard() {
       />
 
       {visibleItems.length > 0 && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            // auto-fill with a 320px floor: a card is never narrower than 320px at any viewport or
-            // shell, which is what keeps the poll card's four footer columns unclipped (docs/specs/
-            // 066). 375px phone = 1 column, then 2 and 3 columns as width allows. stretch makes every
-            // card in a row the height of the tallest.
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            alignItems: 'stretch',
-          }}
-        >
+        <Box sx={cardGridSx}>
           {visibleItems.map((item) =>
             item.kind === 'SQUAD' ? (
               <PollCard
