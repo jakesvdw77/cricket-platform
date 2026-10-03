@@ -5,20 +5,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.MatchSidePlayer;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
+import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -32,6 +36,8 @@ import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.MatchServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -64,6 +70,12 @@ class MatchServiceImplTest {
     private com.cricketlegend.repository.MatchSideRepository matchSideRepository;
 
     @Mock
+    private com.cricketlegend.repository.MatchSidePlayerRepository matchSidePlayerRepository;
+
+    @Mock
+    private MatchPollCoverageService matchPollCoverageService;
+
+    @Mock
     private LeagueRepository leagueRepository;
 
     @Mock
@@ -88,14 +100,15 @@ class MatchServiceImplTest {
     @BeforeEach
     void setUp() {
         matchService = new MatchServiceImpl(
-                matchRepository, matchSideRepository, leagueRepository, seasonRepository, teamRepository,
-                sectionRepository, matchMapper, accessService);
+                matchRepository, matchSideRepository, matchSidePlayerRepository, matchPollCoverageService,
+                leagueRepository, seasonRepository, teamRepository, sectionRepository, matchMapper,
+                accessService);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -528,9 +541,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -553,6 +566,290 @@ class MatchServiceImplTest {
         assertThat(resultB.homeSideAnnounced()).isFalse();
         assertThat(resultB.awaySideAnnounced()).isFalse();
         verify(matchSideRepository).findByMatchIdIn(List.of(matchAId, matchBId));
+    }
+
+    // --- 069: match card enrichment (picked counts, playing XI size, polls) ---
+
+    private static final org.springframework.data.domain.Pageable PAGE10 =
+            org.springframework.data.domain.PageRequest.of(0, 10);
+
+    private final UUID cardClubId = UUID.randomUUID();
+
+    private Match cardMatch(UUID homeTeamId, String homeName, UUID awayTeamId, String awayName, UUID leagueId) {
+        return Match.builder().id(UUID.randomUUID()).clubId(cardClubId).homeTeamId(homeTeamId)
+                .homeTeamName(homeName).awayTeamId(awayTeamId).awayTeamName(awayName).leagueId(leagueId)
+                .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
+    }
+
+    private MatchDto cardDto(Match m) {
+        return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
+                m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
+                false, false, null, null, null, null, null, null, null);
+    }
+
+    private List<MatchDto> listCard(Match... matches) {
+        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matches)));
+        for (Match m : matches) {
+            when(matchMapper.toDto(m)).thenReturn(cardDto(m));
+        }
+        return matchService.list(authentication, cardClubId, null, false, null, null, null, PAGE10).getContent();
+    }
+
+    private Team clubTeam(UUID id) {
+        return Team.builder().id(id).clubId(cardClubId).sectionId(UUID.randomUUID()).name("T").active(true).build();
+    }
+
+    private MatchSide side(Match m, UUID teamId) {
+        return MatchSide.builder().id(UUID.randomUUID()).matchId(m.getId()).teamId(teamId).build();
+    }
+
+    private List<MatchSidePlayer> xi(MatchSide side, int n) {
+        return java.util.stream.IntStream.range(0, n)
+                .mapToObj(i -> MatchSidePlayer.builder().id(UUID.randomUUID()).matchSideId(side.getId())
+                        .playerProfileId(UUID.randomUUID()).battingOrder(i + 1).build())
+                .toList();
+    }
+
+    private MatchDto byId(List<MatchDto> list, Match m) {
+        return list.stream().filter(d -> d.id().equals(m.getId())).findFirst().orElseThrow();
+    }
+
+    @Test
+    void listCallsEachBatchSourceOnceForTheWholePageRegardlessOfPageSize() {
+        UUID leagueId = UUID.randomUUID();
+        UUID t1 = UUID.randomUUID();
+        UUID t2 = UUID.randomUUID();
+        UUID t3 = UUID.randomUUID();
+        Match a = cardMatch(t1, null, null, "Opp A", leagueId);
+        Match b = cardMatch(t2, null, null, "Opp B", leagueId);
+        Match c = cardMatch(t3, null, null, "Opp C", leagueId);
+        MatchSide sa = side(a, t1);
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of(sa));
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(t1), clubTeam(t2), clubTeam(t3)));
+        when(matchSidePlayerRepository.findByMatchSideIdIn(any())).thenReturn(xi(sa, 3));
+        when(leagueRepository.findAllById(any())).thenReturn(List.of(league(leagueId, cardClubId)));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+
+        listCard(a, b, c);
+
+        verify(matchSideRepository, times(1)).findByMatchIdIn(any());
+        verify(matchSidePlayerRepository, times(1)).findByMatchSideIdIn(any());
+        verify(teamRepository, times(1)).findAllById(any());
+        verify(leagueRepository, times(1)).findAllById(any());
+        verify(matchPollCoverageService, times(1)).pollsForMatches(any());
+        verify(teamRepository, never()).findById(any());
+        verify(leagueRepository, never()).findById(any());
+    }
+
+    @Test
+    void listCallsNoBatchSourceForAnEmptyPage() {
+        when(accessService.accessibleSectionIds(authentication, cardClubId)).thenReturn(Optional.empty());
+        when(matchRepository.findAll(any(Specification.class), eq(defaultSortedPageable())))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        matchService.list(authentication, cardClubId, null, false, null, null, null, PAGE10);
+
+        org.mockito.Mockito.verifyNoInteractions(
+                matchSideRepository, matchSidePlayerRepository, matchPollCoverageService);
+        verify(teamRepository, never()).findAllById(any());
+        verify(leagueRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void listCountsPickedPlayersPerClubSideForNoneSomeAndFullXi() {
+        UUID leagueId = UUID.randomUUID();
+        UUID home = UUID.randomUUID();
+        UUID away = UUID.randomUUID();
+        UUID solo = UUID.randomUUID();
+        Match derby = cardMatch(home, null, away, null, leagueId);
+        Match full = cardMatch(solo, null, null, "Opp", leagueId);
+        MatchSide homeSide = side(derby, home);
+        MatchSide soloSide = side(full, solo);
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of(homeSide, soloSide));
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(home), clubTeam(away), clubTeam(solo)));
+        java.util.ArrayList<MatchSidePlayer> players = new java.util.ArrayList<>(xi(homeSide, 7));
+        players.addAll(xi(soloSide, 11));
+        when(matchSidePlayerRepository.findByMatchSideIdIn(any())).thenReturn(players);
+        when(leagueRepository.findAllById(any())).thenReturn(List.of(league(leagueId, cardClubId)));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+
+        List<MatchDto> result = listCard(derby, full);
+
+        assertThat(byId(result, derby).homePickedCount()).isEqualTo(7);
+        assertThat(byId(result, derby).awayPickedCount()).isZero();
+        assertThat(byId(result, full).homePickedCount()).isEqualTo(11);
+        assertThat(byId(result, full).awayPickedCount()).isNull();
+    }
+
+    @Test
+    void listGivesNullCountForFreeTextAndOtherClubSides() {
+        UUID mine = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        Match m = cardMatch(mine, null, other, null, null);
+        Team otherClubTeam =
+                Team.builder().id(other).clubId(UUID.randomUUID()).sectionId(UUID.randomUUID()).name("X").build();
+        MatchSide otherSide = side(m, other);
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of(otherSide));
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(mine), otherClubTeam));
+        when(matchSidePlayerRepository.findByMatchSideIdIn(any())).thenReturn(xi(otherSide, 5));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+        Match freeText = cardMatch(null, "Home FC", null, "Away FC", null);
+
+        List<MatchDto> result = listCard(m, freeText);
+
+        assertThat(byId(result, m).homePickedCount()).isZero();
+        assertThat(byId(result, m).awayPickedCount()).isNull();
+        assertThat(byId(result, freeText).homePickedCount()).isNull();
+        assertThat(byId(result, freeText).awayPickedCount()).isNull();
+        assertThat(byId(result, freeText).polls()).isEmpty();
+    }
+
+    @Test
+    void listSetsPlayingXiSizeFromTheLeagueAndNullWithoutOne() {
+        UUID leagueId = UUID.randomUUID();
+        UUID t = UUID.randomUUID();
+        Match withLeague = cardMatch(t, null, null, "Opp", leagueId);
+        Match noLeague = cardMatch(t, null, null, "Opp", null);
+        League l = League.builder().id(leagueId).clubId(cardClubId).name("L").source(LeagueSource.INTERNAL)
+                .maxPlayingXiSize(9).active(true).build();
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(t)));
+        when(leagueRepository.findAllById(any())).thenReturn(List.of(l));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+
+        List<MatchDto> result = listCard(withLeague, noLeague);
+
+        assertThat(byId(result, withLeague).playingXiSize()).isEqualTo(9);
+        assertThat(byId(result, noLeague).playingXiSize()).isNull();
+        verify(matchSidePlayerRepository, never()).findByMatchSideIdIn(any());
+    }
+
+    @Test
+    void listMapsSquadGroupDerbyAndUnpolledMatchesToPolls() {
+        UUID squadTeam = UUID.randomUUID();
+        UUID derbyHome = UUID.randomUUID();
+        UUID derbyAway = UUID.randomUUID();
+        UUID groupTeam = UUID.randomUUID();
+        UUID bareTeam = UUID.randomUUID();
+        Match squad = cardMatch(squadTeam, null, null, "Opp", null);
+        Match derby = cardMatch(derbyHome, null, derbyAway, null, null);
+        Match group = cardMatch(groupTeam, null, null, "Opp", null);
+        Match bare = cardMatch(bareTeam, null, null, "Opp", null);
+        UUID squadPollId = UUID.randomUUID();
+        UUID homePollId = UUID.randomUUID();
+        UUID awayPollId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(teamRepository.findAllById(any())).thenReturn(List.of(
+                clubTeam(squadTeam), clubTeam(derbyHome), clubTeam(derbyAway), clubTeam(groupTeam),
+                clubTeam(bareTeam)));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of(
+                squad.getId(), List.of(new MatchPollCoverageService.PollRef(
+                        AvailabilityPollType.SQUAD, squadTeam, squadPollId, null, true)),
+                derby.getId(), List.of(
+                        new MatchPollCoverageService.PollRef(
+                                AvailabilityPollType.SQUAD, derbyHome, homePollId, null, true),
+                        new MatchPollCoverageService.PollRef(
+                                AvailabilityPollType.SQUAD, derbyAway, awayPollId, null, false)),
+                group.getId(), List.of(new MatchPollCoverageService.PollRef(
+                        AvailabilityPollType.GROUP, null, roundId, roundId, false)),
+                bare.getId(), List.of()));
+
+        List<MatchDto> result = listCard(squad, derby, group, bare);
+
+        assertThat(byId(result, squad).polls())
+                .containsExactly(new MatchPollDto(AvailabilityPollType.SQUAD, squadTeam, squadPollId, null, true));
+        assertThat(byId(result, derby).polls()).containsExactly(
+                new MatchPollDto(AvailabilityPollType.SQUAD, derbyHome, homePollId, null, true),
+                new MatchPollDto(AvailabilityPollType.SQUAD, derbyAway, awayPollId, null, false));
+        assertThat(byId(result, group).polls())
+                .containsExactly(new MatchPollDto(AvailabilityPollType.GROUP, null, roundId, roundId, false));
+        assertThat(byId(result, bare).polls()).isEmpty();
+    }
+
+    @Test
+    void listDropsSquadPollsOfTeamsThatAreNotClubSidesOfTheMatch() {
+        UUID mine = UUID.randomUUID();
+        UUID stranger = UUID.randomUUID();
+        Match m = cardMatch(mine, null, null, "Opp", null);
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(mine)));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of(m.getId(), List.of(
+                new MatchPollCoverageService.PollRef(AvailabilityPollType.SQUAD, stranger, UUID.randomUUID(), null, true))));
+
+        assertThat(listCard(m).get(0).polls()).isEmpty();
+    }
+
+    @Test
+    void listKeepsAnnouncedFlagsTrueOnlyForARealTeamSideWithAnAnnouncedMatchSide() {
+        UUID home = UUID.randomUUID();
+        UUID away = UUID.randomUUID();
+        Match m = cardMatch(home, null, away, null, null);
+        MatchSide announced = side(m, home);
+        announced.setAnnounced(true);
+        MatchSide notAnnounced = side(m, away);
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of(announced, notAnnounced));
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(home), clubTeam(away)));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+        Match freeText = cardMatch(null, "Home FC", null, "Away FC", null);
+
+        List<MatchDto> result = listCard(m, freeText);
+
+        assertThat(byId(result, m).homeSideAnnounced()).isTrue();
+        assertThat(byId(result, m).awaySideAnnounced()).isFalse();
+        assertThat(byId(result, freeText).homeSideAnnounced()).isFalse();
+        assertThat(byId(result, freeText).awaySideAnnounced()).isFalse();
+    }
+
+    @Test
+    void nonListPathsReturnNullCountsAndAnEmptyPollsList() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match active = existingMatch(matchId, clubId, true);
+        Match inactive = existingMatch(matchId, clubId, false);
+        MatchDto plain = dummyDto();
+        when(matchMapper.toDto(any(Match.class))).thenReturn(plain);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(active));
+        when(matchRepository.save(any(Match.class))).thenAnswer(i -> i.getArgument(0));
+
+        assertNoCardValues(matchService.get(authentication, clubId, matchId));
+        assertNoCardValues(matchService.deactivate(authentication, clubId, matchId));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(inactive));
+        assertNoCardValues(matchService.reactivate(authentication, clubId, matchId));
+
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team(teamId, clubId, sectionId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(matchRepository.findPreviousForTeamSeasonLeague(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(active));
+        List<MatchDto> previous =
+                matchService.listPrevious(authentication, clubId, teamId, seasonId, null, null);
+        previous.forEach(this::assertNoCardValues);
+        assertThat(previous).hasSize(1);
+
+        UUID leagueId = UUID.randomUUID();
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(accessService.resolveMatchSectionIds(any(), any(), any())).thenReturn(Set.of(sectionId));
+        assertNoCardValues(matchService.create(authentication, clubId, new CreateMatchRequest(
+                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null)));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(active));
+        assertNoCardValues(matchService.update(authentication, clubId, matchId, new UpdateMatchRequest(
+                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null)));
+
+        verify(matchPollCoverageService, never()).pollsForMatches(any());
+        verify(matchSidePlayerRepository, never()).findByMatchSideIdIn(any());
+    }
+
+    private void assertNoCardValues(MatchDto dto) {
+        assertThat(dto.homePickedCount()).isNull();
+        assertThat(dto.awayPickedCount()).isNull();
+        assertThat(dto.playingXiSize()).isNull();
+        assertThat(dto.polls()).isNotNull().isEmpty();
     }
 
     // --- 037: upcomingOnly ---

@@ -1,9 +1,15 @@
 package com.cricketlegend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.SectionAvailabilityRound;
@@ -18,8 +24,11 @@ import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchPollCoverageService.Coverage;
 import com.cricketlegend.service.MatchPollCoverageService.Kind;
+import com.cricketlegend.service.MatchPollCoverageService.PollRef;
 import com.cricketlegend.service.impl.MatchPollCoverageServiceImpl;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -158,5 +167,88 @@ class MatchPollCoverageServiceImplTest {
     @Test
     void resolveAnyReturnsNoneWhenNothingCoversTheMatch() {
         assertThat(service.resolveAny(matchId)).isEqualTo(Coverage.NONE);
+    }
+
+    // --- 069: batch pollsForMatches ---
+
+    private SectionAvailabilityWindow window(UUID roundId, boolean open) {
+        return SectionAvailabilityWindow.builder().id(UUID.randomUUID()).roundId(roundId).open(open).build();
+    }
+
+    @Test
+    void pollsForMatchesWithEmptyInputMakesNoRepositoryCall() {
+        assertThat(service.pollsForMatches(List.of())).isEmpty();
+
+        verifyNoInteractions(windowMatchRepository, windowRepository, pollRepository);
+    }
+
+    @Test
+    void pollsForMatchesKeysEveryRequestedMatchWithAnEmptyListWhenUnpolled() {
+        UUID other = UUID.randomUUID();
+        when(windowMatchRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(pollRepository.findByMatchIdIn(any())).thenReturn(List.of());
+
+        Map<UUID, List<PollRef>> result = service.pollsForMatches(List.of(matchId, other));
+
+        assertThat(result).containsOnlyKeys(matchId, other);
+        assertThat(result.values()).allMatch(List::isEmpty);
+        verify(windowRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void pollsForMatchesGivesOneGroupEntryThatBeatsSquadPollsAndCarriesTheWindowOpenFlag() {
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityWindow window = window(roundId, false);
+        when(windowMatchRepository.findByMatchIdIn(any())).thenReturn(List.of(
+                SectionAvailabilityWindowMatch.builder().windowId(window.getId()).matchId(matchId).build()));
+        when(windowRepository.findAllById(any())).thenReturn(List.of(window));
+        when(pollRepository.findByMatchIdIn(any())).thenReturn(List.of(MatchAvailabilityPoll.builder()
+                .id(UUID.randomUUID()).matchId(matchId).teamId(homeTeamId).open(true).build()));
+
+        Map<UUID, List<PollRef>> result = service.pollsForMatches(List.of(matchId));
+
+        assertThat(result.get(matchId))
+                .containsExactly(new PollRef(AvailabilityPollType.GROUP, null, roundId, roundId, false));
+    }
+
+    @Test
+    void pollsForMatchesGivesOneSquadEntryPerTeamWithItsOwnOpenFlag() {
+        UUID homePollId = UUID.randomUUID();
+        UUID awayPollId = UUID.randomUUID();
+        UUID otherMatch = UUID.randomUUID();
+        when(windowMatchRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(pollRepository.findByMatchIdIn(any())).thenReturn(List.of(
+                MatchAvailabilityPoll.builder().id(homePollId).matchId(matchId).teamId(homeTeamId).open(true).build(),
+                MatchAvailabilityPoll.builder().id(awayPollId).matchId(matchId).teamId(awayTeamId).open(false).build()));
+
+        Map<UUID, List<PollRef>> result = service.pollsForMatches(List.of(matchId, otherMatch));
+
+        assertThat(result.get(matchId)).containsExactlyInAnyOrder(
+                new PollRef(AvailabilityPollType.SQUAD, homeTeamId, homePollId, null, true),
+                new PollRef(AvailabilityPollType.SQUAD, awayTeamId, awayPollId, null, false));
+        assertThat(result.get(otherMatch)).isEmpty();
+    }
+
+    @Test
+    void pollsForMatchesCallsEachRepositoryOnceForManyMatches() {
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityWindow window = window(roundId, true);
+        UUID groupMatch = UUID.randomUUID();
+        UUID squadMatch = UUID.randomUUID();
+        when(windowMatchRepository.findByMatchIdIn(any())).thenReturn(List.of(
+                SectionAvailabilityWindowMatch.builder().windowId(window.getId()).matchId(groupMatch).build()));
+        when(windowRepository.findAllById(any())).thenReturn(List.of(window));
+        when(pollRepository.findByMatchIdIn(any())).thenReturn(List.of(MatchAvailabilityPoll.builder()
+                .id(UUID.randomUUID()).matchId(squadMatch).teamId(homeTeamId).open(true).build()));
+
+        Map<UUID, List<PollRef>> result = service.pollsForMatches(Set.of(groupMatch, squadMatch, matchId));
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(groupMatch)).hasSize(1);
+        assertThat(result.get(squadMatch)).hasSize(1);
+        assertThat(result.get(matchId)).isEmpty();
+        verify(windowMatchRepository, times(1)).findByMatchIdIn(any());
+        verify(windowRepository, times(1)).findAllById(any());
+        verify(pollRepository, times(1)).findByMatchIdIn(any());
     }
 }
