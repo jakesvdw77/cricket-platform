@@ -1,6 +1,20 @@
 import { alpha, createTheme } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 
+// docs/specs/072-league-view-pages.md: the one structural purple, used for the league "format"
+// badge tone. It has no counterpart in the semantic palette and never varies per club. Exported so
+// a component rendered outside a ThemeProvider (tests, stories) can still fall back to it.
+export const STRUCTURAL_PURPLE = { main: '#7b5cc4', dark: '#5b3d99' }
+
+declare module '@mui/material/styles' {
+  interface Palette {
+    purple: { main: string; dark: string }
+  }
+  interface PaletteOptions {
+    purple?: { main: string; dark: string }
+  }
+}
+
 // Structural design tokens — docs/standards/design-system.md. Same values as
 // the old cricketlegend app's ui/src/theme.ts pattern (createTheme, MUI v5),
 // carried forward for this project rather than reinvented.
@@ -12,6 +26,7 @@ export const baseTheme: Theme = createTheme({
     warning: { main: '#b7791f' },
     error: { main: '#b0402e' },
     info: { main: '#2563ac' },
+    purple: STRUCTURAL_PURPLE,
     background: { default: '#ffffff', paper: '#ffffff' },
     text: { primary: '#14231c', secondary: '#52655c' },
     divider: '#dee6e1',

@@ -54,6 +54,10 @@ export interface PlayingConditionsPayload {
   additionalNotes: string | null
 }
 
+// docs/specs/072-league-view-pages.md: the backend stores a uuid-prefixed file name and not the
+// original, so screens show this fixed label for the playing conditions PDF instead.
+export const PLAYING_CONDITIONS_PDF_NAME = 'Playing Conditions.pdf'
+
 function playingConditionsPath(clubId: string, leagueId: string, seasonId: string): string {
   return `/manage/clubs/${clubId}/leagues/${leagueId}/seasons/${seasonId}/playing-conditions`
 }

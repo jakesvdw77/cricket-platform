@@ -13,9 +13,9 @@ import { Button } from '../../components/Button'
 import { listLeagues, LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
 
-// Exported for LeagueDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
-// new read-only view screen's badge/fields/chips match this card's exactly, rather than a second
-// copy.
+// Still exported (badgeFor/leagueSeasonBadges/leagueRecordFields) though the league view pages no
+// longer use them (docs/specs/072-league-view-pages.md; the header uses leagues/leagueBadges.ts) -
+// docs/specs/071-league-card-redesign.md replaces them on this card.
 export function badgeFor(league: League): RecordCardBadge | undefined {
   if (!league.active) {
     return { label: 'Inactive', tone: 'muted' }

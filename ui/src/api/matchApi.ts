@@ -142,6 +142,35 @@ export async function listMatches(
   return data
 }
 
+const ALL_MATCHES_PAGE_SIZE = 200
+const ALL_MATCHES_MAX_PAGES = 25
+
+// docs/specs/072-league-view-pages.md: every match of one league and season, oldest first - the
+// schedule, next-match countdown and share generators need the whole season, and listMatches alone
+// returns just one page (default 20). A league's single season is a small bounded set, so this is a
+// bounded read, not browser-side pagination of an unbounded collection. Pages of 200 are requested
+// while more remain, stopping at 25 pages as a safety bound (returns what it has by then).
+export async function listAllMatches(
+  clubId: string,
+  { leagueId, seasonId }: { leagueId: string; seasonId: string },
+): Promise<Match[]> {
+  const matches: Match[] = []
+  for (let page = 0; page < ALL_MATCHES_MAX_PAGES; page += 1) {
+    const result = await listMatches(clubId, {
+      page,
+      size: ALL_MATCHES_PAGE_SIZE,
+      sort: 'matchDate,asc',
+      leagueId,
+      seasonId,
+    })
+    matches.push(...result.content)
+    if (page + 1 >= result.totalPages) {
+      break
+    }
+  }
+  return matches
+}
+
 // docs/specs/042-match-list-filters-and-search.md: given the *currently selected* filters, returns
 // which section/league/season ids are actually reachable — each array computed ignoring that same
 // dimension's own current selection, so picking a filter never makes itself disappear from its own

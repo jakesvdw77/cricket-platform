@@ -32,7 +32,11 @@ import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerDetailPage from './pages/manage/PlayerDetailPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
-import LeagueDetailPage from './pages/manage/LeagueDetailPage'
+import LeagueViewLayout from './pages/manage/league/LeagueViewLayout'
+import LeagueIndexRedirect from './pages/manage/league/LeagueIndexRedirect'
+import LeagueScheduleView from './pages/manage/league/LeagueScheduleView'
+import LeagueTeamsView from './pages/manage/league/LeagueTeamsView'
+import LeagueConditionsView from './pages/manage/league/LeagueConditionsView'
 import LeagueContactFormPage from './pages/manage/LeagueContactFormPage'
 import LeagueContactDetailPage from './pages/manage/LeagueContactDetailPage'
 import SeasonList from './pages/manage/SeasonList'
@@ -185,12 +189,20 @@ function App() {
                   overview; every fixtures/* sub-route below stays registered unchanged. */}
               <Route path="fixtures/leagues" element={<LeagueList />} />
               <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
-              <Route path="fixtures/leagues/:leagueId" element={<LeagueDetailPage />} />
+              {/* docs/specs/072-league-view-pages.md: the league view is a layout route (header +
+                  view switcher) over three routed views; the bare league URL redirects to the
+                  Schedule, keeping ?seasonId=. */}
+              <Route path="fixtures/leagues/:leagueId" element={<LeagueViewLayout />}>
+                <Route index element={<LeagueIndexRedirect />} />
+                <Route path="schedule" element={<LeagueScheduleView />} />
+                <Route path="teams" element={<LeagueTeamsView />} />
+                <Route path="conditions" element={<LeagueConditionsView />} />
+              </Route>
               <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueFormPage />} />
               {/* docs/specs/054-league-contacts.md: a league's named contacts, one level deeper
                   than fixtures/leagues/:leagueId/edit — no standalone list route, the list itself
-                  is embedded in LeagueFormPage's Contacts tab / LeagueDetailPage's Contacts
-                  section. */}
+                  is embedded in LeagueFormPage's Contacts tab and surfaced as avatars in the
+                  league view header (LeagueViewLayout). */}
               <Route path="fixtures/leagues/:leagueId/contacts/new" element={<LeagueContactFormPage />} />
               <Route path="fixtures/leagues/:leagueId/contacts/:contactId" element={<LeagueContactDetailPage />} />
               <Route

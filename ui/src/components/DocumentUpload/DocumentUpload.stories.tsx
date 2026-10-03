@@ -29,6 +29,10 @@ export const Populated: Story = {
   },
 }
 
+export const WithDisplayName: Story = {
+  args: { ...Populated.args, displayName: 'Playing Conditions.pdf' },
+}
+
 // Uploading is local state only reachable via interaction, not a settable prop — the play
 // function selects a file via the hidden input (same convention MediaUpload.test.tsx uses) with
 // an onUpload that never resolves, so the story settles on the in-flight state rather than
