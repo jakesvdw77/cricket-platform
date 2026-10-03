@@ -19,7 +19,19 @@ import { Link as RouterLink } from 'react-router-dom'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../Button'
 
-export type RecordCardBadgeTone = 'positive' | 'neutral' | 'muted'
+// The first three are the original general-purpose tones. The poll tones are for the availability
+// poll screens (PollCard and both Responses page headers) so one poll reads the same everywhere:
+// squadPoll / groupPoll name the kind, open / closed the state, side the Home/Away marker. Each is
+// always paired with its text label - colour is never the only signal.
+export type RecordCardBadgeTone =
+  | 'positive'
+  | 'neutral'
+  | 'muted'
+  | 'squadPoll'
+  | 'groupPoll'
+  | 'open'
+  | 'closed'
+  | 'side'
 
 export interface RecordCardBadge {
   label: string
@@ -200,7 +212,26 @@ export function badgeSx(tone: RecordCardBadgeTone) {
       opacity: 0.7,
     }
   }
+  if (tone === 'squadPoll') return tintedBadgeSx('primary', 'primary.dark')
+  if (tone === 'groupPoll') return tintedBadgeSx('warning', 'warning.dark')
+  if (tone === 'side') return tintedBadgeSx('info', 'info.dark')
+  if (tone === 'closed') return tintedBadgeSx('error', 'error.dark')
+  if (tone === 'open') {
+    return { bgcolor: 'success.main', color: 'success.contrastText', fontWeight: 600 }
+  }
   return undefined
+}
+
+// A light tint of the palette colour with a matching border and a dark same-hue text, so the badge
+// stays legible on the white card.
+function tintedBadgeSx(palette: 'primary' | 'warning' | 'info' | 'error', color: string) {
+  return {
+    bgcolor: (theme: Theme) => alpha(theme.palette[palette].main, 0.14),
+    color,
+    border: 1,
+    borderColor: (theme: Theme) => alpha(theme.palette[palette].main, 0.5),
+    fontWeight: 600,
+  }
 }
 
 export function RecordCard({

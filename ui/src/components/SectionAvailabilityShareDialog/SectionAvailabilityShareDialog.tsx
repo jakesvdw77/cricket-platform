@@ -7,6 +7,8 @@ import { Button } from '../Button'
 import { Input } from '../Input'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
+import { formatBracketLabel } from '../../utils/dayPart'
+import { closeTimeLine } from '../../utils/pollShareText'
 
 export interface SectionAvailabilityShareDialogProps {
   open: boolean
@@ -14,17 +16,19 @@ export interface SectionAvailabilityShareDialogProps {
   round: SectionAvailabilityRound
 }
 
+// WhatsApp-style: emojis, *bold* for the title and the deadline, one line per slot of the round. The
+// deadline line is left out when the round has no automatic close time.
 function buildInviteText(round: SectionAvailabilityRound): string {
   const link = `${window.location.origin}/section-availability/${round.id}`
-  const lines = [
-    `Hi ${round.sectionName}!`,
-    '',
-    `Please let us know if you're available - ${round.description}:`,
-    '',
-    `Tap your name and set your status here: ${link}`,
-    '',
-    'Thanks!',
-  ]
+  const lines = [`🏏 *${round.description}*`, `📍 ${round.sectionName}`]
+  for (const bracket of round.brackets) {
+    lines.push(`📅 ${formatBracketLabel(bracket.windowDate, bracket.dayPart, ' · ')}`)
+  }
+  const closeLine = closeTimeLine(round.autoClose, round.scheduledCloseAt)
+  if (closeLine) {
+    lines.push(closeLine)
+  }
+  lines.push('', '👇 Tap your name and set your status for each slot:', link, '', 'Thanks! 🙌')
   return lines.join('\n')
 }
 
@@ -47,7 +51,7 @@ export function SectionAvailabilityShareDialog({ open, onClose, round }: Section
       setText(buildInviteText(round))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, round.id])
+  }, [open, round.id, round.autoClose, round.scheduledCloseAt])
 
   const handleRegenerate = () => {
     setText(buildInviteText(round))

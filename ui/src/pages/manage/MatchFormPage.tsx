@@ -813,6 +813,8 @@ function MatchAvailabilityPanel({
           match={match}
           teamName={teamName}
           pollId={poll.id}
+          autoClose={poll.autoClose}
+          scheduledCloseAt={poll.scheduledCloseAt}
         />
       )}
     </>

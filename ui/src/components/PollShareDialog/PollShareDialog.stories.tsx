@@ -44,6 +44,10 @@ export const Open: Story = {
   },
 }
 
+export const WithCloseTime: Story = {
+  args: { ...Open.args, autoClose: true, scheduledCloseAt: '2026-10-03T09:00:00Z' },
+}
+
 export const MobileViewport: Story = {
   args: Open.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },

@@ -62,6 +62,24 @@ export const RetiredWithLink: Story = {
   },
 }
 
+// The availability poll badge set (PollCard and the Responses page headers): kind, state and side,
+// each coloured and always labelled.
+export const PollBadges: Story = {
+  args: {
+    title: 'Villagers 1 vs CBC',
+    description: 'Sat 3 Oct, 09:00 · Central Oval',
+    badge: { label: 'Squad poll', tone: 'squadPoll' },
+    badges: [
+      { label: 'Open', tone: 'open' },
+      { label: 'Home', tone: 'side' },
+      { label: 'Group poll', tone: 'groupPoll' },
+      { label: 'Closed', tone: 'closed' },
+    ],
+    editLabel: 'Edit',
+    onEdit: () => undefined,
+  },
+}
+
 export const MinimalSlots: Story = {
   args: {
     title: 'Club Free',

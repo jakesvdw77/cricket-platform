@@ -52,6 +52,23 @@ describe('SectionAvailabilityShareDialog', () => {
     expect(textarea.value).toContain('Sat 3 - Sun 4 Oct - U13 Boys fixtures')
   })
 
+  it('highlights the close time in WhatsApp bold and lists each slot', () => {
+    const closeAt = new Date(2026, 9, 2, 20, 0).toISOString()
+    render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound({ scheduledCloseAt: closeAt })} />)
+
+    const text = (screen.getByLabelText('Invite text') as HTMLTextAreaElement).value
+    expect(text).toContain('⏰ *Please reply by Fri 2 Oct, 20:00*')
+    expect(text).toContain('🏏 *Sat 3 - Sun 4 Oct - U13 Boys fixtures*')
+    expect(text).toContain('📍 U13 Boys')
+    expect(text.match(/📅/g)).toHaveLength(2)
+  })
+
+  it('omits the close line when the round has no automatic close', () => {
+    render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound({ autoClose: false, scheduledCloseAt: null })} />)
+
+    expect((screen.getByLabelText('Invite text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
+  })
+
   it('lets the admin edit the text, then "Regenerate" rebuilds it back to the fresh version', async () => {
     const user = userEvent.setup()
     render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)

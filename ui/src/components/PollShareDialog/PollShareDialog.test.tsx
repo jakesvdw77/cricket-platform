@@ -40,6 +40,34 @@ describe('PollShareDialog', () => {
     expect(textarea.value).toContain('Central Oval')
   })
 
+  it('highlights the close time in WhatsApp bold when the poll auto-closes', () => {
+    const closeAt = new Date(2026, 9, 2, 20, 0).toISOString()
+    render(
+      <PollShareDialog
+        open
+        onClose={vi.fn()}
+        match={makeMatch()}
+        teamName="Home Firsts"
+        pollId="poll-123"
+        autoClose
+        scheduledCloseAt={closeAt}
+      />,
+    )
+
+    const text = (screen.getByLabelText('Invite text') as HTMLTextAreaElement).value
+    expect(text).toContain('⏰ *Please reply by Fri 2 Oct, 20:00*')
+    expect(text).toContain('🏏 *Availability: Home Firsts vs Riverside CC*')
+    expect(text).toContain('Central Oval')
+  })
+
+  it('omits the close line without an automatic close time', () => {
+    render(
+      <PollShareDialog open onClose={vi.fn()} match={makeMatch()} teamName="Home Firsts" pollId="poll-123" autoClose={false} scheduledCloseAt={null} />,
+    )
+
+    expect((screen.getByLabelText('Invite text') as HTMLTextAreaElement).value).not.toContain('Please reply by')
+  })
+
   it('lets the admin edit the text, then "Regenerate" rebuilds it back to the fresh version', async () => {
     const user = userEvent.setup()
     render(

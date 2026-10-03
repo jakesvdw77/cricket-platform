@@ -78,11 +78,11 @@ describe('AvailabilityGrid', () => {
     expect(within(second).getByText('10:30')).toBeInTheDocument()
   })
 
-  it('renders each player with shirt number, name, cells with accessible names, Answered and Picked', () => {
+  it('renders each player with name only (no shirt number), cells with accessible names, Answered and Picked', () => {
     renderGrid()
 
     const anton = screen.getByRole('row', { name: /Anton de Villiers/ })
-    expect(within(anton).getByRole('rowheader')).toHaveTextContent('17Anton de Villiers')
+    expect(within(anton).getByRole('rowheader')).toHaveTextContent(/^Anton de Villiers$/)
     expect(within(anton).getByRole('img', { name: 'Anton de Villiers, Sat 3 Oct Morning, Villagers 1 v CBC: Available, group poll, picked' })).toBeInTheDocument()
     expect(within(anton).getByRole('img', { name: 'Anton de Villiers, Sat 3 Oct Morning, Villagers 2 v Town: Unsure, squad poll' })).toBeInTheDocument()
     expect(within(anton).getByRole('img', { name: /Sun 4 Oct Afternoon, Villagers 3 v Rovers: Not in this poll, no poll$/ })).toBeInTheDocument()
@@ -94,6 +94,33 @@ describe('AvailabilityGrid', () => {
     expect(within(amy).getAllByRole('cell').slice(-2).map((cell) => cell.textContent)).toEqual(['1', '1'])
     expect(screen.getByRole('columnheader', { name: 'Answered' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Picked' })).toBeInTheDocument()
+  })
+
+  it('keeps the server row order and sizes the sticky name column to its content', () => {
+    renderGrid()
+
+    const names = screen.getAllByRole('rowheader').map((header) => header.textContent)
+    expect(names.slice(0, 3)).toEqual(['Anton de Villiers', 'Bob Jones', 'Amy Lee'])
+    for (const header of [screen.getByRole('columnheader', { name: 'Player' }), screen.getByRole('rowheader', { name: 'Anton de Villiers' })]) {
+      expect(header).toHaveStyle({ width: 'max-content', maxWidth: '320px', position: 'sticky', left: '0px' })
+    }
+    expect(screen.getByText('Anton de Villiers')).not.toHaveStyle({ textOverflow: 'ellipsis' })
+  })
+
+  it('stripes alternate player rows with an opaque tint, first body row tinted, including the sticky name cell', () => {
+    renderGrid()
+
+    const first = screen.getByRole('rowheader', { name: 'Anton de Villiers' })
+    const second = screen.getByRole('rowheader', { name: 'Bob Jones' })
+    const third = screen.getByRole('rowheader', { name: 'Amy Lee' })
+    const firstCell = screen.getByTestId('cell-p1-m1')
+    const background = (element: HTMLElement) => getComputedStyle(element).backgroundColor
+    const solid = (color: string) => /^rgb\(/.test(color)
+    expect(solid(background(first))).toBe(true)
+    expect(solid(background(second))).toBe(true)
+    expect(background(first)).not.toBe(background(second))
+    expect(background(third)).toBe(background(first))
+    expect(background(firstCell)).toBe(background(first))
   })
 
   it('totals Available / Unsure / Unavailable per game in the footer, from the rows given', () => {

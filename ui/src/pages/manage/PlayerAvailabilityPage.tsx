@@ -1,15 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, Button as MuiButton, CircularProgress, Collapse, FormControlLabel, MenuItem, Switch, Typography, useMediaQuery } from '@mui/material'
+import { Alert, Box, Button as MuiButton, CircularProgress, FormControlLabel, InputAdornment, MenuItem, Switch, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import SearchIcon from '@mui/icons-material/Search'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
-import { ListToolbar } from '../../components/ListToolbar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
@@ -164,8 +164,18 @@ export default function PlayerAvailabilityPage() {
     </Input>
   )
 
-  // Every control keeps the same min width and wraps, so nothing clips at 375px or between breakpoints.
-  const fieldSx = { flex: { xs: '1 1 100%', sm: '1 1 160px' }, minWidth: 0 }
+  const jumpButton = showsGrid && gridQuery.data && (
+    <Button
+      variant="secondary"
+      size="sm"
+      startIcon={<TodayOutlinedIcon fontSize="small" />}
+      disabled={!upcoming}
+      onClick={() => upcoming && gridRef.current?.scrollToGame(upcoming.matchId)}
+      sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}
+    >
+      Jump to today
+    </Button>
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -184,47 +194,80 @@ export default function PlayerAvailabilityPage() {
         }
       />
 
-      <ListToolbar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search players"
-        filtersMinWidth={420}
-        filters={
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ ...fieldSx, flexBasis: { xs: '100%', sm: '160px' } }}>{teamField}</Box>
-              <Box sx={{ ...fieldSx, flexBasis: { xs: '100%', sm: '160px' } }}>{leagueField}</Box>
-              <MuiButton
-                variant="outlined"
-                color="inherit"
-                startIcon={<FilterListIcon fontSize="small" />}
-                aria-expanded={moreFiltersOpen}
-                aria-controls={FILTERS_REGION_ID}
-                onClick={() => setMoreFiltersOpen((open) => !open)}
-                sx={{ display: { xs: 'inline-flex', sm: 'none' }, alignSelf: 'flex-start', color: 'text.primary', borderColor: 'divider' }}
-              >
-                Filters
-              </MuiButton>
-            </Box>
-            <Collapse in={filtersOpen} unmountOnExit={false}>
-              <Box id={FILTERS_REGION_ID} sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-                <Box sx={fieldSx}>{seasonField}</Box>
-                <Box sx={fieldSx}>{sectionField}</Box>
-                <FormControlLabel
-                  control={<Switch checked={includePast} onChange={(event) => setIncludePast(event.target.checked)} />}
-                  label="Show past games"
-                  sx={{ whiteSpace: 'nowrap', mr: 0 }}
-                />
-                <FormControlLabel
-                  control={<Switch checked={hideUnanswered} onChange={(event) => setHideUnanswered(event.target.checked)} />}
-                  label="Hide players with no answers"
-                  sx={{ mr: 0 }}
-                />
-              </Box>
-            </Collapse>
+      {/* Same bordered surface as ListToolbar, but two rows (it only supports a single search row):
+          row 1 the four server-side filters in the order Season, Section, Team, League; row 2 search,
+          the view toggles and Jump to today. */}
+      <Box
+        sx={{
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+          bgcolor: 'background.paper',
+          boxShadow: 1,
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+          }}
+        >
+          <MuiButton
+            variant="outlined"
+            color="inherit"
+            startIcon={<FilterListIcon fontSize="small" />}
+            aria-expanded={moreFiltersOpen}
+            aria-controls={FILTERS_REGION_ID}
+            onClick={() => setMoreFiltersOpen((open) => !open)}
+            sx={{ display: { xs: 'inline-flex', sm: 'none' }, justifySelf: 'start', color: 'text.primary', borderColor: 'divider' }}
+          >
+            Filters
+          </MuiButton>
+          {/* Season and Section collapse behind the Filters button on a phone; display: contents lets
+              them take part in the parent grid when shown. */}
+          <Box id={FILTERS_REGION_ID} sx={{ display: filtersOpen ? 'contents' : 'none' }}>
+            <Box sx={{ minWidth: 0 }}>{seasonField}</Box>
+            <Box sx={{ minWidth: 0 }}>{sectionField}</Box>
           </Box>
-        }
-      />
+          <Box sx={{ minWidth: 0 }}>{teamField}</Box>
+          <Box sx={{ minWidth: 0 }}>{leagueField}</Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 1 }}>
+          <Input
+            label="Search"
+            placeholder="Search players"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ flex: '1 1 240px', minWidth: 0 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, flex: '0 1 auto' }}>
+            <FormControlLabel
+              control={<Switch checked={includePast} onChange={(event) => setIncludePast(event.target.checked)} />}
+              label="Show past games"
+              sx={{ whiteSpace: 'nowrap', mr: 0 }}
+            />
+            <FormControlLabel
+              control={<Switch checked={hideUnanswered} onChange={(event) => setHideUnanswered(event.target.checked)} />}
+              label="Hide players with no answers"
+              sx={{ mr: 0 }}
+            />
+            {jumpButton}
+          </Box>
+        </Box>
+      </Box>
 
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -249,21 +292,10 @@ export default function PlayerAvailabilityPage() {
       {gridQuery.data && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {showsGrid && (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="body2" color="text.secondary">
-                {visiblePlayers.length} {visiblePlayers.length === 1 ? 'player' : 'players'} · {games.length}{' '}
-                {games.length === 1 ? 'game' : 'games'}
-              </Typography>
-              <Button
-                variant="secondary"
-                size="sm"
-                startIcon={<TodayOutlinedIcon fontSize="small" />}
-                disabled={!upcoming}
-                onClick={() => upcoming && gridRef.current?.scrollToGame(upcoming.matchId)}
-              >
-                Jump to today
-              </Button>
-            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {visiblePlayers.length} {visiblePlayers.length === 1 ? 'player' : 'players'} · {games.length}{' '}
+              {games.length === 1 ? 'game' : 'games'}
+            </Typography>
           )}
           <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} />
         </Box>

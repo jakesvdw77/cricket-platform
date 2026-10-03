@@ -7,6 +7,7 @@ import { Button } from '../Button'
 import { Input } from '../Input'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import type { Match } from '../../api/matchApi'
+import { closeTimeLine } from '../../utils/pollShareText'
 
 // Only what the invite text reads - so a squad poll card can share without fetching the full Match.
 export type PollShareMatch = Pick<Match, 'matchDate' | 'venue' | 'homeTeamName' | 'awayTeamName'>
@@ -19,6 +20,10 @@ export interface PollShareDialogProps {
   // a real Team's name or the match's own free-text side name).
   teamName: string
   pollId: string
+  // Optional: when the poll closes automatically, the invite highlights the close time. Callers
+  // without it simply get no deadline line.
+  autoClose?: boolean
+  scheduledCloseAt?: string | null
 }
 
 // The match's own free-text side name, when set, is almost always the opponent for the side this
@@ -35,20 +40,32 @@ function opponentLabel(match: PollShareMatch, teamName: string): string {
   return 'the opposition'
 }
 
-function buildInviteText(match: PollShareMatch, teamName: string, pollId: string): string {
+// WhatsApp-style: emojis, *bold* for the title and the deadline, short lines. The deadline line is
+// left out when the poll has no automatic close time.
+function buildInviteText(
+  match: PollShareMatch,
+  teamName: string,
+  pollId: string,
+  autoClose?: boolean,
+  scheduledCloseAt?: string | null,
+): string {
   const link = `${window.location.origin}/poll/${pollId}`
-  const matchDate = new Date(match.matchDate).toLocaleString()
+  const matchDate = new Date(match.matchDate).toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
   const lines = [
-    `Hi ${teamName}!`,
-    '',
-    `Please let us know if you're available for our upcoming match against ${opponentLabel(match, teamName)}:`,
-    '',
-    `Date: ${matchDate}`,
+    `🏏 *Availability: ${teamName} vs ${opponentLabel(match, teamName)}*`,
+    `📅 ${matchDate}${match.venue ? ` · ${match.venue}` : ''}`,
   ]
-  if (match.venue) {
-    lines.push(`Venue: ${match.venue}`)
+  const closeLine = closeTimeLine(autoClose, scheduledCloseAt)
+  if (closeLine) {
+    lines.push(closeLine)
   }
-  lines.push('', `Tap your name and set your status here: ${link}`, '', 'Thanks!')
+  lines.push('', '👇 Tap your name and set your status:', link, '', 'Thanks! 🙌')
   return lines.join('\n')
 }
 
@@ -58,7 +75,7 @@ function buildInviteText(match: PollShareMatch, teamName: string, pollId: string
 // Channel-agnostic: plain, copy-paste-into-any-chat text, not a real WhatsApp integration. The
 // admin does the actual sharing themselves — no send/copy automation beyond a selectable/editable
 // text field.
-export function PollShareDialog({ open, onClose, match, teamName, pollId }: PollShareDialogProps) {
+export function PollShareDialog({ open, onClose, match, teamName, pollId, autoClose, scheduledCloseAt }: PollShareDialogProps) {
   const [text, setText] = useState('')
   const { copy, copiedKey, failed } = useCopyToClipboard()
   const link = `${window.location.origin}/poll/${pollId}`
@@ -67,13 +84,13 @@ export function PollShareDialog({ open, onClose, match, teamName, pollId }: Poll
   // into a later open — same reset-on-open pattern TeamSheetCommunicationDialog already uses.
   useEffect(() => {
     if (open) {
-      setText(buildInviteText(match, teamName, pollId))
+      setText(buildInviteText(match, teamName, pollId, autoClose, scheduledCloseAt))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pollId])
+  }, [open, pollId, autoClose, scheduledCloseAt])
 
   const handleRegenerate = () => {
-    setText(buildInviteText(match, teamName, pollId))
+    setText(buildInviteText(match, teamName, pollId, autoClose, scheduledCloseAt))
   }
 
   return (

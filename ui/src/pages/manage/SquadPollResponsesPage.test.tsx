@@ -404,7 +404,7 @@ describe('SquadPollResponsesPage', () => {
     await user.click(screen.getByRole('button', { name: /share invite/i }))
 
     const textarea = (await screen.findByLabelText('Invite text')) as HTMLTextAreaElement
-    expect(textarea.value).toContain('Hi Home Team!')
+    expect(textarea.value).toContain('Availability: Home Team vs')
     expect(textarea.value).toContain('/poll/poll-1')
   })
 

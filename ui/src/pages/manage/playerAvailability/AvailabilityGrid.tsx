@@ -1,7 +1,7 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, darken, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
 import { EmptyState } from '../../../components/EmptyState'
@@ -31,7 +31,10 @@ export const SCROLL_BOX_MAX_HEIGHT = 'calc(100vh - 320px)'
 export const SCROLL_BOX_MIN_HEIGHT = 240
 export const DATE_ROW_HEIGHT = 34
 export const SLOT_ROW_HEIGHT = 26
-const FIRST_COL_WIDTH = { xs: 132, sm: 200 }
+// The player column sizes to its content between these bounds; the real width is measured at runtime
+// (see firstColWidth) so the sticky date headers and scrollToGame offsets clear it exactly.
+const FIRST_COL_MIN_WIDTH = { xs: 150, sm: 180 }
+const FIRST_COL_MAX_WIDTH = 320
 const GAME_COL_WIDTH = { xs: 104, sm: 128 }
 const COUNT_COL_WIDTH = 64
 
@@ -44,9 +47,9 @@ const stickyFirstColSx: SystemStyleObject<Theme> = {
   position: 'sticky',
   left: 0,
   bgcolor: 'background.paper',
-  width: FIRST_COL_WIDTH,
-  minWidth: FIRST_COL_WIDTH,
-  maxWidth: FIRST_COL_WIDTH,
+  width: 'max-content',
+  minWidth: FIRST_COL_MIN_WIDTH,
+  maxWidth: FIRST_COL_MAX_WIDTH,
   // The right-hand edge reads as a divider with a soft shadow, so scrolled columns visibly pass under it.
   boxShadow: (theme: Theme) => `inset -1px 0 0 ${theme.palette.divider}, 2px 0 4px ${alpha(theme.palette.text.primary, 0.06)}`,
 }
@@ -59,6 +62,11 @@ const headCellSx: SystemStyleObject<Theme> = {
   whiteSpace: 'nowrap',
   textAlign: 'center',
 }
+
+// Opaque tints (never alpha) so the sticky player cell never lets scrolled content show through.
+const zebraTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.95)
+const hoverTint = (theme: Theme) =>
+  theme.palette.mode === 'dark' ? darken(theme.palette.primary.main, 0.6) : lighten(theme.palette.primary.main, 0.86)
 
 const numberSx = { fontVariantNumeric: 'tabular-nums' }
 
@@ -79,7 +87,15 @@ const clampTwoLinesSx = {
   wordBreak: 'break-word',
 }
 
-function GameHeader({ game, headerRef }: { game: GameColumn; headerRef: (element: HTMLElement | null) => void }) {
+function GameHeader({
+  game,
+  headerRef,
+  firstColWidth,
+}: {
+  game: GameColumn
+  headerRef: (element: HTMLElement | null) => void
+  firstColWidth: number
+}) {
   const path = pollPath(game)
   return (
     <TableCell
@@ -97,7 +113,7 @@ function GameHeader({ game, headerRef }: { game: GameColumn; headerRef: (element
           fontWeight: 400,
           px: 0.75,
           // So scrollIntoView lands the column just right of the sticky player column.
-          scrollMarginLeft: { xs: '132px', sm: '200px' },
+          scrollMarginLeft: `${firstColWidth}px`,
         }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, alignItems: 'center' }}>
@@ -157,10 +173,28 @@ export const AvailabilityGrid = forwardRef<
 >(function AvailabilityGrid({ games, players, now }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
+  const firstColRef = useRef<HTMLTableCellElement>(null)
+  const [firstColWidth, setFirstColWidth] = useState<number>(FIRST_COL_MIN_WIDTH.sm)
 
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now ?? new Date()), [groups, now])
+
+  // The player column is content-sized, so measure it: the sticky date labels and the scroll margin
+  // need its real width to sit just right of it.
+  useLayoutEffect(() => {
+    const element = firstColRef.current
+    if (!element) return undefined
+    const measure = () => {
+      const width = Math.round(element.getBoundingClientRect().width)
+      if (width > 0) setFirstColWidth(width)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [players, games])
 
   useImperativeHandle(ref, () => ({
     scrollToGame: (matchId: string) => {
@@ -223,6 +257,7 @@ export const AvailabilityGrid = forwardRef<
                 component="th"
                 scope="col"
                 rowSpan={3}
+                ref={firstColRef}
                 sx={{ ...stickyFirstColSx, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}
               >
                 Player
@@ -241,7 +276,7 @@ export const AvailabilityGrid = forwardRef<
                       alignItems: 'center',
                       gap: 1,
                       position: 'sticky',
-                      left: { xs: FIRST_COL_WIDTH.xs + 8, sm: FIRST_COL_WIDTH.sm + 8 },
+                      left: firstColWidth + 8,
                     }}
                   >
                     <span>{dateHeading(group.date)}</span>
@@ -289,6 +324,7 @@ export const AvailabilityGrid = forwardRef<
                 <GameHeader
                   key={game.matchId}
                   game={game}
+                  firstColWidth={firstColWidth}
                   headerRef={(element) => {
                     if (element) headerRefs.current.set(game.matchId, element)
                     else headerRefs.current.delete(game.matchId)
@@ -309,24 +345,20 @@ export const AvailabilityGrid = forwardRef<
               </TableRow>
             )}
             {players.map((player) => (
-              <TableRow key={player.playerProfileId} hover>
-                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, zIndex: 2, px: 1, py: 0.75 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, minWidth: 0 }}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ ...numberSx, width: 22, flex: '0 0 22px', textAlign: 'right' }}
-                    >
-                      {player.jerseyNumber ?? ''}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      title={playerFullName(player)}
-                      sx={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
-                    >
-                      {playerFullName(player)}
-                    </Typography>
-                  </Box>
+              <TableRow
+                key={player.playerProfileId}
+                sx={{
+                  // Every cell (incl. the sticky name cell) gets an opaque background: paper, or a
+                  // very light primary tint on odd rows (the first body row is tinted; header and footer rows live in thead/tfoot, so they never shift it); hover is a slightly stronger opaque tint.
+                  '& > th, & > td': { bgcolor: 'background.paper' },
+                  '&:nth-of-type(odd) > th, &:nth-of-type(odd) > td': { bgcolor: zebraTint },
+                  '&:hover > th, &:hover > td': { bgcolor: hoverTint },
+                }}
+              >
+                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
+                    {playerFullName(player)}
+                  </Typography>
                 </TableCell>
                 {columns.map((game) => {
                   const cell = cellFor(player, game.matchId)
@@ -337,7 +369,7 @@ export const AvailabilityGrid = forwardRef<
                       data-testid={`cell-${player.playerProfileId}-${game.matchId}`}
                       align="center"
                       onClick={path ? () => navigate(path) : undefined}
-                      sx={{ px: 0.5, py: 0.75, cursor: path ? 'pointer' : 'default', '&:hover': path ? { bgcolor: 'action.hover' } : undefined }}
+                      sx={{ px: 0.5, py: 0.75, cursor: path ? 'pointer' : 'default' }}
                     >
                       {cell && <CellMark status={cell.status} picked={cell.picked} label={cellLabel(player, game, cell)} />}
                     </TableCell>
