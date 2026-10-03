@@ -794,6 +794,34 @@ describe('MatchFormPage', () => {
     expect(textarea.value).toContain('Riverside Oval')
   })
 
+  it('Availability tab: Share invite is disabled with an explanation on a closed poll', async () => {
+    getMatch.mockResolvedValueOnce(makeMatch())
+    listPolls.mockResolvedValue([
+      { id: 'poll-1', teamId: 'team-1', open: false, availableCount: 0, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
+    ])
+    getPollResponses.mockResolvedValue({
+      pollId: 'poll-1',
+      teamId: 'team-1',
+      open: false,
+      availableCount: 0,
+      unavailableCount: 0,
+      unsureCount: 0,
+      noResponseCount: 0,
+      responses: [],
+      publicPath: '/poll/poll-1',
+    })
+    const user = userEvent.setup()
+
+    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit Match')
+    await user.click(screen.getByRole('tab', { name: 'Availability' }))
+    const share = await screen.findByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+  })
+
   // docs/specs/066: a closed squad poll is reopened from its own tab through the Edit close time
   // dialog (a new close time is saved first), and a manager can still correct answers on it.
   it('Availability tab: a closed poll offers Reopen…, which saves the close time then reopens it, and keeps answers editable', async () => {

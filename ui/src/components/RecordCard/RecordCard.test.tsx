@@ -649,5 +649,25 @@ describe('RecordCard', () => {
       render(<RecordCard title="Poll" footerButtons={[{ label: 'Close', icon: <span>c</span>, onClick: vi.fn(), disabled: true }]} />)
       expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled()
     })
+
+    it('puts an optional title on a disabled button via a wrapper span so the tooltip can show', () => {
+      render(
+        <RecordCard
+          title="Poll"
+          footerButtons={[{ label: 'Share', ariaLabel: 'Share invite', title: 'Closed poll', icon: <span>s</span>, onClick: vi.fn(), disabled: true }]}
+        />,
+      )
+      const button = screen.getByRole('button', { name: 'Share invite' })
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('title', 'Closed poll')
+      expect(button.parentElement).toHaveAttribute('title', 'Closed poll')
+    })
+
+    it('keeps an enabled button unwrapped even when a title is given', () => {
+      render(<RecordCard title="Poll" footerButtons={[{ label: 'Share', title: 'Tip', icon: <span>s</span>, onClick: vi.fn() }]} />)
+      const button = screen.getByRole('button', { name: 'Share' })
+      expect(button).toHaveAttribute('title', 'Tip')
+      expect(button.parentElement).not.toHaveAttribute('title')
+    })
   })
 })

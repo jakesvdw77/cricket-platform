@@ -144,6 +144,17 @@ describe('MatchAvailabilityTab', () => {
     expect(onShareInvite).toHaveBeenCalled()
   })
 
+  it('disables Share invite with an explanation on a closed poll', async () => {
+    const onShareInvite = vi.fn()
+    render(<MatchAvailabilityTab {...baseProps({ poll: makePoll({ open: false }), onShareInvite })} />)
+
+    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(onShareInvite).not.toHaveBeenCalled()
+  })
+
   it('opens a status menu on a squad member\'s Chip and calls onSetPlayerStatus with the chosen status', async () => {
     const user = userEvent.setup()
     const onSetPlayerStatus = vi.fn()
