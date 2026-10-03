@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { IconButton, Stack, Typography } from '@mui/material'
+import { IconButton, Stack } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useMutation } from '@tanstack/react-query'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
@@ -11,7 +11,9 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import { RecordCard } from '../../../components/RecordCard'
+import { DetailLine } from '../../../components/DetailLine'
 import { SlotSummary } from '../../../components/SlotSummary'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { PollShareDialog } from '../../../components/PollShareDialog'
@@ -27,8 +29,9 @@ import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
 import {
   SHARE_CLOSED_REASON,
-  closesRowText,
+  closesRow,
   formatMatchDateTime,
+  pollResponsesPath,
   squadPollSideLabel,
   squadPollTeamName,
   squadPollTitle,
@@ -76,7 +79,7 @@ function matchCountLabel(count: number): string {
 
 // docs/specs/066-poll-close-time-and-unified-cards.md: the one card both poll kinds render as, on
 // RecordCard: header (avatar, title, badges, delete), a subtitle, one SlotSummary per time slot, a
-// Closes row with its pencil, and the same four footer buttons in the same order - Close (Reopen
+// "Poll closes" DetailLine with its pencil (073), and the same four footer buttons in the same order - Close (Reopen
 // once closed), Matches, Responses, Share. It returns the RecordCard itself as the grid item (no
 // wrapper) so the dashboard grid can stretch every card in a row to the tallest; every expansion is
 // a dialog rendered as a sibling, so a card never changes height on its own. Each card owns its own
@@ -163,6 +166,8 @@ export function PollCard({
       ? `${item.round.sectionName} · ${matchCountLabel(item.round.brackets.reduce((sum, bracket) => sum + bracket.coveredMatchCount, 0))}`
       : `${formatMatchDateTime(item.poll.matchDate)} · ${item.poll.venue ?? 'Venue TBC'}`
 
+  const closes = closesRow(isOpen, autoClose, scheduledCloseAt)
+
   const squadTeamName = item.kind === 'SQUAD' ? squadPollTeamName(item.poll, teamsById) : ''
 
   const badges = [
@@ -174,6 +179,8 @@ export function PollCard({
     <>
       <RecordCard
         title={title}
+        // docs/specs/073: the whole card opens the Responses page, like the Match card.
+        viewTo={pollResponsesPath(item)}
         description={subtitle}
         avatar={{ fallback: <EventAvailableOutlinedIcon fontSize="small" />, shape: 'rounded' }}
         badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: item.kind === 'GROUP' ? 'groupPoll' : 'squadPoll' }}
@@ -200,12 +207,7 @@ export function PollCard({
             label: 'Responses',
             icon: <PeopleAltOutlinedIcon fontSize="small" />,
             // docs/specs/065 + 067: each poll kind's responses live on their own page.
-            onClick: () =>
-              navigate(
-                item.kind === 'GROUP'
-                  ? `/manage/availability/group/${item.round.id}`
-                  : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`,
-              ),
+            onClick: () => navigate(pollResponsesPath(item)),
           },
           {
             label: 'Share',
@@ -231,20 +233,30 @@ export function PollCard({
             <SlotSummary key={slot.key} heading={slot.heading} counts={slot.counts} testIdPrefix={slot.key} compact />
           ))}
         </Stack>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Typography variant="body2" color="text.secondary">
-            {closesRowText(isOpen, autoClose, scheduledCloseAt)}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-label="Edit close time"
-            title="Edit close time"
-            onClick={() => setCloseTimeOpen(true)}
-            sx={{ position: 'relative' }}
-          >
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+        <DetailLine
+          icon={<EventBusyOutlinedIcon fontSize="small" />}
+          label={closes.label}
+          labelWidth={78}
+          value={
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <span>{closes.value}</span>
+              {/* Only while open (Reopen in the footer opens the same dialog once closed). Its own
+                  position: relative keeps it above the card's stretched link; the negative vertical
+                  margin keeps the line no taller than a text-only DetailLine. */}
+              {isOpen && (
+                <IconButton
+                  size="small"
+                  aria-label="Edit close time"
+                  title="Edit close time"
+                  onClick={() => setCloseTimeOpen(true)}
+                  sx={{ position: 'relative', my: '-5px' }}
+                >
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Stack>
+          }
+        />
       </RecordCard>
 
       {item.kind === 'GROUP' && (

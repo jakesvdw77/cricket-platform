@@ -164,3 +164,39 @@ export const NoSort: Story = {
     filters: <div>Filters go here</div>,
   },
 }
+
+// docs/specs/073-availability-hub.md: on a phone the sort group (icon, caption, create button) sits
+// first. The toggle path at 375px, the field-picker path at 375px, and the Select-plus-create path.
+function ControlledToggle() {
+  const [search, setSearch] = useState('')
+  const [direction, setDirection] = useState<'asc' | 'desc'>('asc')
+
+  return (
+    <ListToolbar
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search matches"
+      sortToggle={{
+        value: direction,
+        ascLabel: 'Match date, soonest first',
+        descLabel: 'Match date, latest first',
+        onToggle: () => setDirection((current) => (current === 'asc' ? 'desc' : 'asc')),
+      }}
+    />
+  )
+}
+
+export const SortToggleAt375: Story = {
+  render: () => <ControlledToggle />,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const SortFieldPickerAt375: Story = {
+  render: () => <ControlledWithSortFieldPicker />,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
+
+export const SelectWithCreateAt375: Story = {
+  render: () => <Controlled />,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+}
