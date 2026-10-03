@@ -58,8 +58,11 @@ Source of truth: `ui/src/theme.ts`. Browsable in Claude Design (see below) and t
 | `warning.main` | `#B7791F` | Non-blocking warnings |
 | `error.main` | `#B0402E` | Destructive actions, validation errors |
 | `info.main` | `#2563AC` | Neutral informational states |
+| `purple.main` / `purple.dark` | `#7B5CC4` / `#5B3D99` | Structural token (custom palette key, never varies per club) for the league `format` badge tone only: fill `alpha(purple.main, 0.10)`, border `alpha(purple.main, 0.5)`, text `purple.dark` |
 
 Semantic colours are deliberately a different hue family from `primary` so brand and state never read as the same signal.
+
+`RecordCard` badge tones (`RecordCardBadgeTone`) are always paired with their text label, never colour alone. Beside the general tones and the poll tones (`squadPoll`, `groupPoll`, `open`, `closed`, `side`, `noPoll`), the league badges add `format` (purple, above), `season` (warning tint) and `active` (success tint); the team-count badge reuses `side` and Inactive reuses `muted`.
 
 ### Type (`theme.typography`)
 
