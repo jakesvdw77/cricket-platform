@@ -121,7 +121,7 @@ describe('PollCard - squad poll', () => {
     expect(screen.getByText('3 of 4 answered')).toBeInTheDocument()
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: '50%' })
     expect(screen.getByTestId('poll-1-bar-NONE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByText(/^Closes /)).toBeInTheDocument()
+    expect(screen.getByText('Poll closes')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
   })
@@ -183,7 +183,7 @@ describe('PollCard - squad poll', () => {
     renderCard({ kind: 'SQUAD', poll }, false)
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
-    expect(screen.getByText(/^Closed .+/, { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByText('Poll closed')).toBeInTheDocument()
     expect(footerNames()).toEqual(['Reopen', 'Matches', 'Responses', 'Share invite is unavailable: this poll is closed'])
     await user.click(screen.getByRole('button', { name: 'Reopen' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
@@ -202,7 +202,8 @@ describe('PollCard - group poll', () => {
     expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(2)
     expect(screen.getByTestId('w1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
     expect(screen.getByTestId('w2-bar-NONE')).toHaveStyle({ width: '100%' })
-    expect(screen.getByText('Closes manually')).toBeInTheDocument()
+    expect(screen.getByText('Poll closes')).toBeInTheDocument()
+    expect(screen.getByText('Manually')).toBeInTheDocument()
   })
 
   it('has the identical four footer buttons in the same order as the squad card', () => {
@@ -248,5 +249,101 @@ describe('PollCard - group poll', () => {
     await user.click(screen.getByRole('button', { name: 'Edit description' }))
     expect(await screen.findByRole('dialog', { name: 'Edit description' })).toBeInTheDocument()
     expect(screen.getByLabelText('Description')).toHaveValue('Weekend fixtures')
+  })
+})
+
+// docs/specs/073-availability-hub.md
+describe('PollCard - whole-card click-through', () => {
+  const squad: PollItem = { kind: 'SQUAD', poll }
+  const group: PollItem = { kind: 'GROUP', round }
+
+  it('the title is a stretched link to the squad poll Responses page, the heading kept', () => {
+    renderCard(squad)
+    const link = screen.getByRole('link', { name: 'Home Team vs Rivals CC' })
+    expect(link).toHaveAttribute('href', '/manage/availability/squad/match-1/poll-1')
+    expect(screen.getByRole('heading', { level: 3 })).toContainElement(link)
+  })
+
+  it('the title is a stretched link to the group poll Responses page', () => {
+    renderCard(group)
+    expect(screen.getByRole('link', { name: 'Weekend fixtures' })).toHaveAttribute('href', '/manage/availability/group/round-1')
+  })
+
+  it('clicking the title link opens the Responses page', async () => {
+    renderCard(squad)
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Home Team vs Rivals CC' }))
+    expect(await screen.findByText('At /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
+  })
+
+  it('the Responses button goes to the same place as the title link', async () => {
+    renderCard(group)
+    const href = screen.getByRole('link', { name: 'Weekend fixtures' }).getAttribute('href')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Responses' }))
+    expect(await screen.findByText(`At ${href}`)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Close', 'Close this poll?'],
+    ['Edit description', 'Edit description'],
+    ['Delete', 'Delete this group poll?'],
+    ['Edit close time', 'Edit close time'],
+  ])('%s runs only its own action and does not navigate', async (buttonName, dialogName) => {
+    renderCard(group)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: buttonName }))
+
+    expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument()
+    expect(screen.queryByText(/^At /)).not.toBeInTheDocument()
+  })
+
+  it('every interactive element that sits over the card link is positioned above it', () => {
+    renderCard(group)
+    for (const name of ['Edit description', 'Delete', 'Edit close time']) {
+      expect(screen.getByRole('button', { name })).toHaveStyle({ position: 'relative' })
+    }
+  })
+})
+
+describe('PollCard - Poll closes line', () => {
+  it('shows the label with the formatted date and time and the pencil inside the value while open', () => {
+    renderCard({ kind: 'SQUAD', poll })
+
+    const label = screen.getByText('Poll closes')
+    expect(label).toHaveStyle({ width: '78px' })
+    const value = screen.getByRole('button', { name: 'Edit close time' }).closest('div') as HTMLElement
+    expect(value).toHaveTextContent(new Date(poll.scheduledCloseAt as string).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))
+    // The line has the calendar-cross icon and shares one row with its label and value.
+    expect(label.parentElement?.querySelector('[data-testid="EventBusyOutlinedIcon"]')).toBeInTheDocument()
+    expect(label.parentElement).toContainElement(value)
+  })
+
+  it('reads Manually with the pencil when an open poll has Autoclose off', () => {
+    renderCard({ kind: 'GROUP', round })
+
+    expect(screen.getByText('Manually')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
+  })
+
+  it('reads Poll closed with the date only and no pencil once closed', () => {
+    renderCard({ kind: 'SQUAD', poll }, false)
+
+    expect(screen.getByText('Poll closed')).toBeInTheDocument()
+    expect(screen.queryByText('Poll closes')).not.toBeInTheDocument()
+    const date = new Date(poll.scheduledCloseAt as string).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+    expect(screen.getByText(date)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
+  })
+
+  it('reads Poll closed, Manually for a closed poll without Autoclose', () => {
+    renderCard({ kind: 'GROUP', round: { ...round, open: false } })
+
+    expect(screen.getByText('Poll closed')).toBeInTheDocument()
+    expect(screen.getByText('Manually')).toBeInTheDocument()
+  })
+
+  it('the close-time pencil opens the close time dialog', async () => {
+    renderCard({ kind: 'SQUAD', poll })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Edit close time' }))
+    expect(await screen.findByRole('dialog', { name: 'Edit close time' })).toBeInTheDocument()
   })
 })

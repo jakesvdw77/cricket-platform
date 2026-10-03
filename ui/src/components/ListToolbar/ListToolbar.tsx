@@ -4,6 +4,7 @@ import { Autocomplete, InputAdornment, Menu, MenuItem } from '@mui/material'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import SearchIcon from '@mui/icons-material/Search'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
@@ -161,7 +162,20 @@ export function ListToolbar({
         )}
 
         {hasSortOrCreate && (
-          <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' }, alignItems: 'center' }}>
+          // docs/specs/073-availability-hub.md: on a phone the sort group (sort control and create
+          // button) is shown first via CSS order, so the DOM order (and every test that depends on
+          // it) is unchanged; from md up it stays last exactly as before.
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'nowrap',
+              gap: 2,
+              flex: { xs: 'unset', md: '0 0 auto' },
+              alignItems: 'center',
+              order: { xs: -1, md: 0 },
+            }}
+          >
             {sortToggle ? (
               <>
                 {showSortFieldPicker && (
@@ -178,6 +192,7 @@ export function ListToolbar({
                         borderRadius: 2,
                         minWidth: 0,
                         px: 1.5,
+                        height: 40,
                         color: 'text.primary',
                         whiteSpace: 'nowrap',
                       }}
@@ -211,11 +226,21 @@ export function ListToolbar({
                   <IconButton
                     onClick={sortToggle.onToggle}
                     aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
-                    sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+                    sx={{ border: 1, borderColor: 'divider', borderRadius: 2, width: 40, height: 40, alignSelf: 'center' }}
                   >
                     {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
                   </IconButton>
                 </Tooltip>
+                {/* A phone-only visible caption naming the current sort; aria-hidden because the
+                    button's aria-label and the tooltip already carry the meaning. */}
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  aria-hidden="true"
+                  sx={{ display: { xs: 'inline', md: 'none' }, minWidth: 0, flex: { xs: 1, md: 'none' } }}
+                >
+                  {sortToggle.value === 'asc' ? sortToggle.ascLabel : sortToggle.descLabel}
+                </Typography>
               </>
             ) : sortOptions ? (
               <Input

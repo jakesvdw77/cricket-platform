@@ -12,6 +12,10 @@ export interface ManageScreenHeaderProps {
   // instead of buried in a filter/toolbar row below. Additive/optional — every existing call site
   // that doesn't pass this keeps its current title-only header unchanged.
   action?: ReactNode
+  // docs/specs/073-availability-hub.md: an optional slot between the title and `action` (the
+  // Availability hub's view switch). On xs the row stacks title, middle, action. Omitted, the
+  // markup is unchanged.
+  middle?: ReactNode
 }
 
 // The back-link + page-title header every bare /manage screen needs — GridNavShell (unlike
@@ -22,7 +26,7 @@ export interface ManageScreenHeaderProps {
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo = '/manage', backLabel = 'Back to Dashboard', action }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo = '/manage', backLabel = 'Back to Dashboard', action, middle }: ManageScreenHeaderProps) {
   return (
     <PageHeaderBand>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
@@ -51,6 +55,7 @@ export function ManageScreenHeader({ title, backTo = '/manage', backLabel = 'Bac
           <Typography variant="h6" component="h1" fontWeight={700}>
             {title}
           </Typography>
+          {middle}
           {action}
         </Box>
       </Box>

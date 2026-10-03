@@ -65,6 +65,8 @@ import SubscriptionFormPage from './pages/admin/SubscriptionFormPage'
 import EmailSettings from './pages/admin/EmailSettings'
 import { EmptyState } from './components/EmptyState'
 import SectionAvailabilityRedirect from './pages/manage/SectionAvailabilityRedirect'
+import AvailabilityHubLayout from './pages/manage/availability/AvailabilityHubLayout'
+import PlayerAvailabilityRedirect from './pages/manage/availability/PlayerAvailabilityRedirect'
 
 const queryClient = new QueryClient()
 
@@ -231,7 +233,13 @@ function App() {
               {/* docs/specs/034-availability-polls-dashboard.md: a real, club-wide list of every
                   currently-open availability poll, replacing the earlier "go find the match
                   yourself" stub. */}
-              <Route path="availability" element={<AvailabilityPollsDashboard />} />
+              {/* docs/specs/073-availability-hub.md: the Availability hub - one layout route (header +
+                  Polls | Players switch) around the two views; the sub-flow routes below stay
+                  siblings outside it (074 adds the Coverage child). */}
+              <Route path="availability" element={<AvailabilityHubLayout />}>
+                <Route index element={<AvailabilityPollsDashboard />} />
+                <Route path="players" element={<PlayerAvailabilityPage />} />
+              </Route>
               {/* docs/specs/064-unified-availability-polls.md: the create screen for both poll kinds
                   (squad or group) behind the dashboard's New poll button. */}
               <Route path="availability/new" element={<NewPollPage />} />
@@ -241,8 +249,9 @@ function App() {
               {/* docs/specs/067: the squad poll's Responses page, the same views as the group poll's. */}
               <Route path="availability/squad/:matchId/:pollId" element={<SquadPollResponsesPage />} />
               {/* docs/specs/068-player-availability-grid.md: a season of availability at a glance,
-                  separate from the Availability Polls list. */}
-              <Route path="player-availability" element={<PlayerAvailabilityPage />} />
+                  separate from the Availability Polls list; 073 moved it to availability/players, the
+                  old URL redirects there keeping ?query. */}
+              <Route path="player-availability" element={<PlayerAvailabilityRedirect />} />
               {/* 064: 063's own screen folded into the dashboard + NewPollPage - old links (and
                   bookmarks) land on the group branch, keeping ?sectionId=/matchId=. */}
               <Route path="section-availability" element={<SectionAvailabilityRedirect />} />

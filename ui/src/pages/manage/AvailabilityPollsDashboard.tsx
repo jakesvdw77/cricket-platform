@@ -4,7 +4,6 @@ import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
-import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
@@ -31,7 +30,7 @@ type PollListItem =
 // docs/specs/064-unified-availability-polls.md: the one place every open poll lives. Extends
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
-// pattern: ManageScreenHeader (with the New poll action), ListToolbar (search, sort toggle, Type
+// pattern (the header and New poll action live in AvailabilityHubLayout, 073): ListToolbar (search, sort toggle, Type
 // and Section filters) and a RecordCard grid mixing both kinds. The two open-poll queries are
 // merged client-side - open polls are bounded to what is live right now, as 034 already reasoned
 // (spec's Non-goals: no union endpoint). Type and Section persist via usePersistedListFilters
@@ -193,11 +192,6 @@ export default function AvailabilityPollsDashboard() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title="Availability Polls"
-        action={<Button onClick={() => navigate('/manage/availability/new')}>New poll</Button>}
-      />
-
       <ListToolbar
         searchValue={search}
         onSearchChange={setSearch}

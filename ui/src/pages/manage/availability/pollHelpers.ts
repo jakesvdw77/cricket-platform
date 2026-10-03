@@ -1,6 +1,7 @@
 import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
+import type { PollItem } from './pollItem'
 
 // Why 'Share invite' is disabled on a closed poll (the backend refuses public answers for one).
 export const SHARE_CLOSED_REASON = 'Share invite is unavailable: this poll is closed'
@@ -112,22 +113,43 @@ export function validateCloseTime(
   return null
 }
 
-// The text of the card's Closes row: 'Closes <date time>' / 'Closes manually' while open,
-// 'Closed <date>' / 'Closed manually' once closed.
-export function closesRowText(open: boolean, autoClose: boolean, scheduledCloseAt: string | null): string {
+// docs/specs/073: the card's "Poll closes" line as label + value. Open: "Poll closes" with the
+// formatted date and time, or "Manually" (Autoclose off). Closed: "Poll closed" with the date only
+// (e.g. "Sat 3 Oct"), or "Manually".
+export function closesRow(
+  open: boolean,
+  autoClose: boolean,
+  scheduledCloseAt: string | null,
+): { label: 'Poll closes' | 'Poll closed'; value: string } {
   const hasTime = autoClose && Boolean(scheduledCloseAt)
   if (open) {
-    return hasTime ? `Closes ${formatCloseTime(new Date(scheduledCloseAt as string))}` : 'Closes manually'
+    return { label: 'Poll closes', value: hasTime ? formatCloseTime(new Date(scheduledCloseAt as string)) : 'Manually' }
   }
   if (!hasTime) {
-    return 'Closed manually'
+    return { label: 'Poll closed', value: 'Manually' }
   }
   const date = new Date(scheduledCloseAt as string).toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
-  return `Closed ${date}`
+  return { label: 'Poll closed', value: date }
+}
+
+// The text of the Responses page headers' Closes line: 'Closes <date time>' / 'Closes manually'
+// while open, 'Closed <date>' / 'Closed manually' once closed.
+export function closesRowText(open: boolean, autoClose: boolean, scheduledCloseAt: string | null): string {
+  const { value } = closesRow(open, autoClose, scheduledCloseAt)
+  const verb = open ? 'Closes' : 'Closed'
+  return value === 'Manually' ? `${verb} manually` : `${verb} ${value}`
+}
+
+// docs/specs/073: where a poll's Responses page lives - the card's click-through and its Responses
+// button. Group polls by round id, squad polls by match and poll id.
+export function pollResponsesPath(item: PollItem): string {
+  return item.kind === 'GROUP'
+    ? `/manage/availability/group/${item.round.id}`
+    : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`
 }
 
 // docs/specs/064/066/067: the squad poll's match Availability tab, on the side this poll is for - the

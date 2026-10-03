@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { ManageScreenHeader } from './ManageScreenHeader'
+import { ToggleButton, ToggleButtonGroup } from '@mui/material'
 import { Button } from '../Button'
 
 // No local MemoryRouter decorator — .storybook/preview.tsx already wraps every story in one
@@ -25,4 +26,20 @@ export const CustomBackTarget: Story = {
 // top-right beside the title instead of inside ListToolbar's own row.
 export const WithAction: Story = {
   args: { title: 'Matches', action: <Button onClick={() => undefined}>Add Match</Button> },
+}
+
+// docs/specs/073-availability-hub.md: a view switch between the title and the action.
+export const WithMiddleAndAction: Story = {
+  args: {
+    title: 'Availability',
+    middle: (
+      <nav aria-label="Views">
+        <ToggleButtonGroup value="polls" exclusive size="small" aria-label="Views">
+          <ToggleButton value="polls">Polls</ToggleButton>
+          <ToggleButton value="players">Players</ToggleButton>
+        </ToggleButtonGroup>
+      </nav>
+    ),
+    action: <Button onClick={() => undefined}>New poll</Button>,
+  },
 }

@@ -1,7 +1,7 @@
 # 068 — Player Availability Grid
 
 **Depends on:** `064-unified-availability-polls.md` (squad and group polls, one poll per match), `063-section-availability-and-flexible-squads.md` (group polls: rounds, windows, `SectionAvailabilityResponse`, `MatchSquadMember`), `032-match-availability-polls.md` (squad polls, `PlayerAvailability`), `065`/`067` (the Responses pages a cell links to), `025`/`026`/`035` (sections, teams, section-scoped access), `029` (team squads), the league and season specs for `Match.leagueId`/`seasonId`.
-**Status:** approved (design approved by the user). Design: https://claude.ai/artifact/XmHwCXhsmRY3qECVf6hKmP (legacy reference: the legacy app's Team Availability "Per Player" tab).
+**Status:** approved (design approved by the user). Design: https://claude.ai/artifact/XmHwCXhsmRY3qECVf6hKmP (legacy reference: the legacy app's Team Availability "Per Player" tab). Amended by `073-availability-hub.md`: the Players view moves to `/manage/availability/players` under the Availability hub; the separate dashboard card and the header link to Availability Polls are removed.
 
 ## Problem & Goals
 

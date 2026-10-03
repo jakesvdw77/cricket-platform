@@ -279,7 +279,7 @@ describe('AvailabilityPollsDashboard', () => {
     // 09:00Z is MORNING in a zone up to UTC+2; assert only that a slot heading is shown.
     expect(screen.getByRole('heading', { level: 4, name: /· (Morning|Afternoon)$/ })).toBeInTheDocument()
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: `${(2 / 6) * 100}%` })
-    expect(screen.getByText(/^Closes /)).toBeInTheDocument()
+    expect(screen.getByText('Poll closes')).toBeInTheDocument()
     expect(screen.getAllByRole('button').filter((b) => ['Close', 'Matches', 'Responses', 'Share invite'].includes(b.getAttribute('aria-label') ?? '')).map((b) => b.getAttribute('aria-label'))).toEqual(['Close', 'Matches', 'Responses', 'Share invite'])
   })
 
@@ -452,6 +452,14 @@ describe('AvailabilityPollsDashboard', () => {
     expect(persisted).not.toHaveProperty('search')
   })
 
+  it('renders no page header of its own (the hub layout owns it, 073)', async () => {
+    renderDashboard('test-club-id')
+
+    await screen.findByText('No open polls')
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument()
+  })
+
   it('has a New poll primary action that navigates to /manage/availability/new', async () => {
     const user = userEvent.setup()
     renderDashboard('test-club-id')
@@ -501,7 +509,7 @@ describe('AvailabilityPollsDashboard', () => {
       ])
     })
 
-    it('squad card shows a Closes row with the close time, or "Manually" when autoclose is off', async () => {
+    it('squad card shows a Poll closes line with the close time, or "Manually" when autoclose is off', async () => {
       listTeamsForClub.mockResolvedValue([makeTeam()])
       listOpenPolls.mockResolvedValue([
         makePoll({ pollId: 'poll-auto', matchId: 'm1', awayTeamName: 'Auto CC' }),
@@ -511,8 +519,8 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Home Team vs Manual CC' })
-      expect(screen.getByText('Closes manually')).toBeInTheDocument()
-      expect(screen.getAllByText(/^Closes /)).toHaveLength(2)
+      expect(screen.getByText('Manually')).toBeInTheDocument()
+      expect(screen.getAllByText('Poll closes')).toHaveLength(2)
     })
 
     it('Type filter narrows to one kind, persists with the section, and skips the other query', async () => {
@@ -900,7 +908,7 @@ describe('AvailabilityPollsDashboard', () => {
       expect(screen.getByText('6 of 8 answered')).toBeInTheDocument()
       expect(screen.getByTestId('window-1-bar-AVAILABLE')).toHaveStyle({ width: '62.5%' })
       expect(screen.getByTestId('window-2-bar-NONE')).toHaveStyle({ width: '50%' })
-      expect(screen.getByText(/^Closes /)).toBeInTheDocument()
+      expect(screen.getByText('Poll closes')).toBeInTheDocument()
     })
 
     it('has the same four footer buttons in the same order as a squad card', async () => {
@@ -1031,7 +1039,7 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
-      expect(screen.getByText('Closes manually')).toBeInTheDocument()
+      expect(screen.getByText('Manually')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Edit close time' }))
       expect(await screen.findByRole('heading', { name: 'Edit close time' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Save' }))

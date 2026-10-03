@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Box, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { Input } from '../../../../components/Input'
+import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
 import type { SectionAvailabilityRoundBracket, SectionAvailabilityRoundMatch } from '../../../../api/sectionAvailabilityApi'
 import { filterPlayers, groupBySlot } from './responseHelpers'
@@ -75,19 +76,7 @@ export function ResponsesPageShell({
           exclusive
           size="small"
           aria-label="Responses view"
-          sx={{
-            flex: 'none',
-            alignSelf: { xs: 'stretch', sm: 'center' },
-            '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'none' }, px: 2, whiteSpace: 'nowrap' },
-            // The selected view is the green fill (primary main + white text), not MUI's faint grey.
-            '& .MuiToggleButton-root.Mui-selected, & .MuiToggleButton-root.Mui-selected:hover': {
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              borderColor: 'primary.main',
-              fontWeight: 600,
-            },
-            '& .MuiToggleButton-root.Mui-selected:hover': { bgcolor: 'primary.dark' },
-          }}
+          sx={segmentedSwitchSx}
           onChange={(_event, next: View | null) => next && setView(next)}
         >
           <ToggleButton value="slot">Time slot</ToggleButton>

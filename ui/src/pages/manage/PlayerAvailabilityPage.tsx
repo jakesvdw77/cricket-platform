@@ -1,16 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link as RouterLink, useOutletContext } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Box, Button as MuiButton, CircularProgress, FormControlLabel, InputAdornment, MenuItem, Switch, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import SearchIcon from '@mui/icons-material/Search'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
 import { Input } from '../../components/Input'
-import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
 import { listSeasons } from '../../api/seasonApi'
@@ -179,21 +177,6 @@ export default function PlayerAvailabilityPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader
-        title="Player Availability"
-        action={
-          <MuiButton
-            component={RouterLink}
-            to="/manage/availability"
-            variant="outlined"
-            size="small"
-            startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-          >
-            Availability Polls
-          </MuiButton>
-        }
-      />
-
       {/* Same bordered surface as ListToolbar, but two rows (it only supports a single search row):
           row 1 the four server-side filters in the order Season, Section, Team, League; row 2 search,
           the view toggles and Jump to today. */}
