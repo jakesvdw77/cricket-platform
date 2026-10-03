@@ -23,6 +23,8 @@ export function makeMatch(overrides: Partial<Match> = {}): Match {
     polls: [],
     homeTeamLogoUrl: null,
     awayTeamLogoUrl: null,
+    homeLeagueTeamId: null,
+    awayLeagueTeamId: null,
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
