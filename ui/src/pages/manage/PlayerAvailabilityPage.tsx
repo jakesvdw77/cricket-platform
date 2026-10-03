@@ -17,6 +17,7 @@ import { listSections } from '../../api/sectionApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
+import { filterPanelSx } from '../../utils/filterPanel'
 import { AvailabilityGrid } from './playerAvailability/AvailabilityGrid'
 import type { AvailabilityGridHandle } from './playerAvailability/AvailabilityGrid'
 import { filterPlayers, firstUpcomingGame } from './playerAvailability/gridHelpers'
@@ -180,19 +181,7 @@ export default function PlayerAvailabilityPage() {
       {/* Same bordered surface as ListToolbar, but two rows (it only supports a single search row):
           row 1 the four server-side filters in the order Season, Section, Team, League; row 2 search,
           the view toggles and Jump to today. */}
-      <Box
-        sx={{
-          border: 1,
-          borderColor: 'divider',
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          p: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-        }}
-      >
+      <Box sx={filterPanelSx}>
         <Box
           sx={{
             display: 'grid',
