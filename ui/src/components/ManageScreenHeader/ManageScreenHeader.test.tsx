@@ -46,6 +46,33 @@ describe('ManageScreenHeader', () => {
     expect(screen.queryByRole('button', { name: 'Add Match' })).not.toBeInTheDocument()
   })
 
+  // docs/specs/073-availability-hub.md: an optional slot between the title and the action.
+  it('renders a passed middle between the title and the action, and nothing when omitted', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ManageScreenHeader
+          title="Availability"
+          middle={<nav aria-label="Views">switch</nav>}
+          action={<button type="button">New poll</button>}
+        />
+      </MemoryRouter>,
+    )
+    const heading = screen.getByRole('heading', { name: 'Availability' })
+    const middle = screen.getByRole('navigation', { name: 'Views' })
+    const action = screen.getByRole('button', { name: 'New poll' })
+    expect(heading.compareDocumentPosition(middle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(middle.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(heading.parentElement).toContainElement(middle)
+
+    rerender(
+      <MemoryRouter>
+        <ManageScreenHeader title="Availability" />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('navigation', { name: 'Views' })).not.toBeInTheDocument()
+    expect(heading.parentElement?.children).toHaveLength(1)
+  })
+
   // docs/specs/046-header-body-elevation-standard.md
   it('renders the header inside a PageHeaderBand', () => {
     render(

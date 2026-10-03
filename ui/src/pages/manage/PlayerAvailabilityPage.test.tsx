@@ -107,12 +107,12 @@ function renderPage(clubId: string | null = 'test-club-id') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/player-availability']}>
+      <MemoryRouter initialEntries={['/manage/availability/players']}>
         <Routes>
           <Route path="/manage" element={<Outlet context={{ clubId: clubId ?? undefined }} />}>
             <Route index element={<div>Dashboard</div>} />
             <Route path="availability" element={<div>Polls List</div>} />
-            <Route path="player-availability" element={<PlayerAvailabilityPage />} />
+            <Route path="availability/players" element={<PlayerAvailabilityPage />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -129,13 +129,14 @@ async function loaded() {
 }
 
 describe('PlayerAvailabilityPage', () => {
-  it('renders the header, a link to Availability Polls and the grid', async () => {
+  it('renders the grid without a header or a one-way Availability Polls button (the hub owns them, 073)', async () => {
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Player Availability' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
-    expect(screen.getByRole('link', { name: 'Availability Polls' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Player Availability' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Availability Polls' })).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Search players')).toBeInTheDocument()
     expect(screen.getByText('2 players · 1 game')).toBeInTheDocument()

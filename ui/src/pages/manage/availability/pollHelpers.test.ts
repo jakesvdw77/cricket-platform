@@ -5,14 +5,17 @@ import {
   CLOSE_TIME_AFTER_KICKOFF_MESSAGE,
   CLOSE_TIME_PAST_MESSAGE,
   CLOSE_TIME_REQUIRED_MESSAGE,
+  closesRow,
   closesRowText,
   coveredPollHref,
   defaultCloseTime,
   formatMatchDate,
+  pollResponsesPath,
   squadPollOpponentName,
   squadPollTeamName,
   validateCloseTime,
 } from './pollHelpers'
+import type { PollItem } from './pollItem'
 
 function match(overrides: Partial<SectionAvailabilityFixtureMatch>): SectionAvailabilityFixtureMatch {
   return { matchId: 'match-1', existingPollType: null, ...overrides } as SectionAvailabilityFixtureMatch
@@ -85,6 +88,41 @@ describe('closesRowText', () => {
   it('reads Closed <date> for a closed autoclosing poll and Closed manually otherwise', () => {
     expect(closesRowText(false, true, '2026-10-04T10:00:00Z')).toMatch(/^Closed .+/)
     expect(closesRowText(false, false, null)).toBe('Closed manually')
+  })
+})
+
+describe('closesRow', () => {
+  it('open with a time: Poll closes + the formatted date and time', () => {
+    const row = closesRow(true, true, '2026-10-04T10:00:00Z')
+    expect(row.label).toBe('Poll closes')
+    expect(row.value).not.toBe('Manually')
+    expect(row.value).toMatch(/2026|Oct/)
+  })
+
+  it('open without autoclose: Poll closes + Manually', () => {
+    expect(closesRow(true, false, null)).toEqual({ label: 'Poll closes', value: 'Manually' })
+    expect(closesRow(true, true, null)).toEqual({ label: 'Poll closes', value: 'Manually' })
+  })
+
+  it('closed with a time: Poll closed + the date only', () => {
+    const row = closesRow(false, true, '2026-10-03T10:00:00Z')
+    expect(row.label).toBe('Poll closed')
+    expect(row.value).toBe(
+      new Date('2026-10-03T10:00:00Z').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
+    )
+  })
+
+  it('closed without a time: Poll closed + Manually', () => {
+    expect(closesRow(false, false, null)).toEqual({ label: 'Poll closed', value: 'Manually' })
+  })
+})
+
+describe('pollResponsesPath', () => {
+  it('points a group poll at its round and a squad poll at its match and poll', () => {
+    expect(pollResponsesPath({ kind: 'GROUP', round: { id: 'r1' } } as unknown as PollItem)).toBe('/manage/availability/group/r1')
+    expect(pollResponsesPath({ kind: 'SQUAD', poll: { matchId: 'm1', pollId: 'p1' } } as unknown as PollItem)).toBe(
+      '/manage/availability/squad/m1/p1',
+    )
   })
 })
 

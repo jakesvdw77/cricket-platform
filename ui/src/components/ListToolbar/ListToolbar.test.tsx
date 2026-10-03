@@ -140,6 +140,13 @@ describe('ListToolbar', () => {
   // docs/specs/041-list-screen-header-actions.md: createLabel/onCreate are now optional — a
   // caller placing its primary create action in ManageScreenHeader's own action slot instead
   // renders no Create button here at all, rather than a broken/no-op one.
+  // docs/specs/073-availability-hub.md: the Select path has no caption.
+  it('renders no caption on the Select sort path', () => {
+    render(<ControlledToolbar />)
+
+    expect(document.querySelector('.MuiTypography-caption')).not.toBeInTheDocument()
+  })
+
   it('renders no create button when createLabel/onCreate are both omitted', () => {
     render(
       <ListToolbar
@@ -207,6 +214,58 @@ describe('ListToolbar', () => {
         />,
       )
       expect(screen.getByRole('button', { name: 'Sort ascending' })).toBeInTheDocument()
+    })
+
+    // docs/specs/073-availability-hub.md
+    it('shows an aria-hidden caption with the current sort label, per sort state', () => {
+      const toggle = { ascLabel: 'Match date, soonest first', descLabel: 'Match date, latest first', onToggle: () => undefined }
+      const { rerender } = render(<ListToolbar searchValue="" onSearchChange={() => undefined} sortToggle={{ value: 'asc', ...toggle }} />)
+
+      const caption = screen.getByText('Match date, soonest first')
+      expect(caption).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.queryByText('Match date, latest first')).not.toBeInTheDocument()
+
+      rerender(<ListToolbar searchValue="" onSearchChange={() => undefined} sortToggle={{ value: 'desc', ...toggle }} />)
+      expect(screen.getByText('Match date, latest first')).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.queryByText('Match date, soonest first')).not.toBeInTheDocument()
+    })
+
+    it('renders the sort icon button at 40 x 40', () => {
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'asc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle: () => undefined }}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Sort descending' })).toHaveStyle({ width: '40px', height: '40px' })
+    })
+
+    it('puts the sort group (sort and create) first on xs via CSS order while the DOM order stays search, sort', () => {
+      render(
+        <ListToolbar
+          searchValue=""
+          onSearchChange={() => undefined}
+          sortToggle={{ value: 'asc', ascLabel: 'Sort ascending', descLabel: 'Sort descending', onToggle: () => undefined }}
+          createLabel="Add"
+          onCreate={() => undefined}
+        />,
+      )
+
+      const search = screen.getByLabelText('Search')
+      const sortButton = screen.getByRole('button', { name: 'Sort descending' })
+      const create = screen.getByRole('button', { name: 'Add' })
+      expect(search.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      // The create button sits in the same group as the sort control.
+      expect(sortButton.parentElement).toBe(create.parentElement)
+      expect(sortButton.parentElement).toHaveStyle({ display: 'flex' })
+      // jsdom applies no media queries, so read the xs order rule from the emitted stylesheet.
+      const groupClass = Array.from(sortButton.parentElement?.classList ?? []).find((name) => name.startsWith('css-'))
+      // The xs (min-width:0px) rule carries order:-1; the md media rule resets it to 0.
+      const css = document.head.innerHTML
+      expect(css).toMatch(new RegExp(`@media[^{]*min-width:0px\\)\\{\\.${groupClass}\\{[^}]*order:-1`))
+      expect(css).toMatch(new RegExp(`@media[^{]*min-width:900px\\)\\{\\.${groupClass}\\{[^}]*order:0`))
     })
 
     it('shows a tooltip stating the current sort and what a click does, keeping the aria-label', async () => {
