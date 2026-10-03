@@ -69,7 +69,16 @@ export default function AvailabilityHubLayout() {
             <Button onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               New poll
             </Button>
-          ) : undefined
+          ) : (
+            // Reserves the New poll button's width from sm up so the switch stays put when you move between
+            // views instead of jumping to the right edge. visibility: hidden keeps it out of the tab order
+            // and the accessibility tree, so the button is still effectively absent on Players and Coverage.
+            <Box aria-hidden sx={{ visibility: 'hidden', display: { xs: 'none', sm: 'block' } }}>
+              <Button tabIndex={-1} disabled>
+                New poll
+              </Button>
+            </Box>
+          )
         }
       />
 
