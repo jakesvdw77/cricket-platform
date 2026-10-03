@@ -45,6 +45,10 @@ export interface Match {
   // logo above are then the league team's copied values). Optional so older fixtures stay valid.
   homeLeagueTeamId?: string | null
   awayLeagueTeamId?: string | null
+  // docs/specs/075-match-view-and-edit.md: optional external links (a scoring page, a live stream).
+  // Optional so older fixtures stay valid.
+  scoringUrl?: string | null
+  streamingUrl?: string | null
   // docs/specs/069-match-card-redesign.md: list-response only (non-list endpoints return null / []).
   // Picked = players in that side's playing XI; null for a free-text or other-club side.
   homePickedCount: number | null
@@ -87,6 +91,9 @@ export interface MatchPayload {
   seasonId: string
   matchDate: string
   venue?: string | null
+  // docs/specs/075-match-view-and-edit.md: optional http(s) links; blank/null clears.
+  scoringUrl?: string | null
+  streamingUrl?: string | null
 }
 
 export interface ListMatchesParams {

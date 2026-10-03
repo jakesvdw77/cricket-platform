@@ -2,7 +2,7 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { AvailabilityStatus } from '../api/matchAvailabilityApi'
 
-// Originally private to MatchAvailabilityTab.tsx; pulled out here per docs/specs/
+// Originally private to the (since removed) match Availability tab; pulled out here per docs/specs/
 // 034-availability-polls-dashboard.md's Rollout Notes so AvailabilityRespondentAvatars can reuse
 // the exact same tint/label convention rather than a second, copy-pasted map.
 export const STATUS_LABEL: Record<AvailabilityStatus, string> = {

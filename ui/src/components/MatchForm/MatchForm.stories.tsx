@@ -169,6 +169,21 @@ export const TeamVsTeam: Story = {
   },
 }
 
+// docs/specs/075-match-view-and-edit.md: the optional scoring and streaming links, prefilled.
+export const WithLinks: Story = {
+  args: {
+    ...NewMatch.args,
+    initialValues: {
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-2',
+      seasonId: 'season-1',
+      matchDate: '2026-06-01T14:30:00.000Z',
+      scoringUrl: 'https://cricclubs.com/matches/34343',
+      streamingUrl: 'https://pitchvision.example/live/1',
+    },
+  },
+}
+
 export const ExternalOpponent: Story = {
   args: {
     ...NewMatch.args,

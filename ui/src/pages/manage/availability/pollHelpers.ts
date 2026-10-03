@@ -49,14 +49,19 @@ export function matchLabel(match: Pick<SectionAvailabilityFixtureMatch, 'teamNam
   return `${match.teamName} vs ${match.opponentLabel}`
 }
 
-// docs/specs/064: where the 'covered by' link of an already-polled match points - a squad poll
-// lives on its match's own Availability tab, a group poll on the dashboard with 'Show closed
-// polls' preset on (so it is listed whether the covering poll is open or closed).
+// docs/specs/064, repointed by docs/specs/075: where the 'covered by' link of an already-polled
+// match points - the covering poll's own Responses page (a group poll by its round id, which is what
+// the backend returns as existingPollId for a GROUP match; a squad poll by match and poll id). With no
+// existingPollId (the type allows it, alreadyPolled never produces it) it falls back to the dashboard
+// with 'Show closed polls' preset on.
 export function coveredPollHref(match: SectionAvailabilityFixtureMatch): string {
-  if (match.existingPollType === 'SQUAD') {
-    return `/manage/fixtures/matches/${match.matchId}/edit?tab=availability`
+  if (!match.existingPollId) {
+    return '/manage/availability?showClosed=true'
   }
-  return '/manage/availability?showClosed=true'
+  if (match.existingPollType === 'SQUAD') {
+    return `/manage/availability/squad/${match.matchId}/${match.existingPollId}`
+  }
+  return `/manage/availability/group/${match.existingPollId}`
 }
 
 // Same "resolve whichever side is null against the club's own team list" join MatchList.tsx's
@@ -152,11 +157,11 @@ export function pollResponsesPath(item: PollItem): string {
     : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`
 }
 
-// docs/specs/064/066/067: the squad poll's match Availability tab, on the side this poll is for - the
-// destination of the Matches dialog's match link and the Responses page's Open match link.
-export function squadPollHref(poll: Pick<OpenAvailabilityPoll, 'matchId' | 'teamId' | 'homeTeamId'>): string {
-  const side = poll.teamId === poll.homeTeamId ? 'home' : 'away'
-  return `/manage/fixtures/matches/${poll.matchId}/edit?tab=availability&side=${side}`
+// docs/specs/064/066/067, repointed by docs/specs/075: the match's own view page (the Edit page's
+// Availability tab no longer exists) - the destination of the Matches dialog's match link and the
+// Responses page's Open match link.
+export function squadPollHref(poll: Pick<OpenAvailabilityPoll, 'matchId'>): string {
+  return `/manage/fixtures/matches/${poll.matchId}`
 }
 
 // The 'Home' / 'Away' badge of a squad poll.

@@ -28,7 +28,7 @@ export interface MatchSquadPickerProps {
   // null when no SectionAvailabilityWindow has been opened yet for this side's resolved bracket.
   windowId: string | null
   windowOpen: boolean
-  // The side's label used in copy, e.g. "the home side" — mirrors MatchAvailabilityTab's own
+  // The side's label used in copy, e.g. "the home side" — mirrors the other match-side tabs' own
   // `label` prop shape.
   label: string
   // Pre-filled "open a group poll" shortcut — /manage/availability/new?type=group with

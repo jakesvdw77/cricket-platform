@@ -1,7 +1,5 @@
-import { useState } from 'react'
-import { Stack } from '@mui/material'
+import { Box, Divider, IconButton, Stack } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -10,53 +8,30 @@ import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlin
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
+import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
 import { DetailLine } from '../../../components/DetailLine'
 import { RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
-import { TeamSheetCommunicationDialog } from '../../../components/TeamSheetCommunicationDialog'
-import type { TeamSheetPrintScope } from '../../../components/TeamSheetCommunicationDialog'
 import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
-import { listMatchSides } from '../../../api/matchSideApi'
-import { listSquad } from '../../../api/teamSquadApi'
-import { matchFields } from '../../../utils/matchRecordFields'
-import { generateTeamSheetPdf } from '../../../utils/teamSheetPdf'
-import type { TeamSheetSide } from '../../../utils/teamSheetPdf'
 import { formatMatchDateTime } from '../availability/pollHelpers'
 import { SelectionBlock } from './SelectionBlock'
+import { useAvailabilityNavigation } from './useAvailabilityNavigation'
+import { useTeamSheetShare } from './useTeamSheetShare'
 import {
   announcedBadges,
   badgeFor,
+  matchLeagueValue,
+  NO_CLUB_TEAM_REASON,
   pollBadgeFor,
   pollDestination,
   selectionRows,
   sideName,
   withPlayingXiTab,
 } from './matchCardHelpers'
-
-const NO_CLUB_TEAM_REASON = 'None of your teams is playing in this match'
-
-// A lightweight stand-in Team for a free-text opponent side (no real Team record exists) — only
-// `logoUrl`/`name` are ever read from a TeamSheetSide's `team` by teamSheetPdf.ts/
-// TeamSheetCommunicationDialog, both of which prefer `teamName` for display anyway.
-function placeholderTeam(clubId: string, name: string): Team {
-  return {
-    id: '',
-    clubId,
-    sectionId: '',
-    name,
-    logoUrl: null,
-    abbreviation: null,
-    groundName: null,
-    socialLinks: [],
-    active: true,
-    createdAt: '',
-    updatedAt: '',
-    updatedBy: null,
-  }
-}
 
 export interface MatchCardProps {
   clubId: string
@@ -71,65 +46,19 @@ export interface MatchCardProps {
 }
 
 // docs/specs/069-match-card-redesign.md: one RecordCard per match, built like the availability poll
-// card - icon-over-caption footer (Edit / Select / Poll / Share), colour-coded badges, stacked
+// card - icon-over-caption footer (Edit / Select / Availability / Share), colour-coded badges, stacked
 // details and a Selection block. Deactivate/Reactivate lives on the edit screen (038).
+// docs/specs/075: the Poll button is now Availability (a derby's two polls open a small menu), and
+// the scoring/streaming links show as an icon row.
 export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, editTo, viewTo }: MatchCardProps) {
   const navigate = useNavigate()
-  const [dialogOpen, setDialogOpen] = useState(false)
 
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
 
-  // docs/specs/030-team-sheet-communication.md — the Team Sheet data-fetching lives here (the host),
-  // matching the codebase's presentational-dialog convention. Every query is `enabled: dialogOpen`
-  // so nothing fires until the admin actually opens the dialog.
-  const sidesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', match.id, 'sides'],
-    queryFn: () => listMatchSides(clubId, match.id),
-    enabled: dialogOpen,
-  })
-
-  // Same query-key shape as MatchFormPage.tsx's MatchSideTab, so both share one cache entry per
-  // team/season squad rather than each maintaining its own copy.
-  const homeSquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', match.homeTeamId as string, 'seasons', match.seasonId, 'squad'],
-    queryFn: () => listSquad(clubId, match.homeTeamId as string, match.seasonId),
-    enabled: dialogOpen && Boolean(match.homeTeamId),
-  })
-
-  const awaySquadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', match.awayTeamId as string, 'seasons', match.seasonId, 'squad'],
-    queryFn: () => listSquad(clubId, match.awayTeamId as string, match.seasonId),
-    enabled: dialogOpen && Boolean(match.awayTeamId),
-  })
-
-  const sidesLoading =
-    dialogOpen &&
-    (sidesQuery.isLoading ||
-      (Boolean(match.homeTeamId) && homeSquadQuery.isLoading) ||
-      (Boolean(match.awayTeamId) && awaySquadQuery.isLoading))
-
-  // A fixed 2-tuple (home, then away) — TeamSheetCommunicationDialog's own prop type relies on
-  // this exact order/length, per its "index 0 is home, index 1 is away" invariant.
-  const teamSheetSides: [TeamSheetSide, TeamSheetSide] = [
-    {
-      team: (match.homeTeamId && teamsById.get(match.homeTeamId)) || placeholderTeam(clubId, homeTeamName),
-      teamName: homeTeamName,
-      side: sidesQuery.data?.find((side) => side.teamId === match.homeTeamId),
-      squad: homeSquadQuery.data ?? [],
-    },
-    {
-      team: (match.awayTeamId && teamsById.get(match.awayTeamId)) || placeholderTeam(clubId, awayTeamName),
-      teamName: awayTeamName,
-      side: sidesQuery.data?.find((side) => side.teamId === match.awayTeamId),
-      squad: awaySquadQuery.data ?? [],
-    },
-  ]
-
-  const subtitle = matchFields(match, leaguesById, seasonsById)
-    .map((field) => String(field.value))
-    .join(' · ')
+  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
+  const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(match, teamsById))
 
   // docs/specs/037-match-improvements.md item 2: a match with no club team side has no
   // Playing XI to pick, poll or share (029) — those footer buttons are disabled with an explanation.
@@ -137,16 +66,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const hasClubSide = selectionRows(match, teamsById).length > 0
   const disabledProps = hasClubSide ? {} : { disabled: true, title: NO_CLUB_TEAM_REASON }
 
-  const handlePrint = async (scope: TeamSheetPrintScope) => {
-    const filteredSides =
-      scope === 'both' ? teamSheetSides : scope === 'home' ? [teamSheetSides[0]] : [teamSheetSides[1]]
-    const url = await generateTeamSheetPdf(match, filteredSides, subtitle)
-    window.open(url, '_blank')
-  }
-
-  const league = match.leagueId ? leaguesById.get(match.leagueId)?.name : undefined
-  const season = seasonsById.get(match.seasonId)?.label
-  const leagueValue = [league, season].filter(Boolean).join(' · ')
+  const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
 
   const inactive = badgeFor(match)
   const badges: RecordCardBadge[] = [
@@ -177,15 +97,15 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             ...disabledProps,
           },
           {
-            label: 'Poll',
+            label: 'Availability',
             icon: <EventAvailableOutlinedIcon fontSize="small" />,
-            onClick: () => navigate(pollDestination(match, teamsById, editTo)),
+            onClick: openAvailability,
             ...disabledProps,
           },
           {
             label: 'Share',
             icon: <ShareOutlinedIcon fontSize="small" />,
-            onClick: () => setDialogOpen(true),
+            onClick: openShare,
             ...disabledProps,
           },
         ]}
@@ -198,16 +118,46 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           )}
         </Stack>
         <SelectionBlock rows={selectionRows(match, teamsById)} />
+        {(match.scoringUrl || match.streamingUrl) && (
+          <>
+            <Divider />
+            {/* position: relative paints the row above the card's stretched title link (059), so a
+                click opens the link and never navigates the card. */}
+            <Box data-testid="match-links-row" sx={{ position: 'relative', display: 'flex', gap: 0.5 }}>
+              {match.scoringUrl && (
+                <IconButton
+                  component="a"
+                  href={match.scoringUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  aria-label="Scoring"
+                  title="Scoring"
+                  sx={{ color: 'primary.dark' }}
+                >
+                  <ScoreboardOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+              {match.streamingUrl && (
+                <IconButton
+                  component="a"
+                  href={match.streamingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  aria-label="Watch live"
+                  title="Watch live"
+                  sx={{ color: 'primary.dark' }}
+                >
+                  <LiveTvOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+          </>
+        )}
       </RecordCard>
-      <TeamSheetCommunicationDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        match={match}
-        sides={teamSheetSides}
-        sidesLoading={Boolean(sidesLoading)}
-        onPrint={handlePrint}
-        subtitle={subtitle}
-      />
+      {menu}
+      {shareDialog}
     </>
   )
 }

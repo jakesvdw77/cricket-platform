@@ -1,5 +1,6 @@
 import { Divider, Stack, Typography } from '@mui/material'
 import { CardProgressBar } from '../../../components/CardProgressBar'
+import { pickedLegend } from './matchCardHelpers'
 import type { SelectionRow } from './matchCardHelpers'
 
 export interface SelectionBlockProps {
@@ -42,7 +43,6 @@ function SelectionRowView({ row }: { row: SelectionRow }) {
     )
   }
 
-  const complete = picked >= playingXiSize
   return (
     <Stack spacing={0.75}>
       <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
@@ -60,7 +60,7 @@ function SelectionRowView({ row }: { row: SelectionRow }) {
         valueText={`${picked} of ${playingXiSize} picked`}
       />
       <Typography variant="caption" color="text.secondary">
-        {complete ? 'squad complete' : `${picked} picked · ${playingXiSize - picked} to go`}
+        {pickedLegend(picked, playingXiSize)}
       </Typography>
     </Stack>
   )
