@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueList from './LeagueList'
 import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { League } from '../../api/leagueApi'
+import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 
 const listLeagues = vi.fn()
 
@@ -43,6 +44,12 @@ function makeLeague(overrides: Partial<League> = {}): League {
     currentSeasonTeamCount: 0,
     currentSeasonLabel: null,
     currentSeasonPlayingConditionsUrl: null,
+    matchCount: 0,
+    playedCount: 0,
+    firstMatchDate: null,
+    lastMatchDate: null,
+    nextMatchDate: null,
+    teams: [],
     format: null,
     logoUrl: null,
     phone: null,
@@ -69,7 +76,7 @@ function renderList(clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="leagues" element={<LeagueList />} />
             <Route path="leagues/new" element={<div>Add League Page</div>} />
-            <Route path="leagues/:id" element={<div>League Detail Page</div>} />
+            <Route path="leagues/:id/schedule" element={<div>League Schedule Page</div>} />
             <Route path="leagues/:id/edit" element={<div>Edit League Page</div>} />
           </Route>
         </Routes>
@@ -191,42 +198,25 @@ describe('LeagueList', () => {
     expect(await screen.findByText('Add League Page')).toBeInTheDocument()
   })
 
-  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
-  // precedent test for the View+Edit dual-render footer.
-  it('renders View and Edit together on a card, both pointing at the league\'s own routes', async () => {
-    listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' })])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Internal League')
-    expect(screen.getByRole('link', { name: 'Internal League' })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/leagues/league-1',
-    )
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/leagues/league-1/edit',
-    )
-  })
-
-  // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
-  // card title is the click target. Extends the href-only assertion above with a real
-  // click-through, confirming the title link still resolves to the same route the old View button
-  // targeted, and Edit still navigates independently (both real browser-equivalent navigations,
-  // not just attribute checks).
-  it('clicking the card title navigates to the league view route, and Edit still navigates to the edit route', async () => {
+  // docs/specs/071-league-card-redesign.md: the title link and the footer buttons all route into the
+  // 072 view pages; the card's own behaviour is covered in leagues/LeagueCard.test.tsx.
+  it('links the card title to the league Schedule and opens the edit screen from the footer', async () => {
     const user = userEvent.setup()
     listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', name: 'Internal League' })])
 
     const { unmount } = renderList('test-club-id')
     await screen.findByText('Internal League')
+    expect(screen.getByRole('link', { name: 'Internal League' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/leagues/league-1/schedule',
+    )
     await user.click(screen.getByRole('link', { name: 'Internal League' }))
-    expect(await screen.findByText('League Detail Page')).toBeInTheDocument()
+    expect(await screen.findByText('League Schedule Page')).toBeInTheDocument()
     unmount()
 
     renderList('test-club-id')
     await screen.findByText('Internal League')
-    await user.click(screen.getByRole('link', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(await screen.findByText('Edit League Page')).toBeInTheDocument()
   })
 
@@ -246,122 +236,229 @@ describe('LeagueList', () => {
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
 
-  // docs/specs/050-league-schedule-and-fixtures.md item 1: leagueSeasonBadges' two badges,
-  // rendered via RecordCard's own badges prop.
-  describe('season badges', () => {
-    it('renders both the team-count and season-label badges when the club has a current season', async () => {
-      listLeagues.mockResolvedValueOnce([
-        makeLeague({ id: 'league-1', currentSeasonTeamCount: 6, currentSeasonLabel: '2026/2027' }),
-      ])
+  describe('card grid', () => {
+    it('lays the cards out with the shared cardGridSx template', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1' }), makeLeague({ id: 'league-2', name: 'Other' })])
 
       renderList('test-club-id')
 
       await screen.findByText('Internal League')
-      expect(screen.getByText('6 teams')).toBeInTheDocument()
-      expect(screen.getByText('2026/2027')).toBeInTheDocument()
-    })
-
-    it('singularizes the team-count badge label for exactly one team', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', currentSeasonTeamCount: 1, currentSeasonLabel: '2026' })])
-
-      renderList('test-club-id')
-
-      await screen.findByText('Internal League')
-      expect(screen.getByText('1 team')).toBeInTheDocument()
-    })
-
-    it('omits the season-label badge entirely (not blank) when the club has no current season', async () => {
-      listLeagues.mockResolvedValueOnce([
-        makeLeague({ id: 'league-1', currentSeasonTeamCount: 0, currentSeasonLabel: null }),
-      ])
-
-      renderList('test-club-id')
-
-      await screen.findByText('Internal League')
-      expect(screen.getByText('0 teams')).toBeInTheDocument()
-      // The only other badge this card can show is Active/Inactive — confirms no empty/blank
-      // season badge slipped through instead of being omitted outright.
-      expect(screen.queryByText('Inactive')).not.toBeInTheDocument()
+      const grid = screen.getAllByRole('heading', { level: 3 })[0].closest('.MuiCard-root')?.parentElement as HTMLElement
+      expect(grid).toHaveStyle({ display: 'grid', alignItems: 'stretch' })
+      expect(grid).toHaveStyle({ gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS })
     })
   })
 
-  // docs/specs/050-league-schedule-and-fixtures.md item 8: the conditional "Playing Conditions"
-  // card footer action — mirrors MatchList.tsx's own "Team Sheet"/window.open precedent, but
-  // this one opens the URL directly (no dialog in between).
-  describe('Playing Conditions action', () => {
-    it('renders the action and opens the document URL in a new tab when currentSeasonPlayingConditionsUrl is set', async () => {
+  describe('Format filter', () => {
+    const FILTER_KEY = 'leagueList:filters:test-club-id'
+
+    async function openFormatMenu(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('combobox', { name: 'Format' }))
+      return screen.getByRole('listbox')
+    }
+
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('lists "All formats" followed by every format in label order', async () => {
       const user = userEvent.setup()
-      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+      listLeagues.mockResolvedValueOnce([makeLeague()])
+
+      renderList('test-club-id')
+      await screen.findByText('Internal League')
+
+      const listbox = await openFormatMenu(user)
+      expect(within(listbox).getAllByRole('option').map((el) => el.textContent)).toEqual([
+        'All formats',
+        ...Object.values(LEAGUE_FORMAT_LABELS),
+      ])
+    })
+
+    it('filters the cards client-side by the chosen format, and All formats clears it', async () => {
+      const user = userEvent.setup()
       listLeagues.mockResolvedValueOnce([
-        makeLeague({ id: 'league-1', currentSeasonPlayingConditionsUrl: '/media/2f6a1c9e-playing-conditions.pdf' }),
+        makeLeague({ id: 'league-1', name: 'Twenty Over League', format: 'T20' }),
+        makeLeague({ id: 'league-2', name: 'Day League', format: 'ONE_DAY' }),
+        makeLeague({ id: 'league-3', name: 'Unformatted League', format: null }),
+      ])
+
+      renderList('test-club-id')
+      await screen.findByText('Twenty Over League')
+
+      await user.click(within(await openFormatMenu(user)).getByRole('option', { name: LEAGUE_FORMAT_LABELS.T20 }))
+
+      expect(screen.getByText('Twenty Over League')).toBeInTheDocument()
+      expect(screen.queryByText('Day League')).not.toBeInTheDocument()
+      expect(screen.queryByText('Unformatted League')).not.toBeInTheDocument()
+      expect(listLeagues).toHaveBeenCalledTimes(1)
+
+      await user.click(within(await openFormatMenu(user)).getByRole('option', { name: 'All formats' }))
+      expect(screen.getByText('Day League')).toBeInTheDocument()
+      expect(screen.getByText('Unformatted League')).toBeInTheDocument()
+    })
+
+    it('combines with the name search', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', name: 'Alpha T20', format: 'T20' }),
+        makeLeague({ id: 'league-2', name: 'Beta T20', format: 'T20' }),
+        makeLeague({ id: 'league-3', name: 'Alpha Day', format: 'ONE_DAY' }),
+      ])
+
+      renderList('test-club-id')
+      await screen.findByText('Alpha T20')
+
+      await user.click(within(await openFormatMenu(user)).getByRole('option', { name: LEAGUE_FORMAT_LABELS.T20 }))
+      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'alpha' } })
+
+      expect(await screen.findByText('Alpha T20')).toBeInTheDocument()
+      expect(screen.queryByText('Beta T20')).not.toBeInTheDocument()
+      expect(screen.queryByText('Alpha Day')).not.toBeInTheDocument()
+    })
+
+    it('persists the choice per club and restores it after a remount', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([
+        makeLeague({ id: 'league-1', name: 'Twenty Over League', format: 'T20' }),
+        makeLeague({ id: 'league-2', name: 'Day League', format: 'ONE_DAY' }),
+      ])
+
+      const { unmount } = renderList('test-club-id')
+      await screen.findByText('Twenty Over League')
+      await user.click(within(await openFormatMenu(user)).getByRole('option', { name: LEAGUE_FORMAT_LABELS.T20 }))
+
+      expect(JSON.parse(localStorage.getItem(FILTER_KEY) as string)).toEqual({ format: 'T20' })
+      unmount()
+
+      renderList('test-club-id')
+      expect(await screen.findByText('Twenty Over League')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('Day League')).not.toBeInTheDocument())
+    })
+
+    it('does not apply another club\'s persisted format', async () => {
+      localStorage.setItem('leagueList:filters:other-club', JSON.stringify({ format: 'T20' }))
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', name: 'Twenty Over League', format: 'T20' }),
+        makeLeague({ id: 'league-2', name: 'Day League', format: 'ONE_DAY' }),
       ])
 
       renderList('test-club-id')
 
-      await screen.findByText('Internal League')
-      await user.click(screen.getByRole('button', { name: 'Playing Conditions' }))
-
-      expect(openSpy).toHaveBeenCalledWith('/media/2f6a1c9e-playing-conditions.pdf', '_blank')
-      openSpy.mockRestore()
+      expect(await screen.findByText('Day League')).toBeInTheDocument()
+      expect(screen.getByText('Twenty Over League')).toBeInTheDocument()
     })
 
-    it('does not render the action at all when currentSeasonPlayingConditionsUrl is null', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', currentSeasonPlayingConditionsUrl: null })])
+    it('falls back to All formats when the stored value is corrupt', async () => {
+      localStorage.setItem(FILTER_KEY, '{not json')
+      listLeagues.mockResolvedValueOnce([
+        makeLeague({ id: 'league-1', name: 'Twenty Over League', format: 'T20' }),
+        makeLeague({ id: 'league-2', name: 'Day League', format: 'ONE_DAY' }),
+      ])
 
       renderList('test-club-id')
 
-      await screen.findByText('Internal League')
-      expect(screen.queryByRole('button', { name: 'Playing Conditions' })).not.toBeInTheDocument()
+      expect(await screen.findByText('Day League')).toBeInTheDocument()
+      expect(screen.getByText('Twenty Over League')).toBeInTheDocument()
     })
   })
 
-  // docs/specs/053-league-extended-profile.md: format renders as a plain RecordCard `chips` entry
-  // (via the shared LEAGUE_FORMAT_LABELS map), logoUrl wires into the card's avatar imageUrl —
-  // RecordCard.test.tsx already proves the avatar/chip rendering mechanics themselves, this only
-  // proves LeagueList wires league.format/league.logoUrl into those props correctly.
-  describe('format chip and logo avatar', () => {
-    it('renders exactly one chip with the format display label when format is set', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', format: 'ONE_DAY' })])
+  describe('empty states', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('shows "No matching leagues" for a search with no result, without a format mention', async () => {
+      listLeagues.mockResolvedValueOnce([makeLeague()])
+
+      renderList('test-club-id')
+      await screen.findByText('Internal League')
+      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
+
+      expect(await screen.findByText('No matching leagues')).toBeInTheDocument()
+      expect(screen.getByText('No leagues match "zzz". Try a different search.')).toBeInTheDocument()
+    })
+
+    it('mentions the format when a persisted format matches nothing, and All formats clears it', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('leagueList:filters:test-club-id', JSON.stringify({ format: 'FIVE_DAY' }))
+      listLeagues.mockResolvedValueOnce([makeLeague({ format: 'T20' })])
 
       renderList('test-club-id')
 
-      await screen.findByText('Internal League')
-      expect(screen.getAllByText(LEAGUE_FORMAT_LABELS.ONE_DAY)).toHaveLength(1)
+      expect(await screen.findByText('No matching leagues')).toBeInTheDocument()
+      expect(
+        screen.getByText(`No ${LEAGUE_FORMAT_LABELS.FIVE_DAY} leagues found. Choose All formats to see every league.`),
+      ).toBeInTheDocument()
+
+      await user.click(screen.getByRole('combobox', { name: 'Format' }))
+      await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'All formats' }))
+
+      expect(await screen.findByText('Internal League')).toBeInTheDocument()
+      expect(screen.queryByText('No matching leagues')).not.toBeInTheDocument()
     })
 
-    it('renders no chip row at all when format is unset', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', format: null })])
+    it('shows "No leagues yet" for a club with no leagues even with a persisted format', async () => {
+      localStorage.setItem('leagueList:filters:test-club-id', JSON.stringify({ format: 'T20' }))
+      listLeagues.mockResolvedValueOnce([])
 
       renderList('test-club-id')
 
-      await screen.findByText('Internal League')
-      Object.values(LEAGUE_FORMAT_LABELS).forEach((label) => {
-        expect(screen.queryByText(label)).not.toBeInTheDocument()
-      })
+      expect(await screen.findByText('No leagues yet')).toBeInTheDocument()
+      expect(screen.queryByText('No matching leagues')).not.toBeInTheDocument()
     })
 
-    it('renders the logo image in the card avatar when logoUrl is set', async () => {
+    it('shows "No leagues yet" for a club with no leagues even with a typed search', async () => {
+      listLeagues.mockResolvedValueOnce([])
+
+      renderList('test-club-id')
+      await screen.findByText('No leagues yet')
+      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'abc' } })
+
+      expect(screen.getByText('No leagues yet')).toBeInTheDocument()
+      expect(screen.queryByText('No matching leagues')).not.toBeInTheDocument()
+    })
+
+    it('mentions both format and search when both are active', async () => {
+      localStorage.setItem('leagueList:filters:test-club-id', JSON.stringify({ format: 'T20' }))
+      listLeagues.mockResolvedValueOnce([makeLeague({ format: 'T20' })])
+
+      renderList('test-club-id')
+      await screen.findByText('Internal League')
+      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
+
+      expect(
+        await screen.findByText(
+          `No ${LEAGUE_FORMAT_LABELS.T20} leagues match "zzz". Try a different search or choose All formats.`,
+        ),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('card contents', () => {
+    it('renders the new card body for a league: season badges, progress and teams', async () => {
       listLeagues.mockResolvedValueOnce([
-        makeLeague({ id: 'league-1', logoUrl: 'https://example.com/league-logo.png' }),
+        makeLeague({
+          currentSeasonLabel: '2026/2027',
+          format: 'T20',
+          matchCount: 4,
+          playedCount: 1,
+          teams: [
+            { name: 'Riverside 1st XI', abbreviation: 'R1', logoUrl: null, own: true },
+            { name: 'Hawks', abbreviation: null, logoUrl: null, own: false },
+          ],
+        }),
       ])
 
       renderList('test-club-id')
 
       await screen.findByText('Internal League')
-      const avatar = document.querySelector('.MuiAvatar-root')
-      const img = avatar?.querySelector('img')
-      expect(img).toHaveAttribute('src', 'https://example.com/league-logo.png')
-    })
-
-    it('falls back to the trophy icon when logoUrl is unset', async () => {
-      listLeagues.mockResolvedValueOnce([makeLeague({ id: 'league-1', logoUrl: null })])
-
-      renderList('test-club-id')
-
-      await screen.findByText('Internal League')
-      const avatar = document.querySelector('.MuiAvatar-root')
-      expect(avatar?.querySelector('img')).not.toBeInTheDocument()
-      expect(avatar?.querySelector('svg')).toBeInTheDocument()
+      const card = screen.getByRole('heading', { level: 3 }).closest('.MuiCard-root') as HTMLElement
+      expect(within(card).getByText('2 teams')).toBeInTheDocument()
+      expect(within(card).getByText('2026/2027')).toBeInTheDocument()
+      expect(within(card).getByText('T20')).toBeInTheDocument()
+      expect(within(card).getByText('1 of 4')).toBeInTheDocument()
+      expect(within(card).getAllByRole('listitem')).toHaveLength(2)
     })
   })
 })

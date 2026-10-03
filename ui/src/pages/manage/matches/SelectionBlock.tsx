@@ -1,4 +1,5 @@
-import { Box, Divider, Stack, Typography } from '@mui/material'
+import { Divider, Stack, Typography } from '@mui/material'
+import { CardProgressBar } from '../../../components/CardProgressBar'
 import type { SelectionRow } from './matchCardHelpers'
 
 export interface SelectionBlockProps {
@@ -42,7 +43,6 @@ function SelectionRowView({ row }: { row: SelectionRow }) {
   }
 
   const complete = picked >= playingXiSize
-  const percent = playingXiSize > 0 ? Math.min(100, (picked / playingXiSize) * 100) : 0
   return (
     <Stack spacing={0.75}>
       <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
@@ -53,17 +53,12 @@ function SelectionRowView({ row }: { row: SelectionRow }) {
           {picked} of {playingXiSize} picked
         </Typography>
       </Stack>
-      <Box
-        role="progressbar"
-        aria-label={`${teamName} selection`}
-        aria-valuemin={0}
-        aria-valuemax={playingXiSize}
-        aria-valuenow={Math.min(picked, playingXiSize)}
-        aria-valuetext={`${picked} of ${playingXiSize} picked`}
-        sx={{ height: 10, borderRadius: 6, overflow: 'hidden', bgcolor: 'grey.400' }}
-      >
-        <Box data-testid="selection-bar-fill" sx={{ width: `${percent}%`, height: '100%', bgcolor: 'primary.main' }} />
-      </Box>
+      <CardProgressBar
+        value={picked}
+        max={playingXiSize}
+        ariaLabel={`${teamName} selection`}
+        valueText={`${picked} of ${playingXiSize} picked`}
+      />
       <Typography variant="caption" color="text.secondary">
         {complete ? 'squad complete' : `${picked} picked · ${playingXiSize - picked} to go`}
       </Typography>

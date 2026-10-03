@@ -30,6 +30,16 @@ export function formatMatchDateTime(matchDate: string): string {
   })
 }
 
+// docs/specs/071-league-card-redesign.md: date only, e.g. "Sat 3 Oct 2026".
+export function formatMatchDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 export function formatCloseTime(date: Date): string {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }

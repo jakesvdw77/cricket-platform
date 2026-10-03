@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Match } from '../api/matchApi'
-import { resolveNextMatchCountdown } from './nextMatchCountdown'
+import { resolveCountdownLabel, resolveNextMatchCountdown } from './nextMatchCountdown'
 
 // Local-time (no "Z" suffix) matchDate strings deliberately — both `now` and every match date
 // below are constructed against the same local-time interpretation, so the "today"/"tomorrow"/
@@ -80,5 +80,26 @@ describe('resolveNextMatchCountdown', () => {
     const result = resolveNextMatchCountdown([earlierToday], now)
 
     expect(result).toBeNull()
+  })
+})
+
+describe('resolveCountdownLabel', () => {
+  it('labels later the same local day as today', () => {
+    expect(resolveCountdownLabel('2026-03-14T23:59:00', now)).toEqual({ label: 'today' })
+  })
+
+  it('labels a date already past (even earlier today or a previous day) as today', () => {
+    expect(resolveCountdownLabel('2026-03-14T00:00:00', now)).toEqual({ label: 'today' })
+    expect(resolveCountdownLabel('2026-03-10T10:00:00', now)).toEqual({ label: 'today' })
+  })
+
+  it('flips to tomorrow exactly at the next local midnight', () => {
+    expect(resolveCountdownLabel('2026-03-15T00:00:00', now)).toEqual({ label: 'tomorrow' })
+    expect(resolveCountdownLabel('2026-03-15T23:59:00', now)).toEqual({ label: 'tomorrow' })
+  })
+
+  it('returns a whole-day count from two days out, counted midnight to midnight', () => {
+    expect(resolveCountdownLabel('2026-03-16T00:00:00', now)).toEqual({ label: 'days', value: 2 })
+    expect(resolveCountdownLabel('2026-03-24T09:00:00', now)).toEqual({ label: 'days', value: 10 })
   })
 })

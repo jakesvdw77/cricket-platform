@@ -8,6 +8,7 @@ import {
   closesRowText,
   coveredPollHref,
   defaultCloseTime,
+  formatMatchDate,
   squadPollOpponentName,
   squadPollTeamName,
   validateCloseTime,
@@ -104,5 +105,16 @@ describe('squadPollTeamName / squadPollOpponentName', () => {
 
   it('falls back to Unknown team for a club side missing from the team list', () => {
     expect(squadPollTeamName(homePoll, new Map())).toBe('Unknown team')
+  })
+})
+
+describe('formatMatchDate', () => {
+  it('formats a date with weekday, day, month and year but no time', () => {
+    const iso = new Date(2026, 9, 3, 14, 30).toISOString() // Sat 3 Oct 2026, local
+    const text = formatMatchDate(iso)
+
+    expect(text).toBe(new Date(2026, 9, 3).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))
+    expect(text).toContain('2026')
+    expect(text).not.toMatch(/\d:\d\d/)
   })
 })

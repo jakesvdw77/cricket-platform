@@ -1,85 +1,29 @@
 import { useMemo, useState } from 'react'
-import { Box } from '@mui/material'
+import { Box, MenuItem } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import { RecordCard } from '../../components/RecordCard'
-import type { RecordCardBadge, RecordCardField } from '../../components/RecordCard'
 import { ListToolbar } from '../../components/ListToolbar'
 import { EmptyState } from '../../components/EmptyState'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
 import { listLeagues, LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
-import type { League } from '../../api/leagueApi'
+import type { LeagueFormat } from '../../api/leagueApi'
+import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
+import { cardGridSx } from '../../utils/cardGrid'
+import { LeagueCard } from './leagues/LeagueCard'
 
-// Still exported (badgeFor/leagueSeasonBadges/leagueRecordFields) though the league view pages no
-// longer use them (docs/specs/072-league-view-pages.md; the header uses leagues/leagueBadges.ts) -
-// docs/specs/071-league-card-redesign.md replaces them on this card.
-export function badgeFor(league: League): RecordCardBadge | undefined {
-  if (!league.active) {
-    return { label: 'Inactive', tone: 'muted' }
+const FORMATS = Object.keys(LEAGUE_FORMAT_LABELS) as LeagueFormat[]
+
+function noMatchDescription(term: string, format: string): string {
+  const formatLabel = format ? LEAGUE_FORMAT_LABELS[format as LeagueFormat] ?? format : ''
+  if (term && formatLabel) {
+    return `No ${formatLabel} leagues match "${term}". Try a different search or choose All formats.`
   }
-  return undefined
-}
-
-// docs/specs/050-league-schedule-and-fixtures.md: two badges reflecting the club's own current
-// Season — team-count always present, season-label only when the club has a current season at all
-// (omitted entirely rather than rendered blank). Coexists with badgeFor's own single Active/
-// Inactive `badge`, per 040's existing badge+badges co-rendering.
-export function leagueSeasonBadges(league: League): RecordCardBadge[] {
-  const badges: RecordCardBadge[] = [
-    {
-      label: `${league.currentSeasonTeamCount} team${league.currentSeasonTeamCount === 1 ? '' : 's'}`,
-      tone: 'neutral',
-    },
-  ]
-  if (league.currentSeasonLabel) {
-    badges.push({ label: league.currentSeasonLabel, tone: 'muted' })
+  if (formatLabel) {
+    return `No ${formatLabel} leagues found. Choose All formats to see every league.`
   }
-  return badges
-}
-
-export function leagueRecordFields(league: League): RecordCardField[] {
-  const fields: RecordCardField[] = [{ label: 'Playing XI size', value: league.maxPlayingXiSize }]
-  if (league.minAge != null || league.maxAge != null) {
-    fields.push({
-      label: 'Age range',
-      value: `${league.minAge ?? 'Any'}–${league.maxAge ?? 'Any'}`,
-    })
-  }
-  return fields
-}
-
-// One RecordCard per league — Deactivate/Reactivate now lives on LeagueFormPage's own actions bar
-// (docs/specs/038-move-deactivate-to-edit-screen.md), not here; this card is a read-only summary
-// with "View" as its only footer action.
-function LeagueCard({ league }: { league: League }) {
-  return (
-    <RecordCard
-      title={league.name}
-      avatar={{ imageUrl: league.logoUrl, fallback: <EmojiEventsOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-      badge={badgeFor(league)}
-      badges={leagueSeasonBadges(league)}
-      fields={leagueRecordFields(league)}
-      chips={league.format ? [LEAGUE_FORMAT_LABELS[league.format]] : undefined}
-      viewTo={`/manage/fixtures/leagues/${league.id}`}
-      editTo={`/manage/fixtures/leagues/${league.id}/edit`}
-      secondaryActions={[
-        ...(league.currentSeasonPlayingConditionsUrl
-          ? [
-              {
-                label: 'Playing Conditions',
-                pendingLabel: 'Opening…',
-                pending: false,
-                onClick: () => window.open(league.currentSeasonPlayingConditionsUrl as string, '_blank'),
-                icon: <DescriptionOutlinedIcon fontSize="small" />,
-              },
-            ]
-          : []),
-      ]}
-    />
-  )
+  return `No leagues match "${term}". Try a different search.`
 }
 
 // Reads clubId from ManagerHome's Outlet context, same guard pattern as every other /manage list.
@@ -90,6 +34,8 @@ export default function LeagueList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('name,asc')
+  // docs/specs/071-league-card-redesign.md: the Format filter is client-side but persisted per club.
+  const [{ format }, setFilters] = usePersistedListFilters(`leagueList:filters:${clubId}`, { format: '' })
 
   const {
     data: leagues,
@@ -107,13 +53,14 @@ export default function LeagueList() {
     }
 
     const term = search.trim().toLowerCase()
-    const filtered = term ? leagues.filter((league) => league.name.toLowerCase().includes(term)) : leagues
+    const byName = term ? leagues.filter((league) => league.name.toLowerCase().includes(term)) : leagues
+    const filtered = format ? byName.filter((league) => league.format === format) : byName
 
     const [, direction] = sort.split(',') as ['name', 'asc' | 'desc']
     const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
 
     return direction === 'desc' ? sorted.reverse() : sorted
-  }, [leagues, search, sort])
+  }, [leagues, search, sort, format])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -134,6 +81,7 @@ export default function LeagueList() {
 
   const hasLeagues = leagues.length > 0
   const isSearching = search.trim().length > 0
+  const isFiltering = isSearching || format !== ''
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -154,30 +102,31 @@ export default function LeagueList() {
           descLabel: 'Name, Z to A',
           onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
         }}
+        filters={
+          <Input select label="Format" value={format} onChange={(event) => setFilters({ format: event.target.value })}>
+            <MenuItem value="">All formats</MenuItem>
+            {FORMATS.map((value) => (
+              <MenuItem key={value} value={value}>
+                {LEAGUE_FORMAT_LABELS[value]}
+              </MenuItem>
+            ))}
+          </Input>
+        }
       />
 
       {visibleLeagues.length > 0 && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-          }}
-        >
+        <Box sx={cardGridSx}>
           {visibleLeagues.map((league) => (
             <LeagueCard key={league.id} league={league} />
           ))}
         </Box>
       )}
 
-      {visibleLeagues.length === 0 && isSearching && (
-        <EmptyState
-          title="No matching leagues"
-          description={`No leagues match "${search.trim()}". Try a different search.`}
-        />
+      {visibleLeagues.length === 0 && hasLeagues && isFiltering && (
+        <EmptyState title="No matching leagues" description={noMatchDescription(search.trim(), format)} />
       )}
 
-      {!hasLeagues && !isSearching && (
+      {!hasLeagues && (
         <EmptyState title="No leagues yet" description="Create your club's first league to get started." />
       )}
     </Box>

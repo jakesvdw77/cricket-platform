@@ -42,4 +42,21 @@ describe('SocialLinksRow', () => {
       expect(link.querySelector('[data-testid="LinkIcon"]')).toBeInTheDocument()
     },
   )
+
+  it('renders a website link with the Language icon and a "Website" label, first when listed first', () => {
+    render(
+      <SocialLinksRow
+        links={[
+          { platform: 'website', url: 'https://league.example.com' },
+          { platform: 'facebook', url: 'https://facebook.com/cricketlegend' },
+        ]}
+      />,
+    )
+
+    const links = screen.getAllByRole('link')
+    expect(links[0]).toHaveAccessibleName('Website')
+    expect(links[0]).toHaveAttribute('href', 'https://league.example.com')
+    expect(links[0].querySelector('[data-testid="LanguageOutlinedIcon"]')).toBeInTheDocument()
+    expect(links[1]).toHaveAccessibleName('Facebook')
+  })
 })
