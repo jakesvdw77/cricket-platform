@@ -146,6 +146,16 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk CSV import** of league teams.
 - **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
 
+## Deferred by `071` — League card
+
+`071-league-card-redesign.md` rebuilt the Leagues list card on the Match card's bones and added the current season's match counts, first/last/next match dates and team list to the leagues list response. Still deferred:
+
+- **A true completed/results status for matches**, owned by the future match-results spec. The card's "played" and its progress bar currently mean an active match of the current season whose date has passed; they should read the real status once it exists.
+- **Match naming** (for example "Final"). The card's Last match line shows the date only; once matches can be named it should show the name beside the date.
+- **Playing XI and Age range on the card** read `League.maxPlayingXiSize`/`minAge`/`maxAge` today; when draft `055` moves them to `LeaguePlayingConditions` the card should read them from there.
+- **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
+- **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
+
 ## Deferred by `072` — League view pages
 
 `072-league-view-pages.md` split `062`'s single League page into routed Schedule, Teams and Conditions views under one header, fixed the 20-match truncation and labelled the conditions PDF "Playing Conditions.pdf". Still deferred:
