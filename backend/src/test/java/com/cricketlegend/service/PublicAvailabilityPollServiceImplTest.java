@@ -140,6 +140,32 @@ class PublicAvailabilityPollServiceImplTest {
         assertThat(dto.responses().get(0).status()).isNull();
     }
 
+    // 070: a league-team side has no teamId, so the public poll shows its copied name.
+    @Test
+    void getPollUsesTheCopiedNameForALeagueTeamOpponent() {
+        UUID matchId = UUID.randomUUID();
+        UUID homeTeamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        Match match = match(matchId, homeTeamId, null, seasonId, null);
+        match.setAwayTeamName("Hillside CC");
+        match.setAwayLeagueTeamId(UUID.randomUUID());
+        when(matchAvailabilityPollRepository.findById(pollId))
+                .thenReturn(Optional.of(poll(pollId, matchId, homeTeamId, true)));
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        when(teamRepository.findById(homeTeamId))
+                .thenReturn(Optional.of(Team.builder().id(homeTeamId).name("Riverside 1st XI").build()));
+        when(seasonRepository.findById(seasonId))
+                .thenReturn(Optional.of(Season.builder().id(seasonId).label("2026").build()));
+        when(squadResolver.resolveSquadRows(homeTeamId, seasonId)).thenReturn(List.of());
+        when(playerAvailabilityRepository.findByPollId(pollId)).thenReturn(List.of());
+
+        PublicAvailabilityPollDto dto = service.getPoll(pollId);
+
+        assertThat(dto.homeTeamName()).isEqualTo("Riverside 1st XI");
+        assertThat(dto.awayTeamName()).isEqualTo("Hillside CC");
+    }
+
     @Test
     void getPollThrowsNotFoundForAnUnknownPollId() {
         UUID pollId = UUID.randomUUID();

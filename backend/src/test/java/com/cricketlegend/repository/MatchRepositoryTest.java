@@ -157,6 +157,91 @@ class MatchRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    // --- 070: rewritten side CHECK constraints (league-team references) ---
+
+    @Autowired
+    private LeagueTeamRepository leagueTeamRepository;
+
+    private UUID savedLeagueTeamId(Club club, Season season) {
+        League league = leagueRepository.save(League.builder().clubId(club.getId()).name("Premier")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        return leagueTeamRepository.save(com.cricketlegend.domain.LeagueTeam.builder().leagueId(league.getId())
+                        .seasonId(season.getId()).name("Riverside CC").active(true).build())
+                .getId();
+    }
+
+    @Test
+    void checkConstraintAcceptsAnOwnTeamAFreeTextAndANamedLeagueTeamSide() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
+        Team team = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+        UUID leagueTeamId = savedLeagueTeamId(club, season);
+
+        matchRepository.saveAndFlush(Match.builder().clubId(club.getId()).homeTeamId(team.getId())
+                .awayTeamName("Free text").seasonId(season.getId()).matchDate(Instant.now()).active(true).build());
+        matchRepository.saveAndFlush(Match.builder().clubId(club.getId()).homeTeamName("Riverside CC")
+                .homeLeagueTeamId(leagueTeamId).awayTeamId(team.getId()).seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build());
+        matchRepository.saveAndFlush(Match.builder().clubId(club.getId()).homeTeamName("Free text")
+                .awayTeamName("Riverside CC").awayLeagueTeamId(leagueTeamId).seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build());
+    }
+
+    @Test
+    void checkConstraintRejectsALeagueTeamIdAlongsideATeamIdOnTheHomeSide() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
+        Team team = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+        UUID leagueTeamId = savedLeagueTeamId(club, season);
+        Match invalid = Match.builder().clubId(club.getId()).homeTeamId(team.getId()).homeLeagueTeamId(leagueTeamId)
+                .awayTeamName("Away").seasonId(season.getId()).matchDate(Instant.now()).active(true).build();
+
+        assertThatThrownBy(() -> matchRepository.saveAndFlush(invalid))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkConstraintRejectsALeagueTeamIdWithNoNameOnTheAwaySide() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        UUID leagueTeamId = savedLeagueTeamId(club, season);
+        Match invalid = Match.builder().clubId(club.getId()).homeTeamName("Home").awayLeagueTeamId(leagueTeamId)
+                .seasonId(season.getId()).matchDate(Instant.now()).active(true).build();
+
+        assertThatThrownBy(() -> matchRepository.saveAndFlush(invalid))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkConstraintStillRejectsATeamIdWithANameOnTheAwaySide() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
+        Team team = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+        Match teamIdAndName = Match.builder().clubId(club.getId()).homeTeamName("Home")
+                .awayTeamId(team.getId()).awayTeamName("Away").seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build();
+
+        assertThatThrownBy(() -> matchRepository.saveAndFlush(teamIdAndName))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void checkConstraintStillRejectsAnAwaySideWithNeitherATeamIdNorAName() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Match neither = Match.builder().clubId(club.getId()).homeTeamName("Home").seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build();
+
+        assertThatThrownBy(() -> matchRepository.saveAndFlush(neither))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     // --- 042: MatchSpecifications ---
 
     @Test
@@ -225,6 +310,56 @@ class MatchRepositoryTest {
         Page<Match> result = matchRepository.findAll(spec, PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Match::getId).containsExactly(freeTextMatch.getId());
+    }
+
+    // 070: a league-team side (teamId null, name copied) is still an external opponent for the
+    // search and team/section filters.
+    @Test
+    void searchMatchesSpecificationMatchesALeagueTeamSidesCopiedName() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        UUID leagueTeamId = savedLeagueTeamId(club, season);
+        Match leagueTeamMatch = matchRepository.save(Match.builder().clubId(club.getId())
+                .homeTeamName("Home Occasionals").awayTeamName("Hillside Hawks").awayLeagueTeamId(leagueTeamId)
+                .seasonId(season.getId()).matchDate(Instant.now()).active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Wanderers")
+                .awayTeamName("Nomads").seasonId(season.getId()).matchDate(Instant.now()).active(true).build());
+
+        Specification<Match> spec = Specification.where(MatchSpecifications.clubId(club.getId()))
+                .and(MatchSpecifications.searchMatches("HAWKS"));
+        Page<Match> result = matchRepository.findAll(spec, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Match::getId).containsExactly(leagueTeamMatch.getId());
+    }
+
+    @Test
+    void teamAndSectionFiltersMatchOnlyRealTeamIdsAndNeverALeagueTeamSide() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
+        Team team = teamRepository.save(
+                Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+        UUID leagueTeamId = savedLeagueTeamId(club, season);
+        Match ownVsLeagueTeam = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(team.getId())
+                .awayTeamName("Hillside Hawks").awayLeagueTeamId(leagueTeamId).seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Wanderers")
+                .homeLeagueTeamId(leagueTeamId).awayTeamName("Nomads").seasonId(season.getId())
+                .matchDate(Instant.now()).active(true).build());
+
+        Page<Match> byTeam = matchRepository.findAll(Specification.where(MatchSpecifications.clubId(club.getId()))
+                .and(MatchSpecifications.teamIdEquals(team.getId())), PageRequest.of(0, 10));
+        // A league team's id is not a team id: it must match nothing in the team filter.
+        Page<Match> byLeagueTeamIdAsTeamId = matchRepository.findAll(
+                Specification.where(MatchSpecifications.clubId(club.getId()))
+                        .and(MatchSpecifications.teamIdEquals(leagueTeamId)), PageRequest.of(0, 10));
+        // The league-team-only match contributes nothing to the section filter either.
+        Page<Match> bySection = matchRepository.findAll(Specification.where(MatchSpecifications.clubId(club.getId()))
+                .and(MatchSpecifications.sectionIn(Set.of(section.getId()))), PageRequest.of(0, 10));
+
+        assertThat(byTeam.getContent()).extracting(Match::getId).containsExactly(ownVsLeagueTeam.getId());
+        assertThat(byLeagueTeamIdAsTeamId.getContent()).isEmpty();
+        assertThat(bySection.getContent()).extracting(Match::getId).containsExactly(ownVsLeagueTeam.getId());
     }
 
     @Test

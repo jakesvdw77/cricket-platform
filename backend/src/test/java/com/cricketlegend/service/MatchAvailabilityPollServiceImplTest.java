@@ -588,6 +588,49 @@ class MatchAvailabilityPollServiceImplTest {
                 .containsExactly(soonerMatchId, laterMatchId);
     }
 
+    // 070: a league-team side has no teamId, so it never gets a poll and is shown by its copied name.
+    @Test
+    void createForALeagueTeamSideIsRejectedAndNoPollIsSaved() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID ownTeamId = UUID.randomUUID();
+        UUID leagueTeamId = UUID.randomUUID();
+        Match match = match(clubId, matchId, ownTeamId, null, UUID.randomUUID());
+        match.setAwayTeamName("Hillside CC");
+        match.setAwayLeagueTeamId(leagueTeamId);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+
+        assertThatThrownBy(() -> service.create(
+                        authentication, clubId, matchId, new CreateMatchAvailabilityPollRequest(leagueTeamId, null, null)))
+                .isInstanceOf(ValidationException.class);
+
+        verify(matchAvailabilityPollRepository, never()).save(any());
+    }
+
+    @Test
+    void listOpenForClubShowsALeagueTeamOpponentByItsCopiedNameWithNoTeamId() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        Match match = match(clubId, matchId, teamId, null, seasonId);
+        match.setAwayTeamName("Hillside CC");
+        match.setAwayLeagueTeamId(UUID.randomUUID());
+        MatchAvailabilityPoll openPoll = poll(pollId, matchId, teamId, true);
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(List.of(openPoll));
+        when(matchRepository.findAllById(Set.of(matchId))).thenReturn(List.of(match));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(clubId, teamId, null)).thenReturn(Set.of(UUID.randomUUID()));
+        when(squadResolver.resolveSquadRows(teamId, seasonId)).thenReturn(List.of());
+
+        OpenAvailabilityPollDto dto = service.listOpenForClub(authentication, clubId, null).get(0);
+
+        assertThat(dto.awayTeamId()).isNull();
+        assertThat(dto.awayTeamName()).isEqualTo("Hillside CC");
+        assertThat(dto.homeTeamId()).isEqualTo(teamId);
+    }
+
     @Test
     void listOpenForClubExcludesAPollWhoseMatchIsOutsideTheCallersAccessibleSections() {
         UUID clubId = UUID.randomUUID();

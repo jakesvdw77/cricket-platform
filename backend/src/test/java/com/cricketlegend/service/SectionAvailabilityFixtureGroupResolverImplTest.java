@@ -311,4 +311,36 @@ class SectionAvailabilityFixtureGroupResolverImplTest {
         assertThat(homeRow.alreadyPolled()).isTrue();
         assertThat(awayRow.alreadyPolled()).isFalse();
     }
+
+    // 070: a league-team side has no teamId, so it never yields its own row and the own team's row
+    // names it by the copied *TeamName.
+    @Test
+    void aLeagueTeamOpponentYieldsOnlyTheOwnTeamsRowLabelledWithTheCopiedName() {
+        UUID teamId = UUID.randomUUID();
+        Team team = flexibleTeam(teamId);
+        Match awayLeagueTeam = Match.builder().id(UUID.randomUUID()).clubId(clubId).homeTeamId(teamId)
+                .awayTeamName("Hillside CC").awayLeagueTeamId(UUID.randomUUID())
+                .matchDate(Instant.parse("2026-10-03T09:00:00Z")).build();
+        Match homeLeagueTeam = Match.builder().id(UUID.randomUUID()).clubId(clubId).awayTeamId(teamId)
+                .homeTeamName("Oakwood CC").homeLeagueTeamId(UUID.randomUUID())
+                .matchDate(Instant.parse("2026-10-04T09:00:00Z")).build();
+        when(matchRepository.findUpcomingMatchesBySection(eq(clubId), eq(sectionId), any()))
+                .thenReturn(List.of(awayLeagueTeam, homeLeagueTeam));
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(matchResolver.resolveWindowKey(team, awayLeagueTeam)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 3), DayPart.MORNING));
+        when(matchResolver.resolveWindowKey(team, homeLeagueTeam)).thenReturn(
+                new SectionAvailabilityMatchResolver.WindowKey(sectionId, LocalDate.of(2026, 10, 4), DayPart.MORNING));
+        when(sectionAvailabilityWindowRepository.findBySectionIdAndWindowDateAndDayPart(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        List<SectionAvailabilityFixtureMatchDto> rows = resolver.resolveGroups(clubId, sectionId).stream()
+                .flatMap(g -> g.matches().stream())
+                .toList();
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows).extracting(SectionAvailabilityFixtureMatchDto::teamId).containsOnly(teamId);
+        assertThat(rows).extracting(SectionAvailabilityFixtureMatchDto::opponentLabel)
+                .containsExactly("Hillside CC", "Oakwood CC");
+    }
 }
