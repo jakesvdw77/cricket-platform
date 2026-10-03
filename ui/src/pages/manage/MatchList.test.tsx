@@ -182,7 +182,7 @@ describe('MatchList', () => {
   // card title is the click target. Extends the href-only assertion above with a real
   // click-through, confirming the title link still resolves to the same route the old View button
   // targeted, and Edit still navigates independently — a good regression case here specifically
-  // because this card also carries a four-button footer (Edit, Select, Poll, Share), the
+  // because this card also carries a four-button footer (Edit, Select, Availability, Share), the
   // exact scenario the stacking-order fix must not break.
   it('clicking the card title navigates to the match view route, and Edit still navigates to the edit route', async () => {
     const user = userEvent.setup()
@@ -401,7 +401,7 @@ describe('MatchList', () => {
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. The
   // footer is Edit / Select / Poll / Share (docs/specs/069).
-  it('never renders a Deactivate/Reactivate button on the card, while Edit/Select/Poll/Share remain', async () => {
+  it('never renders a Deactivate/Reactivate button on the card, while Edit/Select/Availability/Share remain', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
 
     renderPage('test-club-id')
@@ -409,7 +409,7 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
-    for (const name of ['Edit', 'Select', 'Poll', 'Share']) {
+    for (const name of ['Edit', 'Select', 'Availability', 'Share']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
   })

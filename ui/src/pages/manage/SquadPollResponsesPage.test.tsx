@@ -149,7 +149,7 @@ describe('SquadPollResponsesPage', () => {
     expect(screen.getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open match/i })).toHaveAttribute(
       'href',
-      '/manage/fixtures/matches/match-1/edit?tab=availability&side=home',
+      '/manage/fixtures/matches/match-1',
     )
     expect(screen.getByRole('link', { name: /back to availability polls/i })).toHaveAttribute('href', '/manage/availability')
   })
@@ -169,7 +169,7 @@ describe('SquadPollResponsesPage', () => {
     expect(screen.getByText(/ · Venue TBC$/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open match/i })).toHaveAttribute(
       'href',
-      '/manage/fixtures/matches/match-1/edit?tab=availability&side=away',
+      '/manage/fixtures/matches/match-1',
     )
   })
 

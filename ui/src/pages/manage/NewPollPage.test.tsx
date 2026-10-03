@@ -255,7 +255,7 @@ describe('NewPollPage', () => {
       expect(checkbox).not.toBeChecked()
       expect(screen.getByRole('link', { name: 'U13 Boys A v Covered CC' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/matches/match-3/edit?tab=availability',
+        '/manage/availability/squad/match-3/poll-9',
       )
     })
 
@@ -403,7 +403,7 @@ describe('NewPollPage', () => {
       await pickTeam(user)
 
       expect(await screen.findByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
-      expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability?showClosed=true')
+      expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability/group/round-9')
       expect(screen.getByRole('button', { name: 'Open 0 polls' })).toBeDisabled()
     })
 
@@ -490,7 +490,7 @@ describe('NewPollPage', () => {
       await screen.findByText('U13 Boys A vs Rivals CC')
       expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
       expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).not.toBeChecked()
-      expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability?showClosed=true')
+      expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability/group/round-9')
       expect(screen.getByRole('button', { name: 'Open poll for 0 selected fixtures' })).toBeDisabled()
     })
 
@@ -512,7 +512,7 @@ describe('NewPollPage', () => {
       await screen.findByText('U13 Boys A vs Rivals CC')
       expect(screen.getByRole('link', { name: 'U13 Boys A v Rivals CC' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/matches/match-1/edit?tab=availability',
+        '/manage/availability/squad/match-1/poll-3',
       )
     })
 

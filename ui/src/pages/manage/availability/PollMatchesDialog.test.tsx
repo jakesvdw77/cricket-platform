@@ -104,13 +104,13 @@ describe('PollMatchesDialog', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this poll's matches")
   })
 
-  it('shows a squad poll\'s single match with a link to its Availability tab on the poll\'s side', async () => {
+  it('shows a squad poll\'s single match with an Open match link to the match view page', async () => {
     renderDialog({ kind: 'SQUAD', poll })
 
     expect(screen.getByText(/Venue TBC/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open match' })).toHaveAttribute(
       'href',
-      '/manage/fixtures/matches/match-1/edit?tab=availability&side=away',
+      '/manage/fixtures/matches/match-1',
     )
     expect(getRoundMatches).not.toHaveBeenCalled()
   })

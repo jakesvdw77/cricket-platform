@@ -130,4 +130,47 @@ describe('RecordFormScreen', () => {
 
     expect(screen.getByRole('heading', { name: 'Edit Product' })).toHaveStyle({ fontWeight: '700' })
   })
+
+  // docs/specs/075-match-view-and-edit.md
+  it('renders headerAction on the title row, right of the title', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <RecordFormScreen
+            title="Edit Match"
+            backTo="/matches"
+            backLabel="Back to Matches"
+            actions={null}
+            headerAction={<button type="button">Availability</button>}
+          >
+            <div>Field content</div>
+          </RecordFormScreen>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    const row = screen.getByTestId('record-form-title-row')
+    const title = screen.getByRole('heading', { name: 'Edit Match' })
+    const action = screen.getByRole('button', { name: 'Availability' })
+    expect(row).toContainElement(title)
+    expect(row).toContainElement(action)
+    expect(title.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(row).toHaveStyle({ justifyContent: 'space-between' })
+  })
+
+  it('leaves the title directly inside the header band when headerAction is omitted', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <RecordFormScreen title="Edit Match" backTo="/matches" backLabel="Back to Matches" actions={null}>
+            <div>Field content</div>
+          </RecordFormScreen>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    expect(screen.queryByTestId('record-form-title-row')).not.toBeInTheDocument()
+    const backLink = screen.getByRole('link', { name: /back to matches/i })
+    expect(screen.getByRole('heading', { name: 'Edit Match' }).parentElement).toBe(backLink.parentElement)
+  })
 })
