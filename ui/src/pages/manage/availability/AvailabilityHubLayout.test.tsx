@@ -26,6 +26,7 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
           <Route path="availability" element={<AvailabilityHubLayout />}>
             <Route index element={<View name="Polls" />} />
             <Route path="players" element={<View name="Players" />} />
+            <Route path="coverage" element={<View name="Coverage" />} />
           </Route>
           <Route path="availability/new" element={<Page name="New poll" />} />
           <Route path="availability/group/:roundId" element={<Page name="Group responses" />} />
@@ -39,16 +40,17 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
 }
 
 describe('AvailabilityHubLayout (docs/specs/073)', () => {
-  it('titles the page Availability with a Back link and a switch of exactly Polls and Players links', () => {
+  it('titles the page Availability with a Back link and a switch of exactly Polls, Players and Coverage links', () => {
     renderAt('/manage/availability')
 
     expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
     const nav = screen.getByRole('navigation', { name: 'Availability views' })
     const links = nav.querySelectorAll('a')
-    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players'])
+    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Coverage'])
     expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute('href', '/manage/availability/players')
+    expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('href', '/manage/availability/coverage')
   })
 
   it('marks Polls as the current view on /manage/availability, with or without a trailing slash and ?showClosed=true', () => {
@@ -71,12 +73,35 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
   })
 
+  it('marks Coverage as current on /manage/availability/coverage (with or without a trailing slash) and renders the Coverage view', () => {
+    for (const path of ['/manage/availability/coverage', '/manage/availability/coverage/']) {
+      const { unmount } = renderAt(path)
+      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveClass('Mui-selected')
+      expect(screen.getByRole('link', { name: 'Polls' })).not.toHaveAttribute('aria-current')
+      expect(screen.getByRole('link', { name: 'Players' })).not.toHaveAttribute('aria-current')
+      expect(screen.getByText(/^Coverage view for club-1 at \/manage\/availability\/coverage/)).toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('has three switch links and hides New poll on Coverage', () => {
+    renderAt('/manage/availability/coverage')
+
+    const links = screen.getByRole('navigation', { name: 'Availability views' }).querySelectorAll('a')
+    expect(links).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: 'New poll' })).not.toBeInTheDocument()
+  })
+
   it('switching is real navigation without a query string, in both directions', async () => {
     const user = userEvent.setup()
     renderAt('/manage/availability?showClosed=true')
 
     await user.click(screen.getByRole('link', { name: 'Players' }))
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Coverage' }))
+    expect(screen.getByText('Coverage view for club-1 at /manage/availability/coverage')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Polls' }))
     expect(screen.getByText('Polls view for club-1 at /manage/availability')).toBeInTheDocument()
