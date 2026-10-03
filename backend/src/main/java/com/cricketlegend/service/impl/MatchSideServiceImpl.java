@@ -1,85 +1,65 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
-import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
-import com.cricketlegend.domain.Person;
-import com.cricketlegend.domain.PlayerProfile;
-import com.cricketlegend.domain.Season;
+import com.cricketlegend.domain.PlayingRole;
 import com.cricketlegend.dto.AddMatchSidePlayerRequest;
 import com.cricketlegend.dto.CreateMatchSideRequest;
 import com.cricketlegend.dto.MatchSideDto;
+import com.cricketlegend.dto.PlayerNameDto;
 import com.cricketlegend.dto.ReorderMatchSidePlayersRequest;
+import com.cricketlegend.dto.SelectionLimitsDto;
 import com.cricketlegend.dto.UpdateMatchSidePlayerRequest;
 import com.cricketlegend.dto.UpdateMatchSideRequest;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.NotFoundException;
-import com.cricketlegend.exception.PlayerAgeIneligibleException;
-import com.cricketlegend.exception.PlayerNotInSquadException;
 import com.cricketlegend.exception.PlayingXiCapExceededException;
+import com.cricketlegend.exception.SelectionIncompleteException;
+import com.cricketlegend.exception.TwelfthManNotAllowedException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchSideMapper;
-import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
-import com.cricketlegend.repository.MatchSquadMemberRepository;
-import com.cricketlegend.repository.PersonRepository;
-import com.cricketlegend.repository.PlayerProfileRepository;
-import com.cricketlegend.repository.SeasonRepository;
-import com.cricketlegend.repository.TeamSquadMemberRepository;
-import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchSideService;
-import java.time.LocalDate;
-import java.time.Period;
-import java.util.HashMap;
+import com.cricketlegend.service.support.SelectionRules;
+import com.cricketlegend.service.support.SelectionSideWriter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Business rules per docs/specs/029-league-management.md's MatchSide/MatchSidePlayer business
- * rules, enforced in this order for {@link #addPlayer}: squad membership ({@link
- * #requireSquadMembership}, scoped to the match's own {@code season_id} — a player in that team's
- * squad for a DIFFERENT season is still rejected), not-already-added ({@link ConflictException}),
- * the applicable playing-XI cap ({@code league.maxPlayingXiSize} or 11 — the twelfth man never
- * counts against it), then age eligibility ({@link #requireAgeEligible}, checked against every
- * player reference on the side, not just the ordered XI — cutoff date is {@code
- * league.ageCutoffDate} if set, else {@code season.startDate}, always resolvable now that {@code
- * Match.season_id} is required). {@link #updateSide} additionally requires captain/keeper to
- * already be in the ordered XI, and the twelfth man to NOT be — re-validating squad
- * membership/age eligibility for the twelfth man specifically, since they're a real player
- * reference on the side even though they don't count against the cap. {@link #reorderPlayers}
- * requires the full new order's player-id set to exactly match the side's current players.
- * {@link #removePlayer} also clears {@code captainPlayerId}/{@code wicketKeeperPlayerId} if they
- * pointed at the removed player.
- *
- * <p>Per docs/specs/064-unified-availability-polls.md: {@link #requireSquadMembership} branches on
- * the match's poll <em>coverage</em> (shared {@link MatchPollCoverageService}), not a team setting
- * — group-covered resolves against {@code MatchSquadMember(match_id, team_id, player_profile_id)};
- * otherwise against {@code TeamSquadMember} exactly as {@code 029} built it. Same {@link
- * PlayerNotInSquadException} either way, only the source table differs.
+ * Business rules for a match side's selection, per docs/specs/076-team-selection.md (which
+ * replaced the squad-membership, cap and twelfth-man rules of docs/specs/029-league-management.md).
+ * The rules themselves (limits, pool membership, age, the slot block, the said-unavailable block and
+ * the per-player advisory lock) live in {@link SelectionRules}, shared with {@code
+ * MatchSelectionServiceImpl}; the row writes (removal, positions kept contiguous) live in {@link
+ * SelectionSideWriter}. {@link #addPlayer} order: duplicate (409), total cap (400), then the rules'
+ * single rejection for the player (pool/age 400, unavailable/taken 409). {@link #updateSide}
+ * requires captain/keeper to be selected and not the twelfth man, and a twelfth man to be allowed
+ * by the limits (a not-yet-selected one is added through the same checks). {@link #removePlayer}
+ * un-announces unless {@code keepAnnounced}; {@link #reorderPlayers} sets the full batting order;
+ * {@link #announce} (docs/specs/040-announce-team.md) names exactly what is missing.
  */
 @Service
 public class MatchSideServiceImpl implements MatchSideService {
 
+    private static final int NAMES_SHOWN = 3;
+
     private final MatchRepository matchRepository;
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
-    private final TeamSquadMemberRepository teamSquadMemberRepository;
-    private final MatchSquadMemberRepository matchSquadMemberRepository;
-    private final MatchPollCoverageService coverageService;
-    private final LeagueRepository leagueRepository;
-    private final SeasonRepository seasonRepository;
-    private final PlayerProfileRepository playerProfileRepository;
-    private final PersonRepository personRepository;
+    private final SelectionRules selectionRules;
+    private final SelectionSideWriter sideWriter;
     private final MatchSideMapper matchSideMapper;
     private final AccessService accessService;
 
@@ -87,25 +67,15 @@ public class MatchSideServiceImpl implements MatchSideService {
             MatchRepository matchRepository,
             MatchSideRepository matchSideRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
-            TeamSquadMemberRepository teamSquadMemberRepository,
-            MatchSquadMemberRepository matchSquadMemberRepository,
-            MatchPollCoverageService coverageService,
-            LeagueRepository leagueRepository,
-            SeasonRepository seasonRepository,
-            PlayerProfileRepository playerProfileRepository,
-            PersonRepository personRepository,
+            SelectionRules selectionRules,
+            SelectionSideWriter sideWriter,
             MatchSideMapper matchSideMapper,
             AccessService accessService) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
-        this.teamSquadMemberRepository = teamSquadMemberRepository;
-        this.matchSquadMemberRepository = matchSquadMemberRepository;
-        this.coverageService = coverageService;
-        this.leagueRepository = leagueRepository;
-        this.seasonRepository = seasonRepository;
-        this.playerProfileRepository = playerProfileRepository;
-        this.personRepository = personRepository;
+        this.selectionRules = selectionRules;
+        this.sideWriter = sideWriter;
         this.matchSideMapper = matchSideMapper;
         this.accessService = accessService;
     }
@@ -115,7 +85,19 @@ public class MatchSideServiceImpl implements MatchSideService {
     public List<MatchSideDto> list(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
-        return matchSideRepository.findByMatchId(matchId).stream().map(this::toDto).toList();
+        SelectionLimitsDto limits = selectionRules.limits(match);
+        List<MatchSide> sides = matchSideRepository.findByMatchId(matchId);
+        Map<UUID, List<MatchSidePlayer>> rowsBySide = new java.util.HashMap<>();
+        for (MatchSide side : sides) {
+            rowsBySide.put(side.getId(), matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(side.getId()));
+        }
+        Map<UUID, PlayerNameDto> info = selectionRules.playerInfo(rowsBySide.values().stream()
+                .flatMap(List::stream)
+                .map(MatchSidePlayer::getPlayerProfileId)
+                .toList());
+        return sides.stream()
+                .map(side -> matchSideMapper.toDto(side, rowsBySide.get(side.getId()), limits, info))
+                .toList();
     }
 
     @Override
@@ -139,7 +121,7 @@ public class MatchSideServiceImpl implements MatchSideService {
         MatchSide side = MatchSide.builder().matchId(matchId).teamId(teamId).build();
         side = matchSideRepository.save(side);
 
-        return toDto(side);
+        return toDto(side, selectionRules.limits(match));
     }
 
     @Override
@@ -150,39 +132,50 @@ public class MatchSideServiceImpl implements MatchSideService {
         assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
 
-        if (request.captainPlayerId() != null
-                && !matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(
-                        sideId, request.captainPlayerId())) {
+        UUID captainId = request.captainPlayerId();
+        UUID keeperId = request.wicketKeeperPlayerId();
+        UUID twelfthId = request.twelfthManPlayerId();
+        if (twelfthId != null && (twelfthId.equals(captainId) || twelfthId.equals(keeperId))) {
             throw new ValidationException(
-                    "captainPlayerId " + request.captainPlayerId() + " is not in this side's ordered XI");
+                    "twelfthManPlayerId " + twelfthId + " cannot also be the captain or the wicketkeeper");
         }
-        if (request.wicketKeeperPlayerId() != null
-                && !matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(
-                        sideId, request.wicketKeeperPlayerId())) {
+        List<MatchSidePlayer> rows = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId);
+        Map<UUID, MatchSidePlayer> byPlayerId =
+                rows.stream().collect(Collectors.toMap(MatchSidePlayer::getPlayerProfileId, row -> row));
+        if (captainId != null && !byPlayerId.containsKey(captainId)) {
+            throw new ValidationException("captainPlayerId " + captainId + " is not in this side's selection");
+        }
+        if (keeperId != null && !byPlayerId.containsKey(keeperId)) {
             throw new ValidationException(
-                    "wicketKeeperPlayerId " + request.wicketKeeperPlayerId()
-                            + " is not in this side's ordered XI");
-        }
-        if (request.twelfthManPlayerId() != null) {
-            if (matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(
-                    sideId, request.twelfthManPlayerId())) {
-                throw new ValidationException(
-                        "twelfthManPlayerId " + request.twelfthManPlayerId()
-                                + " must not already be in this side's ordered XI");
-            }
-            requireSquadMembership(match, side.getTeamId(), request.twelfthManPlayerId());
-            requireAgeEligible(match, request.twelfthManPlayerId());
+                    "wicketKeeperPlayerId " + keeperId + " is not in this side's selection");
         }
 
-        side.setCaptainPlayerId(request.captainPlayerId());
-        side.setWicketKeeperPlayerId(request.wicketKeeperPlayerId());
-        side.setTwelfthManPlayerId(request.twelfthManPlayerId());
+        SelectionLimitsDto limits = selectionRules.limits(match);
+        if (twelfthId != null) {
+            if (!twelfthId.equals(side.getTwelfthManPlayerId()) && !limits.twelfthManAllowed()) {
+                throw new TwelfthManNotAllowedException(
+                        "This match has no 12th man place: the league's playing conditions do not allow one");
+            }
+            MatchSidePlayer existing = byPlayerId.get(twelfthId);
+            if (existing == null) {
+                selectionRules.lockPlayers(Set.of(twelfthId));
+                requireRoom(rows.size(), limits);
+                selectionRules.requireSelectable(match, side.getTeamId(), twelfthId);
+                sideWriter.addPlayer(sideId, twelfthId, PlayingRole.BATSMAN, null);
+            } else if (existing.getBattingOrder() != null) {
+                sideWriter.assignOrder(sideId, sideWriter.positionedPlayerIds(sideId, Set.of(twelfthId)));
+            }
+        }
+
+        side.setCaptainPlayerId(captainId);
+        side.setWicketKeeperPlayerId(keeperId);
+        side.setTwelfthManPlayerId(twelfthId);
         if (side.isAnnounced()) {
             side.setAnnounced(false);
         }
         side = matchSideRepository.save(side);
 
-        return toDto(side);
+        return toDto(side, limits);
     }
 
     @Override
@@ -194,42 +187,27 @@ public class MatchSideServiceImpl implements MatchSideService {
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
         UUID playerId = request.playerProfileId();
 
-        requireSquadMembership(match, side.getTeamId(), playerId);
-
+        selectionRules.lockPlayers(Set.of(playerId));
         if (matchSidePlayerRepository.existsByMatchSideIdAndPlayerProfileId(sideId, playerId)) {
             throw new ConflictException("Player " + playerId + " is already added to side " + sideId);
         }
+        SelectionLimitsDto limits = selectionRules.limits(match);
+        List<MatchSidePlayer> rows = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId);
+        requireRoom(rows.size(), limits);
+        selectionRules.requireSelectable(match, side.getTeamId(), playerId);
 
-        int cap = applicableCap(match);
-        long currentCount = matchSidePlayerRepository.countByMatchSideId(sideId);
-        if (currentCount >= cap) {
-            throw new PlayingXiCapExceededException(
-                    "Side " + sideId + " already has the maximum " + cap + " playing XI player(s)");
-        }
-
-        requireAgeEligible(match, playerId);
-
-        int nextBattingOrder = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId)
-                .stream()
-                .mapToInt(MatchSidePlayer::getBattingOrder)
-                .max()
-                .orElse(0)
-                + 1;
-
-        MatchSidePlayer player = MatchSidePlayer.builder()
-                .matchSideId(sideId)
-                .playerProfileId(playerId)
-                .battingOrder(nextBattingOrder)
-                .role(request.role())
-                .build();
-        matchSidePlayerRepository.save(player);
+        int positioned = (int) rows.stream().filter(row -> row.getBattingOrder() != null).count();
+        int highest = rows.stream().filter(row -> row.getBattingOrder() != null)
+                .mapToInt(MatchSidePlayer::getBattingOrder).max().orElse(0);
+        Integer position = positioned < limits.battingPlaces() ? highest + 1 : null;
+        sideWriter.addPlayer(sideId, playerId, request.role(), position);
 
         if (side.isAnnounced()) {
             side.setAnnounced(false);
             side = matchSideRepository.save(side);
         }
 
-        return toDto(side);
+        return toDto(side, limits);
     }
 
     @Override
@@ -257,13 +235,18 @@ public class MatchSideServiceImpl implements MatchSideService {
             side = matchSideRepository.save(side);
         }
 
-        return toDto(side);
+        return toDto(side, selectionRules.limits(match));
     }
 
     @Override
     @Transactional
     public MatchSideDto removePlayer(
-            Authentication authentication, UUID clubId, UUID matchId, UUID sideId, UUID playerProfileId) {
+            Authentication authentication,
+            UUID clubId,
+            UUID matchId,
+            UUID sideId,
+            UUID playerProfileId,
+            boolean keepAnnounced) {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
@@ -272,26 +255,24 @@ public class MatchSideServiceImpl implements MatchSideService {
                 .findByMatchSideIdAndPlayerProfileId(sideId, playerProfileId)
                 .orElseThrow(() -> new NotFoundException(
                         "Player " + playerProfileId + " is not on side " + sideId));
-        matchSidePlayerRepository.deleteByMatchSideIdAndPlayerProfileId(sideId, playerProfileId);
+        UUID captainBefore = side.getCaptainPlayerId();
+        UUID keeperBefore = side.getWicketKeeperPlayerId();
+        UUID twelfthBefore = side.getTwelfthManPlayerId();
+        sideWriter.removePlayers(side, List.of(playerProfileId));
+        sideWriter.compact(sideId);
 
-        boolean changed = false;
-        if (playerProfileId.equals(side.getCaptainPlayerId())) {
-            side.setCaptainPlayerId(null);
-            changed = true;
-        }
-        if (playerProfileId.equals(side.getWicketKeeperPlayerId())) {
-            side.setWicketKeeperPlayerId(null);
-            changed = true;
-        }
-        if (side.isAnnounced()) {
+        boolean unannounce = side.isAnnounced() && !keepAnnounced;
+        if (unannounce) {
             side.setAnnounced(false);
-            changed = true;
         }
-        if (changed) {
+        if (unannounce
+                || !Objects.equals(captainBefore, side.getCaptainPlayerId())
+                || !Objects.equals(keeperBefore, side.getWicketKeeperPlayerId())
+                || !Objects.equals(twelfthBefore, side.getTwelfthManPlayerId())) {
             side = matchSideRepository.save(side);
         }
 
-        return toDto(side);
+        return toDto(side, selectionRules.limits(match));
     }
 
     @Override
@@ -305,48 +286,37 @@ public class MatchSideServiceImpl implements MatchSideService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
+        SelectionLimitsDto limits = selectionRules.limits(match);
 
-        List<MatchSidePlayer> current = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId);
-        Set<UUID> currentIds = new HashSet<>();
-        for (MatchSidePlayer player : current) {
-            currentIds.add(player.getPlayerProfileId());
+        List<UUID> requested = request.playerProfileIds();
+        if (new HashSet<>(requested).size() != requested.size()) {
+            throw new ValidationException("playerProfileIds must not contain the same player twice");
         }
-        Set<UUID> requestedIds = new HashSet<>(request.playerProfileIds());
-        if (!currentIds.equals(requestedIds) || currentIds.size() != request.playerProfileIds().size()) {
-            throw new ValidationException(
-                    "playerProfileIds must exactly match the side's current players");
+        Set<UUID> selectedIds = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId).stream()
+                .map(MatchSidePlayer::getPlayerProfileId)
+                .collect(Collectors.toSet());
+        if (!selectedIds.containsAll(requested)) {
+            throw new ValidationException("playerProfileIds must all be players selected on this side");
         }
-
-        Map<UUID, MatchSidePlayer> byPlayerId = new HashMap<>();
-        for (MatchSidePlayer player : current) {
-            byPlayerId.put(player.getPlayerProfileId(), player);
-        }
-
-        // Two-phase reassignment to avoid transiently violating the (match_side_id, batting_order)
-        // unique constraint when the new order is a permutation of the old one.
-        int i = 1;
-        for (UUID playerId : request.playerProfileIds()) {
-            MatchSidePlayer player = byPlayerId.get(playerId);
-            player.setBattingOrder(-(i));
-            matchSidePlayerRepository.save(player);
-            i++;
-        }
-        matchSidePlayerRepository.flush();
-
-        i = 1;
-        for (UUID playerId : request.playerProfileIds()) {
-            MatchSidePlayer player = byPlayerId.get(playerId);
-            player.setBattingOrder(i);
-            matchSidePlayerRepository.save(player);
-            i++;
+        if (requested.size() > limits.battingPlaces()) {
+            throw new ValidationException("A batting order holds at most " + limits.battingPlaces() + " players");
         }
 
+        sideWriter.assignOrder(sideId, requested);
+        boolean changed = false;
+        if (side.getTwelfthManPlayerId() != null && requested.contains(side.getTwelfthManPlayerId())) {
+            side.setTwelfthManPlayerId(null);
+            changed = true;
+        }
         if (side.isAnnounced()) {
             side.setAnnounced(false);
+            changed = true;
+        }
+        if (changed) {
             side = matchSideRepository.save(side);
         }
 
-        return toDto(side);
+        return toDto(side, limits);
     }
 
     @Override
@@ -355,15 +325,18 @@ public class MatchSideServiceImpl implements MatchSideService {
         Match match = findMatchOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
         MatchSide side = findSideOrThrowForMatch(matchId, sideId);
+        SelectionLimitsDto limits = selectionRules.limits(match);
 
-        if (matchSidePlayerRepository.countByMatchSideId(sideId) == 0) {
+        List<MatchSidePlayer> rows = matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(sideId);
+        if (rows.isEmpty()) {
             throw new ValidationException("Side " + sideId + " has no players to announce");
         }
+        requireAnnounceable(side, rows, limits);
 
         side.setAnnounced(true);
         side = matchSideRepository.save(side);
 
-        return toDto(side);
+        return toDto(side, limits);
     }
 
     @Override
@@ -376,98 +349,57 @@ public class MatchSideServiceImpl implements MatchSideService {
         side.setAnnounced(false);
         side = matchSideRepository.save(side);
 
-        return toDto(side);
+        return toDto(side, selectionRules.limits(match));
     }
 
-    private int applicableCap(Match match) {
-        if (match.getLeagueId() == null) {
-            return 11;
+    private void requireRoom(int currentCount, SelectionLimitsDto limits) {
+        if (currentCount >= limits.maxSelected()) {
+            throw new PlayingXiCapExceededException(
+                    "Team is full: " + limits.maxSelected() + " is the most that can be selected");
         }
-        League league = leagueRepository
-                .findById(match.getLeagueId())
-                .orElseThrow(() -> new NotFoundException("League not found: " + match.getLeagueId()));
-        return league.getMaxPlayingXiSize();
     }
 
     /**
-     * Per docs/specs/064-unified-availability-polls.md: a match covered by a group poll for {@code
-     * teamId} resolves against {@code MatchSquadMember} (the players picked from that group poll),
-     * scoped to this exact {@code match}+{@code teamId}; otherwise (squad poll, or no poll at all,
-     * including a cross-club opponent team) it resolves against the season's {@code
-     * TeamSquadMember}, exactly as {@code 029} built it.
+     * Section 8 of docs/specs/076-team-selection.md: at most {@code maxSelected} players, every
+     * selected player other than the 12th man has a batting position, and no more than {@code
+     * battingPlaces} do. The message names exactly what is missing.
      */
-    private void requireSquadMembership(Match match, UUID teamId, UUID playerId) {
-        boolean groupCovered =
-                coverageService.resolve(match.getId(), teamId).kind() == MatchPollCoverageService.Kind.GROUP;
-        boolean inSquad = groupCovered
-                ? matchSquadMemberRepository.existsByMatchIdAndTeamIdAndPlayerProfileId(match.getId(), teamId, playerId)
-                : teamSquadMemberRepository.existsByTeamIdAndSeasonIdAndPlayerProfileId(
-                        teamId, match.getSeasonId(), playerId);
-        if (!inSquad) {
-            throw new PlayerNotInSquadException(playerName(playerId) + " is not in this team's squad for this season");
+    private void requireAnnounceable(MatchSide side, List<MatchSidePlayer> rows, SelectionLimitsDto limits) {
+        String prefix = "Cannot announce " + selectionRules.team(side.getTeamId()).getName() + ": ";
+        if (rows.size() > limits.maxSelected()) {
+            throw new SelectionIncompleteException(prefix + rows.size() + " players are selected; the most allowed is "
+                    + limits.maxSelected() + ".");
+        }
+        List<UUID> unpositioned = rows.stream()
+                .filter(row -> row.getBattingOrder() == null)
+                .map(MatchSidePlayer::getPlayerProfileId)
+                .filter(id -> !id.equals(side.getTwelfthManPlayerId()))
+                .toList();
+        if (!unpositioned.isEmpty()) {
+            int count = unpositioned.size();
+            throw new SelectionIncompleteException(prefix + count + (count == 1 ? " player has" : " players have")
+                    + " no batting position (" + nameList(unpositioned) + ").");
+        }
+        long positioned = rows.stream().filter(row -> row.getBattingOrder() != null).count();
+        if (positioned > limits.battingPlaces()) {
+            throw new SelectionIncompleteException(prefix + positioned + " players are selected but only "
+                    + limits.battingPlaces() + " places exist; choose the 12th man or remove one.");
         }
     }
 
-    // Best-effort display name for a user-facing exception message — falls back to the raw id
-    // if the player/person row can't be resolved (shouldn't happen on the calling paths here,
-    // since playerId is always already known to reference a real player by this point).
-    private String playerName(UUID playerId) {
-        return playerProfileRepository
-                .findById(playerId)
-                .flatMap(profile -> personRepository.findById(profile.getPersonId()))
-                .map(person -> person.getFirstName() + " " + person.getLastName())
-                .orElse("Player " + playerId);
+    private String nameList(List<UUID> playerIds) {
+        List<String> names = selectionRules.playerNames(playerIds).values().stream().sorted().toList();
+        if (names.size() <= NAMES_SHOWN) {
+            return String.join(", ", names);
+        }
+        return String.join(", ", names.subList(0, NAMES_SHOWN)) + " and " + (names.size() - NAMES_SHOWN) + " more";
     }
 
-    private void requireAgeEligible(Match match, UUID playerId) {
-        if (match.getLeagueId() == null) {
-            return;
-        }
-        League league = leagueRepository
-                .findById(match.getLeagueId())
-                .orElseThrow(() -> new NotFoundException("League not found: " + match.getLeagueId()));
-        if (league.getMinAge() == null && league.getMaxAge() == null) {
-            return;
-        }
-
-        PlayerProfile profile = playerProfileRepository
-                .findById(playerId)
-                .orElseThrow(() -> new NotFoundException("Player not found: " + playerId));
-        Person person = personRepository
-                .findById(profile.getPersonId())
-                .orElseThrow(() -> new NotFoundException("Person not found: " + profile.getPersonId()));
-
-        String playerName = person.getFirstName() + " " + person.getLastName();
-
-        LocalDate dateOfBirth = person.getDateOfBirth();
-        if (dateOfBirth == null) {
-            throw new PlayerAgeIneligibleException(
-                    playerName + " has no recorded date of birth; required for this league's age rule");
-        }
-
-        LocalDate cutoffDate = league.getAgeCutoffDate();
-        if (cutoffDate == null) {
-            Season season = seasonRepository
-                    .findById(match.getSeasonId())
-                    .orElseThrow(() -> new NotFoundException("Season not found: " + match.getSeasonId()));
-            cutoffDate = season.getStartDate();
-        }
-
-        int age = Period.between(dateOfBirth, cutoffDate).getYears();
-        if (league.getMinAge() != null && age < league.getMinAge()) {
-            throw new PlayerAgeIneligibleException(
-                    playerName + " is " + age + ", below this league's minAge of " + league.getMinAge());
-        }
-        if (league.getMaxAge() != null && age > league.getMaxAge()) {
-            throw new PlayerAgeIneligibleException(
-                    playerName + " is " + age + ", above this league's maxAge of " + league.getMaxAge());
-        }
-    }
-
-    private MatchSideDto toDto(MatchSide side) {
+    private MatchSideDto toDto(MatchSide side, SelectionLimitsDto limits) {
         List<MatchSidePlayer> players =
                 matchSidePlayerRepository.findByMatchSideIdOrderByBattingOrderAsc(side.getId());
-        return matchSideMapper.toDto(side, players);
+        return matchSideMapper.toDto(side, players, limits, selectionRules.playerInfo(
+                players.stream().map(MatchSidePlayer::getPlayerProfileId).toList()));
     }
 
     /**

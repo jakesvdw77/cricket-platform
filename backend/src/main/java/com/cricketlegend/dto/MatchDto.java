@@ -14,8 +14,9 @@ import java.util.UUID;
  * <p>{@code homePickedCount}/{@code awayPickedCount}/{@code playingXiSize}/{@code polls}
  * (docs/specs/069-match-card-redesign.md) are read-time values computed only by {@code
  * MatchServiceImpl.list}: a picked count is the playing XI size selected for a club-team side
- * ({@code null} for a free-text or other-club side), {@code playingXiSize} is the league's {@code
- * maxPlayingXiSize} ({@code null} with no league). Every other path leaves the counts and size
+ * ({@code null} for a free-text or other-club side), {@code playingXiSize} is the most players a
+ * side's selection may hold (docs/specs/076-team-selection.md {@code maxSelected}, the 12th man
+ * counted; {@code null} with no league). Every other path leaves the counts and size
  * {@code null}, and {@code polls} is normalised here, in the one place, to an empty list.
  *
  * <p>{@code homeLeagueTeamId}/{@code awayLeagueTeamId} (docs/specs/070-league-teams.md) are the

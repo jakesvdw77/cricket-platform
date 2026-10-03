@@ -43,8 +43,9 @@ public class MatchSidePlayer {
     @Column(name = "player_profile_id", nullable = false)
     private UUID playerProfileId;
 
-    @Column(name = "batting_order", nullable = false)
-    private int battingOrder;
+    /** Null while the player is selected but has no batting position yet (docs/specs/076-team-selection.md). */
+    @Column(name = "batting_order")
+    private Integer battingOrder;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

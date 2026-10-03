@@ -30,7 +30,6 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.MatchSpecifications;
-import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
@@ -109,7 +108,6 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
     private final SectionAvailabilityResponseRepository responseRepository;
     private final MatchAvailabilityPollRepository pollRepository;
     private final PlayerAvailabilityRepository playerAvailabilityRepository;
-    private final MatchSquadMemberRepository matchSquadMemberRepository;
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
@@ -129,7 +127,6 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
             SectionAvailabilityResponseRepository responseRepository,
             MatchAvailabilityPollRepository pollRepository,
             PlayerAvailabilityRepository playerAvailabilityRepository,
-            MatchSquadMemberRepository matchSquadMemberRepository,
             MatchSideRepository matchSideRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
@@ -147,7 +144,6 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
         this.responseRepository = responseRepository;
         this.pollRepository = pollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
-        this.matchSquadMemberRepository = matchSquadMemberRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
@@ -498,12 +494,12 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
         return sectionRepository.findByClubId(clubId).stream().map(Section::getId).collect(Collectors.toSet());
     }
 
-    /** Picked = in the game's MatchSquadMember set or in any of its MatchSide selections. */
+    /**
+     * Picked = has a selection row on any side of the game, the 12th man included
+     * (docs/specs/076-team-selection.md section 10; MatchSquadMember rows are ignored).
+     */
     private Map<UUID, Set<UUID>> loadPicked(Set<UUID> matchIds) {
         Map<UUID, Set<UUID>> pickedByMatch = new HashMap<>();
-        matchSquadMemberRepository.findByMatchIdIn(matchIds).forEach(member -> pickedByMatch
-                .computeIfAbsent(member.getMatchId(), key -> new HashSet<>())
-                .add(member.getPlayerProfileId()));
         Map<UUID, UUID> matchIdBySideId = new HashMap<>();
         for (MatchSide side : matchSideRepository.findByMatchIdIn(matchIds)) {
             matchIdBySideId.put(side.getId(), side.getMatchId());

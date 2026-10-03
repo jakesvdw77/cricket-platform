@@ -24,7 +24,6 @@ import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchAlreadyPolledException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ReopenWindowPassedException;
-import com.cricketlegend.exception.RoundHasMatchSquadException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SectionAvailabilityRoundMapper;
 import com.cricketlegend.repository.LeagueRepository;
@@ -84,7 +83,8 @@ import org.springframework.transaction.annotation.Transactional;
  * a closed round (docs/specs/066, a manager correction).
  *
  * <p>Per docs/specs/064-unified-availability-polls.md: {@link #delete} removes a round child-first
- * (409 {@link RoundHasMatchSquadException} while any squad member is picked against its windows)
+ * (docs/specs/076-team-selection.md: it also clears the round's now-dormant match-squad rows
+ * instead of refusing, so a stale row can never make a poll undeletable)
  * and {@link #closeDueAutoClosePolls} is the scheduled auto-close job's internal entry point,
  * cascading through {@code setWindowsOpen} like a manual close.
  *
@@ -337,14 +337,11 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         List<UUID> windowIds = sectionAvailabilityWindowRepository.findByRoundId(roundId).stream()
                 .map(SectionAvailabilityWindow::getId)
                 .toList();
-        if (!windowIds.isEmpty() && matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(windowIds)) {
-            throw new RoundHasMatchSquadException(
-                    "This group poll cannot be deleted while match squad members are picked from it. "
-                            + "Remove the picked squad members from its matches first, then delete the poll.");
-        }
-
         // No ON DELETE CASCADE on these tables: children first.
+        // docs/specs/076-team-selection.md: stale match-squad rows no longer block the delete (no
+        // screen can remove them any more), they go with the other children, first.
         if (!windowIds.isEmpty()) {
+            matchSquadMemberRepository.deleteBySectionAvailabilityWindowIdIn(windowIds);
             sectionAvailabilityResponseRepository.deleteByWindowIdIn(windowIds);
             sectionAvailabilityWindowMatchRepository.deleteByWindowIdIn(windowIds);
         }
