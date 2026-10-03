@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MatchForm, MATCH_FORM_ID } from './MatchForm'
+import { MatchForm, MATCH_FORM_ID, validateMatchLink } from './MatchForm'
 import type { MatchFormProps } from './MatchForm'
 import type { MatchPayload } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
@@ -518,5 +518,126 @@ describe('MatchForm league teams', () => {
     const onScopeChange = vi.fn()
     renderWithTeams({ initialValues: SCOPE, onScopeChange })
     expect(onScopeChange).toHaveBeenCalledWith('league-1', 'season-1')
+  })
+})
+
+// docs/specs/075-match-view-and-edit.md section 6: the two optional link fields.
+describe('MatchForm links', () => {
+  async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+    await user.click(screen.getByLabelText('Home team'))
+    await user.click(await screen.findByRole('option', { name: '1st XI' }))
+    await user.click(screen.getByLabelText('Away team'))
+    await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+  }
+
+  it('renders the Scoring and Streaming link fields with their helper text', () => {
+    renderMatchForm()
+    expect(screen.getByLabelText('Scoring link')).toBeInTheDocument()
+    expect(screen.getByLabelText('Streaming link')).toBeInTheDocument()
+    expect(
+      screen.getByText("Optional. Link to the match's scoring page, e.g. https://cricclubs.com/matches/34343"),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Optional. Link to the live stream, e.g. a PitchVision page, starting with https://'),
+    ).toBeInTheDocument()
+  })
+
+  it('sends null for blank links', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+    await user.type(screen.getByLabelText('Scoring link'), '   ')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload.scoringUrl).toBeNull()
+    expect(payload.streamingUrl).toBeNull()
+  })
+
+  it('sends the trimmed value for a valid link', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+    await user.type(screen.getByLabelText('Scoring link'), '  https://cricclubs.com/matches/34343 ')
+    await user.type(screen.getByLabelText('Streaming link'), 'http://pitchvision.example/live')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const payload = onSubmit.mock.calls[0][0] as MatchPayload
+    expect(payload.scoringUrl).toBe('https://cricclubs.com/matches/34343')
+    expect(payload.streamingUrl).toBe('http://pitchvision.example/live')
+  })
+
+  it('shows an error and does not submit for a scheme-less link', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+    await user.type(screen.getByLabelText('Scoring link'), 'cricclubs.com/matches/34343')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Enter a valid link starting with http:// or https://')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows the length error for a 1025-character link', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+    await user.click(screen.getByLabelText('Streaming link'))
+    await user.paste(`https://${'a'.repeat(1025 - 8)}`)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Link must be 1024 characters or fewer')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('validates each field independently', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+    await user.type(screen.getByLabelText('Scoring link'), 'https://ok.example/1')
+    await user.type(screen.getByLabelText('Streaming link'), 'ftp://bad.example')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findAllByText('Enter a valid link starting with http:// or https://')).toHaveLength(1)
+    expect(screen.getByLabelText('Scoring link')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Streaming link')).toHaveAttribute('aria-invalid', 'true')
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('prefills the links from initialValues', () => {
+    renderMatchForm({ initialValues: { scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2' } })
+    expect(screen.getByLabelText('Scoring link')).toHaveValue('https://s.example/1')
+    expect(screen.getByLabelText('Streaming link')).toHaveValue('https://t.example/2')
+  })
+})
+
+describe('validateMatchLink', () => {
+  it('accepts blank, http and https (any case), and exactly 1024 characters', () => {
+    expect(validateMatchLink('')).toBeNull()
+    expect(validateMatchLink('   ')).toBeNull()
+    expect(validateMatchLink('http://a.example')).toBeNull()
+    expect(validateMatchLink('HTTPS://A.example/x')).toBeNull()
+    expect(validateMatchLink(`https://${'a'.repeat(1024 - 8)}`)).toBeNull()
+  })
+
+  it('rejects a missing or other scheme, an inner space and a bare scheme', () => {
+    const message = 'Enter a valid link starting with http:// or https://'
+    expect(validateMatchLink('cricclubs.com/x')).toBe(message)
+    expect(validateMatchLink('javascript:alert(1)')).toBe(message)
+    expect(validateMatchLink('ftp://x.example')).toBe(message)
+    expect(validateMatchLink('https://a b.example')).toBe(message)
+    expect(validateMatchLink('https://')).toBe(message)
+  })
+
+  it('rejects more than 1024 characters', () => {
+    expect(validateMatchLink(`https://${'a'.repeat(1025 - 8)}`)).toBe('Link must be 1024 characters or fewer')
   })
 })

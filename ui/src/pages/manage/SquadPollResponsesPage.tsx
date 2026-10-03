@@ -141,7 +141,7 @@ export default function SquadPollResponsesPage() {
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <MuiButton
             component={RouterLink}
-            to={squadPollHref({ matchId: match.id, ...sides })}
+            to={squadPollHref({ matchId: match.id })}
             variant="outlined"
             color="primary"
             size="small"

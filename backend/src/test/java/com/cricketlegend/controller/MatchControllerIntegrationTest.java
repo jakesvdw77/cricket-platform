@@ -858,6 +858,117 @@ class MatchControllerIntegrationTest {
                 .build());
     }
 
+    // --- 075: optional scoring and streaming links ---
+
+    private String linkedMatchBody(UUID seasonId, String scoringJson, String streamingJson) {
+        return """
+                {
+                    "homeTeamName": "Riverside 1st XI",
+                    "awayTeamName": "Occasionals",
+                    "seasonId": "%s",
+                    "matchDate": "%s",
+                    "scoringUrl": %s,
+                    "streamingUrl": %s
+                }
+                """.formatted(seasonId, Instant.now().plus(7, ChronoUnit.DAYS), scoringJson, streamingJson);
+    }
+
+    @Test
+    void createGetUpdateAndListRoundTripScoringAndStreamingLinksAndPutClearsThem() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        String created = mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(
+                                season.getId(),
+                                "\"  https://cricclubs.com/matches/34343 \"",
+                                "\"http://pitchvision.example/live\"")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scoringUrl").value("https://cricclubs.com/matches/34343"))
+                .andExpect(jsonPath("$.streamingUrl").value("http://pitchvision.example/live"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String matchId = com.jayway.jsonpath.JsonPath.read(created, "$.id");
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), matchId).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scoringUrl").value("https://cricclubs.com/matches/34343"))
+                .andExpect(jsonPath("$.streamingUrl").value("http://pitchvision.example/live"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].scoringUrl").value("https://cricclubs.com/matches/34343"))
+                .andExpect(jsonPath("$.content[0].streamingUrl").value("http://pitchvision.example/live"));
+
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), matchId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(season.getId(), "\"https://other.example/score\"", "null")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scoringUrl").value("https://other.example/score"))
+                .andExpect(jsonPath("$.streamingUrl").isEmpty());
+
+        // PUT is a full replace: omitting both fields clears them.
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), matchId)
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(matchBody(season.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scoringUrl").isEmpty())
+                .andExpect(jsonPath("$.streamingUrl").isEmpty());
+    }
+
+    @Test
+    void aMatchSavedWithoutLinksReturnsNullLinksOnListAndGet() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match match = matchRepository.save(newFreeTextMatch(club.getId(), season.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), match.getId())
+                        .with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scoringUrl").isEmpty())
+                .andExpect(jsonPath("$.streamingUrl").isEmpty());
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].scoringUrl").isEmpty())
+                .andExpect(jsonPath("$.content[0].streamingUrl").isEmpty());
+    }
+
+    @Test
+    void createAndUpdateReturn400ForAnInvalidScoringOrStreamingLink() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        Match match = matchRepository.save(newFreeTextMatch(club.getId(), season.getId()));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(season.getId(), "\"javascript:alert(1)\"", "null")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(season.getId(), "null", "\"cricclubs.com/matches/1\"")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), match.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(season.getId(), "\"https://has space.example\"", "null")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(put("/api/v1/manage/clubs/{clubId}/matches/{matchId}", club.getId(), match.getId())
+                        .with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(linkedMatchBody(season.getId(), "null", "\"ftp://example.com/x\"")))
+                .andExpect(status().isBadRequest());
+    }
+
     private JwtRequestPostProcessor grantSectionAdmin(String keycloakUserId, UUID sectionId) {
         Person person = personRepository.save(Person.builder()
                 .firstName("Jamie")

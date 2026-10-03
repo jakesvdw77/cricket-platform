@@ -48,6 +48,8 @@ interface FormState {
   seasonId: string
   matchDate: string
   venue: string
+  scoringUrl: string
+  streamingUrl: string
 }
 
 type FormErrors = Partial<
@@ -59,7 +61,9 @@ type FormErrors = Partial<
     | 'awayTeamName'
     | 'awayLeagueTeamId'
     | 'seasonId'
-    | 'matchDate',
+    | 'matchDate'
+    | 'scoringUrl'
+    | 'streamingUrl',
     string
   >
 >
@@ -101,7 +105,29 @@ function toFormState(initialValues?: Partial<MatchPayload>): FormState {
     seasonId: initialValues?.seasonId ?? '',
     matchDate: initialValues?.matchDate ? toDatetimeLocal(initialValues.matchDate) : '',
     venue: initialValues?.venue ?? '',
+    scoringUrl: initialValues?.scoringUrl ?? '',
+    streamingUrl: initialValues?.streamingUrl ?? '',
   }
+}
+
+const MAX_LINK_LENGTH = 1024
+const LINK_PATTERN = /^https?:\/\/\S+$/i
+
+// docs/specs/075-match-view-and-edit.md section 6: a trimmed blank link is valid (stored as null);
+// otherwise it must start with http:// or https:// (no silent prefixing) and be at most 1024
+// characters. Returns the error message, or null when valid.
+export function validateMatchLink(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  if (trimmed.length > MAX_LINK_LENGTH) {
+    return 'Link must be 1024 characters or fewer'
+  }
+  if (!LINK_PATTERN.test(trimmed)) {
+    return 'Enter a valid link starting with http:// or https://'
+  }
+  return null
 }
 
 function validate(values: FormState): FormErrors {
@@ -130,6 +156,14 @@ function validate(values: FormState): FormErrors {
   }
   if (!values.matchDate) {
     errors.matchDate = 'Match date is required'
+  }
+  const scoringError = validateMatchLink(values.scoringUrl)
+  if (scoringError) {
+    errors.scoringUrl = scoringError
+  }
+  const streamingError = validateMatchLink(values.streamingUrl)
+  if (streamingError) {
+    errors.streamingUrl = streamingError
   }
 
   return errors
@@ -218,7 +252,7 @@ export function MatchForm({
   )
   const narrowedByAffiliation = affiliatedTeamIds !== null
 
-  const handleTextChange = (field: 'venue') => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleTextChange = (field: 'venue' | 'scoringUrl' | 'streamingUrl') => (event: ChangeEvent<HTMLInputElement>) => {
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
@@ -246,6 +280,8 @@ export function MatchForm({
       seasonId: values.seasonId,
       matchDate: fromDatetimeLocal(values.matchDate),
       venue: values.venue.trim() ? values.venue.trim() : null,
+      scoringUrl: values.scoringUrl.trim() ? values.scoringUrl.trim() : null,
+      streamingUrl: values.streamingUrl.trim() ? values.streamingUrl.trim() : null,
     }
     onSubmit(payload)
   }
@@ -293,6 +329,24 @@ export function MatchForm({
       />
 
       <Input label="Venue" value={values.venue} onChange={handleTextChange('venue')} helperText="Optional" />
+
+      <Input
+        label="Scoring link"
+        value={values.scoringUrl}
+        onChange={handleTextChange('scoringUrl')}
+        error={Boolean(errors.scoringUrl)}
+        helperText={errors.scoringUrl ?? "Optional. Link to the match's scoring page, e.g. https://cricclubs.com/matches/34343"}
+      />
+
+      <Input
+        label="Streaming link"
+        value={values.streamingUrl}
+        onChange={handleTextChange('streamingUrl')}
+        error={Boolean(errors.streamingUrl)}
+        helperText={
+          errors.streamingUrl ?? 'Optional. Link to the live stream, e.g. a PitchVision page, starting with https://'
+        }
+      />
 
       {leagueTeamsNotice && (
         <Alert severity="info" sx={{ gridColumn: '1 / -1' }} onClose={() => setLeagueTeamsNotice(false)}>

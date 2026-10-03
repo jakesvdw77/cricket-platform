@@ -31,6 +31,8 @@ import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
 import com.cricketlegend.service.support.ServerClock;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -376,7 +378,8 @@ public class MatchServiceImpl implements MatchService {
                     awayClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.awayTeamId()) : null,
                     dto.leagueId() == null ? null : xiSizeByLeagueId.get(dto.leagueId()),
                     polls,
-                    dto.homeLeagueTeamId(), dto.awayLeagueTeamId());
+                    dto.homeLeagueTeamId(), dto.awayLeagueTeamId(),
+                    dto.scoringUrl(), dto.streamingUrl());
         });
     }
 
@@ -406,6 +409,8 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public MatchDto create(Authentication authentication, UUID clubId, CreateMatchRequest request) {
+        String scoringUrl = validateLink(request.scoringUrl(), "scoringUrl");
+        String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
         validateSides(
                 request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
                 request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
@@ -439,6 +444,8 @@ public class MatchServiceImpl implements MatchService {
                 .seasonId(request.seasonId())
                 .matchDate(request.matchDate())
                 .venue(request.venue())
+                .scoringUrl(scoringUrl)
+                .streamingUrl(streamingUrl)
                 .active(true)
                 .build();
 
@@ -451,6 +458,8 @@ public class MatchServiceImpl implements MatchService {
         // The stored match is loaded before side validation so an already-referenced (now
         // inactive) league team may be kept unchanged — see resolveLeagueTeam.
         Match match = findOrThrowForClub(clubId, matchId);
+        String scoringUrl = validateLink(request.scoringUrl(), "scoringUrl");
+        String streamingUrl = validateLink(request.streamingUrl(), "streamingUrl");
         validateSides(
                 request.homeTeamId(), request.homeTeamName(), request.homeLeagueTeamId(),
                 request.awayTeamId(), request.awayTeamName(), request.awayLeagueTeamId());
@@ -479,6 +488,8 @@ public class MatchServiceImpl implements MatchService {
         match.setSeasonId(request.seasonId());
         match.setMatchDate(request.matchDate());
         match.setVenue(request.venue());
+        match.setScoringUrl(scoringUrl);
+        match.setStreamingUrl(streamingUrl);
 
         return matchMapper.toDto(matchRepository.save(match));
     }
@@ -576,6 +587,34 @@ public class MatchServiceImpl implements MatchService {
             throw new ValidationException(
                     side + "TeamLogoUrl may only be set alongside " + side + "TeamName");
         }
+    }
+
+    /**
+     * docs/specs/075-match-view-and-edit.md: an optional external link. Blank is stored as null;
+     * otherwise the trimmed value must be at most 1024 characters and a parseable http(s) URL
+     * with a host (keeps {@code javascript:} and similar schemes out of rendered links).
+     */
+    private String validateLink(String value, String field) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > 1024) {
+            throw new ValidationException(field + " must be at most 1024 characters");
+        }
+        URI uri;
+        try {
+            uri = new URI(trimmed);
+        } catch (URISyntaxException e) {
+            throw new ValidationException(field + " must be an http(s) URL");
+        }
+        String scheme = uri.getScheme();
+        boolean httpScheme = scheme != null
+                && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
+        if (!httpScheme || uri.getHost() == null || uri.getHost().isBlank()) {
+            throw new ValidationException(field + " must be an http(s) URL");
+        }
+        return trimmed;
     }
 
     private void validateLeagueAndSeason(UUID clubId, UUID leagueId, UUID seasonId) {

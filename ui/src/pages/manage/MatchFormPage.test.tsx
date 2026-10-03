@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchFormPage from './MatchFormPage'
 import type { Match } from '../../api/matchApi'
@@ -28,10 +28,6 @@ const reorderMatchSidePlayers = vi.fn()
 const announceMatchSide = vi.fn()
 const unannounceMatchSide = vi.fn()
 const listPolls = vi.fn()
-const createPoll = vi.fn()
-const openPoll = vi.fn()
-const closePoll = vi.fn()
-const updatePollCloseTime = vi.fn()
 const getPollResponses = vi.fn()
 const createPlayer = vi.fn()
 const addToSquad = vi.fn()
@@ -111,12 +107,6 @@ vi.mock('../../api/matchSideApi', () => ({
 
 vi.mock('../../api/matchAvailabilityApi', () => ({
   listPolls: (clubId: string, matchId: string) => listPolls(clubId, matchId),
-  createPoll: (clubId: string, matchId: string, teamId: string, autoClose?: boolean) =>
-    createPoll(clubId, matchId, teamId, autoClose),
-  openPoll: (clubId: string, matchId: string, pollId: string) => openPoll(clubId, matchId, pollId),
-  closePoll: (clubId: string, matchId: string, pollId: string) => closePoll(clubId, matchId, pollId),
-  updatePollCloseTime: (clubId: string, matchId: string, pollId: string, payload: unknown) =>
-    updatePollCloseTime(clubId, matchId, pollId, payload),
   getPollResponses: (clubId: string, matchId: string, pollId: string) => getPollResponses(clubId, matchId, pollId),
 }))
 
@@ -246,6 +236,11 @@ beforeEach(() => {
   getMatchSquad.mockResolvedValue(UNCOVERED_SQUAD)
 })
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div>At: {location.pathname + location.search}</div>
+}
+
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
@@ -261,6 +256,7 @@ function renderPage(initialPath: string, clubId?: string) {
             <Route path="matches/new" element={<MatchFormPage />} />
             <Route path="matches/:matchId/edit" element={<MatchFormPage />} />
           </Route>
+          <Route path="*" element={<LocationProbe />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -698,234 +694,264 @@ describe('MatchFormPage', () => {
     })
   })
 
-  // docs/specs/032-match-availability-polls.md
-  it('edit mode: renders an Availability tab, gated the same as the XI tabs', async () => {
-    getMatch.mockResolvedValueOnce(makeMatch())
-
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-    expect(await screen.findByText('Edit Match')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Availability' })).toBeInTheDocument()
-  })
-
-  it('create mode: does not render an Availability tab', async () => {
-    createMatch.mockResolvedValueOnce(makeMatch())
-    renderPage('/manage/fixtures/matches/new', 'test-club-id')
-
-    expect(await screen.findByText('Add Match')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Availability' })).not.toBeInTheDocument()
-  })
-
-  it('Availability tab: shows Home/Away sub-tabs and an "Open a poll" prompt when no poll exists yet', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-
-    expect(screen.getByRole('tab', { name: 'Home' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Away' })).toBeInTheDocument()
-    expect(await screen.findByText(/no availability poll yet/i)).toBeInTheDocument()
-  })
-
-  it('Availability tab: clicking "Open squad poll" calls createPoll for that side\'s teamId, not auto-created on mount', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-    createPoll.mockResolvedValueOnce({
-      id: 'poll-1',
-      teamId: 'team-1',
-      open: true,
+  // docs/specs/075-match-view-and-edit.md: the Availability tab is gone, replaced by one header
+  // Availability button with the card's destination rule.
+  describe('Availability header button and tab order (075)', () => {
+    const GROUP_COVERED = {
+      sectionId: 'section-1',
+      windowDate: '2026-06-01',
+      dayPart: 'AFTERNOON',
+      windowId: 'window-1',
+      windowOpen: true,
+      roundId: 'round-1',
+      candidates: [],
+      selected: [],
+    }
+    const poll = (id: string, teamId: string, open = true) => ({
+      id,
+      teamId,
+      open,
+      autoClose: true,
+      scheduledCloseAt: null,
       availableCount: 0,
       unavailableCount: 0,
       unsureCount: 0,
       noResponseCount: 0,
     })
 
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+    it('renders no Availability tab in edit mode', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
 
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-    await screen.findByText(/no availability poll yet/i)
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
-    expect(createPoll).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: /open squad poll/i }))
-
-    // docs/specs/064: the Autoclose switch defaults on.
-    expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', true)
-  })
-
-  it('Availability tab: renders the summary/squad list once a poll exists for that side', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-    listPolls.mockResolvedValue([
-      { id: 'poll-1', teamId: 'team-1', open: true, availableCount: 1, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
-    ])
-    getPollResponses.mockResolvedValueOnce({
-      pollId: 'poll-1',
-      teamId: 'team-1',
-      open: true,
-      availableCount: 1,
-      unavailableCount: 0,
-      unsureCount: 0,
-      noResponseCount: 0,
-      responses: [{ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'AVAILABLE' }],
-      publicPath: '/poll/poll-1',
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.queryByRole('tab', { name: 'Availability' })).not.toBeInTheDocument()
     })
 
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+    it('create mode: renders no Availability button and no tabs', async () => {
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
 
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
-    expect(getPollResponses).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1')
-  })
-
-  it('Availability tab: clicking "Share invite" opens PollShareDialog wired to that side\'s match/team/poll', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-    listPolls.mockResolvedValue([
-      { id: 'poll-1', teamId: 'team-1', open: true, availableCount: 0, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
-    ])
-    getPollResponses.mockResolvedValue({
-      pollId: 'poll-1',
-      teamId: 'team-1',
-      open: true,
-      availableCount: 0,
-      unavailableCount: 0,
-      unsureCount: 0,
-      noResponseCount: 0,
-      responses: [],
-      publicPath: '/poll/poll-1',
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Availability' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     })
 
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+    it('orders the tabs Details, Match Squad (when group-covered), Home XI, Away XI', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      getMatchSquad.mockResolvedValue(GROUP_COVERED)
 
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-    await screen.findByRole('button', { name: /share invite/i })
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
-    // Not rendered until the admin explicitly opens it.
-    expect(screen.queryByRole('heading', { name: 'Share invite' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /share invite/i }))
-
-    expect(await screen.findByRole('heading', { name: 'Share invite' })).toBeInTheDocument()
-    // PollShareDialog's generated invite text embeds this poll's own id and the venue from
-    // this side's own match — confirming it opened with the right match/team/poll context, not
-    // just an empty dialog.
-    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
-    expect(textarea.value).toContain('/poll/poll-1')
-    expect(textarea.value).toContain('Riverside Oval')
-  })
-
-  it('Availability tab: Share invite is disabled with an explanation on a closed poll', async () => {
-    getMatch.mockResolvedValueOnce(makeMatch())
-    listPolls.mockResolvedValue([
-      { id: 'poll-1', teamId: 'team-1', open: false, availableCount: 0, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
-    ])
-    getPollResponses.mockResolvedValue({
-      pollId: 'poll-1',
-      teamId: 'team-1',
-      open: false,
-      availableCount: 0,
-      unavailableCount: 0,
-      unsureCount: 0,
-      noResponseCount: 0,
-      responses: [],
-      publicPath: '/poll/poll-1',
-    })
-    const user = userEvent.setup()
-
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-    const share = await screen.findByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
-    expect(share).toBeDisabled()
-    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
-    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
-  })
-
-  // docs/specs/066: a closed squad poll is reopened from its own tab through the Edit close time
-  // dialog (a new close time is saved first), and a manager can still correct answers on it.
-  it('Availability tab: a closed poll offers Reopen…, which saves the close time then reopens it, and keeps answers editable', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-    listPolls.mockResolvedValue([
-      { id: 'poll-1', teamId: 'team-1', open: false, autoClose: false, scheduledCloseAt: null, availableCount: 1, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
-    ])
-    getPollResponses.mockResolvedValue({
-      pollId: 'poll-1',
-      teamId: 'team-1',
-      open: false,
-      availableCount: 1,
-      unavailableCount: 0,
-      unsureCount: 0,
-      noResponseCount: 0,
-      responses: [{ playerProfileId: 'p1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'AVAILABLE' }],
-      publicPath: '/poll/poll-1',
-    })
-    updatePollCloseTime.mockResolvedValue({})
-    openPoll.mockResolvedValue({})
-
-    renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-    await screen.findByText('Edit Match')
-    await user.click(screen.getByRole('tab', { name: 'Availability' }))
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /jane smith's availability/i })).not.toHaveAttribute('aria-disabled', 'true')
-
-    await user.click(screen.getByRole('button', { name: 'Reopen…' }))
-    expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
-
-    await waitFor(() => expect(openPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1'))
-    expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null })
-  })
-
-  // docs/specs/034-availability-polls-dashboard.md: AvailabilityPollsDashboard's own "Manage
-  // responses" deep-link — matches the existing ?tab=playing-xi deep-link's shape (SquadPicker's
-  // own cards).
-  it('?tab=availability&side=home selects the Availability tab and the Home sub-tab on load', async () => {
-    getMatch.mockResolvedValueOnce(makeMatch())
-
-    renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=home', 'test-club-id')
-
-    await screen.findByText('Edit Match')
-
-    expect(screen.getByRole('tab', { name: 'Availability' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('tab', { name: 'Home' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'false')
-  })
-
-  it('?tab=availability&side=away selects the Availability tab and the Away sub-tab on load', async () => {
-    const user = userEvent.setup()
-    getMatch.mockResolvedValueOnce(makeMatch())
-    createPoll.mockResolvedValueOnce({
-      id: 'poll-2',
-      teamId: 'team-2',
-      open: true,
-      availableCount: 0,
-      unavailableCount: 0,
-      unsureCount: 0,
-      noResponseCount: 0,
+      await screen.findByRole('tab', { name: 'Match Squad' })
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Details',
+        'Match Squad',
+        'Home XI',
+        'Away XI',
+      ])
     })
 
-    renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=away', 'test-club-id')
+    it('orders the tabs Details, Home XI, Away XI with no Match Squad when nothing is group-covered', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
 
-    await screen.findByText('Edit Match')
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
-    expect(screen.getByRole('tab', { name: 'Availability' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Home' })).toHaveAttribute('aria-selected', 'false')
+      await screen.findByText('Edit Match')
+      await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Details', 'Home XI', 'Away XI'])
+    })
 
-    // Confirms the panel showing is genuinely the away side's own poll panel, not just the tab
-    // label — "Open squad poll" here creates a poll for team-2 (away), not team-1.
-    await user.click(screen.getByRole('button', { name: /open squad poll/i }))
-    expect(createPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-2', true)
+    it('shows no tab bar for a match with only free-text sides', async () => {
+      getMatch.mockResolvedValueOnce(
+        makeMatch({ homeTeamId: null, homeTeamName: 'A', awayTeamId: null, awayTeamName: 'B' }),
+      )
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    })
+
+    it('the Availability button is on the title row and opens the prefilled New poll flow with no poll', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      const button = await screen.findByRole('button', { name: 'Availability' })
+      await waitFor(() => expect(button).toBeEnabled())
+      expect(screen.getByTestId('record-form-title-row')).toContainElement(button)
+      await user.click(button)
+
+      expect(
+        await screen.findByText('At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1'),
+      ).toBeInTheDocument()
+    })
+
+    it('goes to the squad Responses page with one squad poll', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPolls.mockResolvedValue([poll('poll-1', 'team-1')])
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      const button = screen.getByRole('button', { name: 'Availability' })
+      await waitFor(() => expect(button).toBeEnabled())
+      await user.click(button)
+
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
+    })
+
+    it('goes to the group Responses page when a group poll covers the match', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      getMatchSquad.mockResolvedValue(GROUP_COVERED)
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByRole('tab', { name: 'Match Squad' })
+      const button = screen.getByRole('button', { name: 'Availability' })
+      await waitFor(() => expect(button).toBeEnabled())
+      await user.click(button)
+
+      expect(await screen.findByText('At: /manage/availability/group/round-1')).toBeInTheDocument()
+    })
+
+    it('opens a Home/Away menu when both sides have a squad poll, each option opening its Responses page', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPolls.mockResolvedValue([poll('poll-1', 'team-1'), poll('poll-2', 'team-2')])
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      const button = screen.getByRole('button', { name: 'Availability' })
+      await waitFor(() => expect(button).toBeEnabled())
+      await user.click(button)
+
+      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+        '1st XI · Home poll',
+        '2nd XI · Away poll',
+      ])
+      await user.click(screen.getByRole('menuitem', { name: '2nd XI · Away poll' }))
+      expect(menu).not.toBeVisible()
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-2')).toBeInTheDocument()
+    })
+
+    it('is disabled with the reason when neither side is a team', async () => {
+      getMatch.mockResolvedValueOnce(
+        makeMatch({ homeTeamId: null, homeTeamName: 'A', awayTeamId: null, awayTeamName: 'B' }),
+      )
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      const button = screen.getByRole('button', { name: 'Availability' })
+      expect(button).toBeDisabled()
+      expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
+    })
+
+    it('keeps Availability disabled when the polls query fails', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      listPolls.mockRejectedValue(new Error('boom'))
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await waitFor(() => expect(listPolls).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
+    })
+
+    it('shows Save only on Details', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      await user.click(screen.getByRole('tab', { name: 'Away XI' }))
+      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+    })
+
+    it('?tab=availability and ?tab=availability&side=away stay on Details', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      const { unmount } = renderPage('/manage/fixtures/matches/match-1/edit?tab=availability', 'test-club-id')
+      await screen.findByText('Edit Match')
+      expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByLabelText('Venue')).toBeInTheDocument()
+      unmount()
+
+      getMatch.mockResolvedValueOnce(makeMatch())
+      renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=away', 'test-club-id')
+      await screen.findByText('Edit Match')
+      expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByLabelText('Venue')).toBeInTheDocument()
+    })
+
+    it('?tab=playing-xi selects Home XI, or Away XI when only the away side is a team', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      const { unmount } = renderPage('/manage/fixtures/matches/match-1/edit?tab=playing-xi', 'test-club-id')
+      await screen.findByText('Edit Match')
+      expect(await screen.findByRole('tab', { name: 'Home XI' })).toHaveAttribute('aria-selected', 'true')
+      unmount()
+
+      getMatch.mockResolvedValueOnce(makeMatch({ homeTeamId: null, homeTeamName: 'Them' }))
+      renderPage('/manage/fixtures/matches/match-1/edit?tab=playing-xi', 'test-club-id')
+      await screen.findByText('Edit Match')
+      expect(await screen.findByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('an XI tab chosen by the user is not knocked onto Match Squad when coverage resolves afterwards', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+      let resolveCoverage: (value: typeof GROUP_COVERED) => void = () => {}
+      getMatchSquad.mockReturnValue(
+        new Promise((resolve) => {
+          resolveCoverage = resolve
+        }),
+      )
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Away XI' }))
+      expect(screen.getByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
+
+      resolveCoverage(GROUP_COVERED)
+
+      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'false')
+      expect(screen.getByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('prefills the scoring and streaming links from the match and sends them in the payload', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(
+        makeMatch({ scoringUrl: 'https://cricclubs.com/matches/1', streamingUrl: 'https://pitchvision.example/live' }),
+      )
+      updateMatch.mockResolvedValue(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      expect(screen.getByLabelText('Scoring link')).toHaveValue('https://cricclubs.com/matches/1')
+      expect(screen.getByLabelText('Streaming link')).toHaveValue('https://pitchvision.example/live')
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+      await waitFor(() =>
+        expect(updateMatch).toHaveBeenCalledWith(
+          'test-club-id',
+          'match-1',
+          expect.objectContaining({
+            scoringUrl: 'https://cricclubs.com/matches/1',
+            streamingUrl: 'https://pitchvision.example/live',
+          }),
+        ),
+      )
+    })
   })
 
   // docs/specs/063-section-availability-and-flexible-squads.md Part D (fixture-group-selection
@@ -1062,20 +1088,6 @@ describe('MatchFormPage', () => {
       })
     })
 
-    it('uncovered side: offers both "Open squad poll" and an "Open group poll" link into NewPollPage with this section/match', async () => {
-      const user = userEvent.setup()
-      getMatch.mockResolvedValueOnce(makeMatch())
-
-      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-      await screen.findByText('Edit Match')
-      await user.click(screen.getByRole('tab', { name: 'Availability' }))
-
-      expect(await screen.findByRole('button', { name: 'Open squad poll' })).toBeInTheDocument()
-      const link = screen.getByRole('link', { name: 'Open group poll' })
-      expect(link).toHaveAttribute('href', '/manage/availability/new?type=group&sectionId=section-1&matchId=match-1')
-    })
-
     it('uncovered side: no Match Squad top-level tab', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
 
@@ -1086,52 +1098,28 @@ describe('MatchFormPage', () => {
       expect(screen.queryByRole('tab', { name: 'Match Squad' })).not.toBeInTheDocument()
     })
 
-    it('squad-poll-covered side: shows the squad poll tab and no Match Squad tab', async () => {
-      const user = userEvent.setup()
+    it('squad-poll-covered side: no Match Squad tab', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       listPolls.mockResolvedValue([
         { id: 'poll-1', teamId: 'team-1', open: true, autoClose: true, scheduledCloseAt: null, availableCount: 0, unavailableCount: 0, unsureCount: 0, noResponseCount: 0 },
       ])
-      getPollResponses.mockResolvedValue({
-        pollId: 'poll-1',
-        teamId: 'team-1',
-        open: true,
-        availableCount: 0,
-        unavailableCount: 0,
-        unsureCount: 0,
-        noResponseCount: 0,
-        responses: [],
-        publicPath: '/poll/poll-1',
-      })
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      await user.click(screen.getByRole('tab', { name: 'Availability' }))
-
-      expect(await screen.findByRole('button', { name: /share invite/i })).toBeInTheDocument()
+      await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
       expect(screen.queryByRole('tab', { name: 'Match Squad' })).not.toBeInTheDocument()
     })
 
-    it('group-covered side: shows a "Covered by a group poll" panel with View poll and Pick match squad actions, plus a Match Squad tab', async () => {
-      const user = userEvent.setup()
+    it('group-covered side: shows a Match Squad tab and no "Covered by a group poll" panel', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       getMatchSquad.mockResolvedValue(GROUP_COVERED_SQUAD)
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      await user.click(await screen.findByRole('tab', { name: 'Availability' }))
-
-      expect(await screen.findByText('Covered by a group poll')).toBeInTheDocument()
-      expect(await screen.findByText(/Sun 1 Jun - Juniors fixtures/)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'View poll' })).toHaveAttribute('href', '/manage/availability?showClosed=true')
-      expect(screen.getByRole('link', { name: 'Pick match squad' })).toHaveAttribute(
-        'href',
-        '/manage/fixtures/matches/match-1/edit?tab=match-squad&side=home',
-      )
-      expect(screen.getByRole('tab', { name: 'Match Squad' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Open squad poll' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toBeInTheDocument()
+      expect(screen.queryByText('Covered by a group poll')).not.toBeInTheDocument()
     })
 
     it('?tab=match-squad&side=home selects the Match Squad tab once the side is group-covered', async () => {
@@ -1143,6 +1131,17 @@ describe('MatchFormPage', () => {
       await screen.findByText('Edit Match')
 
       expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('?tab=match-squad&side=away selects the Match Squad tab and its Away sub-tab', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch())
+      getMatchSquad.mockResolvedValue(GROUP_COVERED_SQUAD)
+
+      renderPage('/manage/fixtures/matches/match-1/edit?tab=match-squad&side=away', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'true')
     })
   })
 

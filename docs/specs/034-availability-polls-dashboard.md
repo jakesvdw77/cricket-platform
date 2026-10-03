@@ -1,7 +1,7 @@
 # 034 — Availability Polls Dashboard
 
 **Depends on:** `032-match-availability-polls.md` (`MatchAvailabilityPoll`/`PlayerAvailability`, `AvailabilityStatus`, `MatchAvailabilityPollService`/`Impl`, `MatchAvailabilityPollController`'s existing `/api/v1/manage/clubs/{clubId}/matches/{matchId}/polls` family, `AvailabilityPollSquadResolver` — this spec's only data source, extended, not redefined; `MatchAvailabilityTab.tsx`'s tinted-status visual language, reused verbatim, and its admin-override `setPlayerStatus` action, deep-linked into rather than duplicated), `033-availability-aware-xi-builder.md` (confirms the `alpha(theme.palette.success/error/warning.main, ...)` tinted convention is this feature area's settled visual language — reused again here, not reinvented), `029-league-management.md` (`Match`, `MatchSide`, `TeamSquadMember`, `MatchList.tsx`'s established match-identity display — home/away team name resolution, date/venue fields — reused for this spec's own match-identifying info), `028-players.md` (`PlayerProfile` — the identity each avatar in this spec renders), `031-jersey-numbers.md` (`squadJerseyNumber`, shown in every avatar's tooltip, matching `MatchAvailabilityTab`'s own display convention), `020-club-manager-access.md` (`/api/v1/manage/**` + `@access.canAdministerClub`, reused unmodified for the one new endpoint this spec adds), `001-tenancy-identity-model.md` (`Club` as the tenant boundary this spec's new endpoint is scoped to).
-**Status:** draft.
+**Status:** draft. Amended by `075-match-view-and-edit.md`: poll links that targeted the match edit page's Availability tab now open the Match View or the poll's Responses page.
 
 ## Problem & Goals
 

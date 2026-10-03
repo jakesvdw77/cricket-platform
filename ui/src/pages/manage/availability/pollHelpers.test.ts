@@ -11,6 +11,7 @@ import {
   defaultCloseTime,
   formatMatchDate,
   pollResponsesPath,
+  squadPollHref,
   squadPollOpponentName,
   squadPollTeamName,
   validateCloseTime,
@@ -22,14 +23,29 @@ function match(overrides: Partial<SectionAvailabilityFixtureMatch>): SectionAvai
 }
 
 describe('coveredPollHref', () => {
-  it('links a squad covering poll to its match Availability tab', () => {
-    expect(coveredPollHref(match({ existingPollType: 'SQUAD' }))).toBe(
-      '/manage/fixtures/matches/match-1/edit?tab=availability',
+  it('links a squad covering poll to its Responses page', () => {
+    expect(coveredPollHref(match({ existingPollType: 'SQUAD', existingPollId: 'poll-9' }))).toBe(
+      '/manage/availability/squad/match-1/poll-9',
     )
   })
 
-  it('links a group covering poll to the dashboard with closed polls shown', () => {
-    expect(coveredPollHref(match({ existingPollType: 'GROUP' }))).toBe('/manage/availability?showClosed=true')
+  it('links a group covering poll to its Responses page by round id', () => {
+    expect(coveredPollHref(match({ existingPollType: 'GROUP', existingPollId: 'round-3' }))).toBe(
+      '/manage/availability/group/round-3',
+    )
+  })
+
+  it('falls back to the dashboard with closed polls shown when there is no existing poll id', () => {
+    expect(coveredPollHref(match({ existingPollType: 'GROUP', existingPollId: null }))).toBe(
+      '/manage/availability?showClosed=true',
+    )
+    expect(coveredPollHref(match({ existingPollType: 'SQUAD' }))).toBe('/manage/availability?showClosed=true')
+  })
+})
+
+describe('squadPollHref', () => {
+  it('links to the match view page', () => {
+    expect(squadPollHref({ matchId: 'match-7' })).toBe('/manage/fixtures/matches/match-7')
   })
 })
 

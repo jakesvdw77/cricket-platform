@@ -47,6 +47,15 @@ export const Default: Story = {
   },
 }
 
+// docs/specs/075-match-view-and-edit.md: a control right-aligned on the title row.
+export const WithHeaderAction: Story = {
+  args: {
+    ...Default.args,
+    title: 'Edit Match',
+    headerAction: <Button variant="secondary">Availability</Button>,
+  },
+}
+
 // docs/specs/008-product-catalog.md's Test Plan requires a story at each of 375/768/1280 —
 // proves the single-column-at-xs / two-column-from-md field grid reflow described in the spec.
 export const MobileViewport: Story = {

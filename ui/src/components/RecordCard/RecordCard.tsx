@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import {
   Avatar,
   ButtonBase,
@@ -104,7 +104,8 @@ export interface RecordCardFooterButton {
   label: string
   ariaLabel?: string
   icon: ReactNode
-  onClick: () => void
+  // docs/specs/075-match-view-and-edit.md: receives the click event so a button can anchor a menu to it.
+  onClick: (event: MouseEvent<HTMLElement>) => void
   disabled?: boolean
   // Tooltip text, defaulting to `ariaLabel ?? label`. When set on a `disabled` button it also
   // explains why: the button is wrapped in a span carrying the tooltip, because a disabled

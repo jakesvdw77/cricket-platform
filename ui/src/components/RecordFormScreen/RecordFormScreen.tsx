@@ -10,6 +10,9 @@ export interface RecordFormScreenProps {
   backTo: string
   backLabel: string
   actions: ReactNode
+  // docs/specs/075-match-view-and-edit.md: optional control right-aligned on the title row (e.g. the
+  // Match edit page's Availability button). Omitted, the markup is unchanged.
+  headerAction?: ReactNode
   children: ReactNode
 }
 
@@ -19,7 +22,7 @@ export interface RecordFormScreenProps {
 // column at xs, two columns from md — consuming forms wrap single-value fields one-per-cell
 // and full-width fields, e.g. description, in a Box with gridColumn: '1 / -1'), then an
 // actions bar below a divider for Save/Cancel/Retire-style buttons.
-export function RecordFormScreen({ title, backTo, backLabel, actions, children }: RecordFormScreenProps) {
+export function RecordFormScreen({ title, backTo, backLabel, actions, headerAction, children }: RecordFormScreenProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeaderBand>
@@ -34,9 +37,21 @@ export function RecordFormScreen({ title, backTo, backLabel, actions, children }
         >
           {backLabel}
         </MuiButton>
-        <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
-          {title}
-        </Typography>
+        {headerAction ? (
+          <Box
+            data-testid="record-form-title-row"
+            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
+          >
+            <Typography variant="h6" component="h1" sx={{ fontWeight: 700, minWidth: 0 }}>
+              {title}
+            </Typography>
+            <Box sx={{ flex: 'none' }}>{headerAction}</Box>
+          </Box>
+        ) : (
+          <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
+            {title}
+          </Typography>
+        )}
       </PageHeaderBand>
 
       <ContentCard>

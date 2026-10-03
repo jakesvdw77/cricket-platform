@@ -1,7 +1,7 @@
 # 067 — Squad Poll Responses Page
 
 **Depends on:** `065-group-poll-responses-view.md` (the Responses page and its three views), `066-poll-close-time-and-unified-cards.md` (the unified `PollCard`, `EditCloseTimeDialog`, manager corrections on closed polls), `032-match-availability-polls.md` (the squad poll and its responses).
-**Status:** approved (the user asked for "the same page for both"; the page design is `065`'s, unchanged)
+**Status:** approved (the user asked for "the same page for both"; the page design is `065`'s, unchanged) Amended by `075-match-view-and-edit.md`: the "Open match" link now opens the Match View, since the edit page has no Availability tab.
 
 ## Problem & Goals
 

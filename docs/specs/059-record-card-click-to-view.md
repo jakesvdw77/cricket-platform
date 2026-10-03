@@ -2,7 +2,7 @@
 
 **Depends on:** `008-product-catalog.md` (`RecordCard`'s original shape), `036-view-first-record-detail-screens.md` (`viewTo`, the prop this spec's click behavior keys off), `049-record-list-edit-action-rollout.md` (the current, blanket-visible footer Edit action this spec makes room for by removing the explicit View button), `031-jersey-numbers.md` (the one existing card with a genuinely interactive field value — `TeamFormPage.tsx`'s `SquadPlayerCard`, the concrete case this spec's stacking rule must not break). Raised during `057-team-extended-profile.md`'s live testing, referencing the legacy Cricket Legend app's own click-anywhere-to-view card behavior — logged to `docs/roadmap.md` and specced here as its own follow-up, not built as a drive-by.
 
-**Status:** approved.
+**Status:** approved. Amended by `075-match-view-and-edit.md`: the Match View it opens is rebuilt on the League view header.
 
 ## Problem & Goals
 

@@ -13,14 +13,13 @@ import {
   Tabs,
   Typography,
 } from '@mui/material'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { PlayingXiBuilder } from '../../components/PlayingXiBuilder'
-import { MatchAvailabilityTab } from '../../components/MatchAvailabilityTab'
 import { MatchSquadPicker } from '../../components/MatchSquadPicker'
-import { PollShareDialog } from '../../components/PollShareDialog'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
@@ -60,8 +59,7 @@ import {
   unannounceMatchSide,
 } from '../../api/matchSideApi'
 import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
-import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
-import { listPolls, createPoll, openPoll, closePoll, getPollResponses, setPlayerStatus } from '../../api/matchAvailabilityApi'
+import { listPolls, getPollResponses } from '../../api/matchAvailabilityApi'
 import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { getRoundResponses } from '../../api/sectionAvailabilityApi'
 import {
@@ -71,6 +69,12 @@ import {
   updateMatchSquadJerseyNumber,
 } from '../../api/matchSquadApi'
 import { errorDetail } from '../../utils/errorDetail'
+import { matchPollsFrom, NO_CLUB_TEAM_REASON, pollDestination } from './matches/matchCardHelpers'
+import type { MatchSquadCoverage, PollDestination } from './matches/matchCardHelpers'
+import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
+
+// docs/specs/075-match-view-and-edit.md: the edit page's tabs, in tab-bar order.
+type MatchTabKey = 'details' | 'match-squad' | 'home-xi' | 'away-xi'
 
 // Same "resolve a side's display name" fallback MatchList.tsx already uses: a real Team's own
 // name from the club's own team list (cross-club Team references may not resolve here — falls
@@ -114,7 +118,7 @@ function isSideNonEmpty(matchSide: MatchSide): boolean {
 // resolved from data rather than a team setting (063's removed squadMode). `groupCovered` = the
 // squad endpoint returned a non-null windowId; `squadPoll` = a 032 poll exists for this side
 // (the two are mutually exclusive, enforced server-side). Always enabled for a real-Team side;
-// both queries use the shared keys MatchSideTab/MatchAvailabilityPanel/MatchSquadPanel already
+// both queries use the shared keys MatchSideTab/MatchSquadPanel already
 // use, so React Query dedupes the requests across tabs.
 function useSideCoverage(clubId: string | undefined, matchId: string | undefined, teamId: string | null | undefined) {
   const enabled = Boolean(clubId) && Boolean(matchId) && Boolean(teamId)
@@ -427,7 +431,7 @@ function MatchSideTab({
   }
 
   // docs/specs/033-availability-aware-xi-builder.md: a second, small data fetch mirroring
-  // MatchAvailabilityPanel's own shape exactly (identical query-key shape, same match) so an admin
+  // the shared coverage query shape exactly (identical query-key shape, same match) so an admin
   // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
   // loading guard below — indicators simply appear once/if this resolves, XI building is never
   // blocked or delayed waiting on poll data. docs/specs/063-section-availability-and-flexible-
@@ -650,184 +654,11 @@ function MatchSideTab({
   )
 }
 
-// One Availability tab side's content — data fetching/mutations live here (React Query, not
-// inside MatchAvailabilityTab itself, per docs/standards/frontend.md's "server state in the page"
-// rule), mirroring MatchSideTab's own shape above. Explicit divergence from MatchSideTab: a poll
-// is NOT auto-created on mount — it only gets created when the admin explicitly clicks "Open a
-// poll for this side" (docs/specs/032-match-availability-polls.md), since unlike a MatchSide,
-// there's no reason every match side needs a poll by default.
-function MatchAvailabilityPanel({
-  clubId,
-  matchId,
-  teamId,
-  match,
-  label,
-  teamName,
-  side,
-}: {
-  clubId: string
-  matchId: string
-  teamId: string
-  match: Match
-  label: string
-  teamName: string
-  side: 'home' | 'away'
-}) {
-  const queryClient = useQueryClient()
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
-
-  // docs/specs/064-unified-availability-polls.md: coverage, not a team setting, decides what this
-  // tab shows - a squad poll's own tab, a 'covered by a group poll' panel, or (nothing covers it)
-  // both ways to open one.
-  const { matchSquadQuery, pollsQuery, groupCovered, squadPoll: poll } = useSideCoverage(clubId, matchId, teamId)
-
-  const roundId = matchSquadQuery.data?.roundId ?? null
-  // Same queryKey MatchSideTab's roundResponsesQuery uses - supplies the covering poll's
-  // description without a second request.
-  const roundQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', roundId, 'responses'],
-    queryFn: () => getRoundResponses(clubId, roundId as string),
-    enabled: groupCovered && Boolean(roundId),
-  })
-
-  const responsesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls', poll?.id, 'responses'],
-    queryFn: () => getPollResponses(clubId, matchId, (poll as MatchAvailabilityPoll).id),
-    enabled: Boolean(poll),
-  })
-
-  // Invalidating the base 'polls' key also invalidates the more specific
-  // [...'polls', pollId, 'responses'] query below (React Query's default partial-key matching),
-  // so a single invalidation covers both the list and the currently-open detail view. The squad
-  // endpoint is invalidated too: opening/deleting a poll changes this side's coverage.
-  const invalidatePolls = () => {
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches', matchId, 'polls'] })
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
-  }
-
-  const createMutation = useMutation({
-    mutationFn: (autoClose: boolean) => createPoll(clubId, matchId, teamId, autoClose),
-    onSuccess: invalidatePolls,
-  })
-  const openMutation = useMutation({
-    mutationFn: () => openPoll(clubId, matchId, (poll as MatchAvailabilityPoll).id),
-    onSuccess: invalidatePolls,
-  })
-  const closeMutation = useMutation({
-    mutationFn: () => closePoll(clubId, matchId, (poll as MatchAvailabilityPoll).id),
-    onSuccess: invalidatePolls,
-  })
-  const setPlayerStatusMutation = useMutation({
-    mutationFn: ({ playerProfileId, status }: { playerProfileId: string; status: AvailabilityStatus }) =>
-      setPlayerStatus(clubId, matchId, (poll as MatchAvailabilityPoll).id, playerProfileId, status),
-    onSuccess: invalidatePolls,
-  })
-
-  const errorMessage =
-    [createMutation, openMutation, closeMutation, setPlayerStatusMutation]
-      .map((mutation) =>
-        mutation.isError
-          ? errorDetail(mutation.error, 'Something went wrong updating this poll. Please try again.')
-          : null,
-      )
-      .find((message): message is string => Boolean(message)) ?? null
-
-  // docs/specs/064: a group-covered side has no per-match poll of its own - a short panel names
-  // the covering group poll, with a link to the polls list and a shortcut to this side's Match
-  // Squad tab.
-  if (groupCovered) {
-    const description = roundQuery.data?.description
-    return (
-      <EmptyState
-        title="Covered by a group poll"
-        description={
-          description
-            ? `${teamName} is covered by the group poll "${description}" - players answer once for every fixture in it. Pick this match's squad from the people who said yes.`
-            : `${teamName} is covered by a group poll - players answer once for every fixture in it. Pick this match's squad from the people who said yes.`
-        }
-        action={
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap justifyContent="center">
-            <MuiButton component={RouterLink} to="/manage/availability?showClosed=true" variant="outlined">
-              View poll
-            </MuiButton>
-            <MuiButton
-              component={RouterLink}
-              to={`/manage/fixtures/matches/${matchId}/edit?tab=match-squad&side=${side}`}
-              variant="contained"
-            >
-              Pick match squad
-            </MuiButton>
-          </Stack>
-        }
-      />
-    )
-  }
-
-  // Nothing covers this side yet: MatchAvailabilityTab's own prompt creates a squad poll in place;
-  // the group-poll shortcut into NewPollPage sits alongside it (this section/match pre-selected).
-  const sectionId = matchSquadQuery.data?.sectionId
-  const groupPollHref = `/manage/availability/new?type=group${sectionId ? `&sectionId=${sectionId}` : ''}&matchId=${matchId}`
-
-  return (
-    <>
-      <MatchAvailabilityTab
-        label={label}
-        poll={poll ? responsesQuery.data ?? null : null}
-        isLoading={pollsQuery.isLoading || matchSquadQuery.isLoading || (Boolean(poll) && responsesQuery.isLoading)}
-        onCreate={(autoClose) => createMutation.mutate(autoClose)}
-        secondaryEmptyAction={
-          <MuiButton component={RouterLink} to={groupPollHref} variant="outlined">
-            Open group poll
-          </MuiButton>
-        }
-        onOpen={() => openMutation.mutate()}
-        onClose={() => closeMutation.mutate()}
-        onShareInvite={() => setShareDialogOpen(true)}
-        onSetPlayerStatus={(playerProfileId, status) => setPlayerStatusMutation.mutate({ playerProfileId, status })}
-        isCreatePending={createMutation.isPending}
-        isOpenPending={openMutation.isPending}
-        isClosePending={closeMutation.isPending}
-        settingPlayerId={
-          setPlayerStatusMutation.isPending ? setPlayerStatusMutation.variables?.playerProfileId ?? null : null
-        }
-        errorMessage={errorMessage}
-        autoClose={poll?.autoClose ?? false}
-        onReopen={() => setReopenDialogOpen(true)}
-      />
-      {poll && (
-        <EditCloseTimeDialog
-          open={reopenDialogOpen}
-          onClose={() => setReopenDialogOpen(false)}
-          clubId={clubId}
-          target={{ kind: 'SQUAD', matchId, pollId: poll.id }}
-          autoClose={poll.autoClose}
-          scheduledCloseAt={poll.scheduledCloseAt}
-          kickoff={match.matchDate}
-          reopen
-        />
-      )}
-      {poll && (
-        <PollShareDialog
-          open={shareDialogOpen}
-          onClose={() => setShareDialogOpen(false)}
-          match={match}
-          teamName={teamName}
-          pollId={poll.id}
-          autoClose={poll.autoClose}
-          scheduledCloseAt={poll.scheduledCloseAt}
-        />
-      )}
-    </>
-  )
-}
-
 // docs/specs/063-section-availability-and-flexible-squads.md Part B/C: one group-poll-covered
 // side's own Match Squad tab content — data fetching/mutations live here (React Query, not inside
 // MatchSquadPicker itself, per docs/standards/frontend.md's "server state in the page" rule),
-// mirroring MatchAvailabilityPanel's own shape. Same queryKey/queryFn as MatchSideTab's own
-// matchSquadQuery and MatchAvailabilityPanel's own matchSquadQuery for this exact side — React
+// mirroring MatchSideTab's own shape. Same queryKey/queryFn as MatchSideTab's own
+// matchSquadQuery for this exact side — React
 // Query dedupes by key, so this never re-fetches more than once per side regardless of which tab
 // triggered it first.
 function MatchSquadPanel({
@@ -924,8 +755,10 @@ export default function MatchFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState(0)
-  const [activeAvailabilitySubTab, setActiveAvailabilitySubTab] = useState(0)
+  // docs/specs/075-match-view-and-edit.md: tabs are keyed by string, not computed index, because
+  // Match Squad now sits before the XI tabs and only appears once coverage resolves - an index would
+  // shift under a user who already clicked an XI tab.
+  const [activeTab, setActiveTab] = useState<MatchTabKey>('details')
   // docs/specs/063-section-availability-and-flexible-squads.md Part B/C (064: shown for group-poll-covered sides).
   const [activeMatchSquadSubTab, setActiveMatchSquadSubTab] = useState(0)
 
@@ -1028,7 +861,7 @@ export default function MatchFormPage() {
   // Match" shortcut pre-fills League and Season via query params on this same create route
   // (/manage/fixtures/matches/new?leagueId=&seasonId=), read here rather than router `state` so
   // the prefill survives a refresh — matching this codebase's existing ?tab=playing-xi/
-  // ?tab=availability query-param deep-linking convention above. Create mode only — an existing
+  // ?tab=match-squad query-param deep-linking convention above. Create mode only — an existing
   // edit's own values (from `match`) are never overridden by a stray query param.
   const prefillLeagueId = !isEdit ? searchParams.get('leagueId') : null
   const prefillSeasonId = !isEdit ? searchParams.get('seasonId') : null
@@ -1045,64 +878,71 @@ export default function MatchFormPage() {
   }, [teamsQuery.data])
 
   const showXiTabs = isEdit && Boolean(match)
-  let nextTabIndex = 1
-  const homeXiTabIndex = showXiTabs && match?.homeTeamId ? nextTabIndex++ : undefined
-  const awayXiTabIndex = showXiTabs && match?.awayTeamId ? nextTabIndex++ : undefined
-  const hasXiTabs = homeXiTabIndex !== undefined || awayXiTabIndex !== undefined
-  // docs/specs/032-match-availability-polls.md: Availability gets a fourth top-level tab, gated
-  // by the exact same "at least one side is a real Team" rule as the XI tabs above — a poll only
-  // ever makes sense for a real-Team side.
-  const availabilityTabIndex = hasXiTabs ? nextTabIndex++ : undefined
-  const homeAvailabilitySubIndex = match?.homeTeamId ? 0 : undefined
-  const awayAvailabilitySubIndex = match?.awayTeamId ? (homeAvailabilitySubIndex !== undefined ? 1 : 0) : undefined
+  const hasHomeXiTab = showXiTabs && Boolean(match?.homeTeamId)
+  const hasAwayXiTab = showXiTabs && Boolean(match?.awayTeamId)
+  const hasXiTabs = hasHomeXiTab || hasAwayXiTab
 
   // docs/specs/063-section-availability-and-flexible-squads.md Part B/C, re-keyed by
-  // docs/specs/064-unified-availability-polls.md: a fifth top-level tab, rendered only when at
+  // docs/specs/064-unified-availability-polls.md: the Match Squad tab, rendered only when at
   // least one real-Team side is group-covered (resolved from the squad endpoint, not a team
   // setting) — a match squad only ever makes sense for a group-covered side.
   const homeCoverage = useSideCoverage(clubId, matchId, match?.homeTeamId)
   const awayCoverage = useSideCoverage(clubId, matchId, match?.awayTeamId)
   const hasGroupCoveredSide = homeCoverage.groupCovered || awayCoverage.groupCovered
-  const matchSquadTabIndex = hasXiTabs && hasGroupCoveredSide ? nextTabIndex++ : undefined
+  const hasMatchSquadTab = hasXiTabs && hasGroupCoveredSide
   const matchSquadHomeSubIndex = homeCoverage.groupCovered ? 0 : undefined
   const matchSquadAwaySubIndex = awayCoverage.groupCovered ? (matchSquadHomeSubIndex !== undefined ? 1 : 0) : undefined
 
+  // The tab bar's entries, in order: Details, Match Squad, Home XI, Away XI.
+  const availableTabs: MatchTabKey[] = [
+    'details',
+    ...(hasMatchSquadTab ? (['match-squad'] as const) : []),
+    ...(hasHomeXiTab ? (['home-xi'] as const) : []),
+    ...(hasAwayXiTab ? (['away-xi'] as const) : []),
+  ]
+  // A tab that stopped existing (e.g. coverage changed) falls back to Details.
+  const currentTab: MatchTabKey = availableTabs.includes(activeTab) ? activeTab : 'details'
+
+  // docs/specs/075 section 3: the header Availability button follows the card's destination rule.
+  // getMatch returns no polls, so they are rebuilt from the coverage and polls queries this page
+  // already runs (no new request).
+  const ownTeamIds = [match?.homeTeamId, match?.awayTeamId].filter((id): id is string => Boolean(id))
+  const coverageByTeamId = new Map<string, MatchSquadCoverage | undefined>()
+  if (match?.homeTeamId) coverageByTeamId.set(match.homeTeamId, homeCoverage.matchSquadQuery.data)
+  if (match?.awayTeamId) coverageByTeamId.set(match.awayTeamId, awayCoverage.matchSquadQuery.data)
+  const squadPolls = homeCoverage.pollsQuery.data ?? awayCoverage.pollsQuery.data ?? []
+  // A failed query is NOT ready: the poll state is unknown, so Availability stays disabled rather
+  // than offering the New poll flow for a match that may have a poll.
+  const pollsReady = [
+    homeCoverage.matchSquadQuery,
+    awayCoverage.matchSquadQuery,
+    homeCoverage.pollsQuery,
+    awayCoverage.pollsQuery,
+  ].every((query) => !query.isLoading && !query.isError)
+  const availabilityDestination: PollDestination = match
+    ? pollDestination({ ...match, polls: matchPollsFrom(ownTeamIds, squadPolls, coverageByTeamId) }, teamsById)
+    : { kind: 'link', to: '' }
+  const { openAvailability, menu: availabilityMenu } = useAvailabilityNavigation(availabilityDestination)
+  const noOwnTeam = ownTeamIds.length === 0
+
   // SquadPicker's cards route straight into a match's Playing XI tab (?tab=playing-xi) rather
-  // than Details — jumps to whichever XI tab exists first (home, else away) once the match (and
-  // therefore its real tab indices) has loaded.
+  // than Details — jumps to whichever XI tab exists first (home, else away) once the match has
+  // loaded.
   useEffect(() => {
     if (searchParams.get('tab') === 'playing-xi' && hasXiTabs) {
-      setActiveTab(homeXiTabIndex ?? (awayXiTabIndex as number))
+      setActiveTab(hasHomeXiTab ? 'home-xi' : 'away-xi')
     }
     // Only re-evaluated when the deep-link target itself becomes available — not on every
     // activeTab change caused by the admin's own tab clicks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, hasXiTabs, homeXiTabIndex, awayXiTabIndex])
+  }, [searchParams, hasXiTabs, hasHomeXiTab, hasAwayXiTab])
 
-  // docs/specs/034-availability-polls-dashboard.md: a deep link into this match's Availability
-  // tab on the correct side's sub-tab (reached from the squad Responses page's Open match link, the
-  // Matches dialog and coveredPollHref; the dashboard's Responses button now opens its own page, 067) — the exact same deep-link mechanism as ?tab=playing-xi above, one more recognized
-  // query-string shape rather than a new deep-linking system.
+  // docs/specs/064: ?tab=match-squad&side=home|away selects Match Squad and its Home/Away sub-tab
+  // once a side is group-covered. (docs/specs/075: ?tab=availability is no longer a tab, so it is
+  // not recognised here and the page simply stays on Details.)
   useEffect(() => {
-    if (searchParams.get('tab') === 'availability' && availabilityTabIndex !== undefined) {
-      setActiveTab(availabilityTabIndex)
-      const side = searchParams.get('side')
-      if (side === 'home' && homeAvailabilitySubIndex !== undefined) {
-        setActiveAvailabilitySubTab(homeAvailabilitySubIndex)
-      } else if (side === 'away' && awayAvailabilitySubIndex !== undefined) {
-        setActiveAvailabilitySubTab(awayAvailabilitySubIndex)
-      }
-    }
-    // Only re-evaluated when the deep-link target itself becomes available — not on every
-    // activeTab/activeAvailabilitySubTab change caused by the admin's own tab clicks.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, availabilityTabIndex, homeAvailabilitySubIndex, awayAvailabilitySubIndex])
-
-  // docs/specs/064: the covered-by-a-group-poll panel's "Pick match squad" action - one more
-  // recognized deep-link shape (?tab=match-squad&side=home|away), same mechanism as the two above.
-  useEffect(() => {
-    if (searchParams.get('tab') === 'match-squad' && matchSquadTabIndex !== undefined) {
-      setActiveTab(matchSquadTabIndex)
+    if (searchParams.get('tab') === 'match-squad' && hasMatchSquadTab) {
+      setActiveTab('match-squad')
       const side = searchParams.get('side')
       if (side === 'home' && matchSquadHomeSubIndex !== undefined) {
         setActiveMatchSquadSubTab(matchSquadHomeSubIndex)
@@ -1112,7 +952,7 @@ export default function MatchFormPage() {
     }
     // Only re-evaluated when the deep-link target itself becomes available.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, matchSquadTabIndex, matchSquadHomeSubIndex, matchSquadAwaySubIndex])
+  }, [searchParams, hasMatchSquadTab, matchSquadHomeSubIndex, matchSquadAwaySubIndex])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -1136,9 +976,26 @@ export default function MatchFormPage() {
       title={isEdit ? 'Edit Match' : 'Add Match'}
       backTo="/manage/fixtures/matches"
       backLabel="Back to Matches"
+      headerAction={
+        isEdit && match ? (
+          <>
+            <Box component="span" title={noOwnTeam ? NO_CLUB_TEAM_REASON : undefined} sx={{ display: 'inline-flex' }}>
+              <MuiButton
+                variant="outlined"
+                disabled={noOwnTeam || !pollsReady}
+                onClick={openAvailability}
+                startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
+              >
+                Availability
+              </MuiButton>
+            </Box>
+            {availabilityMenu}
+          </>
+        ) : undefined
+      }
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {activeTab === 0 && (
+          {currentTab === 'details' && (
             <>
               {saveMutation.isError && (
                 <Typography variant="body2" color="error.main">
@@ -1161,23 +1018,22 @@ export default function MatchFormPage() {
       {hasXiTabs && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Tabs
-            value={activeTab}
-            onChange={(_event, next: number) => setActiveTab(next)}
+            value={currentTab}
+            onChange={(_event, next: MatchTabKey) => setActiveTab(next)}
             variant="scrollable"
             scrollButtons="auto"
             allowScrollButtonsMobile
             sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
           >
-            <Tab label="Details" />
-            {homeXiTabIndex !== undefined && <Tab label="Home XI" />}
-            {awayXiTabIndex !== undefined && <Tab label="Away XI" />}
-            {availabilityTabIndex !== undefined && <Tab label="Availability" />}
-            {matchSquadTabIndex !== undefined && <Tab label="Match Squad" />}
+            <Tab label="Details" value="details" />
+            {hasMatchSquadTab && <Tab label="Match Squad" value="match-squad" />}
+            {hasHomeXiTab && <Tab label="Home XI" value="home-xi" />}
+            {hasAwayXiTab && <Tab label="Away XI" value="away-xi" />}
           </Tabs>
         </Box>
       )}
 
-      {activeTab === 0 && (
+      {currentTab === 'details' && (
         <MatchForm
           initialValues={
             match
@@ -1194,6 +1050,8 @@ export default function MatchFormPage() {
                   seasonId: match.seasonId,
                   matchDate: match.matchDate,
                   venue: match.venue,
+                  scoringUrl: match.scoringUrl,
+                  streamingUrl: match.streamingUrl,
                 }
               : prefillLeagueId || prefillSeasonId
                 ? { leagueId: prefillLeagueId ?? undefined, seasonId: prefillSeasonId ?? undefined }
@@ -1211,7 +1069,7 @@ export default function MatchFormPage() {
         />
       )}
 
-      {homeXiTabIndex !== undefined && activeTab === homeXiTabIndex && match && (
+      {hasHomeXiTab && currentTab === 'home-xi' && match && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <MatchSideTab
             clubId={clubId}
@@ -1226,7 +1084,7 @@ export default function MatchFormPage() {
         </Box>
       )}
 
-      {awayXiTabIndex !== undefined && activeTab === awayXiTabIndex && match && (
+      {hasAwayXiTab && currentTab === 'away-xi' && match && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <MatchSideTab
             clubId={clubId}
@@ -1241,45 +1099,8 @@ export default function MatchFormPage() {
         </Box>
       )}
 
-      {availabilityTabIndex !== undefined && activeTab === availabilityTabIndex && match && (
-        <Box sx={{ gridColumn: '1 / -1' }}>
-          <Tabs
-            value={activeAvailabilitySubTab}
-            onChange={(_event, next: number) => setActiveAvailabilitySubTab(next)}
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
-          >
-            {homeAvailabilitySubIndex !== undefined && <Tab label="Home" />}
-            {awayAvailabilitySubIndex !== undefined && <Tab label="Away" />}
-          </Tabs>
-
-          {homeAvailabilitySubIndex !== undefined && activeAvailabilitySubTab === homeAvailabilitySubIndex && (
-            <MatchAvailabilityPanel
-              clubId={clubId}
-              matchId={match.id}
-              teamId={match.homeTeamId as string}
-              match={match}
-              label="the home side"
-              teamName={sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)}
-              side="home"
-            />
-          )}
-
-          {awayAvailabilitySubIndex !== undefined && activeAvailabilitySubTab === awayAvailabilitySubIndex && (
-            <MatchAvailabilityPanel
-              clubId={clubId}
-              matchId={match.id}
-              teamId={match.awayTeamId as string}
-              match={match}
-              label="the away side"
-              teamName={sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)}
-              side="away"
-            />
-          )}
-        </Box>
-      )}
-
       {/* docs/specs/063-section-availability-and-flexible-squads.md Part B/C. */}
-      {matchSquadTabIndex !== undefined && activeTab === matchSquadTabIndex && match && (
+      {hasMatchSquadTab && currentTab === 'match-squad' && match && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Tabs
             value={activeMatchSquadSubTab}

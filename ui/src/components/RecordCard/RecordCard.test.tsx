@@ -710,6 +710,19 @@ describe('RecordCard', () => {
       expect(entries[0].onClick).not.toHaveBeenCalled()
     })
 
+    // docs/specs/075-match-view-and-edit.md: the click event is passed so a button can anchor a menu.
+    it('passes the click event to a footer button callback', async () => {
+      const user = userEvent.setup()
+      let anchor: HTMLElement | null = null
+      const onClick = vi.fn((event: { currentTarget: HTMLElement }) => {
+        anchor = event.currentTarget
+      })
+      render(<RecordCard title="Poll" footerButtons={[{ label: 'Availability', icon: <span>a</span>, onClick }]} />)
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
+      expect(onClick).toHaveBeenCalledTimes(1)
+      expect(anchor).toBe(screen.getByRole('button', { name: 'Availability' }))
+    })
+
     it('is a full-height flex column with the footer pinned below the growing body', () => {
       render(<RecordCard title="Poll" footerButtons={buttons()} />)
       const card = screen.getByRole('heading', { name: 'Poll' }).closest('.MuiCard-root') as HTMLElement

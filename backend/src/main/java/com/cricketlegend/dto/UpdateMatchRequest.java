@@ -23,5 +23,7 @@ public record UpdateMatchRequest(
         @NotNull Instant matchDate,
         String venue,
         UUID homeLeagueTeamId,
-        UUID awayLeagueTeamId) {
+        UUID awayLeagueTeamId,
+        String scoringUrl,
+        String streamingUrl) {
 }

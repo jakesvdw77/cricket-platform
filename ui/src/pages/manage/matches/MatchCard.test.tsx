@@ -201,15 +201,53 @@ describe('MatchCard', () => {
     })
   })
 
+  describe('links row (docs/specs/075)', () => {
+    it('renders no row and no extra divider when neither link is set', () => {
+      renderCard(makeMatch())
+
+      expect(screen.queryByTestId('match-links-row')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Scoring' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Watch live' })).not.toBeInTheDocument()
+    })
+
+    it('renders only the set icon, opening in a new tab with noopener', () => {
+      renderCard(makeMatch({ scoringUrl: 'https://cricclubs.com/matches/1' }))
+
+      const scoring = screen.getByRole('link', { name: 'Scoring' })
+      expect(scoring).toHaveAttribute('href', 'https://cricclubs.com/matches/1')
+      expect(scoring).toHaveAttribute('title', 'Scoring')
+      expect(scoring).toHaveAttribute('target', '_blank')
+      expect(scoring.getAttribute('rel')).toContain('noopener')
+      expect(screen.queryByRole('link', { name: 'Watch live' })).not.toBeInTheDocument()
+    })
+
+    it('renders both icons and sits above the stretched title link', async () => {
+      const user = userEvent.setup()
+      renderCard(
+        makeMatch({ scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2' }),
+        { viewTo: '/manage/fixtures/matches/match-1' },
+      )
+
+      const row = screen.getByTestId('match-links-row')
+      expect(row).toHaveStyle({ position: 'relative' })
+      expect(within(row).getByRole('link', { name: 'Watch live' })).toHaveAttribute('href', 'https://t.example/2')
+      expect(within(row).getByRole('link', { name: 'Scoring' })).toHaveAttribute('href', 'https://s.example/1')
+
+      // clicking an icon never navigates the card (the link opens in a new tab)
+      await user.click(within(row).getByRole('link', { name: 'Scoring' }))
+      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument()
+    })
+  })
+
   describe('footer', () => {
-    it('renders Edit, Select, Poll, Share buttons in that order', () => {
+    it('renders Edit, Select, Availability, Share buttons in that order', () => {
       renderCard(makeMatch())
 
       const footer = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement
       const names = within(footer)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
-      expect(names).toEqual(['Edit', 'Select', 'Poll', 'Share'])
+      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share'])
     })
 
     it('Edit navigates to the edit route', async () => {
@@ -233,56 +271,73 @@ describe('MatchCard', () => {
       expect(await screen.findByText(`At: ${EDIT}?tab=playing-xi`)).toBeInTheDocument()
     })
 
-    it('Poll opens the prefilled New poll flow when there is no poll', async () => {
+    it('Availability opens the prefilled New poll flow when there is no poll', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch())
 
-      await user.click(screen.getByRole('button', { name: 'Poll' }))
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
 
       expect(
         await screen.findByText('At: /manage/availability/new?type=group&sectionId=sec-1&matchId=match-1'),
       ).toBeInTheDocument()
     })
 
-    it('Poll opens the squad Responses page for one squad poll', async () => {
+    it('Availability opens the squad Responses page for one squad poll', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ polls: [squadPoll({ pollId: 'poll-5' })] }))
 
-      await user.click(screen.getByRole('button', { name: 'Poll' }))
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
 
       expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-5')).toBeInTheDocument()
     })
 
-    it('Poll opens the group Responses page for one group poll', async () => {
+    it('Availability opens the group Responses page for one group poll', async () => {
       const user = userEvent.setup()
       renderCard(makeMatch({ polls: [groupPoll({ roundId: 'round-9' })] }))
 
-      await user.click(screen.getByRole('button', { name: 'Poll' }))
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
 
       expect(await screen.findByText('At: /manage/availability/group/round-9')).toBeInTheDocument()
     })
 
-    it('Poll opens the match Availability tab for two polls', async () => {
+    it('Availability opens a menu for two polls and each option opens its Responses page', async () => {
       const user = userEvent.setup()
-      renderCard(
-        makeMatch({
-          awayTeamId: 'team-2',
-          awayTeamName: null,
-          awayPickedCount: 0,
-          polls: [squadPoll(), squadPoll({ pollId: 'poll-2', teamId: 'team-2' })],
-        }),
-      )
+      const derby = makeMatch({
+        awayTeamId: 'team-2',
+        awayTeamName: null,
+        awayPickedCount: 0,
+        polls: [squadPoll(), squadPoll({ pollId: 'poll-2', teamId: 'team-2' })],
+      })
+      const { unmount } = renderCard(derby)
 
-      await user.click(screen.getByRole('button', { name: 'Poll' }))
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
+      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+        '1st XI · Home poll',
+        '2nd XI · Away poll',
+      ])
+      await user.click(within(menu).getByRole('menuitem', { name: '2nd XI · Away poll' }))
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-2')).toBeInTheDocument()
+      unmount()
 
-      expect(await screen.findByText(`At: ${EDIT}?tab=availability`)).toBeInTheDocument()
+      renderCard(derby)
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
+      await user.click(await screen.findByRole('menuitem', { name: '1st XI · Home poll' }))
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-1')).toBeInTheDocument()
     })
 
-    it('disables Select, Poll and Share with an explanatory title when neither side is a club team, keeping Edit enabled', () => {
+    it('does not open a menu for one or no poll', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ polls: [squadPoll({ pollId: 'poll-5' })] }))
+      await user.click(screen.getByRole('button', { name: 'Availability' }))
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+
+    it('disables Select, Availability and Share with an explanatory title when neither side is a club team, keeping Edit enabled', () => {
       renderCard(makeMatch({ homeTeamId: null, homeTeamName: 'A', homePickedCount: null }))
 
       expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
-      for (const name of ['Select', 'Poll', 'Share']) {
+      for (const name of ['Select', 'Availability', 'Share']) {
         const button = screen.getByRole('button', { name })
         expect(button).toBeDisabled()
         expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
@@ -292,7 +347,7 @@ describe('MatchCard', () => {
     it('treats another club\'s team (null picked count) plus a free-text side as no club team: disabled, with the note', () => {
       renderCard(makeMatch({ homeTeamId: 'other-club-team', homePickedCount: null }))
 
-      for (const name of ['Select', 'Poll', 'Share']) {
+      for (const name of ['Select', 'Availability', 'Share']) {
         const button = screen.getByRole('button', { name })
         expect(button).toBeDisabled()
         expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
@@ -301,18 +356,18 @@ describe('MatchCard', () => {
       expect(screen.getByText('Neither side is one of your teams, so there is nobody to pick.')).toBeInTheDocument()
     })
 
-    it('enables Select, Poll and Share for a club side with zero picked', () => {
+    it('enables Select, Availability and Share for a club side with zero picked', () => {
       renderCard(makeMatch({ homePickedCount: 0 }))
 
-      for (const name of ['Select', 'Poll', 'Share']) {
+      for (const name of ['Select', 'Availability', 'Share']) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
     })
 
-    it('enables Select, Poll and Share when a club team is playing', () => {
+    it('enables Select, Availability and Share when a club team is playing', () => {
       renderCard(makeMatch())
 
-      for (const name of ['Select', 'Poll', 'Share']) {
+      for (const name of ['Select', 'Availability', 'Share']) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
     })

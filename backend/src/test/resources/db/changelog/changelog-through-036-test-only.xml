@@ -5,6 +5,10 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
+    <!-- Test-only fixture for MatchLinksMigrationTest: mirrors db.changelog-master.xml's includes
+         verbatim but stops at 036, one changeset short of 037-add-match-scoring-streaming-urls.sql, so the test can
+         seed existing match rows before 037 runs. Paths must match the master character for
+         character so DATABASECHANGELOG bookkeeping lines up on the second pass. -->
     <include file="db/changelog/v1/001-prerequisite-club-person.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/002-add-lead.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/003-add-product.sql" relativeToChangelogFile="false"/>
@@ -41,6 +45,5 @@
     <include file="db/changelog/v1/034-add-section-availability-fixture-selection.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/035-unify-availability-polls.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/036-add-league-team.sql" relativeToChangelogFile="false"/>
-    <include file="db/changelog/v1/037-add-match-scoring-streaming-urls.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

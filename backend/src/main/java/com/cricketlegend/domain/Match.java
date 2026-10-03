@@ -87,6 +87,12 @@ public class Match {
 
     private String venue;
 
+    @Column(name = "scoring_url")
+    private String scoringUrl;
+
+    @Column(name = "streaming_url")
+    private String streamingUrl;
+
     @Column(nullable = false)
     private boolean active;
 
