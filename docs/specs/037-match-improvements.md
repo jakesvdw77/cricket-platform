@@ -1,7 +1,7 @@
 # 037 — Match Improvements
 
 **Depends on:** `029-league-management.md` (`Match`/`MatchSide`/`MatchSidePlayer`, `MatchController`/`MatchSideController`, `PlayingXiBuilder`, `MatchList`/`MatchFormPage`/`SquadPicker` — every screen and endpoint this spec touches was built there; this spec amends none of `029`'s business rules, only its UI/UX and one payload-construction bug), `033-availability-aware-xi-builder.md` (`PlayingXiBuilder`'s `availabilityByPlayerId` prop and tinted-row convention, unchanged and preserved by this spec's reordering/stepper changes), `028-players.md` (`PlayerForm`/`PLAYER_FORM_ID`/`createPlayer`, reused verbatim for item 8's quick-add flow), `036-view-first-record-detail-screens.md` (`MatchList`'s `viewTo`-by-default card, `MatchDetailPage`/`RecordDetailScreen`, both extended here with a second header action), `027-team-profile.md` (`CreateAndLinkRecordDialog`/`LinkExistingRecordDialog`, reused unmodified for item 8, and reused again — in its other, no-`extraField` mode — for item 9's previous-match picker), `008-product-catalog.md` (`ListToolbar`, the shared filters-bar component this spec's items 3/4 touch), `001-tenancy-identity-model.md` (confirms `Team`, `Season`, and `League` carry no direct association to one another in the entity model — only `Match.season_id`/`Match.league_id` and the separate `LeagueAffiliation` join do — the basis for item 9's previous-match query filtering directly against `Match`'s own columns, not via `LeagueAffiliation`).
-**Status:** draft.
+**Status:** draft. Amended by `075-match-view-and-edit.md`: the match card button "Poll" is "Availability", and Select Team and Availability are also on the Match View header.
 
 ## Problem & Goals
 

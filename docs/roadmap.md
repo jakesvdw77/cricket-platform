@@ -156,6 +156,15 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
 - **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
 
+## Deferred by `075` — Match View, Edit Match and match links
+
+`075-match-view-and-edit.md` rebuilt the Match View on the League header (details, links and actions in the header, one card per own team), removed the Availability tab from the Edit Match page in favour of a header Availability button, renamed the card's Poll button to Availability, and added optional Scoring and Streaming links to a match. Still deferred:
+
+- **A slot-based Selection planner.** Picking several teams' XIs together using availability, Coverage (`074`) and who is already picked elsewhere. Selection stays in the match edit screen's Playing XI tabs for now.
+- **Scoring and streaming links on public pages, the shared team sheet and the schedule shares.** Today they appear only on the Match View and the match card.
+- **A results / completed status and match naming** (still not built; see the `071` entry).
+- **`RecordDetailScreen` loses another consumer** (the Match View), so its `sections` prop and callers should be re-checked for any remaining use (first raised in `062`/`072`).
+
 ## Deferred by `074` — Availability Coverage
 
 `074-availability-coverage.md` added the Coverage tab: one card per time slot with distinct available players against the places needed, per-team bars and a Covered / Tight / Short verdict, computed in the browser from the Players grid response. Still deferred:
