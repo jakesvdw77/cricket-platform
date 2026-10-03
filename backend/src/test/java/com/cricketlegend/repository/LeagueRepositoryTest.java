@@ -66,6 +66,25 @@ class LeagueRepositoryTest {
     }
 
     @Test
+    void findByClubIdReturnsEachLeagueOnceWithItsSocialLinksDespiteTheFetchJoin() {
+        Club club = savedClub("riverside-cc");
+        League withLinks = league(club.getId());
+        withLinks.setSocialLinks(new java.util.ArrayList<>(List.of(
+                SocialLink.builder().platform("facebook").url("https://facebook.com/a").build(),
+                SocialLink.builder().platform("twitter").url("https://twitter.com/a").build())));
+        leagueRepository.save(withLinks);
+        leagueRepository.save(league(club.getId()));
+        leagueRepository.flush();
+
+        List<League> result = leagueRepository.findByClubId(club.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result.stream().filter(l -> l.getId().equals(withLinks.getId())).findFirst().orElseThrow()
+                        .getSocialLinks())
+                .hasSize(2);
+    }
+
+    @Test
     void createdAtAndUpdatedAtAreSetOnPersist() {
         Club club = savedClub("riverside-cc");
         League league = league(club.getId());

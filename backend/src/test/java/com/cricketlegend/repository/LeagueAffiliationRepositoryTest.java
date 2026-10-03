@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -120,5 +121,42 @@ class LeagueAffiliationRepositoryTest {
         assertThat(leagueAffiliationRepository.findByLeagueId(league.getId()))
                 .extracting(LeagueAffiliation::getId)
                 .contains(secondSeasonAffiliation.getId());
+    }
+
+    @Test
+    void findTeamSummariesBySeasonIdReturnsOnlyTheSeasonNameSortedWithAProfileAndRepeatsATeamPerLeague() {
+        Club club = savedClub("riverside-cc");
+        League leagueOne = savedLeague(club.getId());
+        League leagueTwo = savedLeague(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Men").active(true).build());
+        Team zulu = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(section.getId())
+                .name("zulu XI").abbreviation("ZUL").logoUrl("/zulu.png").active(true).build());
+        Team alpha = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(section.getId())
+                .name("Alpha XI").active(true).build());
+        Season season = savedSeason(club.getId());
+        Season otherSeason = savedSeason(club.getId());
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(leagueOne.getId()).teamId(zulu.getId()).seasonId(season.getId()).build());
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(leagueOne.getId()).teamId(alpha.getId()).seasonId(season.getId()).build());
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(leagueTwo.getId()).teamId(zulu.getId()).seasonId(season.getId()).build());
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(leagueOne.getId()).teamId(alpha.getId()).seasonId(otherSeason.getId()).build());
+
+        List<LeagueAffiliationRepository.LeagueTeamSummary> rows =
+                leagueAffiliationRepository.findTeamSummariesBySeasonId(season.getId());
+
+        assertThat(rows).extracting(LeagueAffiliationRepository.LeagueTeamSummary::getName)
+                .containsExactly("Alpha XI", "zulu XI", "zulu XI");
+        assertThat(rows).extracting(LeagueAffiliationRepository.LeagueTeamSummary::getLeagueId)
+                .containsExactlyInAnyOrder(leagueOne.getId(), leagueOne.getId(), leagueTwo.getId());
+        assertThat(rows.get(0).getAbbreviation()).isNull();
+        assertThat(rows.get(0).getLogoUrl()).isNull();
+        assertThat(rows.get(1).getAbbreviation()).isEqualTo("ZUL");
+        assertThat(rows.get(1).getLogoUrl()).isEqualTo("/zulu.png");
+        assertThat(rows.stream().filter(r -> r.getName().equals("zulu XI")).map(
+                        LeagueAffiliationRepository.LeagueTeamSummary::getLeagueId))
+                .containsExactlyInAnyOrder(leagueOne.getId(), leagueTwo.getId());
     }
 }

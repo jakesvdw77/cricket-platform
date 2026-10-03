@@ -3,17 +3,23 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
+import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.LeagueSeasonTeamDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -23,7 +29,11 @@ import com.cricketlegend.mapper.LeagueMapper;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamSummary;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.LeagueTeamRepository;
+import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchRepository.LeagueMatchSummary;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.impl.LeagueServiceImpl;
 import java.time.Instant;
@@ -67,6 +77,12 @@ class LeagueServiceImplTest {
     private LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
 
     @Mock
+    private MatchRepository matchRepository;
+
+    @Mock
+    private LeagueTeamRepository leagueTeamRepository;
+
+    @Mock
     private LeagueMapper leagueMapper;
 
     private LeagueServiceImpl leagueService;
@@ -75,13 +91,14 @@ class LeagueServiceImplTest {
     void setUp() {
         leagueService = new LeagueServiceImpl(
                 leagueRepository, seasonRepository, leagueAffiliationRepository,
-                leaguePlayingConditionsRepository, leagueMapper);
+                leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, leagueMapper);
     }
 
     private LeagueDto dummyDto() {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
-                null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null);
+                null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null,
+                null, null, null, null, null, null);
     }
 
     private League existingLeague(UUID id, UUID clubId, boolean active) {
@@ -104,7 +121,7 @@ class LeagueServiceImplTest {
                 league.getMaxAge(), league.getAgeCutoffDate(), league.getFormat(), league.getLogoUrl(),
                 league.getPhone(), league.getWebsite(), league.getEmail(), List.of(),
                 league.isActive(), league.getCreatedAt(),
-                league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null);
+                league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -380,6 +397,136 @@ class LeagueServiceImplTest {
         org.mockito.Mockito.verify(leaguePlayingConditionsRepository, never()).findBySeasonId(any());
     }
 
+    // --- 071: match aggregates and season teams ---
+
+    @Test
+    void listWithNoCurrentSeasonGivesZerosNullsAndEmptyTeamsAndRunsNoneOfTheNewBatches() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        LeagueDto dto = leagueService.list(clubId).get(0);
+
+        assertThat(dto.matchCount()).isZero();
+        assertThat(dto.playedCount()).isZero();
+        assertThat(dto.firstMatchDate()).isNull();
+        assertThat(dto.lastMatchDate()).isNull();
+        assertThat(dto.nextMatchDate()).isNull();
+        assertThat(dto.teams()).isEmpty();
+        verify(matchRepository, never()).summariseByLeagueForSeason(any(), any(), any());
+        verify(leagueAffiliationRepository, never()).findTeamSummariesBySeasonId(any());
+        verify(leagueTeamRepository, never()).findActiveBySeasonId(any());
+    }
+
+    @Test
+    void listPopulatesMatchAggregatesAndTeamsPerLeagueAndDefaultsALeagueWithNoMatches() {
+        UUID clubId = UUID.randomUUID();
+        League leagueA = existingLeague(UUID.randomUUID(), clubId, true);
+        League leagueB = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season currentSeason = season(
+                UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        Instant first = Instant.parse("2026-04-01T10:00:00Z");
+        Instant next = Instant.parse("2026-10-17T10:00:00Z");
+        Instant last = Instant.parse("2026-12-01T10:00:00Z");
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(leagueA, leagueB));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(currentSeason));
+        when(matchRepository.summariseByLeagueForSeason(eq(clubId), eq(currentSeason.getId()), any(Instant.class)))
+                .thenReturn(List.of(matchSummary(leagueA.getId(), 10, 4, first, last, next)));
+        when(leagueAffiliationRepository.findTeamSummariesBySeasonId(currentSeason.getId()))
+                .thenReturn(List.of(
+                        teamSummary(leagueA.getId(), "Alpha XI", "ALP", "/a.png"),
+                        teamSummary(leagueA.getId(), "Zulu XI", null, null)));
+        when(leagueTeamRepository.findActiveBySeasonId(currentSeason.getId()))
+                .thenReturn(List.of(
+                        leagueTeam(leagueA.getId(), currentSeason.getId(), "Aardvarks", "AAR", null),
+                        leagueTeam(leagueA.getId(), currentSeason.getId(), "Bears", null, "/b.png")));
+        when(leagueMapper.toDto(leagueA)).thenReturn(baseDtoFor(leagueA));
+        when(leagueMapper.toDto(leagueB)).thenReturn(baseDtoFor(leagueB));
+
+        List<LeagueDto> result = leagueService.list(clubId);
+
+        LeagueDto dtoA = result.stream().filter(d -> d.id().equals(leagueA.getId())).findFirst().orElseThrow();
+        LeagueDto dtoB = result.stream().filter(d -> d.id().equals(leagueB.getId())).findFirst().orElseThrow();
+        assertThat(dtoA.matchCount()).isEqualTo(10);
+        assertThat(dtoA.playedCount()).isEqualTo(4);
+        assertThat(dtoA.firstMatchDate()).isEqualTo(first);
+        assertThat(dtoA.lastMatchDate()).isEqualTo(last);
+        assertThat(dtoA.nextMatchDate()).isEqualTo(next);
+        assertThat(dtoA.teams()).containsExactly(
+                new LeagueSeasonTeamDto("Alpha XI", "ALP", "/a.png", true),
+                new LeagueSeasonTeamDto("Zulu XI", null, null, true),
+                new LeagueSeasonTeamDto("Aardvarks", "AAR", null, false),
+                new LeagueSeasonTeamDto("Bears", null, "/b.png", false));
+        assertThat(dtoB.matchCount()).isZero();
+        assertThat(dtoB.playedCount()).isZero();
+        assertThat(dtoB.firstMatchDate()).isNull();
+        assertThat(dtoB.lastMatchDate()).isNull();
+        assertThat(dtoB.nextMatchDate()).isNull();
+        assertThat(dtoB.teams()).isEmpty();
+    }
+
+    @Test
+    void listRunsEachNewBatchExactlyOnceWithSeveralLeaguesAndPassesOneNowWithinTheCall() {
+        UUID clubId = UUID.randomUUID();
+        List<League> leagues = List.of(
+                existingLeague(UUID.randomUUID(), clubId, true),
+                existingLeague(UUID.randomUUID(), clubId, true),
+                existingLeague(UUID.randomUUID(), clubId, true));
+        LocalDate today = LocalDate.now();
+        Season currentSeason = season(
+                UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        when(leagueRepository.findByClubId(clubId)).thenReturn(leagues);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(currentSeason));
+        for (League league : leagues) {
+            when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+        }
+        ArgumentCaptor<Instant> nowCaptor = ArgumentCaptor.forClass(Instant.class);
+        Instant before = Instant.now();
+
+        leagueService.list(clubId);
+
+        Instant after = Instant.now();
+        verify(matchRepository, times(1))
+                .summariseByLeagueForSeason(eq(clubId), eq(currentSeason.getId()), nowCaptor.capture());
+        verify(leagueAffiliationRepository, times(1)).findTeamSummariesBySeasonId(currentSeason.getId());
+        verify(leagueTeamRepository, times(1)).findActiveBySeasonId(currentSeason.getId());
+        verify(leagueAffiliationRepository, times(1)).countDistinctTeamsBySeasonId(currentSeason.getId());
+        verify(leaguePlayingConditionsRepository, times(1)).findBySeasonId(currentSeason.getId());
+        verifyNoMoreInteractions(matchRepository, leagueTeamRepository, leagueAffiliationRepository,
+                leaguePlayingConditionsRepository);
+        assertThat(nowCaptor.getValue()).isBetween(before, after);
+    }
+
+    @Test
+    void createUpdateDeactivateAndReactivateLeaveTheSixNewFieldsNull() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        League active = existingLeague(leagueId, clubId, true);
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(active));
+        when(leagueRepository.save(any(League.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(leagueMapper.toDto(any(League.class))).thenAnswer(invocation -> baseDtoFor(invocation.getArgument(0)));
+
+        List<LeagueDto> results = new java.util.ArrayList<>();
+        results.add(leagueService.create(clubId, new CreateLeagueRequest(
+                "New League", null, null, null, null, null, null, null, null, null, null, null)));
+        results.add(leagueService.update(clubId, leagueId, new UpdateLeagueRequest(
+                "Renamed", null, null, null, null, null, null, null, null, null, null, null)));
+        results.add(leagueService.deactivate(clubId, leagueId));
+        results.add(leagueService.reactivate(clubId, leagueId));
+
+        for (LeagueDto dto : results) {
+            assertThat(dto.matchCount()).isNull();
+            assertThat(dto.playedCount()).isNull();
+            assertThat(dto.firstMatchDate()).isNull();
+            assertThat(dto.lastMatchDate()).isNull();
+            assertThat(dto.nextMatchDate()).isNull();
+            assertThat(dto.teams()).isNull();
+        }
+    }
+
     @Test
     void listOnlyCountsDistinctTeamsAffiliatedForTheCurrentSeasonNotOtherSeasons() {
         UUID clubId = UUID.randomUUID();
@@ -511,5 +658,69 @@ class LeagueServiceImplTest {
                 return teamCount;
             }
         };
+    }
+
+    private static LeagueMatchSummary matchSummary(
+            UUID leagueId, long matchCount, long playedCount, Instant first, Instant last, Instant next) {
+        return new LeagueMatchSummary() {
+            @Override
+            public UUID getLeagueId() {
+                return leagueId;
+            }
+
+            @Override
+            public long getMatchCount() {
+                return matchCount;
+            }
+
+            @Override
+            public long getPlayedCount() {
+                return playedCount;
+            }
+
+            @Override
+            public Instant getFirstMatchDate() {
+                return first;
+            }
+
+            @Override
+            public Instant getLastMatchDate() {
+                return last;
+            }
+
+            @Override
+            public Instant getNextMatchDate() {
+                return next;
+            }
+        };
+    }
+
+    private static LeagueTeamSummary teamSummary(UUID leagueId, String name, String abbreviation, String logoUrl) {
+        return new LeagueTeamSummary() {
+            @Override
+            public UUID getLeagueId() {
+                return leagueId;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public String getAbbreviation() {
+                return abbreviation;
+            }
+
+            @Override
+            public String getLogoUrl() {
+                return logoUrl;
+            }
+        };
+    }
+
+    private static LeagueTeam leagueTeam(UUID leagueId, UUID seasonId, String name, String abbreviation, String logoUrl) {
+        return LeagueTeam.builder().id(UUID.randomUUID()).leagueId(leagueId).seasonId(seasonId).name(name)
+                .abbreviation(abbreviation).logoUrl(logoUrl).active(true).build();
     }
 }

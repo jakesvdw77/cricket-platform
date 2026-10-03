@@ -238,4 +238,25 @@ class LeagueTeamRepositoryTest {
                 })
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    @Test
+    void findActiveBySeasonIdReturnsOnlyActiveRowsOfTheSeasonAcrossLeaguesNameSorted() {
+        seed();
+        League otherLeague = leagueRepository.save(League.builder().clubId(club.getId()).name("Cup")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        Season otherSeason = seasonRepository.save(Season.builder().clubId(club.getId()).label("2027")
+                .startDate(LocalDate.of(2027, 1, 1)).endDate(LocalDate.of(2027, 12, 31)).active(true).build());
+        savedTeam(league.getId(), season.getId(), "beta CC", true);
+        savedTeam(league.getId(), season.getId(), "Alpha CC", false);
+        savedTeam(league.getId(), season.getId(), "Charlie CC", true);
+        savedTeam(otherLeague.getId(), season.getId(), "alpha Cup CC", true);
+        savedTeam(league.getId(), otherSeason.getId(), "Other Season CC", true);
+
+        assertThat(leagueTeamRepository.findActiveBySeasonId(season.getId()))
+                .extracting(LeagueTeam::getName)
+                .containsExactly("alpha Cup CC", "beta CC", "Charlie CC");
+        assertThat(leagueTeamRepository.findActiveBySeasonId(season.getId()))
+                .extracting(LeagueTeam::getLeagueId)
+                .containsExactly(otherLeague.getId(), league.getId(), league.getId());
+    }
 }

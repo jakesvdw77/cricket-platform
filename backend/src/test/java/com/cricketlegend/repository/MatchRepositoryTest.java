@@ -493,4 +493,109 @@ class MatchRepositoryTest {
 
         assertThat(result).extracting(Match::getId).containsExactly(futureA.getId(), futureB.getId());
     }
+
+    // --- 071: summariseByLeagueForSeason ---
+
+    private League savedLeague(UUID clubId, String name) {
+        return leagueRepository.save(League.builder().clubId(clubId).name(name).source(LeagueSource.INTERNAL)
+                .maxPlayingXiSize(11).active(true).build());
+    }
+
+    private Match leagueMatch(UUID clubId, UUID seasonId, UUID leagueId, Instant matchDate, boolean active) {
+        return matchRepository.save(Match.builder().clubId(clubId).homeTeamName("Home").awayTeamName("Away")
+                .leagueId(leagueId).seasonId(seasonId).matchDate(matchDate).active(active).build());
+    }
+
+    private MatchRepository.LeagueMatchSummary summaryFor(
+            List<MatchRepository.LeagueMatchSummary> rows, UUID leagueId) {
+        return rows.stream().filter(r -> r.getLeagueId().equals(leagueId)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void summariseCountsOnlyActiveMatchesOfTheStatedClubSeasonAndLeagueAndIgnoresNoLeagueMatches() {
+        Club club = savedClub("riverside-cc");
+        Club otherClub = savedClub("lakeside-cc");
+        Season season = savedSeason(club.getId());
+        Season otherSeason = savedSeason(club.getId());
+        Season otherClubSeason = savedSeason(otherClub.getId());
+        League league = savedLeague(club.getId(), "Premier");
+        League otherLeague = savedLeague(club.getId(), "Cup");
+        League otherClubLeague = savedLeague(otherClub.getId(), "Premier");
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now.plus(1, ChronoUnit.DAYS), true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now.minus(1, ChronoUnit.DAYS), true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now.plus(2, ChronoUnit.DAYS), false);
+        leagueMatch(club.getId(), otherSeason.getId(), league.getId(), now.plus(3, ChronoUnit.DAYS), true);
+        leagueMatch(club.getId(), season.getId(), otherLeague.getId(), now.plus(4, ChronoUnit.DAYS), true);
+        leagueMatch(otherClub.getId(), otherClubSeason.getId(), otherClubLeague.getId(), now, true);
+        leagueMatch(club.getId(), season.getId(), null, now.plus(5, ChronoUnit.DAYS), true);
+
+        List<MatchRepository.LeagueMatchSummary> rows =
+                matchRepository.summariseByLeagueForSeason(club.getId(), season.getId(), now);
+
+        assertThat(rows).extracting(MatchRepository.LeagueMatchSummary::getLeagueId)
+                .containsExactlyInAnyOrder(league.getId(), otherLeague.getId());
+        MatchRepository.LeagueMatchSummary summary = summaryFor(rows, league.getId());
+        assertThat(summary.getMatchCount()).isEqualTo(2);
+        assertThat(summary.getPlayedCount()).isEqualTo(1);
+        assertThat(summaryFor(rows, otherLeague.getId()).getMatchCount()).isEqualTo(1);
+    }
+
+    @Test
+    void summariseTreatsAMatchExactlyAtNowAsToGoAndTheNextMatch() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        League league = savedLeague(club.getId(), "Premier");
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now.minus(1, ChronoUnit.DAYS), true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now, true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), now.plus(7, ChronoUnit.DAYS), true);
+
+        MatchRepository.LeagueMatchSummary summary = summaryFor(
+                matchRepository.summariseByLeagueForSeason(club.getId(), season.getId(), now), league.getId());
+
+        assertThat(summary.getMatchCount()).isEqualTo(3);
+        assertThat(summary.getPlayedCount()).isEqualTo(1);
+        assertThat(summary.getNextMatchDate()).isEqualTo(now);
+        assertThat(summary.getFirstMatchDate()).isEqualTo(now.minus(1, ChronoUnit.DAYS));
+        assertThat(summary.getLastMatchDate()).isEqualTo(now.plus(7, ChronoUnit.DAYS));
+    }
+
+    @Test
+    void summariseHandlesAllPastAllFutureAndASingleMatchAndGroupsLeaguesInOneCall() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        League allPast = savedLeague(club.getId(), "Past");
+        League allFuture = savedLeague(club.getId(), "Future");
+        League single = savedLeague(club.getId(), "Single");
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant pastOne = now.minus(10, ChronoUnit.DAYS);
+        Instant pastTwo = now.minus(3, ChronoUnit.DAYS);
+        Instant futureOne = now.plus(3, ChronoUnit.DAYS);
+        Instant futureTwo = now.plus(10, ChronoUnit.DAYS);
+        leagueMatch(club.getId(), season.getId(), allPast.getId(), pastOne, true);
+        leagueMatch(club.getId(), season.getId(), allPast.getId(), pastTwo, true);
+        leagueMatch(club.getId(), season.getId(), allFuture.getId(), futureTwo, true);
+        leagueMatch(club.getId(), season.getId(), allFuture.getId(), futureOne, true);
+        leagueMatch(club.getId(), season.getId(), single.getId(), futureOne, true);
+
+        List<MatchRepository.LeagueMatchSummary> rows =
+                matchRepository.summariseByLeagueForSeason(club.getId(), season.getId(), now);
+
+        assertThat(rows).hasSize(3);
+        MatchRepository.LeagueMatchSummary past = summaryFor(rows, allPast.getId());
+        assertThat(past.getPlayedCount()).isEqualTo(2);
+        assertThat(past.getNextMatchDate()).isNull();
+        assertThat(past.getFirstMatchDate()).isEqualTo(pastOne);
+        assertThat(past.getLastMatchDate()).isEqualTo(pastTwo);
+        MatchRepository.LeagueMatchSummary future = summaryFor(rows, allFuture.getId());
+        assertThat(future.getPlayedCount()).isZero();
+        assertThat(future.getNextMatchDate()).isEqualTo(futureOne);
+        assertThat(future.getFirstMatchDate()).isEqualTo(futureOne);
+        assertThat(future.getLastMatchDate()).isEqualTo(futureTwo);
+        MatchRepository.LeagueMatchSummary one = summaryFor(rows, single.getId());
+        assertThat(one.getMatchCount()).isEqualTo(1);
+        assertThat(one.getFirstMatchDate()).isEqualTo(one.getLastMatchDate());
+        assertThat(one.getNextMatchDate()).isEqualTo(futureOne);
+    }
 }
