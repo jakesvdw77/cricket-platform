@@ -45,6 +45,7 @@ import SquadPicker from './pages/manage/SquadPicker'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import NewPollPage from './pages/manage/NewPollPage'
 import GroupPollResponsesPage from './pages/manage/GroupPollResponsesPage'
+import PlayerAvailabilityPage from './pages/manage/PlayerAvailabilityPage'
 import SquadPollResponsesPage from './pages/manage/SquadPollResponsesPage'
 import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PublicSectionAvailabilityRound from './pages/view/PublicSectionAvailabilityRound'
@@ -227,6 +228,9 @@ function App() {
               <Route path="availability/group/:roundId" element={<GroupPollResponsesPage />} />
               {/* docs/specs/067: the squad poll's Responses page, the same views as the group poll's. */}
               <Route path="availability/squad/:matchId/:pollId" element={<SquadPollResponsesPage />} />
+              {/* docs/specs/068-player-availability-grid.md: a season of availability at a glance,
+                  separate from the Availability Polls list. */}
+              <Route path="player-availability" element={<PlayerAvailabilityPage />} />
               {/* 064: 063's own screen folded into the dashboard + NewPollPage - old links (and
                   bookmarks) land on the group branch, keeping ?sectionId=/matchId=. */}
               <Route path="section-availability" element={<SectionAvailabilityRedirect />} />
