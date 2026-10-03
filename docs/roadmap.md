@@ -156,6 +156,10 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
 - **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
 
+## Notes from `073` — Availability hub
+
+`073-availability-hub.md` put Polls and Players under one Availability hub (one dashboard tile, a routed Polls | Players switch; `068`'s route moved to `/manage/availability/players`), made poll cards open their Responses page on click with a "Poll closes" row, and moved the sort control first on phones in the shared `ListToolbar`. The Coverage tab is added by `074`. No new deferred item arises from `073` itself.
+
 ## Deferred by `072` — League view pages
 
 `072-league-view-pages.md` split `062`'s single League page into routed Schedule, Teams and Conditions views under one header, fixed the 20-match truncation and labelled the conditions PDF "Playing Conditions.pdf". Still deferred:

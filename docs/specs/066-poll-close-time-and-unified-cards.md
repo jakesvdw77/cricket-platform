@@ -1,7 +1,7 @@
 # 066 — Poll Close Time and Unified Poll Cards
 
 **Depends on:** `064-unified-availability-polls.md` (the polls list, squad and group polls, Autoclose, scheduler, reopen rule), `065-group-poll-responses-view.md` (the Responses page and its Summary view, which this reuses), `032-match-availability-polls.md` and `063-section-availability-and-flexible-squads.md` (the two poll kinds and their admin answer override).
-**Status:** approved
+**Status:** approved Amended by `073-availability-hub.md`: the Closes row becomes the "Poll closes" DetailLine and the card opens its Responses page on click.
 
 ## Problem & Goals
 
