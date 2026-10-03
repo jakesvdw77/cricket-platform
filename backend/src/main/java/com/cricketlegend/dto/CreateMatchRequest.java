@@ -13,6 +13,11 @@ import java.util.UUID;
  * docs/specs/050-league-schedule-and-fixtures.md) may only be set alongside the matching side's
  * {@code *TeamName} (i.e. {@code *TeamId} null) — validated at the service layer (400). See
  * docs/specs/029-league-management.md.
+ *
+ * <p>{@code homeLeagueTeamId}/{@code awayLeagueTeamId} (optional, docs/specs/070-league-teams.md)
+ * pick a registered league team for that side: they exclude the same side's {@code *TeamId}, and
+ * the side's {@code *TeamName}/{@code *TeamLogoUrl} are ignored and overwritten from the league
+ * team. The match must have a league, and the league team must belong to its league and season.
  */
 public record CreateMatchRequest(
         UUID homeTeamId,
@@ -24,5 +29,7 @@ public record CreateMatchRequest(
         UUID leagueId,
         @NotNull UUID seasonId,
         @NotNull Instant matchDate,
-        String venue) {
+        String venue,
+        UUID homeLeagueTeamId,
+        UUID awayLeagueTeamId) {
 }

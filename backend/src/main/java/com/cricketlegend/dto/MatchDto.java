@@ -17,6 +17,10 @@ import java.util.UUID;
  * ({@code null} for a free-text or other-club side), {@code playingXiSize} is the league's {@code
  * maxPlayingXiSize} ({@code null} with no league). Every other path leaves the counts and size
  * {@code null}, and {@code polls} is normalised here, in the one place, to an empty list.
+ *
+ * <p>{@code homeLeagueTeamId}/{@code awayLeagueTeamId} (docs/specs/070-league-teams.md) are the
+ * nullable {@code LeagueTeam} references; for such a side the name/logo are the league team's
+ * copied values.
  */
 public record MatchDto(
         UUID id,
@@ -40,7 +44,9 @@ public record MatchDto(
         Integer homePickedCount,
         Integer awayPickedCount,
         Integer playingXiSize,
-        List<MatchPollDto> polls) {
+        List<MatchPollDto> polls,
+        UUID homeLeagueTeamId,
+        UUID awayLeagueTeamId) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;

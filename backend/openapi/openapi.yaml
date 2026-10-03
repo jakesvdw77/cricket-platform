@@ -3317,6 +3317,272 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams:
+    get:
+      tags:
+      - league-team-controller
+      operationId: listLeagueTeams
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: activeOnly
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueTeamDto"
+    post:
+      tags:
+      - league-team-controller
+      operationId: createLeagueTeam
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueTeamRequest"
+        required: true
+      responses:
+        "201":
+          description: League team created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueTeamDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams/{leagueTeamId}:
+    put:
+      tags:
+      - league-team-controller
+      operationId: updateLeagueTeam
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueTeamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueTeamRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueTeamDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams/{leagueTeamId}/remove:
+    post:
+      tags:
+      - league-team-controller
+      operationId: removeLeagueTeam
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueTeamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RemoveLeagueTeamResponse"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams/{leagueTeamId}/reactivate:
+    post:
+      tags:
+      - league-team-controller
+      operationId: reactivateLeagueTeam
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueTeamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueTeamDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams/{leagueTeamId}/deactivate:
+    post:
+      tags:
+      - league-team-controller
+      operationId: deactivateLeagueTeam
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueTeamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueTeamDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/league-teams/copy:
+    post:
+      tags:
+      - league-team-controller
+      operationId: copyLeagueTeams
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CopyLeagueTeamsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CopyLeagueTeamsResponse"
   /api/v1/manage/clubs/{clubId}/contacts:
     get:
       tags:
@@ -5195,6 +5461,12 @@ components:
           format: date-time
         venue:
           type: string
+        homeLeagueTeamId:
+          type: string
+          format: uuid
+        awayLeagueTeamId:
+          type: string
+          format: uuid
       required:
       - matchDate
       - seasonId
@@ -5260,6 +5532,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MatchPollDto"
+        homeLeagueTeamId:
+          type: string
+          format: uuid
+        awayLeagueTeamId:
+          type: string
+          format: uuid
     MatchPollDto:
       type: object
       properties:
@@ -6182,6 +6460,12 @@ components:
           format: date-time
         venue:
           type: string
+        homeLeagueTeamId:
+          type: string
+          format: uuid
+        awayLeagueTeamId:
+          type: string
+          format: uuid
       required:
       - matchDate
       - seasonId
@@ -6871,6 +7155,109 @@ components:
           format: uuid
         teamName:
           type: string
+    LeagueTeamDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        abbreviation:
+          type: string
+        logoUrl:
+          type: string
+        active:
+          type: boolean
+        referencedByMatchCount:
+          type: integer
+          format: int64
+    CreateLeagueTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 0
+        abbreviation:
+          type: string
+          maxLength: 16
+          minLength: 0
+        logoUrl:
+          type: string
+          maxLength: 1024
+          minLength: 0
+      required:
+      - name
+    UpdateLeagueTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 0
+        abbreviation:
+          type: string
+          maxLength: 16
+          minLength: 0
+        logoUrl:
+          type: string
+          maxLength: 1024
+          minLength: 0
+      required:
+      - name
+    RemoveLeagueTeamResponse:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum:
+          - DELETED
+          - DEACTIVATED
+        leagueTeam:
+          $ref: "#/components/schemas/LeagueTeamDto"
+    CopyLeagueTeamsRequest:
+      type: object
+      properties:
+        sourceLeagueId:
+          type: string
+          format: uuid
+        sourceSeasonId:
+          type: string
+          format: uuid
+        leagueTeamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - leagueTeamIds
+      - sourceLeagueId
+      - sourceSeasonId
+    SkippedLeagueTeamDto:
+      type: object
+      properties:
+        name:
+          type: string
+        reason:
+          type: string
+    CopyLeagueTeamsResponse:
+      type: object
+      properties:
+        created:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueTeamDto"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkippedLeagueTeamDto"
     MatchFilterOptionsDto:
       type: object
       properties:
