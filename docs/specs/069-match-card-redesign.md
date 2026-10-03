@@ -1,7 +1,7 @@
 # 069 — Match Card Redesign
 
 **Depends on:** `037-match-improvements.md` (the Matches list and its filters), `040-announce-team.md` (announced badges), `030-team-sheet-communication.md` (the Team Sheet dialog), `029-league-management.md` (the Select Team / Playing XI screen and `SquadPicker`, which reuses this card), `036`/`059` (view-first and click-to-view cards), `064`–`068` (poll cards, `RecordCard` footer buttons and badge tones, poll Responses pages, batched poll queries).
-**Status:** approved (design approved by the user). Design: https://claude.ai/artifact/BBSzMNUBLhQjpuuAWR7CJK
+**Status:** approved (design approved by the user). Amended during build: a club team with no selection yet reports 0 picked (not null), and a side counts as one of the club's teams when its team belongs to this club. Design: https://claude.ai/artifact/BBSzMNUBLhQjpuuAWR7CJK
 
 ## Problem & Goals
 
@@ -38,7 +38,7 @@ The matches list response (`GET /api/v1/manage/clubs/{clubId}/matches`, `MatchDt
 
 | Field | Meaning |
 |---|---|
-| `homePickedCount`, `awayPickedCount` | Players selected in that side's playing XI (`MatchSidePlayer` rows for the match and team); `null` when that side is not one of the club's teams or has no selection yet |
+| `homePickedCount`, `awayPickedCount` | Players selected in that side's playing XI (`MatchSidePlayer` rows for the match and team); `null` when that side is not one of the club's teams; `0` for a club team that has no selection yet (so its Selection row still shows "0 of M picked") |
 | `playingXiSize` | The league's playing XI size (`League.maxPlayingXiSize`); `null` when the match has no league |
 | `polls` | 0 to 2 entries `{ type: SQUAD \| GROUP, teamId, pollId, roundId, open }`: one squad poll per club team side, or a group poll covering the match (a group poll covers the match once, a squad poll per side) |
 
