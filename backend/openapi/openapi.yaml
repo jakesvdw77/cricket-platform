@@ -5247,6 +5247,38 @@ components:
         updatedBy:
           type: string
           format: uuid
+        homePickedCount:
+          type: integer
+          format: int32
+        awayPickedCount:
+          type: integer
+          format: int32
+        playingXiSize:
+          type: integer
+          format: int32
+        polls:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchPollDto"
+    MatchPollDto:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        teamId:
+          type: string
+          format: uuid
+        pollId:
+          type: string
+          format: uuid
+        roundId:
+          type: string
+          format: uuid
+        open:
+          type: boolean
     UpdateMatchSquadJerseyNumberRequest:
       type: object
       properties:

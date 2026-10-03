@@ -1,6 +1,8 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.AvailabilityPollType;
+import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
@@ -9,6 +11,7 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
+import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -16,11 +19,13 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.MatchSpecifications;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
+import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
 import com.cricketlegend.service.support.ServerClock;
@@ -65,6 +70,8 @@ public class MatchServiceImpl implements MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchSideRepository matchSideRepository;
+    private final MatchSidePlayerRepository matchSidePlayerRepository;
+    private final MatchPollCoverageService matchPollCoverageService;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final TeamRepository teamRepository;
@@ -75,6 +82,8 @@ public class MatchServiceImpl implements MatchService {
     public MatchServiceImpl(
             MatchRepository matchRepository,
             MatchSideRepository matchSideRepository,
+            MatchSidePlayerRepository matchSidePlayerRepository,
+            MatchPollCoverageService matchPollCoverageService,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             TeamRepository teamRepository,
@@ -83,6 +92,8 @@ public class MatchServiceImpl implements MatchService {
             AccessService accessService) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
+        this.matchSidePlayerRepository = matchSidePlayerRepository;
+        this.matchPollCoverageService = matchPollCoverageService;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.teamRepository = teamRepository;
@@ -106,7 +117,7 @@ public class MatchServiceImpl implements MatchService {
         Pageable sorted = withDefaultSort(pageable);
 
         Specification<Match> spec = buildMatchSpecification(clubId, sectionIds, upcomingOnly, leagueId, seasonId, search);
-        return enrichAnnounced(matchRepository.findAll(spec, sorted).map(matchMapper::toDto));
+        return enrichList(matchRepository.findAll(spec, sorted).map(matchMapper::toDto));
     }
 
     /**
@@ -279,21 +290,103 @@ public class MatchServiceImpl implements MatchService {
     }
 
     /**
-     * Per docs/specs/040-announce-team.md: resolves {@code homeSideAnnounced}/{@code
-     * awaySideAnnounced} for a whole page of {@link MatchDto} in one batched {@code
-     * matchSideRepository.findByMatchIdIn} query, never a per-row lookup.
+     * One combined enrichment of a page of {@link MatchDto}, one batched query per source and
+     * never a per-row lookup (docs/specs/040-announce-team.md announced flags;
+     * docs/specs/069-match-card-redesign.md picked counts, playing XI size and polls). A side is a
+     * <em>club-team</em> side only when its team's {@code clubId} equals the match's own club; a
+     * free-text or other-club side gets a {@code null} picked count and no poll entries. The
+     * announced flags keep their original meaning (true only for a real team side with an
+     * announced {@code MatchSide}). A batch that would be empty is skipped.
      */
-    private Page<MatchDto> enrichAnnounced(Page<MatchDto> page) {
-        List<UUID> matchIds = page.getContent().stream().map(MatchDto::id).toList();
-        Map<String, Boolean> announcedByKey = matchSideRepository.findByMatchIdIn(matchIds).stream()
-                .collect(Collectors.toMap(s -> s.getMatchId() + "|" + s.getTeamId(), MatchSide::isAnnounced));
-        return page.map(dto -> new MatchDto(
-                dto.id(), dto.clubId(), dto.homeTeamId(), dto.homeTeamName(), dto.awayTeamId(), dto.awayTeamName(),
-                dto.homeTeamLogoUrl(), dto.awayTeamLogoUrl(),
-                dto.leagueId(), dto.seasonId(), dto.matchDate(), dto.venue(), dto.active(),
-                dto.homeTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.homeTeamId(), false),
-                dto.awayTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.awayTeamId(), false),
-                dto.createdAt(), dto.updatedAt(), dto.updatedBy()));
+    private Page<MatchDto> enrichList(Page<MatchDto> page) {
+        List<MatchDto> content = page.getContent();
+        if (content.isEmpty()) {
+            return page;
+        }
+        List<UUID> matchIds = content.stream().map(MatchDto::id).toList();
+        List<MatchSide> sides = matchSideRepository.findByMatchIdIn(matchIds);
+        Map<String, MatchSide> sideByKey = sides.stream()
+                .collect(Collectors.toMap(s -> s.getMatchId() + "|" + s.getTeamId(), s -> s));
+
+        Set<UUID> sideTeamIds = new HashSet<>();
+        for (MatchDto dto : content) {
+            if (dto.homeTeamId() != null) {
+                sideTeamIds.add(dto.homeTeamId());
+            }
+            if (dto.awayTeamId() != null) {
+                sideTeamIds.add(dto.awayTeamId());
+            }
+        }
+        Map<UUID, UUID> clubByTeamId = sideTeamIds.isEmpty()
+                ? Map.of()
+                : teamRepository.findAllById(sideTeamIds).stream()
+                        .collect(Collectors.toMap(Team::getId, Team::getClubId));
+
+        Map<UUID, Long> pickedBySideId = new HashMap<>();
+        if (!sides.isEmpty()) {
+            matchSidePlayerRepository.findByMatchSideIdIn(
+                            sides.stream().map(MatchSide::getId).toList())
+                    .forEach(p -> pickedBySideId.merge(p.getMatchSideId(), 1L, Long::sum));
+        }
+
+        Set<UUID> leagueIds = content.stream()
+                .map(MatchDto::leagueId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, Integer> xiSizeByLeagueId = leagueIds.isEmpty()
+                ? Map.of()
+                : leagueRepository.findAllById(leagueIds).stream()
+                        .collect(Collectors.toMap(League::getId, League::getMaxPlayingXiSize));
+
+        List<UUID> clubSideMatchIds = content.stream()
+                .filter(dto -> isClubTeamSide(dto, dto.homeTeamId(), clubByTeamId)
+                        || isClubTeamSide(dto, dto.awayTeamId(), clubByTeamId))
+                .map(MatchDto::id)
+                .toList();
+        Map<UUID, List<MatchPollCoverageService.PollRef>> pollsByMatchId =
+                clubSideMatchIds.isEmpty() ? Map.of() : matchPollCoverageService.pollsForMatches(clubSideMatchIds);
+
+        return page.map(dto -> {
+            boolean homeClub = isClubTeamSide(dto, dto.homeTeamId(), clubByTeamId);
+            boolean awayClub = isClubTeamSide(dto, dto.awayTeamId(), clubByTeamId);
+            Set<UUID> clubTeamIds = new HashSet<>();
+            if (homeClub) {
+                clubTeamIds.add(dto.homeTeamId());
+            }
+            if (awayClub) {
+                clubTeamIds.add(dto.awayTeamId());
+            }
+            List<MatchPollDto> polls = pollsByMatchId.getOrDefault(dto.id(), List.of()).stream()
+                    .filter(ref -> ref.type() == AvailabilityPollType.GROUP || clubTeamIds.contains(ref.teamId()))
+                    .map(ref -> new MatchPollDto(ref.type(), ref.teamId(), ref.pollId(), ref.roundId(), ref.open()))
+                    .toList();
+            return new MatchDto(
+                    dto.id(), dto.clubId(), dto.homeTeamId(), dto.homeTeamName(), dto.awayTeamId(), dto.awayTeamName(),
+                    dto.homeTeamLogoUrl(), dto.awayTeamLogoUrl(),
+                    dto.leagueId(), dto.seasonId(), dto.matchDate(), dto.venue(), dto.active(),
+                    isAnnounced(sideByKey, dto.id(), dto.homeTeamId()),
+                    isAnnounced(sideByKey, dto.id(), dto.awayTeamId()),
+                    dto.createdAt(), dto.updatedAt(), dto.updatedBy(),
+                    homeClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.homeTeamId()) : null,
+                    awayClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.awayTeamId()) : null,
+                    dto.leagueId() == null ? null : xiSizeByLeagueId.get(dto.leagueId()),
+                    polls);
+        });
+    }
+
+    private boolean isClubTeamSide(MatchDto dto, UUID teamId, Map<UUID, UUID> clubByTeamId) {
+        return teamId != null && Objects.equals(clubByTeamId.get(teamId), dto.clubId());
+    }
+
+    private boolean isAnnounced(Map<String, MatchSide> sideByKey, UUID matchId, UUID teamId) {
+        MatchSide side = teamId == null ? null : sideByKey.get(matchId + "|" + teamId);
+        return side != null && side.isAnnounced();
+    }
+
+    private int pickedCount(
+            Map<String, MatchSide> sideByKey, Map<UUID, Long> pickedBySideId, UUID matchId, UUID teamId) {
+        MatchSide side = sideByKey.get(matchId + "|" + teamId);
+        return side == null ? 0 : pickedBySideId.getOrDefault(side.getId(), 0L).intValue();
     }
 
     @Override

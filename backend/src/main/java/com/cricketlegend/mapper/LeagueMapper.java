@@ -17,7 +17,7 @@ import org.mapstruct.Mapping;
  * currentSeasonPlayingConditionsUrl} (050) are derived, not present on {@link League} itself —
  * MapStruct can't infer them, so they're ignored here and filled in afterward by {@code
  * LeagueServiceImpl.list()}, the same "map via MapStruct, then reconstruct the record adding
- * computed fields" pattern {@code MatchMapper}/{@code MatchServiceImpl.enrichAnnounced} already use
+ * computed fields" pattern {@code MatchMapper}/{@code MatchServiceImpl.enrichList} already use
  * for {@code homeSideAnnounced}/{@code awaySideAnnounced}.
  *
  * <p>Declaring the element-level {@code SocialLinkDto toDto(SocialLink)}/{@code SocialLink
