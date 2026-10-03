@@ -73,6 +73,11 @@ describe('ManagerDashboard', () => {
     expect(screen.getByText('Squads').closest('a')).toHaveAttribute('href', '/manage/squads')
     expect(screen.getByText('Communication').closest('a')).toHaveAttribute('href', '/manage/communication')
     expect(screen.getByText('Availability Polls').closest('a')).toHaveAttribute('href', '/manage/availability')
+    // docs/specs/068: the season grid, right after Availability Polls.
+    expect(screen.getByText('Player Availability').closest('a')).toHaveAttribute('href', '/manage/player-availability')
+    expect(screen.getByText('See who is free, game by game')).toBeInTheDocument()
+    const titles = screen.getAllByText(/^(Availability Polls|Player Availability)$/).map((node) => node.textContent)
+    expect(titles).toEqual(['Availability Polls', 'Player Availability'])
     // docs/specs/064-unified-availability-polls.md: group polls are created from the Availability
     // Polls screen now, so the old second entry point is gone.
     expect(screen.queryByText('Section Availability')).not.toBeInTheDocument()
