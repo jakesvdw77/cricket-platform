@@ -11,6 +11,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
+import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import { NavTile } from '../../components/NavTile'
 
 interface ManagerCard {
@@ -51,6 +52,7 @@ const GROUPS: ManagerGroup[] = [
       { title: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: <GroupWorkOutlinedIcon /> },
       { title: 'Communication', description: 'Message the squad', to: '/manage/communication', icon: <ChatOutlinedIcon /> },
       { title: 'Availability Polls', description: "Ask who's available", to: '/manage/availability', icon: <EventAvailableOutlinedIcon /> },
+      { title: 'Player Availability', description: 'See who is free, game by game', to: '/manage/player-availability', icon: <GridOnOutlinedIcon /> },
       // docs/specs/064-unified-availability-polls.md: the former Section Availability card is gone -
       // group polls are now created from this screen's New poll button.
     ],

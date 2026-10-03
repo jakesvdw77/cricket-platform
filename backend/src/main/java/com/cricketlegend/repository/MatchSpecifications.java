@@ -87,4 +87,9 @@ public final class MatchSpecifications {
                     root.get("awayTeamId").in(awayTeamIds));
         };
     }
+
+    /** The match has {@code teamId} as its home or away team (docs/specs/068-player-availability-grid.md). */
+    public static Specification<Match> teamIdEquals(UUID teamId) {
+        return (root, query, cb) -> cb.or(cb.equal(root.get("homeTeamId"), teamId), cb.equal(root.get("awayTeamId"), teamId));
+    }
 }

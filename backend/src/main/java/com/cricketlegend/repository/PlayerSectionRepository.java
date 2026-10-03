@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.Collection;
 import com.cricketlegend.domain.PlayerSection;
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +29,10 @@ public interface PlayerSectionRepository extends JpaRepository<PlayerSection, UU
     Optional<PlayerSection> findByPlayerProfileIdAndSectionId(UUID playerProfileId, UUID sectionId);
 
     void deleteByPlayerProfileIdAndSectionId(UUID playerProfileId, UUID sectionId);
+
+    /**
+     * Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md):
+     * exact section ids only; callers pass the descendant-inclusive set.
+     */
+    List<PlayerSection> findBySectionIdIn(Collection<UUID> sectionIds);
 }

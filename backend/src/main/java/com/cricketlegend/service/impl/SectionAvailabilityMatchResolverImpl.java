@@ -4,6 +4,7 @@ import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -26,11 +27,12 @@ public class SectionAvailabilityMatchResolverImpl implements SectionAvailability
     public WindowKey resolveWindowKey(Team team, Match match) {
         ZoneId zone = ZoneId.systemDefault();
         LocalDate windowDate = match.getMatchDate().atZone(zone).toLocalDate();
-        return new WindowKey(team.getSectionId(), windowDate, dayPartOf(match, zone));
+        return new WindowKey(team.getSectionId(), windowDate, dayPartOf(match.getMatchDate()));
     }
 
-    private DayPart dayPartOf(Match match, ZoneId zone) {
-        LocalTime localTime = match.getMatchDate().atZone(zone).toLocalTime();
+    @Override
+    public DayPart dayPartOf(Instant matchDate) {
+        LocalTime localTime = matchDate.atZone(ZoneId.systemDefault()).toLocalTime();
         return localTime.isBefore(LocalTime.NOON) ? DayPart.MORNING : DayPart.AFTERNOON;
     }
 }

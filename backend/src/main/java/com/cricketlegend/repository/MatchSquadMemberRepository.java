@@ -32,4 +32,7 @@ public interface MatchSquadMemberRepository extends JpaRepository<MatchSquadMemb
             UUID matchId, UUID teamId, Integer jerseyNumber, UUID excludeId);
 
     void deleteByMatchIdAndTeamIdAndPlayerProfileId(UUID matchId, UUID teamId, UUID playerProfileId);
+
+    /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
+    List<MatchSquadMember> findByMatchIdIn(Collection<UUID> matchIds);
 }

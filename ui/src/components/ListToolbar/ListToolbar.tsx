@@ -101,6 +101,9 @@ export function ListToolbar({
 }: ListToolbarProps) {
   const [fieldMenuAnchorEl, setFieldMenuAnchorEl] = useState<HTMLElement | null>(null)
   const showSortFieldPicker = Boolean(sortToggle) && (sortFieldOptions?.length ?? 0) > 1
+  // docs/specs/068: a screen with nothing to sort (the Player Availability grid) passes neither
+  // sortToggle nor sortOptions, and then renders no Sort control (or empty trailing row) at all.
+  const hasSortOrCreate = Boolean(sortToggle) || Boolean(sortOptions) || Boolean(createLabel && onCreate)
   const activeFieldOption = sortFieldOptions?.find((option) => option.value === sortField)
 
   const handleFieldMenuOpen = (event: MouseEvent<HTMLElement>) => setFieldMenuAnchorEl(event.currentTarget)
@@ -157,84 +160,86 @@ export function ListToolbar({
           <Box sx={{ flex: { xs: 'unset', md: `1 1 ${filtersMinWidth}px` }, minWidth: 0 }}>{filters}</Box>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' }, alignItems: 'center' }}>
-          {sortToggle ? (
-            <>
-              {showSortFieldPicker && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleFieldMenuOpen}
-                    aria-label={`Sort field: ${activeFieldOption?.label ?? ''}`}
-                    endIcon={<ArrowDropDownIcon fontSize="small" />}
-                    sx={{
-                      border: 1,
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      minWidth: 0,
-                      px: 1.5,
-                      color: 'text.primary',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {activeFieldOption?.label ?? ''}
-                  </Button>
-                  <Menu anchorEl={fieldMenuAnchorEl} open={Boolean(fieldMenuAnchorEl)} onClose={handleFieldMenuClose}>
-                    {sortFieldOptions?.map((option) => (
-                      <MenuItem
-                        key={option.value}
-                        selected={option.value === sortField}
-                        onClick={() => {
-                          onSortFieldChange?.(option.value)
-                          handleFieldMenuClose()
-                        }}
-                      >
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Menu>
-                </>
-              )}
-              {/* The tooltip states the current sort and what a click does, built from the same
-                  asc/desc labels; the aria-label stays the action label so existing queries hold. */}
-              <Tooltip
-                describeChild
-                title={`Sorted by ${sortToggle.value === 'asc' ? sortToggle.ascLabel : sortToggle.descLabel}. Click for ${
-                  sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel
-                }.`}
-              >
-                <IconButton
-                  onClick={sortToggle.onToggle}
-                  aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
-                  sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+        {hasSortOrCreate && (
+          <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 2, flex: { xs: 'unset', md: '0 0 auto' }, alignItems: 'center' }}>
+            {sortToggle ? (
+              <>
+                {showSortFieldPicker && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleFieldMenuOpen}
+                      aria-label={`Sort field: ${activeFieldOption?.label ?? ''}`}
+                      endIcon={<ArrowDropDownIcon fontSize="small" />}
+                      sx={{
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        minWidth: 0,
+                        px: 1.5,
+                        color: 'text.primary',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {activeFieldOption?.label ?? ''}
+                    </Button>
+                    <Menu anchorEl={fieldMenuAnchorEl} open={Boolean(fieldMenuAnchorEl)} onClose={handleFieldMenuClose}>
+                      {sortFieldOptions?.map((option) => (
+                        <MenuItem
+                          key={option.value}
+                          selected={option.value === sortField}
+                          onClick={() => {
+                            onSortFieldChange?.(option.value)
+                            handleFieldMenuClose()
+                          }}
+                        >
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </>
+                )}
+                {/* The tooltip states the current sort and what a click does, built from the same
+                    asc/desc labels; the aria-label stays the action label so existing queries hold. */}
+                <Tooltip
+                  describeChild
+                  title={`Sorted by ${sortToggle.value === 'asc' ? sortToggle.ascLabel : sortToggle.descLabel}. Click for ${
+                    sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel
+                  }.`}
                 >
-                  {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
-                </IconButton>
-              </Tooltip>
-            </>
-          ) : (
-            <Input
-              select
-              label="Sort by"
-              value={sortValue}
-              onChange={(event) => onSortChange?.(event.target.value)}
-              sx={{ flex: { xs: 1, md: `0 0 ${sortMinWidth}px` } }}
-            >
-              {(sortOptions ?? []).map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Input>
-          )}
+                  <IconButton
+                    onClick={sortToggle.onToggle}
+                    aria-label={sortToggle.value === 'asc' ? sortToggle.descLabel : sortToggle.ascLabel}
+                    sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
+                  >
+                    {sortToggle.value === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+              </>
+            ) : sortOptions ? (
+              <Input
+                select
+                label="Sort by"
+                value={sortValue}
+                onChange={(event) => onSortChange?.(event.target.value)}
+                sx={{ flex: { xs: 1, md: `0 0 ${sortMinWidth}px` } }}
+              >
+                {(sortOptions ?? []).map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Input>
+            ) : null}
 
-          {createLabel && onCreate && (
-            <Button onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
-              {createLabel}
-            </Button>
-          )}
-        </Box>
+            {createLabel && onCreate && (
+              <Button onClick={onCreate} sx={{ flex: { xs: 1, md: '0 0 auto' }, whiteSpace: 'nowrap' }}>
+                {createLabel}
+              </Button>
+            )}
+          </Box>
+        )}
       </Box>
     </Box>
   )

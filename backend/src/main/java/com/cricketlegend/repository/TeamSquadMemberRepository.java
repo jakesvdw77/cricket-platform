@@ -1,5 +1,6 @@
 package com.cricketlegend.repository;
 
+import java.util.Collection;
 import com.cricketlegend.domain.TeamSquadMember;
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +34,11 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
      * (docs/specs/057-team-extended-profile.md) to find who to un-mark when a new captain is set.
      */
     List<TeamSquadMember> findByTeamIdAndSeasonIdAndIsCaptainTrue(UUID teamId, UUID seasonId);
+
+    /**
+     * Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md):
+     * the cross product of {@code teamIds} x {@code seasonIds}; callers keep only the exact
+     * (team, season) pairs they need, in memory.
+     */
+    List<TeamSquadMember> findByTeamIdInAndSeasonIdIn(Collection<UUID> teamIds, Collection<UUID> seasonIds);
 }

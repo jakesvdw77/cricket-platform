@@ -23,9 +23,8 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
+import com.cricketlegend.service.support.ServerClock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -152,7 +151,7 @@ public class MatchServiceImpl implements MatchService {
             spec = spec.and(MatchSpecifications.sectionIn(sectionIds.get()));
         }
         if (upcomingOnly) {
-            spec = spec.and(MatchSpecifications.matchDateOnOrAfter(startOfToday()));
+            spec = spec.and(MatchSpecifications.matchDateOnOrAfter(ServerClock.startOfToday()));
         }
         if (leagueId != null) {
             spec = spec.and(MatchSpecifications.leagueIdEquals(leagueId));
@@ -295,15 +294,6 @@ public class MatchServiceImpl implements MatchService {
                 dto.homeTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.homeTeamId(), false),
                 dto.awayTeamId() != null && announcedByKey.getOrDefault(dto.id() + "|" + dto.awayTeamId(), false),
                 dto.createdAt(), dto.updatedAt(), dto.updatedBy()));
-    }
-
-    /**
-     * Per docs/specs/037-match-improvements.md: start of the current local day —
-     * {@code ZoneId.systemDefault()}, the one existing timezone precedent in this codebase
-     * ({@code EmailTestSendServiceImpl}). No per-club timezone concept yet.
-     */
-    private Instant startOfToday() {
-        return LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     @Override

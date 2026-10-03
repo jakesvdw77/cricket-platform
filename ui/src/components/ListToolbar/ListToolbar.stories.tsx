@@ -153,3 +153,14 @@ export const DesktopViewport: Story = {
   render: () => <Controlled />,
   parameters: { viewport: { defaultViewport: 'desktop' } },
 }
+
+// docs/specs/068: a screen with nothing to sort (the Player Availability grid) passes no sort or
+// create props - the toolbar renders just search and the filters, with no empty trailing row.
+export const NoSort: Story = {
+  args: {
+    searchValue: '',
+    onSearchChange: () => undefined,
+    searchPlaceholder: 'Search players',
+    filters: <div>Filters go here</div>,
+  },
+}

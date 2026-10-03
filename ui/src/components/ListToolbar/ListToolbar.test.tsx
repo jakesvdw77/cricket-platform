@@ -156,6 +156,16 @@ describe('ListToolbar', () => {
   // docs/specs/042-match-list-filters-and-search.md: an additive, optional prop — when passed, the
   // Sort `Select` is replaced entirely by a compact icon toggle; every other call site (which
   // never passes it) keeps rendering the Select exactly as before, per the tests above.
+  // docs/specs/068: the Player Availability grid has nothing to sort - no Sort control renders.
+  it('renders no Sort control when neither sortToggle nor sortOptions is passed', () => {
+    render(<ListToolbar searchValue="" onSearchChange={() => undefined} />)
+
+    expect(screen.getByLabelText('Search')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Sort by')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
   describe('sortToggle', () => {
     it('renders an icon button instead of the Sort Select when passed, with an aria-label describing the target state', () => {
       render(
