@@ -112,6 +112,7 @@ function printableSide(team: Team): TeamSheetSide {
       twelfthManPlayerId: null,
       players: [{ playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' }],
       announced: false,
+      limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
     },
     squad,
   }
@@ -121,7 +122,7 @@ function unannouncedSide(team: Team): TeamSheetSide {
   return {
     team,
     teamName: team.name,
-    side: { id: `side-${team.id}`, matchId: 'match-1', teamId: team.id, captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false },
+    side: { id: `side-${team.id}`, matchId: 'match-1', teamId: team.id, captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false, limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 } },
     squad: [],
   }
 }

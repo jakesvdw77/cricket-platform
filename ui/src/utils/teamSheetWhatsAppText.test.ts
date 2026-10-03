@@ -115,6 +115,7 @@ const homeSide: MatchSide = {
     { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
   ],
   announced: false,
+  limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
 }
 
 const homeSheetSide: TeamSheetSide = {
@@ -136,6 +137,7 @@ const awaySheetSideEmpty: TeamSheetSide = {
     twelfthManPlayerId: null,
     players: [],
     announced: false,
+    limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
   },
   squad: [],
 }
@@ -215,6 +217,7 @@ describe('generateTeamSheetWhatsAppText', () => {
         twelfthManPlayerId: null,
         players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
         announced: false,
+        limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
       },
       squad: [],
     }

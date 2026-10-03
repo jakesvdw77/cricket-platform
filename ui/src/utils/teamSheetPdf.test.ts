@@ -149,6 +149,7 @@ const homeSide: MatchSide = {
     { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
   ],
   announced: false,
+  limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
 }
 
 const homeSheetSide: TeamSheetSide = {
@@ -161,7 +162,7 @@ const homeSheetSide: TeamSheetSide = {
 const awaySheetSideEmpty: TeamSheetSide = {
   team: awayTeam,
   teamName: awayTeam.name,
-  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false },
+  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false, limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 } },
   squad: [],
 }
 
@@ -349,6 +350,7 @@ describe('generateTeamSheetPdf', () => {
         twelfthManPlayerId: 'missing-player',
         players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
         announced: false,
+        limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
       },
       squad: [], // deliberately empty — the roster references a player id not present here
     }
