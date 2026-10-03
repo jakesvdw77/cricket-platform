@@ -5467,6 +5467,10 @@ components:
         awayLeagueTeamId:
           type: string
           format: uuid
+        scoringUrl:
+          type: string
+        streamingUrl:
+          type: string
       required:
       - matchDate
       - seasonId
@@ -5538,6 +5542,10 @@ components:
         awayLeagueTeamId:
           type: string
           format: uuid
+        scoringUrl:
+          type: string
+        streamingUrl:
+          type: string
     MatchPollDto:
       type: object
       properties:
@@ -6496,6 +6504,10 @@ components:
         awayLeagueTeamId:
           type: string
           format: uuid
+        scoringUrl:
+          type: string
+        streamingUrl:
+          type: string
       required:
       - matchDate
       - seasonId

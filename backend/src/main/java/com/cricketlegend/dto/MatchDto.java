@@ -21,6 +21,9 @@ import java.util.UUID;
  * <p>{@code homeLeagueTeamId}/{@code awayLeagueTeamId} (docs/specs/070-league-teams.md) are the
  * nullable {@code LeagueTeam} references; for such a side the name/logo are the league team's
  * copied values.
+ *
+ * <p>{@code scoringUrl}/{@code streamingUrl} (docs/specs/075-match-view-and-edit.md) are optional
+ * external http(s) links, plain stored fields returned on every path.
  */
 public record MatchDto(
         UUID id,
@@ -46,7 +49,9 @@ public record MatchDto(
         Integer playingXiSize,
         List<MatchPollDto> polls,
         UUID homeLeagueTeamId,
-        UUID awayLeagueTeamId) {
+        UUID awayLeagueTeamId,
+        String scoringUrl,
+        String streamingUrl) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;
