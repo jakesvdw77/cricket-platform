@@ -14,6 +14,7 @@ import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
+import { LeagueTeamsSection } from './leagueTeams/LeagueTeamsSection'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { LeagueFixtures } from '../../components/LeagueFixtures'
 import { DocumentUpload } from '../../components/DocumentUpload'
@@ -406,6 +407,10 @@ export default function LeagueFormPage() {
                   ))}
                 </Input>
 
+                <Typography variant="subtitle1" component="h2" fontWeight={700} sx={{ mb: 1 }}>
+                  Our teams
+                </Typography>
+
                 {affiliationsForSeason.length === 0 && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                     No teams affiliated for this season yet.
@@ -449,6 +454,16 @@ export default function LeagueFormPage() {
                 >
                   Add team
                 </Button>
+
+                {selectedSeasonId && (
+                  <LeagueTeamsSection
+                    key={selectedSeasonId}
+                    clubId={clubId}
+                    leagueId={leagueId as string}
+                    seasonId={selectedSeasonId}
+                    contextLabel={`${league?.name ?? ''} · ${seasonLabel}`}
+                  />
+                )}
               </>
             )}
           </Box>
