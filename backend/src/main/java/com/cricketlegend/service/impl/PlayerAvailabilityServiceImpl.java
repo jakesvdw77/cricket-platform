@@ -95,7 +95,7 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
     public static final int MAX_GAMES = 150;
 
     /**
-     * Hard cap on the players (rows) of one response, kept in name order; a section is hundreds
+     * Hard cap on the players (rows) of one response, kept in first-name-then-last-name order (as the grid displays names); a section is hundreds
      * of players at most. Sets {@code truncated} on the response.
      */
     public static final int MAX_PLAYERS = 500;
@@ -596,10 +596,14 @@ public class PlayerAvailabilityServiceImpl implements PlayerAvailabilityService 
                 || status == PlayerAvailabilityCellStatus.UNAVAILABLE;
     }
 
+    /**
+     * Orders player profile ids by first name then last name (case-insensitive), matching the
+     * "First Last" display, then by profile id as a stable tie-break.
+     */
     private static Comparator<UUID> byName(Map<UUID, PlayerProfile> profiles, Map<UUID, Person> persons) {
         Function<UUID, Person> person = id -> persons.get(profiles.get(id).getPersonId());
-        return Comparator.<UUID, String>comparing(id -> person.apply(id).getLastName(), String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(id -> person.apply(id).getFirstName(), String.CASE_INSENSITIVE_ORDER)
+        return Comparator.<UUID, String>comparing(id -> person.apply(id).getFirstName(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(id -> person.apply(id).getLastName(), String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Function.identity());
     }
 

@@ -297,13 +297,20 @@ class PlayerAvailabilityServiceImplTest {
     }
 
     @Test
-    void rowsAreOrderedByLastNameThenFirstName() {
+    void rowsAreOrderedByFirstNameThenLastNameCaseInsensitivelyThenId() {
         games(match());
-        UUID zed = player("Zed", "Adams", true, true);
-        UUID amy = player("Amy", "Adams", true, true);
-        UUID bob = player("Bob", "Zulu", true, true);
+        UUID brian = player("Brian", "Abbott", true, true);
+        UUID anton = player("Anton", "Zulu", true, true);
+        UUID lowerAmy = player("amy", "Young", true, true);
+        UUID amyB = player("Amy", "Xavier", true, true);
+        UUID twinOne = player("Cal", "Same", true, true);
+        UUID twinTwo = player("cal", "SAME", true, true);
+        List<UUID> twins = List.of(twinOne, twinTwo).stream().sorted().toList();
 
-        assertThat(grid().players()).extracting(PlayerRowDto::playerProfileId).containsExactly(amy, zed, bob);
+        List<UUID> expected = new ArrayList<>(List.of(amyB, lowerAmy, anton, brian));
+        expected.addAll(twins);
+        assertThat(grid().players()).extracting(PlayerRowDto::playerProfileId)
+                .containsExactlyElementsOf(expected);
     }
 
     @Test
@@ -397,14 +404,14 @@ class PlayerAvailabilityServiceImplTest {
     void playerCapSetsTruncatedAndKeepsTheFirstByName() {
         games(match());
         for (int i = 0; i < PlayerAvailabilityServiceImpl.MAX_PLAYERS + 1; i++) {
-            player("P", String.format("L%04d", i), true, true);
+            player(String.format("F%04d", i), "L", true, true);
         }
 
         PlayerAvailabilityDto dto = grid();
 
         assertThat(dto.players()).hasSize(PlayerAvailabilityServiceImpl.MAX_PLAYERS);
         assertThat(dto.truncated()).isTrue();
-        assertThat(dto.players().get(0).lastName()).isEqualTo("L0000");
+        assertThat(dto.players().get(0).firstName()).isEqualTo("F0000");
     }
 
     @Test
