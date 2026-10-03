@@ -1,5 +1,9 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.AvailabilityPollType;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -53,4 +57,19 @@ public interface MatchPollCoverageService {
      * must not accept a match any poll already covers.
      */
     Coverage resolveAny(UUID matchId);
+
+    /**
+     * One poll covering a match (docs/specs/069-match-card-redesign.md). GROUP: {@code teamId}
+     * null, {@code pollId} == {@code roundId}, {@code open} is the window's. SQUAD: {@code roundId}
+     * null, {@code pollId} the squad poll id, {@code open} the poll's.
+     */
+    record PollRef(AvailabilityPollType type, UUID teamId, UUID pollId, UUID roundId, boolean open) {}
+
+    /**
+     * Batch form of coverage for a page of matches, in one query per source (never per match). A
+     * group-linked match yields exactly one GROUP ref (group beats squad, as {@link #resolve});
+     * otherwise one SQUAD ref per squad poll row. Every requested id is a key (empty list when
+     * unpolled); an empty input makes no repository call.
+     */
+    Map<UUID, List<PollRef>> pollsForMatches(Collection<UUID> matchIds);
 }

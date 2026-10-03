@@ -16,6 +16,7 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
+import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayingRole;
@@ -24,9 +25,14 @@ import com.cricketlegend.domain.RoleAssignmentRole;
 import com.cricketlegend.domain.ScopeType;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.SectionAvailabilityRound;
+import com.cricketlegend.domain.SectionAvailabilityWindow;
+import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
+import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
@@ -34,6 +40,9 @@ import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SeasonRepository;
+import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
+import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
+import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import java.time.Instant;
@@ -101,6 +110,18 @@ class MatchControllerIntegrationTest {
 
     @Autowired
     private RoleAssignmentRepository roleAssignmentRepository;
+
+    @Autowired
+    private MatchAvailabilityPollRepository pollRepository;
+
+    @Autowired
+    private SectionAvailabilityRoundRepository roundRepository;
+
+    @Autowired
+    private SectionAvailabilityWindowRepository windowRepository;
+
+    @Autowired
+    private SectionAvailabilityWindowMatchRepository windowMatchRepository;
 
     @Test
     void clubAdminCanReachAllSixEndpointsForTheirOwnClub() throws Exception {
@@ -493,6 +514,74 @@ class MatchControllerIntegrationTest {
                 .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(2)))
                 .andExpect(jsonPath("$.content[0].homeTeamName").value("Riverside 2"))
                 .andExpect(jsonPath("$.content[1].homeTeamName").value("Riverside 1"));
+    }
+
+    // --- 069: match card values on the list response ---
+
+    /**
+     * {@code GET /matches} carries the 069 card values: per-club-side picked counts (null for a
+     * free-text or other-club side), the league's playing XI size (null with no league) and the
+     * match's polls (squad poll, group poll, none).
+     */
+    @Test
+    void listReturnsPickedCountsPlayingXiSizeAndPollsForTheMatchCard() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club otherClub = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Section otherSection = sectionRepository.save(newSection(otherClub.getId(), "Men"));
+        Team own = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
+        Team foreign = teamRepository.save(newTeam(otherClub.getId(), otherSection.getId(), "Lakeside 1st"));
+        Season season = seasonRepository.save(newSeason(club.getId(), "2026"));
+        League league = leagueRepository.save(newLeague(club.getId()));
+
+        Match squadMatch = matchRepository.save(pastMatch(club.getId(), own.getId(), foreign.getId(), season.getId(),
+                league.getId(), Instant.now().plus(3, ChronoUnit.DAYS)));
+        buildXi(club.getId(), squadMatch.getId(), own.getId());
+        MatchAvailabilityPoll squadPoll = pollRepository.save(MatchAvailabilityPoll.builder()
+                .matchId(squadMatch.getId()).teamId(own.getId()).open(true).build());
+
+        Match groupMatch = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(own.getId())
+                .awayTeamName("Occasionals").seasonId(season.getId())
+                .matchDate(Instant.now().plus(2, ChronoUnit.DAYS)).active(true).build());
+        SectionAvailabilityRound round = roundRepository.save(SectionAvailabilityRound.builder()
+                .clubId(club.getId()).sectionId(section.getId()).description("Round")
+                .firstMatchDate(LocalDate.of(2026, 10, 10)).lastMatchDate(LocalDate.of(2026, 10, 11))
+                .autoClose(true).open(true).build());
+        SectionAvailabilityWindow window = windowRepository.save(SectionAvailabilityWindow.builder()
+                .clubId(club.getId()).sectionId(section.getId()).roundId(round.getId())
+                .windowDate(LocalDate.of(2026, 10, 10)).dayPart(DayPart.MORNING).open(false).build());
+        windowMatchRepository.save(SectionAvailabilityWindowMatch.builder()
+                .windowId(window.getId()).matchId(groupMatch.getId()).build());
+
+        Match freeText = newFreeTextMatch(club.getId(), season.getId());
+        freeText.setMatchDate(Instant.now().plus(1, ChronoUnit.DAYS));
+        matchRepository.save(freeText);
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/matches", club.getId())
+                        .with(grantClubAdmin("club-admin-sub", club.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].id").value(squadMatch.getId().toString()))
+                .andExpect(jsonPath("$.content[0].homePickedCount").value(1))
+                .andExpect(jsonPath("$.content[0].awayPickedCount").doesNotExist())
+                .andExpect(jsonPath("$.content[0].playingXiSize").value(11))
+                .andExpect(jsonPath("$.content[0].polls.length()").value(1))
+                .andExpect(jsonPath("$.content[0].polls[0].type").value("SQUAD"))
+                .andExpect(jsonPath("$.content[0].polls[0].teamId").value(own.getId().toString()))
+                .andExpect(jsonPath("$.content[0].polls[0].pollId").value(squadPoll.getId().toString()))
+                .andExpect(jsonPath("$.content[0].polls[0].open").value(true))
+                .andExpect(jsonPath("$.content[1].id").value(groupMatch.getId().toString()))
+                .andExpect(jsonPath("$.content[1].homePickedCount").value(0))
+                .andExpect(jsonPath("$.content[1].playingXiSize").doesNotExist())
+                .andExpect(jsonPath("$.content[1].polls.length()").value(1))
+                .andExpect(jsonPath("$.content[1].polls[0].type").value("GROUP"))
+                .andExpect(jsonPath("$.content[1].polls[0].teamId").doesNotExist())
+                .andExpect(jsonPath("$.content[1].polls[0].roundId").value(round.getId().toString()))
+                .andExpect(jsonPath("$.content[1].polls[0].open").value(false))
+                .andExpect(jsonPath("$.content[2].id").value(freeText.getId().toString()))
+                .andExpect(jsonPath("$.content[2].homePickedCount").doesNotExist())
+                .andExpect(jsonPath("$.content[2].awayPickedCount").doesNotExist())
+                .andExpect(jsonPath("$.content[2].polls.length()").value(0));
     }
 
     // --- 037: upcomingOnly ---

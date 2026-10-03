@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchList from './MatchList'
+import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 import type { Match } from '../../api/matchApi'
 import type { Page } from '../../api/productApi'
 
@@ -52,6 +53,10 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     active: true,
     homeSideAnnounced: false,
     awaySideAnnounced: false,
+    homePickedCount: 0,
+    awayPickedCount: null,
+    playingXiSize: null,
+    polls: [],
     homeTeamLogoUrl: null,
     awayTeamLogoUrl: null,
     createdAt: '2026-01-01T00:00:00Z',
@@ -132,6 +137,20 @@ describe('MatchList', () => {
   // docs/specs/056-club-profile-overview.md: MatchList's own backTo/backLabel prop *defaults*
   // moved from /manage/fixtures ("Back to Fixtures") to /manage ("Back to Dashboard") — this
   // confirms the default (no backTo/backLabel passed by the caller) renders the new target.
+  it('lays the cards out in an auto-fill grid (min 340px, capped at 100%) with stretched equal heights', async () => {
+    listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
+
+    renderPage('test-club-id')
+
+    const heading = await screen.findByRole('heading', { name: '1st XI vs Riverside Occasionals' })
+    const grid = heading.closest('.MuiCard-root')?.parentElement as HTMLElement
+    expect(grid).toHaveStyle({
+      display: 'grid',
+      gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS,
+      alignItems: 'stretch',
+    })
+  })
+
   it('renders a "Back to Dashboard" link pointing at /manage by default', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 
@@ -144,7 +163,7 @@ describe('MatchList', () => {
   // docs/specs/041-list-screen-header-actions.md: MatchList's default viewTo AND editTo are both
   // real routes, so its card is the one existing call site where RecordCard's revised
   // View+Edit-together rendering is actually reachable today.
-  it('renders View and Edit together on a card, both pointing at the match\'s own routes', async () => {
+  it('renders a title link to the match view route and a footer Edit button on a card', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1' })]))
 
     renderPage('test-club-id')
@@ -154,17 +173,16 @@ describe('MatchList', () => {
       'href',
       '/manage/fixtures/matches/match-1',
     )
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/manage/fixtures/matches/match-1/edit',
-    )
+    // Edit is now an icon-over-caption footer button (docs/specs/069), not a link.
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
   })
 
   // docs/specs/059-record-card-click-to-view.md: the dedicated footer "View" button is gone — the
   // card title is the click target. Extends the href-only assertion above with a real
   // click-through, confirming the title link still resolves to the same route the old View button
   // targeted, and Edit still navigates independently — a good regression case here specifically
-  // because this card also carries two secondary-action buttons (Select Team, Team Sheet), the
+  // because this card also carries a four-button footer (Edit, Select, Poll, Share), the
   // exact scenario the stacking-order fix must not break.
   it('clicking the card title navigates to the match view route, and Edit still navigates to the edit route', async () => {
     const user = userEvent.setup()
@@ -178,7 +196,7 @@ describe('MatchList', () => {
 
     renderPage('test-club-id')
     await screen.findByText('1st XI vs Riverside Occasionals')
-    await user.click(screen.getByRole('link', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
   })
 
@@ -219,7 +237,7 @@ describe('MatchList', () => {
   })
 
   // docs/specs/037-match-improvements.md item 2
-  describe('Select Team shortcut', () => {
+  describe('Select shortcut', () => {
     it('navigates to the edit route\'s Playing XI tab when the match has a real-Team side', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValueOnce(makePage([makeMatch({ homeTeamId: 'team-1' })]))
@@ -227,12 +245,12 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       await screen.findByText('1st XI vs Riverside Occasionals')
-      await user.click(screen.getByRole('button', { name: 'Select Team' }))
+      await user.click(screen.getByRole('button', { name: 'Select' }))
 
       expect(await screen.findByText('Edit Match Page')).toBeInTheDocument()
     })
 
-    it('is hidden for a match with no real-Team side on either end', async () => {
+    it('is disabled with an explanatory title for a match with no real-Team side on either end', async () => {
       listMatches.mockResolvedValueOnce(
         makePage([makeMatch({ homeTeamId: null, homeTeamName: 'Home Occasionals', awayTeamId: null, awayTeamName: 'Away Occasionals' })]),
       )
@@ -240,7 +258,9 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       await screen.findByText('Home Occasionals vs Away Occasionals')
-      expect(screen.queryByRole('button', { name: 'Select Team' })).not.toBeInTheDocument()
+      const select = screen.getByRole('button', { name: 'Select' })
+      expect(select).toBeDisabled()
+      expect(select.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
     })
 
     // docs/specs/037-match-improvements.md item 2: SquadPicker.tsx (029) passes its own `editTo`
@@ -268,7 +288,7 @@ describe('MatchList', () => {
       )
 
       await screen.findByText('1st XI vs Riverside Occasionals')
-      await user.click(screen.getByRole('button', { name: 'Select Team' }))
+      await user.click(screen.getByRole('button', { name: 'Select' }))
 
       expect(await screen.findByText('Edit Match Page: /manage/fixtures/matches/match-1/edit?tab=playing-xi')).toBeInTheDocument()
     })
@@ -308,14 +328,14 @@ describe('MatchList', () => {
 
   // docs/specs/040-announce-team.md
   describe('announced badges', () => {
-    it('shows an unprefixed "Not Announced" badge for the one real-Team side', async () => {
+    it('shows an unprefixed "Not announced" badge for the one real-Team side', async () => {
       listMatches.mockResolvedValueOnce(
         makePage([makeMatch({ homeTeamId: 'team-1', homeSideAnnounced: false })]),
       )
 
       renderPage('test-club-id')
 
-      expect(await screen.findByText('Not Announced')).toBeInTheDocument()
+      expect(await screen.findByText('Not announced')).toBeInTheDocument()
     })
 
     it('prefixes each side\'s badge with its own team name when both sides are real Teams', async () => {
@@ -338,7 +358,7 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       expect(await screen.findByText('1st XI: Announced')).toBeInTheDocument()
-      expect(screen.getByText('2nd XI: Not Announced')).toBeInTheDocument()
+      expect(screen.getByText('2nd XI: Not announced')).toBeInTheDocument()
     })
 
     it('prefixes each side\'s badge with its own team name for the opposite announced/not-announced ordering', async () => {
@@ -360,7 +380,7 @@ describe('MatchList', () => {
 
       renderPage('test-club-id')
 
-      expect(await screen.findByText('1st XI: Not Announced')).toBeInTheDocument()
+      expect(await screen.findByText('1st XI: Not announced')).toBeInTheDocument()
       expect(screen.getByText('2nd XI: Announced')).toBeInTheDocument()
     })
 
@@ -379,10 +399,9 @@ describe('MatchList', () => {
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
-  // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. "Select
-  // Team" and "Team Sheet" (037/041 — the latter shortened from "Communicate Team Sheet") are
-  // unaffected — still on the card.
-  it('never renders a Deactivate/Reactivate button on the card, while Select Team/Team Sheet remain', async () => {
+  // the card at all (active or inactive) — it moved to MatchFormPage's own actions bar. The
+  // footer is Edit / Select / Poll / Share (docs/specs/069).
+  it('never renders a Deactivate/Reactivate button on the card, while Edit/Select/Poll/Share remain', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch({ id: 'match-1', active: true, homeTeamId: 'team-1' })]))
 
     renderPage('test-club-id')
@@ -390,8 +409,9 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Select Team' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Team Sheet' })).toBeInTheDocument()
+    for (const name of ['Edit', 'Select', 'Poll', 'Share']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    }
   })
 
   it('navigates to the create route by default', async () => {

@@ -41,9 +41,26 @@ export interface Match {
   // comes from Team.logoUrl, resolved via *TeamId, never both at once).
   homeTeamLogoUrl: string | null
   awayTeamLogoUrl: string | null
+  // docs/specs/069-match-card-redesign.md: list-response only (non-list endpoints return null / []).
+  // Picked = players in that side's playing XI; null for a free-text or other-club side.
+  homePickedCount: number | null
+  awayPickedCount: number | null
+  // The league's playing XI size; null when the match has no league.
+  playingXiSize: number | null
+  polls: MatchPoll[]
   createdAt: string
   updatedAt: string
   updatedBy: string | null
+}
+
+// One availability poll covering a match: a squad poll per club side, or one group poll for the
+// whole match (teamId null, pollId = the round id).
+export interface MatchPoll {
+  type: 'SQUAD' | 'GROUP'
+  teamId: string | null
+  pollId: string
+  roundId: string | null
+  open: boolean
 }
 
 // Same shape for create and update — CreateMatchRequest/UpdateMatchRequest are identical

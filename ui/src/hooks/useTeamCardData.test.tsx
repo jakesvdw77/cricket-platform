@@ -165,8 +165,8 @@ describe('useTeamCardData', () => {
     listTeamSponsors.mockResolvedValue([makeSponsor()])
     listMatches.mockResolvedValue({
       content: [
-        { id: 'm1', clubId: 'club-1', homeTeamId: 'team-1', homeTeamName: null, awayTeamId: 'team-2', awayTeamName: null, leagueId: null, seasonId: 'season-1', matchDate: '2026-02-01', venue: null, active: true, homeSideAnnounced: false, awaySideAnnounced: false, homeTeamLogoUrl: null, awayTeamLogoUrl: null, createdAt: '', updatedAt: '', updatedBy: null },
-        { id: 'm2', clubId: 'club-1', homeTeamId: 'team-3', homeTeamName: null, awayTeamId: 'team-4', awayTeamName: null, leagueId: null, seasonId: 'season-1', matchDate: '2026-02-02', venue: null, active: true, homeSideAnnounced: false, awaySideAnnounced: false, homeTeamLogoUrl: null, awayTeamLogoUrl: null, createdAt: '', updatedAt: '', updatedBy: null },
+        { id: 'm1', clubId: 'club-1', homeTeamId: 'team-1', homeTeamName: null, awayTeamId: 'team-2', awayTeamName: null, leagueId: null, seasonId: 'season-1', matchDate: '2026-02-01', venue: null, active: true, homeSideAnnounced: false, awaySideAnnounced: false, homePickedCount: null, awayPickedCount: null, playingXiSize: null, polls: [], homeTeamLogoUrl: null, awayTeamLogoUrl: null, createdAt: '', updatedAt: '', updatedBy: null },
+        { id: 'm2', clubId: 'club-1', homeTeamId: 'team-3', homeTeamName: null, awayTeamId: 'team-4', awayTeamName: null, leagueId: null, seasonId: 'season-1', matchDate: '2026-02-02', venue: null, active: true, homeSideAnnounced: false, awaySideAnnounced: false, homePickedCount: null, awayPickedCount: null, playingXiSize: null, polls: [], homeTeamLogoUrl: null, awayTeamLogoUrl: null, createdAt: '', updatedAt: '', updatedBy: null },
       ],
       totalElements: 2,
       totalPages: 1,
