@@ -19,6 +19,11 @@ import java.util.UUID;
  * club-facing profile shape {@code SponsorDto}/{@code ClubProfileDto} already have — every one
  * nullable/optional, reusing {@link SocialLinkDto} unchanged, same pattern as {@code
  * SponsorDto.socialLinks}.
+ *
+ * <p>{@code matchCount}/{@code playedCount}/{@code firstMatchDate}/{@code lastMatchDate}/{@code
+ * nextMatchDate}/{@code teams} (docs/specs/071-league-card-redesign.md) are likewise computed for
+ * the club's current season by {@code LeagueServiceImpl.list()} only, in batched queries; every
+ * other path leaves them null.
  */
 public record LeagueDto(
         UUID id,
@@ -41,5 +46,11 @@ public record LeagueDto(
         UUID updatedBy,
         int currentSeasonTeamCount,
         String currentSeasonLabel,
-        String currentSeasonPlayingConditionsUrl) {
+        String currentSeasonPlayingConditionsUrl,
+        Integer matchCount,
+        Integer playedCount,
+        Instant firstMatchDate,
+        Instant lastMatchDate,
+        Instant nextMatchDate,
+        List<LeagueSeasonTeamDto> teams) {
 }

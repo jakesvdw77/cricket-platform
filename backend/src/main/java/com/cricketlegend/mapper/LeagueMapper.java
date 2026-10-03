@@ -31,6 +31,12 @@ public interface LeagueMapper {
     @Mapping(target = "currentSeasonTeamCount", ignore = true)
     @Mapping(target = "currentSeasonLabel", ignore = true)
     @Mapping(target = "currentSeasonPlayingConditionsUrl", ignore = true)
+    @Mapping(target = "matchCount", ignore = true)
+    @Mapping(target = "playedCount", ignore = true)
+    @Mapping(target = "firstMatchDate", ignore = true)
+    @Mapping(target = "lastMatchDate", ignore = true)
+    @Mapping(target = "nextMatchDate", ignore = true)
+    @Mapping(target = "teams", ignore = true)
     LeagueDto toDto(League entity);
 
     SocialLinkDto toDto(SocialLink socialLink);

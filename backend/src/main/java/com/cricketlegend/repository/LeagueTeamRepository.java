@@ -33,6 +33,15 @@ public interface LeagueTeamRepository extends JpaRepository<LeagueTeam, UUID> {
             @Param("leagueId") UUID leagueId, @Param("seasonId") UUID seasonId);
 
     /**
+     * Active league teams of every league for one {@code seasonId}, name-sorted, in one round trip
+     * (grouped by {@code leagueId} in the service). Backs {@code LeagueDto.teams}
+     * (docs/specs/071-league-card-redesign.md).
+     */
+    @Query("select t from LeagueTeam t where t.seasonId = :seasonId and t.active = true "
+            + "order by lower(t.name), t.name")
+    List<LeagueTeam> findActiveBySeasonId(@Param("seasonId") UUID seasonId);
+
+    /**
      * Number of matches referencing each of {@code leagueTeamIds} (as home or away), in one round
      * trip for a whole list (never per row). Ids with no referencing match are absent from the
      * result. Backs {@code LeagueTeamDto.referencedByMatchCount}.

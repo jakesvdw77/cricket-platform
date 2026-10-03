@@ -3,10 +3,12 @@ package com.cricketlegend.service.impl;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
+import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.LeagueSeasonTeamDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -15,11 +17,18 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeagueMapper;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
+import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamSummary;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.LeagueTeamRepository;
+import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchRepository.LeagueMatchSummary;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import com.cricketlegend.service.support.LeagueSeasonFields;
+import com.cricketlegend.service.support.ServerClock;
 import com.cricketlegend.service.support.SocialLinkValidation;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,7 +57,9 @@ import org.springframework.transaction.annotation.Transactional;
  * docs/specs/053-league-extended-profile.md: {@code create}/{@code update} also reject a
  * duplicate {@code platform} within the request's {@code socialLinks} via the shared {@link
  * com.cricketlegend.service.support.SocialLinkValidation}, also used by {@code
- * SponsorServiceImpl}/{@code ClubProfileServiceImpl}, and set the five new profile fields.
+ * SponsorServiceImpl}/{@code ClubProfileServiceImpl}, and set the five new profile fields. Per
+ * docs/specs/071-league-card-redesign.md: {@code list} reads {@code now} once and also batches the
+ * season's match aggregates and team lists (three more queries, once each), merged per league.
  */
 @Service
 public class LeagueServiceImpl implements LeagueService {
@@ -57,6 +68,8 @@ public class LeagueServiceImpl implements LeagueService {
     private final SeasonRepository seasonRepository;
     private final LeagueAffiliationRepository leagueAffiliationRepository;
     private final LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
+    private final MatchRepository matchRepository;
+    private final LeagueTeamRepository leagueTeamRepository;
     private final LeagueMapper leagueMapper;
 
     public LeagueServiceImpl(
@@ -64,11 +77,15 @@ public class LeagueServiceImpl implements LeagueService {
             SeasonRepository seasonRepository,
             LeagueAffiliationRepository leagueAffiliationRepository,
             LeaguePlayingConditionsRepository leaguePlayingConditionsRepository,
+            MatchRepository matchRepository,
+            LeagueTeamRepository leagueTeamRepository,
             LeagueMapper leagueMapper) {
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.leagueAffiliationRepository = leagueAffiliationRepository;
         this.leaguePlayingConditionsRepository = leaguePlayingConditionsRepository;
+        this.matchRepository = matchRepository;
+        this.leagueTeamRepository = leagueTeamRepository;
         this.leagueMapper = leagueMapper;
     }
 
@@ -81,10 +98,11 @@ public class LeagueServiceImpl implements LeagueService {
 
         if (currentSeasonId == null) {
             return leagues.stream()
-                    .map(league -> withCurrentSeasonFields(league, 0, null, null))
+                    .map(league -> withCurrentSeasonFields(league, LeagueSeasonFields.none()))
                     .toList();
         }
 
+        Instant now = ServerClock.now();
         Map<UUID, Long> teamCountByLeagueId = new HashMap<>();
         for (LeagueTeamCount row : leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeasonId)) {
             teamCountByLeagueId.put(row.getLeagueId(), row.getTeamCount());
@@ -94,6 +112,22 @@ public class LeagueServiceImpl implements LeagueService {
                 leaguePlayingConditionsRepository.findBySeasonId(currentSeasonId)) {
             documentUrlByLeagueId.put(playingConditions.getLeagueId(), playingConditions.getDocumentUrl());
         }
+        Map<UUID, LeagueMatchSummary> matchSummaryByLeagueId = new HashMap<>();
+        for (LeagueMatchSummary row : matchRepository.summariseByLeagueForSeason(clubId, currentSeasonId, now)) {
+            matchSummaryByLeagueId.put(row.getLeagueId(), row);
+        }
+        Map<UUID, List<LeagueSeasonTeamDto>> teamsByLeagueId = new HashMap<>();
+        for (LeagueTeamSummary row : leagueAffiliationRepository.findTeamSummariesBySeasonId(currentSeasonId)) {
+            teamsByLeagueId
+                    .computeIfAbsent(row.getLeagueId(), key -> new ArrayList<>())
+                    .add(new LeagueSeasonTeamDto(row.getName(), row.getAbbreviation(), row.getLogoUrl(), true));
+        }
+        for (LeagueTeam leagueTeam : leagueTeamRepository.findActiveBySeasonId(currentSeasonId)) {
+            teamsByLeagueId
+                    .computeIfAbsent(leagueTeam.getLeagueId(), key -> new ArrayList<>())
+                    .add(new LeagueSeasonTeamDto(
+                            leagueTeam.getName(), leagueTeam.getAbbreviation(), leagueTeam.getLogoUrl(), false));
+        }
         String currentSeasonLabel = seasons.stream()
                 .filter(season -> season.getId().equals(currentSeasonId))
                 .findFirst()
@@ -101,27 +135,38 @@ public class LeagueServiceImpl implements LeagueService {
                 .orElse(null);
 
         return leagues.stream()
-                .map(league -> withCurrentSeasonFields(
-                        league,
-                        teamCountByLeagueId.getOrDefault(league.getId(), 0L).intValue(),
-                        currentSeasonLabel,
-                        documentUrlByLeagueId.get(league.getId())))
+                .map(league -> {
+                    LeagueMatchSummary summary = matchSummaryByLeagueId.get(league.getId());
+                    return withCurrentSeasonFields(
+                            league,
+                            new LeagueSeasonFields(
+                                    teamCountByLeagueId.getOrDefault(league.getId(), 0L).intValue(),
+                                    currentSeasonLabel,
+                                    documentUrlByLeagueId.get(league.getId()),
+                                    summary == null ? 0 : (int) summary.getMatchCount(),
+                                    summary == null ? 0 : (int) summary.getPlayedCount(),
+                                    summary == null ? null : summary.getFirstMatchDate(),
+                                    summary == null ? null : summary.getLastMatchDate(),
+                                    summary == null ? null : summary.getNextMatchDate(),
+                                    teamsByLeagueId.getOrDefault(league.getId(), List.of())));
+                })
                 .toList();
     }
 
     /**
-     * Maps {@code league} via MapStruct, then reconstructs the record adding the three computed
+     * Maps {@code league} via MapStruct, then reconstructs the record adding the computed
      * "current season" fields — the same pattern {@code MatchServiceImpl.enrichAnnounced} uses for
      * {@code homeSideAnnounced}/{@code awaySideAnnounced}.
      */
-    private LeagueDto withCurrentSeasonFields(
-            League league, int currentSeasonTeamCount, String currentSeasonLabel, String currentSeasonPlayingConditionsUrl) {
+    private LeagueDto withCurrentSeasonFields(League league, LeagueSeasonFields fields) {
         LeagueDto dto = leagueMapper.toDto(league);
         return new LeagueDto(
                 dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(),
                 dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.format(), dto.logoUrl(), dto.phone(),
                 dto.website(), dto.email(), dto.socialLinks(), dto.active(), dto.createdAt(), dto.updatedAt(),
-                dto.updatedBy(), currentSeasonTeamCount, currentSeasonLabel, currentSeasonPlayingConditionsUrl);
+                dto.updatedBy(), fields.currentSeasonTeamCount(), fields.currentSeasonLabel(),
+                fields.currentSeasonPlayingConditionsUrl(), fields.matchCount(), fields.playedCount(),
+                fields.firstMatchDate(), fields.lastMatchDate(), fields.nextMatchDate(), fields.teams());
     }
 
     /**

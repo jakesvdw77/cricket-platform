@@ -5863,6 +5863,36 @@ components:
           type: string
         currentSeasonPlayingConditionsUrl:
           type: string
+        matchCount:
+          type: integer
+          format: int32
+        playedCount:
+          type: integer
+          format: int32
+        firstMatchDate:
+          type: string
+          format: date-time
+        lastMatchDate:
+          type: string
+          format: date-time
+        nextMatchDate:
+          type: string
+          format: date-time
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueSeasonTeamDto"
+    LeagueSeasonTeamDto:
+      type: object
+      properties:
+        name:
+          type: string
+        abbreviation:
+          type: string
+        logoUrl:
+          type: string
+        own:
+          type: boolean
     UpdateLeaguePlayingConditionsRequest:
       type: object
       properties:
