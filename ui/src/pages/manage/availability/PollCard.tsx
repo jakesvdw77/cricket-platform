@@ -26,6 +26,7 @@ import { EditCloseTimeDialog } from './EditCloseTimeDialog'
 import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
 import {
+  SHARE_CLOSED_REASON,
   closesRowText,
   formatMatchDateTime,
   squadPollSideLabel,
@@ -205,7 +206,14 @@ export function PollCard({
                   : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`,
               ),
           },
-          { label: 'Share', ariaLabel: 'Share invite', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => setShareOpen(true) },
+          {
+            label: 'Share',
+            ariaLabel: isOpen ? 'Share invite' : SHARE_CLOSED_REASON,
+            title: isOpen ? undefined : SHARE_CLOSED_REASON,
+            icon: <ShareOutlinedIcon fontSize="small" />,
+            disabled: !isOpen,
+            onClick: () => setShareOpen(true),
+          },
         ]}
         feedback={
           closeMutation.isError

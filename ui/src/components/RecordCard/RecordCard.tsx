@@ -87,6 +87,10 @@ export interface RecordCardFooterButton {
   icon: ReactNode
   onClick: () => void
   disabled?: boolean
+  // Tooltip text, defaulting to `ariaLabel ?? label`. When set on a `disabled` button it also
+  // explains why: the button is wrapped in a span carrying the tooltip, because a disabled
+  // ButtonBase has pointer-events none and would never show its own `title`.
+  title?: string
 }
 
 export interface RecordCardProps {
@@ -455,11 +459,13 @@ export function RecordCard({
             '& > :not(:first-of-type)': { ml: 0 },
           }}
         >
-          {footerButtons.map((button, index) => (
+          {footerButtons.map((button, index) => {
+            const tooltip = button.title ?? button.ariaLabel ?? button.label
+            const control = (
             <ButtonBase
               key={`${index}-${button.label}`}
               aria-label={button.ariaLabel ?? button.label}
-              title={button.ariaLabel ?? button.label}
+              title={tooltip}
               disabled={button.disabled}
               onClick={button.onClick}
               sx={{
@@ -468,6 +474,7 @@ export function RecordCard({
                 alignItems: 'center',
                 gap: 0.25,
                 minWidth: 0,
+                width: '100%',
                 py: 1,
                 px: 0.25,
                 borderRadius: 1,
@@ -495,7 +502,15 @@ export function RecordCard({
                 {button.label}
               </Box>
             </ButtonBase>
-          ))}
+            )
+            return button.disabled && button.title ? (
+              <Box key={`${index}-${button.label}`} component="span" title={tooltip} sx={{ display: 'flex', minWidth: 0 }}>
+                {control}
+              </Box>
+            ) : (
+              control
+            )
+          })}
         </CardActions>
       ) : (
         <CardActions sx={{ justifyContent: 'flex-end', flexWrap: 'wrap', px: 2, pb: 2, pt: 0, position: 'relative' }}>
