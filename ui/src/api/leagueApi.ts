@@ -26,6 +26,13 @@ export const LEAGUE_FORMAT_LABELS: Record<LeagueFormat, string> = {
   FIVE_DAY: '5 Day',
 }
 
+export interface LeagueSeasonTeam {
+  name: string
+  abbreviation: string | null
+  logoUrl: string | null
+  own: boolean
+}
+
 export interface League {
   id: string
   clubId: string
@@ -45,6 +52,15 @@ export interface League {
   currentSeasonTeamCount: number
   currentSeasonLabel: string | null
   currentSeasonPlayingConditionsUrl: string | null
+  // docs/specs/071-league-card-redesign.md: season-progress aggregates for the current season, only
+  // filled on the list response (null on create/update/deactivate/reactivate). `teams` is the club's
+  // own affiliated teams first, then the active league teams, already name-sorted by the server.
+  matchCount: number | null
+  playedCount: number | null
+  firstMatchDate: string | null
+  lastMatchDate: string | null
+  nextMatchDate: string | null
+  teams: LeagueSeasonTeam[] | null
   // docs/specs/053-league-extended-profile.md: League-level (not season-scoped — see that spec's
   // Non-goals), the same club-facing profile shape ClubProfile/Sponsor already have.
   format: LeagueFormat | null

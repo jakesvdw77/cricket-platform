@@ -18,4 +18,12 @@ public final class ServerClock {
     public static Instant startOfToday() {
         return LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
+
+    /**
+     * The current instant on the server clock. Read once per request that needs several aggregates
+     * to agree on "now" (docs/specs/071-league-card-redesign.md's {@code LeagueServiceImpl.list}).
+     */
+    public static Instant now() {
+        return Instant.now();
+    }
 }

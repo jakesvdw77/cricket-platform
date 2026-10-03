@@ -23,6 +23,15 @@ Screens are composed from a library, not invented per page — the mechanical fi
 | `RecordFormScreen` | Wrapper for any create/edit screen: a visible Back action above the title, a responsive field grid (single column at `xs`, two columns from `md`, long-form fields spanning both), and an actions bar below a divider. Desktop uses the available width instead of staying a centered mobile-width column. |
 | `ManageScreenHeader` | Header for any `/manage` screen that is a bare list or other non-form layout — i.e. NOT already wrapped in `RecordFormScreen` (which bundles its own back-action-plus-title). Renders the same visible Back action and page-title `<h1>` `RecordFormScreen` uses, so every `/manage` screen carries a title whether or not it happens to be a form. |
 
+### Card building blocks (`docs/specs/071-league-card-redesign.md`)
+
+Extracted from the Match card (`069`) so the League card and any later card reuse them:
+
+| Component | Use |
+|---|---|
+| `DetailLine` (`ui/src/components/DetailLine`) | One stacked detail line inside a `RecordCard` body: small icon, fixed-width label, value. `value` is a `ReactNode` (text, or text plus a non-interactive badge); `labelWidth` defaults to 56 (Match card), the League card passes 78; `muted` renders a secondary-colour regular-weight placeholder such as "Not scheduled yet". Stack lines with `Stack spacing={1.25}`. |
+| `CardProgressBar` (`ui/src/components/CardProgressBar`) | The 10px rounded `grey.400` track with a `primary.main` fill and `role="progressbar"` (`value`, `max`, `ariaLabel`, `valueText`); `value` is clamped to `0..max`, `max` 0 renders empty. Used by the Match card's Selection block and the League card's "Matches played" block. |
+
 Sorting/search are backend-driven, consistent with pagination's existing rule below — a list screen never filters or sorts a fetched page client-side. New list/CRUD screens (Subscriptions, Discounts & Promotions, Invoicing, System Settings, and manager-side screens) compose from these three directly; a genuinely new visual need gets a library addition first, per the Workflow step above — not a fork of this pattern.
 
 **Every `/manage` screen must render a page title — no exceptions by omission.** `ManageScreenHeader` exists specifically because `ClubContactList.tsx` and `SponsorList.tsx` each independently hand-rolled just the Back button and silently dropped the title, while `ManageClubProfilePage.tsx` (built on `RecordFormScreen`) had one for free — the inconsistency was only caught by a user screenshot, not review. A screen wrapped in `RecordFormScreen` already satisfies this via that component; every other bare `/manage` screen (list, tree/org-chart editor, dashboard-adjacent view) renders `ManageScreenHeader` instead of a local back button. Do not hand-roll a Back button/title pair — extend `ManageScreenHeader` if it doesn't fit rather than duplicating it a fourth time.

@@ -315,6 +315,12 @@ describe('MatchFormPage', () => {
           currentSeasonTeamCount: 4,
           currentSeasonLabel: '2026',
           currentSeasonPlayingConditionsUrl: null,
+          matchCount: null,
+          playedCount: null,
+          firstMatchDate: null,
+          lastMatchDate: null,
+          nextMatchDate: null,
+          teams: null,
         },
       ])
     })

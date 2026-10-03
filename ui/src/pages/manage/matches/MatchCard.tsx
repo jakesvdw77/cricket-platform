@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
-import { Stack, Typography } from '@mui/material'
+import { Stack } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
@@ -11,6 +10,7 @@ import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlin
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { DetailLine } from '../../../components/DetailLine'
 import { RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import { TeamSheetCommunicationDialog } from '../../../components/TeamSheetCommunicationDialog'
@@ -56,24 +56,6 @@ function placeholderTeam(clubId: string, name: string): Team {
     updatedAt: '',
     updatedBy: null,
   }
-}
-
-// One stacked detail line: a small icon, a label and the value. Plain text only - the card body is
-// not lifted above the title's stretched link, so nothing interactive belongs here.
-function DetailLine({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <Stack direction="row" spacing={1.25} alignItems="flex-start">
-      <Stack sx={{ color: 'text.secondary', pt: '1px', flexShrink: 0 }} aria-hidden>
-        {icon}
-      </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ width: 56, flexShrink: 0 }}>
-        {label}
-      </Typography>
-      <Typography variant="body2" fontWeight={600} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        {value}
-      </Typography>
-    </Stack>
-  )
 }
 
 export interface MatchCardProps {

@@ -6,6 +6,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import PinterestIcon from '@mui/icons-material/Pinterest'
+import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import LinkIcon from '@mui/icons-material/Link'
 
 // The full "popular platform" list docs/specs/022-club-social-media.md names. Not every value
@@ -24,6 +25,8 @@ export type SocialPlatform =
   | 'threads'
   | 'pinterest'
   | 'snapchat'
+  // docs/specs/071-league-card-redesign.md: a website rendered as the first icon of a card's row.
+  | 'website'
 
 export interface SocialLink {
   // Free text on the wire (matches the backend's SocialLink embeddable) — a recognized
@@ -49,6 +52,7 @@ const ICONS: Partial<Record<SocialPlatform, typeof FacebookIcon>> = {
   youtube: YouTubeIcon,
   whatsapp: WhatsAppIcon,
   pinterest: PinterestIcon,
+  website: LanguageOutlinedIcon,
 }
 
 const LABELS: Partial<Record<SocialPlatform, string>> = {
@@ -59,6 +63,7 @@ const LABELS: Partial<Record<SocialPlatform, string>> = {
   youtube: 'YouTube',
   whatsapp: 'WhatsApp',
   pinterest: 'Pinterest',
+  website: 'Website',
 }
 
 export function SocialLinksRow({ links, size = 'medium' }: SocialLinksRowProps) {

@@ -42,6 +42,8 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   threads: 'Threads',
   pinterest: 'Pinterest',
   snapchat: 'Snapchat',
+  // Display-only (SocialLinksRow's website icon); never offered in the picker, see KNOWN_PLATFORMS.
+  website: 'Website',
 }
 
 // Sentinel Select value for the trailing "Custom…" option — never a real platform string, so it

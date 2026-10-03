@@ -28,6 +28,27 @@ public interface LeagueAffiliationRepository extends JpaRepository<LeagueAffilia
             + "from LeagueAffiliation a where a.seasonId = :seasonId group by a.leagueId")
     List<LeagueTeamCount> countDistinctTeamsBySeasonId(@Param("seasonId") UUID seasonId);
 
+    /**
+     * Per docs/specs/071-league-card-redesign.md: every affiliated team of every league for one
+     * {@code seasonId}, name-sorted, in one round trip (grouped by {@code leagueId} in the
+     * service). A team affiliated to two leagues appears once per league.
+     */
+    @Query("select a.leagueId as leagueId, t.name as name, t.abbreviation as abbreviation, "
+            + "t.logoUrl as logoUrl from LeagueAffiliation a, Team t "
+            + "where a.teamId = t.id and a.seasonId = :seasonId order by lower(t.name), t.name")
+    List<LeagueTeamSummary> findTeamSummariesBySeasonId(@Param("seasonId") UUID seasonId);
+
+    /** Projection backing {@link #findTeamSummariesBySeasonId}. */
+    interface LeagueTeamSummary {
+        UUID getLeagueId();
+
+        String getName();
+
+        String getAbbreviation();
+
+        String getLogoUrl();
+    }
+
     /** Projection backing {@link #countDistinctTeamsBySeasonId}. */
     interface LeagueTeamCount {
         UUID getLeagueId();

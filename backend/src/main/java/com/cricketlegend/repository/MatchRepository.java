@@ -149,4 +149,33 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             @Param("name") String name,
             @Param("logoUrl") String logoUrl,
             @Param("now") Instant now);
+
+    /**
+     * Per docs/specs/071-league-card-redesign.md: one grouped aggregate of a club's active matches
+     * in one season per league, for {@code now} read once by the caller so played and to-go always
+     * add up. Leagues with no matches are absent; matches without a league are never counted.
+     */
+    @Query("select m.leagueId as leagueId, count(m) as matchCount, "
+            + "sum(case when m.matchDate < :now then 1 else 0 end) as playedCount, "
+            + "min(m.matchDate) as firstMatchDate, max(m.matchDate) as lastMatchDate, "
+            + "min(case when m.matchDate >= :now then m.matchDate end) as nextMatchDate "
+            + "from Match m where m.clubId = :clubId and m.seasonId = :seasonId and m.active = true "
+            + "and m.leagueId is not null group by m.leagueId")
+    List<LeagueMatchSummary> summariseByLeagueForSeason(
+            @Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId, @Param("now") Instant now);
+
+    /** Projection backing {@link #summariseByLeagueForSeason}. */
+    interface LeagueMatchSummary {
+        UUID getLeagueId();
+
+        long getMatchCount();
+
+        long getPlayedCount();
+
+        Instant getFirstMatchDate();
+
+        Instant getLastMatchDate();
+
+        Instant getNextMatchDate();
+    }
 }

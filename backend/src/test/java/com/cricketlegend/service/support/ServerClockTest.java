@@ -19,4 +19,11 @@ class ServerClockTest {
         assertThat(start).isBeforeOrEqualTo(Instant.now());
         assertThat(start.plusSeconds(25 * 3600)).isAfter(Instant.now());
     }
+
+    @Test
+    void nowIsTheCurrentInstant() {
+        Instant before = Instant.now();
+        Instant now = ServerClock.now();
+        assertThat(now).isBetween(before, Instant.now());
+    }
 }

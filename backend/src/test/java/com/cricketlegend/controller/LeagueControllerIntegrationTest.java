@@ -2,6 +2,8 @@ package com.cricketlegend.controller;
 
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.platformAdmin;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -14,6 +16,8 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueAffiliation;
 import com.cricketlegend.domain.LeagueSource;
+import com.cricketlegend.domain.LeagueTeam;
+import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.RoleAssignment;
 import com.cricketlegend.domain.RoleAssignmentRole;
@@ -24,12 +28,16 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.LeagueTeamRepository;
+import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.RoleAssignmentRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,6 +105,12 @@ class LeagueControllerIntegrationTest {
 
     @Autowired
     private LeagueAffiliationRepository leagueAffiliationRepository;
+
+    @Autowired
+    private MatchRepository matchRepository;
+
+    @Autowired
+    private LeagueTeamRepository leagueTeamRepository;
 
     @Autowired
     private PersonRepository personRepository;
@@ -726,5 +740,83 @@ class LeagueControllerIntegrationTest {
                 .maxPlayingXiSize(11)
                 .active(true)
                 .build();
+    }
+
+    /** docs/specs/071-league-card-redesign.md: the list response carries the season aggregates and teams. */
+    @Test
+    void listReturnsTheMatchAggregatesAndSeasonTeamsForAClubWithMatchesAffiliationsAndLeagueTeams()
+            throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        LocalDate today = LocalDate.now();
+        Season season = seasonRepository.save(Season.builder().clubId(club.getId()).label("Current")
+                .startDate(today.minusMonths(1)).endDate(today.plusMonths(1)).active(true).build());
+        League league = leagueRepository.save(League.builder().clubId(club.getId()).name("Premier")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        leagueRepository.save(League.builder().clubId(club.getId()).name("Empty Cup")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team ownTeam = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(section.getId())
+                .name("Riverside 1st XI").abbreviation("R1").active(true).build());
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(league.getId()).teamId(ownTeam.getId()).seasonId(season.getId()).build());
+        leagueTeamRepository.save(LeagueTeam.builder().leagueId(league.getId()).seasonId(season.getId())
+                .name("Lakeside CC").abbreviation("LKS").active(true).build());
+        leagueTeamRepository.save(LeagueTeam.builder().leagueId(league.getId()).seasonId(season.getId())
+                .name("Retired CC").active(false).build());
+        Instant now = Instant.now();
+        for (long dayOffset : new long[] {-7, -1, 2}) {
+            matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Home").awayTeamName("Away")
+                    .leagueId(league.getId()).seasonId(season.getId())
+                    .matchDate(now.plus(dayOffset, ChronoUnit.DAYS)).active(true).build());
+        }
+
+        String premier = "$[?(@.name == 'Premier')]";
+        String empty = "$[?(@.name == 'Empty Cup')]";
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath(premier + ".matchCount", contains(3)))
+                .andExpect(jsonPath(premier + ".playedCount", contains(2)))
+                .andExpect(jsonPath(premier + ".firstMatchDate", hasSize(1)))
+                .andExpect(jsonPath(premier + ".lastMatchDate", hasSize(1)))
+                .andExpect(jsonPath(premier + ".nextMatchDate", hasSize(1)))
+                .andExpect(jsonPath(premier + ".teams[2]").isEmpty())
+                .andExpect(jsonPath(premier + ".teams[0].name", contains("Riverside 1st XI")))
+                .andExpect(jsonPath(premier + ".teams[0].abbreviation", contains("R1")))
+                .andExpect(jsonPath(premier + ".teams[0].own", contains(true)))
+                .andExpect(jsonPath(premier + ".teams[1].name", contains("Lakeside CC")))
+                .andExpect(jsonPath(premier + ".teams[1].abbreviation", contains("LKS")))
+                .andExpect(jsonPath(premier + ".teams[1].own", contains(false)))
+                .andExpect(jsonPath(empty + ".matchCount", contains(0)))
+                .andExpect(jsonPath(empty + ".teams[0]").isEmpty());
+    }
+
+    @Test
+    void listReturnsTheEmptyShapeForAClubWithALeagueButNoSeasonsMatchesOrTeams() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        leagueRepository.save(League.builder().clubId(club.getId()).name("Premier")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].matchCount").value(0))
+                .andExpect(jsonPath("$[0].playedCount").value(0))
+                .andExpect(jsonPath("$[0].firstMatchDate").doesNotExist())
+                .andExpect(jsonPath("$[0].lastMatchDate").doesNotExist())
+                .andExpect(jsonPath("$[0].nextMatchDate").doesNotExist())
+                .andExpect(jsonPath("$[0].teams").isEmpty());
+    }
+
+    @Test
+    void anotherClubsAdminCannotListTheLeaguesAggregates() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor adminY = grantClubAdmin("club-admin-y", clubY.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", clubX.getId()).with(adminY))
+                .andExpect(status().isForbidden());
     }
 }
