@@ -1,7 +1,7 @@
 # 029 — League Management & Match-Day Squad Selection
 
 **Depends on:** `001-tenancy-identity-model.md` (`League`/`LeagueAffiliation` — this spec amends ADR-02, see Problem & Goals — and `Season`, named in `001`'s own Field Reference table but never built until now), `025-club-structure.md` (`Section.minAge`/`maxAge`'s deliberately *non-enforced* precedent, which this spec's `League.minAge`/`maxAge` deliberately diverges from — see Problem & Goals), `026-teams.md`/`027-team-profile.md` (`Team` — the entity every `LeagueAffiliation`, `Match` side, and squad in this spec is built against; `027`'s tabbed-screen pattern and `LinkExistingRecordDialog`/`CreateAndLinkRecordDialog`, both reused here), `028-players.md` (`Player.dateOfBirth`, `PlayerProfile`, `ClubMembership` — all reused as-is, not re-modeled), `020-club-manager-access.md` (the `/api/v1/manage/**` namespace and `@access.canAdministerClub` pattern every endpoint below reuses), `006-post-login-home-shells.md` (`ManagerDashboard`'s existing "Fixtures & Results" and "Squads" cards, both still `EmptyState` placeholders, wired to real screens for the first time).
-**Status:** draft.
+**Status:** draft. Amended by `076-team-selection.md`: the cap and the twelfth man (the 12th man counts in a total of at most 12 and exists only where the playing conditions allow substitutions), squad membership becomes the pool rule, and batting order is optional.
 
 ## Problem & Goals
 

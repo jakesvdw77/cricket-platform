@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -99,9 +100,10 @@ public class MatchSideController {
             @PathVariable UUID clubId,
             @PathVariable UUID matchId,
             @PathVariable UUID sideId,
-            @PathVariable UUID playerProfileId) {
-        return ResponseEntity.ok(
-                matchSideService.removePlayer(authentication, clubId, matchId, sideId, playerProfileId));
+            @PathVariable UUID playerProfileId,
+            @RequestParam(defaultValue = "false") boolean keepAnnounced) {
+        return ResponseEntity.ok(matchSideService.removePlayer(
+                authentication, clubId, matchId, sideId, playerProfileId, keepAnnounced));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

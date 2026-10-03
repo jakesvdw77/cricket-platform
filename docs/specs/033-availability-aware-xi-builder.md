@@ -1,7 +1,7 @@
 # 033 — Availability-Aware Playing XI Builder
 
 **Depends on:** `029-league-management.md` (`PlayingXiBuilder`, `ui/src/components/PlayingXiBuilder/` — the component this spec augments with a new prop and two new visual treatments, not replaces; `MatchFormPage.tsx`'s `MatchSideTab` — the page-local wrapper this spec gives a second, small data fetch to, mirroring `MatchAvailabilityPanel`'s existing shape rather than inventing a new one), `032-match-availability-polls.md` (`MatchAvailabilityPoll`/`PlayerAvailability`, the `AvailabilityStatus` enum, and the existing admin endpoints `GET .../matches/{matchId}/polls` and `GET .../polls/{pollId}/responses` — this spec's only data source, read-only, unmodified; `MatchAvailabilityTab.tsx`'s tinted-status visual convention, reused verbatim rather than redesigned).
-**Status:** draft.
+**Status:** draft. Amended by `076-team-selection.md`: the per-row tinting is replaced by availability badges and the Select players dialog.
 
 ## Problem & Goals
 

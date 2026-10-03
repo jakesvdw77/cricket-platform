@@ -156,6 +156,21 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
 - **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
 
+## Deferred by `076` — Team Selection
+
+`076-team-selection.md` replaced the Match Squad, the Playing XI builder and the Captain / Keeper / 12th man dropdowns with one selection list per team per match (at most 12), added the server-enforced one-player-per-slot and said-unavailable blocks, a Release action, a selection pool and an atomic apply endpoint behind a Select players dialog. Still deferred:
+
+- **Dormant `MatchSquadMember` cleanup:** the table, repository, `MatchSquadService`, the five endpoints, DTOs, client functions, `RoundHasMatchSquadException`, and a lean coverage endpoint to replace `GET .../squad` as the coverage source.
+- **A database-level slot constraint** to replace the per-player advisory lock.
+- **The slot-based multi-team Selection planner** using Coverage (`074`), now that the guard exists.
+- **Long-format refinements:** an end date or duration on `Match`, non-consecutive multi-day matches, early finishes and rain days, and re-validating when a match is rescheduled or a league's format changes.
+- **An "Order as ticked" shortcut** if the holding area after Done feels slow.
+- **Touch dragging:** the native drag events do not fire on most phones; `@dnd-kit` is the known upgrade and needs approval then.
+- **Release notifications** to the other team's manager.
+- **Tighten the derby leniency** of the side endpoints to per-team section checks.
+- **A per-club timezone** (existing item, now also load-bearing for the slot rule).
+- **Phase 2 of `076`:** the full test plan, Storybook stories for the two new components and smoke tests; the branch is not merged to master before that.
+
 ## Deferred by `075` — Match View, Edit Match and match links
 
 `075-match-view-and-edit.md` rebuilt the Match View on the League header (details, links and actions in the header, one card per own team), removed the Availability tab from the Edit Match page in favour of a header Availability button, renamed the card's Poll button to Availability, and added optional Scoring and Streaming links to a match. Still deferred:

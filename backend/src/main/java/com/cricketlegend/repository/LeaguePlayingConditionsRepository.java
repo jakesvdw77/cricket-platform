@@ -1,6 +1,7 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.LeaguePlayingConditions;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,4 +18,11 @@ public interface LeaguePlayingConditionsRepository extends JpaRepository<LeagueP
     Optional<LeaguePlayingConditions> findByLeagueIdAndSeasonId(UUID leagueId, UUID seasonId);
 
     List<LeaguePlayingConditions> findBySeasonId(UUID seasonId);
+
+    /**
+     * Batch lookup for {@code SelectionLimitsResolver} (docs/specs/076-team-selection.md): the cross
+     * product of {@code leagueIds} x {@code seasonIds}; callers keep only the exact pairs they need.
+     */
+    List<LeaguePlayingConditions> findByLeagueIdInAndSeasonIdIn(
+            Collection<UUID> leagueIds, Collection<UUID> seasonIds);
 }

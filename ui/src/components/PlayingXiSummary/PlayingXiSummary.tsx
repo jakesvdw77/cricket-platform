@@ -11,10 +11,15 @@ const ROLE_LABEL: Record<PlayingRole, string> = {
   ALL_ROUNDER: 'All-rounder',
 }
 
+// docs/specs/076: a player not on the roster is named from his own selection row.
+function sideOwnName(entry: MatchSidePlayer): string {
+  return [entry.firstName, entry.lastName].filter(Boolean).join(' ') || 'Unknown player'
+}
+
 export interface PlayingXiSummaryProps {
-  // Same squad/xi shape PlayingXiBuilder already takes (docs/specs/029-league-management.md) —
+  // Same squad/xi shape the XI editor takes (docs/specs/029-league-management.md) —
   // reused for its data shape only, per docs/specs/036-view-first-record-detail-screens.md's
-  // Non-goals ("not rebuilding PlayingXiBuilder as read-only"). This is a genuinely new,
+  // Non-goals ("not rebuilding the editor as read-only"). This is a genuinely new,
   // read-only-only component: no add/remove/reorder control anywhere.
   squad: SquadMember[]
   xi: MatchSidePlayer[]
@@ -26,7 +31,7 @@ export interface PlayingXiSummaryProps {
 // docs/specs/036-view-first-record-detail-screens.md's genuinely new, read-only component: an
 // ordered list of a Match side's currently-selected Playing XI — batting order, name, captain/
 // wicketkeeper/twelfth-man badges, and a role chip — reusing TeamSquadMember's display fields and
-// PlayingXiBuilder's badge/chip visual language, with no add/remove/reorder controls.
+// the editor's badge/chip visual language, with no add/remove/reorder controls.
 export function PlayingXiSummary({
   squad,
   xi,
@@ -40,10 +45,22 @@ export function PlayingXiSummary({
     return map
   }, [squad])
 
-  const orderedXi = useMemo(() => [...xi].sort((a, b) => a.battingOrder - b.battingOrder), [xi])
+  // docs/specs/076-team-selection.md section 7: the 12th man is an ordinary selection row (no
+  // position), so he is taken out of the numbered list and drawn once, in his own row below it.
+  // Players without a position (waiting) follow the numbered ones, shown with a dash.
+  const orderedXi = useMemo(() => {
+    const rows = xi.filter((entry) => entry.playerProfileId !== twelfthManPlayerId)
+    const positioned = rows
+      .filter((entry) => entry.battingOrder != null)
+      .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+    const waiting = rows.filter((entry) => entry.battingOrder == null)
+    return [...positioned, ...waiting]
+  }, [xi, twelfthManPlayerId])
   const twelfthMan = twelfthManPlayerId ? squadById.get(twelfthManPlayerId) : undefined
+  const twelfthManRow = xi.find((entry) => entry.playerProfileId === twelfthManPlayerId)
+  const twelfthManSelected = Boolean(twelfthManPlayerId)
 
-  if (orderedXi.length === 0 && !twelfthMan) {
+  if (orderedXi.length === 0 && !twelfthManSelected) {
     return (
       <EmptyState
         title="No XI selected yet"
@@ -56,7 +73,7 @@ export function PlayingXiSummary({
     <Stack spacing={1.5}>
       {orderedXi.map((entry) => {
         const member = squadById.get(entry.playerProfileId)
-        const name = member ? squadDisplayName(member) : entry.playerProfileId
+        const name = member ? squadDisplayName(member) : sideOwnName(entry)
         const isCaptain = captainPlayerId === entry.playerProfileId
         const isKeeper = wicketKeeperPlayerId === entry.playerProfileId
 
@@ -70,7 +87,7 @@ export function PlayingXiSummary({
             sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}
           >
             <Typography variant="body2" fontWeight={600} sx={{ width: 24, flex: 'none' }}>
-              {entry.battingOrder}
+              {entry.battingOrder ?? '–'}
             </Typography>
 
             <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: '1 1 160px', minWidth: 0 }}>
@@ -86,7 +103,7 @@ export function PlayingXiSummary({
         )
       })}
 
-      {twelfthMan && (
+      {twelfthManSelected && (
         <Stack
           direction="row"
           alignItems="center"
@@ -95,7 +112,7 @@ export function PlayingXiSummary({
         >
           <Chip label="12th" size="small" sx={{ flex: 'none' }} />
           <Typography variant="body2" fontWeight={600} noWrap>
-            {squadDisplayName(twelfthMan)}
+            {twelfthMan ? squadDisplayName(twelfthMan) : twelfthManRow ? sideOwnName(twelfthManRow) : 'Unknown player'}
           </Typography>
         </Stack>
       )}

@@ -54,7 +54,8 @@ async function loadImageBase64(url: string): Promise<string | null> {
 
 interface RosterEntry {
   name: string
-  battingOrder: number
+  // docs/specs/076-team-selection.md: null for a selected player who has no batting position yet.
+  battingOrder: number | null
   isCaptain: boolean
   isWicketKeeper: boolean
   // docs/specs/031-jersey-numbers.md: this side's per-team-squad number for this player, resolved
@@ -67,12 +68,20 @@ interface RosterEntry {
 // raw UUID here would be a visible defect, so an unresolved id (a data-integrity edge case; the
 // squad fetch and the MatchSide's own player ids should always agree in practice) falls back to a
 // readable label instead of the id itself.
-function playerName(player: Player | undefined): string {
-  return player ? `${player.firstName} ${player.lastName}` : 'Unknown player'
+// docs/specs/076: roster entry first, then the side player's own name, then 'Unknown player'.
+function playerName(
+  player: Player | undefined,
+  sidePlayer?: { firstName?: string | null; lastName?: string | null },
+): string {
+  if (player) {
+    return `${player.firstName} ${player.lastName}`
+  }
+  const own = [sidePlayer?.firstName, sidePlayer?.lastName].filter(Boolean).join(' ')
+  return own || 'Unknown player'
 }
 
 // Duplicates (deliberately — see docs/plans/030-team-sheet-communication.md's Flag #2) the small
-// battingOrder-sort + captain/wicketkeeper/twelfth-man resolution PlayingXiBuilder.tsx already
+// battingOrder-sort + captain/wicketkeeper/twelfth-man resolution the old XI editor did
 // does inline. Kept local and unexported rather than extracted into a shared helper, so this
 // spec's PDF work doesn't touch already-shipped, tested component code for a ~10-line block.
 // Keyed by playerProfileId, not member.id (the TeamSquadMember row's own id, distinct per
@@ -82,10 +91,18 @@ function resolveRoster(side: TeamSheetSide): RosterEntry[] {
   const squadById = new Map(side.squad.map((member) => [member.playerProfileId, member]))
   const players = side.side?.players ?? []
 
-  return [...players]
-    .sort((a, b) => a.battingOrder - b.battingOrder)
+  // docs/specs/076-team-selection.md section 7: numbered players first by position, waiting players
+  // (no position) after them, and the 12th man excluded so the 12th Man callout does not repeat him.
+  const twelfthManPlayerId = side.side?.twelfthManPlayerId
+  const rows = players.filter((entry) => entry.playerProfileId !== twelfthManPlayerId)
+  const positioned = rows
+    .filter((entry) => entry.battingOrder != null)
+    .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+  const waiting = rows.filter((entry) => entry.battingOrder == null)
+
+  return [...positioned, ...waiting]
     .map((entry) => ({
-      name: playerName(squadById.get(entry.playerProfileId)),
+      name: playerName(squadById.get(entry.playerProfileId), entry),
       battingOrder: entry.battingOrder,
       isCaptain: side.side?.captainPlayerId === entry.playerProfileId,
       isWicketKeeper: side.side?.wicketKeeperPlayerId === entry.playerProfileId,
@@ -99,7 +116,7 @@ function resolveTwelfthMan(side: TeamSheetSide): string | null {
     return null
   }
   const player = side.squad.find((candidate) => candidate.playerProfileId === twelfthManPlayerId)
-  return playerName(player)
+  return playerName(player, side.side?.players.find((entry) => entry.playerProfileId === twelfthManPlayerId))
 }
 
 // Builds an A4 portrait team-sheet PDF for the given (already scope-filtered) sides and returns
@@ -234,14 +251,16 @@ export async function generateTeamSheetPdf(match: Match, sides: TeamSheetSide[],
         doc.setTextColor(...LGRAY)
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(7)
-        doc.text(String(index + 1), margin + 5, y + rowH / 2 + 2.2, { align: 'right' })
+        doc.text(entry.battingOrder != null ? String(index + 1) : '-', margin + 5, y + rowH / 2 + 2.2, {
+          align: 'right',
+        })
 
         const suffix = [entry.isCaptain ? '(C)' : null, entry.isWicketKeeper ? '(WK)' : null]
           .filter(Boolean)
           .join(' ')
 
         // docs/specs/031-jersey-numbers.md: prefix the printed name with "#N" when this side's
-        // squad has one, matching PlayingXiBuilder's own "#N" convention — left unnumbered when
+        // squad has one, using the same "#N" convention as the rest of the app — left unnumbered when
         // unset (no stray "#").
         const numberedName =
           entry.squadJerseyNumber != null ? `#${entry.squadJerseyNumber} ${entry.name}` : entry.name

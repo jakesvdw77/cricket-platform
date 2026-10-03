@@ -1,7 +1,7 @@
 # 040 — Announce Team
 
 **Depends on:** `029-league-management.md` (`Match`, `MatchSide`, `MatchSidePlayer` — every entity this spec extends, none redefined here), `030-team-sheet-communication.md` (`TeamSheetCommunicationDialog`'s own, unrelated "Team not yet announced" placeholder copy — see Non-goals for why this spec doesn't touch it), `037-match-improvements.md` (`MatchFormPage`'s Playing XI tabs / `MatchSideTab`, `PlayingXiBuilder` — the screen this spec's toggle lives on), `038-move-deactivate-to-edit-screen.md` (`RecordStatusToggle` — the precedent this spec's own toggle mirrors in shape, not a literal reuse).
-**Status:** draft.
+**Status:** draft. Amended by `076-team-selection.md`: announce gains the batting-position rule, and a removal can be told not to un-announce (used only by Release).
 
 ## Problem & Goals
 

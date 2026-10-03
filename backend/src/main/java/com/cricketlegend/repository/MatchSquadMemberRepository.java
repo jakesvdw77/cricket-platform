@@ -33,6 +33,12 @@ public interface MatchSquadMemberRepository extends JpaRepository<MatchSquadMemb
 
     void deleteByMatchIdAndTeamIdAndPlayerProfileId(UUID matchId, UUID teamId, UUID playerProfileId);
 
+    /**
+     * Removes every match-squad row picked against these windows (docs/specs/076-team-selection.md:
+     * deleting a group poll no longer refuses because of them; the foreign key has no cascade).
+     */
+    void deleteBySectionAvailabilityWindowIdIn(Collection<UUID> sectionAvailabilityWindowIds);
+
     /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
     List<MatchSquadMember> findByMatchIdIn(Collection<UUID> matchIds);
 }

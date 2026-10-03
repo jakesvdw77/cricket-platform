@@ -21,15 +21,7 @@ export function formatDateRange(startDate: string, endDate: string): string {
   return `${startLabel} - ${endLabel}`
 }
 
-export function formatMatchDateTime(matchDate: string): string {
-  return new Date(matchDate).toLocaleString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+export { formatMatchDateTime } from '../../../utils/matchDateTime'
 
 // docs/specs/071-league-card-redesign.md: date only, e.g. "Sat 3 Oct 2026".
 export function formatMatchDate(iso: string): string {

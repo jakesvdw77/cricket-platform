@@ -5,6 +5,7 @@ import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -591,9 +592,12 @@ class MatchSideControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    /** The twelfth man must NOT already be one of the side's ordered XI. */
+    /**
+     * docs/specs/076-team-selection.md: a selected player may be designated the twelfth man, which
+     * takes his batting position away (it was a 400 before 076).
+     */
     @Test
-    void updateSideReturns400WhenTwelfthManIsAlreadyInTheOrderedXi() throws Exception {
+    void updateSideDesignatesASelectedPlayerAsTwelfthManAndDropsHisBattingPosition() throws Exception {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section section = sectionRepository.save(newSection(club.getId(), "Men"));
         Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
@@ -620,7 +624,9 @@ class MatchSideControllerIntegrationTest {
                         .with(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"twelfthManPlayerId\": \"" + player.getId() + "\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.twelfthManPlayerId").value(player.getId().toString()))
+                .andExpect(jsonPath("$.players[0].battingOrder").value(nullValue()));
     }
 
     /** The full new order's player-id set must exactly match the side's current players. */

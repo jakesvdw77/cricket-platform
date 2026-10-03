@@ -1,7 +1,7 @@
 # 064 — Unified Availability Polls
 
 **Depends on:** `032-match-availability-polls.md` (`MatchAvailabilityPoll`/`PlayerAvailability`, the per-match "squad poll"), `034-availability-polls-dashboard.md` (the open-polls dashboard this spec extends), `063-section-availability-and-flexible-squads.md` (`SectionAvailabilityRound`/`Window`/`WindowMatch`, `MatchSquadMember`, the fixture-group resolver, the "group poll"), `029-team-squads.md` (`TeamSquadMember`, the season roster), `033-availability-aware-xi-builder.md`, `035-section-scoped-access.md`.
-**Status:** approved — supersedes `063`'s `Team.squadMode` switch; everything else in `063` stands. Amended by `073-availability-hub.md`: the list header and New poll action move into the shared Availability hub layout; the single Availability dashboard tile is the entry point. Amended by `075-match-view-and-edit.md`: "Open match" and the covered-by links now target the Match View and the covering poll's Responses page.
+**Status:** approved — supersedes `063`'s `Team.squadMode` switch; everything else in `063` stands. Amended by `073-availability-hub.md`: the list header and New poll action move into the shared Availability hub layout; the single Availability dashboard tile is the entry point. Amended by `075-match-view-and-edit.md`: "Open match" and the covered-by links now target the Match View and the covering poll's Responses page. Amended by `076-team-selection.md`: the Match Squad tab and the group-covered XI pool restriction are removed; coverage and the covered-by links stand.
 
 ## Problem & Goals
 

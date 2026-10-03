@@ -108,6 +108,16 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
     List<Match> findByClubIdAndMatchDateBetween(UUID clubId, Instant from, Instant to);
 
     /**
+     * Every <em>active</em> match of {@code clubId} whose {@code matchDate} falls in {@code
+     * [from, to)}. Backs {@code MatchSlots}' slot-collision window (the widest span reaching back is
+     * a five-day match). See docs/specs/076-team-selection.md.
+     */
+    @Query("SELECT m FROM Match m WHERE m.clubId = :clubId AND m.active = true "
+            + "AND m.matchDate >= :from AND m.matchDate < :to")
+    List<Match> findActiveInWindow(
+            @Param("clubId") UUID clubId, @Param("from") Instant from, @Param("to") Instant to);
+
+    /**
      * Every future match for {@code clubId} where either side is a {@code Team} belonging to
      * {@code sectionId} (docs/specs/064-unified-availability-polls.md dropped the squad-mode
      * predicate — every team can be polled either way) — naturally small and bounded (one section's own

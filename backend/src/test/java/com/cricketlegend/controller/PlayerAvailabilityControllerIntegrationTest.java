@@ -15,7 +15,9 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
-import com.cricketlegend.domain.MatchSquadMember;
+import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.MatchSidePlayer;
+import com.cricketlegend.domain.PlayingRole;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerAvailability;
 import com.cricketlegend.domain.PlayerProfile;
@@ -34,7 +36,8 @@ import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
-import com.cricketlegend.repository.MatchSquadMemberRepository;
+import com.cricketlegend.repository.MatchSidePlayerRepository;
+import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
@@ -92,7 +95,8 @@ class PlayerAvailabilityControllerIntegrationTest {
     @Autowired private SectionAvailabilityWindowRepository windowRepository;
     @Autowired private SectionAvailabilityWindowMatchRepository windowMatchRepository;
     @Autowired private SectionAvailabilityResponseRepository responseRepository;
-    @Autowired private MatchSquadMemberRepository matchSquadMemberRepository;
+    @Autowired private MatchSideRepository matchSideRepository;
+    @Autowired private MatchSidePlayerRepository matchSidePlayerRepository;
 
     private record Fixture(Club club, Section section, Season season, Team team) {}
 
@@ -179,8 +183,11 @@ class PlayerAvailabilityControllerIntegrationTest {
                 .windowId(window.getId()).matchId(groupGame.getId()).build());
         responseRepository.save(SectionAvailabilityResponse.builder().windowId(window.getId())
                 .playerProfileId(anton).status(AvailabilityStatus.AVAILABLE).build());
-        matchSquadMemberRepository.save(MatchSquadMember.builder().matchId(groupGame.getId())
-                .teamId(f.team.getId()).sectionAvailabilityWindowId(window.getId()).playerProfileId(anton).build());
+        // docs/specs/076-team-selection.md: picked = a selection row on any side, here the 12th man (no position).
+        MatchSide groupSide = matchSideRepository.save(
+                MatchSide.builder().matchId(groupGame.getId()).teamId(f.team.getId()).build());
+        matchSidePlayerRepository.save(MatchSidePlayer.builder().matchSideId(groupSide.getId())
+                .playerProfileId(anton).battingOrder(null).role(PlayingRole.BATSMAN).build());
 
         MatchAvailabilityPoll poll = savePoll(squadGame, f.team);
         playerAvailabilityRepository.save(PlayerAvailability.builder().pollId(poll.getId())

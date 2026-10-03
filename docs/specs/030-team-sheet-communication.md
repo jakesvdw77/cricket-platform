@@ -1,7 +1,7 @@
 # 030 — Team Sheet Communication from the Match Card
 
 **Depends on:** `029-league-management.md` (`Match`, `MatchSide`, `MatchSidePlayer`, `TeamSquadMember` — every entity this spec reads from, none redefined here), `026-teams.md`/`027-team-profile.md` (`Team.logoUrl` — the only per-side branding asset this spec renders), `028-players.md` (`Player.firstName`/`lastName` via `029`'s squad endpoint — the only player fields this spec needs), `008-product-catalog.md` (`RecordCard` — the shared list-card component this spec extends), `019-resend-subscription-welcome-email.md` (`RecordCard.secondaryAction` — the existing single-action shape this spec generalizes).
-**Status:** draft.
+**Status:** draft. Amended by `076-team-selection.md`: team sheets read players without a batting position and the 12th man as a selection row.
 
 ## Problem & Goals
 
