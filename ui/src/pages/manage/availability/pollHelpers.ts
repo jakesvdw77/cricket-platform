@@ -2,6 +2,9 @@ import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 
+// Why 'Share invite' is disabled on a closed poll (the backend refuses public answers for one).
+export const SHARE_CLOSED_REASON = 'Share invite is unavailable: this poll is closed'
+
 const HOUR_IN_MS = 60 * 60 * 1000
 const DAY_IN_MS = 24 * HOUR_IN_MS
 

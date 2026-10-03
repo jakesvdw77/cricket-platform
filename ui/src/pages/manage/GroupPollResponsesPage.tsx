@@ -14,7 +14,7 @@ import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailab
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
-import { closesRowText } from './availability/pollHelpers'
+import { SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
 
@@ -103,9 +103,19 @@ export default function GroupPollResponsesPage() {
       backTo="/manage/availability"
       backLabel="Back to Availability Polls"
       headerAction={
-        <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
-          Share invite
-        </Button>
+        <span title={closed ? SHARE_CLOSED_REASON : undefined}>
+          <Button
+                    variant="secondary"
+                    size="sm"
+                    startIcon={<ShareOutlinedIcon fontSize="small" />}
+                    disabled={closed}
+                    aria-label={closed ? SHARE_CLOSED_REASON : undefined}
+                    title={closed ? SHARE_CLOSED_REASON : undefined}
+                    onClick={() => setShareOpen(true)}
+                  >
+            Share invite
+          </Button>
+        </span>
       }
       meta={
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>

@@ -484,6 +484,20 @@ describe('GroupPollResponsesPage', () => {
     expect(textarea.value).toContain('/section-availability/round-1')
   })
 
+  it('disables the header Share invite with an explanation on a closed poll', async () => {
+    listRounds.mockResolvedValue([makeRound({ open: false })])
+    getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+    renderPage()
+    await loaded()
+
+    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
+    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+  })
+
   it('goes back to the polls list', async () => {
     const user = userEvent.setup()
     renderPage()

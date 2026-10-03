@@ -13,6 +13,9 @@ import { squadDisplayName } from '../../utils/squadDisplayName'
 
 const STATUS_OPTIONS: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE', 'UNSURE']
 
+// Why Share invite is disabled on a closed poll (the backend refuses public answers for one).
+const shareClosedReason = 'Share invite is unavailable: this poll is closed'
+
 export interface MatchAvailabilityTabProps {
   // The side's label used in copy, e.g. "the home side" / "the away side" — mirrors MatchSideTab's
   // own `label` prop shape on MatchFormPage.
@@ -147,9 +150,17 @@ export function MatchAvailabilityTab({
             </Button>
           </Stack>
         )}
-        <Button variant="ghost" startIcon={<ShareOutlinedIcon />} onClick={onShareInvite}>
-          Share invite
-        </Button>
+        <span title={poll.open ? undefined : shareClosedReason}>
+          <Button
+            variant="ghost"
+            startIcon={<ShareOutlinedIcon />}
+            disabled={!poll.open}
+            aria-label={poll.open ? undefined : shareClosedReason}
+            onClick={onShareInvite}
+          >
+            Share invite
+          </Button>
+        </span>
       </Stack>
 
       <ConfirmDialog

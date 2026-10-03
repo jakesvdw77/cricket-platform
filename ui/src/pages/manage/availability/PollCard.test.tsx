@@ -152,6 +152,16 @@ describe('PollCard - squad poll', () => {
     expect(text.value).toContain('/poll/poll-1')
   })
 
+  it('Share is disabled with an explanation on a closed squad poll and does nothing when clicked', async () => {
+    renderCard({ kind: 'SQUAD', poll }, false)
+    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
+    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+  })
+
   it('Close confirms before calling closePoll, then reports the change', async () => {
     const user = userEvent.setup()
     const { onChanged } = renderCard({ kind: 'SQUAD', poll })
@@ -168,7 +178,7 @@ describe('PollCard - squad poll', () => {
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
     expect(screen.getByText(/^Closed .+/, { selector: 'p' })).toBeInTheDocument()
-    expect(footerNames()).toEqual(['Reopen', 'Matches', 'Responses', 'Share invite'])
+    expect(footerNames()).toEqual(['Reopen', 'Matches', 'Responses', 'Share invite is unavailable: this poll is closed'])
     await user.click(screen.getByRole('button', { name: 'Reopen' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
   })
@@ -192,6 +202,23 @@ describe('PollCard - group poll', () => {
   it('has the identical four footer buttons in the same order as the squad card', () => {
     renderCard({ kind: 'GROUP', round })
     expect(footerNames()).toEqual(FOOTER)
+  })
+
+  it('Share is enabled on an open group poll and disabled with an explanation on a closed one', async () => {
+    renderCard({ kind: 'GROUP', round: { ...round, open: false } })
+    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('Share opens the group invite dialog on an open group poll', async () => {
+    renderCard({ kind: 'GROUP', round })
+    const share = screen.getByRole('button', { name: 'Share invite' })
+    expect(share).toBeEnabled()
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
   it('Responses navigates to the group responses page', async () => {

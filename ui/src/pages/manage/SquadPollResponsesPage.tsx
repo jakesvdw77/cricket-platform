@@ -24,6 +24,7 @@ import {
   squadPollSideLabel,
   squadPollTeamName,
   squadPollTitle,
+  SHARE_CLOSED_REASON,
 } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
@@ -148,9 +149,19 @@ export default function SquadPollResponsesPage() {
           >
             Open match
           </MuiButton>
-          <Button variant="secondary" size="sm" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
-            Share invite
-          </Button>
+          <span title={closed ? SHARE_CLOSED_REASON : undefined}>
+            <Button
+                      variant="secondary"
+                      size="sm"
+                      startIcon={<ShareOutlinedIcon fontSize="small" />}
+                      disabled={closed}
+                      aria-label={closed ? SHARE_CLOSED_REASON : undefined}
+                      title={closed ? SHARE_CLOSED_REASON : undefined}
+                      onClick={() => setShareOpen(true)}
+                    >
+              Share invite
+            </Button>
+          </span>
         </Stack>
       }
       meta={

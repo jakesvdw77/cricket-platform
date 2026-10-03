@@ -382,6 +382,20 @@ describe('SquadPollResponsesPage', () => {
     expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null })
   })
 
+  it('disables the header Share invite with an explanation on a closed poll', async () => {
+    listPolls.mockResolvedValue([makePoll({ open: false })])
+    getPollResponses.mockResolvedValue(makeResponses({ open: false }))
+    renderPage()
+    await loaded()
+
+    expect(screen.queryByRole('button', { name: 'Share invite' })).not.toBeInTheDocument()
+    const share = screen.getByRole('button', { name: 'Share invite is unavailable: this poll is closed' })
+    expect(share).toBeDisabled()
+    expect(share.parentElement).toHaveAttribute('title', 'Share invite is unavailable: this poll is closed')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(share)
+    expect(screen.queryByLabelText('Invite text')).not.toBeInTheDocument()
+  })
+
   it('opens the share dialog with the side\'s team name and the poll link', async () => {
     const user = userEvent.setup()
     renderPage()
