@@ -126,6 +126,12 @@ describe('PollCard - squad poll', () => {
     expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
   })
 
+  it('clamps a long title to three lines rather than two', () => {
+    renderCard({ kind: 'SQUAD', poll })
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Home Team vs Rivals CC' })).toHaveStyle({ WebkitLineClamp: '3' })
+  })
+
   it('shows Venue TBC when there is no venue', () => {
     renderCard({ kind: 'SQUAD', poll: { ...poll, venue: null } })
     expect(screen.getByText(/ · Venue TBC$/)).toBeInTheDocument()

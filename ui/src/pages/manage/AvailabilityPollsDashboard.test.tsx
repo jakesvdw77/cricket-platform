@@ -5,6 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from 'rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import AvailabilityPollsDashboard from './AvailabilityPollsDashboard'
+import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import type {
   SectionAvailabilityRound,
@@ -911,6 +912,15 @@ describe('AvailabilityPollsDashboard', () => {
       const footer = screen.getByRole('button', { name: 'Close' }).parentElement as HTMLElement
       expect(within(footer).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(names)
       expect(footer).toHaveStyle({ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' })
+    })
+
+    it('lays the cards out in the shared card grid (same template as the Matches list), stretched', async () => {
+      listRounds.mockResolvedValue([makeRound()])
+      renderDashboard('test-club-id')
+
+      const heading = await screen.findByRole('heading', { level: 3, name: 'Sat 6 Jun - U13 Boys fixtures' })
+      const grid = heading.closest('.MuiCard-root')?.parentElement as HTMLElement
+      expect(grid).toHaveStyle({ display: 'grid', gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS, alignItems: 'stretch' })
     })
 
     it('renders a round owning three brackets with three slot summaries, not capped at two', async () => {

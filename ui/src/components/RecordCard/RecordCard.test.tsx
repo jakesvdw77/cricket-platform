@@ -1,6 +1,6 @@
 import { TextField } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -52,6 +52,14 @@ describe('RecordCard', () => {
     const heading = screen.getByRole('heading', { name: 'Saturday 3 October - Over 40 fixtures' })
     expect(heading).not.toHaveClass('MuiTypography-noWrap')
     expect(heading).toHaveStyle({ display: '-webkit-box', overflow: 'hidden' })
+  })
+
+  it('titleWrap clamps to 2 lines by default and to titleLines when given', () => {
+    const { rerender } = render(<RecordCard title="A long title" editLabel="Edit" onEdit={vi.fn()} titleWrap />)
+    expect(screen.getByRole('heading', { name: 'A long title' })).toHaveStyle({ WebkitLineClamp: '2' })
+
+    rerender(<RecordCard title="A long title" editLabel="Edit" onEdit={vi.fn()} titleWrap titleLines={3} />)
+    expect(screen.getByRole('heading', { name: 'A long title' })).toHaveStyle({ WebkitLineClamp: '3' })
   })
 
   it('titleWrap keeps the titleEdit pencil after the title and the corner action present', async () => {
@@ -126,6 +134,42 @@ describe('RecordCard', () => {
     const mutedChip = screen.getByText('Retired').closest('.MuiChip-root')
     expect(mutedChip).toHaveClass('MuiChip-filled')
     expect(mutedChip).not.toHaveClass('MuiChip-outlined')
+  })
+
+  it('renders the noPoll tone as a dashed outlined chip with muted text and its label', () => {
+    render(<RecordCard title="Match" badge={{ label: 'No poll', tone: 'noPoll' }} editLabel="Edit" onEdit={vi.fn()} />)
+    const chip = screen.getByText('No poll').closest('.MuiChip-root') as HTMLElement
+    expect(chip).toHaveClass('MuiChip-outlined')
+    expect(chip).not.toHaveClass('MuiChip-filled')
+    expect(getComputedStyle(chip).borderStyle).toBe('dashed')
+  })
+
+  it('badgesAbove renders the badges in a row before the heading and not beside the title', () => {
+    render(
+      <RecordCard
+        title="Long Team Name vs Another Long Team Name"
+        badges={[
+          { label: 'Not announced', tone: 'neutral' },
+          { label: 'Poll closed', tone: 'closed' },
+        ]}
+        badgesAbove
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+    const row = screen.getByTestId('badges-above')
+    const heading = screen.getByRole('heading', { name: 'Long Team Name vs Another Long Team Name' })
+    expect(getComputedStyle(row).justifyContent).toBe('flex-end')
+    expect(within(row).getByText('Not announced')).toBeInTheDocument()
+    expect(within(row).getByText('Poll closed')).toBeInTheDocument()
+    expect(row.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // rendered exactly once (the header's right-hand cluster is suppressed)
+    expect(screen.getAllByText('Poll closed')).toHaveLength(1)
+  })
+
+  it('without badgesAbove the badges render beside the title as before', () => {
+    render(<RecordCard title="Plain" badge={{ label: 'Active', tone: 'positive' }} editLabel="Edit" onEdit={vi.fn()} />)
+    expect(screen.queryByTestId('badges-above')).not.toBeInTheDocument()
   })
 
   it('gives each poll badge tone its own filled colour while keeping the text label', () => {
