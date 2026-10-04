@@ -229,7 +229,8 @@ describe('MatchCard', () => {
       )
 
       const row = screen.getByTestId('match-links-row')
-      expect(row).toHaveStyle({ position: 'relative' })
+      // the header wrapper (RecordCard headerActions) carries position: relative, above the stretched link
+      expect(row.parentElement).toHaveStyle({ position: 'relative' })
       expect(within(row).getByRole('link', { name: 'Watch live' })).toHaveAttribute('href', 'https://t.example/2')
       expect(within(row).getByRole('link', { name: 'Scoring' })).toHaveAttribute('href', 'https://s.example/1')
 

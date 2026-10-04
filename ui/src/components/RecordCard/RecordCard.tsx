@@ -158,6 +158,9 @@ export interface RecordCardProps {
   // width instead of being squeezed by a right-hand badge cluster. The header's right-hand badges
   // are then not rendered. Purely additive: omitted, nothing changes.
   badgesAbove?: boolean
+  // Small actions (icon buttons) drawn at the right end of the title row when badgesAbove is set; positioned
+  // above the stretched view link so they stay clickable.
+  headerActions?: ReactNode
   // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
   // card's top-right corner, after the badges, keeping the footer for the main actions. The
   // action's `label` is its accessible name and tooltip; `icon` is required.
@@ -294,6 +297,7 @@ export function RecordCard({
   titleWrap,
   titleLines = 2,
   badgesAbove,
+  headerActions,
   cornerAction,
   secondaryAction,
   secondaryActions,
@@ -466,7 +470,13 @@ export function RecordCard({
                 {cornerAction.icon}
               </IconButton>
             </Stack>
-          ) : badgesAbove ? null : (
+          ) : badgesAbove ? (
+            headerActions ? (
+              <Box sx={{ position: 'relative', display: 'flex', flexShrink: 0, alignItems: 'flex-start', mt: -0.5, mr: -0.5 }}>
+                {headerActions}
+              </Box>
+            ) : null
+          ) : (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
               {badgeChips}
             </Stack>

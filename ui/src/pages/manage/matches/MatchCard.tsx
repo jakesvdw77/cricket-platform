@@ -1,4 +1,4 @@
-import { Box, Divider, IconButton, Stack } from '@mui/material'
+import { Box, IconButton, Stack } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -81,6 +81,40 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
         title={title}
         titleWrap
         badgesAbove
+        headerActions={
+          match.scoringUrl || match.streamingUrl ? (
+            <Box data-testid="match-links-row" sx={{ display: 'flex', gap: 0.25 }}>
+              {match.scoringUrl && (
+                <IconButton
+                  component="a"
+                  href={match.scoringUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  aria-label="Scoring"
+                  title="Scoring"
+                  sx={{ color: 'primary.dark' }}
+                >
+                  <ScoreboardOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+              {match.streamingUrl && (
+                <IconButton
+                  component="a"
+                  href={match.streamingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  aria-label="Watch live"
+                  title="Watch live"
+                  sx={{ color: 'primary.dark' }}
+                >
+                  <LiveTvOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+          ) : undefined
+        }
         avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
         badges={badges}
         viewTo={viewTo}
@@ -118,43 +152,6 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           )}
         </Stack>
         <SelectionBlock rows={selectionRows(match, teamsById)} />
-        {(match.scoringUrl || match.streamingUrl) && (
-          <>
-            <Divider />
-            {/* position: relative paints the row above the card's stretched title link (059), so a
-                click opens the link and never navigates the card. */}
-            <Box data-testid="match-links-row" sx={{ position: 'relative', display: 'flex', gap: 0.5 }}>
-              {match.scoringUrl && (
-                <IconButton
-                  component="a"
-                  href={match.scoringUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  aria-label="Scoring"
-                  title="Scoring"
-                  sx={{ color: 'primary.dark' }}
-                >
-                  <ScoreboardOutlinedIcon fontSize="small" />
-                </IconButton>
-              )}
-              {match.streamingUrl && (
-                <IconButton
-                  component="a"
-                  href={match.streamingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  aria-label="Watch live"
-                  title="Watch live"
-                  sx={{ color: 'primary.dark' }}
-                >
-                  <LiveTvOutlinedIcon fontSize="small" />
-                </IconButton>
-              )}
-            </Box>
-          </>
-        )}
       </RecordCard>
       {menu}
       {shareDialog}
