@@ -21,10 +21,8 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
-import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
-import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CardProgressBar } from '../../components/CardProgressBar'
 import { badgeSx } from '../../components/RecordCard'
 import { SelectPlayersDialog } from '../../components/SelectPlayersDialog'
@@ -111,18 +109,6 @@ function opponentLabel(match: Match, teamId: string, teamsById: Map<string, Team
     return sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)
   }
   return sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)
-}
-
-// A side counts as "non-empty" (and therefore needs a destructive-replace confirmation before
-// "Re-select from previous match" overwrites it) if it has any selected player or any of
-// captain/wicketkeeper/twelfth-man set.
-function isSideNonEmpty(matchSide: MatchSide): boolean {
-  return (
-    matchSide.players.length > 0 ||
-    Boolean(matchSide.captainPlayerId) ||
-    Boolean(matchSide.wicketKeeperPlayerId) ||
-    Boolean(matchSide.twelfthManPlayerId)
-  )
 }
 
 // docs/specs/064-unified-availability-polls.md: the header Availability button reads which poll (if
@@ -305,14 +291,6 @@ const VISUALLY_HIDDEN_SX = {
   whiteSpace: 'nowrap',
 } as const
 
-interface ReselectSummary {
-  copied: number
-  total: number
-  lines: string[]
-  // Set when a step failed: the message to show (and, after a clear, the side is now empty).
-  failure: string | null
-}
-
 // docs/specs/076-team-selection.md sections 2 to 6: one team's selection page (the content of its
 // Home XI / Away XI tab). State and server calls live here (React Query, per docs/standards/
 // frontend.md); TeamSelectionList and SelectPlayersDialog are presentational. Creates the MatchSide
@@ -340,17 +318,17 @@ function MatchSideTab({
   const attemptedCreateRef = useRef(false)
 
   const [selectOpen, setSelectOpen] = useState(false)
-  const [wholeSection, setWholeSection] = useState(false)
+  // The dialog's source switch: the team's squad (or the people who said available), the whole
+  // section, or the players of a previous match (chosen in the dialog).
+  const [source, setSource] = useState<'squad' | 'section' | 'previous'>('squad')
+  const [previousMatchId, setPreviousMatchId] = useState<string | null>(null)
+  const wholeSection = source !== 'squad'
   const [search, setSearch] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [addPlayerOpen, setAddPlayerOpen] = useState(false)
   // PlayerForm externalizes its Basic/Contact/Cricket Info tab bar to its caller (PlayerFormPage's
   // pattern): the Add new player dialog owns its small 3-tab bar state.
   const [addPlayerTab, setAddPlayerTab] = useState<0 | 1 | 2>(0)
-  const [previousMatchDialogOpen, setPreviousMatchDialogOpen] = useState(false)
-  const [pendingSourceMatch, setPendingSourceMatch] = useState<Match | null>(null)
-  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false)
-  const [reselectSummary, setReselectSummary] = useState<ReselectSummary | null>(null)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQ(search.trim()), 300)
@@ -457,7 +435,8 @@ function MatchSideTab({
 
   const closeSelectDialog = () => {
     setSelectOpen(false)
-    setWholeSection(false)
+    setSource('squad')
+    setPreviousMatchId(null)
     setSearch('')
     setDebouncedQ('')
   }
@@ -555,183 +534,40 @@ function MatchSideTab({
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'] })
       queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
       setAddPlayerOpen(false)
-      setWholeSection(true)
+      setSource('section')
       const fullName = `${player.firstName} ${player.lastName}`
       setSearch(fullName)
       setDebouncedQ(fullName)
     },
   })
 
-  // The previous matches of this side, fetched only while the picker is open.
+  // The previous matches of this side (same query and labels the old picker used), fetched only
+  // while the dialog's 'From previous match' chip is chosen.
   const previousMatchesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'matches', 'previous', match.leagueId, matchId],
     queryFn: () => listPreviousMatches(clubId, teamId, seasonId, { leagueId: match.leagueId, excludeMatchId: matchId }),
-    enabled: previousMatchDialogOpen,
+    enabled: selectOpen && source === 'previous',
   })
-
-  // Re-select from previous match (spec section 5): load the whole-section pool, skip source players
-  // who are now blocked (with the reason), clear a non-empty side with one empty apply, apply the
-  // rest once with positions renumbered 1..k and their roles, then restore captain, wicketkeeper and
-  // 12th man with one update. The three calls are not one transaction.
-  const reselectMutation = useMutation({
-    mutationFn: async (sourceMatchId: string): Promise<ReselectSummary> => {
-      const destination = side as MatchSide
-      const [sourceSides, pool] = await Promise.all([
-        listMatchSides(clubId, sourceMatchId),
-        getSelectionPool(clubId, matchId, teamId, { wholeSection: true }),
-      ])
-      const source = sourceSides.find((candidate) => candidate.teamId === teamId)
-      if (!source) {
-        return { copied: 0, total: 0, lines: [], failure: null }
-      }
-
-      const entries = new Map(pool.entries.map((entry) => [entry.playerProfileId, entry]))
-      const lines: string[] = []
-      // Why a source player cannot be copied, or null. A player currently on this side is
-      // selectable now but would be blocked once the clear releases him, so those cases count too.
-      const blockedLine = (playerId: string): string | null => {
-        const entry = entries.get(playerId)
-        if (!entry) {
-          const own = source.players.find((player) => player.playerProfileId === playerId)
-          const ownName = [own?.firstName, own?.lastName].filter(Boolean).join(' ') || 'A player'
-          return pool.truncated
-            ? `${ownName} could not be checked: the player list was too long.`
-            : `${ownName} is not on this team's roster or in its section.`
-        }
-        const name = `${entry.firstName} ${entry.lastName}`
-        const reason = entry.reason ?? (entry.selected && entry.taken ? 'TAKEN_FOR_SLOT' : null) ??
-          (entry.selected && entry.availability === 'UNAVAILABLE' ? 'SAID_UNAVAILABLE' : null)
-        if (reason === 'TAKEN_FOR_SLOT') {
-          return entry.taken ? `${name} is in ${entry.taken.teamName}'s selection for that slot.` : `${name} is already selected elsewhere.`
-        }
-        if (reason === 'SAID_UNAVAILABLE') {
-          return `${name} said he is unavailable.`
-        }
-        if (reason === 'AGE_INELIGIBLE') {
-          return entry.reasonText ?? `${name} is not eligible for this match.`
-        }
-        return null
-      }
-
-      const sourceRest = source.players.filter((player) => player.playerProfileId !== source.twelfthManPlayerId)
-      const ordered = [
-        ...sourceRest
-          .filter((player) => player.battingOrder != null)
-          .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number)),
-        ...sourceRest.filter((player) => player.battingOrder == null),
-      ]
-      let carried: MatchSidePlayer[] = []
-      ordered.forEach((player) => {
-        const line = blockedLine(player.playerProfileId)
-        if (line) {
-          lines.push(line)
-        } else {
-          carried.push(player)
-        }
-      })
-
-      let carriedTwelfth: MatchSidePlayer | null = null
-      if (source.twelfthManPlayerId) {
-        const twelfthPlayer = source.players.find((player) => player.playerProfileId === source.twelfthManPlayerId)
-        const twelfthName = playerName(entries.get(source.twelfthManPlayerId))
-        const line = blockedLine(source.twelfthManPlayerId)
-        if (line) {
-          lines.push(line)
-        } else if (!destination.limits.twelfthManAllowed) {
-          lines.push(`${twelfthName} was the 12th man, but this match has no 12th man place.`)
-        } else if (carried.length + 1 > destination.limits.maxSelected) {
-          lines.push(`${twelfthName} was the 12th man, but the team is full.`)
-        } else if (twelfthPlayer) {
-          carriedTwelfth = twelfthPlayer
-        }
-      }
-
-      const room = destination.limits.maxSelected - (carriedTwelfth ? 1 : 0)
-      if (carried.length > room) {
-        carried.slice(room).forEach((player) => {
-          lines.push(`${playerName(entries.get(player.playerProfileId))} doesn't fit: the team is full.`)
-        })
-        carried = carried.slice(0, room)
-      }
-
-      let position = 0
-      const players = [
-        ...carried.map((player) => ({
-          playerProfileId: player.playerProfileId,
-          role: player.role,
-          battingOrder:
-            player.battingOrder != null && position < destination.limits.battingPlaces ? ++position : null,
-        })),
-        ...(carriedTwelfth
-          ? [{ playerProfileId: carriedTwelfth.playerProfileId, role: carriedTwelfth.role, battingOrder: null }]
-          : []),
-      ]
-      const total = source.players.length
-
-      let cleared = false
-      try {
-        if (isSideNonEmpty(destination)) {
-          await applySelection(clubId, matchId, destination.id, { players: [] })
-          cleared = true
-        }
-        if (players.length > 0) {
-          await applySelection(clubId, matchId, destination.id, { players })
-        }
-      } catch (error) {
-        const reason = errorDetail(error, 'Something went wrong re-selecting the team.')
-        return {
-          copied: 0,
-          total,
-          lines,
-          failure: cleared ? `${reason} The team is now empty.` : reason,
-        }
-      }
-
-      const carriedIds = new Set(players.map((player) => player.playerProfileId))
-      const captainPlayerId =
-        source.captainPlayerId && carriedIds.has(source.captainPlayerId) ? source.captainPlayerId : null
-      const wicketKeeperPlayerId =
-        source.wicketKeeperPlayerId && carriedIds.has(source.wicketKeeperPlayerId) ? source.wicketKeeperPlayerId : null
-      const twelfthManPlayerId = carriedTwelfth?.playerProfileId ?? null
-      if (captainPlayerId || wicketKeeperPlayerId || twelfthManPlayerId) {
-        try {
-          await updateMatchSide(clubId, matchId, destination.id, {
-            captainPlayerId,
-            wicketKeeperPlayerId,
-            twelfthManPlayerId,
-          })
-        } catch {
-          lines.push("The captain, wicketkeeper and 12th man couldn't be restored.")
-        }
-      }
-
-      return { copied: players.length, total, lines, failure: null }
-    },
-    onSuccess: (summary) => {
-      invalidateSelection()
-      setConfirmReplaceOpen(false)
-      setPreviousMatchDialogOpen(false)
-      setPendingSourceMatch(null)
-      setReselectSummary(summary)
-    },
-    // A failure before anything was written (a network drop loading the pool) closes the dialogs so
-    // the error Alert behind the backdrop becomes visible; the side is refetched in case a clear ran.
-    onError: () => {
-      invalidateSelection()
-      setConfirmReplaceOpen(false)
-      setPreviousMatchDialogOpen(false)
-      setPendingSourceMatch(null)
-    },
+  // The chosen match's own side gives the players to show and their order (batting order first,
+  // then the rest, the 12th man last). Nothing else is carried over.
+  const previousSidesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', previousMatchId, 'sides'],
+    queryFn: () => listMatchSides(clubId, previousMatchId as string),
+    enabled: selectOpen && source === 'previous' && Boolean(previousMatchId),
   })
-
-  const handlePickPreviousMatch = (candidate: Match) => {
-    if (side && isSideNonEmpty(side)) {
-      setPendingSourceMatch(candidate)
-      setConfirmReplaceOpen(true)
-    } else {
-      reselectMutation.mutate(candidate.id)
+  const previousOrder = useMemo(() => {
+    const previousSide = (previousSidesQuery.data ?? []).find((candidate) => candidate.teamId === teamId)
+    if (!previousSide) {
+      return null
     }
-  }
+    const rest = previousSide.players.filter((player) => player.playerProfileId !== previousSide.twelfthManPlayerId)
+    const positioned = rest
+      .filter((player) => player.battingOrder != null)
+      .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+    const waiting = rest.filter((player) => player.battingOrder == null)
+    const twelfth = previousSide.players.filter((player) => player.playerProfileId === previousSide.twelfthManPlayerId)
+    return [...positioned, ...waiting, ...twelfth].map((player) => player.playerProfileId)
+  }, [previousSidesQuery.data, teamId])
 
   const pool: SelectionPool | undefined = pageQuery.data
   const poolById = useMemo(
@@ -803,9 +639,7 @@ function MatchSideTab({
           : null,
       )
       .find((message): message is string => Boolean(message)) ??
-    (reselectMutation.isError
-      ? errorDetail(reselectMutation.error, 'Something went wrong re-selecting the team from a previous match. Please try again.')
-      : null)
+null
 
   const announcedChip = announcedBadge(side.announced, '')
   const blockedReasonId = `announce-blocked-${side.id}`
@@ -860,8 +694,8 @@ function MatchSideTab({
           <NoticeLine tone="warning">
             <b>
               {unconfirmed === 1
-                ? "1 selected player hasn't confirmed"
-                : `${unconfirmed} selected players haven't confirmed`}
+                ? '1 selected player is not confirmed available'
+                : `${unconfirmed} selected players are not confirmed available`}
             </b>
             {` (${breakdown}).`}
           </NoticeLine>
@@ -881,13 +715,6 @@ function MatchSideTab({
             sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Select players
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setPreviousMatchDialogOpen(true)}
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            Re-select from previous match
           </Button>
           {side.announced ? (
             <Button
@@ -923,23 +750,6 @@ function MatchSideTab({
       </Box>
 
       {listError && <Alert severity="error">{listError}</Alert>}
-
-      {reselectSummary && (
-        <Alert severity={reselectSummary.failure ? 'error' : 'info'} onClose={() => setReselectSummary(null)}>
-          {reselectSummary.failure ? (
-            <Typography variant="body2">{reselectSummary.failure}</Typography>
-          ) : (
-            <Typography variant="body2">
-              {`Copied ${reselectSummary.copied} of ${reselectSummary.total} players from the previous team.`}
-            </Typography>
-          )}
-          {reselectSummary.lines.map((line) => (
-            <Typography key={line} variant="body2">
-              {line}
-            </Typography>
-          ))}
-        </Alert>
-      )}
 
       {waitingCount > 0 && (
         <NoticeLine tone="warning">
@@ -1005,8 +815,17 @@ function MatchSideTab({
           pool={dialogQuery.data}
           poolLoading={dialogQuery.isLoading}
           poolError={dialogQuery.isError}
-          wholeSection={wholeSection}
-          onWholeSectionChange={setWholeSection}
+          source={source}
+          onSourceChange={setSource}
+          previousMatches={(previousMatchesQuery.data ?? []).map((candidate) => ({
+            id: candidate.id,
+            label: `${new Date(candidate.matchDate).toLocaleDateString()} — vs ${opponentLabel(candidate, teamId, teamsById)}`,
+          }))}
+          previousMatchesLoading={previousMatchesQuery.isLoading}
+          previousMatchId={previousMatchId}
+          onPreviousMatchChange={setPreviousMatchId}
+          previousOrder={previousMatchId ? previousOrder : null}
+          previousOrderLoading={previousSidesQuery.isLoading}
           search={search}
           onSearchChange={setSearch}
           onApply={handleApply}
@@ -1019,31 +838,6 @@ function MatchSideTab({
           onClose={closeSelectDialog}
         />
       )}
-
-      {/* The picker: LinkExistingRecordDialog's no-extraField mode, so picking fires onLink at once. */}
-      <LinkExistingRecordDialog<Match>
-        open={previousMatchDialogOpen}
-        onClose={() => setPreviousMatchDialogOpen(false)}
-        title="Re-select from previous match"
-        candidates={previousMatchesQuery.data ?? []}
-        loading={previousMatchesQuery.isLoading}
-        getOptionLabel={(candidate) => `${new Date(candidate.matchDate).toLocaleDateString()} — vs ${opponentLabel(candidate, teamId, teamsById)}`}
-        onLink={(candidate) => handlePickPreviousMatch(candidate)}
-      />
-
-      <ConfirmDialog
-        open={confirmReplaceOpen}
-        title="Replace the current Playing XI?"
-        description={`This replaces every player, role, and batting-order position currently set for ${teamName}.`}
-        confirmLabel="Replace"
-        pendingLabel="Replacing…"
-        pending={reselectMutation.isPending}
-        onConfirm={() => pendingSourceMatch && reselectMutation.mutate(pendingSourceMatch.id)}
-        onClose={() => {
-          setConfirmReplaceOpen(false)
-          setPendingSourceMatch(null)
-        }}
-      />
 
       {/* CreateAndLinkRecordDialog/PlayerForm unmodified: PlayerForm externalizes its tab bar, so
           this wrapper renders the same small local 3-tab bar PlayerFormPage does. Nested over the

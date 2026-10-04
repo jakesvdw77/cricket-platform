@@ -4,7 +4,7 @@ import type { MatchSide, PlayingRole } from './matchSideApi'
 // docs/specs/076-team-selection.md: the selection pool a manager picks from and the atomic apply
 // endpoint behind the Select players dialog. Both live on the new MatchSelectionController.
 export type SelectionAvailability = 'AVAILABLE' | 'UNSURE' | 'UNAVAILABLE' | 'NO_RESPONSE' | 'NOT_POLLED'
-export type SelectionReason = 'TAKEN_FOR_SLOT' | 'SAID_UNAVAILABLE' | 'AGE_INELIGIBLE'
+export type SelectionReason = 'TAKEN_FOR_SLOT' | 'SAID_UNAVAILABLE' | 'NOT_CONFIRMED' | 'AGE_INELIGIBLE'
 export type SelectionRejectionReason =
   | SelectionReason
   | 'NOT_IN_POOL'

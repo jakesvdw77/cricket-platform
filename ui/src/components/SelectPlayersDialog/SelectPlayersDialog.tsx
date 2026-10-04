@@ -40,6 +40,8 @@ export interface SelectionApplyOutcome {
   rejections?: SelectionRejection[]
 }
 
+export type DialogSource = 'squad' | 'section' | 'previous'
+
 export interface SelectPlayersDialogProps {
   teamName: string
   // The match's kickoff, already formatted by the page (e.g. "Sat, 3 Oct, 10:00").
@@ -50,8 +52,18 @@ export interface SelectPlayersDialogProps {
   pool: SelectionPool | undefined
   poolLoading: boolean
   poolError: boolean
-  wholeSection: boolean
-  onWholeSectionChange: (wholeSection: boolean) => void
+  // The switch: the team's squad (or the people who said available), the whole section, or the
+  // players of a previous match.
+  source: DialogSource
+  onSourceChange: (source: DialogSource) => void
+  // 'From previous match': that team's earlier matches, the chosen one and the player ids who were in
+  // its selection in last match's order (null until a match is chosen and its side has loaded).
+  previousMatches: { id: string; label: string }[]
+  previousMatchesLoading: boolean
+  previousMatchId: string | null
+  onPreviousMatchChange: (matchId: string | null) => void
+  previousOrder: string[] | null
+  previousOrderLoading: boolean
   // The search box text; the page debounces it into the pool's q param.
   search: string
   onSearchChange: (text: string) => void
@@ -100,8 +112,14 @@ export function SelectPlayersDialog({
   pool,
   poolLoading,
   poolError,
-  wholeSection,
-  onWholeSectionChange,
+  source,
+  onSourceChange,
+  previousMatches,
+  previousMatchesLoading,
+  previousMatchId,
+  onPreviousMatchChange,
+  previousOrder,
+  previousOrderLoading,
   search,
   onSearchChange,
   onApply,
@@ -122,7 +140,21 @@ export function SelectPlayersDialog({
   const [releasePending, setReleasePending] = useState(false)
   const [releaseError, setReleaseError] = useState<string | null>(null)
 
-  const entries = pool?.entries ?? []
+  // In 'From previous match' mode the list is filtered to the players of that match and sorted by its
+  // order, so Select all appends them in last match's order. Every other rule is unchanged.
+  const allEntries = pool?.entries ?? []
+  const entries =
+    source === 'previous'
+      ? (() => {
+          if (!previousOrder) {
+            return []
+          }
+          const rank = new Map(previousOrder.map((id, index) => [id, index]))
+          return allEntries
+            .filter((entry) => rank.has(entry.playerProfileId))
+            .sort((a, b) => (rank.get(a.playerProfileId) as number) - (rank.get(b.playerProfileId) as number))
+        })()
+      : allEntries
   const full = ticked.size >= maxSelected
   // Ticks survive the switch and the search, so some may not be listed right now; the footer count
   // includes them and says so.
@@ -136,9 +168,23 @@ export function SelectPlayersDialog({
     covered &&
     (entry.availability === 'UNSURE' || entry.availability === 'NO_RESPONSE' || entry.availability === 'UNAVAILABLE')
 
-  const available = entries.filter((entry) => entry.selectable && entry.availability === 'AVAILABLE')
-  const notConfirmed = entries.filter((entry) => entry.selectable && entry.availability !== 'AVAILABLE')
-  const notPossible = entries.filter((entry) => !entry.selectable)
+  // A player already selected on this side is never blocked (grandfathering): he is always a tickable
+  // row (shown ticked, untick to release him), whatever his answer. Only players who are NOT selected
+  // are split into selectable and greyed rows.
+  const initialSet = new Set(initialSelectedIds)
+  const tickable = (entry: SelectionPoolEntry) =>
+    entry.selectable || entry.selected || initialSet.has(entry.playerProfileId)
+  const available = entries.filter((entry) => tickable(entry) && entry.availability === 'AVAILABLE')
+  // Players with no poll answer to ask for (nobody polled them) stay selectable.
+  const notPolled = entries.filter((entry) => tickable(entry) && entry.availability === 'NOT_POLLED')
+  // Selected but not confirmed available (grandfathered, or answered differently later), ticked, with
+  // their badge and Set answer.
+  const selectedNotConfirmed = entries.filter(
+    (entry) => tickable(entry) && entry.availability !== 'AVAILABLE' && entry.availability !== 'NOT_POLLED',
+  )
+  // Not selected and Unsure / No response: cannot be selected until the answer is set to Available.
+  const needsAnswer = entries.filter((entry) => !tickable(entry) && entry.reason === 'NOT_CONFIRMED')
+  const notPossible = entries.filter((entry) => !tickable(entry) && entry.reason !== 'NOT_CONFIRMED')
 
   // Ticks every Available player who is not ticked yet, up to the limit (the rest stay unticked and the
   // footer shows the team is full).
@@ -313,6 +359,9 @@ export function SelectPlayersDialog({
     if (entry.reason === 'SAID_UNAVAILABLE') {
       return <AvailabilityBadge availability="UNAVAILABLE" />
     }
+    if (entry.reason === 'NOT_CONFIRMED') {
+      return <AvailabilityBadge availability={entry.availability} />
+    }
     return null
   }
 
@@ -367,7 +416,7 @@ export function SelectPlayersDialog({
       {renderBlockedBadge(entry)}
       {renderBlockedAction(entry)}
       {renderSetAnswer(entry)}
-      {(entry.reason === 'AGE_INELIGIBLE' || rowMessages[entry.playerProfileId]) && (
+      {(entry.reason === 'AGE_INELIGIBLE' || entry.reason === 'NOT_CONFIRMED' || rowMessages[entry.playerProfileId]) && (
         <Typography variant="caption" color="text.secondary" sx={{ flexBasis: '100%', pl: 5 }}>
           {rowMessages[entry.playerProfileId] ?? entry.reasonText}
         </Typography>
@@ -415,6 +464,10 @@ export function SelectPlayersDialog({
             </Alert>
           )}
 
+          <Typography variant="caption" color="text.secondary">
+            Only players who are available can be selected. To pick someone who hasn't confirmed, set their answer first.
+          </Typography>
+
           {pool?.coveringPoll.kind === 'GROUP' && (
             <Typography variant="caption" color="text.secondary">
               Answers set here apply to the whole slot (all matches in this group poll window).
@@ -422,23 +475,57 @@ export function SelectPlayersDialog({
           )}
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip
-              clickable
-              label={groupPoll ? 'Said available' : `${teamName} squad`}
-              color={wholeSection ? 'default' : 'primary'}
-              variant={wholeSection ? 'outlined' : 'filled'}
-              aria-pressed={!wholeSection}
-              onClick={() => onWholeSectionChange(false)}
-            />
-            <Chip
-              clickable
-              label="Whole section"
-              color={wholeSection ? 'primary' : 'default'}
-              variant={wholeSection ? 'filled' : 'outlined'}
-              aria-pressed={wholeSection}
-              onClick={() => onWholeSectionChange(true)}
-            />
+            {(
+              [
+                ['squad', groupPoll ? 'Said available' : `${teamName} squad`],
+                ['section', 'Whole section'],
+                ['previous', 'From previous match'],
+              ] as const
+            ).map(([key, label]) => (
+              <Chip
+                key={key}
+                clickable
+                label={label}
+                color={source === key ? 'primary' : 'default'}
+                variant={source === key ? 'filled' : 'outlined'}
+                aria-pressed={source === key}
+                onClick={() => onSourceChange(key)}
+              />
+            ))}
           </Stack>
+
+          {source === 'previous' &&
+            (!previousMatchesLoading && previousMatches.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No previous matches for this team and season
+              </Typography>
+            ) : (
+              <Input
+                select
+                label="Previous match"
+                value={previousMatchId ?? ''}
+                onChange={(event) => onPreviousMatchChange(event.target.value || null)}
+                disabled={previousMatchesLoading}
+              >
+                {previousMatches.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Input>
+            ))}
+
+          <Box title={selectAllCount === 0 ? 'No available players to select' : undefined} sx={{ alignSelf: 'flex-start' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={selectAllCount === 0}
+              onClick={selectAllAvailable}
+              aria-label={`Select all available players not yet selected (${selectAllCount})`}
+            >
+              {`Select all available (${selectAllCount})`}
+            </Button>
+          </Box>
 
           <Input
             label="Search players"
@@ -458,28 +545,22 @@ export function SelectPlayersDialog({
             <Typography variant="body2" color="text.secondary">
               Loading players…
             </Typography>
+          ) : source === 'previous' && !previousOrder ? (
+            <Typography variant="body2" color="text.secondary">
+              {previousMatchId && previousOrderLoading
+                ? 'Loading the match…'
+                : 'Choose a match to show the players who played in it.'}
+            </Typography>
           ) : entries.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No players match.
             </Typography>
           ) : (
             <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-              {renderGroup(
-                'Available',
-                available,
-                false,
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={selectAllCount === 0}
-                  onClick={selectAllAvailable}
-                  aria-label={`Select all available players not yet selected (${selectAllCount})`}
-                  sx={{ minHeight: 0, py: 0, px: 1, fontSize: 12 }}
-                >
-                  {`Select all (${selectAllCount})`}
-                </Button>,
-              )}
-              {renderGroup('Not confirmed', notConfirmed, false)}
+              {renderGroup('Available', available, false)}
+              {renderGroup('Not polled', notPolled, false)}
+              {renderGroup('Selected, not confirmed', selectedNotConfirmed, false)}
+              {renderGroup('Needs an answer', needsAnswer, true)}
               {renderGroup('Not possible', notPossible, true)}
             </Box>
           )}
