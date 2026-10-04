@@ -114,6 +114,8 @@ export function TeamSelectionList({
 }: TeamSelectionListProps) {
   const [menu, setMenu] = useState<{ anchor: HTMLElement; playerId: string } | null>(null)
   const [roleAnchor, setRoleAnchor] = useState<HTMLElement | null>(null)
+  // The menu a clicked badge opens: the role badge lists the roles, the Captain and Wicketkeeper badges offer Remove.
+  const [badgeMenu, setBadgeMenu] = useState<{ anchor: HTMLElement; playerId: string; kind: 'role' | 'captain' | 'keeper' } | null>(null)
   const [positionDraft, setPositionDraft] = useState('')
   const positionCommittedRef = useRef(false)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -316,11 +318,39 @@ export function TeamSelectionList({
             <ArrowDropDownIcon fontSize="small" aria-hidden />
           </ButtonBase>
           <Box sx={{ ml: 'auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', columnGap: 0.75, rowGap: 0.25, pr: 0.5 }}>
-            <Typography component="span" variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-              {ROLE_LABEL[player.role]}
-            </Typography>
-            {isCaptain && <Chip size="small" variant="outlined" color="primary" label="Captain" />}
-            {isKeeper && <Chip size="small" variant="outlined" color="primary" label="Wicketkeeper" />}
+            <Chip
+              size="small"
+              variant="outlined"
+              clickable
+              label={ROLE_LABEL[player.role]}
+              aria-haspopup="menu"
+              aria-label={`${player.name}, role ${ROLE_LABEL[player.role]}, change role`}
+              onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'role' })}
+            />
+            {isCaptain && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="primary"
+                clickable
+                label="Captain"
+                aria-haspopup="menu"
+                aria-label={`${player.name}, captain, open options`}
+                onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'captain' })}
+              />
+            )}
+            {isKeeper && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="primary"
+                clickable
+                label="Wicketkeeper"
+                aria-haspopup="menu"
+                aria-label={`${player.name}, wicketkeeper, open options`}
+                onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'keeper' })}
+              />
+            )}
             {showAvailability && availability && <AvailabilityBadge availability={availability} />}
             {player.alsoIn && (
               <Chip size="small" variant="outlined" label={`Also in ${player.alsoIn}`} sx={toneSx('info')} />
@@ -567,6 +597,42 @@ export function TeamSelectionList({
             sx={{ color: 'error.main' }}
           >
             Remove from team
+          </MenuItem>
+        )}
+      </Menu>
+
+      <Menu anchorEl={badgeMenu?.anchor ?? null} open={Boolean(badgeMenu)} onClose={() => setBadgeMenu(null)}>
+        {badgeMenu?.kind === 'role' &&
+          ROLE_OPTIONS.map((role) => (
+            <MenuItem
+              key={role}
+              selected={players.find((candidate) => candidate.playerProfileId === badgeMenu.playerId)?.role === role}
+              onClick={() => {
+                onChangeRole(badgeMenu.playerId, role)
+                setBadgeMenu(null)
+              }}
+            >
+              {ROLE_LABEL[role]}
+            </MenuItem>
+          ))}
+        {badgeMenu?.kind === 'captain' && (
+          <MenuItem
+            onClick={() => {
+              onSetCaptain(null)
+              setBadgeMenu(null)
+            }}
+          >
+            Remove as captain
+          </MenuItem>
+        )}
+        {badgeMenu?.kind === 'keeper' && (
+          <MenuItem
+            onClick={() => {
+              onSetWicketKeeper(null)
+              setBadgeMenu(null)
+            }}
+          >
+            Remove as wicketkeeper
           </MenuItem>
         )}
       </Menu>
