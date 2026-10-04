@@ -8,6 +8,7 @@ import com.cricketlegend.dto.PlayerNameDto;
 import com.cricketlegend.dto.SelectionLimitsDto;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PlayerAgeIneligibleException;
+import com.cricketlegend.exception.PlayerNotConfirmedException;
 import com.cricketlegend.exception.PlayerNotInSquadException;
 import com.cricketlegend.exception.PlayerSaidUnavailableException;
 import com.cricketlegend.exception.PlayerTakenForSlotException;
@@ -30,7 +31,7 @@ import org.springframework.stereotype.Component;
  * {@link SelectionEligibility}. Both {@code MatchSideServiceImpl} (the existing endpoints) and
  * {@code MatchSelectionServiceImpl} (pool and apply) call it, so nothing is written twice. A player
  * who may not be selected gets exactly one rejection, by precedence: not in the pool, age
- * ineligible, said unavailable, taken for the slot (releasing him would not help if he also said
+ * ineligible, said unavailable, not confirmed (unsure or no response), taken for the slot (releasing him would not help if he also said
  * unavailable).
  */
 @Component
@@ -122,6 +123,13 @@ public class SelectionRules {
             } else if (availability.get(playerId) == SelectionAvailability.UNAVAILABLE) {
                 rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.SAID_UNAVAILABLE,
                         name + " said he is unavailable for this match.", null);
+            } else if (availability.get(playerId) == SelectionAvailability.UNSURE) {
+                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
+                        name + " is unsure for this match. Set his answer to Available first.", null);
+            } else if (availability.get(playerId) == SelectionAvailability.NO_RESPONSE) {
+                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
+                        name + " hasn't confirmed he is available for this match. Set his answer to Available first.",
+                        null);
             } else if (taken.containsKey(playerId)) {
                 TakenBy holder = taken.get(playerId);
                 rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.TAKEN_FOR_SLOT,
@@ -146,6 +154,7 @@ public class SelectionRules {
             case NOT_IN_POOL -> throw new PlayerNotInSquadException(rejection.message());
             case AGE_INELIGIBLE -> throw new PlayerAgeIneligibleException(rejection.message());
             case SAID_UNAVAILABLE -> throw new PlayerSaidUnavailableException(rejection.message());
+            case NOT_CONFIRMED -> throw new PlayerNotConfirmedException(rejection.message());
             default -> throw new PlayerTakenForSlotException(rejection.message());
         }
     }

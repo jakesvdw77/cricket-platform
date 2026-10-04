@@ -5922,6 +5922,7 @@ components:
           enum:
           - AGE_INELIGIBLE
           - SAID_UNAVAILABLE
+          - NOT_CONFIRMED
           - TAKEN_FOR_SLOT
         reasonText:
           type: string
@@ -5963,6 +5964,7 @@ components:
           enum:
           - AGE_INELIGIBLE
           - SAID_UNAVAILABLE
+          - NOT_CONFIRMED
           - TAKEN_FOR_SLOT
           - NOT_IN_POOL
           - TEAM_FULL
