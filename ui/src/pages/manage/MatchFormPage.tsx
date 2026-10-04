@@ -822,10 +822,6 @@ function MatchSideTab({
           </NoticeLine>
         )}
 
-        <Typography variant="body2" color="text.secondary">
-          Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
-        </Typography>
-
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 1, position: 'relative' }}>
           <Button
             startIcon={<GroupsOutlinedIcon fontSize="small" />}
@@ -909,6 +905,10 @@ function MatchSideTab({
           Loading players…
         </Typography>
       ) : (
+        <>
+          <Typography variant="body2" color="text.secondary">
+            Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
+          </Typography>
         <TeamSelectionList
           players={listPlayers}
           captainPlayerId={side.captainPlayerId}
@@ -941,6 +941,7 @@ function MatchSideTab({
           onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
           onRemove={(playerId) => removeMutation.mutate(playerId)}
         />
+        </>
       )}
 
       {selectOpen && (
