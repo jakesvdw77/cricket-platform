@@ -315,12 +315,14 @@ export function TeamSelectionList({
             {player.name}
             <ArrowDropDownIcon fontSize="small" aria-hidden />
           </ButtonBase>
-          {isCaptain && <Chip size="small" variant="outlined" color="primary" label="Captain" />}
-          {isKeeper && <Chip size="small" variant="outlined" color="primary" label="Wicketkeeper" />}
-          {showAvailability && availability && <AvailabilityBadge availability={availability} />}
-          {player.alsoIn && (
-            <Chip size="small" variant="outlined" label={`Also in ${player.alsoIn}`} sx={toneSx('info')} />
-          )}
+          <Box sx={{ ml: 'auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', columnGap: 0.75, rowGap: 0.25, pr: 0.5 }}>
+            {isCaptain && <Chip size="small" variant="outlined" color="primary" label="Captain" />}
+            {isKeeper && <Chip size="small" variant="outlined" color="primary" label="Wicketkeeper" />}
+            {showAvailability && availability && <AvailabilityBadge availability={availability} />}
+            {player.alsoIn && (
+              <Chip size="small" variant="outlined" label={`Also in ${player.alsoIn}`} sx={toneSx('info')} />
+            )}
+          </Box>
         </Box>
       </Box>
     )
