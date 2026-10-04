@@ -25,6 +25,7 @@ import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
 import { CardProgressBar } from '../../components/CardProgressBar'
 import { badgeSx } from '../../components/RecordCard'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { SelectPlayersDialog } from '../../components/SelectPlayersDialog'
 import type { SelectionApplyOutcome } from '../../components/SelectPlayersDialog'
 import { TeamSelectionList } from '../../components/TeamSelectionList'
@@ -318,6 +319,7 @@ function MatchSideTab({
   const attemptedCreateRef = useRef(false)
 
   const [selectOpen, setSelectOpen] = useState(false)
+  const [confirmAnnounce, setConfirmAnnounce] = useState(false)
   // The dialog's source switch: the team's squad (or the people who said available), the whole
   // section, or the players of a previous match (chosen in the dialog).
   const [source, setSource] = useState<'squad' | 'section' | 'previous'>('squad')
@@ -730,7 +732,7 @@ null
               <Box component="span" sx={{ display: 'flex', width: { xs: '100%', sm: 'auto' } }}>
                 <Button
                   variant="secondary"
-                  onClick={() => announceMutation.mutate()}
+                  onClick={() => setConfirmAnnounce(true)}
                   disabled={Boolean(blockedReason) || announcing}
                   aria-describedby={blockedReason ? blockedReasonId : undefined}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -805,6 +807,19 @@ null
         />
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmAnnounce}
+        title="Announce this team?"
+        description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
+        confirmLabel="Announce team"
+        pendingLabel="Announcing…"
+        pending={announceMutation.isPending}
+        onConfirm={() =>
+          announceMutation.mutate(undefined, { onSettled: () => setConfirmAnnounce(false) })
+        }
+        onClose={() => setConfirmAnnounce(false)}
+      />
 
       {selectOpen && (
         <SelectPlayersDialog
