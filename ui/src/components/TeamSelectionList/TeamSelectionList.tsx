@@ -347,6 +347,38 @@ export function TeamSelectionList({
         </Typography>
       ) : (
         <>
+          <Box
+            data-testid="batting-places"
+            onDragOver={(event: DragEvent<HTMLElement>) => {
+              if (dragId && positioned.length === 0 && !placesFull) {
+                event.preventDefault()
+                setDropIndex(0)
+              }
+            }}
+            onDrop={(event: DragEvent<HTMLElement>) => {
+              if (dragId && positioned.length === 0) {
+                event.preventDefault()
+                dropAt(0)
+              }
+            }}
+            sx={{ minHeight: dragId && positioned.length === 0 ? 44 : undefined }}
+          >
+            {positioned.map((player, index) => renderRow(player, 'positioned', index))}
+          </Box>
+
+          {showTwelfthRow && (
+            <Box>
+              <Box sx={SECTION_LABEL_SX}>12th man</Box>
+              {twelfthMan ? (
+                renderRow(twelfthMan, 'twelfth', 0)
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 1, px: 0.5 }}>
+                  None chosen. Open a player's menu and choose Make 12th man.
+                </Typography>
+              )}
+            </Box>
+          )}
+
           {waiting.length > 0 && (
             <Box
               data-testid="holding-area"
@@ -369,40 +401,8 @@ export function TeamSelectionList({
                 bgcolor: holdingOver ? (theme: Theme) => alpha(theme.palette.primary.main, 0.08) : undefined,
               }}
             >
-              <Box sx={{ ...SECTION_LABEL_SX, borderTop: 0, mt: 0 }}>{`Not in the batting order yet (${waiting.length})`}</Box>
+              <Box sx={SECTION_LABEL_SX}>{`Not in the batting order yet (${waiting.length})`}</Box>
               {waiting.map((player, index) => renderRow(player, 'waiting', index))}
-            </Box>
-          )}
-
-          <Box
-            data-testid="batting-places"
-            onDragOver={(event: DragEvent<HTMLElement>) => {
-              if (dragId && positioned.length === 0 && !placesFull) {
-                event.preventDefault()
-                setDropIndex(0)
-              }
-            }}
-            onDrop={(event: DragEvent<HTMLElement>) => {
-              if (dragId && positioned.length === 0) {
-                event.preventDefault()
-                dropAt(0)
-              }
-            }}
-            sx={{ mt: waiting.length > 0 ? 1 : 0, minHeight: dragId && positioned.length === 0 ? 44 : undefined }}
-          >
-            {positioned.map((player, index) => renderRow(player, 'positioned', index))}
-          </Box>
-
-          {showTwelfthRow && (
-            <Box>
-              <Box sx={SECTION_LABEL_SX}>12th man</Box>
-              {twelfthMan ? (
-                renderRow(twelfthMan, 'twelfth', 0)
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 1, px: 0.5 }}>
-                  None chosen. Open a player's menu and choose Make 12th man.
-                </Typography>
-              )}
             </Box>
           )}
         </>
