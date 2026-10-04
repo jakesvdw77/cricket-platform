@@ -316,6 +316,9 @@ export function TeamSelectionList({
             <ArrowDropDownIcon fontSize="small" aria-hidden />
           </ButtonBase>
           <Box sx={{ ml: 'auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', columnGap: 0.75, rowGap: 0.25, pr: 0.5 }}>
+            <Typography component="span" variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+              {ROLE_LABEL[player.role]}
+            </Typography>
             {isCaptain && <Chip size="small" variant="outlined" color="primary" label="Captain" />}
             {isKeeper && <Chip size="small" variant="outlined" color="primary" label="Wicketkeeper" />}
             {showAvailability && availability && <AvailabilityBadge availability={availability} />}
