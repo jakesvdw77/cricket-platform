@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Alert,
   Box,
@@ -132,6 +132,24 @@ export function SelectPlayersDialog({
   const available = entries.filter((entry) => entry.selectable && entry.availability === 'AVAILABLE')
   const notConfirmed = entries.filter((entry) => entry.selectable && entry.availability !== 'AVAILABLE')
   const notPossible = entries.filter((entry) => !entry.selectable)
+
+  // Ticks every Available player who is not ticked yet, up to the limit (the rest stay unticked and the
+  // footer shows the team is full).
+  const availableUnticked = available.filter((entry) => !ticked.has(entry.playerProfileId))
+  const room = Math.max(0, maxSelected - ticked.size)
+  const selectAllCount = Math.min(availableUnticked.length, room)
+  const selectAllAvailable = () => {
+    setTicked((previous) => {
+      const next = new Set(previous)
+      for (const entry of availableUnticked) {
+        if (next.size >= maxSelected) {
+          break
+        }
+        next.add(entry.playerProfileId)
+      }
+      return next
+    })
+  }
 
   const toggle = (id: string) => {
     setTicked((previous) => {
@@ -317,15 +335,18 @@ export function SelectPlayersDialog({
     </Box>
   )
 
-  const renderGroup = (label: string, rows: SelectionPoolEntry[], blocked: boolean) =>
+  const renderGroup = (label: string, rows: SelectionPoolEntry[], blocked: boolean, action?: ReactNode) =>
     rows.length === 0 ? null : (
       <Box key={label} role="group" aria-label={label}>
-        <Typography
-          component="div"
-          sx={{ bgcolor: 'action.hover', px: 1.5, py: 0.5, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' }}
-        >
-          {label}
-        </Typography>
+        <Box sx={{ bgcolor: 'action.hover', px: 1.5, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography
+            component="div"
+            sx={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' }}
+          >
+            {label}
+          </Typography>
+          {action}
+        </Box>
         {rows.map((entry) => (blocked ? renderBlockedRow(entry) : renderSelectableRow(entry)))}
       </Box>
     )
@@ -397,7 +418,21 @@ export function SelectPlayersDialog({
             </Typography>
           ) : (
             <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-              {renderGroup('Available', available, false)}
+              {renderGroup(
+                'Available',
+                available,
+                false,
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={selectAllCount === 0}
+                  onClick={selectAllAvailable}
+                  aria-label={`Select all available players not yet selected (${selectAllCount})`}
+                  sx={{ minHeight: 0, py: 0, px: 1, fontSize: 12 }}
+                >
+                  {`Select all (${selectAllCount})`}
+                </Button>,
+              )}
               {renderGroup('Not confirmed', notConfirmed, false)}
               {renderGroup('Not possible', notPossible, true)}
             </Box>
