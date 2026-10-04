@@ -334,7 +334,12 @@ export function SelectPlayersDialog({
     <>
       <Dialog open onClose={submitting ? undefined : onClose} fullScreen={fullScreen} fullWidth maxWidth="sm" scroll="paper">
         <DialogTitle sx={{ pb: 0.5 }}>{`Select players · ${teamName}`}</DialogTitle>
-        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, px: { xs: 1.5, sm: 3 } }}>
+        {/* flexShrink: 0 on every child: in a column flex container the children shrink by default, and the
+            list box clips (overflow hidden), so a long pool was cut off instead of the body scrolling. */}
+        <DialogContent
+          dividers
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, px: { xs: 1.5, sm: 3 }, '& > *': { flexShrink: 0 } }}
+        >
           <Typography variant="body2" color="text.secondary">
             {`${kickoffLabel} · tick up to ${maxSelected}. Unticking removes a player from the team.`}
           </Typography>
