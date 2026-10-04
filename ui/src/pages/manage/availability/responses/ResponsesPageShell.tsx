@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
+import { useSearchParams } from 'react-router-dom'
 import { Input } from '../../../../components/Input'
 import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
@@ -13,6 +14,16 @@ import { ResponsesByPlayer } from './ResponsesByPlayer'
 import { ResponsesSummary } from './ResponsesSummary'
 
 type View = 'slot' | 'player' | 'summary'
+
+// docs/specs/076-team-selection.md: the selection dialog's 'Change answer' link carries a returnTo
+// query parameter. Only a same-app relative path under /manage/ is honoured (anything else, such as
+// an absolute URL or a protocol-relative '//host', is ignored to avoid an open redirect).
+export function safeReturnTo(value: string | null): string | null {
+  if (!value || !value.startsWith('/manage/') || value.startsWith('//') || value.includes('\\')) {
+    return null
+  }
+  return value
+}
 
 export interface ResponsesPageShellProps {
   title: string
@@ -50,6 +61,8 @@ export function ResponsesPageShell({
   children,
 }: ResponsesPageShellProps) {
   // Neither the view nor the search is persisted: a fresh visit starts on By time slot.
+  const [searchParams] = useSearchParams()
+  const returnTo = safeReturnTo(searchParams.get('returnTo'))
   const [view, setView] = useState<View>('slot')
   const [search, setSearch] = useState('')
 
@@ -66,7 +79,12 @@ export function ResponsesPageShell({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <ManageScreenHeader title={title} backTo={backTo} backLabel={backLabel} action={headerAction} />
+      <ManageScreenHeader
+        title={title}
+        backTo={returnTo ?? backTo}
+        backLabel={returnTo ? 'Back to team selection' : backLabel}
+        action={headerAction}
+      />
 
       {meta}
 

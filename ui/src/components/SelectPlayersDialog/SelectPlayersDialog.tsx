@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button as MuiButton,
+  Link as MuiLink,
   Checkbox,
   Chip,
   Dialog,
@@ -53,6 +54,9 @@ export interface SelectPlayersDialogProps {
   // Release: remove the player from the other team's selection (keepAnnounced). Rejects on failure.
   onRelease: (entry: SelectionPoolEntry) => Promise<void>
   onAddNewPlayer: () => void
+  // Where the Responses page's Back button returns to (the team's tab on the edit page); sent as
+  // the returnTo query parameter of every Change answer link.
+  returnTo?: string
   onClose: () => void
 }
 
@@ -74,18 +78,21 @@ function infoChipSx(theme: Theme) {
 }
 
 // The Responses page of the poll covering the match, opened in a new tab so the ticks survive.
-function changeAnswerHref(pool: SelectionPool | undefined): string | null {
+function changeAnswerHref(pool: SelectionPool | undefined, returnTo?: string): string | null {
   const poll = pool?.coveringPoll
   if (!poll) {
     return null
   }
+  let base: string | null = null
   if (poll.kind === 'GROUP' && poll.roundId) {
-    return `/manage/availability/group/${poll.roundId}`
+    base = `/manage/availability/group/${poll.roundId}`
+  } else if (poll.kind === 'SQUAD' && poll.matchId && poll.pollId) {
+    base = `/manage/availability/squad/${poll.matchId}/${poll.pollId}`
   }
-  if (poll.kind === 'SQUAD' && poll.matchId && poll.pollId) {
-    return `/manage/availability/squad/${poll.matchId}/${poll.pollId}`
+  if (!base) {
+    return null
   }
-  return null
+  return returnTo ? `${base}?returnTo=${encodeURIComponent(returnTo)}` : base
 }
 
 // docs/specs/076-team-selection.md section 3: the one dialog that chooses who plays. Presentational
@@ -106,6 +113,7 @@ export function SelectPlayersDialog({
   onApply,
   onRelease,
   onAddNewPlayer,
+  returnTo,
   onClose,
 }: SelectPlayersDialogProps) {
   const theme = useTheme()
@@ -127,7 +135,7 @@ export function SelectPlayersDialog({
   const initial = new Set(initialSelectedIds)
   const changed = ticked.size !== initial.size || [...ticked].some((id) => !initial.has(id))
   const groupPoll = pool?.coveringPoll.kind === 'GROUP'
-  const answerHref = changeAnswerHref(pool)
+  const answerHref = changeAnswerHref(pool, returnTo)
 
   const available = entries.filter((entry) => entry.selectable && entry.availability === 'AVAILABLE')
   const notConfirmed = entries.filter((entry) => entry.selectable && entry.availability !== 'AVAILABLE')
@@ -298,6 +306,18 @@ export function SelectPlayersDialog({
           }
         />
         <AvailabilityBadge availability={entry.availability} />
+        {answerHref && (entry.availability === 'UNSURE' || entry.availability === 'NO_RESPONSE') && (
+          <MuiLink
+            href={answerHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            underline="hover"
+            variant="caption"
+            color="text.secondary"
+          >
+            Change answer
+          </MuiLink>
+        )}
         {entry.taken && entry.selected && (
           <Chip size="small" variant="outlined" label={`Also in ${entry.taken.teamName}`} sx={infoChipSx(theme)} />
         )}

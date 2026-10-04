@@ -959,6 +959,7 @@ function MatchSideTab({
           onSearchChange={setSearch}
           onApply={handleApply}
           onRelease={handleRelease}
+          returnTo={`/manage/fixtures/matches/${matchId}/edit?tab=${sideLabel === 'Home' ? 'home-xi' : 'away-xi'}`}
           onAddNewPlayer={() => {
             setAddPlayerTab(0)
             setAddPlayerOpen(true)
@@ -1204,6 +1205,19 @@ export default function MatchFormPage() {
     // activeTab change caused by the admin's own tab clicks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasXiTabs, hasHomeXiTab, hasAwayXiTab])
+
+  // ?tab=home-xi / ?tab=away-xi open that exact tab: the Responses page's 'Back to team selection'
+  // (returnTo from the Select players dialog's Change answer link) lands here.
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'home-xi' && hasHomeXiTab) {
+      setActiveTab('home-xi')
+    } else if (tab === 'away-xi' && hasAwayXiTab) {
+      setActiveTab('away-xi')
+    }
+    // Only re-evaluated when the deep-link target itself becomes available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, hasHomeXiTab, hasAwayXiTab])
 
   // docs/specs/076-team-selection.md section 1: ?tab=match-squad&side=home|away (old bookmarks and
   // the removed Pick match squad button) now selects that side's XI tab, falling back to the other
