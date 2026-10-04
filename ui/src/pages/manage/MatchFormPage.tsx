@@ -69,11 +69,14 @@ import {
   selectionPoolQueryKey,
 } from '../../api/matchSelectionApi'
 import type {
+  SelectionEntryRequest,
   SelectionPool,
   SelectionPoolEntry,
   SelectionRejectedBody,
 } from '../../api/matchSelectionApi'
-import { listPolls } from '../../api/matchAvailabilityApi'
+import { listPolls, setPlayerStatus } from '../../api/matchAvailabilityApi'
+import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
+import { setRoundPlayerStatus } from '../../api/sectionAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { formatMatchDateTime } from '../../utils/matchDateTime'
@@ -448,8 +451,8 @@ function MatchSideTab({
   })
 
   const applyMutation = useMutation({
-    mutationFn: (ids: string[]) =>
-      applySelection(clubId, matchId, sideId as string, { players: ids.map((playerProfileId) => ({ playerProfileId })) }),
+    mutationFn: (entries: SelectionEntryRequest[]) =>
+      applySelection(clubId, matchId, sideId as string, { players: entries }),
   })
 
   const closeSelectDialog = () => {
@@ -462,7 +465,26 @@ function MatchSideTab({
   // Done: one atomic apply. A 409 with rejections keeps the dialog open with per-row messages.
   const handleApply = async (ids: string[]): Promise<SelectionApplyOutcome> => {
     try {
-      await applyMutation.mutateAsync(ids)
+      // Existing players carry no role or position (the server keeps theirs). Each NEW player (ticked
+      // ids not already selected, in tick order) goes to the end of the batting order: the next
+      // position after the highest one kept, while it fits in battingPlaces; the rest wait unordered.
+      const current = side?.players ?? []
+      const currentIds = new Set(current.map((player) => player.playerProfileId))
+      const wanted = new Set(ids)
+      const keptPositions = current
+        .filter((player) => wanted.has(player.playerProfileId) && player.battingOrder != null)
+        .map((player) => player.battingOrder as number)
+      let nextPosition = keptPositions.length > 0 ? Math.max(...keptPositions) + 1 : 1
+      const battingPlaces = side?.limits.battingPlaces ?? 0
+      const entries: SelectionEntryRequest[] = ids.map((playerProfileId) => {
+        if (currentIds.has(playerProfileId)) {
+          return { playerProfileId }
+        }
+        return nextPosition <= battingPlaces
+          ? { playerProfileId, battingOrder: nextPosition++ }
+          : { playerProfileId }
+      })
+      await applyMutation.mutateAsync(entries)
       invalidateSelection()
       closeSelectDialog()
       return { ok: true }
@@ -478,6 +500,36 @@ function MatchSideTab({
       }
       return { ok: false, message: errorDetail(error, "Couldn't save the selection. Please try again."), rejections: [] }
     }
+  }
+
+  // The group poll's override needs the match's own window id; the squad endpoint (already loaded
+  // for the header Availability button, same key) carries it.
+  const coverageQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
+    queryFn: () => getMatchSquad(clubId, matchId, teamId),
+  })
+
+  // Set answer (dialog): a manager correction through the same override endpoints the Responses pages
+  // use - PUT matches/{matchId}/polls/{pollId}/players/{playerId} {status} for a squad poll, PUT
+  // section-availability-rounds/{roundId}/players/{playerId} {windowId, status} for a group poll
+  // (the answer is per window, so it covers every match of that slot). Works on a closed poll.
+  const handleSetAnswer = async (entry: SelectionPoolEntry, status: AvailabilityStatus) => {
+    const poll = dialogQuery.data?.coveringPoll
+    if (!poll) {
+      return
+    }
+    if (poll.kind === 'SQUAD' && poll.pollId && poll.matchId) {
+      await setPlayerStatus(clubId, poll.matchId, poll.pollId, entry.playerProfileId, status)
+    } else if (poll.kind === 'GROUP' && poll.roundId && coverageQuery.data?.windowId) {
+      await setRoundPlayerStatus(clubId, poll.roundId, entry.playerProfileId, coverageQuery.data.windowId, status)
+    } else {
+      throw new Error('No poll window to answer on')
+    }
+    queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'player-availability'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
   }
 
   // Release: removes the player from the other team's selection without un-announcing that team
@@ -959,7 +1011,7 @@ function MatchSideTab({
           onSearchChange={setSearch}
           onApply={handleApply}
           onRelease={handleRelease}
-          returnTo={`/manage/fixtures/matches/${matchId}/edit?tab=${sideLabel === 'Home' ? 'home-xi' : 'away-xi'}`}
+          onSetAnswer={handleSetAnswer}
           onAddNewPlayer={() => {
             setAddPlayerTab(0)
             setAddPlayerOpen(true)

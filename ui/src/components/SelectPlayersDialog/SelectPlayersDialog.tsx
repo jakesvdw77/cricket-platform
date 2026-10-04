@@ -3,7 +3,9 @@ import {
   Alert,
   Box,
   Button as MuiButton,
-  Link as MuiLink,
+  CircularProgress,
+  Menu,
+  MenuItem,
   Checkbox,
   Chip,
   Dialog,
@@ -17,13 +19,17 @@ import {
 } from '@mui/material'
 import { alpha, useTheme } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
+import CheckIcon from '@mui/icons-material/Check'
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import { Button } from '../Button'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { Input } from '../Input'
 import { AvailabilityBadge } from '../TeamSelectionList'
+import { errorDetail } from '../../utils/errorDetail'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 import { formatMatchDateTime } from '../../utils/matchDateTime'
+import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import type { SelectionPool, SelectionPoolEntry, SelectionRejection } from '../../api/matchSelectionApi'
 
 // What the page's apply call reports back. A refused apply (409) saved nothing and lists a reason
@@ -54,9 +60,9 @@ export interface SelectPlayersDialogProps {
   // Release: remove the player from the other team's selection (keepAnnounced). Rejects on failure.
   onRelease: (entry: SelectionPoolEntry) => Promise<void>
   onAddNewPlayer: () => void
-  // Where the Responses page's Back button returns to (the team's tab on the edit page); sent as
-  // the returnTo query parameter of every Change answer link.
-  returnTo?: string
+  // Saves a manager correction of the player's answer on the poll covering the match, at once
+  // (the page owns the API call and the cache invalidation). Rejects on failure.
+  onSetAnswer: (entry: SelectionPoolEntry, status: AvailabilityStatus) => Promise<void>
   onClose: () => void
 }
 
@@ -77,23 +83,11 @@ function infoChipSx(theme: Theme) {
   }
 }
 
-// The Responses page of the poll covering the match, opened in a new tab so the ticks survive.
-function changeAnswerHref(pool: SelectionPool | undefined, returnTo?: string): string | null {
-  const poll = pool?.coveringPoll
-  if (!poll) {
-    return null
-  }
-  let base: string | null = null
-  if (poll.kind === 'GROUP' && poll.roundId) {
-    base = `/manage/availability/group/${poll.roundId}`
-  } else if (poll.kind === 'SQUAD' && poll.matchId && poll.pollId) {
-    base = `/manage/availability/squad/${poll.matchId}/${poll.pollId}`
-  }
-  if (!base) {
-    return null
-  }
-  return returnTo ? `${base}?returnTo=${encodeURIComponent(returnTo)}` : base
-}
+const ANSWER_OPTIONS: { status: AvailabilityStatus; label: string }[] = [
+  { status: 'AVAILABLE', label: 'Available' },
+  { status: 'UNSURE', label: 'Unsure' },
+  { status: 'UNAVAILABLE', label: 'Unavailable' },
+]
 
 // docs/specs/076-team-selection.md section 3: the one dialog that chooses who plays. Presentational
 // plus its own ticked state: the page owns the pool query (switch and search are controlled), the
@@ -113,7 +107,7 @@ export function SelectPlayersDialog({
   onApply,
   onRelease,
   onAddNewPlayer,
-  returnTo,
+  onSetAnswer,
   onClose,
 }: SelectPlayersDialogProps) {
   const theme = useTheme()
@@ -122,6 +116,8 @@ export function SelectPlayersDialog({
   const [submitting, setSubmitting] = useState(false)
   const [alertLines, setAlertLines] = useState<string[]>([])
   const [rowMessages, setRowMessages] = useState<Record<string, string>>({})
+  const [answerMenu, setAnswerMenu] = useState<{ anchor: HTMLElement; entry: SelectionPoolEntry } | null>(null)
+  const [answerPending, setAnswerPending] = useState<Set<string>>(() => new Set())
   const [releasing, setReleasing] = useState<SelectionPoolEntry | null>(null)
   const [releasePending, setReleasePending] = useState(false)
   const [releaseError, setReleaseError] = useState<string | null>(null)
@@ -135,7 +131,10 @@ export function SelectPlayersDialog({
   const initial = new Set(initialSelectedIds)
   const changed = ticked.size !== initial.size || [...ticked].some((id) => !initial.has(id))
   const groupPoll = pool?.coveringPoll.kind === 'GROUP'
-  const answerHref = changeAnswerHref(pool, returnTo)
+  const covered = Boolean(pool) && pool?.coveringPoll.kind !== 'NONE'
+  const canSetAnswer = (entry: SelectionPoolEntry) =>
+    covered &&
+    (entry.availability === 'UNSURE' || entry.availability === 'NO_RESPONSE' || entry.availability === 'UNAVAILABLE')
 
   const available = entries.filter((entry) => entry.selectable && entry.availability === 'AVAILABLE')
   const notConfirmed = entries.filter((entry) => entry.selectable && entry.availability !== 'AVAILABLE')
@@ -214,6 +213,52 @@ export function SelectPlayersDialog({
     setTicked((previous) => new Set([...previous].filter((id) => !rejectedIds.has(id))))
   }
 
+  // Set answer: a manager correction saved at once. The dialog stays open and the ticks are kept,
+  // except that a ticked player who has just become unavailable is unticked (he can no longer be
+  // selected) and the alert says so.
+  const handleSetAnswer = async (entry: SelectionPoolEntry, status: AvailabilityStatus) => {
+    const id = entry.playerProfileId
+    const name = `${entry.firstName} ${entry.lastName}`
+    setAnswerMenu(null)
+    setAnswerPending((previous) => new Set(previous).add(id))
+    try {
+      await onSetAnswer(entry, status)
+      if (status === 'UNAVAILABLE' && ticked.has(id)) {
+        setTicked((previous) => new Set([...previous].filter((candidate) => candidate !== id)))
+        setAlertLines([`${name} is now marked unavailable, so he was unticked.`])
+      }
+    } catch (error) {
+      setAlertLines([`Couldn't save ${name}'s answer. ${errorDetail(error, 'Please try again.')}`])
+    } finally {
+      setAnswerPending((previous) => {
+        const next = new Set(previous)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
+  const renderSetAnswer = (entry: SelectionPoolEntry) => {
+    if (!canSetAnswer(entry)) {
+      return null
+    }
+    const pending = answerPending.has(entry.playerProfileId)
+    return (
+      <MuiButton
+        size="small"
+        color="inherit"
+        disabled={pending}
+        aria-haspopup="menu"
+        aria-label={`Set answer for ${entry.firstName} ${entry.lastName}`}
+        onClick={(event) => setAnswerMenu({ anchor: event.currentTarget, entry })}
+        endIcon={pending ? <CircularProgress size={12} /> : <ArrowDropDownIcon fontSize="small" />}
+        sx={{ color: 'text.secondary', textTransform: 'none', fontSize: 12, minWidth: 0, py: 0, flex: 'none' }}
+      >
+        Set answer
+      </MuiButton>
+    )
+  }
+
   const confirmRelease = async () => {
     if (!releasing) {
       return
@@ -249,21 +294,6 @@ export function SelectPlayersDialog({
         <Typography variant="caption" color="text.secondary">
           Ask that team's manager to release this player
         </Typography>
-      )
-    }
-    if (entry.reason === 'SAID_UNAVAILABLE' && answerHref) {
-      return (
-        <MuiButton
-          variant="outlined"
-          size="small"
-          component="a"
-          href={answerHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ flex: 'none' }}
-        >
-          Change answer
-        </MuiButton>
       )
     }
     return null
@@ -306,18 +336,7 @@ export function SelectPlayersDialog({
           }
         />
         <AvailabilityBadge availability={entry.availability} />
-        {answerHref && (entry.availability === 'UNSURE' || entry.availability === 'NO_RESPONSE') && (
-          <MuiLink
-            href={answerHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            underline="hover"
-            variant="caption"
-            color="text.secondary"
-          >
-            Change answer
-          </MuiLink>
-        )}
+        {renderSetAnswer(entry)}
         {entry.taken && entry.selected && (
           <Chip size="small" variant="outlined" label={`Also in ${entry.taken.teamName}`} sx={infoChipSx(theme)} />
         )}
@@ -347,6 +366,7 @@ export function SelectPlayersDialog({
       </Typography>
       {renderBlockedBadge(entry)}
       {renderBlockedAction(entry)}
+      {renderSetAnswer(entry)}
       {(entry.reason === 'AGE_INELIGIBLE' || rowMessages[entry.playerProfileId]) && (
         <Typography variant="caption" color="text.secondary" sx={{ flexBasis: '100%', pl: 5 }}>
           {rowMessages[entry.playerProfileId] ?? entry.reasonText}
@@ -393,6 +413,12 @@ export function SelectPlayersDialog({
                 </Typography>
               ))}
             </Alert>
+          )}
+
+          {pool?.coveringPoll.kind === 'GROUP' && (
+            <Typography variant="caption" color="text.secondary">
+              Answers set here apply to the whole slot (all matches in this group poll window).
+            </Typography>
           )}
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -482,6 +508,23 @@ export function SelectPlayersDialog({
           </Stack>
         </DialogActions>
       </Dialog>
+
+      <Menu anchorEl={answerMenu?.anchor ?? null} open={Boolean(answerMenu)} onClose={() => setAnswerMenu(null)}>
+        {ANSWER_OPTIONS.map((option) => {
+          const current = answerMenu?.entry.availability === option.status
+          return (
+            <MenuItem
+              key={option.status}
+              disabled={current}
+              onClick={() => answerMenu && handleSetAnswer(answerMenu.entry, option.status)}
+              sx={{ gap: 1 }}
+            >
+              {option.label}
+              {current && <CheckIcon fontSize="small" />}
+            </MenuItem>
+          )
+        })}
+      </Menu>
 
       <ConfirmDialog
         open={releasing !== null}

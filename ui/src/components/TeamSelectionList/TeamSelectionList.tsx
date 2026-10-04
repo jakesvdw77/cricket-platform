@@ -347,23 +347,39 @@ export function TeamSelectionList({
         </Typography>
       ) : (
         <>
-          <Box
-            data-testid="batting-places"
-            onDragOver={(event: DragEvent<HTMLElement>) => {
-              if (dragId && positioned.length === 0 && !placesFull) {
-                event.preventDefault()
-                setDropIndex(0)
-              }
-            }}
-            onDrop={(event: DragEvent<HTMLElement>) => {
-              if (dragId && positioned.length === 0) {
-                event.preventDefault()
-                dropAt(0)
-              }
-            }}
-            sx={{ minHeight: dragId && positioned.length === 0 ? 44 : undefined }}
-          >
+          <Box data-testid="batting-places" sx={{ mt: waiting.length > 0 ? 1 : 0 }}>
             {positioned.map((player, index) => renderRow(player, 'positioned', index))}
+            {dragId !== null && !(placesFull && !positionedIds.includes(dragId)) && (
+              // The drop zone at the very end of the numbered places (and the only target when the
+              // batting order is still empty), visible while a drag is in progress.
+              <Box
+                data-testid="batting-end-drop"
+                onDragOver={(event: DragEvent<HTMLElement>) => {
+                  event.preventDefault()
+                  setHoldingOver(false)
+                  setDropIndex(positioned.length)
+                }}
+                onDrop={(event: DragEvent<HTMLElement>) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  dropAt(positioned.length)
+                }}
+                sx={{
+                  mt: 0.5,
+                  minHeight: 44,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px dashed',
+                  borderColor: dropIndex === positioned.length ? 'primary.main' : 'divider',
+                  borderRadius: 1,
+                  fontSize: 12,
+                  color: 'text.secondary',
+                  bgcolor: dropIndex === positioned.length ? (theme: Theme) => alpha(theme.palette.primary.main, 0.08) : undefined,
+                }}
+              >
+                {positioned.length === 0 ? 'Drop here to start the batting order' : 'Drop here to place last'}
+              </Box>
+            )}
           </Box>
 
           {showTwelfthRow && (
