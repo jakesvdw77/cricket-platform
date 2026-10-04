@@ -4,6 +4,10 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
+## Resume here: 076 Team Selection (phase 1 built, phase 2 pending)
+
+Branch `feature/076-team-selection`, draft PR #81, not merged. Read the final section of [`specs/076-team-selection.md`](specs/076-team-selection.md) ("Phase 1 build record and how to resume") first: it lists the user decisions made while trying the first run (they supersede the spec body), what is built, and the phase 2 work (full tests, stories, smoke tests, a fresh standards review and browser check) that must be done before the branch is merged. Other open threads from the same period: `055` and `058` are the user's own untracked drafts (never commit them); `058` must be re-read against `076` before it is built.
+
 ## Active
 
 | # | Spec | Status |
