@@ -10,17 +10,17 @@ describe('NavItemIcon', () => {
     expect(img).toHaveStyle({ width: '40px', height: '40px' })
   })
 
-  it('renders the home glyph on a disc, 32 px by default, hidden from assistive tech', () => {
-    render(<NavItemIcon name="home" />)
+  it('renders the menu glyph on a disc, 32 px by default, hidden from assistive tech', () => {
+    render(<NavItemIcon name="menu" />)
 
-    const disc = screen.getByTestId('nav-icon-home')
+    const disc = screen.getByTestId('nav-icon-menu')
     expect(disc).toHaveStyle({ width: '32px', height: '32px' })
     expect(disc).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('renders the menu glyph on a disc', () => {
-    render(<NavItemIcon name="menu" size={40} />)
+  it('renders the Overview brand icon', () => {
+    const { container } = render(<NavItemIcon name="nav/overview-home" size={32} />)
 
-    expect(screen.getByTestId('nav-icon-menu')).toHaveStyle({ width: '40px' })
+    expect(container.querySelector('img')).toBeInTheDocument()
   })
 })

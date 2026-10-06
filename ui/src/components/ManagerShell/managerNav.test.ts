@@ -21,13 +21,13 @@ describe('managerNav', () => {
 
   it('every icon is a known brand icon (or a MUI glyph name)', () => {
     for (const item of items) {
-      if (item.icon === 'home' || item.icon === 'menu') continue
+      if (item.icon === 'menu') continue
       expect(BRAND_ICON_NAMES as readonly string[]).toContain(item.icon)
     }
   })
 
-  it('only Overview uses the home glyph for now', () => {
-    expect(items.filter((item) => item.icon === 'home').map((item) => item.id)).toEqual(['overview'])
+  it('Overview uses its own brand icon', () => {
+    expect(items.find((item) => item.id === 'overview')?.icon).toBe('nav/overview-home')
   })
 
   it('the Overview tiles are drawn from the nav, in the original two groups of 9 and 3', () => {

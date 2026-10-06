@@ -3,8 +3,8 @@ import type { BrandIconName } from '../BrandIcon'
 // docs/specs/079-manager-shell-and-overview.md: the one source for the manager's navigation. The
 // side menu, the phone bottom bar, the Menu sheet and the Overview tile grid all read it.
 
-// 'home' is a MUI home glyph on a brand-coloured disc, used until `nav/overview.svg` exists.
-export type NavIconName = BrandIconName | 'home' | 'menu'
+// 'menu' is a MUI menu glyph on a brand-coloured disc, used by the phone bar's Menu button.
+export type NavIconName = BrandIconName | 'menu'
 
 export interface NavItem {
   id: string
@@ -29,7 +29,7 @@ export interface NavGroup {
 export const MANAGER_NAV: NavGroup[] = [
   {
     label: null,
-    items: [{ id: 'overview', label: 'Overview', description: 'What needs you today', to: '/manage', icon: 'home' }],
+    items: [{ id: 'overview', label: 'Overview', description: 'What needs you today', to: '/manage', icon: 'nav/overview-home' }],
   },
   {
     label: 'Matches',

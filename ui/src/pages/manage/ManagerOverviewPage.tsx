@@ -30,7 +30,7 @@ export default function ManagerOverviewPage() {
           >
             {group.ids.flatMap((id) => {
               const item = items.find((candidate) => candidate.id === id)
-              if (!item || item.icon === 'home' || item.icon === 'menu') return []
+              if (!item || item.icon === 'menu') return []
               return [
                 <NavTile
                   key={item.id}
