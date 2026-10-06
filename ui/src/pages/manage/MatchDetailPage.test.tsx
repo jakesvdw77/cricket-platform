@@ -635,6 +635,25 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
     })
 
+    it('takes M from the side\'s limits (a 12th man makes 12), not from the league\'s XI size', async () => {
+      listLeagues.mockResolvedValue([{ ...LEAGUE, maxPlayingXiSize: 11 }])
+      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside', leagueId: 'league-1' }))
+      listMatchSides.mockResolvedValue([
+        makeSide({
+          teamId: 'team-1',
+          limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
+          players: [
+            { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+            { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+          ],
+        }),
+      ])
+      renderPage(PATH, 'test-club-id')
+
+      expect(await screen.findByText('2 of 12 picked')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: '1st XI selection' })).toHaveAttribute('aria-valuemax', '12')
+    })
+
     it('says squad complete at M of M', async () => {
       listLeagues.mockResolvedValue([{ ...LEAGUE, maxPlayingXiSize: 2 }])
       getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside', leagueId: 'league-1' }))

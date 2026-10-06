@@ -317,6 +317,37 @@ describe('generateTeamSheetPdf', () => {
     expect(texts).not.toContain('12th Man:')
   })
 
+  // docs/specs/076-team-selection.md section 7: the 12th man is an ordinary selection row with no
+  // position, and a waiting player has none either.
+  it('prints the 12th man once (callout only), a waiting player after the numbered ones with a dash, and no position for either', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const withWaiting: TeamSheetSide = {
+      team: homeTeam,
+      teamName: homeTeam.name,
+      side: {
+        ...homeSide,
+        players: [
+          { playerProfileId: 'p3', battingOrder: null, role: 'BATSMAN' },
+          { playerProfileId: 'p2', battingOrder: null, role: 'BATSMAN' },
+          { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
+        ],
+      },
+      squad: [p1, p2, p3],
+    }
+
+    await generateTeamSheetPdf(match, [withWaiting], subtitle)
+
+    const texts = textSpy.mock.calls.map((call) => call[0])
+    // The 12th man is excluded from the roster count and appears only in the 12th Man callout.
+    expect(texts).toContain('Playing XI (2)')
+    expect(texts).toContain('12th Man:')
+    expect(texts.filter((text) => text === 'Sipho Ndlovu')).toHaveLength(1)
+    // Numbered first, then the waiting player; the waiting player's position cell is a dash.
+    const labels = texts.filter((text) => text === '1' || text === '-')
+    expect(labels).toEqual(['1', '-'])
+    expect(texts.indexOf('John Smith (C)')).toBeLessThan(texts.indexOf('Amit Patel (WK)'))
+  })
+
   it('renders a "Team not yet announced" placeholder for a side with zero players', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
 
