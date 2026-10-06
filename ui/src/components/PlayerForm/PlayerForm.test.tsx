@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { PlayerForm, PLAYER_FORM_ID } from './PlayerForm'
@@ -118,7 +118,40 @@ describe('PlayerForm', () => {
 
     expect(await screen.findByText('First name is required')).toBeInTheDocument()
     expect(screen.getByText('Last name is required')).toBeInTheDocument()
+    expect(screen.getByText('Date of birth is required')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  // docs/specs/077: same bounds and wording as the backend.
+  it.each([
+    ['a future date', '2999-01-01', 'Date of birth must not be in the future'],
+    ['a date before 1900-01-01', '1899-12-31', 'Date of birth must not be before 1900-01-01'],
+  ])('rejects %s and does not call onSubmit', async (_label, value, message) => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderPlayerForm({ activeTab: 0, onSubmit, initialValues: { firstName: 'Sipho', lastName: 'Ndlovu' } })
+
+    fireEvent.change(screen.getByLabelText('Date of birth'), { target: { value } })
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('accepts the boundary dates 1900-01-01 and today', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderPlayerForm({ activeTab: 0, onSubmit, initialValues: { firstName: 'Sipho', lastName: 'Ndlovu' } })
+
+    fireEvent.change(screen.getByLabelText('Date of birth'), { target: { value: '1900-01-01' } })
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    fireEvent.change(screen.getByLabelText('Date of birth'), { target: { value: today } })
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(2)
   })
 
   it('submits a correctly-shaped PlayerPayload, normalizing blank optional fields to null (not empty strings)', async () => {
@@ -128,6 +161,7 @@ describe('PlayerForm', () => {
 
     await user.type(screen.getByLabelText('First name'), 'Sipho')
     await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+    await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -135,7 +169,7 @@ describe('PlayerForm', () => {
     expect(payload).toEqual({
       firstName: 'Sipho',
       lastName: 'Ndlovu',
-      dateOfBirth: null,
+      dateOfBirth: '2010-04-12',
       gender: null,
       photoUrl: null,
       clubMembershipNumber: null,
@@ -160,6 +194,7 @@ describe('PlayerForm', () => {
 
     await user.type(screen.getByLabelText('First name'), 'Sipho')
     await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+    await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
 
     await user.click(screen.getByLabelText('Gender'))
     await user.click(await screen.findByRole('option', { name: 'Male' }))
@@ -213,6 +248,7 @@ describe('PlayerForm', () => {
 
     await user.type(screen.getByLabelText('First name'), 'Sipho')
     await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+    await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)

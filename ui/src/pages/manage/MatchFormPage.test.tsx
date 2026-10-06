@@ -529,6 +529,7 @@ describe('MatchFormPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Add new player' }))
     await user.type(await screen.findByLabelText('First name'), 'New')
     await user.type(screen.getByLabelText('Last name'), 'Player')
+    await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
     await user.click(screen.getByRole('button', { name: 'Create & link' }))
 
     await waitFor(() =>

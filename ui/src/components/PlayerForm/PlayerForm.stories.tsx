@@ -57,6 +57,15 @@ export const BasicInfoEdit: Story = {
   },
 }
 
+// docs/specs/077: an existing player with no date of birth is asked for it on any edit.
+export const BasicInfoEditMissingDateOfBirth: Story = {
+  args: {
+    activeTab: 0,
+    onSubmit: () => undefined,
+    initialValues: { ...editValues, dateOfBirth: null },
+  },
+}
+
 export const ContactInfoEdit: Story = {
   args: {
     activeTab: 1,
