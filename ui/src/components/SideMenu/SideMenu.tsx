@@ -27,11 +27,11 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
       sx={{
         width: collapsed ? 64 : 232,
         flex: 'none',
-        // Solid tint: alpha(primary, 0.09) laid over the white paper colour, so the page wash never shows
+        // Solid tint: alpha(primary, 0.24) laid over the white paper colour, so the page wash never shows
         // through (docs/specs/080, option C).
         bgcolor: 'background.paper',
         backgroundImage: (theme) => {
-          const tint = alpha(theme.palette.primary.main, 0.09)
+          const tint = alpha(theme.palette.primary.main, 0.24)
           return `linear-gradient(${tint}, ${tint})`
         },
         borderRight: 1,
@@ -87,8 +87,8 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
         fontWeight: active ? 700 : 400,
         fontSize: '0.9rem',
         textDecoration: 'none',
-        bgcolor: active ? (theme) => alpha(theme.palette.primary.main, 0.16) : 'transparent',
-        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, active ? 0.16 : 0.08) },
+        bgcolor: active ? (theme) => alpha(theme.palette.primary.main, 0.4) : 'transparent',
+        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, active ? 0.4 : 0.32) },
         '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
       }}
     >
