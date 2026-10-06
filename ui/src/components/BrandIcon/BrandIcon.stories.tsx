@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Box, Typography } from '@mui/material'
+import { Box, ThemeProvider, Typography } from '@mui/material'
+import { withClubBranding } from '../../theme'
 import { BrandIcon } from './BrandIcon'
 import { BRAND_ICON_NAMES } from './brandIcons'
 
@@ -12,6 +13,26 @@ export default meta
 type Story = StoryObj<typeof BrandIcon>
 
 export const Default: Story = { args: { name: 'nav/teams', size: 40 } }
+
+export const NoSurface: Story = { args: { name: 'nav/teams', size: 40, surface: 'none' } }
+
+export const Active: Story = { args: { name: 'nav/teams', size: 40, active: true } }
+
+export const ClubColours: Story = {
+  render: () => (
+    <Box sx={{ display: 'flex', gap: 2 }}>
+      {['#0f5132', '#e0b53a', '#0b2a5b'].map((colour) => (
+        <ThemeProvider key={colour} theme={withClubBranding(colour)}>
+          <Box sx={{ display: 'flex', gap: 1, p: 1, bgcolor: 'background.paper' }}>
+            <BrandIcon name="nav/teams" />
+            <BrandIcon name="roles/captain" size={28} padding={3} />
+            <BrandIcon name="nav/squads" active />
+          </Box>
+        </ThemeProvider>
+      ))}
+    </Box>
+  ),
+}
 
 const groups = Array.from(new Set(BRAND_ICON_NAMES.map((name) => name.split('/')[0])))
 

@@ -23,4 +23,10 @@ describe('NavItemIcon', () => {
 
     expect(container.querySelector('img')).toBeInTheDocument()
   })
+
+  it('passes padding and active through to the brand icon tile', () => {
+    render(<NavItemIcon name="nav/teams" size={32} padding={3} active />)
+
+    expect(screen.getByTestId('brand-icon-tile')).toHaveStyle({ width: '38px', height: '38px', boxShadow: '0 0 0 2px #fff' })
+  })
 })
