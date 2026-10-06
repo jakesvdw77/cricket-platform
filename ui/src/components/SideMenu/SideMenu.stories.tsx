@@ -1,18 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MemoryRouter } from 'react-router-dom'
+import { PinRoute } from '../../test/PinRoute'
 import { SideMenu } from './SideMenu'
 import { MANAGER_NAV } from '../ManagerShell/managerNav'
 
-// .storybook/preview.tsx already provides a router; a nested MemoryRouter pins the active route.
+// .storybook/preview.tsx already provides a router; PinRoute moves it to the route under test.
 const meta: Meta<typeof SideMenu> = {
   title: 'Components/SideMenu',
   component: SideMenu,
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <MemoryRouter initialEntries={['/manage/fixtures/matches/123/edit']}>
+      <PinRoute to="/manage/fixtures/matches/123/edit">
         <Story />
-      </MemoryRouter>
+      </PinRoute>
     ),
   ],
 }

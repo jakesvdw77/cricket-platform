@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MemoryRouter } from 'react-router-dom'
+import { PinRoute } from '../../test/PinRoute'
 import { BottomTabBar } from './BottomTabBar'
 import { MANAGER_NAV, managerTabs } from '../ManagerShell/managerNav'
 
@@ -10,9 +10,9 @@ const meta: Meta<typeof BottomTabBar> = {
   args: { tabs: managerTabs(), groups: MANAGER_NAV, onMenuClick: () => {} },
   decorators: [
     (Story) => (
-      <MemoryRouter initialEntries={['/manage/fixtures/matches']}>
+      <PinRoute to="/manage/fixtures/matches">
         <Story />
-      </MemoryRouter>
+      </PinRoute>
     ),
   ],
 }
