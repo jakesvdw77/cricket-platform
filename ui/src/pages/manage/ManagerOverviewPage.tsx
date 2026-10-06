@@ -82,7 +82,7 @@ function OverviewCard({
   return (
     <MuiCard sx={cardSx}>
       <Stack direction="row" alignItems="center" spacing={1}>
-        <BrandIcon name={icon} size={28} />
+        <BrandIcon name={icon} size={28} padding={4} />
         <Typography variant="subtitle2" component="h2" fontWeight={700}>
           {title}
         </Typography>

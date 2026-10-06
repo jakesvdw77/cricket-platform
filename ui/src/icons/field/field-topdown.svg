@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
   <g clip-path="url(#c)">
-    <rect width="256" height="256" fill="#0F5132"/>
     <!-- outfield with mowing stripes -->
     <ellipse cx="128" cy="128" rx="104" ry="96" fill="#1F7A4D"/>
     <clipPath id="f"><ellipse cx="128" cy="128" rx="104" ry="96"/></clipPath>

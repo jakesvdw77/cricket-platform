@@ -94,3 +94,9 @@ Answered by the user on 2026-10-06:
 ## Rollout Notes
 
 Small commits, in order: (1) assets, favicon and `index.html`, with the standards note; (2) `BrandIcon` component with test and story; (3) dashboards and navigation; (4) role badges and avatars. Each step is independently shippable, and MUI icons remain the fallback everywhere the brand set has no icon.
+
+## Amendment (080)
+
+`docs/specs/080-brand-icon-surfaces.md` removed the baked-in dark green circle and highlight from the SVG artwork; `BrandIcon` now draws a club-tinted tile behind each icon (`surface`, `padding`, `active` props). Sizes in this spec still describe the icon; the tile adds padding around it. Originals are kept in `ui/design/icon-originals/`.
+
+Update (option C, 2026-10-06): nav, roles, stats and actions SVGs are also cropped to `viewBox="24 24 208 208"` (the artwork has built-in margin), the tile default padding is 4, and the side menu uses bare 36 px icons on a tinted panel instead of tiles.

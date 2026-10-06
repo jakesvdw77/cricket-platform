@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
   <g clip-path="url(#c)">
-    <rect width="256" height="256" fill="#0F5132"/>
-    <circle cx="200" cy="56" r="70" fill="#14633F"/>
     <!-- ponytail behind -->
     <path d="M96 88 C70 92 58 120 62 150 C64 172 72 184 80 192 C82 170 86 150 98 128 Z" fill="#3A2416"/>
     <!-- shoulders / cricket whites -->

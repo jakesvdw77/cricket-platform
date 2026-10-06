@@ -2,7 +2,6 @@
   <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
   <g clip-path="url(#c)">
     <!-- sky -->
-    <rect width="256" height="256" fill="#0F5132"/>
     <circle cx="196" cy="62" r="22" fill="#F4E4BC" opacity="0.9"/>
     <!-- distant stand / tree line -->
     <path d="M0 132 Q40 112 80 124 Q120 104 160 120 Q200 106 256 126 V150 H0 Z" fill="#0B3D26"/>

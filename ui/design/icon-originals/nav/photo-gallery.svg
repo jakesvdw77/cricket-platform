@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+
+    <g transform="rotate(10 140 120)">
+      <rect x="82" y="52" width="124" height="104" rx="10" fill="#D9CDA8"/>
+    </g>
+    <rect x="50" y="76" width="140" height="118" rx="10" fill="#F7F3E8"/>
+    <clipPath id="ph"><rect x="60" y="86" width="120" height="84" rx="5"/></clipPath>
+    <g clip-path="url(#ph)">
+      <rect x="60" y="86" width="120" height="84" fill="#9FC9B2"/>
+      <circle cx="152" cy="104" r="11" fill="#FFF6D6"/>
+      <path d="M60 140 Q90 118 120 136 Q146 120 180 134 V170 H60 Z" fill="#1F7A4D"/>
+      <path d="M60 156 H180 V170 H60 Z" fill="#23875A"/>
+      <g fill="#F7F3E8"><rect x="96" y="132" width="3" height="24"/><rect x="102" y="132" width="3" height="24"/><rect x="108" y="132" width="3" height="24"/></g>
+      <rect x="95" y="130" width="17" height="3" rx="1.5" fill="#C8102E"/>
+    </g>
+    <circle cx="190" cy="180" r="30" fill="#0F5132"/>
+    <circle cx="190" cy="180" r="24" fill="#E8B83D"/>
+    <rect x="176" y="172" width="28" height="20" rx="4" fill="#0F5132"/>
+    <rect x="184" y="167" width="12" height="6" rx="2" fill="#0F5132"/>
+    <circle cx="190" cy="182" r="6" fill="#E8B83D"/>
+  </g>
+</svg>

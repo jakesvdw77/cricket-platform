@@ -19,13 +19,13 @@ const ROLE_LABEL: Record<PlayingRole, string> = {
   BOWLER: 'Bowler',
   ALL_ROUNDER: 'All-rounder',
 }
-// docs/specs/078-brand-icon-set.md: the badge icons are 28 px, so the chips get a taller fixed height.
+// docs/specs/078-brand-icon-set.md: the badge icons are 28 px on a 3 px-padded tile (docs/specs/080), so the chips get a taller fixed height.
 const ROLE_ICON: Record<PlayingRole, BrandIconName> = {
   BATSMAN: 'roles/batter',
   BOWLER: 'roles/bowler',
   ALL_ROUNDER: 'roles/all-rounder',
 }
-const BADGE_ICON_SX = { height: 34, '& .MuiChip-icon': { ml: 0.5, mr: -0.25 } } as const
+const BADGE_ICON_SX = { height: 40, '& .MuiChip-icon': { ml: 0.5, mr: -0.25 } } as const
 const ROLE_OPTIONS: PlayingRole[] = ['BATSMAN', 'BOWLER', 'ALL_ROUNDER']
 
 type BadgeTone = 'success' | 'warning' | 'error' | 'info' | 'neutral'
@@ -331,7 +331,7 @@ export function TeamSelectionList({
               size="small"
               variant="outlined"
               clickable
-              icon={<BrandIcon name={ROLE_ICON[player.role]} size={28} />}
+              icon={<BrandIcon name={ROLE_ICON[player.role]} size={28} padding={3} />}
               sx={BADGE_ICON_SX}
               label={ROLE_LABEL[player.role]}
               aria-haspopup="menu"
@@ -344,7 +344,7 @@ export function TeamSelectionList({
                 variant="outlined"
                 color="primary"
                 clickable
-                icon={<BrandIcon name="roles/captain" size={28} />}
+                icon={<BrandIcon name="roles/captain" size={28} padding={3} />}
                 sx={BADGE_ICON_SX}
                 label="Captain"
                 aria-haspopup="menu"
@@ -358,7 +358,7 @@ export function TeamSelectionList({
                 variant="outlined"
                 color="primary"
                 clickable
-                icon={<BrandIcon name="roles/wicketkeeper" size={28} />}
+                icon={<BrandIcon name="roles/wicketkeeper" size={28} padding={3} />}
                 sx={BADGE_ICON_SX}
                 label="Wicketkeeper"
                 aria-haspopup="menu"

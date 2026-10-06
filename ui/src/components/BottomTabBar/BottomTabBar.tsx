@@ -65,7 +65,7 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
         const badge = badges[tab.id]
         return (
           <Box key={tab.id} component={RouterLink} to={tab.to} aria-current={active ? 'page' : undefined} sx={itemSx(active)}>
-            <NavItemIcon name={tab.icon} size={32} />
+            <NavItemIcon name={tab.icon} size={32} padding={3} />
             {tab.label}
             {typeof badge === 'number' && badge > 0 && (
               <Box
@@ -94,7 +94,7 @@ export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badg
         )
       })}
       <Box component="button" type="button" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={onMenuClick} sx={itemSx(menuOpen)}>
-        <NavItemIcon name="menu" size={32} />
+        <NavItemIcon name="menu" size={32} padding={3} />
         Menu
       </Box>
     </Paper>

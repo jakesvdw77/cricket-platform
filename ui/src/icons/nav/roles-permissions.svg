@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 24 208 208">
   <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
   <g clip-path="url(#c)">
-    <rect width="256" height="256" fill="#0F5132"/>
-    <circle cx="200" cy="56" r="70" fill="#14633F"/>
 
     <path d="M118 46 L180 66 V118 C180 158 154 186 118 202 C82 186 56 158 56 118 V66 Z" fill="#F7F3E8"/>
     <path d="M118 46 L180 66 V118 C180 158 154 186 118 202 Z" fill="#E2D5B0"/>

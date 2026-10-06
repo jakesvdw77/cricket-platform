@@ -98,4 +98,19 @@ describe('SideMenu', () => {
     await userEvent.hover(players)
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Players')
   })
+
+  it('draws bare 36 px icons with no tile', () => {
+    renderMenu('/manage')
+
+    const nav = screen.getByRole('navigation', { name: 'Manager' })
+    expect(within(nav).queryByTestId('brand-icon-tile')).not.toBeInTheDocument()
+    expect(nav.querySelector('img')).toHaveStyle({ width: '36px', height: '36px' })
+  })
+
+  it('tints the panel with a solid primary wash', () => {
+    renderMenu('/manage')
+
+    const nav = screen.getByRole('navigation', { name: 'Manager' })
+    expect(getComputedStyle(nav).backgroundImage).toContain('linear-gradient')
+  })
 })
