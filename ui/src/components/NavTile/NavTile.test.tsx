@@ -16,4 +16,17 @@ describe('NavTile', () => {
     expect(screen.getByText('Register teams')).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute('href', '/manage/teams')
   })
+
+  it('renders a brand icon instead of the MUI tile when brandIcon is set', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <NavTile title="Teams" description="Register teams" brandIcon="nav/teams" to="/manage/teams" />
+      </MemoryRouter>,
+    )
+
+    const img = container.querySelector('img') as HTMLImageElement
+    expect(img).toHaveStyle({ width: '40px', height: '40px' })
+    expect(img).toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelector('svg')).toBeNull()
+  })
 })
