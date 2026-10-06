@@ -3,6 +3,8 @@ export type { ManagerShellProps } from './ManagerShell'
 export {
   MANAGER_NAV,
   activeNavId,
+  activeTabId,
+  isNavGlyph,
   flatNavItems,
   isNavItemActive,
   managerTabs,

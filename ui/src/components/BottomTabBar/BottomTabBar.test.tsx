@@ -34,6 +34,19 @@ describe('BottomTabBar', () => {
     expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
   })
 
+  it('lights the Polls tab on the polls, players and coverage views of the availability hub', () => {
+    for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage', '/manage/availability/group/r1']) {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}>
+          <BottomTabBar tabs={managerTabs()} groups={MANAGER_NAV} onMenuClick={vi.fn()} />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
+      unmount()
+    }
+  })
+
   it('lights no tab when the current route is not a tab (e.g. Gallery)', () => {
     renderBar('/manage/gallery')
 

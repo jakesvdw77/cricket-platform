@@ -1,10 +1,16 @@
 import type { BrandIconName } from '../BrandIcon'
+import { NAV_GLYPH_NAMES } from '../NavItemIcon'
+import type { NavGlyphName } from '../NavItemIcon'
 
 // docs/specs/079-manager-shell-and-overview.md: the one source for the manager's navigation. The
 // side menu, the phone bottom bar, the Menu sheet and the Overview tile grid all read it.
 
-// 'menu' is a MUI menu glyph on a brand-coloured disc, used by the phone bar's Menu button.
-export type NavIconName = BrandIconName | 'menu'
+// A brand icon, or a MUI glyph on a brand-coloured disc (NavItemIcon's glyph names).
+export type NavIconName = BrandIconName | NavGlyphName
+
+export function isNavGlyph(name: NavIconName): name is NavGlyphName {
+  return (NAV_GLYPH_NAMES as readonly string[]).includes(name)
+}
 
 export interface NavItem {
   id: string
@@ -18,6 +24,11 @@ export interface NavItem {
   // boundary (`/manage/players` matches `/manage/players/1/edit`, not `/manage/players-x`); a
   // RegExp is tested as is. `to` itself always counts, and Overview matches `/manage` exactly.
   match?: Array<string | RegExp>
+  // True when `to` matches only itself, not the routes beneath it (Polls is the hub index; the
+  // Players and Coverage views live under the same path but are their own items).
+  exact?: boolean
+  // The bottom-bar tab this item lights when it is active, if not its own id (the hub is one page).
+  tabId?: string
 }
 
 export interface NavGroup {
@@ -77,6 +88,13 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/cricket-players',
       },
       { id: 'squads', label: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: 'nav/squads' },
+      {
+        id: 'communication',
+        label: 'Communication',
+        description: 'Message the squad',
+        to: '/manage/communication',
+        icon: 'nav/communication',
+      },
     ],
   },
   {
@@ -86,17 +104,29 @@ export const MANAGER_NAV: NavGroup[] = [
         id: 'polls',
         label: 'Polls',
         tileTitle: 'Availability',
-        description: 'Polls, who is free, and squad cover',
+        description: 'Open polls and their responses',
         to: '/manage/availability',
         icon: 'nav/availability-polls',
-        match: ['/manage/player-availability', '/manage/section-availability'],
+        exact: true,
+        // The hub index plus the poll, response and new-poll pages beneath it; not players/coverage.
+        match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability'],
       },
       {
-        id: 'communication',
-        label: 'Communication',
-        description: 'Message the squad',
-        to: '/manage/communication',
-        icon: 'nav/communication',
+        id: 'player-availability',
+        label: 'Player availability',
+        description: 'Who is free, player by player',
+        to: '/manage/availability/players',
+        icon: 'nav/availability-player',
+        tabId: 'polls',
+        match: ['/manage/player-availability'],
+      },
+      {
+        id: 'team-availability',
+        label: 'Team availability',
+        description: 'Squad cover for each team',
+        to: '/manage/availability/coverage',
+        icon: 'nav/availability-team',
+        tabId: 'polls',
       },
     ],
   },
@@ -154,13 +184,19 @@ function underPrefix(pathname: string, prefix: string): boolean {
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
   if (item.id === 'overview') return path === '/manage'
-  if (underPrefix(path, item.to)) return true
+  if (item.exact ? path === item.to : underPrefix(path, item.to)) return true
   return (item.match ?? []).some((pattern) => (typeof pattern === 'string' ? underPrefix(path, pattern) : pattern.test(path)))
 }
 
 // First item in menu order that matches; People precedes Club so a team under a section is Teams.
 export function activeNavId(groups: NavGroup[], pathname: string): string | undefined {
   return flatNavItems(groups).find((item) => isNavItemActive(item, pathname))?.id
+}
+
+// The bottom-bar tab to light: the active item's tabId, else its own id.
+export function activeTabId(groups: NavGroup[], pathname: string): string | undefined {
+  const id = activeNavId(groups, pathname)
+  return flatNavItems(groups).find((item) => item.id === id)?.tabId ?? id
 }
 
 export interface ManagerTab {

@@ -53,11 +53,16 @@ Reference: the interactive mockup above. Tokens come from `ui/src/theme.ts`; no 
 
 **Header.** Solid `primary.main` background with `primary.contrastText` text (MUI picks readable text for light club colours automatically), club logo (white tile fallback with initials) and club name at the left, the avatar menu at the right. This replaces today's white header with a divider for the manager shell and is a visible change.
 
-**Wide screens.** From 1200 px a persistent side menu of about 232 px; between about 900 and 1200 px the same menu collapsed to an icons-only rail of about 64 px (brand icons at 32 px, label as tooltip and `aria-label`, badges kept as small dots with counts). The full menu is: grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads); Availability (Polls, Communication); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
+**Wide screens.** From 1200 px a persistent side menu of about 232 px; between about 900 and 1200 px the same menu collapsed to an icons-only rail of about 64 px (brand icons at 32 px, label as tooltip and `aria-label`, badges kept as small dots with counts). The full menu is: grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads, Communication); Availability (Polls, Player availability, Team availability); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
 
 **Phones.** A bottom bar with Home, Matches, Polls, Players and Menu. Menu opens a bottom sheet covering most of the screen with every destination as a tile (brand icon at 40 px, label, badge), grouped as on desktop; it closes on choosing a destination, on the close button, on tapping outside, and on swipe down. The sheet is a real dialog for keyboard and screen readers.
 
-**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card (for now an empty state: "No results yet", then real results once Results exists) and a quick-actions row of the actions a manager can perform (Create match, Create availability poll, Add player, Message the squad). On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
+**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card (for now an empty state: "No results yet", then real results once Results exists) and the quick actions, which are not a row of buttons any more: see "Quick actions control" below. On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
+
+**Quick actions control (amended 2026-10-06).** The four large buttons under the cards are replaced by one control, from the mockup https://claude.ai/artifact/Qxnaoiqmm3Z9QywtjKxCp6:
+- Wide screens (md and up): an "Actions" button with a chevron at the right of the greeting row. It opens a small menu (MUI `Menu`) listing Create match, Create availability poll, Add player and Message the squad, each with its brand icon (nav/upcoming-matches, nav/availability-polls, nav/cricket-players, nav/communication) at about 28 px, on the icon tile.
+- Phones (below md): a round "+" button in the bottom-right corner (MUI `SpeedDial`) that opens a short list of labelled round buttons with the same icons. It sits above the bottom tab bar and the safe-area inset, and the page keeps bottom padding so it never covers the last card.
+- An action appears only when its `quickActions` boolean from the overview endpoint is true; the control is hidden entirely when none are allowed. The empty-state cards in a brand-new club keep their own "Create ..." links.
 
 **Existing pages.** All 18 pages that use `ManageScreenHeader` ("Back to Dashboard") keep working inside the shell. "Back to Dashboard" goes away; detail and edit pages keep a back link to their list (see Decisions).
 
@@ -92,12 +97,16 @@ Answered by the user on 2026-10-06:
 - **Bottom bar:** Home, Matches, Polls, Players, Menu, as proposed.
 - **Results:** results are not built yet, so the Recent results card shows **0 or "None"** for now (an honest empty state such as "No results yet"), and starts showing real results when the Results feature exists. No results data is needed in the overview endpoint yet.
 - **Section-scoped managers** see only their **own** teams' items and figures, including results once they exist. No club-wide results for them.
-- **Quick actions:** **yes**, a row on the overview with **Create match, Create availability poll, Add player, Message the squad**. An action is hidden for a manager who cannot perform it (same access rules as the underlying pages).
+- **Quick actions:** **yes**, as a single control on the overview (amended 2026-10-06, see "Quick actions control"), with **Create match, Create availability poll, Add player, Message the squad**. An action is hidden for a manager who cannot perform it (same access rules as the underlying pages).
 - **"Back to Dashboard":** the always-visible menu replaces it. A back link stays **only on detail and edit pages** and returns to the list the person came from.
 
 Defaults assumed unless the user changes them (they match the mockup):
 - Menu count badges: open polls that still await answers, and unread notifications.
 - Overview icon: the user generates it as `nav/overview.svg`.
+
+## Amendment 2026-10-06: availability menu entries
+
+Requested by the user while using the shell: **Communication moves to the People group**, and the Availability group lists **Polls, Player availability and Team availability**, each opening the matching tab of the Availability hub (`/manage/availability` Polls, `/manage/availability/players` Players tab, `/manage/availability/coverage` Coverage tab, which is the per-team squad cover view). The side menu, the tablet rail and the Menu sheet all read the same nav config. The two new entries use **MUI icons on a disc for now** (the user is generating brand icons for them; when they exist they replace the glyphs). Active-item matching keeps Polls highlighted for `/manage/availability` and the poll, response and new-poll pages under it, Player availability for `/manage/availability/players` and `/manage/player-availability`, and Team availability for `/manage/availability/coverage`. The phone bottom bar keeps its Polls tab pointing at `/manage/availability`.
 
 ## Rollout Notes
 

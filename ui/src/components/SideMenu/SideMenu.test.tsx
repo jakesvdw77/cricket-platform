@@ -31,8 +31,10 @@ describe('SideMenu', () => {
       'Teams',
       'Players',
       'Squads',
-      'Polls',
       'Communication',
+      'Polls',
+      'Player availability',
+      'Team availability',
       'Club profile',
       'Gallery',
       'Notifications',
@@ -55,10 +57,25 @@ describe('SideMenu', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
   })
 
-  it('highlights Polls on the availability, group poll and legacy redirect routes', () => {
-    for (const path of ['/manage/availability/players', '/manage/availability/group/r1', '/manage/player-availability']) {
+  it('highlights Polls on the hub index, new, group poll and squad poll routes', () => {
+    for (const path of ['/manage/availability', '/manage/availability/new', '/manage/availability/group/r1', '/manage/availability/squad/m/p']) {
       const { unmount } = renderMenu(path)
       expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
+      unmount()
+    }
+  })
+
+  it('highlights Player availability and Team availability on their own routes only', () => {
+    for (const [path, name] of [
+      ['/manage/availability/players', 'Player availability'],
+      ['/manage/player-availability', 'Player availability'],
+      ['/manage/availability/coverage', 'Team availability'],
+    ]) {
+      const { unmount } = renderMenu(path)
+      expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Polls' })).not.toHaveAttribute('aria-current')
+      expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
       unmount()
     }
   })
