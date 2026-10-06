@@ -5,6 +5,8 @@ import com.cricketlegend.domain.Team;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -53,6 +55,50 @@ public final class MatchSpecifications {
      */
     public static Specification<Match> matchDateOnOrAfter(Instant startOfToday) {
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("matchDate"), startOfToday);
+    }
+
+    /** The match is active (not deactivated). */
+    public static Specification<Match> active() {
+        return (root, query, cb) -> cb.isTrue(root.get("active"));
+    }
+
+    /** {@code matchDate} strictly before {@code end} (the exclusive upper bound of a window). */
+    public static Specification<Match> matchDateBefore(Instant end) {
+        return (root, query, cb) -> cb.lessThan(root.get("matchDate"), end);
+    }
+
+    /**
+     * Composes one {@link Specification} from {@code clubId} plus whichever of the optional
+     * filters are active — {@code sectionIds} only when present (an unrestricted caller with no
+     * explicit {@code sectionId} adds no section predicate at all), {@code upcomingFrom} (the start of today, for
+     * "upcoming only") only when non-null, {@code leagueId}/{@code seasonId}/{@code search} only when set/non-blank.
+     * Shared by {@code MatchServiceImpl} (list, filter options) and the manager overview so both
+     * scope matches identically (docs/specs/079-manager-shell-and-overview.md).
+     */
+    public static Specification<Match> forList(
+            UUID clubId,
+            Optional<Set<UUID>> sectionIds,
+            Instant upcomingFrom,
+            UUID leagueId,
+            UUID seasonId,
+            String search) {
+        Specification<Match> spec = Specification.where(clubId(clubId));
+        if (sectionIds.isPresent()) {
+            spec = spec.and(sectionIn(sectionIds.get()));
+        }
+        if (upcomingFrom != null) {
+            spec = spec.and(matchDateOnOrAfter(upcomingFrom));
+        }
+        if (leagueId != null) {
+            spec = spec.and(leagueIdEquals(leagueId));
+        }
+        if (seasonId != null) {
+            spec = spec.and(seasonIdEquals(seasonId));
+        }
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(searchMatches(search));
+        }
+        return spec;
     }
 
     public static Specification<Match> leagueIdEquals(UUID leagueId) {

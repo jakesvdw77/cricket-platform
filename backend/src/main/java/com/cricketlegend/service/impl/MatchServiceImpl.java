@@ -153,7 +153,7 @@ public class MatchServiceImpl implements MatchService {
     }
 
     /**
-     * Composes one {@link Specification} from {@code clubId} plus whichever of the optional
+     * Delegates to {@link MatchSpecifications#forList}, the shared composition: {@code clubId} plus whichever of the optional
      * filters are active — {@code sectionIds} only when present (an unrestricted caller with no
      * explicit {@code sectionId} adds no section predicate at all), {@code upcomingOnly} only when
      * {@code true}, {@code leagueId}/{@code seasonId}/{@code search} only when set/non-blank.
@@ -169,23 +169,8 @@ public class MatchServiceImpl implements MatchService {
             UUID leagueId,
             UUID seasonId,
             String search) {
-        Specification<Match> spec = Specification.where(MatchSpecifications.clubId(clubId));
-        if (sectionIds.isPresent()) {
-            spec = spec.and(MatchSpecifications.sectionIn(sectionIds.get()));
-        }
-        if (upcomingOnly) {
-            spec = spec.and(MatchSpecifications.matchDateOnOrAfter(ServerClock.startOfToday()));
-        }
-        if (leagueId != null) {
-            spec = spec.and(MatchSpecifications.leagueIdEquals(leagueId));
-        }
-        if (seasonId != null) {
-            spec = spec.and(MatchSpecifications.seasonIdEquals(seasonId));
-        }
-        if (search != null && !search.isBlank()) {
-            spec = spec.and(MatchSpecifications.searchMatches(search));
-        }
-        return spec;
+        return MatchSpecifications.forList(
+                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, search);
     }
 
     @Override
