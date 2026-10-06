@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
   <g clip-path="url(#c)">
-    <rect width="256" height="256" fill="#0F5132"/>
-    <circle cx="200" cy="56" r="70" fill="#14633F"/>
 <g transform="translate(128 146) scale(1.17) translate(-128 -146)">
     <ellipse cx="128" cy="226" rx="40" ry="6" fill="#0B3D26"/>
     <path d="M118 176 L116 222 M138 176 L140 222" stroke="#2B3A33" stroke-width="15" stroke-linecap="round"/><path d="M106 224 H124 M132 224 H150" stroke="#14130F" stroke-width="7" stroke-linecap="round"/>

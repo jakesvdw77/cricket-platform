@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "icons:strip": "node scripts/strip-icon-background.mjs",
     "test": "vitest run --project=unit",
     "test:storybook": "vitest run --project=storybook",
     "test:e2e": "playwright test",

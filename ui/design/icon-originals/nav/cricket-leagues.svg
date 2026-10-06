@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+
+    <rect x="50" y="150" width="156" height="64" rx="10" fill="#F7F3E8"/>
+    <rect x="50" y="150" width="156" height="18" rx="8" fill="#1F7A4D"/>
+    <rect x="50" y="160" width="156" height="8" fill="#1F7A4D"/>
+    <g fill="#C8102E"><circle cx="66" cy="180" r="5"/></g>
+    <g fill="#CBBE9C"><circle cx="66" cy="198" r="5"/></g>
+    <rect x="78" y="177" width="70" height="6" rx="3" fill="#CBBE9C"/><rect x="170" y="176" width="22" height="8" rx="3" fill="#1F7A4D"/>
+    <rect x="78" y="195" width="54" height="6" rx="3" fill="#E2D5B0"/><rect x="170" y="194" width="22" height="8" rx="3" fill="#5FA27F"/>
+    <!-- trophy -->
+    <path d="M100 52 H156 V80 Q156 112 128 118 Q100 112 100 80 Z" fill="#E8B83D"/>
+    <path d="M100 60 Q80 60 82 78 Q84 94 104 96 M156 60 Q176 60 174 78 Q172 94 152 96" fill="none" stroke="#E8B83D" stroke-width="8" stroke-linecap="round"/>
+    <path d="M110 58 V80 Q110 100 122 108" fill="none" stroke="#FFF6D6" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+    <rect x="121" y="116" width="14" height="16" fill="#D3A22E"/>
+    <rect x="106" y="130" width="44" height="14" rx="4" fill="#0B3D26"/>
+    <rect x="114" y="134" width="28" height="5" rx="2.5" fill="#E8B83D"/>
+  </g>
+</svg>

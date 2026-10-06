@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+    <!-- ponytail behind -->
+    <path d="M96 88 C70 92 58 120 62 150 C64 172 72 184 80 192 C82 170 86 150 98 128 Z" fill="#3A2416"/>
+    <!-- shoulders / cricket whites -->
+    <path d="M38 256 C42 204 78 182 128 182 C178 182 214 204 218 256 Z" fill="#F7F3E8"/>
+    <!-- collar -->
+    <path d="M106 184 L128 214 L150 184 Z" fill="#B98660"/>
+    <path d="M102 183 L128 216 L119 186 Z M154 183 L128 216 L137 186 Z" fill="#0F5132"/>
+    <!-- neck -->
+    <rect x="115" y="150" width="26" height="38" rx="11" fill="#B98660"/>
+    <path d="M115 164 Q128 173 141 164 L141 173 Q128 180 115 173 Z" fill="#A0704C"/>
+    <!-- ears -->
+    <ellipse cx="91" cy="120" rx="8" ry="12" fill="#B98660"/>
+    <ellipse cx="165" cy="120" rx="8" ry="12" fill="#B98660"/>
+    <!-- head -->
+    <rect x="91" y="72" width="74" height="92" rx="36" fill="#C99470"/>
+    <!-- hair framing face -->
+    <path d="M90 100 Q88 128 96 140 L98 96 Z M166 100 Q168 128 160 140 L158 96 Z" fill="#3A2416"/>
+    <!-- ponytail through cap gap -->
+        <!-- cap -->
+    <path d="M86 100 C86 60 170 60 170 100 Z" fill="#F4E4BC"/>
+    <path d="M128 64 L128 100" stroke="#D9C08A" stroke-width="2"/>
+    <path d="M150 96 Q190 94 196 106 Q168 108 150 104 Z" fill="#D9C08A"/>
+    <circle cx="112" cy="86" r="7" fill="#C8102E"/>
+  </g>
+</svg>
