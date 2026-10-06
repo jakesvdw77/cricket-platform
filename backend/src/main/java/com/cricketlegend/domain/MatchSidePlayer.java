@@ -20,9 +20,10 @@ import lombok.Setter;
 /**
  * One player in a {@link MatchSide}'s ordered batting line-up, tagged with a {@link PlayingRole}.
  * Unique on {@code (match_side_id, player_profile_id)} (no duplicate add) and {@code
- * (match_side_id, batting_order)} (no two players sharing a slot). Added only after squad
- * membership/cap/age-eligibility validation at the service layer — see
- * docs/specs/029-league-management.md's MatchSide/MatchSidePlayer business rules.
+ * (match_side_id, batting_order)} (no two players sharing a slot). Added only after the
+ * pool-based selection rules (pool membership, age eligibility, availability, caps) pass at the
+ * service layer — see docs/specs/076-team-selection.md, which superseded the squad-membership
+ * validation of docs/specs/029-league-management.md.
  */
 @Entity
 @Table(name = "match_side_player")

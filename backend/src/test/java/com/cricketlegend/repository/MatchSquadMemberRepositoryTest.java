@@ -19,6 +19,7 @@ import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -205,5 +206,67 @@ class MatchSquadMemberRepositoryTest {
 
         assertThatThrownBy(() -> matchSquadMemberRepository.saveAndFlush(pickedElsewhere))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * docs/specs/076-team-selection.md: deleting a group poll removes its squad rows (the foreign
+     * key has no cascade). Proves only the given windows' rows go, against the real schema.
+     */
+    @Test
+    void deleteBySectionAvailabilityWindowIdInRemovesOnlyTheGivenWindowsRows() {
+        Club club = savedClub();
+        Section section = savedSection(club.getId());
+        Season season = savedSeason(club.getId());
+        Team teamOne = savedTeam(club.getId(), section.getId(), "U15 Colts");
+        Team teamTwo = savedTeam(club.getId(), section.getId(), "U15 Panthers");
+        Match matchOne = savedMatch(club.getId(), season.getId(), teamOne.getId());
+        Match matchTwo = savedMatch(club.getId(), season.getId(), teamTwo.getId());
+        SectionAvailabilityRound round = savedRound(club.getId(), section.getId());
+        SectionAvailabilityWindow deletedWindow =
+                savedWindow(club.getId(), section.getId(), round.getId(), DayPart.MORNING);
+        SectionAvailabilityWindow keptWindow =
+                savedWindow(club.getId(), section.getId(), round.getId(), DayPart.AFTERNOON);
+        PlayerProfile playerA = savedPlayer(club.getId());
+        PlayerProfile playerB = savedPlayer(club.getId());
+
+        matchSquadMemberRepository.save(squadRow(matchOne, teamOne, deletedWindow, playerA));
+        matchSquadMemberRepository.save(squadRow(matchOne, teamOne, deletedWindow, playerB));
+        MatchSquadMember kept = matchSquadMemberRepository.save(squadRow(matchTwo, teamTwo, keptWindow, playerA));
+        matchSquadMemberRepository.flush();
+
+        matchSquadMemberRepository.deleteBySectionAvailabilityWindowIdIn(List.of(deletedWindow.getId()));
+        matchSquadMemberRepository.flush();
+
+        assertThat(matchSquadMemberRepository.findAll())
+                .extracting(MatchSquadMember::getId)
+                .containsExactly(kept.getId());
+        assertThat(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(deletedWindow.getId())))
+                .isFalse();
+        assertThat(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(keptWindow.getId())))
+                .isTrue();
+    }
+
+    @Test
+    void deleteBySectionAvailabilityWindowIdInWithNoWindowsDeletesNothing() {
+        Club club = savedClub();
+        Section section = savedSection(club.getId());
+        Season season = savedSeason(club.getId());
+        Team team = savedTeam(club.getId(), section.getId(), "U15 Colts");
+        Match match = savedMatch(club.getId(), season.getId(), team.getId());
+        SectionAvailabilityRound round = savedRound(club.getId(), section.getId());
+        SectionAvailabilityWindow window = savedWindow(club.getId(), section.getId(), round.getId());
+        MatchSquadMember row = matchSquadMemberRepository.saveAndFlush(
+                squadRow(match, team, window, savedPlayer(club.getId())));
+
+        matchSquadMemberRepository.deleteBySectionAvailabilityWindowIdIn(List.of());
+        matchSquadMemberRepository.flush();
+
+        assertThat(matchSquadMemberRepository.findAll()).extracting(MatchSquadMember::getId)
+                .containsExactly(row.getId());
+    }
+
+    private MatchSquadMember squadRow(Match match, Team team, SectionAvailabilityWindow window, PlayerProfile player) {
+        return MatchSquadMember.builder().matchId(match.getId()).teamId(team.getId())
+                .sectionAvailabilityWindowId(window.getId()).playerProfileId(player.getId()).build();
     }
 }

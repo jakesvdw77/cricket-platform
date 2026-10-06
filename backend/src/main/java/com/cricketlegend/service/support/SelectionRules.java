@@ -31,8 +31,8 @@ import org.springframework.stereotype.Component;
  * {@link SelectionEligibility}. Both {@code MatchSideServiceImpl} (the existing endpoints) and
  * {@code MatchSelectionServiceImpl} (pool and apply) call it, so nothing is written twice. A player
  * who may not be selected gets exactly one rejection, by precedence: not in the pool, age
- * ineligible, said unavailable, not confirmed (unsure or no response), taken for the slot (releasing him would not help if he also said
- * unavailable).
+ * ineligible, said unavailable, not confirmed (unsure or no response), taken for the slot
+ * (releasing him would not help if he also said unavailable).
  */
 @Component
 public class SelectionRules {
