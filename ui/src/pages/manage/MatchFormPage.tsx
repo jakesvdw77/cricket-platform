@@ -283,15 +283,6 @@ function NoticeLine({ tone, children }: { tone: 'warning' | 'error' | 'info'; ch
   )
 }
 
-const VISUALLY_HIDDEN_SX = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-} as const
-
 // docs/specs/076-team-selection.md sections 2 to 6: one team's selection page (the content of its
 // Home XI / Away XI tab). State and server calls live here (React Query, per docs/standards/
 // frontend.md); TeamSelectionList and SelectPlayersDialog are presentational. Creates the MatchSide
@@ -743,9 +734,9 @@ null
             </Tooltip>
           )}
           {blockedReason && !side.announced && (
-            <Box id={blockedReasonId} sx={VISUALLY_HIDDEN_SX}>
+            <Typography id={blockedReasonId} variant="caption" color="text.secondary" sx={{ flexBasis: '100%' }}>
               {blockedReason}
-            </Box>
+            </Typography>
           )}
         </Box>
         {announceError && <Alert severity="error">{announceError}</Alert>}
@@ -773,38 +764,38 @@ null
           <Typography variant="body2" color="text.secondary">
             Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
           </Typography>
-        <TeamSelectionList
-          players={listPlayers}
-          captainPlayerId={side.captainPlayerId}
-          wicketKeeperPlayerId={side.wicketKeeperPlayerId}
-          twelfthManPlayerId={side.twelfthManPlayerId}
-          limits={limits}
-          dragDisabled={side.announced}
-          onReorder={(ids) => reorderMutation.mutate(ids)}
-          onSetCaptain={(id) =>
-            updateSideMutation.mutate({
-              captainPlayerId: id,
-              wicketKeeperPlayerId: side.wicketKeeperPlayerId,
-              twelfthManPlayerId: side.twelfthManPlayerId,
-            })
-          }
-          onSetWicketKeeper={(id) =>
-            updateSideMutation.mutate({
-              captainPlayerId: side.captainPlayerId,
-              wicketKeeperPlayerId: id,
-              twelfthManPlayerId: side.twelfthManPlayerId,
-            })
-          }
-          onMakeTwelfthMan={(id) =>
-            updateSideMutation.mutate({
-              captainPlayerId: side.captainPlayerId === id ? null : side.captainPlayerId,
-              wicketKeeperPlayerId: side.wicketKeeperPlayerId === id ? null : side.wicketKeeperPlayerId,
-              twelfthManPlayerId: id,
-            })
-          }
-          onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
-          onRemove={(playerId) => removeMutation.mutate(playerId)}
-        />
+          <TeamSelectionList
+            players={listPlayers}
+            captainPlayerId={side.captainPlayerId}
+            wicketKeeperPlayerId={side.wicketKeeperPlayerId}
+            twelfthManPlayerId={side.twelfthManPlayerId}
+            limits={limits}
+            dragDisabled={side.announced}
+            onReorder={(ids) => reorderMutation.mutate(ids)}
+            onSetCaptain={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: id,
+                wicketKeeperPlayerId: side.wicketKeeperPlayerId,
+                twelfthManPlayerId: side.twelfthManPlayerId,
+              })
+            }
+            onSetWicketKeeper={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: side.captainPlayerId,
+                wicketKeeperPlayerId: id,
+                twelfthManPlayerId: side.twelfthManPlayerId,
+              })
+            }
+            onMakeTwelfthMan={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: side.captainPlayerId === id ? null : side.captainPlayerId,
+                wicketKeeperPlayerId: side.wicketKeeperPlayerId === id ? null : side.wicketKeeperPlayerId,
+                twelfthManPlayerId: id,
+              })
+            }
+            onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
+            onRemove={(playerId) => removeMutation.mutate(playerId)}
+          />
         </>
       )}
 
@@ -1067,8 +1058,7 @@ export default function MatchFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasXiTabs, hasHomeXiTab, hasAwayXiTab])
 
-  // ?tab=home-xi / ?tab=away-xi open that exact tab: the Responses page's 'Back to team selection'
-  // (returnTo from the Select players dialog's Change answer link) lands here.
+  // ?tab=home-xi / ?tab=away-xi open that exact tab (deep links from the availability and match pages).
   useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab === 'home-xi' && hasHomeXiTab) {
