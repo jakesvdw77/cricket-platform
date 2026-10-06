@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import appSource from '../../App.tsx?raw'
 import { BRAND_ICON_NAMES } from '../BrandIcon/brandIcons'
-import { MANAGER_NAV, OVERVIEW_TILE_GROUPS, activeNavId, flatNavItems, managerTabs } from './managerNav'
+import { MANAGER_NAV, activeNavId, flatNavItems, managerTabs } from './managerNav'
 
 const items = flatNavItems(MANAGER_NAV)
 
@@ -28,14 +28,6 @@ describe('managerNav', () => {
 
   it('Overview uses its own brand icon', () => {
     expect(items.find((item) => item.id === 'overview')?.icon).toBe('nav/overview-home')
-  })
-
-  it('the Overview tiles are drawn from the nav, in the original two groups of 9 and 3', () => {
-    expect(OVERVIEW_TILE_GROUPS.map((group) => group.ids.length)).toEqual([9, 3])
-    const ids = items.map((item) => item.id)
-    for (const group of OVERVIEW_TILE_GROUPS) {
-      for (const id of group.ids) expect(ids).toContain(id)
-    }
   })
 
   it('the bottom tabs are Home, Matches, Polls, Players', () => {

@@ -308,11 +308,27 @@ public class AccessService {
         return sectionIds;
     }
 
+    /**
+     * Batch form of {@link #resolveMatchSectionIds(UUID, UUID, UUID)} for callers that already
+     * loaded the teams of many matches in one query: the same own-club rule, with no repository
+     * call per match.
+     */
+    public Set<UUID> resolveMatchSectionIds(
+            UUID clubId, UUID homeTeamId, UUID awayTeamId, Map<UUID, Team> teamsById) {
+        Set<UUID> sectionIds = new HashSet<>();
+        addOwnClubTeamSection(clubId, Optional.ofNullable(homeTeamId).map(teamsById::get), sectionIds);
+        addOwnClubTeamSection(clubId, Optional.ofNullable(awayTeamId).map(teamsById::get), sectionIds);
+        return sectionIds;
+    }
+
+    private void addOwnClubTeamSection(UUID clubId, Optional<Team> team, Set<UUID> sectionIds) {
+        team.filter(t -> t.getClubId().equals(clubId)).ifPresent(t -> sectionIds.add(t.getSectionId()));
+    }
+
     private void addOwnClubTeamSection(UUID clubId, UUID teamId, Set<UUID> sectionIds) {
         if (teamId == null) {
             return;
         }
-        Optional<Team> team = teamRepository.findById(teamId);
-        team.filter(t -> t.getClubId().equals(clubId)).ifPresent(t -> sectionIds.add(t.getSectionId()));
+        addOwnClubTeamSection(clubId, teamRepository.findById(teamId), sectionIds);
     }
 }

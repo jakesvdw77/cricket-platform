@@ -21,6 +21,9 @@ public interface SectionAvailabilityRoundRepository extends JpaRepository<Sectio
 
     List<SectionAvailabilityRound> findByClubId(UUID clubId);
 
+    /** The club's open group polls — one query for the manager overview (docs/specs/079). */
+    List<SectionAvailabilityRound> findByClubIdAndOpenTrue(UUID clubId);
+
     /**
      * Open rounds whose autoclose time has passed — backs the scheduled auto-close job
      * (docs/specs/064-unified-availability-polls.md).

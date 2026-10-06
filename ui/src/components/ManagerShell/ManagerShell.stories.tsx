@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MemoryRouter } from 'react-router-dom'
+import { PinRoute } from '../../test/PinRoute'
 import { Typography } from '@mui/material'
 import { ManagerShell } from './ManagerShell'
 
@@ -9,9 +9,9 @@ const meta: Meta<typeof ManagerShell> = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <MemoryRouter initialEntries={['/manage/players']}>
+      <PinRoute to="/manage/players">
         <Story />
-      </MemoryRouter>
+      </PinRoute>
     ),
   ],
   args: {

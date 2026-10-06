@@ -26,4 +26,15 @@ class ServerClockTest {
         Instant now = ServerClock.now();
         assertThat(now).isBetween(before, Instant.now());
     }
+
+    @Test
+    void startOfDayFromTodayIsLocalMidnightThatManyCalendarDaysAhead() {
+        ZoneId zone = ZoneId.systemDefault();
+
+        assertThat(ServerClock.startOfDayFromToday(0)).isEqualTo(ServerClock.startOfToday());
+        Instant weekEnd = ServerClock.startOfDayFromToday(7);
+        assertThat(weekEnd.atZone(zone).toLocalTime().toSecondOfDay()).isZero();
+        assertThat(weekEnd.atZone(zone).toLocalDate())
+                .isEqualTo(ServerClock.startOfToday().atZone(zone).toLocalDate().plusDays(7));
+    }
 }

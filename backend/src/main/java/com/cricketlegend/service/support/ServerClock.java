@@ -20,6 +20,17 @@ public final class ServerClock {
     }
 
     /**
+     * Start of the local day {@code daysFromToday} calendar days after today (0 is today's start).
+     * Calendar arithmetic, so a daylight-saving change never shifts the boundary off midnight.
+     */
+    public static Instant startOfDayFromToday(int daysFromToday) {
+        return LocalDate.now(ZoneId.systemDefault())
+                .plusDays(daysFromToday)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant();
+    }
+
+    /**
      * The current instant on the server clock. Read once per request that needs several aggregates
      * to agree on "now" (docs/specs/071-league-card-redesign.md's {@code LeagueServiceImpl.list}).
      */

@@ -4263,6 +4263,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchSquadDto"
+  /api/v1/manage/clubs/{clubId}/overview:
+    get:
+      tags:
+      - manager-overview-controller
+      operationId: overview
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ManagerOverviewDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/selection-pool:
     get:
       tags:
@@ -5821,6 +5840,143 @@ components:
           type:
           - string
           - "null"
+    ManagerOverviewDto:
+      type: object
+      description: "The manager overview, scoped to the caller. 'This week' is the start of today to the start of today plus 7 days in the server default zone."
+      properties:
+        matchesThisWeek:
+          type: integer
+          format: int32
+        teamsNotAnnounced:
+          type: integer
+          format: int32
+        pollAnswersAwaited:
+          type: integer
+          format: int64
+        activePlayers:
+          type: integer
+          format: int64
+        upcomingMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverviewMatchDto"
+        openPolls:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverviewPollDto"
+        recentResults:
+          type: array
+          description: Always empty for now, results do not exist yet.
+          items:
+            $ref: "#/components/schemas/OverviewResultDto"
+        quickActions:
+          $ref: "#/components/schemas/OverviewQuickActionsDto"
+    OverviewMatchDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type:
+          - string
+          - "null"
+        homeTeamId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        homeTeamName:
+          type:
+          - string
+          - "null"
+        awayTeamId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        awayTeamName:
+          type:
+          - string
+          - "null"
+        sectionId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        ownSides:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverviewMatchSideDto"
+    OverviewMatchSideDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        selectedCount:
+          type: integer
+          format: int32
+        maxSelected:
+          type:
+          - integer
+          - "null"
+          format: int32
+        announced:
+          type: boolean
+    OverviewPollDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        title:
+          type: string
+        repliedCount:
+          type: integer
+          format: int64
+        totalCount:
+          type: integer
+          format: int64
+        scheduledCloseAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+    OverviewResultDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        summary:
+          type: string
+    OverviewQuickActionsDto:
+      type: object
+      properties:
+        createMatch:
+          type: boolean
+        createPoll:
+          type: boolean
+        addPlayer:
+          type: boolean
+        messageSquad:
+          type: boolean
     ApplySelectionRequest:
       type: object
       properties:

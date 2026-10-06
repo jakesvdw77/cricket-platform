@@ -143,16 +143,6 @@ export const MANAGER_NAV: NavGroup[] = [
 export const MANAGER_TAB_IDS = ['overview', 'matches', 'polls', 'players'] as const
 export const MANAGER_TAB_LABELS: Record<string, string> = { overview: 'Home' }
 
-// The existing Overview tile grid: same groups, order, titles and descriptions as the dashboard
-// had before 079, now derived from MANAGER_NAV.
-export const OVERVIEW_TILE_GROUPS: Array<{ label: string; ids: string[] }> = [
-  {
-    label: 'Club manager',
-    ids: ['club-profile', 'teams', 'players', 'leagues', 'matches', 'results', 'managers', 'gallery', 'notifications'],
-  },
-  { label: 'Team manager', ids: ['squads', 'communication', 'polls'] },
-]
-
 export function flatNavItems(groups: NavGroup[] = MANAGER_NAV): NavItem[] {
   return groups.flatMap((group) => group.items)
 }
