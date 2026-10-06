@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 48 208 208">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+
+    <path d="M44.5 236 C48.0 183.5 79.5 166.0 118 166.0 C156.5 166.0 188.0 183.5 191.5 236 Z" fill="#F7F3E8"/>
+    <rect x="44.5" y="235" width="147.0" height="80" fill="#F7F3E8"/>
+    <rect x="104.0" y="138.0" width="28.0" height="35.0" rx="8.75" fill="#D6A877"/>
+    <path d="M102.25 166.0 L118 190.5 L133.75 166.0 Z" fill="#0F5132"/>
+    <rect x="88.25" y="75.0" width="59.5" height="70.0" rx="28.0" fill="#D6A877"/>
+    <path d="M84.75 103.0 C84.75 61.0 151.25 61.0 151.25 103.0 Z" fill="#F4E4BC"/>
+    <path d="M132.0 99.5 Q167.0 97.75 170.5 108.25 Q149.5 110.0 132.0 106.5 Z" fill="#D9C08A"/>
+    <circle cx="107.5" cy="87.25" r="5.6000000000000005" fill="#C8102E"/><circle cx="186" cy="178" r="31" fill="#0F5132"/><circle cx="186" cy="178" r="26" fill="#2E9E62"/><path d="M174.3 178 L183.4 187.1 L199.0 168.9" fill="none" stroke="#FFFFFF" stroke-width="7.3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

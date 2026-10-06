@@ -116,8 +116,7 @@ export const MANAGER_NAV: NavGroup[] = [
         label: 'Player availability',
         description: 'Who is free, player by player',
         to: '/manage/availability/players',
-        // Swap for a brand icon (e.g. 'nav/player-availability') here when it exists.
-        icon: 'player-availability',
+        icon: 'nav/availability-player',
         tabId: 'polls',
         match: ['/manage/player-availability'],
       },
@@ -126,8 +125,7 @@ export const MANAGER_NAV: NavGroup[] = [
         label: 'Team availability',
         description: 'Squad cover for each team',
         to: '/manage/availability/coverage',
-        // Swap for a brand icon (e.g. 'nav/team-availability') here when it exists.
-        icon: 'team-availability',
+        icon: 'nav/availability-team',
         tabId: 'polls',
       },
     ],

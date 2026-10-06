@@ -133,6 +133,8 @@ describe('icon artwork has no baked-in background', () => {
       // Two icons draw outside the standard window, so the same 208 window is shifted for them.
       const shifted: Record<string, string> = {
         'nav/squads': '24 48 208 208',
+        'nav/availability-player': '24 48 208 208',
+        'nav/availability-team': '24 48 208 208',
         'actions/announce-team': '24 29 208 208',
       }
       const key = Object.keys(shifted).find((name) => path.endsWith(`/${name}.svg`))
