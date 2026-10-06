@@ -91,4 +91,21 @@ class PlayerProfileRepositoryTest {
 
         assertThat(secondClubProfile.getId()).isNotNull();
     }
+
+    @Test
+    void findByClubIdWithoutDateOfBirthReturnsOnlyThatClubsPlayersWhosePersonHasNoDate() {
+        Club clubA = savedClub("riverside-cc");
+        Club clubB = savedClub("lakeside-cc");
+        Person noDate = savedPerson();
+        Person withDate = personRepository.save(Person.builder().firstName("Joe").lastName("Doe")
+                .dateOfBirth(java.time.LocalDate.of(2000, 1, 1)).build());
+        Person otherClubNoDate = savedPerson();
+        PlayerProfile missing = playerProfileRepository.save(playerProfile(noDate.getId(), clubA.getId()));
+        playerProfileRepository.save(playerProfile(withDate.getId(), clubA.getId()));
+        playerProfileRepository.save(playerProfile(otherClubNoDate.getId(), clubB.getId()));
+
+        assertThat(playerProfileRepository.findByClubIdWithoutDateOfBirth(clubA.getId()))
+                .extracting(PlayerProfile::getId)
+                .containsExactly(missing.getId());
+    }
 }
