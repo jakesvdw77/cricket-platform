@@ -10,7 +10,7 @@ Every brand icon has a dark green circle drawn into the SVG itself, so the icons
 Goals:
 - Brand icons become artwork only, with no background drawn into the file.
 - One place (`BrandIcon`) draws the tinted tile an icon sits on, so every screen uses the same recipe.
-- The side menu uses larger icons (40 px) on a tile tinted at 36% of the club's primary colour, the version the user chose.
+- The side menu uses bare 36 px icons on a panel tinted from the club's primary colour (option C); other surfaces use the 36% tinted tile.
 - Icons stay readable on every surface they appear on, including a club with a light primary colour.
 
 ## Non-goals
@@ -35,7 +35,7 @@ None.
 
 ## UI Requirements
 
-**Assets.** The 40-odd SVGs under `ui/src/icons/<group>/` have the background rectangle (`fill="#0F5132"`) and the highlight circle (`cx=200 cy=56 r=70 fill="#14633F"`) removed; the circular clip can stay. The originals move to `ui/design/icon-originals/<group>/` (git history keeps the rest). `brand/favicon.svg` is not transformed. The transform is a repeatable script (`ui/scripts/strip-icon-background.mjs`, idempotent) so icons the user adds later in the original style can be converted with one command. A test fails if a non-brand SVG in `src/icons` still contains the old background fill. The PNG exports under `ui/design/icon-exports/` stay as exported (with background) and are reference copies only.
+**Assets.** The 40-odd SVGs under `ui/src/icons/<group>/` have the background rectangle (`fill="#0F5132"`) and the highlight circle (`cx=200 cy=56 r=70 fill="#14633F"`) removed; the circular clip can stay. The originals move to `ui/design/icon-originals/<group>/` (git history keeps the rest). `brand/favicon.svg` is not transformed. The transform is a repeatable script (`ui/scripts/strip-icon-background.mjs`, idempotent) so icons the user adds later in the original style can be converted with one command. A test fails if a non-brand SVG in `src/icons` still contains the old background fill. The script also crops the nav, roles, stats and actions icons to `viewBox="24 24 208 208"` (people, field and brand are not cropped), and is run on the restored originals so the result is reproducible. The PNG exports under `ui/design/icon-exports/` stay as exported (with background) and are reference copies only.
 
 **One tile recipe in `BrandIcon`.** `BrandIcon` gains a `surface` prop, `'tile'` (default) or `'none'`. With `'tile'` the icon is drawn inside a rounded square: padding 6 px, radius about 10 px, background `color-mix(in srgb, <tile base colour> 36%, <surface colour>)`, where the tile base colour comes from the theme, not a hard-coded colour. An `active` state adds a white 2 px ring so the active menu row keeps contrast. `size` stays the icon size, so a 40 px icon renders in a 52 px tile. `surface="none"` is for places that already supply their own background (an `Avatar`).
 
@@ -44,7 +44,7 @@ None.
 **Where it applies**
 | Surface | Icon | Treatment |
 |---|---|---|
-| Side menu rows and the collapsed rail (`SideMenu`) | 40 px | tile; active row ring; rows grow to fit |
+| Side menu rows and the collapsed rail (`SideMenu`) | 36 px | no tile (`surface="none"`); panel tinted `alpha(primary, 0.09)` over white; active row `alpha(primary, 0.16)`, bold, no ring; rail 64 px (option C) |
 | Menu sheet tiles (`MenuSheet`) | 40 px | tile |
 | Bottom bar (`BottomTabBar`) | 32 px | tile (smaller padding), confirm height still fits the bar |
 | Dashboard and overview card headers (`ManagerOverviewPage`, `NavTile` brand variant) | 28 px / 40 px | tile |
@@ -68,7 +68,7 @@ Per `docs/standards/testing.md`:
 
 - No brand icon file other than the favicon contains a background rectangle or highlight circle.
 - Every place in the table renders its icon on a tile (or an avatar background) and the artwork is clearly visible against it for the default colour and for a light club colour.
-- The side menu shows 40 px icons on 36% tinted tiles and the active row stays distinguishable.
+- The side menu shows bare 36 px icons on a tinted panel and the active row stays distinguishable.
 - Changing a club's primary colour changes the icon tiles.
 - The favicon and app icons are unchanged.
 
@@ -78,6 +78,10 @@ Per `docs/standards/testing.md`:
 - Role chips: 28 px icon on a tile makes the chip taller; accept a chip height of about 40 px, or use a 24 px icon on a 30 px tile?
 - Avatars: the cream artwork sits on `primary.main`; confirm it reads well, and for a light club colour whether the avatar background should also use the tile base rule.
 - Light-colour threshold: to be tuned with real club colours.
+
+## Decisions
+
+- The user chose option C for the side menu on 2026-10-06: no tile, 36 px icons, tinted panel, cropped artwork, default tile padding 4.
 
 ## Rollout Notes
 
