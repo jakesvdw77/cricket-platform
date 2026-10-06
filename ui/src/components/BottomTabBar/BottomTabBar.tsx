@@ -1,7 +1,7 @@
 import { Box, Paper } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { NavItemIcon } from '../NavItemIcon'
-import { activeNavId } from '../ManagerShell/managerNav'
+import { activeTabId } from '../ManagerShell/managerNav'
 import type { ManagerTab, NavGroup } from '../ManagerShell/managerNav'
 
 export type BottomTab = ManagerTab
@@ -20,7 +20,7 @@ export interface BottomTabBarProps {
 // always Menu, opening the MenuSheet; it reads as active while the sheet is open.
 export function BottomTabBar({ tabs, groups, menuOpen = false, onMenuClick, badges = {} }: BottomTabBarProps) {
   const { pathname } = useLocation()
-  const activeId = menuOpen ? undefined : activeNavId(groups, pathname)
+  const activeId = menuOpen ? undefined : activeTabId(groups, pathname)
 
   const itemSx = (active: boolean) => ({
     position: 'relative' as const,
