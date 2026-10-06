@@ -134,9 +134,6 @@ describe('MatchList', () => {
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ page: 0 }))
   })
 
-  // docs/specs/056-club-profile-overview.md: MatchList's own backTo/backLabel prop *defaults*
-  // moved from /manage/fixtures ("Back to Fixtures") to /manage ("Back to Dashboard") — this
-  // confirms the default (no backTo/backLabel passed by the caller) renders the new target.
   it('lays the cards out in an auto-fill grid (min 340px, capped at 100%) with stretched equal heights', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 
@@ -151,13 +148,14 @@ describe('MatchList', () => {
     })
   })
 
-  it('renders a "Back to Dashboard" link pointing at /manage by default', async () => {
+  // docs/specs/079-manager-shell-and-overview.md: no default back link any more.
+  it('renders no back link by default', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 
     renderPage('test-club-id')
 
     await screen.findByText('1st XI vs Riverside Occasionals')
-    expect(screen.getByRole('link', { name: 'Back to Dashboard' })).toHaveAttribute('href', '/manage')
+    expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
   })
 
   // docs/specs/041-list-screen-header-actions.md: MatchList's default viewTo AND editTo are both

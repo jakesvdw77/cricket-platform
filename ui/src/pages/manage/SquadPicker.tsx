@@ -13,8 +13,6 @@ export default function SquadPicker() {
   return (
     <MatchList
       title="Squads"
-      backTo="/manage"
-      backLabel="Back to Dashboard"
       createLabel="Schedule Match"
       editTo={(matchId) => `/manage/fixtures/matches/${matchId}/edit?tab=playing-xi`}
       // docs/specs/036-view-first-record-detail-screens.md: opts out of MatchList's new

@@ -303,7 +303,7 @@ export default function ClubStructure() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ManageScreenHeader title="Club Structure" />
+      <ManageScreenHeader title="Club Structure" backTo="/manage/club-profile" backLabel="Back to Club Profile" />
 
       {deactivateMutation.isError && (
         <Typography variant="body2" color="error.main">

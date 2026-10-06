@@ -6,6 +6,9 @@ import { PageHeaderBand } from '../PageHeaderBand'
 
 export interface ManageScreenHeaderProps {
   title: string
+  // docs/specs/079-manager-shell-and-overview.md: no default. The manager shell's persistent menu
+  // replaces "Back to Dashboard", so a screen shows a back link only when it passes a meaningful
+  // `backTo` (a parent list or record); without one nothing is rendered.
   backTo?: string
   backLabel?: string
   // A primary page-level action (e.g. "Add Match"), rendered top-right alongside the title
@@ -18,29 +21,30 @@ export interface ManageScreenHeaderProps {
   middle?: ReactNode
 }
 
-// The back-link + page-title header every bare /manage screen needs — GridNavShell (unlike
-// AppShell's sidebar or BottomTabShell's tab bar) has no persistent nav, and RecordFormScreen's
+// The page-title header (and optional back link) every bare /manage screen needs — RecordFormScreen's
 // own back-button-plus-title only ships bundled with its field grid and actions bar, so a list or
 // tree screen that isn't a create/edit form has no title of its own without this. Extracted after
 // ClubContactList.tsx and SponsorList.tsx each hand-rolled the back button alone (title omitted
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo = '/manage', backLabel = 'Back to Dashboard', action, middle }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle }: ManageScreenHeaderProps) {
   return (
     <PageHeaderBand>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-        <MuiButton
-          component={RouterLink}
-          to={backTo}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ ml: -1, color: 'text.secondary' }}
-        >
-          {backLabel}
-        </MuiButton>
+        {backTo && (
+          <MuiButton
+            component={RouterLink}
+            to={backTo}
+            variant="text"
+            color="inherit"
+            size="small"
+            startIcon={<ArrowBackIcon fontSize="small" />}
+            sx={{ ml: -1, color: 'text.secondary' }}
+          >
+            {backLabel}
+          </MuiButton>
+        )}
 
         <Box
           sx={{
