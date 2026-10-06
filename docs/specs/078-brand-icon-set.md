@@ -5,7 +5,7 @@
 
 ## Problem & Goals
 
-The app uses `@mui/icons-material` everywhere (about 70 files). They are generic outline glyphs, and the product has no visual identity of its own. The user created a custom set of 27 colour icons in Claude (dark green circular badges with cream, red and gold), plus a favicon set, and added them under `ui/src/icons/`.
+The app uses `@mui/icons-material` everywhere (about 70 files). They are generic outline glyphs, and the product has no visual identity of its own. The user created a custom set of 29 colour icons in Claude (dark green circular badges with cream, red and gold), plus a favicon set, and added them under `ui/src/icons/`.
 
 Goals:
 - A usable, documented home for the icon set, with one shared way to render it.

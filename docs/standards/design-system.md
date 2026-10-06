@@ -36,6 +36,15 @@ Sorting/search are backend-driven, consistent with pagination's existing rule be
 
 **Every `/manage` screen must render a page title — no exceptions by omission.** `ManageScreenHeader` exists specifically because `ClubContactList.tsx` and `SponsorList.tsx` each independently hand-rolled just the Back button and silently dropped the title, while `ManageClubProfilePage.tsx` (built on `RecordFormScreen`) had one for free — the inconsistency was only caught by a user screenshot, not review. A screen wrapped in `RecordFormScreen` already satisfies this via that component; every other bare `/manage` screen (list, tree/org-chart editor, dashboard-adjacent view) renders `ManageScreenHeader` instead of a local back button. Do not hand-roll a Back button/title pair — extend `ManageScreenHeader` if it doesn't fit rather than duplicating it a fourth time.
 
+## Brand icons (`docs/specs/078-brand-icon-set.md`)
+
+The product's own colour icon set (dark green circular badges) lives in `ui/src/icons/<group>/<name>.svg` (`nav`, `roles`, `stats`, `people`, `actions`, `field`, `brand`). It is an approved addition alongside MUI, not a second icon system.
+
+- **Use the set at 32 px and larger**: dashboard nav tiles (`NavTile`'s `brandIcon`), role badges, player avatars with a recorded gender and no photo, and dialog headers. Icons under 32 px (buttons, chips, inline `DetailLine` icons, menus) stay `@mui/icons-material`.
+- **Render only through `components/BrandIcon`** (`<BrandIcon name="nav/teams" size={40} />`). Nothing else imports from `src/icons`, and SVG markup is never inlined in JS. `BrandIconName` is derived from the files via `import.meta.glob`, so a new SVG is available automatically.
+- Decorative by default (empty `alt`, `aria-hidden`); pass `alt` only when the icon is the sole label.
+- The favicon set in `ui/src/icons/brand/` is the source; copies live in `ui/public/` and are linked from `ui/index.html`.
+
 ## Two token layers
 
 Per-club white-labelling means the token system has two layers, not one:
