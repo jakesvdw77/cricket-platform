@@ -3,7 +3,7 @@ import { Box } from '@mui/material'
 import { Outlet } from 'react-router-dom'
 import { activateSession } from '../../api/meApi'
 import { getManagedClubProfile } from '../../api/clubApi'
-import { GridNavShell } from '../../components/GridNavShell'
+import { ManagerShell } from '../../components/ManagerShell'
 import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
 
@@ -43,7 +43,7 @@ export default function ManagerHome() {
   }
 
   return (
-    <GridNavShell
+    <ManagerShell
       brand={clubProfile?.name ?? 'Cricket Legend Platform'}
       logoUrl={clubProfile ? clubProfile.logoUrl : undefined}
       user={{ name: keycloak.tokenParsed?.name ?? '', email: keycloak.tokenParsed?.email }}
@@ -52,6 +52,6 @@ export default function ManagerHome() {
       homeTo="/manage"
     >
       <Outlet context={{ clubId }} />
-    </GridNavShell>
+    </ManagerShell>
   )
 }

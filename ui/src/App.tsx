@@ -10,7 +10,7 @@ import PostLoginRedirect from './pages/view/PostLoginRedirect'
 import AdminHome from './pages/admin/AdminHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManagerHome from './pages/manage/ManagerHome'
-import ManagerDashboard from './pages/manage/ManagerDashboard'
+import ManagerOverviewPage from './pages/manage/ManagerOverviewPage'
 import ManageClubProfilePage from './pages/manage/ManageClubProfilePage'
 import ClubOverviewPage from './pages/manage/ClubOverviewPage'
 import ClubContactList from './pages/manage/ClubContactList'
@@ -138,7 +138,7 @@ function App() {
                 /api/v1/me/activate). Club Profile is real; every other card still routes to an
                 EmptyState placeholder pending 001's Section/Team model. */}
             <Route path="/manage" element={<ManagerHome />}>
-              <Route index element={<ManagerDashboard />} />
+              <Route index element={<ManagerOverviewPage />} />
               {/* docs/specs/056-club-profile-overview.md: club-profile is now the new consolidated,
                   view-first overview page — the previous edit-first ManageClubProfilePage moves one
                   level deeper, to club-profile/edit, reached via the overview's own "Edit profile"
