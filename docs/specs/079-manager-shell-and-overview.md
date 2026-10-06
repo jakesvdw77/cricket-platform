@@ -1,7 +1,7 @@
 # 079 — Manager Shell and Overview Dashboard
 
 **Depends on:** 006 (post-login home shells, whose "Manager nav: top bar only" decision this spec changes), 078 (brand icons, `BrandIcon`), 076 (selection status), 073 and 074 (availability), 070 to 072 (leagues)
-**Status:** draft — the look and feel was approved by the user from the interactive mockup (https://claude.ai/artifact/1D1H5h8YJVkKhAewoQXniN) on 2026-10-06. The user answered the main open questions on 2026-10-06 (see "Decisions"); two remain.
+**Status:** draft — the look and feel was approved by the user from the interactive mockup (https://claude.ai/artifact/1D1H5h8YJVkKhAewoQXniN) on 2026-10-06. The user answered the main open questions on 2026-10-06 (see "Decisions").
 
 ## Problem & Goals
 
@@ -57,9 +57,9 @@ Reference: the interactive mockup above. Tokens come from `ui/src/theme.ts`; no 
 
 **Phones.** A bottom bar with Home, Matches, Polls, Players and Menu. Menu opens a bottom sheet covering most of the screen with every destination as a tile (brand icon at 40 px, label, badge), grouped as on desktop; it closes on choosing a destination, on the close button, on tapping outside, and on swipe down. The sheet is a real dialog for keyboard and screen readers.
 
-**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card (for now an empty state: "No results yet", then real results once Results exists) and a quick-actions row of the actions a manager can perform (see Open Questions for the list). On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
+**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card (for now an empty state: "No results yet", then real results once Results exists) and a quick-actions row of the actions a manager can perform (Create match, Create availability poll, Add player, Message the squad). On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
 
-**Existing pages.** All 18 pages that use `ManageScreenHeader` ("Back to Dashboard") keep working inside the shell. Whether "Back to Dashboard" remains on wide screens is an open question.
+**Existing pages.** All 18 pages that use `ManageScreenHeader` ("Back to Dashboard") keep working inside the shell. "Back to Dashboard" goes away; detail and edit pages keep a back link to their list (see Decisions).
 
 **Icons.** Overview has no brand icon yet; the user is generating one in the same style. Until it exists the mockup's dashed placeholder is not shipped; the menu uses a MUI home glyph for that one row or the build waits for the icon.
 
@@ -92,16 +92,12 @@ Answered by the user on 2026-10-06:
 - **Bottom bar:** Home, Matches, Polls, Players, Menu, as proposed.
 - **Results:** results are not built yet, so the Recent results card shows **0 or "None"** for now (an honest empty state such as "No results yet"), and starts showing real results when the Results feature exists. No results data is needed in the overview endpoint yet.
 - **Section-scoped managers** see only their **own** teams' items and figures, including results once they exist. No club-wide results for them.
-- **Quick actions:** **yes**, the overview has a quick-actions row (see UI Requirements).
+- **Quick actions:** **yes**, a row on the overview with **Create match, Create availability poll, Add player, Message the squad**. An action is hidden for a manager who cannot perform it (same access rules as the underlying pages).
+- **"Back to Dashboard":** the always-visible menu replaces it. A back link stays **only on detail and edit pages** and returns to the list the person came from.
 
 Defaults assumed unless the user changes them (they match the mockup):
 - Menu count badges: open polls that still await answers, and unread notifications.
 - Overview icon: the user generates it as `nav/overview.svg`.
-
-## Open Questions
-
-- Does "Back to Dashboard" stay on wide screens now that the menu is always visible, or become a "Back to <list>" on detail pages only? (Recommendation: keep a back link only on detail and edit pages, going to the list they came from.)
-- Which quick actions, exactly? Proposed: Create match, Create availability poll, Add player, Message the squad. Confirm or change the list, and whether each is hidden for managers who cannot perform it.
 
 ## Rollout Notes
 
