@@ -32,7 +32,7 @@ export const Desktop: Story = {
   parameters: { viewport: { defaultViewport: 'desktop' } },
 }
 
-// docs/specs/006-post-login-home-shells.md's Manager shell (GridNavShell/ManagerHome) shows the
+// docs/specs/006-post-login-home-shells.md's Manager shell (ManagerShell/ManagerHome) shows the
 // managed club's own branding instead of the generic platform name — the club logo when set.
 export const WithClubLogo: Story = {
   args: {
@@ -53,5 +53,17 @@ export const WithClubInitialsFallback: Story = {
     onLogout: () => {},
     profileTo: '/manage/profile',
     logoUrl: null,
+  },
+}
+
+// docs/specs/079-manager-shell-and-overview.md: the opt-in club-colour header the manager shell uses.
+export const BrandTone: Story = {
+  args: {
+    brand: 'Riverside Cricket Club',
+    user: { name: 'Sam Manager', email: 'sam@riverside.example.com' },
+    onLogout: () => {},
+    profileTo: '/manage/profile',
+    logoUrl: null,
+    tone: 'brand',
   },
 }
