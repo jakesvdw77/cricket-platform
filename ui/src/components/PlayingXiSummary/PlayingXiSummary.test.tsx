@@ -69,6 +69,50 @@ describe('PlayingXiSummary', () => {
     expect(screen.getByText('Alex Jones')).toBeInTheDocument()
   })
 
+  // docs/specs/076-team-selection.md section 7.
+  it('shows a waiting player after the numbered ones with a dash, and a single 12th man row that is not repeated in the list', () => {
+    const squad = [
+      squadMember({ playerProfileId: 'p-1', firstName: 'Jane', lastName: 'Smith' }),
+      squadMember({ playerProfileId: 'p-2', firstName: 'Sam', lastName: 'Lee' }),
+      squadMember({ playerProfileId: 'p-3', firstName: 'Alex', lastName: 'Jones' }),
+    ]
+
+    render(
+      <PlayingXiSummary
+        squad={squad}
+        xi={[
+          { playerProfileId: 'p-3', battingOrder: null, role: 'BATSMAN' },
+          { playerProfileId: 'p-2', battingOrder: null, role: 'BOWLER' },
+          { playerProfileId: 'p-1', battingOrder: 1, role: 'BATSMAN' },
+        ]}
+        captainPlayerId={null}
+        wicketKeeperPlayerId={null}
+        twelfthManPlayerId="p-3"
+      />,
+    )
+
+    const order = screen.getAllByText(/^(Jane Smith|Sam Lee)$/).map((node) => node.textContent)
+    expect(order).toEqual(['Jane Smith', 'Sam Lee'])
+    expect(screen.getByText('–')).toBeInTheDocument()
+    // The 12th man is drawn once, in his own row, with no position.
+    expect(screen.getAllByText('Alex Jones')).toHaveLength(1)
+    expect(screen.getByText('12th')).toBeInTheDocument()
+  })
+
+  it('names a player who is not on the roster from his own selection row', () => {
+    render(
+      <PlayingXiSummary
+        squad={[]}
+        xi={[{ playerProfileId: 'p-9', battingOrder: 1, role: 'BATSMAN', firstName: 'Visiting', lastName: 'Player' }]}
+        captainPlayerId={null}
+        wicketKeeperPlayerId={null}
+        twelfthManPlayerId={null}
+      />,
+    )
+
+    expect(screen.getByText('Visiting Player')).toBeInTheDocument()
+  })
+
   it('renders the empty state when the side has no MatchSide (no xi, no twelfth man)', () => {
     render(
       <PlayingXiSummary squad={[]} xi={[]} captainPlayerId={null} wicketKeeperPlayerId={null} twelfthManPlayerId={null} />,

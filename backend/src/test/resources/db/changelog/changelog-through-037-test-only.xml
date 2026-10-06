@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Test-only fixture for TeamSelectionMigrationTest: mirrors db.changelog-master.xml's includes
+         verbatim but stops at 037, one changeset short of 038-team-selection.sql, so the test can
+         seed existing selection rows and 12th men before 038 runs. Paths must match the master character for
+         character so DATABASECHANGELOG bookkeeping lines up on the second pass. -->
+    <include file="db/changelog/v1/001-prerequisite-club-person.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/002-add-lead.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/003-add-product.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/004-add-subscription.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/005-add-club-audit-columns.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/006-add-club-profile.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/007-add-subscription-responsible-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/008-restructure-person-identity.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/009-subscription-responsible-person.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/010-add-person-status.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/011-add-role-assignment.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/012-add-person-keycloak-provisioned-at.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/013-add-club-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/014-add-club-profile-social-links.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/015-add-sponsor.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/016-add-sponsor-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/017-add-section.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/018-add-team.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/019-add-team-profile.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/020-add-player.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/021-add-league-management.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/022-add-jersey-numbers.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/023-add-availability-polls.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/024-add-match-side-announced.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/025-add-match-external-opponent-logo.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/026-add-league-playing-conditions.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/027-add-league-playing-conditions-structured-fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/028-move-allow-substitutions-to-playing-conditions.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/029-add-league-profile.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/030-add-league-contact.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/031-add-team-profile-fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/032-add-section-availability-and-flexible-squads.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/033-add-section-availability-rounds.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/034-add-section-availability-fixture-selection.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/035-unify-availability-polls.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/036-add-league-team.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/037-add-match-scoring-streaming-urls.sql" relativeToChangelogFile="false"/>
+
+</databaseChangeLog>

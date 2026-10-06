@@ -11,6 +11,7 @@ import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
+import com.cricketlegend.dto.SelectionLimitsDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
@@ -29,6 +30,7 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
+import com.cricketlegend.service.support.SelectionLimitsResolver;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
 import com.cricketlegend.service.support.ServerClock;
 import java.net.URI;
@@ -76,6 +78,7 @@ public class MatchServiceImpl implements MatchService {
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final MatchPollCoverageService matchPollCoverageService;
+    private final SelectionLimitsResolver selectionLimitsResolver;
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final LeagueTeamRepository leagueTeamRepository;
@@ -89,6 +92,7 @@ public class MatchServiceImpl implements MatchService {
             MatchSideRepository matchSideRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
             MatchPollCoverageService matchPollCoverageService,
+            SelectionLimitsResolver selectionLimitsResolver,
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             LeagueTeamRepository leagueTeamRepository,
@@ -100,6 +104,7 @@ public class MatchServiceImpl implements MatchService {
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.matchPollCoverageService = matchPollCoverageService;
+        this.selectionLimitsResolver = selectionLimitsResolver;
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.leagueTeamRepository = leagueTeamRepository;
@@ -336,14 +341,12 @@ public class MatchServiceImpl implements MatchService {
                     .forEach(p -> pickedBySideId.merge(p.getMatchSideId(), 1L, Long::sum));
         }
 
-        Set<UUID> leagueIds = content.stream()
-                .map(MatchDto::leagueId)
-                .filter(Objects::nonNull)
+        Set<SelectionLimitsResolver.LeagueSeason> leagueSeasons = content.stream()
+                .filter(dto -> dto.leagueId() != null)
+                .map(dto -> new SelectionLimitsResolver.LeagueSeason(dto.leagueId(), dto.seasonId()))
                 .collect(Collectors.toSet());
-        Map<UUID, Integer> xiSizeByLeagueId = leagueIds.isEmpty()
-                ? Map.of()
-                : leagueRepository.findAllById(leagueIds).stream()
-                        .collect(Collectors.toMap(League::getId, League::getMaxPlayingXiSize));
+        Map<SelectionLimitsResolver.LeagueSeason, SelectionLimitsDto> limitsByLeagueSeason =
+                selectionLimitsResolver.limitsFor(leagueSeasons);
 
         List<UUID> clubSideMatchIds = content.stream()
                 .filter(dto -> isClubTeamSide(dto, dto.homeTeamId(), clubByTeamId)
@@ -376,11 +379,22 @@ public class MatchServiceImpl implements MatchService {
                     dto.createdAt(), dto.updatedAt(), dto.updatedBy(),
                     homeClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.homeTeamId()) : null,
                     awayClub ? pickedCount(sideByKey, pickedBySideId, dto.id(), dto.awayTeamId()) : null,
-                    dto.leagueId() == null ? null : xiSizeByLeagueId.get(dto.leagueId()),
+                    playingXiSize(dto, limitsByLeagueSeason),
                     polls,
                     dto.homeLeagueTeamId(), dto.awayLeagueTeamId(),
                     dto.scoringUrl(), dto.streamingUrl());
         });
+    }
+
+    /** The most players a side's selection may hold (076's {@code maxSelected}); null with no league. */
+    private Integer playingXiSize(
+            MatchDto dto, Map<SelectionLimitsResolver.LeagueSeason, SelectionLimitsDto> limitsByLeagueSeason) {
+        if (dto.leagueId() == null) {
+            return null;
+        }
+        SelectionLimitsDto limits = limitsByLeagueSeason.get(
+                new SelectionLimitsResolver.LeagueSeason(dto.leagueId(), dto.seasonId()));
+        return limits == null ? null : limits.maxSelected();
     }
 
     private boolean isClubTeamSide(MatchDto dto, UUID teamId, Map<UUID, UUID> clubByTeamId) {

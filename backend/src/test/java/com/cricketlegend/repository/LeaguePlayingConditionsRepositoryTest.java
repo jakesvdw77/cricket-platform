@@ -12,6 +12,7 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Season;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -163,5 +164,52 @@ class LeaguePlayingConditionsRepositoryTest {
         assertThat(leaguePlayingConditionsRepository.findBySeasonId(seasonTwo.getId()))
                 .extracting(LeaguePlayingConditions::getId)
                 .containsExactly(seasonTwoRow.getId());
+    }
+
+    /**
+     * Pins the cross-product semantics ({@code leagueId IN} AND {@code seasonId IN}): asking for
+     * leagues {A,B} x seasons {X,Y} also returns rows for pairs never asked for as a pair, e.g.
+     * (A,Y), so callers must filter to their exact pairs. Rows outside either set are excluded.
+     */
+    @Test
+    void findByLeagueIdInAndSeasonIdInReturnsTheCrossProductSoCallersMustFilterExactPairs() {
+        Club club = savedClub("riverside-cc");
+        League leagueA = savedLeague(club.getId());
+        League leagueB = savedLeague(club.getId());
+        League leagueC = savedLeague(club.getId());
+        Season seasonX = savedSeason(club.getId());
+        Season seasonY = savedSeason(club.getId());
+        Season seasonZ = savedSeason(club.getId());
+        LeaguePlayingConditions ax = savedConditions(leagueA, seasonX);
+        LeaguePlayingConditions ay = savedConditions(leagueA, seasonY);
+        LeaguePlayingConditions bx = savedConditions(leagueB, seasonX);
+        savedConditions(leagueC, seasonX);
+        savedConditions(leagueA, seasonZ);
+
+        // The caller "wants" (A,X) and (B,Y) only; (B,Y) has no row, but (A,Y) and (B,X) come back too.
+        assertThat(leaguePlayingConditionsRepository.findByLeagueIdInAndSeasonIdIn(
+                        List.of(leagueA.getId(), leagueB.getId()), List.of(seasonX.getId(), seasonY.getId())))
+                .extracting(LeaguePlayingConditions::getId)
+                .containsExactlyInAnyOrder(ax.getId(), ay.getId(), bx.getId());
+    }
+
+    @Test
+    void findByLeagueIdInAndSeasonIdInReturnsNothingWhenEitherCollectionIsEmpty() {
+        Club club = savedClub("riverside-cc");
+        League league = savedLeague(club.getId());
+        Season season = savedSeason(club.getId());
+        savedConditions(league, season);
+
+        assertThat(leaguePlayingConditionsRepository.findByLeagueIdInAndSeasonIdIn(
+                        List.of(), List.of(season.getId()))).isEmpty();
+        assertThat(leaguePlayingConditionsRepository.findByLeagueIdInAndSeasonIdIn(
+                        List.of(league.getId()), List.of())).isEmpty();
+        assertThat(leaguePlayingConditionsRepository.findByLeagueIdInAndSeasonIdIn(List.of(), List.of())).isEmpty();
+    }
+
+    private LeaguePlayingConditions savedConditions(League league, Season season) {
+        return leaguePlayingConditionsRepository.save(LeaguePlayingConditions.builder()
+                .leagueId(league.getId()).seasonId(season.getId()).documentUrl("/media/rules.pdf")
+                .uploadedAt(Instant.now()).build());
     }
 }

@@ -1,7 +1,7 @@
 # 069 — Match Card Redesign
 
 **Depends on:** `037-match-improvements.md` (the Matches list and its filters), `040-announce-team.md` (announced badges), `030-team-sheet-communication.md` (the Team Sheet dialog), `029-league-management.md` (the Select Team / Playing XI screen and `SquadPicker`, which reuses this card), `036`/`059` (view-first and click-to-view cards), `064`–`068` (poll cards, `RecordCard` footer buttons and badge tones, poll Responses pages, batched poll queries).
-**Status:** approved (design approved by the user). Amended during build: a club team with no selection yet reports 0 picked (not null), and a side counts as one of the club's teams when its team belongs to this club. Design: https://claude.ai/artifact/BBSzMNUBLhQjpuuAWR7CJK Amended by `075-match-view-and-edit.md`: the footer button "Poll" is renamed "Availability" (a derby with two polls opens a Home/Away menu) and the card gains a Scoring / Watch live links row.
+**Status:** approved (design approved by the user). Amended during build: a club team with no selection yet reports 0 picked (not null), and a side counts as one of the club's teams when its team belongs to this club. Design: https://claude.ai/artifact/BBSzMNUBLhQjpuuAWR7CJK Amended by `075-match-view-and-edit.md`: the footer button "Poll" is renamed "Availability" (a derby with two polls opens a Home/Away menu) and the card gains a Scoring / Watch live links row. Amended by `076-team-selection.md`: `playingXiSize` now carries the maximum selection (batting places plus a permitted 12th man).
 
 ## Problem & Goals
 

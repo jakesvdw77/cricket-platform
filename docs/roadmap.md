@@ -4,6 +4,10 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
+## Resume here: 076 Team Selection (phase 2 built, awaiting smoke tests, browser check and review)
+
+Branch `feature/076-team-selection`, draft PR #81, not merged. Current state: the feature is built, the spec body now agrees with the code (the seven user decisions are in the last section of [`specs/076-team-selection.md`](specs/076-team-selection.md), "Phase 1 build record and how to resume", with a "Phase 2 status" paragraph), and the phase 2 tests and stories are written and verified (141 backend tests and 98 frontend tests added; backend suite 1500 green, frontend touched-area green). Remaining: the smoke tests, the browser check of the six practical scenarios, then mark the PR ready and merge after the user's review. Other open threads from the same period: `055` and `058` are the user's own untracked drafts (never commit them); `058` must be re-read against `076` before it is built.
+
 ## Active
 
 | # | Spec | Status |
@@ -155,6 +159,34 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Playing XI and Age range on the card** read `League.maxPlayingXiSize`/`minAge`/`maxAge` today; when draft `055` moves them to `LeaguePlayingConditions` the card should read them from there.
 - **Retire `LeagueDto.currentSeasonTeamCount` and `currentSeasonPlayingConditionsUrl`** once nothing reads them (the card no longer does).
 - **Inactive-card dimming** from the approved mockup, if wanted, would be a small `RecordCard` option.
+
+## Deferred by `076` — Team Selection
+
+`076-team-selection.md` replaced the Match Squad, the Playing XI builder and the Captain / Keeper / 12th man dropdowns with one selection list per team per match (at most 12), added the server-enforced one-player-per-slot and said-unavailable blocks, a Release action, a selection pool and an atomic apply endpoint behind a Select players dialog. Still deferred:
+
+- **Dormant `MatchSquadMember` cleanup:** the table, repository, `MatchSquadService`, the five endpoints, DTOs, client functions, `RoundHasMatchSquadException`, and a lean coverage endpoint to replace `GET .../squad` as the coverage source.
+- **A database-level slot constraint** to replace the per-player advisory lock.
+- **The slot-based multi-team Selection planner** using Coverage (`074`), now that the guard exists.
+- **Long-format refinements:** an end date or duration on `Match`, non-consecutive multi-day matches, early finishes and rain days, and re-validating when a match is rescheduled or a league's format changes.
+- **An "Order as ticked" shortcut** if the holding area after Done feels slow.
+- **Touch dragging:** the native drag events do not fire on most phones; `@dnd-kit` is the known upgrade and needs approval then.
+- **Release notifications** to the other team's manager.
+- **Tighten the derby leniency** of the side endpoints to per-team section checks.
+- **A per-club timezone** (existing item, now also load-bearing for the slot rule).
+- **Remaining before merge of `076`:** smoke tests of the new endpoints, the browser check of the six scenarios, and the user's review (the tests and stories themselves are done).
+
+## Deferred by `076` review
+
+Found by the standards and code review of the built feature; none blocks the merge.
+
+- **Dedupe the shared helpers** (ordering, `playerName`, `ROLE_LABEL`) now repeated across `TeamSelectionList`, `PlayingXiSummary`, `teamSheetPdf`, `teamSheetWhatsAppText` and `MatchFormPage`.
+- **Split `MatchFormPage`:** extract `MatchSideTab` from the 1,244-line page, and make `AvailabilityBadge` its own component folder (it lives in `TeamSelectionList` today and `SelectPlayersDialog` imports it from there).
+- **Surface the server's announce-blocked reason** through `MatchSideDto` instead of mirroring the section 8 rule and its wording in the client (`announceBlockedReason`).
+- **`openapi.yaml` conventions:** nullability for the new DTOs (`@Schema` nullable) and the `409` content annotation, so regenerating the file matches the hand-edited one.
+- **From previous match over the 500-cap pool:** the chip filters the pool client-side, so a previous player beyond the first 500 is missed; send the ids to the pool endpoint instead.
+- **Pool query efficiency:** repeated membership lookups per call and the `q` filter applied in memory instead of in the database.
+- **Touch dragging:** native HTML5 drag does not fire on phones; `@dnd-kit` is the known upgrade and is not approved (the spinner and Move up / Move down are the touch path).
+- **Theme typography:** replace the hard-coded px font sizes (for example 11, 12 and 14) in the two new components and the page with theme typography variants.
 
 ## Deferred by `075` — Match View, Edit Match and match links
 

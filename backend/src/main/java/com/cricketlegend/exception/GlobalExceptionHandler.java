@@ -25,6 +25,18 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /**
+     * docs/specs/076-team-selection.md: a refused apply-selection request carries the per-player
+     * rejections as a {@code rejections} property. The more specific type wins over the generic
+     * {@link ConflictException} handler above.
+     */
+    @ExceptionHandler(SelectionRejectedException.class)
+    ProblemDetail handleSelectionRejected(SelectionRejectedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("rejections", ex.getRejections());
+        return problem;
+    }
+
     @ExceptionHandler(ValidationException.class)
     ProblemDetail handleValidation(ValidationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

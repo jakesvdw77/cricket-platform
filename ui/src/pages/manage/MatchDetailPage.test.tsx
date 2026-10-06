@@ -95,6 +95,7 @@ function makeSide(overrides: Partial<MatchSide> = {}): MatchSide {
     twelfthManPlayerId: null,
     players: [],
     announced: false,
+    limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
     ...overrides,
   }
 }
@@ -360,7 +361,8 @@ describe('MatchDetailPage', () => {
       expect(screen.queryByText(/picked/)).not.toBeInTheDocument()
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
-      resolveSides([])
+      // 076: M is the side's own limits.maxSelected, so it appears once the side exists.
+      resolveSides([makeSide({ teamId: 'team-1', limits: { battingPlaces: 11, twelfthManAllowed: false, maxSelected: 11 } })])
       expect(await screen.findByText('No players selected yet.')).toBeInTheDocument()
       expect(screen.getByText('0 of 11 picked')).toBeInTheDocument()
     })
@@ -617,6 +619,7 @@ describe('MatchDetailPage', () => {
       listMatchSides.mockResolvedValue([
         makeSide({
           teamId: 'team-1',
+          limits: { battingPlaces: 11, twelfthManAllowed: false, maxSelected: 11 },
           players: [
             { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
             { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
@@ -632,12 +635,32 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
     })
 
+    it('takes M from the side\'s limits (a 12th man makes 12), not from the league\'s XI size', async () => {
+      listLeagues.mockResolvedValue([{ ...LEAGUE, maxPlayingXiSize: 11 }])
+      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside', leagueId: 'league-1' }))
+      listMatchSides.mockResolvedValue([
+        makeSide({
+          teamId: 'team-1',
+          limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
+          players: [
+            { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+            { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+          ],
+        }),
+      ])
+      renderPage(PATH, 'test-club-id')
+
+      expect(await screen.findByText('2 of 12 picked')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: '1st XI selection' })).toHaveAttribute('aria-valuemax', '12')
+    })
+
     it('says squad complete at M of M', async () => {
       listLeagues.mockResolvedValue([{ ...LEAGUE, maxPlayingXiSize: 2 }])
       getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside', leagueId: 'league-1' }))
       listMatchSides.mockResolvedValue([
         makeSide({
           teamId: 'team-1',
+          limits: { battingPlaces: 2, twelfthManAllowed: false, maxSelected: 2 },
           players: [
             { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
             { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
@@ -686,34 +709,10 @@ describe('MatchDetailPage', () => {
     })
   })
 
-  describe('Pick match squad', () => {
-    it('shows only on the card of a group-covered own side, linking to its Match Squad tab', async () => {
-      getMatchSquad.mockImplementation((_clubId: string, _matchId: string, teamId: string) =>
-        Promise.resolve(teamId === 'team-2' ? COVERED : UNCOVERED),
-      )
-      await renderLoaded()
-
-      const away = await screen.findByTestId('match-team-card-away')
-      const pick = await within(away).findByRole('link', { name: 'Pick match squad' })
-      expect(pick).toHaveAttribute('href', '/manage/fixtures/matches/match-1/edit?tab=match-squad&side=away')
-      expect(within(screen.getByTestId('match-team-card-home')).queryByRole('link', { name: 'Pick match squad' })).not.toBeInTheDocument()
-    })
-
-    it('links the home side to side=home', async () => {
+  describe('Pick match squad (retired by 076)', () => {
+    it('has no Pick match squad button, even for a group-covered own side', async () => {
       getMatchSquad.mockResolvedValue(COVERED)
       await renderLoaded()
-
-      const home = await screen.findByTestId('match-team-card-home')
-      expect(await within(home).findByRole('link', { name: 'Pick match squad' })).toHaveAttribute(
-        'href',
-        '/manage/fixtures/matches/match-1/edit?tab=match-squad&side=home',
-      )
-    })
-
-    it('is absent when no side is group-covered, and never appears for an opponent', async () => {
-      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside' }))
-      getMatchSquad.mockResolvedValue(UNCOVERED)
-      renderPage(PATH, 'test-club-id')
 
       await screen.findByTestId('match-team-card-home')
       await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())

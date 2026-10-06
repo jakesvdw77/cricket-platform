@@ -598,4 +598,26 @@ class MatchRepositoryTest {
         assertThat(one.getFirstMatchDate()).isEqualTo(one.getLastMatchDate());
         assertThat(one.getNextMatchDate()).isEqualTo(futureOne);
     }
+    // docs/specs/076-team-selection.md: the window query behind MatchSlots' slot-collision check.
+    @Test
+    void findActiveInWindowReturnsOnlyTheClubsActiveMatchesInAHalfOpenRange() {
+        Club club = savedClub("riverside-cc");
+        Club otherClub = savedClub("hillside-cc");
+        Season season = savedSeason(club.getId());
+        Season otherSeason = savedSeason(otherClub.getId());
+        Instant from = Instant.parse("2026-06-01T00:00:00Z");
+        Instant to = Instant.parse("2026-06-08T00:00:00Z");
+        Match atFrom = matchRepository.save(match(club.getId(), season.getId(), from));
+        Match inside = matchRepository.save(match(club.getId(), season.getId(), from.plus(3, ChronoUnit.DAYS)));
+        matchRepository.save(match(club.getId(), season.getId(), to));
+        matchRepository.save(match(club.getId(), season.getId(), from.minusSeconds(1)));
+        matchRepository.save(match(otherClub.getId(), otherSeason.getId(), from.plus(3, ChronoUnit.DAYS)));
+        Match deactivated = match(club.getId(), season.getId(), from.plus(2, ChronoUnit.DAYS));
+        deactivated.setActive(false);
+        matchRepository.save(deactivated);
+
+        List<Match> found = matchRepository.findActiveInWindow(club.getId(), from, to);
+
+        assertThat(found).extracting(Match::getId).containsExactlyInAnyOrder(atFrom.getId(), inside.getId());
+    }
 }

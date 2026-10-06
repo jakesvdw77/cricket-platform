@@ -275,7 +275,7 @@ class UnifiedAvailabilityPollsIntegrationTest {
     }
 
     @Test
-    void deleteRoundReturns409WhileAMatchSquadMemberIsPickedFromItsWindows() throws Exception {
+    void deleteRoundSucceedsAndClearsStaleMatchSquadMembersPickedFromItsWindows() throws Exception {
         Fixture f = fixture();
         JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", f.club.getId());
         UUID player = addPlayer(f.club.getId(), "Alice");
@@ -289,21 +289,13 @@ class UnifiedAvailabilityPollsIntegrationTest {
                 .playerProfileId(player)
                 .build());
 
-        mockMvc.perform(delete("/api/v1/manage/clubs/{c}/section-availability-rounds/{r}", f.club.getId(), roundId)
-                        .with(admin))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value(
-                        org.hamcrest.Matchers.containsString("Remove the picked squad members")));
-
-        assertThat(roundRepository.findById(roundId)).isPresent();
-        assertThat(windowRepository.findByRoundId(roundId)).hasSize(1);
-        assertThat(windowMatchRepository.findByMatchId(f.match.getId())).isPresent();
-
-        // Once the pick is removed the delete succeeds.
-        matchSquadMemberRepository.deleteAll();
+        // docs/specs/076-team-selection.md: stale match-squad rows no longer make a poll undeletable.
         mockMvc.perform(delete("/api/v1/manage/clubs/{c}/section-availability-rounds/{r}", f.club.getId(), roundId)
                         .with(admin))
                 .andExpect(status().isNoContent());
+
+        assertThat(roundRepository.findById(roundId)).isEmpty();
+        assertThat(matchSquadMemberRepository.findAll()).isEmpty();
     }
 
     @Test

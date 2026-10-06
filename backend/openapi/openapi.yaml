@@ -821,6 +821,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchSideDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/selection:
+    put:
+      tags:
+      - match-selection-controller
+      operationId: apply
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sideId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplySelectionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchSideDto"
+        "409":
+          description: One or more players cannot be selected; nothing was saved
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/SelectionRejectedProblem"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/sides/{sideId}/players/reorder:
     put:
       tags:
@@ -2812,6 +2855,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: keepAnnounced
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           description: OK
@@ -4214,6 +4263,48 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchSquadDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/selection-pool:
+    get:
+      tags:
+      - match-selection-controller
+      operationId: pool
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: wholeSection
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SelectionPoolDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/polls/{pollId}/responses:
     get:
       tags:
@@ -5692,6 +5783,19 @@ components:
             $ref: "#/components/schemas/MatchSidePlayerDto"
         announced:
           type: boolean
+        limits:
+          $ref: "#/components/schemas/SelectionLimitsDto"
+    SelectionLimitsDto:
+      type: object
+      properties:
+        battingPlaces:
+          type: integer
+          format: int32
+        twelfthManAllowed:
+          type: boolean
+        maxSelected:
+          type: integer
+          format: int32
     MatchSidePlayerDto:
       type: object
       properties:
@@ -5699,7 +5803,9 @@ components:
           type: string
           format: uuid
         battingOrder:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int32
         role:
           type: string
@@ -5707,6 +5813,179 @@ components:
           - BATSMAN
           - BOWLER
           - ALL_ROUNDER
+        firstName:
+          type:
+          - string
+          - "null"
+        lastName:
+          type:
+          - string
+          - "null"
+    ApplySelectionRequest:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectionEntryRequest"
+      required:
+      - players
+    SelectionEntryRequest:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+        battingOrder:
+          type: integer
+          format: int32
+      required:
+      - playerProfileId
+    SelectionPoolDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sideId:
+          type: string
+          format: uuid
+        basis:
+          type: string
+          enum:
+          - ROSTER
+          - POLL_AVAILABLE
+        wholeSection:
+          type: boolean
+        coveringPoll:
+          $ref: "#/components/schemas/SelectionCoveringPollDto"
+        truncated:
+          type: boolean
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectionPoolEntryDto"
+    SelectionCoveringPollDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - NONE
+          - SQUAD
+          - GROUP
+        pollId:
+          type: string
+          format: uuid
+        roundId:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+    SelectionPoolEntryDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: integer
+          format: int32
+        availability:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNSURE
+          - UNAVAILABLE
+          - NO_RESPONSE
+          - NOT_POLLED
+        selected:
+          type: boolean
+        selectable:
+          type: boolean
+        reason:
+          type: string
+          enum:
+          - AGE_INELIGIBLE
+          - SAID_UNAVAILABLE
+          - NOT_CONFIRMED
+          - TAKEN_FOR_SLOT
+        reasonText:
+          type: string
+        taken:
+          $ref: "#/components/schemas/SelectionTakenDto"
+    SelectionTakenDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        sideId:
+          type: string
+          format: uuid
+        sameMatch:
+          type: boolean
+        announced:
+          type: boolean
+        canRelease:
+          type: boolean
+    SelectionRejectionDto:
+      type: object
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        playerName:
+          type: string
+        reason:
+          type: string
+          enum:
+          - AGE_INELIGIBLE
+          - SAID_UNAVAILABLE
+          - NOT_CONFIRMED
+          - TAKEN_FOR_SLOT
+          - NOT_IN_POOL
+          - TEAM_FULL
+          - POSITION_INVALID
+        message:
+          type: string
+        taken:
+          $ref: "#/components/schemas/SelectionTakenDto"
+    SelectionRejectedProblem:
+      type: object
+      description: RFC 7807 problem body of a refused apply-selection request
+      properties:
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        rejections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectionRejectionDto"
     UpdateMatchSidePlayerRequest:
       type: object
       properties:

@@ -1,30 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   Alert,
   Box,
   Button as MuiButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  Chip,
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
-import { PlayingXiBuilder } from '../../components/PlayingXiBuilder'
-import { MatchSquadPicker } from '../../components/MatchSquadPicker'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { CreateAndLinkRecordDialog } from '../../components/CreateAndLinkRecordDialog'
-import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
 import { PlayerForm, PLAYER_FORM_ID } from '../../components/PlayerForm'
 import { Button } from '../../components/Button'
+import { CardProgressBar } from '../../components/CardProgressBar'
+import { badgeSx } from '../../components/RecordCard'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { SelectPlayersDialog } from '../../components/SelectPlayersDialog'
+import type { SelectionApplyOutcome } from '../../components/SelectPlayersDialog'
+import { TeamSelectionList } from '../../components/TeamSelectionList'
+import type { TeamSelectionPlayer } from '../../components/TeamSelectionList'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
 import {
@@ -43,38 +48,45 @@ import { listLeagues } from '../../api/leagueApi'
 import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
 import { leagueTeamsQueryKey, listLeagueTeams } from '../../api/leagueTeamApi'
 import { activateSession } from '../../api/meApi'
-import { listSquad, addToSquad } from '../../api/teamSquadApi'
-import type { SquadMember } from '../../api/teamSquadApi'
+import { addToSquad } from '../../api/teamSquadApi'
 import { createPlayer } from '../../api/playerApi'
 import type { PlayerPayload } from '../../api/playerApi'
 import {
   listMatchSides,
   createMatchSide,
   updateMatchSide,
-  addMatchSidePlayer,
   updateMatchSidePlayerRole,
   removeMatchSidePlayer,
   reorderMatchSidePlayers,
   announceMatchSide,
   unannounceMatchSide,
 } from '../../api/matchSideApi'
-import type { MatchSide, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
-import { listPolls, getPollResponses } from '../../api/matchAvailabilityApi'
-import type { AvailabilityStatus, MatchAvailabilityPoll } from '../../api/matchAvailabilityApi'
-import { getRoundResponses } from '../../api/sectionAvailabilityApi'
+import type { MatchSide, MatchSidePlayer, PlayingRole, UpdateMatchSidePayload } from '../../api/matchSideApi'
 import {
-  getMatchSquad,
-  addToMatchSquad,
-  removeFromMatchSquad,
-  updateMatchSquadJerseyNumber,
-} from '../../api/matchSquadApi'
+  applySelection,
+  getSelectionPool,
+  selectionPoolQueryKey,
+} from '../../api/matchSelectionApi'
+import type {
+  SelectionEntryRequest,
+  SelectionPool,
+  SelectionPoolEntry,
+  SelectionRejectedBody,
+} from '../../api/matchSelectionApi'
+import { listPolls, setPlayerStatus } from '../../api/matchAvailabilityApi'
+import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
+import { setRoundPlayerStatus } from '../../api/sectionAvailabilityApi'
+import { getMatchSquad } from '../../api/matchSquadApi'
 import { errorDetail } from '../../utils/errorDetail'
-import { matchPollsFrom, NO_CLUB_TEAM_REASON, pollDestination } from './matches/matchCardHelpers'
+import { formatMatchDateTime } from '../../utils/matchDateTime'
+import { squadDisplayName } from '../../utils/squadDisplayName'
+import { announcedBadge, matchPollsFrom, NO_CLUB_TEAM_REASON, pollDestination } from './matches/matchCardHelpers'
 import type { MatchSquadCoverage, PollDestination } from './matches/matchCardHelpers'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
 
-// docs/specs/075-match-view-and-edit.md: the edit page's tabs, in tab-bar order.
-type MatchTabKey = 'details' | 'match-squad' | 'home-xi' | 'away-xi'
+// docs/specs/076-team-selection.md section 1: the edit page's tabs, in tab-bar order. The Match
+// Squad tab is gone; a side's team selection lives in its own Home XI / Away XI tab.
+type MatchTabKey = 'details' | 'home-xi' | 'away-xi'
 
 // Same "resolve a side's display name" fallback MatchList.tsx already uses: a real Team's own
 // name from the club's own team list (cross-club Team references may not resolve here — falls
@@ -91,7 +103,7 @@ function sideDisplayName(teamId: string | null, teamName: string | null, teamsBy
 }
 
 // docs/specs/037-match-improvements.md item 9: resolves the *other* side's display name for a
-// previous-match candidate in the "Re-select from Previous Match" picker — mirrors
+// previous-match candidate in the "Re-select from previous match" picker — mirrors
 // sideDisplayName above rather than duplicating its team-lookup logic.
 function opponentLabel(match: Match, teamId: string, teamsById: Map<string, Team>): string {
   if (match.homeTeamId === teamId) {
@@ -100,26 +112,10 @@ function opponentLabel(match: Match, teamId: string, teamsById: Map<string, Team
   return sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)
 }
 
-// docs/specs/037-match-improvements.md item 9: a side counts as "non-empty" (and therefore needs
-// a destructive-replace confirmation before "Re-select from Previous Match" overwrites it) if it
-// has any ordered-XI player or any of captain/wicketkeeper/twelfth-man set. Shared by
-// handlePickPreviousMatch (decides whether to confirm) and copyFromPreviousMatchMutation (decides
-// whether to clear first) so the two can never disagree about what "non-empty" means.
-function isSideNonEmpty(matchSide: MatchSide): boolean {
-  return (
-    matchSide.players.length > 0 ||
-    Boolean(matchSide.captainPlayerId) ||
-    Boolean(matchSide.wicketKeeperPlayerId) ||
-    Boolean(matchSide.twelfthManPlayerId)
-  )
-}
-
-// docs/specs/064-unified-availability-polls.md: which poll (if any) covers one side of this match,
-// resolved from data rather than a team setting (063's removed squadMode). `groupCovered` = the
-// squad endpoint returned a non-null windowId; `squadPoll` = a 032 poll exists for this side
-// (the two are mutually exclusive, enforced server-side). Always enabled for a real-Team side;
-// both queries use the shared keys MatchSideTab/MatchSquadPanel already
-// use, so React Query dedupes the requests across tabs.
+// docs/specs/064-unified-availability-polls.md: the header Availability button reads which poll (if
+// any) covers this match for one side, from the squad endpoint (a non-null windowId = a group poll)
+// and the match's squad polls. Always enabled for a real-Team side; both queries use the shared
+// keys the Match View uses, so React Query dedupes the requests.
 function useSideCoverage(clubId: string | undefined, matchId: string | undefined, teamId: string | null | undefined) {
   const enabled = Boolean(clubId) && Boolean(matchId) && Boolean(teamId)
 
@@ -135,92 +131,215 @@ function useSideCoverage(clubId: string | undefined, matchId: string | undefined
     enabled,
   })
 
-  const groupCovered = Boolean(matchSquadQuery.data?.windowId)
-  const squadPoll = groupCovered ? null : ((pollsQuery.data ?? []).find((candidate) => candidate.teamId === teamId) ?? null)
-
-  return { matchSquadQuery, pollsQuery, groupCovered, squadPoll }
+  return { matchSquadQuery, pollsQuery }
 }
 
-// One Playing XI tab's content — data fetching/mutations live here (React Query, not inside
-// PlayingXiBuilder itself, per docs/standards/frontend.md's "server state in the page" rule).
-// Creates the MatchSide on first use if none exists yet, per docs/specs/029-league-management.md.
+// --- Selection helpers (docs/specs/076-team-selection.md) -----------------------------------------
+
+function playerName(entry: SelectionPoolEntry | undefined): string {
+  return entry
+    ? squadDisplayName({ firstName: entry.firstName, lastName: entry.lastName, squadJerseyNumber: entry.jerseyNumber })
+    : 'Unknown player'
+}
+
+// Positions are always contiguous: every cache edit that removes or gives a position renumbers the
+// positioned players 1..k, as the server does.
+function compactPositions(players: MatchSidePlayer[]): MatchSidePlayer[] {
+  const ranked = players
+    .filter((player) => player.battingOrder != null)
+    .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+  const positions = new Map(ranked.map((player, index) => [player.playerProfileId, index + 1]))
+  return players.map((player) => ({ ...player, battingOrder: positions.get(player.playerProfileId) ?? null }))
+}
+
+function withReorder(side: MatchSide, ids: string[]): MatchSide {
+  return {
+    ...side,
+    twelfthManPlayerId: side.twelfthManPlayerId && ids.includes(side.twelfthManPlayerId) ? null : side.twelfthManPlayerId,
+    players: side.players.map((player) => {
+      const index = ids.indexOf(player.playerProfileId)
+      return { ...player, battingOrder: index === -1 ? null : index + 1 }
+    }),
+  }
+}
+
+function withUpdate(side: MatchSide, payload: UpdateMatchSidePayload): MatchSide {
+  const twelfth = payload.twelfthManPlayerId ?? null
+  return {
+    ...side,
+    captainPlayerId: payload.captainPlayerId ?? null,
+    wicketKeeperPlayerId: payload.wicketKeeperPlayerId ?? null,
+    twelfthManPlayerId: twelfth,
+    players: compactPositions(
+      side.players.map((player) => (player.playerProfileId === twelfth ? { ...player, battingOrder: null } : player)),
+    ),
+  }
+}
+
+function withRemoval(side: MatchSide, playerId: string): MatchSide {
+  return {
+    ...side,
+    captainPlayerId: side.captainPlayerId === playerId ? null : side.captainPlayerId,
+    wicketKeeperPlayerId: side.wicketKeeperPlayerId === playerId ? null : side.wicketKeeperPlayerId,
+    twelfthManPlayerId: side.twelfthManPlayerId === playerId ? null : side.twelfthManPlayerId,
+    players: compactPositions(side.players.filter((player) => player.playerProfileId !== playerId)),
+  }
+}
+
+function withRole(side: MatchSide, playerId: string, role: PlayingRole): MatchSide {
+  return { ...side, players: side.players.map((player) => (player.playerProfileId === playerId ? { ...player, role } : player)) }
+}
+
+// A mutation on one side that updates the sides cache optimistically and rolls back on error, so a
+// drop or a menu action never snaps back before the server answers (spec section 2, Sorting).
+function useSideMutation<TVars>(
+  clubId: string,
+  matchId: string,
+  teamId: string,
+  sideId: string | undefined,
+  mutationFn: (variables: TVars) => Promise<MatchSide>,
+  optimistic: (side: MatchSide, variables: TVars) => MatchSide,
+) {
+  const queryClient = useQueryClient()
+  const sidesKey = ['managed-club', clubId, 'matches', matchId, 'sides']
+  return useMutation({
+    mutationFn,
+    onMutate: async (variables: TVars) => {
+      await queryClient.cancelQueries({ queryKey: sidesKey })
+      const previous = queryClient.getQueryData<MatchSide[]>(sidesKey)
+      queryClient.setQueryData<MatchSide[]>(sidesKey, (current) =>
+        current?.map((candidate) => (candidate.id === sideId ? optimistic(candidate, variables) : candidate)),
+      )
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(sidesKey, context.previous)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sidesKey })
+      queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+    },
+  })
+}
+
+// "A, B, C and 4 more": the server's own shape for a long list of names.
+function nameList(names: string[]): string {
+  const sorted = [...names].sort()
+  if (sorted.length <= 3) {
+    return sorted.join(', ')
+  }
+  return `${sorted.slice(0, 3).join(', ')} and ${sorted.length - 3} more`
+}
+
+// The section 8 announce rule, with the server's own check order and wording
+// (MatchSideServiceImpl.announce), so the disabled button's tooltip carries the text the server
+// would return. Null when the rule is met.
+function announceBlockedReason(
+  side: MatchSide,
+  teamName: string,
+  nameOf: (playerId: string) => string,
+): string | null {
+  const total = side.players.length
+  if (total === 0) {
+    return `Side ${side.id} has no players to announce`
+  }
+  const prefix = `Cannot announce ${teamName}: `
+  if (total > side.limits.maxSelected) {
+    return `${prefix}${total} players are selected; the most allowed is ${side.limits.maxSelected}.`
+  }
+  const unpositioned = side.players.filter(
+    (player) => player.battingOrder == null && player.playerProfileId !== side.twelfthManPlayerId,
+  )
+  if (unpositioned.length > 0) {
+    const names = nameList(unpositioned.map((player) => nameOf(player.playerProfileId)))
+    return `${prefix}${unpositioned.length} ${unpositioned.length === 1 ? 'player has' : 'players have'} no batting position (${names}).`
+  }
+  const positioned = side.players.filter((player) => player.battingOrder != null).length
+  if (positioned > side.limits.battingPlaces) {
+    return `${prefix}${positioned} players are selected but only ${side.limits.battingPlaces} places exist; choose the 12th man or remove one.`
+  }
+  return null
+}
+
+function NoticeLine({ tone, children }: { tone: 'warning' | 'error' | 'info'; children: ReactNode }) {
+  return (
+    <Box
+      role="status"
+      sx={{
+        bgcolor: (theme: Theme) => alpha(theme.palette[tone].main, 0.12),
+        border: 1,
+        borderColor: (theme: Theme) => alpha(theme.palette[tone].main, 0.4),
+        borderRadius: 2,
+        px: 1.5,
+        py: 1,
+        fontSize: 13,
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+// docs/specs/076-team-selection.md sections 2 to 6: one team's selection page (the content of its
+// Home XI / Away XI tab). State and server calls live here (React Query, per docs/standards/
+// frontend.md); TeamSelectionList and SelectPlayersDialog are presentational. Creates the MatchSide
+// on first use, per docs/specs/029-league-management.md.
 function MatchSideTab({
   clubId,
-  matchId,
+  match,
   teamId,
-  seasonId,
-  cap,
-  label,
+  sideLabel,
+  teamName,
+  opponentName,
   teamsById,
-  leagueId,
 }: {
   clubId: string
-  matchId: string
+  match: Match
   teamId: string
-  seasonId: string
-  cap: number
-  label: string
+  sideLabel: 'Home' | 'Away'
+  teamName: string
+  opponentName: string
   teamsById: Map<string, Team>
-  leagueId: string | null
 }) {
+  const matchId = match.id
+  const seasonId = match.seasonId
   const queryClient = useQueryClient()
   const attemptedCreateRef = useRef(false)
-  // docs/specs/037-match-improvements.md item 8: "Add Squad Member" dialog/mutation state — owned
-  // here (the page), not inside PlayingXiBuilder, per docs/standards/frontend.md's "server state
-  // in the page" rule. addPlayerTab is this dialog's own small local 3-tab bar state (PlayerForm
-  // externalizes its Basic/Contact/Cricket Info tab bar to its caller — same pattern
-  // PlayerFormPage.tsx already uses).
-  const [squadMemberDialogOpen, setSquadMemberDialogOpen] = useState(false)
+
+  const [selectOpen, setSelectOpen] = useState(false)
+  const [confirmAnnounce, setConfirmAnnounce] = useState(false)
+  // The dialog's source switch: the team's squad (or the people who said available), the whole
+  // section, or the players of a previous match (chosen in the dialog).
+  const [source, setSource] = useState<'squad' | 'section' | 'previous'>('squad')
+  const [previousMatchId, setPreviousMatchId] = useState<string | null>(null)
+  const wholeSection = source !== 'squad'
+  const [search, setSearch] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const [addPlayerOpen, setAddPlayerOpen] = useState(false)
+  // PlayerForm externalizes its Basic/Contact/Cricket Info tab bar to its caller (PlayerFormPage's
+  // pattern): the Add new player dialog owns its small 3-tab bar state.
   const [addPlayerTab, setAddPlayerTab] = useState<0 | 1 | 2>(0)
-  // docs/specs/037-match-improvements.md item 9: "Re-select from Previous Match" picker/confirm/
-  // copy-summary state — owned here for the same "server state in the page" reason as above.
-  const [previousMatchDialogOpen, setPreviousMatchDialogOpen] = useState(false)
-  const [pendingSourceMatch, setPendingSourceMatch] = useState<Match | null>(null)
-  const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false)
-  const [copySummary, setCopySummary] = useState<{
-    copiedCount: number
-    totalSourcePlayers: number
-    skippedCount: number
-  } | null>(null)
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part D, re-keyed by
-  // docs/specs/064-unified-availability-polls.md: a group-covered side's playing XI is drawn from
-  // the match's own picked MatchSquadMember pool, otherwise from the team's season-long
-  // TeamSquadMember roster (tinted by a squad poll's answers when one exists) — everything below
-  // branches on coverage exactly once, then reads `effectiveSquad`/`availabilityByPlayerId`
-  // rather than re-checking it per call site.
-  const coverage = useSideCoverage(clubId, matchId, teamId)
-  const isGroupCovered = coverage.groupCovered
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQ(search.trim()), 300)
+    return () => clearTimeout(handle)
+  }, [search])
 
+  const sidesKey = ['managed-club', clubId, 'matches', matchId, 'sides']
   const sidesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'],
+    queryKey: sidesKey,
     queryFn: () => listMatchSides(clubId, matchId),
   })
-
-  const squadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
-    queryFn: () => listSquad(clubId, teamId, seasonId),
-    // Held back until coverage resolves so a group-covered side never fetches a roster it
-    // won't use.
-    enabled: !coverage.matchSquadQuery.isLoading && !isGroupCovered,
-  })
-
-  // Shared with useSideCoverage/MatchSquadPanel (same queryKey) — React Query dedupes by key, so
-  // switching between the Availability/Match Squad/Playing XI tabs never re-fetches this more
-  // than once per side (docs/specs/063's own "no second network call" requirement).
-  const matchSquadQuery = coverage.matchSquadQuery
-
-  const effectiveSquad: SquadMember[] = isGroupCovered ? (matchSquadQuery.data?.selected ?? []) : squadQuery.data ?? []
-
-  const invalidateSides = () =>
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches', matchId, 'sides'] })
+  const side = (sidesQuery.data ?? []).find((candidate) => candidate.teamId === teamId)
+  const sideId = side?.id
 
   const createSideMutation = useMutation({
     mutationFn: () => createMatchSide(clubId, matchId, teamId),
-    onSuccess: invalidateSides,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: sidesKey }),
   })
-
-  const side = (sidesQuery.data ?? []).find((candidate) => candidate.teamId === teamId)
 
   useEffect(() => {
     if (!sidesQuery.isLoading && !side && !attemptedCreateRef.current && !createSideMutation.isPending) {
@@ -233,394 +352,505 @@ function MatchSideTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidesQuery.isLoading, side])
 
-  const addPlayerMutation = useMutation({
-    mutationFn: ({ playerId, role }: { playerId: string; role: PlayingRole }) =>
-      addMatchSidePlayer(clubId, matchId, (side as { id: string }).id, playerId, role),
-    onSuccess: invalidateSides,
+  // The pool read: names and availability for the selected players on the page (the pool always
+  // includes them), and the dialog's candidates while it is open. The page's own read is the
+  // default pool; the dialog's key differs only once its switch or search changes.
+  const pageLimits = { wholeSection: false, q: '' }
+  const pageKey = [...selectionPoolQueryKey(clubId, matchId, teamId), pageLimits]
+  const pageQuery = useQuery({
+    queryKey: pageKey,
+    queryFn: () => getSelectionPool(clubId, matchId, teamId, pageLimits),
   })
-  const removePlayerMutation = useMutation({
-    mutationFn: (playerId: string) => removeMatchSidePlayer(clubId, matchId, (side as { id: string }).id, playerId),
-    onSuccess: invalidateSides,
+  const dialogParams = { wholeSection, q: debouncedQ }
+  const dialogQuery = useQuery({
+    queryKey: [...selectionPoolQueryKey(clubId, matchId, teamId), dialogParams],
+    queryFn: () => getSelectionPool(clubId, matchId, teamId, dialogParams),
+    enabled: selectOpen,
+    refetchOnWindowFocus: true,
   })
-  const roleMutation = useMutation({
-    mutationFn: ({ playerId, role }: { playerId: string; role: PlayingRole }) =>
-      updateMatchSidePlayerRole(clubId, matchId, (side as { id: string }).id, playerId, role),
-    onSuccess: invalidateSides,
-  })
-  const reorderMutation = useMutation({
-    mutationFn: (ids: string[]) => reorderMatchSidePlayers(clubId, matchId, (side as { id: string }).id, ids),
-    onSuccess: invalidateSides,
-  })
-  const updateSideMutation = useMutation({
-    mutationFn: (payload: UpdateMatchSidePayload) => updateMatchSide(clubId, matchId, (side as { id: string }).id, payload),
-    onSuccess: invalidateSides,
-  })
+
+  const invalidateSelection = () => {
+    queryClient.invalidateQueries({ queryKey: sidesKey })
+    queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+    // The match card's picked counts live in the matches list queries.
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+  }
+
+  const reorderMutation = useSideMutation<string[]>(
+    clubId,
+    matchId,
+    teamId,
+    sideId,
+    (ids) => reorderMatchSidePlayers(clubId, matchId, sideId as string, ids),
+    withReorder,
+  )
+  // PUT .../sides/{sideId} is a full 3-field replace (docs/specs/037 item 5): every handler sends
+  // the side's own current values for the fields NOT being changed.
+  const updateSideMutation = useSideMutation<UpdateMatchSidePayload>(
+    clubId,
+    matchId,
+    teamId,
+    sideId,
+    (payload) => updateMatchSide(clubId, matchId, sideId as string, payload),
+    withUpdate,
+  )
+  const removeMutation = useSideMutation<string>(
+    clubId,
+    matchId,
+    teamId,
+    sideId,
+    (playerId) => removeMatchSidePlayer(clubId, matchId, sideId as string, playerId),
+    withRemoval,
+  )
+  const roleMutation = useSideMutation<{ playerId: string; role: PlayingRole }>(
+    clubId,
+    matchId,
+    teamId,
+    sideId,
+    ({ playerId, role }) => updateMatchSidePlayerRole(clubId, matchId, sideId as string, playerId, role),
+    (current, { playerId, role }) => withRole(current, playerId, role),
+  )
+
   // docs/specs/040-announce-team.md
   const announceMutation = useMutation({
-    mutationFn: () => announceMatchSide(clubId, matchId, (side as { id: string }).id),
-    onSuccess: invalidateSides,
+    mutationFn: () => announceMatchSide(clubId, matchId, sideId as string),
+    onSuccess: invalidateSelection,
   })
   const unannounceMutation = useMutation({
-    mutationFn: () => unannounceMatchSide(clubId, matchId, (side as { id: string }).id),
-    onSuccess: invalidateSides,
+    mutationFn: () => unannounceMatchSide(clubId, matchId, sideId as string),
+    onSuccess: invalidateSelection,
   })
 
-  // docs/specs/037-match-improvements.md item 8: creates a brand-new Player then adds them to
-  // this side's squad — two sequential calls in one mutation, matching TeamFormPage.tsx's existing
-  // createAndLinkContactMutation/createAndLinkSponsorMutation shape. docs/specs/
-  // 063-section-availability-and-flexible-squads.md Part D, as reshaped by 064-unified-availability-
-  // polls.md: a side covered by a group poll (isGroupCovered) adds the new player straight into
-  // this match's own MatchSquadMember pool; any other side adds to the season TeamSquadMember
-  // roster, unchanged.
-  const createAndLinkPlayerMutation = useMutation({
-    mutationFn: async (payload: PlayerPayload) => {
-      const player = await createPlayer(clubId, payload)
-      if (isGroupCovered) {
-        await addToMatchSquad(clubId, matchId, teamId, player.id)
-      } else {
-        await addToSquad(clubId, teamId, seasonId, player.id)
-      }
-      return player
-    },
-    onSuccess: () => {
-      // Same query key squadQuery/matchSquadQuery above already use — the new player becomes
-      // selectable in PlayingXiBuilder's "Add player" Autocomplete immediately, without a page
-      // reload.
-      queryClient.invalidateQueries({
-        queryKey: isGroupCovered
-          ? ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad']
-          : ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
+  const applyMutation = useMutation({
+    mutationFn: (entries: SelectionEntryRequest[]) =>
+      applySelection(clubId, matchId, sideId as string, { players: entries }),
+  })
+
+  const closeSelectDialog = () => {
+    setSelectOpen(false)
+    setSource('squad')
+    setPreviousMatchId(null)
+    setSearch('')
+    setDebouncedQ('')
+  }
+
+  // Done: one atomic apply. A 409 with rejections keeps the dialog open with per-row messages.
+  const handleApply = async (ids: string[]): Promise<SelectionApplyOutcome> => {
+    try {
+      // Existing players carry no role or position (the server keeps theirs). Each NEW player (ticked
+      // ids not already selected, in tick order) goes to the end of the batting order: the next
+      // position after the highest one kept, while it fits in battingPlaces; the rest wait unordered.
+      const current = side?.players ?? []
+      const currentIds = new Set(current.map((player) => player.playerProfileId))
+      const wanted = new Set(ids)
+      const keptPositions = current
+        .filter((player) => wanted.has(player.playerProfileId) && player.battingOrder != null)
+        .map((player) => player.battingOrder as number)
+      let nextPosition = keptPositions.length > 0 ? Math.max(...keptPositions) + 1 : 1
+      const battingPlaces = side?.limits.battingPlaces ?? 0
+      const entries: SelectionEntryRequest[] = ids.map((playerProfileId) => {
+        if (currentIds.has(playerProfileId)) {
+          return { playerProfileId }
+        }
+        return nextPosition <= battingPlaces
+          ? { playerProfileId, battingOrder: nextPosition++ }
+          : { playerProfileId }
       })
-      setSquadMemberDialogOpen(false)
-    },
-  })
-
-  // docs/specs/037-match-improvements.md item 9: this side's own previous, identically-scoped
-  // matches — fetched only while the picker is open, so opening it is the only trigger for this
-  // (potentially per-open-stale) network call.
-  const previousMatchesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'matches', 'previous', leagueId, matchId],
-    queryFn: () => listPreviousMatches(clubId, teamId, seasonId, { leagueId, excludeMatchId: matchId }),
-    enabled: previousMatchDialogOpen,
-  })
-
-  // docs/specs/037-match-improvements.md item 9: copies a previous match's side onto this one —
-  // mirrors createAndLinkPlayerMutation's own "sequential awaited calls inside one mutationFn"
-  // shape above. Clears the destination side first (if non-empty), replays the source's players in
-  // batting-order, then resolves which of captain/wicketkeeper/twelfth-man actually carried over.
-  const copyFromPreviousMatchMutation = useMutation({
-    mutationFn: async (sourceMatchId: string) => {
-      const sourceSides = await listMatchSides(clubId, sourceMatchId)
-      const sourceSide = sourceSides.find((candidate) => candidate.teamId === teamId)
-      const destinationSide = side as MatchSide
-
-      if (!sourceSide) {
-        return { copiedCount: 0, totalSourcePlayers: 0, skippedCount: 0 }
-      }
-
-      if (isSideNonEmpty(destinationSide)) {
-        for (const player of destinationSide.players) {
-          await removeMatchSidePlayer(clubId, matchId, destinationSide.id, player.playerProfileId)
-        }
-        await updateMatchSide(clubId, matchId, destinationSide.id, {
-          captainPlayerId: null,
-          wicketKeeperPlayerId: null,
-          twelfthManPlayerId: null,
-        })
-      }
-
-      const copiedIds = new Set<string>()
-      let skippedCount = 0
-
-      const orderedSourcePlayers = [...sourceSide.players].sort((a, b) => a.battingOrder - b.battingOrder)
-      for (const player of orderedSourcePlayers) {
-        try {
-          await addMatchSidePlayer(clubId, matchId, destinationSide.id, player.playerProfileId, player.role)
-          copiedIds.add(player.playerProfileId)
-        } catch (error) {
-          if (isAxiosError(error) && error.response?.status === 400) {
-            skippedCount += 1
-          } else {
-            throw error
-          }
+      await applyMutation.mutateAsync(entries)
+      invalidateSelection()
+      closeSelectDialog()
+      return { ok: true }
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        const body = (error.response.data ?? {}) as SelectionRejectedBody
+        queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+        return {
+          ok: false,
+          message: body.detail ?? "Some players can't be selected.",
+          rejections: body.rejections ?? [],
         }
       }
-
-      const currentSquadIds = new Set(effectiveSquad.map((member) => member.playerProfileId))
-
-      let captainPlayerId: string | null = null
-      if (sourceSide.captainPlayerId) {
-        if (copiedIds.has(sourceSide.captainPlayerId)) {
-          captainPlayerId = sourceSide.captainPlayerId
-        } else {
-          skippedCount += 1
-        }
-      }
-
-      let wicketKeeperPlayerId: string | null = null
-      if (sourceSide.wicketKeeperPlayerId) {
-        if (copiedIds.has(sourceSide.wicketKeeperPlayerId)) {
-          wicketKeeperPlayerId = sourceSide.wicketKeeperPlayerId
-        } else {
-          skippedCount += 1
-        }
-      }
-
-      let twelfthManPlayerId: string | null = null
-      if (sourceSide.twelfthManPlayerId) {
-        if (!copiedIds.has(sourceSide.twelfthManPlayerId) && currentSquadIds.has(sourceSide.twelfthManPlayerId)) {
-          twelfthManPlayerId = sourceSide.twelfthManPlayerId
-        } else {
-          skippedCount += 1
-        }
-      }
-
-      try {
-        await updateMatchSide(clubId, matchId, destinationSide.id, {
-          captainPlayerId,
-          wicketKeeperPlayerId,
-          twelfthManPlayerId,
-        })
-      } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 400) {
-          // Defensive edge case: one of the resolved ids somehow still fails validation. Don't
-          // retry — just count all three as skipped (if they were set) and let the copy finish
-          // without captain/WK/12th set, rather than crashing the whole mutation over this.
-          skippedCount += [captainPlayerId, wicketKeeperPlayerId, twelfthManPlayerId].filter(Boolean).length
-        } else {
-          throw error
-        }
-      }
-
-      return {
-        copiedCount: copiedIds.size,
-        totalSourcePlayers: sourceSide.players.length,
-        skippedCount,
-      }
-    },
-    onSuccess: (result) => {
-      invalidateSides()
-      setConfirmReplaceOpen(false)
-      setPreviousMatchDialogOpen(false)
-      setPendingSourceMatch(null)
-      setCopySummary(result)
-    },
-    // A non-400 failure mid-copy (e.g. a network drop) rethrows out of mutationFn rather than
-    // being caught — onSuccess's dialog-closing never runs, which would otherwise leave the
-    // confirm/picker Dialog open on top of the page, hiding the errorMessage Alert (rendered
-    // inside PlayingXiBuilder, behind the modal backdrop) with no visible indication of why the
-    // copy stalled. Close both dialogs here too so the error becomes visible; also
-    // re-fetch sides, since a destructive clear may have already applied before the failure.
-    onError: () => {
-      invalidateSides()
-      setConfirmReplaceOpen(false)
-      setPreviousMatchDialogOpen(false)
-      setPendingSourceMatch(null)
-    },
-  })
-
-  const handlePickPreviousMatch = (candidate: Match) => {
-    const currentSide = side as MatchSide
-
-    if (isSideNonEmpty(currentSide)) {
-      setPendingSourceMatch(candidate)
-      setConfirmReplaceOpen(true)
-    } else {
-      copyFromPreviousMatchMutation.mutate(candidate.id)
+      return { ok: false, message: errorDetail(error, "Couldn't save the selection. Please try again."), rejections: [] }
     }
   }
 
-  // docs/specs/033-availability-aware-xi-builder.md: a second, small data fetch mirroring
-  // the shared coverage query shape exactly (identical query-key shape, same match) so an admin
-  // building this side's XI sees the same poll responses inline. Deliberately NOT added to the
-  // loading guard below — indicators simply appear once/if this resolves, XI building is never
-  // blocked or delayed waiting on poll data. docs/specs/063-section-availability-and-flexible-
-  // squads.md Part D (fixture-group-selection revision): a side with its own squad poll keeps this
-  // exact fetch; a side covered by a group poll instead reads this side's own round-level responses (resolved via matchSquadQuery's own
-  // roundId, no second network call for the round lookup itself), picking out the statuses entry
-  // whose own windowId matches this side's own resolved window (windowId, not dayPart alone, is
-  // the only unambiguous key now that a round can own several windows sharing the same dayPart
-  // across different dates).
-  const poll = coverage.squadPoll
-
-  const responsesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'polls', poll?.id, 'responses'],
-    queryFn: () => getPollResponses(clubId, matchId, (poll as MatchAvailabilityPoll).id),
-    enabled: Boolean(poll),
+  // The group poll's override needs the match's own window id; the squad endpoint (already loaded
+  // for the header Availability button, same key) carries it.
+  const coverageQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
+    queryFn: () => getMatchSquad(clubId, matchId, teamId),
   })
 
-  const roundId = matchSquadQuery.data?.roundId ?? null
-  const windowId = matchSquadQuery.data?.windowId ?? null
-
-  const roundResponsesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', roundId, 'responses'],
-    queryFn: () => getRoundResponses(clubId, roundId as string),
-    enabled: isGroupCovered && Boolean(roundId),
-  })
-
-  const availabilityByPlayerId = useMemo(() => {
-    const map = new Map<string, AvailabilityStatus>()
-    if (isGroupCovered) {
-      ;(roundResponsesQuery.data?.responses ?? []).forEach((row) => {
-        const status = row.statuses.find((entry) => entry.windowId === windowId)?.status ?? null
-        if (status) {
-          map.set(row.playerProfileId, status)
-        }
-      })
-    } else {
-      ;(responsesQuery.data?.responses ?? []).forEach((row) => {
-        if (row.status) {
-          map.set(row.playerProfileId, row.status)
-        }
-      })
+  // Set answer (dialog): a manager correction through the same override endpoints the Responses pages
+  // use - PUT matches/{matchId}/polls/{pollId}/players/{playerId} {status} for a squad poll, PUT
+  // section-availability-rounds/{roundId}/players/{playerId} {windowId, status} for a group poll
+  // (the answer is per window, so it covers every match of that slot). Works on a closed poll.
+  const handleSetAnswer = async (entry: SelectionPoolEntry, status: AvailabilityStatus) => {
+    const poll = dialogQuery.data?.coveringPoll
+    if (!poll) {
+      return
     }
-    return map
-  }, [isGroupCovered, roundResponsesQuery.data, responsesQuery.data, windowId])
+    if (poll.kind === 'SQUAD' && poll.pollId && poll.matchId) {
+      await setPlayerStatus(clubId, poll.matchId, poll.pollId, entry.playerProfileId, status)
+    } else if (poll.kind === 'GROUP' && poll.roundId && coverageQuery.data?.windowId) {
+      await setRoundPlayerStatus(clubId, poll.roundId, entry.playerProfileId, coverageQuery.data.windowId, status)
+    } else {
+      throw new Error('No poll window to answer on')
+    }
+    queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'player-availability'] })
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+  }
 
-  if (
-    sidesQuery.isLoading ||
-    matchSquadQuery.isLoading ||
-    (!isGroupCovered && squadQuery.isLoading) ||
-    createSideMutation.isPending ||
-    !side
-  ) {
+  // Release: removes the player from the other team's selection without un-announcing that team
+  // (keepAnnounced), then refetches; he becomes selectable and is not auto-ticked.
+  const handleRelease = async (entry: SelectionPoolEntry) => {
+    const taken = entry.taken
+    if (!taken) {
+      return
+    }
+    await removeMatchSidePlayer(clubId, taken.matchId, taken.sideId, entry.playerProfileId, true)
+    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+  }
+
+  // Add new player: always adds the player to the team's season roster, then switches the dialog to
+  // Whole section with his name in the search (a brand-new player has no poll answer).
+  const createAndLinkPlayerMutation = useMutation({
+    mutationFn: async (payload: PlayerPayload) => {
+      const player = await createPlayer(clubId, payload)
+      await addToSquad(clubId, teamId, seasonId, player.id)
+      return player
+    },
+    onSuccess: (player) => {
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'] })
+      queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
+      setAddPlayerOpen(false)
+      setSource('section')
+      const fullName = `${player.firstName} ${player.lastName}`
+      setSearch(fullName)
+      setDebouncedQ(fullName)
+    },
+  })
+
+  // The previous matches of this side (same query and labels the old picker used), fetched only
+  // while the dialog's 'From previous match' chip is chosen.
+  const previousMatchesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'matches', 'previous', match.leagueId, matchId],
+    queryFn: () => listPreviousMatches(clubId, teamId, seasonId, { leagueId: match.leagueId, excludeMatchId: matchId }),
+    enabled: selectOpen && source === 'previous',
+  })
+  // The chosen match's own side gives the players to show and their order (batting order first,
+  // then the rest, the 12th man last). Nothing else is carried over.
+  const previousSidesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'matches', previousMatchId, 'sides'],
+    queryFn: () => listMatchSides(clubId, previousMatchId as string),
+    enabled: selectOpen && source === 'previous' && Boolean(previousMatchId),
+  })
+  const previousOrder = useMemo(() => {
+    const previousSide = (previousSidesQuery.data ?? []).find((candidate) => candidate.teamId === teamId)
+    if (!previousSide) {
+      return null
+    }
+    const rest = previousSide.players.filter((player) => player.playerProfileId !== previousSide.twelfthManPlayerId)
+    const positioned = rest
+      .filter((player) => player.battingOrder != null)
+      .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+    const waiting = rest.filter((player) => player.battingOrder == null)
+    const twelfth = previousSide.players.filter((player) => player.playerProfileId === previousSide.twelfthManPlayerId)
+    return [...positioned, ...waiting, ...twelfth].map((player) => player.playerProfileId)
+  }, [previousSidesQuery.data, teamId])
+
+  const pool: SelectionPool | undefined = pageQuery.data
+  const poolById = useMemo(
+    () => new Map((pool?.entries ?? []).map((entry) => [entry.playerProfileId, entry])),
+    [pool],
+  )
+
+  if (sidesQuery.isLoading || createSideMutation.isPending || !side) {
     return (
       <Typography variant="body2" color="text.secondary">
-        Setting up {label}…
+        Setting up {teamName}…
       </Typography>
     )
   }
 
-  const errorMessage =
-    [addPlayerMutation, removePlayerMutation, roleMutation, reorderMutation, updateSideMutation]
+  const nameOf = (playerId: string) => {
+    const entry = poolById.get(playerId)
+    if (entry) {
+      return playerName(entry)
+    }
+    const own = side.players.find((player) => player.playerProfileId === playerId)
+    return [own?.firstName, own?.lastName].filter(Boolean).join(' ') || 'Unknown player'
+  }
+  const limits = side.limits
+  const selectedCount = side.players.length
+  const covered = pool ? pool.coveringPoll.kind !== 'NONE' : false
+
+  const listPlayers: TeamSelectionPlayer[] = side.players.map((player) => {
+    const entry = poolById.get(player.playerProfileId)
+    return {
+      playerProfileId: player.playerProfileId,
+      name: nameOf(player.playerProfileId),
+      battingOrder: player.battingOrder,
+      role: player.role,
+      availability: covered && entry ? entry.availability : null,
+      alsoIn: entry?.selected && entry.taken ? entry.taken.teamName : null,
+    }
+  })
+
+  const countOf = (availability: string) =>
+    listPlayers.filter((player) => player.availability === availability).length
+  const unsure = countOf('UNSURE')
+  const noResponse = countOf('NO_RESPONSE')
+  const notPolled = countOf('NOT_POLLED')
+  const unconfirmed = unsure + noResponse + notPolled
+  const lateUnavailable = countOf('UNAVAILABLE')
+  const breakdown = [
+    unsure > 0 ? `${unsure} unsure` : null,
+    noResponse > 0 ? `${noResponse} no response` : null,
+    notPolled > 0 ? `${notPolled} not polled` : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  const restPlayers = side.players.filter((player) => player.playerProfileId !== side.twelfthManPlayerId)
+  const waitingCount = restPlayers.filter((player) => player.battingOrder == null).length
+
+  const blockedReason = announceBlockedReason(side, teamName, nameOf)
+  const announcing = announceMutation.isPending || unannounceMutation.isPending
+  const announceError = announceMutation.isError
+    ? errorDetail(announceMutation.error, "Couldn't announce this team. Please try again.")
+    : null
+
+  const listError =
+    [reorderMutation, updateSideMutation, removeMutation, roleMutation, unannounceMutation]
       .map((mutation) =>
         mutation.isError
-          ? errorDetail(mutation.error, 'Something went wrong updating the playing XI. Please try again.')
+          ? errorDetail(mutation.error, 'Something went wrong updating the team. Please try again.')
           : null,
       )
       .find((message): message is string => Boolean(message)) ??
-    (copyFromPreviousMatchMutation.isError
-      ? errorDetail(
-          copyFromPreviousMatchMutation.error,
-          'Something went wrong re-selecting the team from a previous match. Please try again.',
-        )
-      : null)
+null
+
+  const announcedChip = announcedBadge(side.announced, '')
+  const blockedReasonId = `announce-blocked-${side.id}`
 
   return (
-    <>
-      <PlayingXiBuilder
-        squad={effectiveSquad}
-        xi={side.players}
-        captainPlayerId={side.captainPlayerId}
-        wicketKeeperPlayerId={side.wicketKeeperPlayerId}
-        twelfthManPlayerId={side.twelfthManPlayerId}
-        cap={cap}
-        onAddPlayer={(playerId, role) => addPlayerMutation.mutate({ playerId, role })}
-        onRemovePlayer={(playerId) => removePlayerMutation.mutate(playerId)}
-        onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
-        onReorderPlayers={(ids) => reorderMutation.mutate(ids)}
-        // docs/specs/037-match-improvements.md item 5: PUT .../sides/{sideId} is a full 3-field
-        // replace, not a partial merge (MatchSideServiceImpl.updateSide unconditionally overwrites
-        // all three) — each handler must send the side's own current values for the two fields NOT
-        // being changed, or setting one silently clears whichever of the other two was already set.
-        onChangeCaptain={(id) =>
-          updateSideMutation.mutate({
-            captainPlayerId: id,
-            wicketKeeperPlayerId: side.wicketKeeperPlayerId,
-            twelfthManPlayerId: side.twelfthManPlayerId,
-          })
-        }
-        onChangeWicketKeeper={(id) =>
-          updateSideMutation.mutate({
-            captainPlayerId: side.captainPlayerId,
-            wicketKeeperPlayerId: id,
-            twelfthManPlayerId: side.twelfthManPlayerId,
-          })
-        }
-        onChangeTwelfthMan={(id) =>
-          updateSideMutation.mutate({
-            captainPlayerId: side.captainPlayerId,
-            wicketKeeperPlayerId: side.wicketKeeperPlayerId,
-            twelfthManPlayerId: id,
-          })
-        }
-        isAddPending={addPlayerMutation.isPending}
-        errorMessage={errorMessage}
-        availabilityByPlayerId={availabilityByPlayerId}
-        onAddSquadMember={() => {
-          setAddPlayerTab(0)
-          setSquadMemberDialogOpen(true)
+    <Stack spacing={2}>
+      <Box
+        data-testid="selection-header"
+        sx={{
+          bgcolor: 'background.paper',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+          px: 2,
+          py: 1.5,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
         }}
-        onReselectFromPreviousMatch={() => setPreviousMatchDialogOpen(true)}
-        announced={side?.announced ?? false}
-        onToggleAnnounced={() => (side?.announced ? unannounceMutation.mutate() : announceMutation.mutate())}
-        togglingAnnounced={announceMutation.isPending || unannounceMutation.isPending}
-      />
-
-      {/* docs/specs/037-match-improvements.md item 9: same placement convention as the errorMessage
-          Alert above (passed into PlayingXiBuilder itself) — this one renders as a sibling since
-          it's a MatchSideTab-owned summary, not a per-mutation error. */}
-      {copySummary && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          <Typography variant="body2">
-            Copied {copySummary.copiedCount} of {copySummary.totalSourcePlayers} players from the previous XI.
+      >
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography variant="subtitle1" component="h2" fontWeight={700} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+            {`${teamName} · ${sideLabel} · vs ${opponentName}`}
           </Typography>
-          {copySummary.skippedCount > 0 && (
-            <Typography variant="body2">
-              {copySummary.skippedCount} couldn't be copied — no longer eligible for this match. Add them manually.
+          <Chip
+            size="small"
+            label={announcedChip.label}
+            variant={announcedChip.tone === 'neutral' ? 'outlined' : 'filled'}
+            sx={badgeSx(announcedChip.tone)}
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
+          <Typography variant="body2" fontWeight={700}>
+            Selected
+          </Typography>
+          <Typography variant="body2" color="text.secondary">{`${selectedCount} of ${limits.maxSelected}`}</Typography>
+        </Box>
+        <CardProgressBar
+          value={selectedCount}
+          max={limits.maxSelected}
+          ariaLabel={`${teamName} selection`}
+          valueText={`${selectedCount} of ${limits.maxSelected} selected`}
+        />
+
+        {pool && !covered && selectedCount > 0 && (
+          <NoticeLine tone="warning">
+            No availability poll covers this match, so nobody's availability is confirmed.
+          </NoticeLine>
+        )}
+        {unconfirmed > 0 && (
+          <NoticeLine tone="warning">
+            <b>
+              {unconfirmed === 1
+                ? '1 selected player is not confirmed available'
+                : `${unconfirmed} selected players are not confirmed available`}
+            </b>
+            {` (${breakdown}).`}
+          </NoticeLine>
+        )}
+        {lateUnavailable > 0 && (
+          <NoticeLine tone="error">
+            {lateUnavailable === 1
+              ? '1 selected player has since said they are unavailable'
+              : `${lateUnavailable} selected players have since said they are unavailable`}
+          </NoticeLine>
+        )}
+
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 1, position: 'relative' }}>
+          <Button
+            startIcon={<GroupsOutlinedIcon fontSize="small" />}
+            onClick={() => setSelectOpen(true)}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            Select players
+          </Button>
+          {side.announced ? (
+            <Button
+              variant="secondary"
+              onClick={() => unannounceMutation.mutate()}
+              disabled={announcing}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              {unannounceMutation.isPending ? 'Un-announcing…' : 'Un-announce'}
+            </Button>
+          ) : (
+            <Tooltip title={blockedReason ?? ''} disableHoverListener={!blockedReason} disableFocusListener={!blockedReason}>
+              <Box component="span" sx={{ display: 'flex', width: { xs: '100%', sm: 'auto' } }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setConfirmAnnounce(true)}
+                  disabled={Boolean(blockedReason) || announcing}
+                  aria-describedby={blockedReason ? blockedReasonId : undefined}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  {announceMutation.isPending ? 'Announcing…' : 'Announce team'}
+                </Button>
+              </Box>
+            </Tooltip>
+          )}
+          {blockedReason && !side.announced && (
+            <Typography id={blockedReasonId} variant="caption" color="text.secondary" sx={{ flexBasis: '100%' }}>
+              {blockedReason}
             </Typography>
           )}
-        </Alert>
+        </Box>
+        {announceError && <Alert severity="error">{announceError}</Alert>}
+      </Box>
+
+      {listError && <Alert severity="error">{listError}</Alert>}
+
+      {waitingCount > 0 && (
+        <NoticeLine tone="warning">
+          <b>
+            {waitingCount === restPlayers.length
+              ? `${waitingCount} ${waitingCount === 1 ? 'player is' : 'players are'} selected but the batting order is not set.`
+              : `${waitingCount} ${waitingCount === 1 ? 'player is' : 'players are'} not in the batting order yet.`}
+          </b>
+          {' Drag them into order or open a player and type a position.'}
+        </NoticeLine>
       )}
 
-      {/* docs/specs/037-match-improvements.md item 9: the picker — LinkExistingRecordDialog's
-          no-extraField mode, so picking an option fires onLink immediately. */}
-      <LinkExistingRecordDialog<Match>
-        open={previousMatchDialogOpen}
-        onClose={() => setPreviousMatchDialogOpen(false)}
-        title="Re-select from Previous Match"
-        candidates={previousMatchesQuery.data ?? []}
-        loading={previousMatchesQuery.isLoading}
-        getOptionLabel={(candidate) => `${new Date(candidate.matchDate).toLocaleDateString()} — vs ${opponentLabel(candidate, teamId, teamsById)}`}
-        onLink={(candidate) => handlePickPreviousMatch(candidate)}
+      {pageQuery.isLoading && selectedCount > 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          Loading players…
+        </Typography>
+      ) : (
+        <>
+          <Typography variant="body2" color="text.secondary">
+            Tap a player's name for captain, wicketkeeper, batting position and more. Drag the handle to reorder.
+          </Typography>
+          <TeamSelectionList
+            players={listPlayers}
+            captainPlayerId={side.captainPlayerId}
+            wicketKeeperPlayerId={side.wicketKeeperPlayerId}
+            twelfthManPlayerId={side.twelfthManPlayerId}
+            limits={limits}
+            dragDisabled={side.announced}
+            onReorder={(ids) => reorderMutation.mutate(ids)}
+            onSetCaptain={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: id,
+                wicketKeeperPlayerId: side.wicketKeeperPlayerId,
+                twelfthManPlayerId: side.twelfthManPlayerId,
+              })
+            }
+            onSetWicketKeeper={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: side.captainPlayerId,
+                wicketKeeperPlayerId: id,
+                twelfthManPlayerId: side.twelfthManPlayerId,
+              })
+            }
+            onMakeTwelfthMan={(id) =>
+              updateSideMutation.mutate({
+                captainPlayerId: side.captainPlayerId === id ? null : side.captainPlayerId,
+                wicketKeeperPlayerId: side.wicketKeeperPlayerId === id ? null : side.wicketKeeperPlayerId,
+                twelfthManPlayerId: id,
+              })
+            }
+            onChangeRole={(playerId, role) => roleMutation.mutate({ playerId, role })}
+            onRemove={(playerId) => removeMutation.mutate(playerId)}
+          />
+        </>
+      )}
+
+      <ConfirmDialog
+        open={confirmAnnounce}
+        title="Announce this team?"
+        description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
+        confirmLabel="Announce team"
+        pendingLabel="Announcing…"
+        pending={announceMutation.isPending}
+        onConfirm={() =>
+          announceMutation.mutate(undefined, { onSettled: () => setConfirmAnnounce(false) })
+        }
+        onClose={() => setConfirmAnnounce(false)}
       />
 
-      {/* docs/specs/037-match-improvements.md item 9: destructive-replace confirmation — a one-off
-          inline Dialog, not a new shared component, since there's no other consumer yet. */}
-      <Dialog open={confirmReplaceOpen} onClose={() => setConfirmReplaceOpen(false)}>
-        <DialogTitle>Replace the current Playing XI?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            This replaces every player, role, and batting-order position currently set for {label}.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setConfirmReplaceOpen(false)
-              setPendingSourceMatch(null)
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => pendingSourceMatch && copyFromPreviousMatchMutation.mutate(pendingSourceMatch.id)}
-            disabled={copyFromPreviousMatchMutation.isPending}
-          >
-            {copyFromPreviousMatchMutation.isPending ? 'Replacing…' : 'Replace'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {selectOpen && (
+        <SelectPlayersDialog
+          teamName={teamName}
+          kickoffLabel={formatMatchDateTime(match.matchDate)}
+          maxSelected={limits.maxSelected}
+          initialSelectedIds={side.players.map((player) => player.playerProfileId)}
+          pool={dialogQuery.data}
+          poolLoading={dialogQuery.isLoading}
+          poolError={dialogQuery.isError}
+          source={source}
+          onSourceChange={setSource}
+          previousMatches={(previousMatchesQuery.data ?? []).map((candidate) => ({
+            id: candidate.id,
+            label: `${new Date(candidate.matchDate).toLocaleDateString()} — vs ${opponentLabel(candidate, teamId, teamsById)}`,
+          }))}
+          previousMatchesLoading={previousMatchesQuery.isLoading}
+          previousMatchId={previousMatchId}
+          onPreviousMatchChange={setPreviousMatchId}
+          previousOrder={previousMatchId ? previousOrder : null}
+          previousOrderLoading={previousSidesQuery.isLoading}
+          search={search}
+          onSearchChange={setSearch}
+          onApply={handleApply}
+          onRelease={handleRelease}
+          onSetAnswer={handleSetAnswer}
+          onAddNewPlayer={() => {
+            setAddPlayerTab(0)
+            setAddPlayerOpen(true)
+          }}
+          onClose={closeSelectDialog}
+        />
+      )}
 
-      {/* docs/specs/037-match-improvements.md item 8: CreateAndLinkRecordDialog/PlayerForm both
-          unmodified — since PlayerForm externalizes its own Basic/Contact/Cricket Info tab bar to
-          its caller, this dialog wrapper renders that same small local 3-tab bar (mirroring
-          PlayerFormPage.tsx's own tab-owning pattern) so the quick-add flow isn't limited to Basic
-          Info only. */}
+      {/* CreateAndLinkRecordDialog/PlayerForm unmodified: PlayerForm externalizes its tab bar, so
+          this wrapper renders the same small local 3-tab bar PlayerFormPage does. Nested over the
+          Select players dialog. */}
       <CreateAndLinkRecordDialog<PlayerPayload>
-        open={squadMemberDialogOpen}
-        onClose={() => setSquadMemberDialogOpen(false)}
+        open={addPlayerOpen}
+        onClose={() => setAddPlayerOpen(false)}
         title="New player"
         formId={PLAYER_FORM_ID}
         renderForm={(onSubmit) => (
@@ -650,98 +880,7 @@ function MatchSideTab({
           "Couldn't create and add this player to the squad. Please try again.",
         )}
       />
-    </>
-  )
-}
-
-// docs/specs/063-section-availability-and-flexible-squads.md Part B/C: one group-poll-covered
-// side's own Match Squad tab content — data fetching/mutations live here (React Query, not inside
-// MatchSquadPicker itself, per docs/standards/frontend.md's "server state in the page" rule),
-// mirroring MatchSideTab's own shape. Same queryKey/queryFn as MatchSideTab's own
-// matchSquadQuery for this exact side — React
-// Query dedupes by key, so this never re-fetches more than once per side regardless of which tab
-// triggered it first.
-function MatchSquadPanel({
-  clubId,
-  matchId,
-  teamId,
-  label,
-}: {
-  clubId: string
-  matchId: string
-  teamId: string
-  label: string
-}) {
-  const queryClient = useQueryClient()
-
-  const squadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'],
-    queryFn: () => getMatchSquad(clubId, matchId, teamId),
-  })
-
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches', matchId, 'teams', teamId, 'squad'] })
-
-  const addMutation = useMutation({
-    mutationFn: (playerId: string) => addToMatchSquad(clubId, matchId, teamId, playerId),
-    onSuccess: invalidate,
-  })
-  const removeMutation = useMutation({
-    mutationFn: (playerId: string) => removeFromMatchSquad(clubId, matchId, teamId, playerId),
-    onSuccess: invalidate,
-  })
-  const jerseyMutation = useMutation({
-    mutationFn: ({ playerId, jerseyNumber }: { playerId: string; jerseyNumber: number | null }) =>
-      updateMatchSquadJerseyNumber(clubId, matchId, teamId, playerId, jerseyNumber),
-    onSuccess: invalidate,
-  })
-
-  const errorMessage =
-    [addMutation, removeMutation, jerseyMutation]
-      .map((mutation) =>
-        mutation.isError
-          ? errorDetail(mutation.error, "Something went wrong updating this match's squad. Please try again.")
-          : null,
-      )
-      .find((message): message is string => Boolean(message)) ?? null
-
-  if (squadQuery.isLoading) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        Setting up {label}'s match squad…
-      </Typography>
-    )
-  }
-
-  if (squadQuery.isError || !squadQuery.data) {
-    return (
-      <EmptyState
-        title="Couldn't load this match's squad"
-        description="Something went wrong loading this match's squad. Please try again."
-      />
-    )
-  }
-
-  const squad = squadQuery.data
-  // Links to NewPollPage's group branch with this exact section and matchId (docs/specs/064,
-  // replacing 063's /manage/section-availability) - not a blind "create for this date" form.
-  const createWindowHref = `/manage/availability/new?type=group&sectionId=${squad.sectionId}&matchId=${matchId}`
-
-  return (
-    <MatchSquadPicker
-      candidates={squad.candidates}
-      selected={squad.selected}
-      windowId={squad.windowId}
-      windowOpen={squad.windowOpen}
-      label={label}
-      createWindowHref={createWindowHref}
-      onAdd={(playerId) => addMutation.mutate(playerId)}
-      onRemove={(playerId) => removeMutation.mutate(playerId)}
-      onUpdateJerseyNumber={(playerId, jerseyNumber) => jerseyMutation.mutate({ playerId, jerseyNumber })}
-      isAddPending={addMutation.isPending}
-      isRemovePending={removeMutation.isPending}
-      errorMessage={errorMessage}
-    />
+    </Stack>
   )
 }
 
@@ -755,12 +894,8 @@ export default function MatchFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  // docs/specs/075-match-view-and-edit.md: tabs are keyed by string, not computed index, because
-  // Match Squad now sits before the XI tabs and only appears once coverage resolves - an index would
-  // shift under a user who already clicked an XI tab.
+  // docs/specs/075-match-view-and-edit.md: tabs are keyed by string, not computed index.
   const [activeTab, setActiveTab] = useState<MatchTabKey>('details')
-  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C (064: shown for group-poll-covered sides).
-  const [activeMatchSquadSubTab, setActiveMatchSquadSubTab] = useState(0)
 
   const matchQuery = useQuery({
     queryKey: ['managed-club', clubId, 'matches', matchId],
@@ -865,12 +1000,6 @@ export default function MatchFormPage() {
   // edit's own values (from `match`) are never overridden by a stray query param.
   const prefillLeagueId = !isEdit ? searchParams.get('leagueId') : null
   const prefillSeasonId = !isEdit ? searchParams.get('seasonId') : null
-  const league = useMemo(
-    () => (match?.leagueId ? (leaguesQuery.data ?? []).find((candidate) => candidate.id === match.leagueId) : undefined),
-    [match?.leagueId, leaguesQuery.data],
-  )
-  const cap = league?.maxPlayingXiSize ?? 11
-
   const teamsById = useMemo(() => {
     const map = new Map<string, Team>()
     ;(teamsQuery.data ?? []).forEach((team) => map.set(team.id, team))
@@ -882,21 +1011,13 @@ export default function MatchFormPage() {
   const hasAwayXiTab = showXiTabs && Boolean(match?.awayTeamId)
   const hasXiTabs = hasHomeXiTab || hasAwayXiTab
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part B/C, re-keyed by
-  // docs/specs/064-unified-availability-polls.md: the Match Squad tab, rendered only when at
-  // least one real-Team side is group-covered (resolved from the squad endpoint, not a team
-  // setting) — a match squad only ever makes sense for a group-covered side.
+  // The header Availability button reads the coverage of each side (docs/specs/064).
   const homeCoverage = useSideCoverage(clubId, matchId, match?.homeTeamId)
   const awayCoverage = useSideCoverage(clubId, matchId, match?.awayTeamId)
-  const hasGroupCoveredSide = homeCoverage.groupCovered || awayCoverage.groupCovered
-  const hasMatchSquadTab = hasXiTabs && hasGroupCoveredSide
-  const matchSquadHomeSubIndex = homeCoverage.groupCovered ? 0 : undefined
-  const matchSquadAwaySubIndex = awayCoverage.groupCovered ? (matchSquadHomeSubIndex !== undefined ? 1 : 0) : undefined
 
-  // The tab bar's entries, in order: Details, Match Squad, Home XI, Away XI.
+  // The tab bar's entries, in order: Details, Home XI, Away XI.
   const availableTabs: MatchTabKey[] = [
     'details',
-    ...(hasMatchSquadTab ? (['match-squad'] as const) : []),
     ...(hasHomeXiTab ? (['home-xi'] as const) : []),
     ...(hasAwayXiTab ? (['away-xi'] as const) : []),
   ]
@@ -937,22 +1058,35 @@ export default function MatchFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasXiTabs, hasHomeXiTab, hasAwayXiTab])
 
-  // docs/specs/064: ?tab=match-squad&side=home|away selects Match Squad and its Home/Away sub-tab
-  // once a side is group-covered. (docs/specs/075: ?tab=availability is no longer a tab, so it is
-  // not recognised here and the page simply stays on Details.)
+  // ?tab=home-xi / ?tab=away-xi open that exact tab (deep links from the availability and match pages).
   useEffect(() => {
-    if (searchParams.get('tab') === 'match-squad' && hasMatchSquadTab) {
-      setActiveTab('match-squad')
+    const tab = searchParams.get('tab')
+    if (tab === 'home-xi' && hasHomeXiTab) {
+      setActiveTab('home-xi')
+    } else if (tab === 'away-xi' && hasAwayXiTab) {
+      setActiveTab('away-xi')
+    }
+    // Only re-evaluated when the deep-link target itself becomes available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, hasHomeXiTab, hasAwayXiTab])
+
+  // docs/specs/076-team-selection.md section 1: ?tab=match-squad&side=home|away (old bookmarks and
+  // the removed Pick match squad button) now selects that side's XI tab, falling back to the other
+  // XI tab when that side has no team id. (docs/specs/075: ?tab=availability is not a tab.)
+  useEffect(() => {
+    if (searchParams.get('tab') === 'match-squad' && hasXiTabs) {
       const side = searchParams.get('side')
-      if (side === 'home' && matchSquadHomeSubIndex !== undefined) {
-        setActiveMatchSquadSubTab(matchSquadHomeSubIndex)
-      } else if (side === 'away' && matchSquadAwaySubIndex !== undefined) {
-        setActiveMatchSquadSubTab(matchSquadAwaySubIndex)
+      if (side === 'away' && hasAwayXiTab) {
+        setActiveTab('away-xi')
+      } else if (side === 'home' && hasHomeXiTab) {
+        setActiveTab('home-xi')
+      } else {
+        setActiveTab(hasHomeXiTab ? 'home-xi' : 'away-xi')
       }
     }
     // Only re-evaluated when the deep-link target itself becomes available.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, hasMatchSquadTab, matchSquadHomeSubIndex, matchSquadAwaySubIndex])
+  }, [searchParams, hasXiTabs, hasHomeXiTab, hasAwayXiTab])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -1026,7 +1160,6 @@ export default function MatchFormPage() {
             sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
           >
             <Tab label="Details" value="details" />
-            {hasMatchSquadTab && <Tab label="Match Squad" value="match-squad" />}
             {hasHomeXiTab && <Tab label="Home XI" value="home-xi" />}
             {hasAwayXiTab && <Tab label="Away XI" value="away-xi" />}
           </Tabs>
@@ -1073,13 +1206,12 @@ export default function MatchFormPage() {
         <Box sx={{ gridColumn: '1 / -1' }}>
           <MatchSideTab
             clubId={clubId}
-            matchId={match.id}
+            match={match}
             teamId={match.homeTeamId as string}
-            seasonId={match.seasonId}
-            cap={cap}
-            label="the home side"
+            sideLabel="Home"
+            teamName={sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)}
+            opponentName={sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)}
             teamsById={teamsById}
-            leagueId={match.leagueId}
           />
         </Box>
       )}
@@ -1088,46 +1220,13 @@ export default function MatchFormPage() {
         <Box sx={{ gridColumn: '1 / -1' }}>
           <MatchSideTab
             clubId={clubId}
-            matchId={match.id}
+            match={match}
             teamId={match.awayTeamId as string}
-            seasonId={match.seasonId}
-            cap={cap}
-            label="the away side"
+            sideLabel="Away"
+            teamName={sideDisplayName(match.awayTeamId, match.awayTeamName, teamsById)}
+            opponentName={sideDisplayName(match.homeTeamId, match.homeTeamName, teamsById)}
             teamsById={teamsById}
-            leagueId={match.leagueId}
           />
-        </Box>
-      )}
-
-      {/* docs/specs/063-section-availability-and-flexible-squads.md Part B/C. */}
-      {hasMatchSquadTab && currentTab === 'match-squad' && match && (
-        <Box sx={{ gridColumn: '1 / -1' }}>
-          <Tabs
-            value={activeMatchSquadSubTab}
-            onChange={(_event, next: number) => setActiveMatchSquadSubTab(next)}
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
-          >
-            {matchSquadHomeSubIndex !== undefined && <Tab label="Home" />}
-            {matchSquadAwaySubIndex !== undefined && <Tab label="Away" />}
-          </Tabs>
-
-          {matchSquadHomeSubIndex !== undefined && activeMatchSquadSubTab === matchSquadHomeSubIndex && (
-            <MatchSquadPanel
-              clubId={clubId}
-              matchId={match.id}
-              teamId={match.homeTeamId as string}
-              label="the home side"
-            />
-          )}
-
-          {matchSquadAwaySubIndex !== undefined && activeMatchSquadSubTab === matchSquadAwaySubIndex && (
-            <MatchSquadPanel
-              clubId={clubId}
-              matchId={match.id}
-              teamId={match.awayTeamId as string}
-              label="the away side"
-            />
-          )}
         </Box>
       )}
     </RecordFormScreen>

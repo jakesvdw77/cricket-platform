@@ -19,7 +19,6 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
-import com.cricketlegend.domain.MatchSquadMember;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerAvailability;
 import com.cricketlegend.domain.PlayerAvailabilityCellStatus;
@@ -39,7 +38,6 @@ import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
-import com.cricketlegend.repository.MatchSquadMemberRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
@@ -90,7 +88,6 @@ class PlayerAvailabilityServiceImplTest {
     @Mock private SectionAvailabilityResponseRepository responseRepository;
     @Mock private MatchAvailabilityPollRepository pollRepository;
     @Mock private PlayerAvailabilityRepository playerAvailabilityRepository;
-    @Mock private MatchSquadMemberRepository matchSquadMemberRepository;
     @Mock private MatchSideRepository matchSideRepository;
     @Mock private MatchSidePlayerRepository matchSidePlayerRepository;
     @Mock private TeamSquadMemberRepository teamSquadMemberRepository;
@@ -116,7 +113,7 @@ class PlayerAvailabilityServiceImplTest {
         service = new PlayerAvailabilityServiceImpl(
                 matchRepository, teamRepository, sectionRepository, leagueRepository, windowMatchRepository,
                 windowRepository, responseRepository, pollRepository, playerAvailabilityRepository,
-                matchSquadMemberRepository, matchSideRepository, matchSidePlayerRepository,
+                matchSideRepository, matchSidePlayerRepository,
                 teamSquadMemberRepository, playerSectionRepository, playerProfileRepository, personRepository,
                 accessService, matchResolver);
         when(accessService.accessibleSectionIds(any(), any())).thenReturn(Optional.of(Set.of(sectionId)));
@@ -307,26 +304,27 @@ class PlayerAvailabilityServiceImplTest {
     }
 
     @Test
-    void pickedComesFromMatchSquadMemberAndFromMatchSidePlayerRegardlessOfAnnounced() {
+    void pickedComesFromAnyMatchSidePlayerRowIncludingTheTwelfthManRegardlessOfAnnounced() {
         Match a = match();
         Match b = match();
         games(a, b);
-        UUID viaSquad = player("Anton", "Aaa", true, true);
+        UUID twelfthMan = player("Anton", "Aaa", true, true);
         UUID viaSide = player("Bob", "Bbb", true, true);
         UUID never = player("Cal", "Ccc", true, true);
-        when(matchSquadMemberRepository.findByMatchIdIn(any())).thenReturn(List.of(MatchSquadMember.builder()
-                .matchId(a.getId()).teamId(team.getId()).playerProfileId(viaSquad).build()));
-        UUID sideId = UUID.randomUUID();
+        UUID sideA = UUID.randomUUID();
+        UUID sideB = UUID.randomUUID();
         when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of(
-                MatchSide.builder().id(sideId).matchId(b.getId()).teamId(team.getId()).announced(false).build()));
+                MatchSide.builder().id(sideA).matchId(a.getId()).teamId(team.getId()).announced(true).build(),
+                MatchSide.builder().id(sideB).matchId(b.getId()).teamId(team.getId()).announced(false).build()));
         when(matchSidePlayerRepository.findByMatchSideIdIn(any())).thenReturn(List.of(
-                MatchSidePlayer.builder().matchSideId(sideId).playerProfileId(viaSide).build()));
+                MatchSidePlayer.builder().matchSideId(sideA).playerProfileId(twelfthMan).battingOrder(null).build(),
+                MatchSidePlayer.builder().matchSideId(sideB).playerProfileId(viaSide).battingOrder(1).build()));
 
         PlayerAvailabilityDto dto = grid();
 
-        assertThat(row(dto, viaSquad).cells()).extracting(c -> c.picked()).containsExactly(true, false);
+        assertThat(row(dto, twelfthMan).cells()).extracting(c -> c.picked()).containsExactly(true, false);
         assertThat(row(dto, viaSide).cells()).extracting(c -> c.picked()).containsExactly(false, true);
-        assertThat(row(dto, viaSquad).pickedCount()).isEqualTo(1);
+        assertThat(row(dto, twelfthMan).pickedCount()).isEqualTo(1);
         assertThat(row(dto, never).pickedCount()).isZero();
     }
 
@@ -479,7 +477,6 @@ class PlayerAvailabilityServiceImplTest {
         verify(pollRepository, times(1)).findByMatchIdIn(any());
         verify(responseRepository, times(1)).findByWindowIdIn(any());
         verify(playerAvailabilityRepository, times(1)).findByPollIdIn(any());
-        verify(matchSquadMemberRepository, times(1)).findByMatchIdIn(any());
         verify(matchSideRepository, times(1)).findByMatchIdIn(any());
         verify(matchSidePlayerRepository, times(1)).findByMatchSideIdIn(any());
         verify(teamSquadMemberRepository, times(1)).findByTeamIdInAndSeasonIdIn(any(), any());

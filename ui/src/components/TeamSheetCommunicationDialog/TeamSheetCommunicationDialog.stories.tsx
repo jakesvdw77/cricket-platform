@@ -111,6 +111,7 @@ const printableHomeSide: TeamSheetSide = {
       { playerProfileId: 'p2', battingOrder: 2, role: 'BATSMAN' },
     ],
     announced: false,
+    limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
   },
   squad,
 }
@@ -118,7 +119,7 @@ const printableHomeSide: TeamSheetSide = {
 const unannouncedAwaySide: TeamSheetSide = {
   team: awayTeam,
   teamName: awayTeam.name,
-  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false },
+  side: { id: 'side-away', matchId: 'match-1', teamId: 'team-away', captainPlayerId: null, wicketKeeperPlayerId: null, twelfthManPlayerId: null, players: [], announced: false, limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 } },
   squad: [],
 }
 

@@ -115,6 +115,7 @@ const homeSide: MatchSide = {
     { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
   ],
   announced: false,
+  limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
 }
 
 const homeSheetSide: TeamSheetSide = {
@@ -136,6 +137,7 @@ const awaySheetSideEmpty: TeamSheetSide = {
     twelfthManPlayerId: null,
     players: [],
     announced: false,
+    limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
   },
   squad: [],
 }
@@ -187,6 +189,34 @@ describe('generateTeamSheetWhatsAppText', () => {
     expect(text).not.toContain('#null')
   })
 
+  // docs/specs/076-team-selection.md section 7: null positions and the 12th man as a selection row.
+  it('lists a waiting player after the numbered ones without a number, and names the 12th man once even though he is a row', () => {
+    const withWaiting: TeamSheetSide = {
+      team: homeTeam,
+      teamName: homeTeam.name,
+      side: {
+        ...homeSide,
+        players: [
+          { playerProfileId: 'p3', battingOrder: null, role: 'BATSMAN' },
+          { playerProfileId: 'p2', battingOrder: null, role: 'BOWLER' },
+          { playerProfileId: 'p1', battingOrder: 1, role: 'BATSMAN' },
+        ],
+      },
+      squad: [p1, p2, p3],
+    }
+
+    const text = generateTeamSheetWhatsAppText(match, [withWaiting], subtitle)
+
+    const lines = text.split('\n')
+    expect(lines).toContain('🏏 1. #7 John Smith *(C)*')
+    // No "N." for the waiting player, and he comes after the numbered one.
+    expect(lines).toContain('🔴🧤 Amit Patel')
+    expect(lines.indexOf('🔴🧤 Amit Patel')).toBeGreaterThan(lines.indexOf('🏏 1. #7 John Smith *(C)*'))
+    // The 12th man appears only in the 12th Man callout, not as a roster line.
+    expect(lines).toContain('_12th Man: Sipho Ndlovu_')
+    expect(text.match(/Sipho Ndlovu/g)).toHaveLength(1)
+  })
+
   it('renders a single section for a home-only scope', () => {
     const text = generateTeamSheetWhatsAppText(match, [homeSheetSide], subtitle)
 
@@ -215,6 +245,7 @@ describe('generateTeamSheetWhatsAppText', () => {
         twelfthManPlayerId: null,
         players: [{ playerProfileId: 'missing-player', battingOrder: 1, role: 'BATSMAN' }],
         announced: false,
+        limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
       },
       squad: [],
     }

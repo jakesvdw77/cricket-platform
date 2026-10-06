@@ -80,6 +80,9 @@ class MatchServiceImplTest {
     private LeagueRepository leagueRepository;
 
     @Mock
+    private com.cricketlegend.repository.LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
+
+    @Mock
     private SeasonRepository seasonRepository;
 
     @Mock
@@ -106,6 +109,8 @@ class MatchServiceImplTest {
     void setUp() {
         matchService = new MatchServiceImpl(
                 matchRepository, matchSideRepository, matchSidePlayerRepository, matchPollCoverageService,
+                new com.cricketlegend.service.support.SelectionLimitsResolver(
+                        leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
                 accessService);
     }
@@ -715,7 +720,7 @@ class MatchServiceImplTest {
     }
 
     @Test
-    void listSetsPlayingXiSizeFromTheLeagueAndNullWithoutOne() {
+    void listSetsPlayingXiSizeToTheMostSelectableFromTheLeagueAndNullWithoutOne() {
         UUID leagueId = UUID.randomUUID();
         UUID t = UUID.randomUUID();
         Match withLeague = cardMatch(t, null, null, "Opp", leagueId);
@@ -732,6 +737,39 @@ class MatchServiceImplTest {
         assertThat(byId(result, withLeague).playingXiSize()).isEqualTo(9);
         assertThat(byId(result, noLeague).playingXiSize()).isNull();
         verify(matchSidePlayerRepository, never()).findByMatchSideIdIn(any());
+    }
+
+    // docs/specs/076-team-selection.md: playingXiSize is maxSelected, and one conditions lookup serves the page.
+    @Test
+    void listSetsPlayingXiSizeToMaxSelectedFromTheSeasonsPlayingConditionsWithOneLookupPerPage() {
+        UUID t = UUID.randomUUID();
+        UUID subsLeague = UUID.randomUUID();
+        UUID noSubsLeague = UUID.randomUUID();
+        Match withSubs = cardMatch(t, null, null, "Opp", subsLeague);
+        Match withoutSubs = cardMatch(t, null, null, "Opp", noSubsLeague);
+        Match secondOfSubsLeague = cardMatch(t, null, null, "Opp", subsLeague);
+        secondOfSubsLeague.setSeasonId(withSubs.getSeasonId());
+        League subs = League.builder().id(subsLeague).clubId(cardClubId).name("A").source(LeagueSource.INTERNAL)
+                .maxPlayingXiSize(11).active(true).build();
+        League noSubs = League.builder().id(noSubsLeague).clubId(cardClubId).name("B").source(LeagueSource.INTERNAL)
+                .maxPlayingXiSize(11).active(true).build();
+        when(matchSideRepository.findByMatchIdIn(any())).thenReturn(List.of());
+        when(teamRepository.findAllById(any())).thenReturn(List.of(clubTeam(t)));
+        when(leagueRepository.findAllById(any())).thenReturn(List.of(subs, noSubs));
+        when(leaguePlayingConditionsRepository.findByLeagueIdInAndSeasonIdIn(any(), any())).thenReturn(List.of(
+                com.cricketlegend.domain.LeaguePlayingConditions.builder().leagueId(subsLeague)
+                        .seasonId(withSubs.getSeasonId()).allowSubstitutions(true).build(),
+                com.cricketlegend.domain.LeaguePlayingConditions.builder().leagueId(noSubsLeague)
+                        .seasonId(withoutSubs.getSeasonId()).allowSubstitutions(false).build()));
+        when(matchPollCoverageService.pollsForMatches(any())).thenReturn(Map.of());
+
+        List<MatchDto> result = listCard(withSubs, withoutSubs, secondOfSubsLeague);
+
+        assertThat(byId(result, withSubs).playingXiSize()).isEqualTo(12);
+        assertThat(byId(result, secondOfSubsLeague).playingXiSize()).isEqualTo(12);
+        assertThat(byId(result, withoutSubs).playingXiSize()).isEqualTo(11);
+        verify(leaguePlayingConditionsRepository, org.mockito.Mockito.times(1))
+                .findByLeagueIdInAndSeasonIdIn(any(), any());
     }
 
     @Test

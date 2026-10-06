@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchFormPage from './MatchFormPage'
 import type { Match } from '../../api/matchApi'
 import type { MatchSide } from '../../api/matchSideApi'
+import type { SelectionPool, SelectionPoolEntry } from '../../api/matchSelectionApi'
 
 const getMatch = vi.fn()
 const createMatch = vi.fn()
@@ -36,6 +37,10 @@ const addToMatchSquad = vi.fn()
 const removeFromMatchSquad = vi.fn()
 const updateMatchSquadJerseyNumber = vi.fn()
 const getRoundResponses = vi.fn()
+const getSelectionPool = vi.fn()
+const applySelection = vi.fn()
+const setPlayerStatus = vi.fn()
+const setRoundPlayerStatus = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
@@ -105,9 +110,24 @@ vi.mock('../../api/matchSideApi', () => ({
   unannounceMatchSide: (clubId: string, matchId: string, sideId: string) => unannounceMatchSide(clubId, matchId, sideId),
 }))
 
+// docs/specs/076-team-selection.md: the selection pool (names and availability of the selected
+// players, and the dialog's candidates) and the atomic apply; the rest of the module stays real.
+vi.mock('../../api/matchSelectionApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/matchSelectionApi')>()
+  return {
+    ...actual,
+    getSelectionPool: (clubId: string, matchId: string, teamId: string, params: unknown) =>
+      getSelectionPool(clubId, matchId, teamId, params),
+    applySelection: (clubId: string, matchId: string, sideId: string, request: unknown) =>
+      applySelection(clubId, matchId, sideId, request),
+  }
+})
+
 vi.mock('../../api/matchAvailabilityApi', () => ({
   listPolls: (clubId: string, matchId: string) => listPolls(clubId, matchId),
   getPollResponses: (clubId: string, matchId: string, pollId: string) => getPollResponses(clubId, matchId, pollId),
+  setPlayerStatus: (clubId: string, matchId: string, pollId: string, playerId: string, status: string) =>
+    setPlayerStatus(clubId, matchId, pollId, playerId, status),
 }))
 
 // docs/specs/063-section-availability-and-flexible-squads.md Part B/C/D: a FLEXIBLE side's own
@@ -126,6 +146,8 @@ vi.mock('../../api/matchSquadApi', () => ({
 
 vi.mock('../../api/sectionAvailabilityApi', () => ({
   getRoundResponses: (clubId: string, roundId: string) => getRoundResponses(clubId, roundId),
+  setRoundPlayerStatus: (clubId: string, roundId: string, playerId: string, windowId: string, status: string) =>
+    setRoundPlayerStatus(clubId, roundId, playerId, windowId, status),
 }))
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -166,6 +188,7 @@ function makeSide(overrides: Partial<MatchSide> = {}): MatchSide {
     twelfthManPlayerId: null,
     players: [],
     announced: false,
+    limits: { battingPlaces: 11, twelfthManAllowed: true, maxSelected: 12 },
     ...overrides,
   }
 }
@@ -203,6 +226,40 @@ function makeSquadMember(overrides: Partial<import('../../api/teamSquadApi').Squ
   }
 }
 
+function makeEntry(
+  playerProfileId: string,
+  firstName: string,
+  lastName: string,
+  overrides: Partial<SelectionPoolEntry> = {},
+): SelectionPoolEntry {
+  return {
+    playerProfileId,
+    firstName,
+    lastName,
+    jerseyNumber: null,
+    availability: 'AVAILABLE',
+    selected: false,
+    selectable: true,
+    reason: null,
+    reasonText: null,
+    taken: null,
+    ...overrides,
+  }
+}
+
+function makePool(entries: SelectionPoolEntry[], kind: 'NONE' | 'SQUAD' | 'GROUP' = 'NONE'): SelectionPool {
+  return {
+    matchId: 'match-1',
+    teamId: 'team-1',
+    sideId: 'side-1',
+    basis: 'ROSTER',
+    wholeSection: false,
+    coveringPoll: { kind, pollId: kind === 'SQUAD' ? 'poll-1' : null, roundId: kind === 'GROUP' ? 'round-1' : null, matchId: 'match-1' },
+    truncated: false,
+    entries,
+  }
+}
+
 const UNCOVERED_SQUAD = {
   sectionId: 'section-1',
   windowDate: null,
@@ -234,6 +291,7 @@ beforeEach(() => {
   // docs/specs/064-unified-availability-polls.md: coverage is resolved for every real-Team side on
   // load - by default nothing covers the match (windowId null, no squad poll).
   getMatchSquad.mockResolvedValue(UNCOVERED_SQUAD)
+  getSelectionPool.mockResolvedValue(makePool([]))
 })
 
 function LocationProbe() {
@@ -381,7 +439,7 @@ describe('MatchFormPage', () => {
     expect(screen.queryByRole('tab', { name: 'Away XI' })).not.toBeInTheDocument()
   })
 
-  it('Home XI tab: creates a MatchSide on first use when none exists yet, then renders the builder', async () => {
+  it('Home XI tab: creates a MatchSide on first use when none exists yet, then renders the selection page', async () => {
     const user = userEvent.setup()
     getMatch.mockResolvedValueOnce(makeMatch())
     listMatchSides.mockResolvedValueOnce([]).mockResolvedValue([makeSide()])
@@ -392,7 +450,7 @@ describe('MatchFormPage', () => {
     await screen.findByText('Edit Match')
     await user.click(screen.getByRole('tab', { name: 'Home XI' }))
 
-    expect(await screen.findByLabelText('Add player')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
     expect(createMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1')
   })
 
@@ -406,13 +464,14 @@ describe('MatchFormPage', () => {
     await screen.findByText('Edit Match')
     await user.click(screen.getByRole('tab', { name: 'Home XI' }))
 
-    expect(await screen.findByLabelText('Add player')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Select players' })).toBeInTheDocument()
     expect(createMatchSide).not.toHaveBeenCalled()
   })
 
-  // docs/specs/037-match-improvements.md item 5 — the actual regression test, since
-  // PlayingXiBuilder itself can't prove the merge (it only ever passes the single new id).
-  it('changing Captain when Wicketkeeper/Twelfth Man are already set sends a merged 3-field payload, not partial', async () => {
+  // docs/specs/037-match-improvements.md item 5, re-expressed by 076 as the tap-a-name menu: PUT
+  // .../sides/{sideId} is a full 3-field replace, so Make captain must send the side's own current
+  // keeper and 12th man too.
+  it('Make captain in the tap menu sends a merged 3-field payload, not partial', async () => {
     const user = userEvent.setup()
     getMatch.mockResolvedValueOnce(makeMatch())
     listMatchSides.mockResolvedValue([
@@ -423,14 +482,17 @@ describe('MatchFormPage', () => {
         players: [
           { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
           { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+          { playerProfileId: 'player-3', battingOrder: null, role: 'BATSMAN' },
         ],
       }),
     ])
-    listSquad.mockResolvedValue([
-      makeSquadMember({ id: 'squad-1', playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
-      makeSquadMember({ id: 'squad-2', playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
-      makeSquadMember({ id: 'squad-3', playerProfileId: 'player-3', firstName: 'Amy', lastName: 'Lee' }),
-    ])
+    getSelectionPool.mockResolvedValue(
+      makePool([
+        makeEntry('player-1', 'Jane', 'Smith', { selected: true }),
+        makeEntry('player-2', 'Bob', 'Jones', { selected: true }),
+        makeEntry('player-3', 'Amy', 'Lee', { selected: true }),
+      ]),
+    )
     updateMatchSide.mockResolvedValueOnce(makeSide())
 
     renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
@@ -438,8 +500,8 @@ describe('MatchFormPage', () => {
     await screen.findByText('Edit Match')
     await user.click(screen.getByRole('tab', { name: 'Home XI' }))
 
-    await user.click(await screen.findByLabelText('Captain'))
-    await user.click(await screen.findByRole('option', { name: 'Jane Smith' }))
+    await user.click(await screen.findByRole('button', { name: 'Jane Smith, open menu' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Make captain' }))
 
     expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
       captainPlayerId: 'player-1',
@@ -448,12 +510,13 @@ describe('MatchFormPage', () => {
     })
   })
 
-  // docs/specs/037-match-improvements.md item 8
-  it('"Add Squad Member" creates a player then adds them to the squad, invalidating the squad query on success', async () => {
+  // docs/specs/037-match-improvements.md item 8, moved by 076 into the Select players dialog as
+  // "Add new player": always adds the player to the team's season roster, then switches the dialog
+  // to Whole section with the new player's name in the search.
+  it('"Add new player" in the Select players dialog creates a player, adds them to the season roster and searches the whole section for them', async () => {
     const user = userEvent.setup()
     getMatch.mockResolvedValueOnce(makeMatch())
     listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1' })])
-    listSquad.mockResolvedValueOnce([]).mockResolvedValue([makeSquadMember({ playerProfileId: 'player-9', firstName: 'New', lastName: 'Player' })])
     createPlayer.mockResolvedValueOnce({ id: 'player-9', firstName: 'New', lastName: 'Player' })
     addToSquad.mockResolvedValueOnce(makeSquadMember({ playerProfileId: 'player-9' }))
 
@@ -461,9 +524,9 @@ describe('MatchFormPage', () => {
 
     await screen.findByText('Edit Match')
     await user.click(screen.getByRole('tab', { name: 'Home XI' }))
-    await screen.findByLabelText('Add player')
+    await user.click(await screen.findByRole('button', { name: 'Select players' }))
 
-    await user.click(screen.getByRole('button', { name: 'Add Squad Member' }))
+    await user.click(await screen.findByRole('button', { name: 'Add new player' }))
     await user.type(await screen.findByLabelText('First name'), 'New')
     await user.type(screen.getByLabelText('Last name'), 'Player')
     await user.click(screen.getByRole('button', { name: 'Create & link' }))
@@ -472,11 +535,15 @@ describe('MatchFormPage', () => {
       expect(createPlayer).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ firstName: 'New', lastName: 'Player' })),
     )
     await waitFor(() => expect(addToSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1', 'player-9'))
-    await waitFor(() => expect(listSquad).toHaveBeenCalledTimes(2))
+    await waitFor(() =>
+      expect(getSelectionPool).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', { wholeSection: true, q: 'New Player' }),
+    )
   })
 
-  // docs/specs/037-match-improvements.md item 9
-  describe('Re-select from Previous Match', () => {
+  // docs/specs/037-match-improvements.md item 9, replaced by 076's 'From previous match' chip in the
+  // Select players dialog: the page has no Re-select button any more; the chip filters the (whole
+  // section) pool to the players of the chosen previous match, in that match's batting order.
+  describe('From previous match (Select players dialog)', () => {
     const PREVIOUS_MATCH = makeMatch({
       id: 'prev-match-1',
       homeTeamId: 'team-1',
@@ -486,211 +553,58 @@ describe('MatchFormPage', () => {
       matchDate: '2026-05-01T14:30:00Z',
     })
 
-    function mockSourceAndDestinationSides(destinationSide: MatchSide, sourceSide: MatchSide) {
-      listMatchSides.mockImplementation((_clubId: string, matchId: string) => {
-        if (matchId === 'match-1') return Promise.resolve([destinationSide])
-        if (matchId === 'prev-match-1') return Promise.resolve([sourceSide])
-        return Promise.resolve([])
-      })
-    }
-
-    async function openPickerAndSelect(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(screen.getByRole('button', { name: 'Re-select from Previous Match' }))
-      await user.click(screen.getByRole('combobox', { name: 'Search' }))
-      await user.click(await screen.findByText(/vs 2nd XI/))
-    }
-
-    it('copies immediately with no confirm dialog when the destination side is empty, in the documented call sequence', async () => {
+    it('has no Re-select from previous match button on the page', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
-      listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
-      const destinationSide = makeSide({ id: 'side-1', teamId: 'team-1', players: [] })
-      const sourceSide = makeSide({
-        id: 'side-source',
-        teamId: 'team-1',
-        captainPlayerId: 'player-1',
-        wicketKeeperPlayerId: 'player-2',
-        twelfthManPlayerId: null,
-        players: [
-          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
-          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
-        ],
-      })
-      mockSourceAndDestinationSides(destinationSide, sourceSide)
-      listSquad.mockResolvedValue([
-        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
-        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
-      ])
-      addMatchSidePlayer.mockResolvedValue(makeSide())
-      updateMatchSide.mockResolvedValue(makeSide())
+      listMatchSides.mockResolvedValue([makeSide({ id: 'side-1', teamId: 'team-1', players: [] })])
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
       await user.click(screen.getByRole('tab', { name: 'Home XI' }))
-      await screen.findByLabelText('Add player')
-
-      await openPickerAndSelect(user)
-
-      expect(screen.queryByText('Replace the current Playing XI?')).not.toBeInTheDocument()
-      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
-
-      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(2))
-      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', 'player-1', 'BATSMAN')
-      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', 'player-2', 'BOWLER')
-
-      await waitFor(() =>
-        expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
-          captainPlayerId: 'player-1',
-          wicketKeeperPlayerId: 'player-2',
-          twelfthManPlayerId: null,
-        }),
-      )
-      expect(updateMatchSide).toHaveBeenCalledTimes(1)
-
-      expect(await screen.findByText('Copied 2 of 2 players from the previous XI.')).toBeInTheDocument()
+      await screen.findByRole('button', { name: 'Select players' })
+      expect(screen.queryByRole('button', { name: 'Re-select from previous match' })).not.toBeInTheDocument()
     })
 
-    it('opens a confirm dialog when the destination side already has players, only copies on confirm, and leaves it untouched on cancel', async () => {
+    it('shows only the players of the chosen match, in its batting order, from the whole-section pool', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
       listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
-      const destinationSide = makeSide({
-        id: 'side-1',
-        teamId: 'team-1',
-        players: [{ playerProfileId: 'player-9', battingOrder: 1, role: 'BATSMAN' }],
-      })
       const sourceSide = makeSide({
         id: 'side-source',
         teamId: 'team-1',
-        captainPlayerId: 'player-1',
-        wicketKeeperPlayerId: 'player-2',
-        twelfthManPlayerId: null,
         players: [
-          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
-          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
+          { playerProfileId: 'player-2', battingOrder: 1, role: 'BOWLER' },
+          { playerProfileId: 'player-1', battingOrder: 2, role: 'BATSMAN' },
         ],
       })
-      mockSourceAndDestinationSides(destinationSide, sourceSide)
-      listSquad.mockResolvedValue([
-        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
-        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
-        makeSquadMember({ playerProfileId: 'player-9', firstName: 'Old', lastName: 'Player' }),
-      ])
-      removeMatchSidePlayer.mockResolvedValue(makeSide())
-      addMatchSidePlayer.mockResolvedValue(makeSide())
-      updateMatchSide.mockResolvedValue(makeSide())
+      listMatchSides.mockImplementation((_clubId: string, matchId: string) =>
+        Promise.resolve(matchId === 'prev-match-1' ? [sourceSide] : [makeSide({ id: 'side-1', teamId: 'team-1', players: [] })]),
+      )
+      getSelectionPool.mockResolvedValue(
+        makePool([
+          makeEntry('player-1', 'Jane', 'Smith'),
+          makeEntry('player-2', 'Bob', 'Jones'),
+          makeEntry('player-3', 'Amy', 'Lee'),
+        ]),
+      )
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
       await user.click(screen.getByRole('tab', { name: 'Home XI' }))
-      await screen.findByLabelText('Add player')
+      await user.click(await screen.findByRole('button', { name: 'Select players' }))
+      await user.click(await screen.findByRole('button', { name: 'From previous match' }))
 
-      await openPickerAndSelect(user)
+      expect(await screen.findByText('Choose a match to show the players who played in it.')).toBeInTheDocument()
+      await user.click(screen.getByRole('combobox', { name: 'Previous match' }))
+      await user.click(await screen.findByRole('option', { name: /vs 2nd XI/ }))
 
-      expect(await screen.findByText('Replace the current Playing XI?')).toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'Cancel' }))
-      await waitFor(() => expect(screen.queryByText('Replace the current Playing XI?')).not.toBeInTheDocument())
-      expect(removeMatchSidePlayer).not.toHaveBeenCalled()
-      expect(addMatchSidePlayer).not.toHaveBeenCalled()
-      expect(updateMatchSide).not.toHaveBeenCalled()
-
-      // Close the (still-open) picker itself and reopen fresh — re-selecting the exact same
-      // Autocomplete option object without remounting is a MUI Autocomplete no-op (reference
-      // equality short-circuit), not something a real re-open (new fetch/new picker session)
-      // would ever hit in practice.
-      await user.click(screen.getByRole('button', { name: 'Cancel' }))
-      await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Search' })).not.toBeInTheDocument())
-
-      await user.click(screen.getByRole('button', { name: 'Re-select from Previous Match' }))
-      await user.click(screen.getByRole('combobox', { name: 'Search' }))
-      await user.click(await screen.findByText(/vs 2nd XI/))
-
-      expect(await screen.findByText('Replace the current Playing XI?')).toBeInTheDocument()
-      await user.click(await screen.findByRole('button', { name: 'Replace' }))
-
-      await waitFor(() =>
-        expect(removeMatchSidePlayer).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', 'player-9'),
-      )
-      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(2))
-      await waitFor(() => expect(updateMatchSide).toHaveBeenCalledTimes(2))
-      expect(updateMatchSide).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', {
-        captainPlayerId: null,
-        wicketKeeperPlayerId: null,
-        twelfthManPlayerId: null,
-      })
-      expect(updateMatchSide).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', {
-        captainPlayerId: 'player-1',
-        wicketKeeperPlayerId: 'player-2',
-        twelfthManPlayerId: null,
-      })
-    })
-
-    it('skips a player rejected with a 400, still completes the rest of the copy, and only carries captain/WK/12th over when they survived', async () => {
-      const user = userEvent.setup()
-      getMatch.mockResolvedValueOnce(makeMatch())
-      listPreviousMatches.mockResolvedValue([PREVIOUS_MATCH])
-      const destinationSide = makeSide({ id: 'side-1', teamId: 'team-1', players: [] })
-      const sourceSide = makeSide({
-        id: 'side-source',
-        teamId: 'team-1',
-        captainPlayerId: 'player-1',
-        wicketKeeperPlayerId: 'player-2',
-        twelfthManPlayerId: 'player-4',
-        players: [
-          { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
-          { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' },
-          { playerProfileId: 'player-3', battingOrder: 3, role: 'ALL_ROUNDER' },
-        ],
-      })
-      mockSourceAndDestinationSides(destinationSide, sourceSide)
-      listSquad.mockResolvedValue([
-        makeSquadMember({ playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith' }),
-        makeSquadMember({ playerProfileId: 'player-2', firstName: 'Bob', lastName: 'Jones' }),
-        makeSquadMember({ playerProfileId: 'player-3', firstName: 'Amy', lastName: 'Lee' }),
-        makeSquadMember({ playerProfileId: 'player-4', firstName: 'Sam', lastName: 'Patel' }),
-      ])
-      addMatchSidePlayer.mockImplementation(
-        (_clubId: string, _matchId: string, _sideId: string, playerId: string) => {
-          if (playerId === 'player-1') {
-            return Promise.reject(Object.assign(new Error('Bad Request'), { isAxiosError: true, response: { status: 400 } }))
-          }
-          return Promise.resolve(makeSide())
-        },
-      )
-      updateMatchSide.mockResolvedValue(makeSide())
-
-      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
-
-      await screen.findByText('Edit Match')
-      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
-      await screen.findByLabelText('Add player')
-
-      await openPickerAndSelect(user)
-
-      await waitFor(() => expect(addMatchSidePlayer).toHaveBeenCalledTimes(3))
-      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(1, 'test-club-id', 'match-1', 'side-1', 'player-1', 'BATSMAN')
-      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(2, 'test-club-id', 'match-1', 'side-1', 'player-2', 'BOWLER')
-      expect(addMatchSidePlayer).toHaveBeenNthCalledWith(3, 'test-club-id', 'match-1', 'side-1', 'player-3', 'ALL_ROUNDER')
-
-      // player-1 failed to copy, so the captain (player-1) can't carry over either — counted as a
-      // second skip on top of the failed add. wicketKeeperPlayerId (player-2) copied successfully,
-      // so it carries over; twelfthManPlayerId (player-4) was never attempted as an XI row and is
-      // still in the squad, so it carries over too.
-      await waitFor(() =>
-        expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
-          captainPlayerId: null,
-          wicketKeeperPlayerId: 'player-2',
-          twelfthManPlayerId: 'player-4',
-        }),
-      )
-
-      expect(await screen.findByText('Copied 2 of 3 players from the previous XI.')).toBeInTheDocument()
-      expect(
-        await screen.findByText("2 couldn't be copied — no longer eligible for this match. Add them manually."),
-      ).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByText('Bob Jones')).toBeInTheDocument())
+      expect(getSelectionPool).toHaveBeenCalledWith('test-club-id', 'match-1', 'team-1', { wholeSection: true, q: '' })
+      expect(screen.queryByText('Amy Lee')).not.toBeInTheDocument()
+      const names = screen.getAllByText(/^(Bob Jones|Jane Smith)$/).map((node) => node.textContent)
+      expect(names).toEqual(['Bob Jones', 'Jane Smith'])
     })
   })
 
@@ -736,19 +650,15 @@ describe('MatchFormPage', () => {
       expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     })
 
-    it('orders the tabs Details, Match Squad (when group-covered), Home XI, Away XI', async () => {
+    it('orders the tabs Details, Home XI, Away XI even when a group poll covers the match (076: no Match Squad tab)', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       getMatchSquad.mockResolvedValue(GROUP_COVERED)
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
-      await screen.findByRole('tab', { name: 'Match Squad' })
-      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-        'Details',
-        'Match Squad',
-        'Home XI',
-        'Away XI',
-      ])
+      await screen.findByRole('tab', { name: 'Home XI' })
+      await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Details', 'Home XI', 'Away XI'])
     })
 
     it('orders the tabs Details, Home XI, Away XI with no Match Squad when nothing is group-covered', async () => {
@@ -811,7 +721,7 @@ describe('MatchFormPage', () => {
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
-      await screen.findByRole('tab', { name: 'Match Squad' })
+      await screen.findByRole('tab', { name: 'Home XI' })
       const button = screen.getByRole('button', { name: 'Availability' })
       await waitFor(() => expect(button).toBeEnabled())
       await user.click(button)
@@ -905,7 +815,7 @@ describe('MatchFormPage', () => {
       expect(await screen.findByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
     })
 
-    it('an XI tab chosen by the user is not knocked onto Match Squad when coverage resolves afterwards', async () => {
+    it('an XI tab chosen by the user stays selected when coverage resolves afterwards, and no Match Squad tab appears', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
       let resolveCoverage: (value: typeof GROUP_COVERED) => void = () => {}
@@ -923,7 +833,8 @@ describe('MatchFormPage', () => {
 
       resolveCoverage(GROUP_COVERED)
 
-      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'false')
+      await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
+      expect(screen.queryByRole('tab', { name: 'Match Squad' })).not.toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
     })
 
@@ -954,108 +865,376 @@ describe('MatchFormPage', () => {
     })
   })
 
-  // docs/specs/063-section-availability-and-flexible-squads.md Part D (fixture-group-selection
-  // revision), re-keyed by 064: MatchSideTab's own poll/responses fetch branches on coverage - the trickiest
-  // piece of wiring in the follow-up build pass (resolves roundId/windowId from the Match Squad
-  // response, fetches getRoundResponses, picks the statuses entry keyed by that exact windowId)
-  // and, until now, entirely unverified at the component-test level.
-  describe('Playing XI tab: 033 tinting source branches on coverage (063 Part D, 064)', () => {
-    it('a group-covered side reads tinting from the statuses entry matching this side\'s own resolved windowId via getRoundResponses, not listPolls', async () => {
+  // docs/specs/076-team-selection.md section 2: the 033 tinting (poll responses fetched by the page)
+  // is replaced by badges and one summary line, both read from the selection pool.
+  describe('Playing XI tab: availability comes from the selection pool (076)', () => {
+    const TWO_PLAYERS = [
+      { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' as const },
+      { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' as const },
+    ]
+
+    it('shows an Unsure badge and one calm summary line for selected players who have not confirmed', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
-      listTeamsForClub.mockResolvedValue([
-        { id: 'team-1', clubId: 'test-club-id', sectionId: 'section-1', name: '1st XI', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
-        { id: 'team-2', clubId: 'test-club-id', sectionId: 'section-1', name: '2nd XI', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
-      ])
-      listMatchSides.mockResolvedValue([
-        makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
-      ])
-      getMatchSquad.mockResolvedValue({
-        sectionId: 'section-1',
-        windowDate: '2026-06-01',
-        dayPart: 'MORNING',
-        windowId: 'window-1',
-        windowOpen: true,
-        roundId: 'round-1',
-        candidates: [],
-        selected: [
-          {
-            id: 'msm-1',
-            playerProfileId: 'player-1',
-            personId: 'person-1',
-            firstName: 'Jane',
-            lastName: 'Smith',
-            squadJerseyNumber: null,
-            isCaptain: false,
-          },
-        ],
-      })
-      // This side's own resolved windowId is 'window-1' (from getMatchSquad above) - the FLEXIBLE
-      // fetch must pick the statuses entry keyed by that exact windowId (UNAVAILABLE), never the
-      // other bracket's entry (AVAILABLE), for this side.
-      getRoundResponses.mockResolvedValue({
-        roundId: 'round-1',
-        sectionId: 'section-1',
-        sectionName: 'Juniors',
-        description: 'Sun 1 Jun - Juniors fixtures',
-        open: true,
-        brackets: [],
-        responses: [
-          {
-            playerProfileId: 'player-1',
-            firstName: 'Jane',
-            lastName: 'Smith',
-            jerseyNumber: null,
-            statuses: [
-              { windowId: 'window-1', dayPart: 'MORNING', windowDate: '2026-06-01', status: 'UNAVAILABLE' },
-              { windowId: 'window-2', dayPart: 'AFTERNOON', windowDate: '2026-06-01', status: 'AVAILABLE' },
-            ],
-          },
-        ],
-        publicPath: '/section-availability/round-1',
-      })
+      listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', players: TWO_PLAYERS })])
+      getSelectionPool.mockResolvedValue(
+        makePool(
+          [
+            makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability: 'UNSURE' }),
+            makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability: 'NO_RESPONSE' }),
+          ],
+          'GROUP',
+        ),
+      )
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
       await user.click(screen.getByRole('tab', { name: 'Home XI' }))
 
-      expect(await screen.findByText('Unavailable for this match')).toBeInTheDocument()
-      expect(getRoundResponses).toHaveBeenCalledWith('test-club-id', 'round-1')
+      expect(await screen.findByText("2 selected players are not confirmed available")).toBeInTheDocument()
+      expect(screen.getByText('Unsure')).toBeInTheDocument()
+      expect(screen.getByText('No response')).toBeInTheDocument()
       expect(getPollResponses).not.toHaveBeenCalled()
+      expect(getRoundResponses).not.toHaveBeenCalled()
     })
 
-    it('an uncovered side keeps reading tinting from listPolls/getPollResponses, unaffected by the round-based fetch', async () => {
+    it('with no covering poll shows one marker line instead of a badge on every row', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
-      listMatchSides.mockResolvedValue([
-        makeSide({ teamId: 'team-1', players: [{ playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' }] }),
-      ])
-      listSquad.mockResolvedValue([makeSquadMember({ playerProfileId: 'player-1' })])
-      listPolls.mockResolvedValue([
-        { id: 'poll-1', teamId: 'team-1', open: true, availableCount: 0, unavailableCount: 1, unsureCount: 0, noResponseCount: 0 },
-      ])
-      getPollResponses.mockResolvedValue({
-        pollId: 'poll-1',
-        teamId: 'team-1',
-        open: true,
-        availableCount: 0,
-        unavailableCount: 1,
-        unsureCount: 0,
-        noResponseCount: 0,
-        responses: [
-          { playerProfileId: 'player-1', firstName: 'Jane', lastName: 'Smith', squadJerseyNumber: null, status: 'UNAVAILABLE' },
-        ],
-        publicPath: '/poll/poll-1',
-      })
+      listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', players: TWO_PLAYERS })])
+      getSelectionPool.mockResolvedValue(
+        makePool(
+          [
+            makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability: 'NOT_POLLED' }),
+            makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability: 'NOT_POLLED' }),
+          ],
+          'NONE',
+        ),
+      )
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
       await user.click(screen.getByRole('tab', { name: 'Home XI' }))
 
-      expect(await screen.findByText('Unavailable for this match')).toBeInTheDocument()
-      expect(getRoundResponses).not.toHaveBeenCalled()
+      expect(
+        await screen.findByText("No availability poll covers this match, so nobody's availability is confirmed."),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Not polled')).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/076-team-selection.md sections 2 to 6 and the phase 1 decisions: the selection page of
+  // one team (the Home XI tab) - header summary, Announce, the unconfirmed lines, the badges and the
+  // dialog's Done and Set answer, all through the page's own queries and mutations.
+  describe('Selection page (076)', () => {
+    const FULL_PLAYERS = [
+      { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' as const },
+      { playerProfileId: 'player-2', battingOrder: 2, role: 'BOWLER' as const },
+    ]
+    const NAMED_POOL = (kind: 'NONE' | 'SQUAD' | 'GROUP' = 'SQUAD', availability: SelectionPoolEntry['availability'] = 'AVAILABLE') =>
+      makePool(
+        [
+          makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability }),
+          makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability }),
+        ],
+        kind,
+      )
+
+    async function openHomeXi(side: Partial<MatchSide> = {}, pool: SelectionPool = NAMED_POOL()) {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch())
+      listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', players: FULL_PLAYERS, ...side })])
+      getSelectionPool.mockResolvedValue(pool)
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+      await screen.findByText('Edit Match')
+      await user.click(screen.getByRole('tab', { name: 'Home XI' }))
+      await screen.findByRole('button', { name: 'Select players' })
+      return user
+    }
+
+    const rowOrder = () => screen.getAllByTestId(/^selection-row-/).map((row) => row.getAttribute('data-testid'))
+
+    it('shows the header summary and progress, and exactly two buttons: Select players and Announce team', async () => {
+      await openHomeXi()
+      const header = screen.getByTestId('selection-header')
+      expect(within(header).getByRole('heading', { name: '1st XI · Home · vs 2nd XI' })).toBeInTheDocument()
+      expect(within(header).getByText('Not announced')).toBeInTheDocument()
+      expect(within(header).getByText('2 of 12')).toBeInTheDocument()
+      expect(within(header).getByRole('progressbar', { name: '1st XI selection' })).toHaveAttribute('aria-valuenow', '2')
+      expect(within(header).getAllByRole('button').map((button) => button.textContent)).toEqual(['Select players', 'Announce team'])
+    })
+
+    it('shows Un-announce instead of Announce for an announced side', async () => {
+      await openHomeXi({ announced: true })
+      expect(screen.getByRole('button', { name: 'Un-announce' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Announce team' })).not.toBeInTheDocument()
+    })
+
+    describe('Announce', () => {
+      it('is disabled with the exact missing-items text when a player has no batting position', async () => {
+        await openHomeXi({
+          players: [
+            { playerProfileId: 'player-1', battingOrder: 1, role: 'BATSMAN' },
+            { playerProfileId: 'player-2', battingOrder: null, role: 'BOWLER' },
+          ],
+        })
+        const button = screen.getByRole('button', { name: 'Announce team' })
+        expect(button).toBeDisabled()
+        expect(screen.getByText('Cannot announce 1st XI: 1 player has no batting position (Bob Jones).')).toBeInTheDocument()
+        expect(screen.getByText('1 player is not in the batting order yet.')).toBeInTheDocument()
+      })
+
+      it('is disabled when more players are selected than the maximum', async () => {
+        await openHomeXi({ limits: { battingPlaces: 1, twelfthManAllowed: false, maxSelected: 1 } })
+        expect(screen.getByRole('button', { name: 'Announce team' })).toBeDisabled()
+        expect(screen.getByText('Cannot announce 1st XI: 2 players are selected; the most allowed is 1.')).toBeInTheDocument()
+      })
+
+      it('is enabled when complete; the button opens a confirmation, and only the confirmation announces', async () => {
+        const user = await openHomeXi()
+        announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
+        const button = screen.getByRole('button', { name: 'Announce team' })
+        expect(button).toBeEnabled()
+
+        await user.click(button)
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByText('Announce this team?')).toBeInTheDocument()
+        expect(within(dialog).getByText(/Nobody is notified automatically/)).toBeInTheDocument()
+        expect(announceMatchSide).not.toHaveBeenCalled()
+
+        await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+        await waitFor(() => expect(announceMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1'))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      })
+
+      it('Cancel on the confirmation announces nothing', async () => {
+        const user = await openHomeXi()
+        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(announceMatchSide).not.toHaveBeenCalled()
+      })
+
+      it('Un-announce calls the endpoint straight away', async () => {
+        const user = await openHomeXi({ announced: true })
+        unannounceMatchSide.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Un-announce' }))
+        await waitFor(() => expect(unannounceMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1'))
+      })
+    })
+
+    describe('unconfirmed and unavailable lines', () => {
+      it('counts unsure, no response and not polled in one calm line, singular for one', async () => {
+        await openHomeXi(
+          {},
+          makePool(
+            [
+              makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability: 'UNSURE' }),
+              makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability: 'AVAILABLE' }),
+            ],
+            'SQUAD',
+          ),
+        )
+        expect(screen.getByText('1 selected player is not confirmed available')).toBeInTheDocument()
+        expect(screen.getByText('(1 unsure).', { exact: false })).toBeInTheDocument()
+      })
+
+      it('breaks several kinds down in the line', async () => {
+        await openHomeXi(
+          {},
+          makePool(
+            [
+              makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability: 'UNSURE' }),
+              makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability: 'NO_RESPONSE' }),
+            ],
+            'GROUP',
+          ),
+        )
+        expect(screen.getByText('2 selected players are not confirmed available')).toBeInTheDocument()
+        expect(screen.getByText('(1 unsure, 1 no response).', { exact: false })).toBeInTheDocument()
+      })
+
+      it('shows no unconfirmed line when everyone is confirmed available', async () => {
+        await openHomeXi()
+        expect(screen.queryByText(/not confirmed available/)).not.toBeInTheDocument()
+        expect(screen.queryByText(/No availability poll covers/)).not.toBeInTheDocument()
+      })
+
+      it('shows the red line for selected players who have since said they are unavailable', async () => {
+        await openHomeXi(
+          {},
+          makePool(
+            [
+              makeEntry('player-1', 'Jane', 'Smith', { selected: true, availability: 'UNAVAILABLE' }),
+              makeEntry('player-2', 'Bob', 'Jones', { selected: true, availability: 'UNAVAILABLE' }),
+            ],
+            'SQUAD',
+          ),
+        )
+        expect(screen.getByText('2 selected players have since said they are unavailable')).toBeInTheDocument()
+        expect(screen.getAllByText('Said unavailable')).toHaveLength(2)
+      })
+    })
+
+    describe('the list badges', () => {
+      it('the role badge opens the role menu and changing the role calls the role endpoint', async () => {
+        const user = await openHomeXi()
+        updateMatchSidePlayerRole.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Jane Smith, role Batsman, change role' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Bowler' }))
+        await waitFor(() =>
+          expect(updateMatchSidePlayerRole).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', 'player-1', 'BOWLER'),
+        )
+      })
+
+      it('the Captain badge opens a Remove menu that clears the captain and keeps the rest of the payload', async () => {
+        const user = await openHomeXi({ captainPlayerId: 'player-1', wicketKeeperPlayerId: 'player-2' })
+        updateMatchSide.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Jane Smith, captain, open options' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Remove as captain' }))
+        await waitFor(() =>
+          expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+            captainPlayerId: null,
+            wicketKeeperPlayerId: 'player-2',
+            twelfthManPlayerId: null,
+          }),
+        )
+      })
+
+      it('the Wicketkeeper badge opens a Remove menu that clears the keeper and keeps the captain', async () => {
+        const user = await openHomeXi({ captainPlayerId: 'player-1', wicketKeeperPlayerId: 'player-2' })
+        updateMatchSide.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Bob Jones, wicketkeeper, open options' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Remove as wicketkeeper' }))
+        await waitFor(() =>
+          expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+            captainPlayerId: 'player-1',
+            wicketKeeperPlayerId: null,
+            twelfthManPlayerId: null,
+          }),
+        )
+      })
+    })
+
+    describe('optimistic reorder', () => {
+      it('shows the new order at once and sends the full order', async () => {
+        const user = await openHomeXi()
+        let resolveReorder: (side: MatchSide) => void = () => {}
+        reorderMatchSidePlayers.mockReturnValue(new Promise<MatchSide>((resolve) => { resolveReorder = resolve }))
+        expect(rowOrder()).toEqual(['selection-row-player-1', 'selection-row-player-2'])
+
+        await user.click(screen.getByRole('button', { name: 'Bob Jones, open menu' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Move up' }))
+
+        await waitFor(() => expect(rowOrder()).toEqual(['selection-row-player-2', 'selection-row-player-1']))
+        expect(reorderMatchSidePlayers).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', ['player-2', 'player-1'])
+        resolveReorder(makeSide())
+      })
+
+      it('rolls back to the server order and shows an error when the reorder fails', async () => {
+        const user = await openHomeXi()
+        reorderMatchSidePlayers.mockRejectedValue(new Error('conflict'))
+
+        await user.click(screen.getByRole('button', { name: 'Bob Jones, open menu' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Move up' }))
+
+        expect(await screen.findByText('Something went wrong updating the team. Please try again.')).toBeInTheDocument()
+        await waitFor(() => expect(rowOrder()).toEqual(['selection-row-player-1', 'selection-row-player-2']))
+      })
+    })
+
+    describe('Select players dialog through the page', () => {
+      it('Done adds new players at the end of the batting order and sends no role', async () => {
+        const user = await openHomeXi({}, NAMED_POOL())
+        getSelectionPool.mockResolvedValue(
+          makePool([
+            makeEntry('player-1', 'Jane', 'Smith', { selected: true }),
+            makeEntry('player-2', 'Bob', 'Jones', { selected: true }),
+            makeEntry('player-3', 'Amy', 'Lee'),
+            makeEntry('player-4', 'Cal', 'Cox'),
+          ]),
+        )
+        applySelection.mockResolvedValue(makeSide())
+
+        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await user.click(await screen.findByRole('checkbox', { name: 'Amy Lee' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Cal Cox' }))
+        await user.click(screen.getByRole('button', { name: 'Done' }))
+
+        await waitFor(() =>
+          expect(applySelection).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+            players: [
+              { playerProfileId: 'player-1' },
+              { playerProfileId: 'player-2' },
+              { playerProfileId: 'player-3', battingOrder: 3 },
+              { playerProfileId: 'player-4', battingOrder: 4 },
+            ],
+          }),
+        )
+        await waitFor(() => expect(screen.queryByText('Select players · 1st XI')).not.toBeInTheDocument())
+      })
+
+      it('a 409 with rejections keeps the dialog open and shows the reason on the row', async () => {
+        const user = await openHomeXi({ players: [] }, makePool([makeEntry('player-3', 'Amy', 'Lee')]))
+        const error = Object.assign(new Error('Conflict'), {
+          isAxiosError: true,
+          response: {
+            status: 409,
+            data: {
+              detail: 'Some players cannot be selected',
+              rejections: [{ playerProfileId: 'player-3', playerName: 'Amy Lee', reason: 'TAKEN_FOR_SLOT', message: 'Amy is already in 2nd XI.', taken: null }],
+            },
+          },
+        })
+        applySelection.mockRejectedValue(error)
+
+        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await user.click(await screen.findByRole('checkbox', { name: 'Amy Lee' }))
+        await user.click(screen.getByRole('button', { name: 'Done' }))
+
+        expect(await screen.findByText('Amy is already in 2nd XI.')).toBeInTheDocument()
+        expect(screen.getByText('Select players · 1st XI')).toBeInTheDocument()
+      })
+
+      it('Set answer on a squad poll saves through the squad poll override and keeps the dialog open', async () => {
+        const user = await openHomeXi({ players: [] }, makePool([], 'SQUAD'))
+        getSelectionPool.mockResolvedValue(
+          makePool([makeEntry('player-3', 'Amy', 'Lee', { availability: 'UNSURE', selectable: false, reason: 'NOT_CONFIRMED' })], 'SQUAD'),
+        )
+        setPlayerStatus.mockResolvedValue(undefined)
+
+        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await user.click(await screen.findByRole('button', { name: 'Set answer for Amy Lee' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Available' }))
+
+        await waitFor(() =>
+          expect(setPlayerStatus).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', 'player-3', 'AVAILABLE'),
+        )
+        expect(screen.getByText('Select players · 1st XI')).toBeInTheDocument()
+      })
+
+      it('Set answer on a group poll saves through the round override with the match\'s window id', async () => {
+        getMatchSquad.mockResolvedValue({
+          sectionId: 'section-1', windowDate: '2026-06-01', dayPart: 'AFTERNOON', windowId: 'window-1',
+          windowOpen: true, roundId: 'round-1', candidates: [], selected: [],
+        })
+        const user = await openHomeXi({ players: [] }, makePool([], 'GROUP'))
+        getSelectionPool.mockResolvedValue(
+          makePool([makeEntry('player-3', 'Amy', 'Lee', { availability: 'NO_RESPONSE', selectable: false, reason: 'NOT_CONFIRMED' })], 'GROUP'),
+        )
+        setRoundPlayerStatus.mockResolvedValue(undefined)
+
+        await user.click(screen.getByRole('button', { name: 'Select players' }))
+        await user.click(await screen.findByRole('button', { name: 'Set answer for Amy Lee' }))
+        await user.click(await screen.findByRole('menuitem', { name: 'Unsure' }))
+
+        await waitFor(() =>
+          expect(setRoundPlayerStatus).toHaveBeenCalledWith('test-club-id', 'round-1', 'player-3', 'window-1', 'UNSURE'),
+        )
+      })
     })
   })
 
@@ -1076,16 +1255,6 @@ describe('MatchFormPage', () => {
 
     beforeEach(() => {
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', players: [] })])
-      getRoundResponses.mockResolvedValue({
-        roundId: 'round-1',
-        sectionId: 'section-1',
-        sectionName: 'Juniors',
-        description: 'Sun 1 Jun - Juniors fixtures',
-        open: true,
-        brackets: [],
-        responses: [],
-        publicPath: '/section-availability/round-1',
-      })
     })
 
     it('uncovered side: no Match Squad top-level tab', async () => {
@@ -1111,18 +1280,19 @@ describe('MatchFormPage', () => {
       expect(screen.queryByRole('tab', { name: 'Match Squad' })).not.toBeInTheDocument()
     })
 
-    it('group-covered side: shows a Match Squad tab and no "Covered by a group poll" panel', async () => {
+    it('group-covered side: no Match Squad tab and no "Covered by a group poll" panel (076)', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       getMatchSquad.mockResolvedValue(GROUP_COVERED_SQUAD)
 
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toBeInTheDocument()
+      await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
+      expect(screen.queryByRole('tab', { name: 'Match Squad' })).not.toBeInTheDocument()
       expect(screen.queryByText('Covered by a group poll')).not.toBeInTheDocument()
     })
 
-    it('?tab=match-squad&side=home selects the Match Squad tab once the side is group-covered', async () => {
+    it('?tab=match-squad&side=home now selects the Home XI tab', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       getMatchSquad.mockResolvedValue(GROUP_COVERED_SQUAD)
 
@@ -1130,18 +1300,23 @@ describe('MatchFormPage', () => {
 
       await screen.findByText('Edit Match')
 
-      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('tab', { name: 'Home XI' })).toHaveAttribute('aria-selected', 'true')
     })
 
-    it('?tab=match-squad&side=away selects the Match Squad tab and its Away sub-tab', async () => {
+    it('?tab=match-squad&side=away now selects the Away XI tab, falling back to the other XI tab when that side is not a team', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       getMatchSquad.mockResolvedValue(GROUP_COVERED_SQUAD)
 
-      renderPage('/manage/fixtures/matches/match-1/edit?tab=match-squad&side=away', 'test-club-id')
+      const { unmount } = renderPage('/manage/fixtures/matches/match-1/edit?tab=match-squad&side=away', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      expect(await screen.findByRole('tab', { name: 'Match Squad' })).toHaveAttribute('aria-selected', 'true')
-      expect(await screen.findByRole('tab', { name: 'Away' })).toHaveAttribute('aria-selected', 'true')
+      expect(await screen.findByRole('tab', { name: 'Away XI' })).toHaveAttribute('aria-selected', 'true')
+      unmount()
+
+      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Them' }))
+      renderPage('/manage/fixtures/matches/match-1/edit?tab=match-squad&side=away', 'test-club-id')
+      await screen.findByText('Edit Match')
+      expect(await screen.findByRole('tab', { name: 'Home XI' })).toHaveAttribute('aria-selected', 'true')
     })
   })
 

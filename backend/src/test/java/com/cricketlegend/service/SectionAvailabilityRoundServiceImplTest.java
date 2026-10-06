@@ -858,26 +858,24 @@ class SectionAvailabilityRoundServiceImplTest {
         verify(sectionAvailabilityRoundRepository, never()).save(any());
     }
 
+    // docs/specs/076-team-selection.md: stale match-squad rows no longer block a delete, they are removed.
     @Test
-    void deleteIsBlockedWhileMatchSquadMembersArePickedFromItsWindows() {
+    void deleteClearsTheRoundsMatchSquadMembersInsteadOfRefusing() {
         UUID clubId = UUID.randomUUID();
         UUID sectionId = UUID.randomUUID();
         UUID roundId = UUID.randomUUID();
         UUID windowId = UUID.randomUUID();
-        when(sectionAvailabilityRoundRepository.findById(roundId))
-                .thenReturn(Optional.of(round(roundId, clubId, sectionId, true)));
+        SectionAvailabilityRound round = round(roundId, clubId, sectionId, true);
+        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round));
         when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
                 .thenReturn(List.of(SectionAvailabilityWindow.builder().id(windowId).roundId(roundId).build()));
-        when(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(windowId))).thenReturn(true);
 
-        assertThatThrownBy(() -> service.delete(authentication, clubId, roundId))
-                .isInstanceOf(com.cricketlegend.exception.RoundHasMatchSquadException.class)
-                .hasMessageContaining("Remove the picked squad members");
+        service.delete(authentication, clubId, roundId);
 
-        verify(sectionAvailabilityResponseRepository, never()).deleteByWindowIdIn(any());
-        verify(sectionAvailabilityWindowMatchRepository, never()).deleteByWindowIdIn(any());
-        verify(sectionAvailabilityWindowRepository, never()).deleteByRoundId(any());
-        verify(sectionAvailabilityRoundRepository, never()).delete(any());
+        org.mockito.InOrder order =
+                org.mockito.Mockito.inOrder(matchSquadMemberRepository, sectionAvailabilityRoundRepository);
+        order.verify(matchSquadMemberRepository).deleteBySectionAvailabilityWindowIdIn(List.of(windowId));
+        order.verify(sectionAvailabilityRoundRepository).delete(round);
     }
 
     @Test
@@ -890,16 +888,17 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round));
         when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
                 .thenReturn(List.of(SectionAvailabilityWindow.builder().id(windowId).roundId(roundId).build()));
-        when(matchSquadMemberRepository.existsBySectionAvailabilityWindowIdIn(List.of(windowId))).thenReturn(false);
 
         service.delete(authentication, clubId, roundId);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(
+                matchSquadMemberRepository,
                 sectionAvailabilityResponseRepository,
                 sectionAvailabilityWindowMatchRepository,
                 sectionAvailabilityWindowRepository,
                 sectionAvailabilityRoundRepository);
+        order.verify(matchSquadMemberRepository).deleteBySectionAvailabilityWindowIdIn(List.of(windowId));
         order.verify(sectionAvailabilityResponseRepository).deleteByWindowIdIn(List.of(windowId));
         order.verify(sectionAvailabilityWindowMatchRepository).deleteByWindowIdIn(List.of(windowId));
         order.verify(sectionAvailabilityWindowRepository).deleteByRoundId(roundId);

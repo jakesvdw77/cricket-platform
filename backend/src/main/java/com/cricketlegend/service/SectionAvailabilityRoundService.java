@@ -46,8 +46,8 @@ public interface SectionAvailabilityRoundService {
 
     /**
      * Deletes a group poll child-first (responses, window-match links, windows, the round), freeing
-     * its matches and brackets (docs/specs/064-unified-availability-polls.md). 409 {@code
-     * RoundHasMatchSquadException} while any {@code MatchSquadMember} exists for its windows.
+     * its matches and brackets (docs/specs/064-unified-availability-polls.md). also clears the
+     * round's dormant {@code MatchSquadMember} rows instead of refusing (docs/specs/076-team-selection.md).
      */
     void delete(Authentication authentication, UUID clubId, UUID roundId);
 
