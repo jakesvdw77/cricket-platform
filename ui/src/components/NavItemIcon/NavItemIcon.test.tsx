@@ -18,6 +18,15 @@ describe('NavItemIcon', () => {
     expect(disc).toHaveAttribute('aria-hidden', 'true')
   })
 
+  it.each(['player-availability', 'team-availability'] as const)('renders the %s glyph on a disc matching a 36 px bare brand icon', (name) => {
+    const { container } = render(<NavItemIcon name={name} size={36} surface="none" />)
+
+    const disc = screen.getByTestId(`nav-icon-${name}`)
+    expect(disc).toHaveStyle({ width: '36px', height: '36px' })
+    expect(container.querySelector('svg')).toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
+  })
+
   it('renders the Overview brand icon', () => {
     const { container } = render(<NavItemIcon name="nav/overview-home" size={32} />)
 

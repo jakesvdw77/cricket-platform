@@ -1,11 +1,13 @@
 import { Box } from '@mui/material'
-import MenuIcon from '@mui/icons-material/Menu'
 import { BrandIcon } from '../BrandIcon'
 import type { BrandIconName } from '../BrandIcon'
+import { GLYPH_ICONS } from './navGlyphs'
+import type { NavGlyphName } from './navGlyphs'
 
 export interface NavItemIconProps {
-  // A brand icon, or the MUI menu glyph on a brand-coloured disc (the phone bar's Menu button).
-  name: BrandIconName | 'menu'
+  // A brand icon, or a MUI glyph on a brand-coloured disc (the phone bar's Menu button, the
+  // availability entries without a brand icon yet).
+  name: BrandIconName | NavGlyphName
   // Icon size in px; the brand icon's tile adds `padding` on every side.
   size?: number
   padding?: number
@@ -17,9 +19,10 @@ export interface NavItemIconProps {
 
 // docs/specs/079-manager-shell-and-overview.md: one icon slot for every manager navigation surface.
 export function NavItemIcon({ name, size = 32, padding, active, surface }: NavItemIconProps) {
-  if (name !== 'menu') {
-    return <BrandIcon name={name} size={size} active={active} {...(surface ? { surface } : {})} {...(padding === undefined ? {} : { padding })} />
+  if (!(name in GLYPH_ICONS)) {
+    return <BrandIcon name={name as BrandIconName} size={size} active={active} {...(surface ? { surface } : {})} {...(padding === undefined ? {} : { padding })} />
   }
+  const Glyph = GLYPH_ICONS[name as NavGlyphName]
   return (
     <Box
       aria-hidden
@@ -37,7 +40,7 @@ export function NavItemIcon({ name, size = 32, padding, active, surface }: NavIt
         color: 'primary.contrastText',
       }}
     >
-      <MenuIcon sx={{ fontSize: size * 0.56 }} />
+      <Glyph sx={{ fontSize: size * 0.56 }} />
     </Box>
   )
 }
