@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+    <!-- team sheet -->
+    <g transform="translate(6 -14) rotate(8 160 110)">
+      <rect x="112" y="46" width="92" height="118" rx="10" fill="#F7F3E8"/>
+      <path d="M112 56 Q112 46 122 46 H194 Q204 46 204 56 V70 H112 Z" fill="#1F7A4D"/>
+      <rect x="122" y="54" width="40" height="6" rx="3" fill="#F7F3E8"/>
+      <g fill="#C8102E"><circle cx="128" cy="86" r="5"/><circle cx="128" cy="106" r="5"/><circle cx="128" cy="126" r="5"/><circle cx="128" cy="146" r="5"/></g>
+      <g fill="#CBBE9C"><rect x="140" y="83" width="50" height="6" rx="3"/><rect x="140" y="103" width="40" height="6" rx="3"/><rect x="140" y="123" width="54" height="6" rx="3"/><rect x="140" y="143" width="34" height="6" rx="3"/></g>
+    </g>
+    <!-- megaphone, pointing up-right -->
+    <g transform="translate(-6 16) rotate(-12 96 170)">
+      <rect x="44" y="156" width="26" height="30" rx="6" fill="#D9C08A"/>
+      <path d="M68 154 L136 126 V214 L68 188 Z" fill="#F4E4BC"/>
+      <rect x="132" y="122" width="12" height="96" rx="6" fill="#E8B83D"/>
+      <rect x="74" y="186" width="16" height="34" rx="6" fill="#0B3D26"/>
+      <path d="M84 162 L124 146" stroke="#C8102E" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <!-- sound waves -->
+    <g fill="none" stroke="#E8B83D" stroke-width="6" stroke-linecap="round">
+      <path d="M150.4 159.9 A26 26 0 0 1 155.8 185.3"/>
+      <path d="M163.8 147.8 A44 44 0 0 1 172.9 190.9"/>
+    </g>
+  </g>
+</svg>
