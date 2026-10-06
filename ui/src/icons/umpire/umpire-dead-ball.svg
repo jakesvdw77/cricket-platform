@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+<g transform="translate(128 146) scale(1.17) translate(-128 -146)">
+    <ellipse cx="128" cy="226" rx="40" ry="6" fill="#0B3D26"/>
+    <path d="M118 176 L116 222 M138 176 L140 222" stroke="#2B3A33" stroke-width="15" stroke-linecap="round"/><path d="M106 224 H124 M132 224 H150" stroke="#14130F" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- coat -->
+    <path d="M104 112 Q128 102 152 112 L156 182 Q128 188 100 182 Z" fill="#F7F3E8"/>
+    <path d="M128 106 V184" stroke="#E2D5B0" stroke-width="2.5"/>
+    <path d="M118 106 L128 124 L138 106 Z" fill="#C99470"/>
+    <path d="M122 108 L128 124 L134 108" fill="none" stroke="#1F7A4D" stroke-width="3"/>
+    <rect x="121" y="96" width="14" height="14" rx="5" fill="#C99470"/>
+    <!-- head + hat -->
+    <rect x="114" y="72" width="28" height="32" rx="13" fill="#C99470"/>
+    <rect x="114" y="58" width="28" height="20" rx="8" fill="#FFFFFF"/>
+    <rect x="114" y="70" width="28" height="4" fill="#1F7A4D"/>
+    <ellipse cx="128" cy="77" rx="25" ry="5" fill="#FFFFFF"/>
+    
+    <path d="M106.0 116.0 L103.4 145.9 L123.5 164.0" fill="none" stroke="#B8A97F" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/><path d="M106.0 116.0 L103.4 145.9 L123.5 164.0" fill="none" stroke="#F7F3E8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M106.0 116.0 L103.4 145.9" fill="none" stroke="#E2D5B0" stroke-width="3" stroke-linecap="round" opacity="0.7"/><circle cx="123.5" cy="164.0" r="7" fill="#C99470"/>
+    <path d="M150.0 116.0 L152.6 145.9 L132.5 164.0" fill="none" stroke="#B8A97F" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/><path d="M150.0 116.0 L152.6 145.9 L132.5 164.0" fill="none" stroke="#F7F3E8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M150.0 116.0 L152.6 145.9" fill="none" stroke="#E2D5B0" stroke-width="3" stroke-linecap="round" opacity="0.7"/><circle cx="132.5" cy="164.0" r="7" fill="#C99470"/>
+    </g>
+  </g>
+</svg>
