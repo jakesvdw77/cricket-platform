@@ -15,10 +15,12 @@ const CROPPED_GROUPS = new Set(['nav', 'roles', 'stats', 'actions'])
 const FULL_VIEWBOX = /(<svg\b[^>]*?\sviewBox=")0 0 256 256(")/i
 const CROPPED_VIEWBOX = '24 24 208 208'
 // A few icons draw outside the standard window, so the same 208 window is moved instead of the
-// icon being shrunk or left uncropped: the Squads figures run to the bottom edge, and the
+// icon being shrunk or left uncropped: the Squads, Player availability and Team availability figures run to the bottom edge, and the
 // Announce-team megaphone spans a little below 232.
 const VIEWBOX_OVERRIDES = {
   'nav/squads': '24 48 208 208',
+  'nav/availability-player': '24 48 208 208',
+  'nav/availability-team': '24 48 208 208',
   'actions/announce-team': '24 29 208 208',
 }
 
