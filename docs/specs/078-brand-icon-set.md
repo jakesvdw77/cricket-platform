@@ -37,12 +37,13 @@ None.
 ## UI Requirements
 
 **Assets and location**
-- Source files stay in `ui/src/icons/<group>/<name>.svg` (27 SVGs in nine group folders, each with 128, 256 and 512 px PNG exports). Only the SVGs are imported by code; the PNG exports are reference copies and not bundled.
-- The favicon set (`favicon.svg`, `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `android-chrome-192x192.png`, `android-chrome-512x512.png`, `site.webmanifest`) is copied to `ui/public/` and `ui/index.html` is updated with the matching `<link>` tags and the manifest. The existing `public/favicon.svg` is replaced.
+- Source SVGs live in `ui/src/icons/<group>/<name>.svg`, grouped by how the app uses them: `nav/` (every dashboard and menu destination: upcoming-matches, cricket-leagues, teams, squads, cricket-players, availability-polls, club-structure, match-results, scorecards, photo-gallery, notifications, roles-permissions, and later club-profile and communication), `roles/` (captain, wicketkeeper, batter, bowler, all-rounder), `stats/` (stats-player, stats-team, stats-club, scorecard), `people/` (avatar-male, avatar-female), `actions/` (announce-team), `field/` (field-pitch, field-topdown) and `brand/` (the favicon set). Names inside a group do not repeat the group (for example `roles/captain.svg`). New icons go into the matching group.
+- The 128, 256 and 512 px PNG exports are reference copies, not bundled, and live in `ui/design/icon-exports/<group>/`. Only SVGs are imported by code.
+- The favicon set, now in `ui/src/icons/brand/` (`favicon.svg`, `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `android-chrome-192x192.png`, `android-chrome-512x512.png`, `site.webmanifest`) is copied to `ui/public/` in the build step and `ui/index.html` is updated with the matching `<link>` tags and the manifest. The existing `public/favicon.svg` is replaced.
 - `index.html` has a placeholder `<title>ui</title>`; set a real product title while there.
 
 **One shared component**
-- A shared `BrandIcon` component (four-file anatomy: component, test, stories, `index.ts`) takes `name` (a typed union of the 27 names) and `size`, renders the imported SVG as an `img` with empty alt text when decorative, and takes an `alt` when the icon is the only label. Stories show every icon at 24, 32 and 48 px.
+- A shared `BrandIcon` component (four-file anatomy: component, test, stories, `index.ts`) takes `name` (a typed union of the icon names, written with their group, for example `nav/teams` or `roles/captain`) and `size`, renders the imported SVG as an `img` with empty alt text when decorative, and takes an `alt` when the icon is the only label. Stories show every icon at 24, 32 and 48 px.
 - Icons are imported as URLs through Vite, not inlined into the JS bundle.
 - No component imports an icon file directly; everything goes through `BrandIcon`.
 
@@ -50,12 +51,12 @@ None.
 | Surface | Icon |
 |---|---|
 | Browser tab, home screen | favicon set |
-| Manager dashboard cards (`NavTile`) at 40 px | Teams `teams`, Players `cricket-players`, Leagues `cricket-leagues`, Matches `upcoming-matches`, Results `match-results`, Permissions `roles-permissions`, Gallery `photo-gallery`, Notifications `notifications`, Squads `squads`, Availability `availability-polls` |
+| Manager dashboard cards (`NavTile`) at 40 px | Teams `nav/teams`, Players `nav/cricket-players`, Leagues `nav/cricket-leagues`, Matches `nav/upcoming-matches`, Results `nav/match-results`, Permissions `nav/roles-permissions`, Gallery `nav/photo-gallery`, Notifications `nav/notifications`, Squads `nav/squads`, Availability `nav/availability-polls` |
 | Side and bottom navigation, 24 px or more | the same mapping |
-| Selection list role badge (`TeamSelectionList`) | `role-captain`, `role-wicketkeeper`, `role-batter`, `role-bowler`, `role-all-rounder`; 28 px |
-| Person avatar fallback | `avatar-male` / `avatar-female` where gender is known |
-| Announce team | `announce-team` in the confirmation dialog header |
-| Club structure page header | `club-structure` |
+| Selection list role badge (`TeamSelectionList`) | `roles/captain`, `roles/wicketkeeper`, `roles/batter`, `roles/bowler`, `roles/all-rounder`; 28 px |
+| Person avatar fallback | `people/avatar-male` / `people/avatar-female` where gender is known |
+| Announce team | `actions/announce-team` in the confirmation dialog header |
+| Club structure page header | `nav/club-structure` |
 
 **Gaps (no icon in the set)**: Club Profile and Communication on the dashboard. These keep their MUI icons until icons are made for them.
 
@@ -88,7 +89,7 @@ Answered by the user on 2026-10-06:
 - **Results** uses `match-results`. `scorecards` is kept for a later, separate feature.
 - **Avatars**: `avatar-male` / `avatar-female` where gender is recorded; otherwise the current initials circle. Contacts have no gender and **stay on initials**.
 - **Favicon**: use the created platform favicon for now. Whether a club's own favicon overrides it is deferred (to be decided later, not part of this spec).
-- **Missing icons** (Club Profile, Communication, anything else after review): the user will generate them in Claude web in the same style and add them to `ui/src/icons/`. Until they arrive those screens keep their MUI icons.
+- **Missing icons** (Club Profile, Communication, anything else after review): the user will generate them in Claude web in the same style and add them to `ui/src/icons/nav/`. Until they arrive those screens keep their MUI icons.
 
 ## Rollout Notes
 
