@@ -1,7 +1,7 @@
 # 079 — Manager Shell and Overview Dashboard
 
 **Depends on:** 006 (post-login home shells, whose "Manager nav: top bar only" decision this spec changes), 078 (brand icons, `BrandIcon`), 076 (selection status), 073 and 074 (availability), 070 to 072 (leagues)
-**Status:** draft — the look and feel was approved by the user from the interactive mockup (https://claude.ai/artifact/1D1H5h8YJVkKhAewoQXniN) on 2026-10-06. Open Questions need answering before planning.
+**Status:** draft — the look and feel was approved by the user from the interactive mockup (https://claude.ai/artifact/1D1H5h8YJVkKhAewoQXniN) on 2026-10-06. The user answered the main open questions on 2026-10-06 (see "Decisions"); two remain.
 
 ## Problem & Goals
 
@@ -41,7 +41,7 @@ New read-only overview endpoint(s), scoped to the caller. The exact shape is def
 | Matches this week and the next few upcoming, with selection status (selected of maximum, announced or not) | matches, match sides (076) |
 | Teams not yet announced for matches this week | match sides |
 | Open availability polls with replied of total and the close time | availability polls, responses (064 to 067, 073, 074) |
-| Recent results (win or loss and margin) | matches, results |
+| Recent results (win or loss and margin) | not available yet; the card shows an empty state and the endpoint returns an empty list until Results exists |
 | Counts for the menu badges (open polls, unread notifications) | polls, notifications |
 | Key numbers (active players and similar) | players |
 
@@ -53,11 +53,11 @@ Reference: the interactive mockup above. Tokens come from `ui/src/theme.ts`; no 
 
 **Header.** Solid `primary.main` background with `primary.contrastText` text (MUI picks readable text for light club colours automatically), club logo (white tile fallback with initials) and club name at the left, the avatar menu at the right. This replaces today's white header with a divider for the manager shell and is a visible change.
 
-**Wide screens (md and up).** A persistent side menu of about 232 px, grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads); Availability (Polls, Communication); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
+**Wide screens.** From 1200 px a persistent side menu of about 232 px; between about 900 and 1200 px the same menu collapsed to an icons-only rail of about 64 px (brand icons at 32 px, label as tooltip and `aria-label`, badges kept as small dots with counts). The full menu is: grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads); Availability (Polls, Communication); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
 
 **Phones.** A bottom bar with Home, Matches, Polls, Players and Menu. Menu opens a bottom sheet covering most of the screen with every destination as a tile (brand icon at 40 px, label, badge), grouped as on desktop; it closes on choosing a destination, on the close button, on tapping outside, and on swipe down. The sheet is a real dialog for keyboard and screen readers.
 
-**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card. On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
+**Overview content.** A greeting and date, a row of key figures, an "Upcoming matches" card (each row with date, teams, time, venue, selection status pill linking to the selection page), a "Needs an answer" card (open polls with a progress bar and close time) and a "Recent results" card (for now an empty state: "No results yet", then real results once Results exists) and a quick-actions row of the actions a manager can perform (see Open Questions for the list). On a phone these stack as Next match, Needs an answer and Last result. Empty states (a brand-new club with no matches or polls) show a short explanation and the next action instead of blank cards.
 
 **Existing pages.** All 18 pages that use `ManageScreenHeader` ("Back to Dashboard") keep working inside the shell. Whether "Back to Dashboard" remains on wide screens is an open question.
 
@@ -85,16 +85,23 @@ Per `docs/standards/testing.md`:
 - The overview endpoint uses a fixed number of queries regardless of data size.
 - No hard-coded colours, MUI `sx` only, brand icons only through `BrandIcon`.
 
+## Decisions
+
+Answered by the user on 2026-10-06:
+- **Tablet widths:** the side menu collapses to **icons only** between about 900 and 1200 px (labels as tooltips and accessible names); full menu from 1200 px up.
+- **Bottom bar:** Home, Matches, Polls, Players, Menu, as proposed.
+- **Results:** results are not built yet, so the Recent results card shows **0 or "None"** for now (an honest empty state such as "No results yet"), and starts showing real results when the Results feature exists. No results data is needed in the overview endpoint yet.
+- **Section-scoped managers** see only their **own** teams' items and figures, including results once they exist. No club-wide results for them.
+- **Quick actions:** **yes**, the overview has a quick-actions row (see UI Requirements).
+
+Defaults assumed unless the user changes them (they match the mockup):
+- Menu count badges: open polls that still await answers, and unread notifications.
+- Overview icon: the user generates it as `nav/overview.svg`.
+
 ## Open Questions
 
-- Tablet widths: show the full menu from md up, or collapse to icons only between about 900 and 1200 px?
-- Bottom bar items: Home, Matches, Polls, Players, Menu is the proposal; confirm or change.
-- Does "Back to Dashboard" stay on wide screens now that the menu is always visible, or become a "Back to <list>" only on detail pages?
-- Which sections show count badges, and what exactly is counted (open polls awaiting the manager's action, unread notifications)?
-- What is "recent" for results (last 3 or 5, or last 14 days)?
-- For section-scoped managers, are club-wide results visible, or only their own teams'?
-- The Overview icon to be generated in the same style (name it `nav/overview.svg`).
-- Quick actions on the overview (create match, create poll): wanted now, or later?
+- Does "Back to Dashboard" stay on wide screens now that the menu is always visible, or become a "Back to <list>" on detail pages only? (Recommendation: keep a back link only on detail and edit pages, going to the list they came from.)
+- Which quick actions, exactly? Proposed: Create match, Create availability poll, Add player, Message the squad. Confirm or change the list, and whether each is hidden for managers who cannot perform it.
 
 ## Rollout Notes
 
