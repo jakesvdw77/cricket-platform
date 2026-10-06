@@ -170,4 +170,24 @@ describe('PlayerCard', () => {
     expect(screen.queryByText(/^Bowl:/)).not.toBeInTheDocument()
     expect(screen.queryByText('Inactive')).not.toBeInTheDocument()
   })
+
+  describe('avatar', () => {
+    const avatarImg = (container: HTMLElement) => container.querySelector('img.MuiAvatar-img')
+
+    it('uses the photo when there is one', () => {
+      const { container } = renderCard({ player: makePlayer({ photoUrl: '/media/p.png', gender: 'MALE' }) })
+      expect(avatarImg(container)).toHaveAttribute('src', '/media/p.png')
+    })
+
+    it('falls back to the gender icon when there is no photo', () => {
+      const { container } = renderCard({ player: makePlayer({ photoUrl: null, gender: 'FEMALE' }) })
+      expect(avatarImg(container)).toHaveAttribute('src', expect.stringContaining('avatar-female'))
+    })
+
+    it('falls back to initials when there is neither photo nor gender', () => {
+      const { container } = renderCard({ player: makePlayer({ photoUrl: null, gender: null }) })
+      expect(avatarImg(container)).toBeNull()
+      expect(screen.getByText('SN')).toBeInTheDocument()
+    })
+  })
 })

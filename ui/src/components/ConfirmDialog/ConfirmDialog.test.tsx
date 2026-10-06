@@ -45,4 +45,11 @@ describe('ConfirmDialog', () => {
     render(<ConfirmDialog open={false} title="Hidden" description="d" onClose={() => {}} />)
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument()
   })
+
+  it('renders an optional icon in the title row', () => {
+    render(<ConfirmDialog open title="Announce?" description="d" icon={<span data-testid="dlg-icon" />} onConfirm={() => {}} onClose={() => {}} />)
+
+    expect(screen.getByTestId('dlg-icon')).toBeInTheDocument()
+    expect(screen.getByText('Announce?')).toBeInTheDocument()
+  })
 })

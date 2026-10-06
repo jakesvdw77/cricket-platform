@@ -26,6 +26,7 @@ import { Button } from '../../components/Button'
 import { CardProgressBar } from '../../components/CardProgressBar'
 import { badgeSx } from '../../components/RecordCard'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { BrandIcon } from '../../components/BrandIcon'
 import { SelectPlayersDialog } from '../../components/SelectPlayersDialog'
 import type { SelectionApplyOutcome } from '../../components/SelectPlayersDialog'
 import { TeamSelectionList } from '../../components/TeamSelectionList'
@@ -802,6 +803,7 @@ null
       <ConfirmDialog
         open={confirmAnnounce}
         title="Announce this team?"
+        icon={<BrandIcon name="actions/announce-team" size={40} />}
         description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
         confirmLabel="Announce team"
         pendingLabel="Announcing…"

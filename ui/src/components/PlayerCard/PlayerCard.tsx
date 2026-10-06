@@ -16,6 +16,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { avatarSx, badgeSx } from '../RecordCard'
+import { playerAvatarSrc } from '../BrandIcon'
 import type { RecordCardBadge } from '../RecordCard'
 import { initialsFromName } from '../../utils/initials'
 import { BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
@@ -85,7 +86,7 @@ export function PlayerCard({ player, sectionNames, badge, viewTo, editTo }: Play
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '1 1 auto' }}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar src={player.photoUrl ?? undefined} variant="circular" sx={avatarSx(56)}>
+            <Avatar src={playerAvatarSrc(player.photoUrl, player.gender)} variant="circular" sx={avatarSx(56)}>
               {initialsFromName(name)}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>

@@ -1002,6 +1002,7 @@ describe('MatchFormPage', () => {
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).getByText('Announce this team?')).toBeInTheDocument()
         expect(within(dialog).getByText(/Nobody is notified automatically/)).toBeInTheDocument()
+        expect(dialog.querySelector('img')).not.toBeNull()
         expect(announceMatchSide).not.toHaveBeenCalled()
 
         await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
