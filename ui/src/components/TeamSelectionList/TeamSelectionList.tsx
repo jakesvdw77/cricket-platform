@@ -9,6 +9,8 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import { BrandIcon } from '../BrandIcon'
+import type { BrandIconName } from '../BrandIcon'
 import type { PlayingRole, SelectionLimits } from '../../api/matchSideApi'
 import type { SelectionAvailability } from '../../api/matchSelectionApi'
 
@@ -17,6 +19,13 @@ const ROLE_LABEL: Record<PlayingRole, string> = {
   BOWLER: 'Bowler',
   ALL_ROUNDER: 'All-rounder',
 }
+// docs/specs/078-brand-icon-set.md: the badge icons are 28 px, so the chips get a taller fixed height.
+const ROLE_ICON: Record<PlayingRole, BrandIconName> = {
+  BATSMAN: 'roles/batter',
+  BOWLER: 'roles/bowler',
+  ALL_ROUNDER: 'roles/all-rounder',
+}
+const BADGE_ICON_SX = { height: 34, '& .MuiChip-icon': { ml: 0.5, mr: -0.25 } } as const
 const ROLE_OPTIONS: PlayingRole[] = ['BATSMAN', 'BOWLER', 'ALL_ROUNDER']
 
 type BadgeTone = 'success' | 'warning' | 'error' | 'info' | 'neutral'
@@ -322,6 +331,8 @@ export function TeamSelectionList({
               size="small"
               variant="outlined"
               clickable
+              icon={<BrandIcon name={ROLE_ICON[player.role]} size={28} />}
+              sx={BADGE_ICON_SX}
               label={ROLE_LABEL[player.role]}
               aria-haspopup="menu"
               aria-label={`${player.name}, role ${ROLE_LABEL[player.role]}, change role`}
@@ -333,6 +344,8 @@ export function TeamSelectionList({
                 variant="outlined"
                 color="primary"
                 clickable
+                icon={<BrandIcon name="roles/captain" size={28} />}
+                sx={BADGE_ICON_SX}
                 label="Captain"
                 aria-haspopup="menu"
                 aria-label={`${player.name}, captain, open options`}
@@ -345,6 +358,8 @@ export function TeamSelectionList({
                 variant="outlined"
                 color="primary"
                 clickable
+                icon={<BrandIcon name="roles/wicketkeeper" size={28} />}
+                sx={BADGE_ICON_SX}
                 label="Wicketkeeper"
                 aria-haspopup="menu"
                 aria-label={`${player.name}, wicketkeeper, open options`}

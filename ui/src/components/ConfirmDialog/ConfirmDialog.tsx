@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
+import { Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
 import { Button } from '../Button'
 
 export interface ConfirmDialogProps {
   open: boolean
   title: string
+  // Optional leading icon (e.g. a BrandIcon) drawn at the start of the title row.
+  icon?: ReactNode
   description: ReactNode
   // Confirm button label; also the lone button's label in acknowledge-only mode (defaults 'OK').
   confirmLabel?: string
@@ -26,6 +28,7 @@ export interface ConfirmDialogProps {
 export function ConfirmDialog({
   open,
   title,
+  icon,
   description,
   confirmLabel,
   pendingLabel,
@@ -39,7 +42,10 @@ export function ConfirmDialog({
 
   return (
     <Dialog open={open} onClose={pending ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle sx={icon ? { display: 'flex', alignItems: 'center', gap: 1.5 } : undefined}>
+        {icon && <Box sx={{ display: 'flex', flex: 'none' }}>{icon}</Box>}
+        {title}
+      </DialogTitle>
       <DialogContent>
         <DialogContentText component="div">{description}</DialogContentText>
       </DialogContent>

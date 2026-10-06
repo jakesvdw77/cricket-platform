@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <!-- sky -->
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="196" cy="62" r="22" fill="#F4E4BC" opacity="0.9"/>
+    <!-- distant stand / tree line -->
+    <path d="M0 132 Q40 112 80 124 Q120 104 160 120 Q200 106 256 126 V150 H0 Z" fill="#0B3D26"/>
+    <!-- grass -->
+    <rect x="0" y="146" width="256" height="110" fill="#1F7A4D"/>
+    <path d="M0 176 H256 V196 H0 Z M0 216 H256 V236 H0 Z" fill="#23875A"/>
+    <!-- pitch in perspective -->
+    <path d="M114 146 H142 L184 256 H72 Z" fill="#E2CF9C"/>
+    <!-- crease -->
+    <path d="M80 228 H176" stroke="#FFFFFF" stroke-width="3"/>
+    <path d="M116 156 H140" stroke="#FFFFFF" stroke-width="1.5"/>
+    <!-- far stumps -->
+    <g fill="#F7F3E8"><rect x="123" y="138" width="2" height="16"/><rect x="127" y="138" width="2" height="16"/><rect x="131" y="138" width="2" height="16"/></g>
+    <!-- near stumps -->
+    <g fill="#FFFFFF" stroke="#8C6E3A" stroke-width="1.5">
+      <rect x="107" y="170" width="8" height="58" rx="2"/>
+      <rect x="124" y="170" width="8" height="58" rx="2"/>
+      <rect x="141" y="170" width="8" height="58" rx="2"/>
+    </g>
+    <!-- bails -->
+    <rect x="105" y="164" width="23" height="5" rx="2.5" fill="#C8102E"/>
+    <rect x="128" y="164" width="23" height="5" rx="2.5" fill="#C8102E"/>
+  </g>
+</svg>

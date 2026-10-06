@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+    <!-- shoulders / cricket whites -->
+    <path d="M30 256 C34 200 72 178 128 178 C184 178 222 200 226 256 Z" fill="#F7F3E8"/>
+    <!-- collar -->
+    <path d="M104 180 L128 214 L152 180 Z" fill="#C79A6B"/>
+    <path d="M100 179 L128 216 L118 182 Z M156 179 L128 216 L138 182 Z" fill="#0F5132"/>
+    <!-- neck -->
+    <rect x="113" y="148" width="30" height="38" rx="12" fill="#C79A6B"/>
+    <path d="M113 162 Q128 172 143 162 L143 172 Q128 180 113 172 Z" fill="#B0845A"/>
+    <!-- ears -->
+    <ellipse cx="88" cy="118" rx="9" ry="13" fill="#C79A6B"/>
+    <ellipse cx="168" cy="118" rx="9" ry="13" fill="#C79A6B"/>
+    <!-- head -->
+    <rect x="88" y="70" width="80" height="94" rx="38" fill="#D6A877"/>
+    <!-- short hair / sideburns -->
+    <path d="M90 104 Q90 92 96 88 L96 122 Q90 116 90 104 Z M166 104 Q166 92 160 88 L160 122 Q166 116 166 104 Z" fill="#2B1D14"/>
+    <!-- cap -->
+    <path d="M84 98 C84 58 172 58 172 98 Z" fill="#F4E4BC"/>
+    <path d="M128 62 L128 98" stroke="#D9C08A" stroke-width="2"/>
+    <path d="M150 94 Q192 92 198 104 Q170 106 150 102 Z" fill="#D9C08A"/>
+    <circle cx="112" cy="84" r="7" fill="#C8102E"/>
+  </g>
+</svg>

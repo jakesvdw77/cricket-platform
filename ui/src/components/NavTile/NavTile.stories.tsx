@@ -31,3 +31,12 @@ export const ClubStructure: Story = {
     to: '/manage/sections',
   },
 }
+
+export const BrandIconTile: Story = {
+  args: {
+    title: 'Teams',
+    description: 'Register teams',
+    brandIcon: 'nav/teams',
+    to: '/manage/teams',
+  },
+}

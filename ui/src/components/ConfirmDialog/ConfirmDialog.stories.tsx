@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { BrandIcon } from '../BrandIcon'
 import { ConfirmDialog } from './ConfirmDialog'
 
 const meta: Meta<typeof ConfirmDialog> = {
@@ -36,5 +37,14 @@ export const AcknowledgeOnly: Story = {
     title: "Can't delete this poll",
     description: 'Remove the picked squad members from its matches first, then delete the poll.',
     acknowledgeOnly: true,
+  },
+}
+
+export const WithIcon: Story = {
+  args: {
+    title: 'Announce this team?',
+    description: 'Announcing marks this team as final.',
+    confirmLabel: 'Announce team',
+    icon: <BrandIcon name="actions/announce-team" size={40} />,
   },
 }

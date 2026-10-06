@@ -120,6 +120,14 @@ describe('TeamSelectionList', () => {
     expect(screen.getByText('Also in 2nd XI')).toBeInTheDocument()
   })
 
+  it('draws a brand icon on the role, Captain and Wicketkeeper badges without changing their labels', () => {
+    setup({ captainPlayerId: 'a', wicketKeeperPlayerId: 'a' })
+    const badges = screen.getByRole('button', { name: 'Ann Ash, role Batsman, change role' })
+    expect(badges.querySelector('img')).toHaveStyle({ width: '28px', height: '28px' })
+    expect(screen.getByRole('button', { name: 'Ann Ash, captain, open options' }).querySelector('img')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Ann Ash, wicketkeeper, open options' }).querySelector('img')).not.toBeNull()
+  })
+
   it('has no per-row buttons beyond the name and the role/captain/keeper badges', () => {
     setup({ captainPlayerId: 'a' })
     const buttons = within(screen.getByTestId('selection-row-a')).getAllByRole('button')

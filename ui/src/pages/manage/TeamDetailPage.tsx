@@ -22,6 +22,7 @@ import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
 import { avatarSx, badgeSx } from '../../components/RecordCard'
+import { playerAvatarSrc } from '../../components/BrandIcon'
 import { listTeamsForClub } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
@@ -78,7 +79,7 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <Avatar src={member.photoUrl ?? undefined} variant="circular" sx={avatarSx(40, '0.8125rem')}>
+        <Avatar src={playerAvatarSrc(member.photoUrl, member.gender)} variant="circular" sx={avatarSx(40, '0.8125rem')}>
           {initialsFromName(playerName)}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>

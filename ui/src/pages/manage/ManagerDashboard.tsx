@@ -1,23 +1,12 @@
-import type { ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
-import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined'
-import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
-import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
-import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
-import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import { NavTile } from '../../components/NavTile'
+import type { BrandIconName } from '../../components/BrandIcon'
 
 interface ManagerCard {
   title: string
   description: string
   to: string
-  icon: ReactNode
+  icon: BrandIconName
 }
 
 interface ManagerGroup {
@@ -34,24 +23,24 @@ const GROUPS: ManagerGroup[] = [
   {
     label: 'Club manager',
     cards: [
-      { title: 'Club Profile', description: "Edit your club's details", to: '/manage/club-profile', icon: <BusinessOutlinedIcon /> },
-      { title: 'Teams', description: 'Register teams', to: '/manage/teams', icon: <GroupsOutlinedIcon /> },
-      { title: 'Players', description: 'Manage the player roster', to: '/manage/players', icon: <SportsCricketOutlinedIcon /> },
-      { title: 'Leagues', description: "Create and manage your club's own leagues", to: '/manage/fixtures/leagues', icon: <EmojiEventsOutlinedIcon /> },
-      { title: 'Matches', description: 'Schedule fixtures and build playing XIs', to: '/manage/fixtures/matches', icon: <SportsCricketOutlinedIcon /> },
-      { title: 'Results', description: 'Capture and review match results', to: '/manage/results', icon: <AssessmentOutlinedIcon /> },
-      { title: 'Team Managers & Permissions', description: 'Add managers, manage access', to: '/manage/permissions', icon: <AdminPanelSettingsOutlinedIcon /> },
-      { title: 'Gallery', description: 'Share photos and highlights from your club', to: '/manage/gallery', icon: <PhotoLibraryOutlinedIcon /> },
-      { title: 'Notifications', description: 'Announcements and reminders for your club', to: '/manage/notifications', icon: <NotificationsNoneOutlinedIcon /> },
+      { title: 'Club Profile', description: "Edit your club's details", to: '/manage/club-profile', icon: 'nav/club-profile' },
+      { title: 'Teams', description: 'Register teams', to: '/manage/teams', icon: 'nav/teams' },
+      { title: 'Players', description: 'Manage the player roster', to: '/manage/players', icon: 'nav/cricket-players' },
+      { title: 'Leagues', description: "Create and manage your club's own leagues", to: '/manage/fixtures/leagues', icon: 'nav/cricket-leagues' },
+      { title: 'Matches', description: 'Schedule fixtures and build playing XIs', to: '/manage/fixtures/matches', icon: 'nav/upcoming-matches' },
+      { title: 'Results', description: 'Capture and review match results', to: '/manage/results', icon: 'nav/match-results' },
+      { title: 'Team Managers & Permissions', description: 'Add managers, manage access', to: '/manage/permissions', icon: 'nav/roles-permissions' },
+      { title: 'Gallery', description: 'Share photos and highlights from your club', to: '/manage/gallery', icon: 'nav/photo-gallery' },
+      { title: 'Notifications', description: 'Announcements and reminders for your club', to: '/manage/notifications', icon: 'nav/notifications' },
     ],
   },
   {
     label: 'Team manager',
     cards: [
-      { title: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: <GroupWorkOutlinedIcon /> },
-      { title: 'Communication', description: 'Message the squad', to: '/manage/communication', icon: <ChatOutlinedIcon /> },
+      { title: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: 'nav/squads' },
+      { title: 'Communication', description: 'Message the squad', to: '/manage/communication', icon: 'nav/communication' },
       // docs/specs/073-availability-hub.md: one Availability tile for the hub (Polls, Players and Coverage).
-      { title: 'Availability', description: 'Polls, who is free, and squad cover', to: '/manage/availability', icon: <EventAvailableOutlinedIcon /> },
+      { title: 'Availability', description: 'Polls, who is free, and squad cover', to: '/manage/availability', icon: 'nav/availability-polls' },
       // docs/specs/064-unified-availability-polls.md: the former Section Availability card is gone -
       // group polls are now created from this screen's New poll button.
     ],
@@ -74,7 +63,7 @@ export default function ManagerDashboard() {
             }}
           >
             {group.cards.map((card) => (
-              <NavTile key={card.to} title={card.title} description={card.description} to={card.to} icon={card.icon} />
+              <NavTile key={card.to} title={card.title} description={card.description} to={card.to} brandIcon={card.icon} />
             ))}
           </Box>
         </Box>

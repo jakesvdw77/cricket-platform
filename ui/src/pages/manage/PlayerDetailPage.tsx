@@ -22,6 +22,7 @@ import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailSc
 import { Card } from '../../components/Card'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { avatarSx, badgeSx } from '../../components/RecordCard'
+import { playerAvatarSrc } from '../../components/BrandIcon'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayers, listPlayerSections } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
@@ -126,7 +127,7 @@ export default function PlayerDetailPage() {
 
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar src={player.photoUrl ?? undefined} variant="circular" sx={avatarSx(56)}>
+            <Avatar src={playerAvatarSrc(player.photoUrl, player.gender)} variant="circular" sx={avatarSx(56)}>
               {initialsFromName(fullName(player))}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>

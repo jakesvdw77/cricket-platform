@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><clipPath id="c"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="256" height="256" fill="#0F5132"/>
+    <circle cx="200" cy="56" r="70" fill="#14633F"/>
+
+    <g stroke="#F4E4BC" stroke-linecap="round">
+      <path d="M38 112 H96" stroke-width="7" opacity="0.9"/>
+      <path d="M50 134 H100" stroke-width="7" opacity="0.6"/>
+      <path d="M62 156 H100" stroke-width="7" opacity="0.35"/>
+    </g>
+    <g fill="#F7F3E8"><rect x="160" y="96" width="11" height="114" rx="4"/><rect x="180" y="96" width="11" height="114" rx="4"/><rect x="200" y="96" width="11" height="114" rx="4" transform="rotate(10 205 210)"/></g>
+    <rect x="166" y="74" width="24" height="7" rx="3.5" fill="#E8B83D" transform="rotate(-30 178 77)"/>
+    <rect x="190" y="70" width="24" height="7" rx="3.5" fill="#E8B83D" transform="rotate(25 202 73)"/>
+    <ellipse cx="185" cy="214" rx="44" ry="6" fill="#0B3D26"/>
+    <g transform="rotate(20 124 134)">
+      <circle cx="124" cy="134" r="26" fill="#C8102E"/>
+      <path d="M117.5 108.78 Q122.7 134 117.5 159.22" fill="none" stroke="#FFFFFF" stroke-width="2.9" stroke-dasharray="3.6 3.1" stroke-linecap="round"/>
+      <path d="M130.5 108.78 Q135.7 134 130.5 159.22" fill="none" stroke="#FFFFFF" stroke-width="2.9" stroke-dasharray="3.6 3.1" stroke-linecap="round"/>
+      <circle cx="113.6" cy="123.6" r="5.72" fill="#FFFFFF" opacity="0.22"/>
+    </g>
+  </g>
+</svg>
