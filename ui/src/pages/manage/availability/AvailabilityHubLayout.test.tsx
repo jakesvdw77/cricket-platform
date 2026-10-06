@@ -40,11 +40,11 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
 }
 
 describe('AvailabilityHubLayout (docs/specs/073)', () => {
-  it('titles the page Availability with a Back link and a switch of exactly Polls, Players and Coverage links', () => {
+  it('titles the page Availability with no back link (079) and a switch of exactly Polls, Players and Coverage links', () => {
     renderAt('/manage/availability')
 
     expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
+    expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Availability views' })
     const links = nav.querySelectorAll('a')
     expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Coverage'])

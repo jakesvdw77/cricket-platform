@@ -46,12 +46,18 @@ export const baseTheme: Theme = createTheme({
 // White-Labelling section. MUI's createTheme(base, overrides) deep-merges,
 // so every component styled via theme.palette.primary picks this up for free.
 export function withClubBranding(primaryColor: string): Theme {
+  // docs/specs/079: merging only `main` kept the base theme's explicit `dark` and white
+  // `contrastText`, so a light club colour got white text on it. Let MUI derive light/dark/
+  // contrastText for the club colour; the platform default keeps its hand-tuned values.
+  if (primaryColor.toLowerCase() === baseTheme.palette.primary.main.toLowerCase()) {
+    return baseTheme
+  }
   return createTheme(baseTheme, {
-    palette: { primary: { main: primaryColor } },
+    palette: { primary: baseTheme.palette.augmentColor({ color: { main: primaryColor }, name: 'primary' }) },
   })
 }
 
-// The page-body wash every post-login shell (AppShell, GridNavShell, BottomTabShell) applies to
+// The page-body wash every post-login shell (AppShell, ManagerShell, BottomTabShell) applies to
 // its <main> only — never the header/footer, which stay solid so brand chrome doesn't compete
 // with it. A CSS gradient rather than a static image: derived from theme.palette.primary, so it
 // re-tints automatically per club via withClubBranding() instead of showing the same fixed image

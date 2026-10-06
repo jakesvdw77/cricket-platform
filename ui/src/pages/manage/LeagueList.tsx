@@ -87,8 +87,6 @@ export default function LeagueList() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader
         title="Leagues"
-        backTo="/manage"
-        backLabel="Back to Dashboard"
         action={<Button onClick={() => navigate('/manage/fixtures/leagues/new')}>Add League</Button>}
       />
 

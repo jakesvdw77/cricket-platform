@@ -117,6 +117,8 @@ export default function ClubContactList() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader
         title="Club Contacts"
+        backTo="/manage/club-profile"
+        backLabel="Back to Club Profile"
         action={<Button onClick={() => navigate('/manage/club-contacts/new')}>Add Contact</Button>}
       />
 

@@ -17,14 +17,26 @@ describe('ManageScreenHeader', () => {
     expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
   })
 
-  it('defaults backTo and backLabel when omitted', () => {
+  // docs/specs/079-manager-shell-and-overview.md: no default backTo; no backTo, no back link.
+  it('renders no back link when backTo is omitted, but still renders the title', () => {
     render(
       <MemoryRouter>
         <ManageScreenHeader title="Club Sponsors" />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute('href', '/manage')
+    expect(screen.getByRole('heading', { name: 'Club Sponsors' })).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('falls back to a plain "Back" label when backTo is given without backLabel', () => {
+    render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Sponsor Contacts" backTo="/manage/sponsors" />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/manage/sponsors')
   })
 
   // docs/specs/041-list-screen-header-actions.md: an additive, optional slot for a screen's

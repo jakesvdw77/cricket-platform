@@ -3,6 +3,8 @@
 **Depends on:** `002-realm-subdomain-auth.md` (role claims — `platform_admin` flat role is real today; club-scoped roles depend on `001`'s model, not yet built), `004-landing-page.md`, `005-admin-login.md` (`AdminHome.tsx` placeholder this spec evolves into the admin shell's landing view, `ui/src/auth/keycloak.ts`).
 **Status:** draft.
 
+> **Amended by 079** (`079-manager-shell-and-overview.md`): the Manager nav decision above (top bar only, a grid-card dashboard, no side menu) is superseded. The manager now gets `ManagerShell`: a club-colour header, a persistent side menu (icons-only rail from `md`, full from `lg`), and a phone bottom tab bar with a Menu sheet. `GridNavShell` is removed; the card grid survives as the `/manage` Overview page's content. The Admin and Player shells and the shared `ShellHeader` default (white) are unchanged. Navigation items live in one config, `ui/src/components/ManagerShell/managerNav.ts`.
+
 ## Problem & Goals
 
 The only authenticated screen that exists today is `AdminHome.tsx` — a bare identity-confirmation card built as an intentional placeholder in `005-admin-login.md`. There is no reusable page shell (navigation, avatar/logout menu, footer) for any of the platform's three personas — System Administrator, Club/Team Manager, Player — even though every future feature spec for those personas will need to render inside one. This spec builds those three shells as layout/navigation scaffolding only, with placeholder content standing in for the real functionality that later, per-module specs will build out one at a time.

@@ -105,7 +105,7 @@ describe('ManagerHome', () => {
     expect(screen.queryByText(/Club context/)).not.toBeInTheDocument()
   })
 
-  it('renders GridNavShell driven by the real activateSession result, not a hardcoded mock user, and threads clubAdminClubIds[0] through the Outlet context', async () => {
+  it('renders ManagerShell driven by the real activateSession result, not a hardcoded mock user, and threads clubAdminClubIds[0] through the Outlet context', async () => {
     const user = userEvent.setup()
     activateSession.mockResolvedValueOnce(meAccess({ platformAdmin: false, clubAdminClubIds: ['club-1'] }))
 

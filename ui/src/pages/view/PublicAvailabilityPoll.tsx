@@ -18,7 +18,7 @@ function squadDisplayName(row: PlayerAvailabilityRow): string {
 }
 
 // docs/specs/032-match-availability-polls.md's public, no-login, self-select response page — a
-// new top-level route with zero shell (no AppShell/GridNavShell/BottomTabShell, since it must be
+// new top-level route with zero shell (no AppShell/ManagerShell/BottomTabShell, since it must be
 // reachable pre-login), matching UpcomingMatches.tsx's existing no-shell public-page precedent
 // rather than the phone-frame chrome from the approved Claude Design mockup (presentational only).
 // Anyone holding the link sees every squad member's name and current status, and sets their own

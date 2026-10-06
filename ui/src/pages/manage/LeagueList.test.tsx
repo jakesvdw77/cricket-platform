@@ -118,15 +118,14 @@ describe('LeagueList', () => {
     expect(await screen.findByText('No leagues yet')).toBeInTheDocument()
   })
 
-  // docs/specs/056-club-profile-overview.md: the back link now returns to the Dashboard rather
-  // than the old /manage/fixtures hub.
-  it('renders a "Back to Dashboard" link pointing at /manage', async () => {
+  // docs/specs/079-manager-shell-and-overview.md: the manager shell's menu replaces the back link.
+  it('renders no back link (the shell menu replaces "Back to Dashboard")', async () => {
     listLeagues.mockResolvedValueOnce([])
 
     renderList('test-club-id')
 
     await screen.findByText('No leagues yet')
-    expect(screen.getByRole('link', { name: 'Back to Dashboard' })).toHaveAttribute('href', '/manage')
+    expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
   })
 
   it('renders a card per league with its fields and an Inactive badge for a deactivated one', async () => {

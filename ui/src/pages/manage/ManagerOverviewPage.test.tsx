@@ -1,18 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import ManagerDashboard from './ManagerDashboard'
+import ManagerOverviewPage from './ManagerOverviewPage'
 
 // docs/specs/056-club-profile-overview.md: the "Club manager" group's 9-card order/destinations —
 // Club Profile now leads to the new consolidated overview page (still at /manage/club-profile);
 // Club Contacts/Club Sponsors/Club Structure/"Leagues and Fixtures" no longer have their own
 // top-level cards (reached from the overview page or the dashboard directly instead); Leagues and
 // Matches are promoted to their own direct cards; Gallery and Notifications are new placeholders.
-describe('ManagerDashboard', () => {
+describe('ManagerOverviewPage', () => {
   it('renders exactly the 9 "Club manager" cards, in order, with their real destinations', () => {
     render(
       <MemoryRouter>
-        <ManagerDashboard />
+        <ManagerOverviewPage />
       </MemoryRouter>,
     )
 
@@ -42,7 +42,7 @@ describe('ManagerDashboard', () => {
   it('no longer renders separate Club Contacts/Club Sponsors/Club Structure/"Leagues and Fixtures" cards', () => {
     render(
       <MemoryRouter>
-        <ManagerDashboard />
+        <ManagerOverviewPage />
       </MemoryRouter>,
     )
 
@@ -55,7 +55,7 @@ describe('ManagerDashboard', () => {
   it('Gallery and Notifications cards are clearly marked as new club-manager destinations', () => {
     render(
       <MemoryRouter>
-        <ManagerDashboard />
+        <ManagerOverviewPage />
       </MemoryRouter>,
     )
 
@@ -66,7 +66,7 @@ describe('ManagerDashboard', () => {
   it('the "Team manager" group carries its existing cards, with no separate Section Availability card (064)', () => {
     render(
       <MemoryRouter>
-        <ManagerDashboard />
+        <ManagerOverviewPage />
       </MemoryRouter>,
     )
 
