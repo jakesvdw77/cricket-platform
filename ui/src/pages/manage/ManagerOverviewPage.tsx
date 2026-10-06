@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Alert, Box, Button, Card as MuiCard, Chip, CircularProgress, Stack, Typography } from '@mui/material'
 import { BrandIcon } from '../../components/BrandIcon'
 import type { BrandIconName } from '../../components/BrandIcon'
+import { QuickActions } from '../../components/QuickActions'
+import type { QuickAction } from '../../components/QuickActions'
 import { CardProgressBar } from '../../components/CardProgressBar'
 import { badgeSx } from '../../components/RecordCard'
 import { keycloak } from '../../auth/keycloak'
@@ -270,11 +272,11 @@ export default function ManagerOverviewPage() {
   const now = new Date()
   const { quickActions: qa } = data
   const actions = [
-    qa.createMatch && { label: 'Create match', to: '/manage/fixtures/matches/new' },
-    qa.createPoll && { label: 'Create availability poll', to: '/manage/availability/new' },
-    qa.addPlayer && { label: 'Add player', to: '/manage/players/new' },
-    qa.messageSquad && { label: 'Message the squad', to: '/manage/communication' },
-  ].filter((action): action is { label: string; to: string } => Boolean(action))
+    qa.createMatch && { id: 'create-match', label: 'Create match', to: '/manage/fixtures/matches/new', icon: 'nav/upcoming-matches' },
+    qa.createPoll && { id: 'create-poll', label: 'Create availability poll', to: '/manage/availability/new', icon: 'nav/availability-polls' },
+    qa.addPlayer && { id: 'add-player', label: 'Add player', to: '/manage/players/new', icon: 'nav/cricket-players' },
+    qa.messageSquad && { id: 'message-squad', label: 'Message the squad', to: '/manage/communication', icon: 'nav/communication' },
+  ].filter((action): action is QuickAction => Boolean(action))
 
   const actionButton = (label: string) => {
     const action = actions.find((a) => a.label === label)
@@ -286,19 +288,18 @@ export default function ManagerOverviewPage() {
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'baseline' }}
-        spacing={0.5}
-      >
+    // Bottom padding on a phone clears the speed dial and the tab bar so the last card is never covered.
+    <Stack spacing={2} sx={{ pb: { xs: 12, md: 0 } }}>
+      <Stack direction="row" flexWrap="wrap" justifyContent="space-between" alignItems="center" columnGap={2} rowGap={0.5}>
         <Typography variant="h5" component="h1" fontWeight={700}>
           {greeting(now)}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-        </Typography>
+        <Stack direction="row" alignItems="center" columnGap={2} rowGap={0.5} flexWrap="wrap">
+          <Typography variant="body2" color="text.secondary">
+            {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+          </Typography>
+          <QuickActions actions={actions} />
+        </Stack>
       </Stack>
 
       <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
@@ -374,22 +375,6 @@ export default function ManagerOverviewPage() {
           )}
         </OverviewCard>
       </Box>
-
-      {actions.length > 0 && (
-        <Stack direction="row" useFlexGap flexWrap="wrap" spacing={0} gap={1} aria-label="Quick actions" role="group">
-          {actions.map((action, index) => (
-            <Button
-              key={action.to}
-              component={RouterLink}
-              to={action.to}
-              variant={index === 0 ? 'contained' : 'outlined'}
-              sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </Stack>
-      )}
     </Stack>
   )
 }

@@ -1,11 +1,24 @@
 import { render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ManagerOverviewPage from './ManagerOverviewPage'
 import type { ManagerOverview, OverviewMatch } from '../../api/overviewApi'
 
 const getManagerOverview = vi.fn()
+
+function stubViewport(width: number) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => {
+      const min = /min-width:\s*([\d.]+)px/.exec(query)
+      const matches = min ? width >= Number(min[1]) : true
+      return { matches, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() }
+    }),
+  )
+}
+afterEach(() => vi.unstubAllGlobals())
 vi.mock('../../api/overviewApi', () => ({ getManagerOverview: (clubId: string) => getManagerOverview(clubId) }))
 vi.mock('../../auth/keycloak', () => ({ keycloak: { tokenParsed: { name: 'Riya Naidu' } } }))
 
@@ -158,38 +171,49 @@ describe('ManagerOverviewPage', () => {
 
     expect(await screen.findByText('No matches coming up')).toBeInTheDocument()
     expect(screen.getByText('Nothing waiting on an answer')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Create match' })).toHaveLength(2)
-    expect(screen.getAllByRole('link', { name: 'Create availability poll' })).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: 'Create match' })).toHaveLength(1)
+    expect(screen.getAllByRole('link', { name: 'Create availability poll' })).toHaveLength(1)
   })
 
-  it('renders each quick action only when its flag is true, with the right link', async () => {
-    getManagerOverview.mockResolvedValue(
-      overview({ upcomingMatches: [match()], openPolls: [{ kind: 'GROUP', id: 'g', matchId: null, title: 'T', repliedCount: 0, totalCount: 0, scheduledCloseAt: null }] }),
-    )
+  it('renders each quick action in the Actions menu only when its flag is true', async () => {
+    stubViewport(1200)
+    const user = userEvent.setup()
+    getManagerOverview.mockResolvedValue(overview({ upcomingMatches: [match()] }))
     const { unmount } = renderPage()
-    const group = await screen.findByRole('group', { name: 'Quick actions' })
-    expect(within(group).getByRole('link', { name: 'Create match' })).toHaveAttribute('href', '/manage/fixtures/matches/new')
-    expect(within(group).getByRole('link', { name: 'Create availability poll' })).toHaveAttribute('href', '/manage/availability/new')
-    expect(within(group).getByRole('link', { name: 'Add player' })).toHaveAttribute('href', '/manage/players/new')
-    expect(within(group).getByRole('link', { name: 'Message the squad' })).toHaveAttribute('href', '/manage/communication')
+    await user.click(await screen.findByRole('button', { name: 'Actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Create match' })).toHaveAttribute('href', '/manage/fixtures/matches/new')
+    expect(screen.getByRole('menuitem', { name: 'Create availability poll' })).toHaveAttribute('href', '/manage/availability/new')
+    expect(screen.getByRole('menuitem', { name: 'Add player' })).toHaveAttribute('href', '/manage/players/new')
+    expect(screen.getByRole('menuitem', { name: 'Message the squad' })).toHaveAttribute('href', '/manage/communication')
     unmount()
 
     getManagerOverview.mockResolvedValue(
       overview({ upcomingMatches: [match()], quickActions: { createMatch: false, createPoll: false, addPlayer: true, messageSquad: false } }),
     )
     renderPage()
-    const only = await screen.findByRole('group', { name: 'Quick actions' })
-    expect(within(only).getAllByRole('link')).toHaveLength(1)
-    expect(within(only).getByRole('link', { name: 'Add player' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Actions' }))
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+    expect(screen.getByRole('menuitem', { name: 'Add player' })).toBeInTheDocument()
   })
 
-  it('omits the quick actions row when none are allowed', async () => {
+  it('has no old action buttons and hides the control when no action is allowed', async () => {
+    stubViewport(1200)
     getManagerOverview.mockResolvedValue(
       overview({ upcomingMatches: [match()], quickActions: { createMatch: false, createPoll: false, addPlayer: false, messageSquad: false } }),
     )
     renderPage()
     await screen.findByText('Villagers 1 v Northside CC')
+    expect(screen.queryByRole('button', { name: 'Actions' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Quick actions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Add player' })).not.toBeInTheDocument()
+  })
+
+  it('on a phone shows the speed dial instead of the Actions button', async () => {
+    stubViewport(375)
+    getManagerOverview.mockResolvedValue(overview({ upcomingMatches: [match()] }))
+    renderPage()
+    expect(await screen.findByRole('button', { name: 'Quick actions' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Actions' })).not.toBeInTheDocument()
   })
 
   it('shows a loading indicator, then an error with retry', async () => {
