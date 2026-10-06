@@ -53,7 +53,7 @@ Reference: the interactive mockup above. Tokens come from `ui/src/theme.ts`; no 
 
 **Header.** Solid `primary.main` background with `primary.contrastText` text (MUI picks readable text for light club colours automatically), club logo (white tile fallback with initials) and club name at the left, the avatar menu at the right. This replaces today's white header with a divider for the manager shell and is a visible change.
 
-**Wide screens.** From 1200 px a persistent side menu of about 232 px; between about 900 and 1200 px the same menu collapsed to an icons-only rail of about 64 px (brand icons at 32 px, label as tooltip and `aria-label`, badges kept as small dots with counts). The full menu is: grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads); Availability (Polls, Communication); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
+**Wide screens.** From 1200 px a persistent side menu of about 232 px; between about 900 and 1200 px the same menu collapsed to an icons-only rail of about 64 px (brand icons at 32 px, label as tooltip and `aria-label`, badges kept as small dots with counts). The full menu is: grouped: Overview; Matches (Matches, Leagues, Results); People (Teams, Players, Squads, Communication); Availability (Polls, Player availability, Team availability); Club (Club profile, Gallery, Notifications, Managers). Each row has its brand icon at 32 px (per the 078 rule), the active row is tinted and bold, and rows can carry a count badge. The page body uses the existing brand-tinted gradient (`pageBackgroundGradient`).
 
 **Phones.** A bottom bar with Home, Matches, Polls, Players and Menu. Menu opens a bottom sheet covering most of the screen with every destination as a tile (brand icon at 40 px, label, badge), grouped as on desktop; it closes on choosing a destination, on the close button, on tapping outside, and on swipe down. The sheet is a real dialog for keyboard and screen readers.
 
@@ -98,6 +98,10 @@ Answered by the user on 2026-10-06:
 Defaults assumed unless the user changes them (they match the mockup):
 - Menu count badges: open polls that still await answers, and unread notifications.
 - Overview icon: the user generates it as `nav/overview.svg`.
+
+## Amendment 2026-10-06: availability menu entries
+
+Requested by the user while using the shell: **Communication moves to the People group**, and the Availability group lists **Polls, Player availability and Team availability**, each opening the matching tab of the Availability hub (`/manage/availability` Polls, `/manage/availability/players` Players tab, `/manage/availability/coverage` Coverage tab, which is the per-team squad cover view). The side menu, the tablet rail and the Menu sheet all read the same nav config. The two new entries use **MUI icons on a disc for now** (the user is generating brand icons for them; when they exist they replace the glyphs). Active-item matching keeps Polls highlighted for `/manage/availability` and the poll, response and new-poll pages under it, Player availability for `/manage/availability/players` and `/manage/player-availability`, and Team availability for `/manage/availability/coverage`. The phone bottom bar keeps its Polls tab pointing at `/manage/availability`.
 
 ## Rollout Notes
 
