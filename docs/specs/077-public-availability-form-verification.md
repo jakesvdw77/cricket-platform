@@ -98,12 +98,14 @@ Answered by the user on 2026-10-06:
 - **Verify first, then answer.** The date of birth is asked together with the name on the first screen, and nothing is shown or saved until they match. After a match the player can answer and change the answer for the token's lifetime without being asked again. (This also removes the question of showing current answers before verifying.)
 - **Same name:** the date of birth separates players with the same name automatically; only same name plus same birthday needs a pick screen. Twins have different first names, so they are separated by name. The unresolvable case (same full name and birthday) is left to managers, who can give those players shirt numbers.
 - **Lockout:** 5 wrong tries and 15 minutes are accepted.
+- **Token lifetime:** about 30 minutes is accepted.
+- **Remembered players (device only):** after a successful save the device remembers the player automatically (names only, never the date of birth or the token), kept per club, at most 10 players, expiring after about a year of not being used, with a visible "Not your device? Forget" link on the Saved screen and a remove on each chip. The server never trusts it. (Automatic remembering is the assumed default; the user was asked automatic or tick-box and had not answered yet.)
+- **Manager view:** a "via link" marker on the Responses pages is enough for now (assumed).
 - **Date of birth required first:** yes. Slice 1 makes it required for new and edited players, with the missing-date report, before the form depends on it.
 
 ## Open Questions
 
-- **Manager view:** is the "via link" marker on the Responses pages enough, or do managers also want a list of recent public changes?
-- **Token lifetime:** about 30 minutes is proposed; confirm.
+- **Remember automatically or with a tick-box:** see Decisions (automatic is assumed until the user says otherwise).
 
 ## Rollout Notes
 
