@@ -21,9 +21,13 @@ export type PlayerFormValues = PlayerPayload
 // Info | Cricket Info | Sections) and passes down which of the first three field-group panels is
 // active; the 4th (Sections) is rendered entirely by PlayerFormPage itself, since it needs a
 // persisted player id this component never has access to.
+// An existing player may have no date of birth yet (docs/specs/077) — the form then starts blank and
+// requires it before saving.
+export type PlayerFormInitialValues = Omit<Partial<PlayerFormValues>, 'dateOfBirth'> & { dateOfBirth?: string | null }
+
 export interface PlayerFormProps {
   activeTab: 0 | 1 | 2
-  initialValues?: Partial<PlayerFormValues>
+  initialValues?: PlayerFormInitialValues
   onSubmit: (payload: PlayerFormValues) => void
 }
 
@@ -63,7 +67,17 @@ type TextField =
   | 'altContactName'
   | 'altContactPhone'
 
-type FormErrors = Partial<Record<'firstName' | 'lastName', string>>
+type FormErrors = Partial<Record<'firstName' | 'lastName' | 'dateOfBirth', string>>
+
+// docs/specs/077: same bounds and wording as the backend's date of birth validation.
+const MIN_DATE_OF_BIRTH = '1900-01-01'
+
+function todayIso(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
 
 // The exact BowlingType option list from the spec's UI Requirements — arm is already captured
 // separately (Bowling arm), so this list is arm-independent style, not combined codes like "RFM".
@@ -79,7 +93,7 @@ const BOWLING_TYPE_OPTIONS: Array<{ value: BowlingType; label: string }> = [
   { value: 'GOOGLY', label: 'Googly' },
 ]
 
-function toFormState(initialValues?: Partial<PlayerFormValues>): FormState {
+function toFormState(initialValues?: PlayerFormInitialValues): FormState {
   return {
     firstName: initialValues?.firstName ?? '',
     lastName: initialValues?.lastName ?? '',
@@ -101,8 +115,8 @@ function toFormState(initialValues?: Partial<PlayerFormValues>): FormState {
   }
 }
 
-// Mirrors the backend's @NotBlank on firstName/lastName only (CreatePlayerRequest/
-// UpdatePlayerRequest) — every other field is independently optional, per the spec's Goals.
+// Mirrors the backend's required fields (CreatePlayerRequest/UpdatePlayerRequest): firstName,
+// lastName and (docs/specs/077) dateOfBirth — every other field is independently optional.
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {}
 
@@ -112,6 +126,14 @@ function validate(values: FormState): FormErrors {
 
   if (!values.lastName.trim()) {
     errors.lastName = 'Last name is required'
+  }
+
+  if (!values.dateOfBirth) {
+    errors.dateOfBirth = 'Date of birth is required'
+  } else if (values.dateOfBirth > todayIso()) {
+    errors.dateOfBirth = 'Date of birth must not be in the future'
+  } else if (values.dateOfBirth < MIN_DATE_OF_BIRTH) {
+    errors.dateOfBirth = 'Date of birth must not be before 1900-01-01'
   }
 
   return errors
@@ -170,7 +192,7 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
     const payload: PlayerFormValues = {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
-      dateOfBirth: blankToNull(values.dateOfBirth),
+      dateOfBirth: values.dateOfBirth,
       gender: values.gender === '' ? null : values.gender,
       photoUrl: values.photoUrl,
       clubMembershipNumber: blankToNull(values.clubMembershipNumber),
@@ -226,6 +248,9 @@ export function PlayerForm({ activeTab, initialValues, onSubmit }: PlayerFormPro
             type="date"
             value={values.dateOfBirth}
             onChange={handleChange('dateOfBirth')}
+            error={Boolean(errors.dateOfBirth)}
+            helperText={errors.dateOfBirth}
+            inputProps={{ min: MIN_DATE_OF_BIRTH, max: todayIso() }}
             InputLabelProps={{ shrink: true }}
           />
           <Input label="Gender" select value={values.gender} onChange={handleGenderChange}>

@@ -28,6 +28,8 @@ export interface PlayerCardProps {
   // component only renders the first name plus a `+N` overflow chip, it never resolves ids itself.
   sectionNames: string[]
   badge?: RecordCardBadge
+  // docs/specs/077: set by the list for a player with no date of birth; renders a warning badge.
+  missingDateOfBirth?: boolean
   viewTo: string
   editTo: string
 }
@@ -53,9 +55,9 @@ function IconRow({ icon, text }: { icon: ReactNode; text: string }) {
 // showing only two generic fields (DOB, membership number); this replaces it with a shape mirroring
 // TeamCard.tsx's own bespoke card directly (avatar, stretched-link title, corner chips, icon rows,
 // Edit-only footer) — same "bespoke card, shared shell" posture 057 established for TeamCard.
-export function PlayerCard({ player, sectionNames, badge, viewTo, editTo }: PlayerCardProps) {
+export function PlayerCard({ player, sectionNames, badge, missingDateOfBirth = false, viewTo, editTo }: PlayerCardProps) {
   const name = `${player.firstName} ${player.lastName}`
-  const hasCorner = sectionNames.length > 0 || Boolean(badge)
+  const hasCorner = sectionNames.length > 0 || Boolean(badge) || missingDateOfBirth
 
   const battingText = player.battingStance ? `Bat: ${BATTING_STANCE_LABEL[player.battingStance]}` : null
 
@@ -130,6 +132,9 @@ export function PlayerCard({ player, sectionNames, badge, viewTo, editTo }: Play
               {sectionNames.length > 0 && <Chip size="small" variant="outlined" label={sectionNames[0]} />}
               {sectionNames.length > 1 && (
                 <Chip size="small" variant="outlined" label={`+${sectionNames.length - 1}`} />
+              )}
+              {missingDateOfBirth && (
+                <Chip size="small" label="No date of birth" variant="filled" sx={badgeSx('warning')} />
               )}
               {badge && (
                 <Chip

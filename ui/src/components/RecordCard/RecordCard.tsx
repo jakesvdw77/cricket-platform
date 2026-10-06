@@ -39,6 +39,8 @@ export type RecordCardBadgeTone =
   | 'format'
   | 'season'
   | 'active'
+  // docs/specs/077: a record needing attention (PlayerCard's missing date of birth).
+  | 'warning'
 
 export interface RecordCardBadge {
   label: string
@@ -253,6 +255,7 @@ export function badgeSx(tone: RecordCardBadgeTone) {
   if (tone === 'format') return tintedBadgeSx('purple', 'purple.dark', 0.1)
   if (tone === 'season') return tintedBadgeSx('warning', 'warning.dark')
   if (tone === 'active') return tintedBadgeSx('success', 'success.dark')
+  if (tone === 'warning') return tintedBadgeSx('warning', 'warning.dark')
   if (tone === 'side') return tintedBadgeSx('info', 'info.dark')
   if (tone === 'closed') return tintedBadgeSx('error', 'error.dark')
   if (tone === 'open') {
