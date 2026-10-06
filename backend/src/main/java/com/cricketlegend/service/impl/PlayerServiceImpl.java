@@ -20,6 +20,8 @@ import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.service.PlayerService;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PlayerServiceImpl implements PlayerService {
 
+    static final LocalDate EARLIEST_DATE_OF_BIRTH = LocalDate.of(1900, 1, 1);
+
     private final ClubRepository clubRepository;
     private final PersonRepository personRepository;
     private final ClubMembershipRepository clubMembershipRepository;
@@ -76,7 +80,8 @@ public class PlayerServiceImpl implements PlayerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PlayerDto> list(Authentication authentication, UUID clubId, UUID sectionId) {
+    public List<PlayerDto> list(
+            Authentication authentication, UUID clubId, UUID sectionId, boolean missingDateOfBirth) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
@@ -85,18 +90,46 @@ public class PlayerServiceImpl implements PlayerService {
         }
         final Set<UUID> narrowToFinal = narrowTo;
 
-        return playerProfileRepository.findByClubId(clubId).stream()
-                .map(profile -> Map.entry(profile, sectionIds(profile.getId())))
-                .filter(entry -> {
-                    List<UUID> tagged = entry.getValue();
+        List<PlayerProfile> profiles = missingDateOfBirth
+                ? playerProfileRepository.findByClubIdWithoutDateOfBirth(clubId)
+                : playerProfileRepository.findByClubId(clubId);
+        if (profiles.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch both lookups once, never per player.
+        Map<UUID, List<UUID>> sectionsByProfile = new HashMap<>();
+        playerSectionRepository
+                .findByPlayerProfileIdIn(profiles.stream().map(PlayerProfile::getId).toList())
+                .forEach(link -> sectionsByProfile
+                        .computeIfAbsent(link.getPlayerProfileId(), id -> new ArrayList<>())
+                        .add(link.getSectionId()));
+
+        List<PlayerProfile> visible = profiles.stream()
+                .filter(profile -> {
+                    List<UUID> tagged = sectionsByProfile.getOrDefault(profile.getId(), List.of());
                     if (accessibleSectionIds.isPresent()
                             && tagged.stream().noneMatch(accessibleSectionIds.get()::contains)) {
                         return false;
                     }
                     return narrowToFinal == null || tagged.stream().anyMatch(narrowToFinal::contains);
                 })
-                .map(entry -> playerMapper.toDto(
-                        findPersonOrThrow(entry.getKey().getPersonId()), entry.getKey(), entry.getValue()))
+                .toList();
+
+        Map<UUID, Person> personsById = new HashMap<>();
+        personRepository
+                .findAllById(visible.stream().map(PlayerProfile::getPersonId).toList())
+                .forEach(person -> personsById.put(person.getId(), person));
+
+        return visible.stream()
+                .map(profile -> {
+                    Person person = personsById.get(profile.getPersonId());
+                    if (person == null) {
+                        throw new NotFoundException("Person not found: " + profile.getPersonId());
+                    }
+                    return playerMapper.toDto(
+                            person, profile, sectionsByProfile.getOrDefault(profile.getId(), List.of()));
+                })
                 .toList();
     }
 
@@ -105,6 +138,7 @@ public class PlayerServiceImpl implements PlayerService {
     public PlayerDto create(UUID clubId, CreatePlayerRequest request) {
         requireClubExists(clubId);
         requireNonNegativeJerseyNumber(request.jerseyNumber());
+        requireValidDateOfBirth(request.dateOfBirth());
 
         Person person = Person.builder()
                 .firstName(request.firstName())
@@ -152,6 +186,7 @@ public class PlayerServiceImpl implements PlayerService {
         PlayerProfile profile = findOrThrowForClub(clubId, playerId);
         accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
         requireNonNegativeJerseyNumber(request.jerseyNumber());
+        requireValidDateOfBirth(request.dateOfBirth());
         Person person = findPersonOrThrow(profile.getPersonId());
 
         person.setFirstName(request.firstName());
@@ -235,6 +270,23 @@ public class PlayerServiceImpl implements PlayerService {
     private void requireClubExists(UUID clubId) {
         if (!clubRepository.existsById(clubId)) {
             throw new NotFoundException("Club not found: " + clubId);
+        }
+    }
+
+    /**
+     * docs/specs/077-public-availability-form-verification.md: a player's date of birth is required
+     * on create and update (the column stays nullable for existing rows), not in the future and not
+     * before {@link #EARLIEST_DATE_OF_BIRTH}. Applied to the submitted payload on both paths.
+     */
+    private void requireValidDateOfBirth(LocalDate dateOfBirth) {
+        if (dateOfBirth == null) {
+            throw new ValidationException("Date of birth is required");
+        }
+        if (dateOfBirth.isAfter(LocalDate.now())) {
+            throw new ValidationException("Date of birth must not be in the future");
+        }
+        if (dateOfBirth.isBefore(EARLIEST_DATE_OF_BIRTH)) {
+            throw new ValidationException("Date of birth must not be before 1900-01-01");
         }
     }
 
