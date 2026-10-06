@@ -27,7 +27,13 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
       sx={{
         width: collapsed ? 64 : 232,
         flex: 'none',
+        // Solid tint: alpha(primary, 0.09) laid over the white paper colour, so the page wash never shows
+        // through (docs/specs/080, option C).
         bgcolor: 'background.paper',
+        backgroundImage: (theme) => {
+          const tint = alpha(theme.palette.primary.main, 0.09)
+          return `linear-gradient(${tint}, ${tint})`
+        },
         borderRight: 1,
         borderColor: 'divider',
         px: 1,
@@ -46,7 +52,7 @@ export function SideMenu({ groups, collapsed = false, badges = {}, 'aria-label':
               <Typography
                 variant="overline"
                 color="text.secondary"
-                sx={{ px: 1.25, pt: 1.5, pb: 0.5, fontSize: '0.68rem', lineHeight: 1.5 }}
+                sx={{ px: 1, pt: 1.5, pb: 0.5, fontSize: '0.68rem', lineHeight: 1.5 }}
               >
                 {group.label}
               </Typography>
@@ -74,19 +80,19 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
         alignItems: 'center',
         justifyContent: collapsed ? 'center' : 'flex-start',
         gap: 1.25,
-        px: collapsed ? 0 : 1.25,
+        px: collapsed ? 0 : 1,
         py: 0.5,
         borderRadius: 1,
         color: active ? 'primary.dark' : 'text.primary',
         fontWeight: active ? 700 : 400,
         fontSize: '0.9rem',
         textDecoration: 'none',
-        bgcolor: active ? (theme) => alpha(theme.palette.primary.main, 0.14) : 'transparent',
-        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, active ? 0.14 : 0.08) },
+        bgcolor: active ? (theme) => alpha(theme.palette.primary.main, 0.16) : 'transparent',
+        '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, active ? 0.16 : 0.08) },
         '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
       }}
     >
-      <NavItemIcon name={item.icon} size={32} />
+      <NavItemIcon name={item.icon} size={36} surface="none" />
       {!collapsed && <Box component="span" sx={{ flex: 1, minWidth: 0 }}>{item.label}</Box>}
       {hasBadge && (
         <Box
@@ -94,7 +100,7 @@ function SideMenuRow({ item, active, collapsed, badge }: { item: NavItem; active
           data-testid={`badge-${item.id}`}
           aria-hidden={collapsed ? true : undefined}
           sx={{
-            ...(collapsed ? { position: 'absolute', top: 2, right: 6 } : { ml: 'auto' }),
+            ...(collapsed ? { position: 'absolute', top: 2, right: 2 } : { ml: 'auto' }),
             minWidth: 18,
             px: 0.75,
             borderRadius: 99,

@@ -10,8 +10,7 @@ export interface NavTileProps {
   description: string
   // MUI icon in a tinted tile - used where the brand set has no matching icon (admin Configuration).
   icon?: ReactNode
-  // docs/specs/078-brand-icon-set.md: a brand icon at 40 px, no tinted tile (it is already a coloured
-  // circle). Wins over `icon` when both are given.
+  // docs/specs/078-brand-icon-set.md + 080: a brand icon at 40 px on the default club-tinted tile. Wins over `icon` when both are given.
   brandIcon?: BrandIconName
   to: string
 }
