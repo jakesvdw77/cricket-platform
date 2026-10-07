@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
@@ -7,6 +8,10 @@ import JoinInnerOutlinedIcon from '@mui/icons-material/JoinInnerOutlined'
 import { Button } from '../../../components/Button'
 import { EmptyState } from '../../../components/EmptyState'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { PageCounters } from '../../../components/PageCounters'
+import type { PageCounterItem } from '../../../components/PageCounters'
+import { availabilitySummaryKey, getAvailabilitySummary } from '../../../api/availabilitySummaryApi'
+import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 
 type HubView = 'polls' | 'players' | 'coverage'
@@ -27,6 +32,26 @@ function activeView(pathname: string): HubView {
   return 'polls'
 }
 
+// docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
+function counterItems(summary: AvailabilitySummary): PageCounterItem[] {
+  return [
+    { id: 'open-polls', value: summary.openPolls, label: 'Open polls', active: true },
+    { id: 'players-responded', value: `${summary.playersResponded} / ${summary.playersInAudience}`, label: 'Players responded' },
+    {
+      id: 'answers-awaited',
+      value: summary.answersAwaited,
+      label: 'Answers awaited',
+      tone: summary.answersAwaited > 0 ? 'warning' : 'default',
+    },
+    {
+      id: 'closing-soon',
+      value: summary.closingSoon,
+      label: 'Close in 48 hours',
+      tone: summary.closingSoon > 0 ? 'warning' : 'default',
+    },
+  ]
+}
+
 // docs/specs/073: the shared layout route of the Polls, Players and Coverage views - the "Availability" header,
 // a Polls | Players | Coverage switch that is real navigation, and New poll on Polls only. Forwards the club id
 // through its own Outlet context so each view keeps its existing useOutletContext hook.
@@ -34,12 +59,21 @@ export default function AvailabilityHubLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const view = activeView(pathname)
+
+  // The counters belong to the Polls view only; a failed request hides the row, the page still works.
+  const summaryQuery = useQuery({
+    queryKey: availabilitySummaryKey(clubId ?? ''),
+    queryFn: () => getAvailabilitySummary(clubId as string),
+    enabled: Boolean(clubId) && view === 'polls',
+    retry: false,
+  })
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  const view = activeView(pathname)
+  const showCounters = view === 'polls' && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -81,6 +115,10 @@ export default function AvailabilityHubLayout() {
           )
         }
       />
+
+      {showCounters && (
+        <PageCounters items={summaryQuery.data ? counterItems(summaryQuery.data) : []} loading={summaryQuery.isPending} />
+      )}
 
       <Outlet context={{ clubId }} />
     </Box>

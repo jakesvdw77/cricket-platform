@@ -84,6 +84,7 @@ import { squadDisplayName } from '../../utils/squadDisplayName'
 import { announcedBadge, matchPollsFrom, NO_CLUB_TEAM_REASON, pollDestination } from './matches/matchCardHelpers'
 import type { MatchSquadCoverage, PollDestination } from './matches/matchCardHelpers'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
+import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
 // docs/specs/076-team-selection.md section 1: the edit page's tabs, in tab-bar order. The Match
 // Squad tab is gone; a side's team selection lives in its own Home XI / Away XI tab.
@@ -501,6 +502,7 @@ function MatchSideTab({
     queryClient.invalidateQueries({ queryKey: selectionPoolQueryKey(clubId, matchId, teamId) })
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    invalidateAvailabilityCounters(queryClient, clubId)
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'player-availability'] })
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
   }

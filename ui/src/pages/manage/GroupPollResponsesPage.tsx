@@ -17,6 +17,7 @@ import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import { SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
+import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
 // docs/specs/065-group-poll-responses-view.md: one group poll's responses on their own page (the
 // poll card's Responses button lands here), in three views behind a switch. The round's own
@@ -58,6 +59,7 @@ export default function GroupPollResponsesPage() {
       queryClient.setQueryData(responsesKey, payload)
       // So the dashboard cards' per-slot counts refresh too.
       queryClient.invalidateQueries({ queryKey: roundsKey })
+      invalidateAvailabilityCounters(queryClient, clubId)
     },
     onSettled: () => setPendingKey(null),
   })

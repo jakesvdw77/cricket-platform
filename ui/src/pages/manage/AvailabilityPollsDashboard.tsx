@@ -18,6 +18,7 @@ import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { PollCard } from './availability/PollCard'
 import { cardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
+import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
 type PollTypeFilter = 'ALL' | 'SQUAD' | 'GROUP'
 
@@ -156,6 +157,7 @@ export default function AvailabilityPollsDashboard() {
 
   const invalidatePolls = () => {
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+    invalidateAvailabilityCounters(queryClient, clubId)
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
     // A squad poll's open/close/delete also shows on its match's own Availability tab and squad.

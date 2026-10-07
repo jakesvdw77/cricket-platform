@@ -6,6 +6,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { getFixtureGroups } from '../../../api/sectionAvailabilityApi'
 import { listSections } from '../../../api/sectionApi'
 import { FixtureGroupCard } from './FixtureGroupCard'
+import { invalidateAvailabilityCounters } from '../../../api/availabilitySummaryApi'
 
 // docs/specs/064-unified-availability-polls.md: NewPollPage's Group branch - 063's fixture-group
 // review (section picker + one FixtureGroupCard per proposed group) moved here from the removed
@@ -41,6 +42,7 @@ export function GroupPollBranch({
 
   const handleCreated = () => {
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
+    invalidateAvailabilityCounters(queryClient, clubId)
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
     onCreated()
   }

@@ -12,6 +12,7 @@ import { errorDetail } from '../../../utils/errorDetail'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../utils/datetimeLocal'
 import { defaultCloseTime, formatMatchDateTime, matchLabel, validateCloseTime } from './pollHelpers'
 import { CoveredByNote } from './CoveredByNote'
+import { invalidateAvailabilityCounters } from '../../../api/availabilitySummaryApi'
 
 // docs/specs/064-unified-availability-polls.md: NewPollPage's Squad branch - one team, one or more
 // of its upcoming matches, each ticked match getting its own 032 poll (N createPoll calls).
@@ -88,6 +89,7 @@ export function SquadPollBranch({
     },
     onSuccess: (failures) => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+      invalidateAvailabilityCounters(queryClient, clubId)
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
       if (failures.length === 0) {
         onCreated()

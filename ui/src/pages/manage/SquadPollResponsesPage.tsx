@@ -29,6 +29,7 @@ import {
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
 import { toSquadResponsesModel } from './availability/responses/squadResponsesAdapter'
+import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
 const BACK_TO = '/manage/availability'
 const BACK_LABEL = 'Back to Availability Polls'
@@ -77,6 +78,7 @@ export default function SquadPollResponsesPage() {
       queryClient.setQueryData(responsesKey, payload)
       // So the dashboard cards' counts (and the match's Availability tab) refresh too.
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+      invalidateAvailabilityCounters(queryClient, clubId)
       queryClient.invalidateQueries({ queryKey: pollsKey })
     },
     onSettled: () => setPendingKey(null),

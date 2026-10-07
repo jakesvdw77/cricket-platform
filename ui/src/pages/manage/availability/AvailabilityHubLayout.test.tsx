@@ -1,10 +1,25 @@
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation, useOutletContext } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AvailabilityHubLayout from './AvailabilityHubLayout'
 import PlayerAvailabilityRedirect from './PlayerAvailabilityRedirect'
 import SectionAvailabilityRedirect from '../SectionAvailabilityRedirect'
+import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
+
+const getAvailabilitySummary = vi.fn()
+vi.mock('../../../api/availabilitySummaryApi', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/availabilitySummaryApi')>('../../../api/availabilitySummaryApi')
+  return { ...actual, getAvailabilitySummary: (...args: unknown[]) => getAvailabilitySummary(...args) }
+})
+
+const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playersInAudience: 20, answersAwaited: 8.5, closingSoon: 0 }
+
+beforeEach(() => {
+  getAvailabilitySummary.mockReset()
+  getAvailabilitySummary.mockResolvedValue(summary)
+})
 
 function View({ name }: { name: string }) {
   const { clubId } = useOutletContext<{ clubId?: string }>()
@@ -19,7 +34,9 @@ function Page({ name }: { name: string }) {
 
 // Mirrors the route table in App.tsx (docs/specs/073 section 1) under a ManagerHome-like Outlet context.
 function renderAt(path: string, clubId: string | null = 'club-1') {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
+    <QueryClientProvider client={queryClient}>
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/manage" element={<Outlet context={{ clubId: clubId ?? undefined }} />}>
@@ -35,7 +52,8 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
           <Route path="section-availability" element={<SectionAvailabilityRedirect />} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -160,5 +178,69 @@ describe('Availability routes (docs/specs/073 section 1)', () => {
     renderAt('/manage/section-availability?sectionId=s1')
 
     expect(screen.getByText('New poll page at /manage/availability/new')).toBeInTheDocument()
+  })
+})
+
+describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
+  const values = () => screen.getAllByTestId('page-counter-value').map((node) => node.textContent)
+
+  it('shows the four counters on Polls with the active Open polls and the N / M responded text', async () => {
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
+    expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1')
+    for (const label of ['Open polls', 'Players responded', 'Answers awaited', 'Close in 48 hours']) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+    expect(screen.getByTestId('page-counter-open-polls')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('page-counter-players-responded')).not.toHaveAttribute('data-active')
+  })
+
+  it('uses the warning tone only for awaited and closing counters above zero', async () => {
+    getAvailabilitySummary.mockResolvedValue({ ...summary, answersAwaited: 5, closingSoon: 2 })
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '5', '2']))
+    const colour = (id: string) => getComputedStyle(screen.getByTestId(`page-counter-${id}`).querySelector('b') as HTMLElement).color
+    expect(colour('answers-awaited')).toBe(colour('closing-soon'))
+    expect(colour('answers-awaited')).not.toBe(colour('open-polls'))
+  })
+
+  it('keeps the neutral tone at zero', async () => {
+    getAvailabilitySummary.mockResolvedValue({ ...summary, answersAwaited: 0, closingSoon: 0 })
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(values()).toHaveLength(4))
+    const colour = (id: string) => getComputedStyle(screen.getByTestId(`page-counter-${id}`).querySelector('b') as HTMLElement).color
+    expect(colour('answers-awaited')).toBe(colour('open-polls'))
+    expect(colour('closing-soon')).toBe(colour('open-polls'))
+  })
+
+  it('shows the loading skeleton while the request is pending', async () => {
+    getAvailabilitySummary.mockReturnValue(new Promise(() => undefined))
+    renderAt('/manage/availability')
+
+    expect(await screen.findByTestId('page-counters-loading')).toBeInTheDocument()
+    expect(screen.queryByTestId('page-counter-value')).not.toBeInTheDocument()
+  })
+
+  it('hides the row entirely when the request fails, and the view still renders', async () => {
+    getAvailabilitySummary.mockRejectedValue(new Error('boom'))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(getAvailabilitySummary).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+    expect(screen.getByText(/^Polls view for club-1/)).toBeInTheDocument()
+  })
+
+  it('renders no counters and makes no request on Players and Coverage', () => {
+    for (const path of ['/manage/availability/players', '/manage/availability/coverage']) {
+      const { unmount } = renderAt(path)
+      expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument()
+      expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+      unmount()
+    }
+    expect(getAvailabilitySummary).not.toHaveBeenCalled()
   })
 })
