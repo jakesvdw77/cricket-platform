@@ -7,6 +7,19 @@ import AvailabilityHubLayout from './AvailabilityHubLayout'
 import PlayerAvailabilityRedirect from './PlayerAvailabilityRedirect'
 import SectionAvailabilityRedirect from '../SectionAvailabilityRedirect'
 import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
+import type { Season } from '../../../api/seasonApi'
+import type { AvailabilityHubContext } from './hubContext'
+
+vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../../api/sectionApi', () => ({ listSections: () => Promise.resolve([]) }))
+
+const listSeasons = vi.fn()
+vi.mock('../../../api/seasonApi', () => ({ listSeasons: (...args: unknown[]) => listSeasons(...args) }))
+
+function season(id: string, label: string, startDate: string, endDate: string): Season {
+  return { id, clubId: 'club-1', label, startDate, endDate, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', updatedBy: null }
+}
+const SEASONS = [season('s-old', '2025', '2025-01-01', '2025-12-31'), season('s-now', '2026', '2026-01-01', '2026-12-31')]
 
 const getAvailabilitySummary = vi.fn()
 vi.mock('../../../api/availabilitySummaryApi', async () => {
@@ -19,12 +32,23 @@ const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playe
 beforeEach(() => {
   getAvailabilitySummary.mockReset()
   getAvailabilitySummary.mockResolvedValue(summary)
+  listSeasons.mockReset()
+  listSeasons.mockResolvedValue(SEASONS)
+  localStorage.clear()
 })
 
 function View({ name }: { name: string }) {
-  const { clubId } = useOutletContext<{ clubId?: string }>()
+  const { clubId, filters, setFilters, seasonId } = useOutletContext<AvailabilityHubContext>()
   const { pathname, search } = useLocation()
-  return <div>{`${name} view for ${clubId} at ${pathname}${search}`}</div>
+  return (
+    <div>
+      <div>{`${name} view for ${clubId} at ${pathname}${search}`}</div>
+      <div data-testid="ctx">{`section=${filters.sectionId ?? 'none'} season=${seasonId ?? 'none'}`}</div>
+      <button type="button" onClick={() => setFilters({ sectionId: 'sec-1' })}>
+        pick section
+      </button>
+    </div>
+  )
 }
 
 function Page({ name }: { name: string }) {
@@ -142,6 +166,35 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByText('Not authorized')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Availability views' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  })
+
+  // docs/specs/083: no season control on any view; Players and Coverage get the default season.
+  it('has no season control on any view, and hands Players and Coverage the default season', async () => {
+    for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage']) {
+      const view = renderAt(path)
+      expect(screen.queryByRole('button', { name: /season/i })).not.toBeInTheDocument()
+      if (path.endsWith('availability')) {
+        expect(listSeasons).not.toHaveBeenCalled()
+      } else {
+        await waitFor(() => expect(screen.getByTestId('ctx')).toHaveTextContent('season=s-now'))
+      }
+      view.unmount()
+    }
+  })
+
+  it('keeps the shared filters when switching views and carries them in the address', async () => {
+    const user = userEvent.setup()
+    renderAt('/manage/availability')
+
+    await user.click(screen.getByRole('button', { name: 'pick section' }))
+    expect(screen.getByTestId('ctx')).toHaveTextContent('section=sec-1')
+
+    await user.click(screen.getByRole('link', { name: 'Players' }))
+    expect(screen.getByTestId('ctx')).toHaveTextContent('section=sec-1')
+    await waitFor(() => expect(screen.getByText(/^Players view for club-1 at \/manage\/availability\/players\?section=sec-1/)).toBeInTheDocument())
+
+    await user.click(screen.getByRole('link', { name: 'Polls' }))
+    expect(screen.getByTestId('ctx')).toHaveTextContent('section=sec-1')
   })
 
   it('forwards clubId to both views through its Outlet context', () => {

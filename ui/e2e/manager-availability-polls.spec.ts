@@ -195,4 +195,42 @@ test.describe('Unified availability polls golden path (064-unified-availability-
     await expect(page.locator('.MuiCard-root').filter({ hasText: `${teamName} vs ${opponent1Name}` })).toBeVisible();
     await expect(groupCard).toBeVisible();
   });
+
+  // docs/specs/083-availability-filters-and-toolbars.md: the League/Section/Team filters are shared across
+  // the Polls, Players and Coverage views and mirrored in the address. Runs in the mobile and desktop
+  // projects: on a phone the Section field is inside the Filters sheet.
+  test('a section chosen on Polls is still applied on Players, and the address carries it', async ({ page }) => {
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sectionName = `E2E Filter Section ${uniqueSuffix}`;
+
+    await loginAsClubAdmin(page);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await page.getByRole('link', { name: 'Club Structure' }).click();
+    await expect(page).toHaveURL(/\/manage\/sections$/);
+    await addTopLevelSection(page, sectionName);
+
+    await page.goto(`http://${ROOT_DOMAIN}/manage/availability`);
+    const filtersButton = page.getByRole('button', { name: /^Filters/ });
+    const openFiltersIfPhone = async () => {
+      if (await filtersButton.isVisible()) {
+        await filtersButton.click();
+      }
+    };
+
+    await openFiltersIfPhone();
+    await page.getByLabel('Section').click();
+    await page.getByRole('treeitem', { name: sectionName, exact: true }).click();
+    if (await page.getByRole('button', { name: 'Done' }).isVisible()) {
+      await page.getByRole('button', { name: 'Done' }).click();
+    }
+    await expect(page).toHaveURL(/\/manage\/availability\?.*section=/);
+
+    await page.getByRole('link', { name: 'Players' }).click();
+    await expect(page).toHaveURL(/\/manage\/availability\/players\?.*section=/);
+    if (await filtersButton.isVisible()) {
+      await expect(page.getByRole('button', { name: 'Filters, 1 active' })).toBeVisible();
+    } else {
+      await expect(page.getByLabel('Section')).toHaveValue(sectionName);
+    }
+  });
 });

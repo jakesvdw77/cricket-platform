@@ -1,26 +1,22 @@
 import { useMemo, useState } from 'react'
-import { Box, FormControlLabel, MenuItem, Stack, Switch } from '@mui/material'
-import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { Box, FormControlLabel, Switch } from '@mui/material'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ListToolbar } from '../../components/ListToolbar'
+import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
-import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { Button } from '../../components/Button'
-import { Input } from '../../components/Input'
 import { listClosedPolls, listOpenPolls } from '../../api/matchAvailabilityApi'
 import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import { listRounds } from '../../api/sectionAvailabilityApi'
 import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
-import { listSections } from '../../api/sectionApi'
-import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { PollCard } from './availability/PollCard'
+import { AvailabilityFilterBar } from './availability/AvailabilityFilterBar'
+import { useAvailabilityHub } from './availability/hubContext'
 import { pollCardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
-
-type PollTypeFilter = 'ALL' | 'SQUAD' | 'GROUP'
 
 // One entry of the merged list - sortDate is the soonest match the poll covers (a squad poll's
 // own match, a group poll's firstMatchDate).
@@ -31,15 +27,18 @@ type PollListItem =
 // docs/specs/064-unified-availability-polls.md: the one place every open poll lives. Extends
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
-// pattern (the header and New poll action live in AvailabilityHubLayout, 073): ListToolbar (search, sort toggle, Type
-// and Section filters) and a RecordCard grid mixing both kinds. The two open-poll queries are
+// pattern (the header and New poll action live in AvailabilityHubLayout, 073): a RecordCard grid mixing both kinds.
+// docs/specs/083: the toolbar is the shared FilterBar (Section from the hub's shared filters, plus search);
+// the poll type is two light toggles (Group polls, Squad polls - both on by default, the last one cannot be
+// switched off) and the sort order a quiet text link, on the line above the cards (in the Filters sheet on a phone). The two open-poll queries are
 // merged client-side - open polls are bounded to what is live right now, as 034 already reasoned
-// (spec's Non-goals: no union endpoint). Type and Section persist via usePersistedListFilters
-// (docs/specs/043); search stays its own non-persisted useState. The 'Show closed polls' switch
+// (spec's Non-goals: no union endpoint). Section is the hub's shared, persisted filter (083, replacing
+// 043's per-view key); search stays its own non-persisted useState. The 'Show closed polls' switch
 // (mirroring MatchList's 'Show past matches') also fetches closed polls into the same list; it is
 // never persisted, only preset by a ?showClosed=true link (the 'covered by' links).
 export default function AvailabilityPollsDashboard() {
-  const { clubId } = useOutletContext<{ clubId?: string }>()
+  const { clubId, filters, scopeText } = useAvailabilityHub()
+  const { sectionId } = filters
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -48,13 +47,12 @@ export default function AvailabilityPollsDashboard() {
   // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
   // covered match first.
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
-  const [{ sectionId, type }, setFilters] = usePersistedListFilters(`availabilityPolls:filters:${clubId}`, {
-    sectionId: null as string | null,
-    type: 'ALL' as PollTypeFilter,
-  })
+  // docs/specs/083: the poll type as two toggles, both on by default; a per-visit view choice, not persisted.
+  const [showGroup, setShowGroup] = useState(true)
+  const [showSquad, setShowSquad] = useState(true)
 
-  const wantSquad = type !== 'GROUP'
-  const wantGroup = type !== 'SQUAD'
+  const wantSquad = showSquad
+  const wantGroup = showGroup
 
   const pollsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'availability-polls', 'open', sectionId],
@@ -83,12 +81,6 @@ export default function AvailabilityPollsDashboard() {
   const { data: teams } = useQuery({
     queryKey: ['managed-club', clubId, 'teams'],
     queryFn: () => listTeamsForClub(clubId as string),
-    enabled: Boolean(clubId),
-  })
-
-  const { data: sections } = useQuery({
-    queryKey: ['managed-club', clubId, 'sections'],
-    queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
 
@@ -190,47 +182,78 @@ export default function AvailabilityPollsDashboard() {
 
   const isSearching = search.trim().length > 0
   const pollWord = showClosed ? 'polls' : 'open polls'
-  const isFiltering = isSearching || type !== 'ALL' || sectionId !== null
+  const typeLimited = !(showGroup && showSquad)
+  const isFiltering = isSearching || typeLimited || sectionId !== null
+
+  // The last type toggle left on cannot be switched off.
+  const typeToggles = (
+    <>
+      <FormControlLabel
+        control={<Switch checked={showGroup} disabled={showGroup && !showSquad} onChange={(event) => setShowGroup(event.target.checked)} />}
+        label="Group polls"
+        sx={{ whiteSpace: 'nowrap', mr: 0 }}
+      />
+      <FormControlLabel
+        control={<Switch checked={showSquad} disabled={showSquad && !showGroup} onChange={(event) => setShowSquad(event.target.checked)} />}
+        label="Squad polls"
+        sx={{ whiteSpace: 'nowrap', mr: 0 }}
+      />
+    </>
+  )
+  const closedToggle = (
+    <FormControlLabel
+      control={<Switch checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} />}
+      label="Show closed polls"
+      sx={{ whiteSpace: 'nowrap', mr: 0 }}
+    />
+  )
+  const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
+  const scopeFilters = scopeText()
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <ListToolbar
+      {/* League and Team join this toolbar in slice 3 of 083, when the poll lists can filter by them. */}
+      <AvailabilityFilterBar
+        show={{ section: true }}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by team, opponent or description"
-        sortToggle={{
-          value: sort,
-          ascLabel: 'Match date, soonest first',
-          descLabel: 'Match date, latest first',
-          onToggle: () => setSort(sort === 'asc' ? 'desc' : 'asc'),
-        }}
-        filters={
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <Input
-              select
-              label="Type"
-              value={type}
-              onChange={(event) => setFilters({ type: event.target.value as PollTypeFilter })}
-            >
-              <MenuItem value="ALL">All polls</MenuItem>
-              <MenuItem value="SQUAD">Squad polls</MenuItem>
-              <MenuItem value="GROUP">Group polls</MenuItem>
-            </Input>
-            <SectionTreeSelect
-              label="Section"
-              sections={sections ?? []}
-              value={sectionId}
-              onChange={(value) => setFilters({ sectionId: value })}
-              allowClear
-            />
-            <FormControlLabel
-              control={<Switch checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} />}
-              label="Show closed polls"
-              sx={{ whiteSpace: 'nowrap', mr: 0 }}
-            />
-          </Stack>
+        extraChips={
+          typeLimited
+            ? [
+                {
+                  key: 'type',
+                  label: showGroup ? 'Group polls only' : 'Squad polls only',
+                  onRemove: () => {
+                    setShowGroup(true)
+                    setShowSquad(true)
+                  },
+                },
+              ]
+            : []
         }
-        filtersMinWidth={180}
+        viewControls={
+          <>
+            {typeToggles}
+            {closedToggle}
+            {sortLink}
+          </>
+        }
+        onClearedAll={() => {
+          setShowGroup(true)
+          setShowSquad(true)
+        }}
+      />
+
+      <ContentControlsLine
+        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
+        sortAction={sortLink}
+        controls={
+          <>
+            {typeToggles}
+            {closedToggle}
+          </>
+        }
       />
 
       {visibleItems.length > 0 && (

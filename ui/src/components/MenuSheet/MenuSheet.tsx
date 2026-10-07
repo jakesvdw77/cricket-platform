@@ -1,6 +1,6 @@
-import { Box, IconButton, SwipeableDrawer, Typography } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
+import { Box, Typography } from '@mui/material'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { BottomSheet } from '../BottomSheet'
 import { NavItemIcon } from '../NavItemIcon'
 import { activeNavId } from '../ManagerShell/managerNav'
 import type { NavGroup } from '../ManagerShell/managerNav'
@@ -14,35 +14,14 @@ export interface MenuSheetProps {
   badges?: Record<string, number>
 }
 
-// docs/specs/079-manager-shell-and-overview.md: the phone Menu sheet. SwipeableDrawer from the
-// bottom, so Escape, focus trap, backdrop tap and swipe-down all come with it; choosing a
-// destination closes it.
+// docs/specs/079-manager-shell-and-overview.md: the phone Menu sheet, on the shared BottomSheet
+// (Escape, focus trap, backdrop tap and swipe-down come with it); choosing a destination closes it.
 export function MenuSheet({ open, onOpen, onClose, groups, badges = {} }: MenuSheetProps) {
   const { pathname } = useLocation()
   const activeId = activeNavId(groups, pathname)
 
   return (
-    <SwipeableDrawer
-      anchor="bottom"
-      open={open}
-      onOpen={onOpen}
-      onClose={onClose}
-      disableDiscovery
-      PaperProps={{
-        'aria-label': 'Menu',
-        sx: { borderRadius: '20px 20px 0 0', maxHeight: '88%', px: 2, pt: 1, pb: 2.5 },
-      }}
-    >
-      <Box aria-hidden sx={{ width: 40, height: 4, borderRadius: 99, bgcolor: 'divider', mx: 'auto', mt: 0.5, mb: 1.25 }} />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-        <Typography variant="subtitle1" component="h2" fontWeight={700}>
-          Menu
-        </Typography>
-        <IconButton aria-label="Close menu" onClick={onClose} size="small" sx={{ bgcolor: 'divider' }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
+    <BottomSheet open={open} onOpen={onOpen} onClose={onClose} ariaLabel="Menu" title="Menu" closeLabel="Close menu">
       {groups.map((group, index) => (
         <Box key={group.label ?? `group-${index}`} sx={{ mb: 1 }}>
           {group.label && (
@@ -110,6 +89,6 @@ export function MenuSheet({ open, onOpen, onClose, groups, badges = {} }: MenuSh
           </Box>
         </Box>
       ))}
-    </SwipeableDrawer>
+    </BottomSheet>
   )
 }

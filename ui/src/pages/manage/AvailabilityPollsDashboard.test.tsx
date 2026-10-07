@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import AvailabilityPollsDashboard from './AvailabilityPollsDashboard'
 import { POLL_CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
@@ -13,6 +13,7 @@ import type {
 } from '../../api/sectionAvailabilityApi'
 import type { Team } from '../../api/teamApi'
 import { legend } from '../../test/legend'
+import { AvailabilityHubStub } from '../../test/AvailabilityHubStub'
 
 const listOpenPolls = vi.fn()
 const listClosedPolls = vi.fn()
@@ -63,6 +64,9 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
 vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string) => listTeamsForClub(clubId),
 }))
+
+vi.mock('../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
 
 vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
@@ -223,7 +227,9 @@ function renderDashboard(clubId?: string, initialUrl = '/manage/availability') {
       <MemoryRouter initialEntries={[initialUrl]}>
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
-            <Route path="availability" element={<AvailabilityPollsDashboard />} />
+            <Route element={<AvailabilityHubStub />}>
+              <Route path="availability" element={<AvailabilityPollsDashboard />} />
+            </Route>
             <Route path="availability/new" element={<div>New Poll Page</div>} />
             <Route path="fixtures/matches/:matchId/edit" element={<LocationProbe />} />
             <Route path="availability/group/:roundId" element={<div>Group Poll Responses Page</div>} />
@@ -391,7 +397,7 @@ describe('AvailabilityPollsDashboard', () => {
 
   // docs/specs/043-list-toolbar-gold-standard.md: this screen gains a real Sort control for the
   // first time — default ascending (soonest-upcoming poll first), reversible via the icon toggle.
-  it('sorts polls by match date, soonest-first by default, and reverses on the sort icon', async () => {
+  it('sorts polls by match date, soonest-first by default, and reverses on the sort link', async () => {
     const user = userEvent.setup()
     listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-home', name: 'Home Team' })])
     listOpenPolls.mockResolvedValueOnce([
@@ -406,15 +412,16 @@ describe('AvailabilityPollsDashboard', () => {
       'Home Team vs Sooner Rivals',
       'Home Team vs Later Rivals',
     ])
-    expect(screen.getByRole('button', { name: 'Match date, latest first' })).toBeInTheDocument()
+    // The sort order is a quiet text link in the scope text, not an icon button (083).
+    expect(screen.getByRole('button', { name: 'soonest first' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Match date, latest first' }))
+    await user.click(screen.getByRole('button', { name: 'soonest first' }))
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
       'Home Team vs Later Rivals',
       'Home Team vs Sooner Rivals',
     ])
-    expect(screen.getByRole('button', { name: 'Match date, soonest first' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'latest first' })).toBeInTheDocument()
   })
 
   // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
@@ -439,8 +446,8 @@ describe('AvailabilityPollsDashboard', () => {
       },
     ])
     localStorage.setItem(
-      'availabilityPolls:filters:test-club-id',
-      JSON.stringify({ sectionId: 'section-1', type: 'ALL' }),
+      'availability:filters:test-club-id',
+      JSON.stringify({ leagueId: null, sectionId: 'section-1', teamId: null, seasonId: null }),
     )
 
     renderDashboard('test-club-id')
@@ -450,9 +457,109 @@ describe('AvailabilityPollsDashboard', () => {
 
     await user.type(screen.getByLabelText('Search'), 'Rivals')
 
-    const persisted = JSON.parse(localStorage.getItem('availabilityPolls:filters:test-club-id') as string)
-    expect(persisted).toEqual({ sectionId: 'section-1', type: 'ALL' })
+    const persisted = JSON.parse(localStorage.getItem('availability:filters:test-club-id') as string)
+    expect(persisted).toEqual({ leagueId: null, sectionId: 'section-1', teamId: null, seasonId: null })
     expect(persisted).not.toHaveProperty('search')
+  })
+
+  // docs/specs/083: the shared FilterBar and the line above the cards.
+  describe('shared filters and toolbar (083)', () => {
+    const JUNIORS = {
+      id: 'section-1',
+      clubId: 'test-club-id',
+      parentSectionId: null,
+      name: 'Juniors',
+      minAge: null,
+      maxAge: null,
+      gender: null,
+      active: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      updatedBy: null,
+    }
+
+    function setPhone(phone: boolean) {
+      window.matchMedia = ((query: string) => ({
+        matches: phone && query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+    }
+
+    afterEach(() => {
+      delete (window as { matchMedia?: unknown }).matchMedia
+    })
+
+    it('shows Section and search only (League and Team come with slice 3), no Type select', async () => {
+      renderDashboard('test-club-id')
+      await screen.findByText('No open polls')
+
+      expect(screen.getByLabelText('Section')).toBeInTheDocument()
+      expect(screen.getByLabelText('Search')).toBeInTheDocument()
+      expect(screen.queryByLabelText('League')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Team')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Type')).not.toBeInTheDocument()
+    })
+
+    it('puts the scope text, the sort link and the toggles on the line above the cards', async () => {
+      listSections.mockResolvedValue([JUNIORS])
+      listOpenPolls.mockResolvedValue([makePoll()])
+      localStorage.setItem('availability:filters:test-club-id', JSON.stringify({ leagueId: null, sectionId: 'section-1', teamId: null, seasonId: null }))
+      renderDashboard('test-club-id')
+
+      expect(await screen.findByText(/^Showing 1 open poll · Juniors/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'soonest first' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Show closed polls' })).not.toBeChecked()
+    })
+
+    it('mirrors the chosen section in the address', async () => {
+      const user = userEvent.setup()
+      listSections.mockResolvedValue([JUNIORS])
+      renderDashboard('test-club-id')
+      await screen.findByText('No open polls')
+
+      await user.click(screen.getByLabelText('Section'))
+      await user.click(within(screen.getByRole('treeitem', { name: 'Juniors' })).getByText('Juniors'))
+
+      await waitFor(() => expect(screen.getByTestId('hub-location')).toHaveTextContent('/manage/availability?section=section-1'))
+    })
+
+    it('takes the section from the address on load', async () => {
+      listSections.mockResolvedValue([JUNIORS])
+      renderDashboard('test-club-id', '/manage/availability?section=section-1')
+      await waitFor(() => expect(listOpenPolls).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    })
+
+    it('on a phone keeps search and a Filters button, with the type toggles, Show closed and sort in the sheet', async () => {
+      const user = userEvent.setup()
+      setPhone(true)
+      listOpenPolls.mockResolvedValue([makePoll()])
+      listTeamsForClub.mockResolvedValue([makeTeam()])
+      renderDashboard('test-club-id')
+      await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })
+
+      expect(screen.queryByRole('checkbox', { name: 'Group polls' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'soonest first' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Filters' }))
+      expect(await screen.findByRole('checkbox', { name: 'Group polls' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Squad polls' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Show closed polls' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'soonest first' })).toBeInTheDocument()
+
+      // Switching a type off adds a removable chip and counts in the badge.
+      await user.click(screen.getByRole('checkbox', { name: 'Squad polls' }))
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Remove filter Group polls only' }))
+      expect(await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+    })
   })
 
   it('renders no page header of its own (the hub layout owns it, 073)', async () => {
@@ -504,7 +611,7 @@ describe('AvailabilityPollsDashboard', () => {
         'Home Team vs Rivals CC',
       ])
 
-      await user.click(screen.getByRole('button', { name: 'Match date, latest first' }))
+      await user.click(screen.getByRole('button', { name: 'soonest first' }))
 
       expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
         'Home Team vs Rivals CC',
@@ -526,7 +633,7 @@ describe('AvailabilityPollsDashboard', () => {
       expect(screen.getAllByText('Poll closes')).toHaveLength(2)
     })
 
-    it('Type filter narrows to one kind, persists with the section, and skips the other query', async () => {
+    it('the Group polls / Squad polls toggles narrow to one kind, skip the other query, and the last one cannot be switched off', async () => {
       const user = userEvent.setup()
       listTeamsForClub.mockResolvedValue([makeTeam()])
       listOpenPolls.mockResolvedValue([makePoll()])
@@ -535,21 +642,25 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
-      await user.click(screen.getByLabelText('Type'))
-      await user.click(await screen.findByRole('option', { name: 'Group polls' }))
+      // Both on by default.
+      expect(screen.getByRole('checkbox', { name: 'Group polls' })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Squad polls' })).toBeChecked()
+
+      await user.click(screen.getByRole('checkbox', { name: 'Squad polls' }))
 
       expect(screen.queryByRole('heading', { name: 'Home Team vs Rivals CC' })).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })).toBeInTheDocument()
-      expect(JSON.parse(localStorage.getItem('availabilityPolls:filters:test-club-id') as string)).toEqual({
-        sectionId: null,
-        type: 'GROUP',
-      })
+      // The last one left on is locked.
+      expect(screen.getByRole('checkbox', { name: 'Group polls' })).toBeDisabled()
 
-      await user.click(screen.getByLabelText('Type'))
-      await user.click(await screen.findByRole('option', { name: 'Squad polls' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Squad polls' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Group polls' }))
 
       expect(await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })).not.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Squad polls' })).toBeDisabled()
+      // The type is a per-visit view choice, not saved with the shared filters.
+      expect(localStorage.getItem('availability:filters:test-club-id') ?? '').not.toContain('GROUP')
     })
 
     it('search matches a group poll by description and a squad poll by team/opponent', async () => {
@@ -888,8 +999,7 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })
-      await user.click(screen.getByLabelText('Type'))
-      await user.click(await screen.findByRole('option', { name: 'Group polls' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Squad polls' }))
 
       expect(await screen.findByText('No matching polls')).toBeInTheDocument()
       expect(screen.queryByText('No open polls')).not.toBeInTheDocument()

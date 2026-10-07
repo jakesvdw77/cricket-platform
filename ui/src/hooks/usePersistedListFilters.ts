@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // docs/specs/043-list-toolbar-gold-standard.md: generalizes the ad hoc, per-screen
 // try/catch-wrapped localStorage.getItem/setItem pair MatchList.tsx introduced in
@@ -29,14 +29,26 @@ export function usePersistedListFilters<T extends Record<string, unknown>>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey])
 
-  const update = (next: Partial<T>) => {
-    const merged = { ...state, ...next }
+  // Written from an effect, not from inside the state updater (which must stay pure), and only after an
+  // update() - never after the load above, so the initial defaults can't overwrite what is stored.
+  const dirty = useRef(false)
+  useEffect(() => {
+    if (!dirty.current) return
+    dirty.current = false
     try {
-      localStorage.setItem(storageKey, JSON.stringify(merged))
+      localStorage.setItem(storageKey, JSON.stringify(state))
     } catch {
       // storage full/unavailable — filters just won't persist this session
     }
-    setState(merged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state])
+
+  // Functional, so several updates in one tick (and an update made in the same commit as the load
+  // effect above, e.g. docs/specs/083's URL-over-storage hydration) merge onto the latest state
+  // rather than a stale closure.
+  const update = (next: Partial<T>) => {
+    dirty.current = true
+    setState((previous) => ({ ...previous, ...next }))
   }
 
   return [state, update]
