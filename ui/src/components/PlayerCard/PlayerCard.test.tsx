@@ -64,6 +64,15 @@ describe('PlayerCard', () => {
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
   })
 
+  it('shows a "No date of birth" marker only when missingDateOfBirth is set', () => {
+    const { unmount } = renderCard({ missingDateOfBirth: true })
+    expect(screen.getByText('No date of birth')).toBeInTheDocument()
+    unmount()
+
+    renderCard()
+    expect(screen.queryByText('No date of birth')).not.toBeInTheDocument()
+  })
+
   it('renders a jersey-number chip when jerseyNumber is set', () => {
     renderCard({ player: makePlayer({ jerseyNumber: 7 }) })
     expect(screen.getByText('#7')).toBeInTheDocument()

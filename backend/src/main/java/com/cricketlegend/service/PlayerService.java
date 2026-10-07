@@ -28,9 +28,11 @@ public interface PlayerService {
      * sections (unrestricted for a club-wide caller) — active and inactive, not paginated, a
      * deliberately small bounded collection. {@code sectionId}, when supplied, narrows further to
      * that section's own closure, validated via {@link
-     * com.cricketlegend.config.AccessService#assertCanAdministerSection} first.
+     * com.cricketlegend.config.AccessService#assertCanAdministerSection} first. When {@code
+     * missingDateOfBirth} is true, only players whose Person has no date of birth are returned
+     * (docs/specs/077-public-availability-form-verification.md), within the same scoping.
      */
-    List<PlayerDto> list(Authentication authentication, UUID clubId, UUID sectionId);
+    List<PlayerDto> list(Authentication authentication, UUID clubId, UUID sectionId, boolean missingDateOfBirth);
 
     /**
      * Creates a brand-new {@link com.cricketlegend.domain.Person} ({@code status = ACTIVE},
@@ -38,7 +40,9 @@ public interface PlayerService {
      * com.cricketlegend.domain.ClubMembership} ({@code validFrom = today}, {@code validTo =
      * null}), and a {@link com.cricketlegend.domain.PlayerProfile}, all in one transaction. 404s
      * if {@code clubId} doesn't exist. Reachable by any club-accessible admin (club-wide or
-     * section-scoped) — the new player starts with zero tagged sections.
+     * section-scoped) — the new player starts with zero tagged sections. {@code dateOfBirth} is
+     * required (not null, not in the future, not before 1900-01-01), else {@link
+     * com.cricketlegend.exception.ValidationException}.
      */
     PlayerDto create(UUID clubId, CreatePlayerRequest request);
 
@@ -48,7 +52,9 @@ public interface PlayerService {
      * overwrite-protection guard (deliberate — see the spec's API Contract Architecture note).
      * 404s if {@code playerId} doesn't belong to {@code clubId}. A section-scoped caller may only
      * edit a player tagged to at least one of their own accessible sections; an untagged player is
-     * editable only by a {@code CLUB}-scope admin.
+     * editable only by a {@code CLUB}-scope admin. The same {@code dateOfBirth} rule as {@link
+     * #create} applies to the submitted payload, so editing any field of a player with no date of
+     * birth requires supplying one.
      */
     PlayerDto update(Authentication authentication, UUID clubId, UUID playerId, UpdatePlayerRequest request);
 

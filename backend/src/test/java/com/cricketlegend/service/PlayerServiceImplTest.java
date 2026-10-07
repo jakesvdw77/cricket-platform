@@ -515,11 +515,11 @@ class PlayerServiceImplTest {
         UUID playerId = UUID.randomUUID();
         PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
-        when(personRepository.findById(personId)).thenReturn(Optional.of(person(personId, personId)));
-        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+        when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
+        when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
         when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
 
-        var result = playerService.list(authentication, clubId, null);
+        var result = playerService.list(authentication, clubId, null, false);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).clubId()).isEqualTo(clubId);
@@ -534,14 +534,150 @@ class PlayerServiceImplTest {
         UUID accessibleSectionId = UUID.randomUUID();
         PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
         when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(existingProfile));
-        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of(
+        when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of(
                 com.cricketlegend.domain.PlayerSection.builder()
                         .playerProfileId(playerId).sectionId(taggedSectionId).build()));
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
-        var result = playerService.list(authentication, clubId, null);
+        var result = playerService.list(authentication, clubId, null, false);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listWithMissingDateOfBirthUsesTheMissingDateQueryAndNotTheFullClubQuery() {
+        UUID clubId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        when(playerProfileRepository.findByClubIdWithoutDateOfBirth(clubId))
+                .thenReturn(List.of(profile(playerId, personId, clubId, true)));
+        when(personRepository.findAllById(List.of(personId))).thenReturn(List.of(person(personId, personId)));
+        when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+
+        var result = playerService.list(authentication, clubId, null, true);
+
+        assertThat(result).hasSize(1);
+        verify(playerProfileRepository, never()).findByClubId(clubId);
+    }
+
+    // --- date of birth rule (077) ---
+
+    private CreatePlayerRequest createRequestWithDob(LocalDate dateOfBirth) {
+        CreatePlayerRequest base = createRequest();
+        return new CreatePlayerRequest(base.firstName(), base.lastName(), dateOfBirth, base.gender(),
+                null, null, null, null, null, null, null, null, null, null, null, false, null);
+    }
+
+    private UpdatePlayerRequest updateRequestWithDob(LocalDate dateOfBirth) {
+        UpdatePlayerRequest base = updateRequest();
+        return new UpdatePlayerRequest(base.firstName(), base.lastName(), dateOfBirth, base.gender(),
+                null, null, null, null, null, null, null, null, null, null, null, false, null);
+    }
+
+    @Test
+    void createWithoutDateOfBirthIsRejectedAndNothingIsSaved() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+
+        assertThatThrownBy(() -> playerService.create(clubId, createRequestWithDob(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth is required");
+        verify(personRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void createWithAFutureDateOfBirthIsRejected() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+
+        assertThatThrownBy(() -> playerService.create(clubId, createRequestWithDob(LocalDate.now().plusDays(1))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth must not be in the future");
+    }
+
+    @Test
+    void createWithADateOfBirthBefore1900IsRejected() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+
+        assertThatThrownBy(() -> playerService.create(clubId, createRequestWithDob(LocalDate.of(1899, 12, 31))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth must not be before 1900-01-01");
+    }
+
+    @Test
+    void createAcceptsTheBoundaryDatesTodayAndFirstOfJanuary1900() {
+        UUID clubId = UUID.randomUUID();
+        when(clubRepository.existsById(clubId)).thenReturn(true);
+        when(personRepository.save(ArgumentMatchers.any(Person.class)))
+                .thenAnswer(invocation -> {
+                    Person p = invocation.getArgument(0);
+                    p.setId(UUID.randomUUID());
+                    return p;
+                });
+        when(clubMembershipRepository.save(ArgumentMatchers.any(ClubMembership.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(playerProfileRepository.save(ArgumentMatchers.any(PlayerProfile.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(playerService.create(clubId, createRequestWithDob(LocalDate.now())).dateOfBirth())
+                .isEqualTo(LocalDate.now());
+        assertThat(playerService.create(clubId, createRequestWithDob(LocalDate.of(1900, 1, 1))).dateOfBirth())
+                .isEqualTo(LocalDate.of(1900, 1, 1));
+    }
+
+    @Test
+    void updateWithoutDateOfBirthIsRejectedEvenWhenTheStoredPersonHasNone() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        when(playerProfileRepository.findById(playerId))
+                .thenReturn(Optional.of(profile(playerId, personId, clubId, true)));
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> playerService.update(authentication, clubId, playerId, updateRequestWithDob(null)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth is required");
+        verify(personRepository, never()).save(ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateWithAFutureOrPre1900DateOfBirthIsRejected() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        when(playerProfileRepository.findById(playerId))
+                .thenReturn(Optional.of(profile(playerId, personId, clubId, true)));
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> playerService.update(
+                        authentication, clubId, playerId, updateRequestWithDob(LocalDate.now().plusDays(1))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth must not be in the future");
+        assertThatThrownBy(() -> playerService.update(
+                        authentication, clubId, playerId, updateRequestWithDob(LocalDate.of(1899, 12, 31))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Date of birth must not be before 1900-01-01");
+    }
+
+    @Test
+    void updateAcceptsTheBoundaryDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        UUID personId = UUID.randomUUID();
+        PlayerProfile existingProfile = profile(playerId, personId, clubId, true);
+        Person existingPerson = person(personId, personId);
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(existingProfile));
+        when(personRepository.findById(personId)).thenReturn(Optional.of(existingPerson));
+        when(personRepository.save(existingPerson)).thenReturn(existingPerson);
+        when(playerProfileRepository.save(existingProfile)).thenReturn(existingProfile);
+        when(playerSectionRepository.findByPlayerProfileId(playerId)).thenReturn(List.of());
+
+        playerService.update(authentication, clubId, playerId, updateRequestWithDob(LocalDate.of(1900, 1, 1)));
+        assertThat(existingPerson.getDateOfBirth()).isEqualTo(LocalDate.of(1900, 1, 1));
+        playerService.update(authentication, clubId, playerId, updateRequestWithDob(LocalDate.now()));
+        assertThat(existingPerson.getDateOfBirth()).isEqualTo(LocalDate.now());
     }
 }

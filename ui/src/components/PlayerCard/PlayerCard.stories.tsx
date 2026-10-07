@@ -87,6 +87,13 @@ export const Inactive: Story = {
   },
 }
 
+export const MissingDateOfBirth: Story = {
+  args: {
+    ...Detailed.args,
+    missingDateOfBirth: true,
+  },
+}
+
 export const MobileViewport: Story = {
   args: Detailed.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },

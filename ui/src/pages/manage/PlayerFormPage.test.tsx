@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlayerFormPage from './PlayerFormPage'
 import type { Player } from '../../api/playerApi'
@@ -139,17 +140,60 @@ describe('PlayerFormPage', () => {
 
       await user.type(screen.getByLabelText('First name'), 'Sipho')
       await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
       await user.click(screen.getByRole('button', { name: 'Create player' }))
 
       expect(createPlayer).toHaveBeenCalledWith(
         'test-club-id',
-        expect.objectContaining({ firstName: 'Sipho', lastName: 'Ndlovu' }),
+        expect.objectContaining({ firstName: 'Sipho', lastName: 'Ndlovu', dateOfBirth: '2010-04-12' }),
       )
       expect(await screen.findByText('Player List Page')).toBeInTheDocument()
+    })
+
+    it('blocks create without a date of birth and never calls createPlayer', async () => {
+      const user = userEvent.setup()
+      renderPage('/manage/players/new', 'test-club-id')
+
+      await user.type(screen.getByLabelText('First name'), 'Sipho')
+      await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.click(screen.getByRole('button', { name: 'Create player' }))
+
+      expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
+      expect(createPlayer).not.toHaveBeenCalled()
+    })
+
+    it("surfaces the backend's 400 detail in the save-error banner", async () => {
+      const user = userEvent.setup()
+      const error = new AxiosError('Bad Request')
+      error.response = {
+        status: 400,
+        data: { detail: 'Date of birth must not be before 1900-01-01' },
+      } as AxiosError['response']
+      createPlayer.mockRejectedValueOnce(error)
+      renderPage('/manage/players/new', 'test-club-id')
+
+      await user.type(screen.getByLabelText('First name'), 'Sipho')
+      await user.type(screen.getByLabelText('Last name'), 'Ndlovu')
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Create player' }))
+
+      expect(await screen.findByText('Date of birth must not be before 1900-01-01')).toBeInTheDocument()
     })
   })
 
   describe('edit mode', () => {
+    it('asks for the date of birth when the player has none, and blocks saving without it', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer({ id: 'player-1', dateOfBirth: null })])
+
+      renderPage('/manage/players/player-1/edit', 'test-club-id')
+
+      expect(await screen.findByLabelText('Date of birth')).toHaveValue('')
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+      expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
+      expect(updatePlayer).not.toHaveBeenCalled()
+    })
+
     it('fetches the player list and prefills from the matching player id', async () => {
       listPlayers.mockResolvedValue([
         makePlayer({ id: 'player-1', firstName: 'Sipho', jerseyNumber: 99 }),

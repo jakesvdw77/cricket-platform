@@ -57,8 +57,9 @@ public class PlayerController {
     public ResponseEntity<List<PlayerDto>> list(
             Authentication authentication,
             @PathVariable UUID clubId,
-            @RequestParam(required = false) UUID sectionId) {
-        return ResponseEntity.ok(playerService.list(authentication, clubId, sectionId));
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(defaultValue = "false") boolean missingDateOfBirth) {
+        return ResponseEntity.ok(playerService.list(authentication, clubId, sectionId, missingDateOfBirth));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

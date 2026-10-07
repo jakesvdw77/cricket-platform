@@ -17,6 +17,9 @@ public interface PlayerSectionRepository extends JpaRepository<PlayerSection, UU
 
     List<PlayerSection> findByPlayerProfileId(UUID playerProfileId);
 
+    /** Batch form of {@link #findByPlayerProfileId}, so a list maps without one query per player. */
+    List<PlayerSection> findByPlayerProfileIdIn(Collection<UUID> playerProfileIds);
+
     /**
      * Every {@code PlayerProfile} tagged to {@code sectionId} — the "eligible for section"
      * audience a {@link com.cricketlegend.domain.SectionAvailabilityWindow} asks, per

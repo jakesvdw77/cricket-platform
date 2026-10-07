@@ -169,6 +169,47 @@ describe('PlayerList', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument()
   })
 
+  it('marks players with no date of birth on their card', async () => {
+    listPlayers.mockResolvedValueOnce([
+      makePlayer({ id: 'player-1' }),
+      makePlayer({ id: 'player-2', firstName: 'No', lastName: 'Birthday', dateOfBirth: null }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByText('No Birthday')
+    expect(screen.getAllByText('No date of birth')).toHaveLength(1)
+  })
+
+  it('sends missingDateOfBirth=true when the "Missing date of birth" chip is toggled, and omits it otherwise', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValue([makePlayer({ id: 'player-2', dateOfBirth: null })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Sipho Ndlovu')
+    expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined, missingDateOfBirth: undefined })
+
+    await user.click(screen.getByRole('button', { name: 'Missing date of birth' }))
+
+    await waitFor(() =>
+      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined, missingDateOfBirth: true }),
+    )
+  })
+
+  it('shows the "Every player has a date of birth" empty state when the filter finds nobody', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValueOnce([makePlayer()]).mockResolvedValue([])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Sipho Ndlovu')
+    await user.click(screen.getByRole('button', { name: 'Missing date of birth' }))
+
+    expect(await screen.findByText('Every player has a date of birth')).toBeInTheDocument()
+    expect(screen.queryByText('No players yet')).not.toBeInTheDocument()
+  })
+
   it('filters cards by the search term (matched against name)', async () => {
     const user = userEvent.setup()
     listPlayers.mockResolvedValueOnce([

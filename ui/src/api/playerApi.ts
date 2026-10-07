@@ -58,7 +58,8 @@ export interface Player {
 export interface PlayerPayload {
   firstName: string
   lastName: string
-  dateOfBirth: string | null
+  // docs/specs/077: required on create and update (ISO yyyy-MM-dd, 1900-01-01 to today).
+  dateOfBirth: string
   gender: Gender | null
   photoUrl: string | null
   clubMembershipNumber: string | null
@@ -85,13 +86,18 @@ export interface ListPlayersParams {
   // players — a section-scoped caller's own default is already narrowed server-side regardless of
   // this param; it's an optional, further-narrowing convenience for any caller.
   sectionId?: string
+  // docs/specs/077: only players with no date of birth (combines with sectionId).
+  missingDateOfBirth?: boolean
 }
 
 // Plain array response, not Page<T> — a club's players are a small, bounded, unpaginated list,
 // matching Section/Team/Sponsor's own posture.
 export async function listPlayers(clubId: string, params: ListPlayersParams = {}): Promise<Player[]> {
   const { data } = await api.get<Player[]>(playersPath(clubId), {
-    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+    params: {
+      ...(params.sectionId ? { sectionId: params.sectionId } : {}),
+      ...(params.missingDateOfBirth ? { missingDateOfBirth: true } : {}),
+    },
   })
   return data
 }

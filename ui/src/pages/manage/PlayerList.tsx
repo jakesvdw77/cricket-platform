@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Box } from '@mui/material'
+import { Box, Chip, Stack } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import type { RecordCardBadge } from '../../components/RecordCard'
@@ -13,6 +13,7 @@ import { listPlayers } from '../../api/playerApi'
 import type { Player } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
+import { cardGridSx } from '../../utils/cardGrid'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 
 // Exported for PlayerDetailPage.tsx (docs/specs/036-view-first-record-detail-screens.md) so the
@@ -44,8 +45,10 @@ export default function PlayerList() {
   // section-scoped admin's view scoped in the first place. docs/specs/043-list-toolbar-gold-
   // standard.md: persisted across visits the same way MatchList's own filters already are —
   // Search stays a separate, non-persisted useState above.
-  const [{ sectionId }, setFilters] = usePersistedListFilters(`playerList:filters:${clubId}`, {
+  const [{ sectionId, missingDateOfBirth }, setFilters] = usePersistedListFilters(`playerList:filters:${clubId}`, {
     sectionId: null as string | null,
+    // docs/specs/077: show only the players still missing a date of birth, to fix them.
+    missingDateOfBirth: false,
   })
 
   const {
@@ -53,8 +56,9 @@ export default function PlayerList() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'players', sectionId],
-    queryFn: () => listPlayers(clubId as string, { sectionId: sectionId ?? undefined }),
+    queryKey: ['managed-club', clubId, 'players', sectionId, missingDateOfBirth],
+    queryFn: () =>
+      listPlayers(clubId as string, { sectionId: sectionId ?? undefined, missingDateOfBirth: missingDateOfBirth || undefined }),
     enabled: Boolean(clubId),
   })
 
@@ -130,30 +134,36 @@ export default function PlayerList() {
           onToggle: () => setSort(sort.endsWith(',asc') ? 'name,desc' : 'name,asc'),
         }}
         filters={
-          <SectionTreeSelect
-            label="Section"
-            sections={sections ?? []}
-            value={sectionId}
-            onChange={(value) => setFilters({ sectionId: value })}
-            allowClear
-          />
+          <Stack spacing={1}>
+            <SectionTreeSelect
+              label="Section"
+              sections={sections ?? []}
+              value={sectionId}
+              onChange={(value) => setFilters({ sectionId: value })}
+              allowClear
+            />
+            <Chip
+              label="Missing date of birth"
+              clickable
+              color={missingDateOfBirth ? 'warning' : 'default'}
+              variant={missingDateOfBirth ? 'filled' : 'outlined'}
+              aria-pressed={missingDateOfBirth}
+              onClick={() => setFilters({ missingDateOfBirth: !missingDateOfBirth })}
+              sx={{ alignSelf: 'flex-start' }}
+            />
+          </Stack>
         }
       />
 
       {visiblePlayers.length > 0 && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-          }}
-        >
+        <Box sx={cardGridSx}>
           {visiblePlayers.map((player) => (
             <PlayerCard
               key={player.id}
               player={player}
               sectionNames={sectionNamesFor(player)}
               badge={badgeFor(player)}
+              missingDateOfBirth={!player.dateOfBirth}
               viewTo={`/manage/players/${player.id}`}
               editTo={`/manage/players/${player.id}/edit`}
             />
@@ -168,7 +178,11 @@ export default function PlayerList() {
         />
       )}
 
-      {!hasPlayers && !isSearching && (
+      {!hasPlayers && !isSearching && missingDateOfBirth && (
+        <EmptyState title="Every player has a date of birth" description="There is nobody left to fix." />
+      )}
+
+      {!hasPlayers && !isSearching && !missingDateOfBirth && (
         <EmptyState title="No players yet" description="Add your club's first player to get started." />
       )}
     </Box>
