@@ -508,10 +508,11 @@ class MatchAvailabilityPollControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.availableCount").value(1));
 
-        mockMvc.perform(put("/api/v1/public/polls/{pollId}/players/{playerProfileId}", pollId, playerId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\": \"UNSURE\"}"))
-                .andExpect(status().isConflict());
+        // The public header reflects the closed state (public writes need a verified token, covered
+        // by PublicAvailabilityPollIntegrationTest).
+        mockMvc.perform(get("/api/v1/public/polls/{pollId}", pollId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.open").value(false));
     }
 
     // --- 035: section-scoped access ---
