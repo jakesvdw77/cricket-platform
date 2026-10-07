@@ -134,8 +134,11 @@ public class MatchAvailabilityPollController {
     public ResponseEntity<List<OpenAvailabilityPollDto>> listOpen(
             Authentication authentication,
             @PathVariable UUID clubId,
-            @RequestParam(required = false) UUID sectionId) {
-        return ResponseEntity.ok(matchAvailabilityPollService.listOpenForClub(authentication, clubId, sectionId));
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId) {
+        return ResponseEntity.ok(
+                matchAvailabilityPollService.listOpenForClub(authentication, clubId, sectionId, leagueId, teamId));
     }
 
     /**
@@ -147,7 +150,10 @@ public class MatchAvailabilityPollController {
     public ResponseEntity<List<OpenAvailabilityPollDto>> listClosed(
             Authentication authentication,
             @PathVariable UUID clubId,
-            @RequestParam(required = false) UUID sectionId) {
-        return ResponseEntity.ok(matchAvailabilityPollService.listClosedForClub(authentication, clubId, sectionId));
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId) {
+        return ResponseEntity.ok(
+                matchAvailabilityPollService.listClosedForClub(authentication, clubId, sectionId, leagueId, teamId));
     }
 }

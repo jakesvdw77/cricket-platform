@@ -44,6 +44,7 @@ import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.SectionAvailabilityRoundServiceImpl;
 import com.cricketlegend.service.support.AvailabilityPollFilter;
+import com.cricketlegend.service.support.AvailabilityPollFilters;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -135,10 +136,22 @@ class SectionAvailabilityRoundServiceImplTest {
                 matchSquadMemberRepository,
                 coverageService,
                 accessService,
+                pollFilters(),
                 java.time.Clock.systemUTC());
         org.mockito.Mockito.lenient()
                 .when(coverageService.resolveAny(any()))
                 .thenReturn(MatchPollCoverageService.Coverage.NONE);
+    }
+
+    /** The real shared filter over this test's mocked access service and repositories. */
+    private AvailabilityPollFilters pollFilters() {
+        return new AvailabilityPollFilters(
+                accessService,
+                leagueRepository,
+                teamRepository,
+                matchRepository,
+                sectionAvailabilityWindowRepository,
+                sectionAvailabilityWindowMatchRepository);
     }
 
     private Section section(UUID clubId, UUID sectionId) {
@@ -196,7 +209,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(matchingSectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, matchingSectionId, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, matchingSectionId, null, null, null);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, matchingSectionId);
         assertThat(result).hasSize(1);
@@ -218,12 +231,146 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, false);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, false);
 
         assertThat(result).hasSize(AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
         assertThat(result).allMatch(dto -> !dto.open());
         assertThat(result.get(0).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(59));
         assertThat(result.get(49).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(10));
+    }
+
+    // --- list: league / team narrowing through the shared filter (docs/specs/083) ---
+
+    private record Slots(UUID leagueRoundId, UUID teamRoundId, UUID otherRoundId, UUID leagueId, UUID teamId) {
+    }
+
+    /** Three rounds: one with an active slot match in the league, one with the team as a side, one with neither. */
+    private Slots stubSlotWorld(UUID clubId, UUID sectionId, boolean slotMatchActive) {
+        UUID leagueId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        SectionAvailabilityRound leagueRound = round(UUID.randomUUID(), clubId, sectionId, true);
+        SectionAvailabilityRound teamRound = round(UUID.randomUUID(), clubId, sectionId, true);
+        SectionAvailabilityRound otherRound = round(UUID.randomUUID(), clubId, sectionId, true);
+        Match inLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(leagueId)
+                .homeTeamId(UUID.randomUUID()).active(slotMatchActive).build();
+        Match withTeam = Match.builder().id(UUID.randomUUID()).clubId(clubId).awayTeamId(teamId)
+                .homeTeamId(UUID.randomUUID()).active(slotMatchActive).build();
+        Match elsewhere = Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(UUID.randomUUID())
+                .homeTeamId(UUID.randomUUID()).active(true).build();
+        UUID w1 = UUID.randomUUID();
+        UUID w2 = UUID.randomUUID();
+        UUID w3 = UUID.randomUUID();
+        when(sectionAvailabilityRoundRepository.findByClubId(clubId))
+                .thenReturn(List.of(leagueRound, teamRound, otherRound));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(List.of(
+                SectionAvailabilityWindow.builder().id(w1).roundId(leagueRound.getId()).build(),
+                SectionAvailabilityWindow.builder().id(w2).roundId(teamRound.getId()).build(),
+                SectionAvailabilityWindow.builder().id(w3).roundId(otherRound.getId()).build()));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(List.of(
+                com.cricketlegend.domain.SectionAvailabilityWindowMatch.builder().windowId(w1).matchId(inLeague.getId()).build(),
+                com.cricketlegend.domain.SectionAvailabilityWindowMatch.builder().windowId(w2).matchId(withTeam.getId()).build(),
+                com.cricketlegend.domain.SectionAvailabilityWindowMatch.builder().windowId(w3).matchId(elsewhere.getId()).build()));
+        org.mockito.Mockito.lenient().when(matchRepository.findAllById(any())).thenReturn(List.of(inLeague, withTeam, elsewhere));
+        if (slotMatchActive) {
+            stubEmptyBracketsFor(sectionId); // only rounds that survive the narrowing are rendered
+        }
+        return new Slots(leagueRound.getId(), teamRound.getId(), otherRound.getId(), leagueId, teamId);
+    }
+
+    @Test
+    void listNarrowsByLeagueToRoundsWithAnActiveSlotMatchInIt() {
+        UUID clubId = UUID.randomUUID();
+        Slots slots = stubSlotWorld(clubId, UUID.randomUUID(), true);
+        when(leagueRepository.findById(slots.leagueId()))
+                .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(slots.leagueId()).clubId(clubId).build()));
+
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, slots.leagueId(), null, null);
+
+        assertThat(result).extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.leagueRoundId());
+    }
+
+    @Test
+    void listNarrowsByTeamToRoundsWhereTheTeamIsASideOfASlotMatch() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        Slots slots = stubSlotWorld(clubId, sectionId, true);
+        when(teamRepository.findById(slots.teamId())).thenReturn(Optional.of(
+                com.cricketlegend.domain.Team.builder().id(slots.teamId()).clubId(clubId).sectionId(sectionId).build()));
+
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, slots.teamId(), null);
+
+        assertThat(result).extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.teamRoundId());
+        verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
+    }
+
+    @Test
+    void aDeactivatedSlotMatchDoesNotSatisfyALeagueOrTeamNarrowing() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        Slots slots = stubSlotWorld(clubId, sectionId, false);
+        when(leagueRepository.findById(slots.leagueId()))
+                .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(slots.leagueId()).clubId(clubId).build()));
+
+        assertThat(service.list(authentication, clubId, null, slots.leagueId(), null, null)).isEmpty();
+    }
+
+    @Test
+    void listWithALeagueOrTeamOfAnotherClubIsNotFound() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(
+                com.cricketlegend.domain.League.builder().id(leagueId).clubId(UUID.randomUUID()).build()));
+        org.mockito.Mockito.lenient().when(teamRepository.findById(teamId)).thenReturn(Optional.of(
+                com.cricketlegend.domain.Team.builder().id(teamId).clubId(UUID.randomUUID()).sectionId(UUID.randomUUID()).build()));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, leagueId, null, null))
+                .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, null, teamId, null))
+                .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
+    }
+
+    @Test
+    void theClosedCapAppliesAfterTheLeagueNarrowing() {
+        UUID clubId = UUID.randomUUID();
+        UUID sectionId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        Match inLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(leagueId).active(true).build();
+        List<SectionAvailabilityRound> rounds = new java.util.ArrayList<>();
+        List<SectionAvailabilityWindow> windows = new java.util.ArrayList<>();
+        List<com.cricketlegend.domain.SectionAvailabilityWindowMatch> links = new java.util.ArrayList<>();
+        List<Match> allMatches = new java.util.ArrayList<>();
+        // 55 newer closed rounds outside the league, 3 older closed rounds inside it
+        for (int i = 0; i < 58; i++) {
+            SectionAvailabilityRound closed = round(UUID.randomUUID(), clubId, sectionId, false);
+            boolean inside = i >= 55;
+            closed.setLastMatchDate(java.time.LocalDate.of(2026, 1, 1).plusDays(inside ? 0 : 100 + i));
+            rounds.add(closed);
+            UUID window = UUID.randomUUID();
+            windows.add(SectionAvailabilityWindow.builder().id(window).roundId(closed.getId()).build());
+            Match slot = inside ? inLeague
+                    : Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(UUID.randomUUID()).active(true).build();
+            links.add(com.cricketlegend.domain.SectionAvailabilityWindowMatch.builder()
+                    .windowId(window).matchId(slot.getId()).build());
+            if (!allMatches.contains(slot)) {
+                allMatches.add(slot);
+            }
+        }
+        when(sectionAvailabilityRoundRepository.findByClubId(clubId)).thenReturn(rounds);
+        when(matchRepository.findAllById(any())).thenReturn(allMatches);
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(leagueRepository.findById(leagueId))
+                .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(leagueId).clubId(clubId).build()));
+        when(sectionAvailabilityWindowRepository.findByRoundIdIn(any())).thenReturn(windows);
+        when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(links);
+        stubEmptyBracketsFor(sectionId);
+
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, leagueId, null, false);
+
+        // narrowed first: the 3 in-league rounds survive although 55 newer ones were closed outside it
+        assertThat(result).hasSize(3);
     }
 
     private SectionAvailabilityRound closedRoundWithSchedule(
@@ -290,7 +437,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, true);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, true);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).open()).isTrue();
@@ -306,7 +453,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null);
 
         assertThat(result).isEmpty();
     }
@@ -1231,7 +1378,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 Match.builder().id(m2).matchDate(early.plusSeconds(86400)).build()));
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null);
 
         assertThat(result).extracting(SectionAvailabilityRoundDto::firstMatchKickoff)
                 .containsExactly(early, early.plusSeconds(86400));
@@ -1259,6 +1406,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 matchSquadMemberRepository,
                 coverageService,
                 accessService,
+                pollFilters(),
                 java.time.Clock.fixed(now, java.time.ZoneOffset.UTC));
     }
 
@@ -1396,19 +1544,19 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID roundId = UUID.randomUUID();
         closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.DAYS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
 
         UUID recentId = UUID.randomUUID();
         closedRoundWithWindows(clubId, recentId, false, null, LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(true);
 
         UUID autoClosedId = UUID.randomUUID();
         closedRoundWithWindows(clubId, autoClosedId, true, NOW_082.minusSeconds(60), LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
     }
 }

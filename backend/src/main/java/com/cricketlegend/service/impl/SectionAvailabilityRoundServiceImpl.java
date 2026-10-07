@@ -42,6 +42,7 @@ import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import com.cricketlegend.service.SectionAvailabilityRoundService;
 import com.cricketlegend.service.support.AutoCloseSchedule;
 import com.cricketlegend.service.support.AvailabilityPollFilter;
+import com.cricketlegend.service.support.AvailabilityPollFilters;
 import com.cricketlegend.service.support.ReopenWindow;
 import com.cricketlegend.service.support.RoundSpan;
 import com.cricketlegend.service.support.RoundWindows;
@@ -119,6 +120,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     private final MatchSquadMemberRepository matchSquadMemberRepository;
     private final MatchPollCoverageService coverageService;
     private final AccessService accessService;
+    private final AvailabilityPollFilters pollFilters;
     private final Clock clock;
 
     public SectionAvailabilityRoundServiceImpl(
@@ -136,6 +138,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             MatchSquadMemberRepository matchSquadMemberRepository,
             MatchPollCoverageService coverageService,
             AccessService accessService,
+            AvailabilityPollFilters pollFilters,
             Clock clock) {
         this.sectionAvailabilityRoundRepository = sectionAvailabilityRoundRepository;
         this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
@@ -151,26 +154,36 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         this.matchSquadMemberRepository = matchSquadMemberRepository;
         this.coverageService = coverageService;
         this.accessService = accessService;
+        this.pollFilters = pollFilters;
         this.clock = clock;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<SectionAvailabilityRoundDto> list(
-            Authentication authentication, UUID clubId, UUID sectionId, Boolean open) {
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID teamId,
+            Boolean open) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
-        Set<UUID> narrowTo = null;
-        if (sectionId != null) {
-            accessService.assertCanAdministerSection(authentication, clubId, sectionId);
-            narrowTo = accessService.sectionAndDescendantIds(clubId, sectionId);
-        }
-        final Set<UUID> narrowToFinal = narrowTo;
+        // Validates section/league/team (403/404) and builds the shared narrowing (docs/specs/083).
+        AvailabilityPollFilter filter = pollFilters.resolve(
+                authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false);
 
-        var rounds = sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
+        List<SectionAvailabilityRound> candidates = sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
                 .filter(round ->
                         accessibleSectionIds.isEmpty() || accessibleSectionIds.get().contains(round.getSectionId()))
-                .filter(round -> narrowToFinal == null || narrowToFinal.contains(round.getSectionId()))
-                .filter(round -> open == null || round.isOpen() == open);
+                .filter(round -> open == null || round.isOpen() == open)
+                .toList();
+        // League/team need each round's active slot matches: one batched load, before the closed cap.
+        Map<UUID, List<Match>> slotMatches = filter.needsGroupMatches() && !candidates.isEmpty()
+                ? pollFilters.slotMatchesByRoundId(
+                        candidates.stream().map(SectionAvailabilityRound::getId).toList())
+                : Map.of();
+        var rounds = candidates.stream()
+                .filter(round -> filter.matchesGroup(round, slotMatches.getOrDefault(round.getId(), List.of())));
         if (Boolean.FALSE.equals(open)) {
             // Closed history is unbounded: most recent first, capped at the 50 most recent.
             rounds = rounds.sorted(Comparator.comparing(

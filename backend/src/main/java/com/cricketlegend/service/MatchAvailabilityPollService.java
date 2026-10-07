@@ -83,14 +83,18 @@ public interface MatchAvailabilityPollService {
      * those whose match resolves to one of their own accessible sections. {@code sectionId}, when
      * supplied, narrows further to that section's own closure — validated via {@link
      * com.cricketlegend.config.AccessService#assertCanAdministerSection} first (404 wrong club,
-     * 403 outside the caller's own reach).
+     * 403 outside the caller's own reach). {@code leagueId} and {@code teamId} (docs/specs/083) narrow
+     * to polls of that league's matches and that team's polls (404 for another club's league or team),
+     * through the shared {@code AvailabilityPollFilter}. Polls of deactivated matches are never listed.
      */
-    List<OpenAvailabilityPollDto> listOpenForClub(Authentication authentication, UUID clubId, UUID sectionId);
+    List<OpenAvailabilityPollDto> listOpenForClub(
+            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId);
 
     /**
      * Closed squad polls for the club, most recent match date first, capped at the 50 most recent
      * (closed history is otherwise unbounded). Same section-scope narrowing and response shape as
      * {@link #listOpenForClub}.
      */
-    List<OpenAvailabilityPollDto> listClosedForClub(Authentication authentication, UUID clubId, UUID sectionId);
+    List<OpenAvailabilityPollDto> listClosedForClub(
+            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId);
 }
