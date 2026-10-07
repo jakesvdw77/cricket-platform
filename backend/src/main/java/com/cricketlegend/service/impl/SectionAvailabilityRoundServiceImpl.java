@@ -41,7 +41,12 @@ import com.cricketlegend.service.SectionAvailabilityAudienceResolver;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import com.cricketlegend.service.SectionAvailabilityRoundService;
 import com.cricketlegend.service.support.AutoCloseSchedule;
+import com.cricketlegend.service.support.ReopenWindow;
+import com.cricketlegend.service.support.RoundSpan;
+import com.cricketlegend.service.support.RoundWindows;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -116,6 +121,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     private final MatchSquadMemberRepository matchSquadMemberRepository;
     private final MatchPollCoverageService coverageService;
     private final AccessService accessService;
+    private final Clock clock;
 
     public SectionAvailabilityRoundServiceImpl(
             SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository,
@@ -131,7 +137,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             SectionAvailabilityRoundMapper sectionAvailabilityRoundMapper,
             MatchSquadMemberRepository matchSquadMemberRepository,
             MatchPollCoverageService coverageService,
-            AccessService accessService) {
+            AccessService accessService,
+            Clock clock) {
         this.sectionAvailabilityRoundRepository = sectionAvailabilityRoundRepository;
         this.sectionAvailabilityWindowRepository = sectionAvailabilityWindowRepository;
         this.sectionAvailabilityWindowMatchRepository = sectionAvailabilityWindowMatchRepository;
@@ -146,6 +153,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         this.matchSquadMemberRepository = matchSquadMemberRepository;
         this.coverageService = coverageService;
         this.accessService = accessService;
+        this.clock = clock;
     }
 
     @Override
@@ -173,10 +181,10 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         }
         List<SectionAvailabilityRound> visible = rounds.toList();
         // One batched walk for every returned round instead of three queries per round.
-        Map<UUID, Instant> kickoffByRoundId = earliestKickoffs(
+        Map<UUID, RoundSpan> spanByRoundId = roundSpans(
                 visible.stream().map(SectionAvailabilityRound::getId).toList());
         return visible.stream()
-                .map(round -> toDto(round, kickoffByRoundId.get(round.getId())))
+                .map(round -> toDto(round, spanByRoundId.getOrDefault(round.getId(), RoundSpan.NONE)))
                 .toList();
     }
 
@@ -263,7 +271,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                     .build());
         }
 
-        return toDto(round, earliest);
+        return toDto(round, new RoundSpan(earliest, latest));
     }
 
     @Override
@@ -272,14 +280,14 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             Authentication authentication, UUID clubId, UUID roundId, UpdatePollCloseTimeRequest request) {
         SectionAvailabilityRound round = findRoundOrThrowForClub(clubId, roundId);
         accessService.assertCanAdministerSection(authentication, clubId, round.getSectionId());
-        Instant earliest = earliestKickoff(round.getId());
+        RoundSpan span = roundSpan(round.getId());
         Instant validated = AutoCloseSchedule.validateCloseTime(
-                request.autoClose(), request.scheduledCloseAt(), earliest, Instant.now());
+                request.autoClose(), request.scheduledCloseAt(), span.earliestKickoff(), Instant.now());
         // Only the close time changes; open/closed state is a separate action (open/close).
         round.setAutoClose(request.autoClose());
         round.setScheduledCloseAt(validated);
         round = sectionAvailabilityRoundRepository.save(round);
-        return toDto(round, earliest);
+        return toDto(round, span);
     }
 
     @Override
@@ -306,13 +314,19 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         }
         // Reopening is only allowed until the automatic close time, else the auto-close job would
         // undo it within minutes.
-        if (!AutoCloseSchedule.canReopen(round.isAutoClose(), round.getScheduledCloseAt(), Instant.now())) {
+        Instant now = clock.instant();
+        if (!AutoCloseSchedule.canReopen(round.isAutoClose(), round.getScheduledCloseAt(), now)) {
             throw new ReopenWindowPassedException("This poll can no longer be reopened because its automatic close time has passed.");
+        }
+        // docs/specs/082: and not once its latest match started more than 24 hours ago.
+        RoundSpan span = roundSpan(round.getId());
+        if (!ReopenWindow.allows(span.latestStart(), now)) {
+            throw new ReopenWindowPassedException(ReopenWindow.REFUSED_MESSAGE);
         }
         round.setOpen(true);
         round = sectionAvailabilityRoundRepository.save(round);
         setWindowsOpen(round.getId(), true);
-        return toDto(round);
+        return toDto(round, span);
     }
 
     @Override
@@ -396,17 +410,22 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     /**
      * The one walk windows -> {@code section_availability_window_match} -> {@link Match} for any
      * number of rounds (three batched queries regardless of count), returned as (window, match)
-     * pairs; shared by {@link #getMatches}, {@link #earliestKickoff} and {@link #earliestKickoffs}.
+     * pairs; shared by {@link #getMatches} and {@link #roundSpans}.
      */
     private List<Map.Entry<SectionAvailabilityWindow, Match>> loadWindowedMatches(List<UUID> roundIds) {
+        return loadWindows(roundIds).pairs();
+    }
+
+    /** The windows of the given rounds plus each (window, match) pair; same three batched queries. */
+    private RoundWindows loadWindows(List<UUID> roundIds) {
         if (roundIds.isEmpty()) {
-            return List.of();
+            return new RoundWindows(List.of(), List.of());
         }
         List<SectionAvailabilityWindow> windows = sectionAvailabilityWindowRepository.findByRoundIdIn(roundIds);
         Map<UUID, SectionAvailabilityWindow> windowById = windows.stream()
                 .collect(Collectors.toMap(SectionAvailabilityWindow::getId, window -> window));
         if (windowById.isEmpty()) {
-            return List.of();
+            return new RoundWindows(List.of(), List.of());
         }
         List<SectionAvailabilityWindowMatch> windowMatches =
                 sectionAvailabilityWindowMatchRepository.findByWindowIdIn(windowById.keySet());
@@ -425,24 +444,42 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                 result.add(Map.entry(window, match));
             }
         }
-        return result;
+        return new RoundWindows(windows, result);
     }
 
-    /** Earliest covered match kickoff per round id; rounds covering no match are absent. */
-    private Map<UUID, Instant> earliestKickoffs(List<UUID> roundIds) {
-        Map<UUID, Instant> result = new LinkedHashMap<>();
-        for (Map.Entry<SectionAvailabilityWindow, Match> windowed : loadWindowedMatches(roundIds)) {
-            result.merge(
-                    windowed.getKey().getRoundId(),
-                    windowed.getValue().getMatchDate(),
-                    (a, b) -> a.isBefore(b) ? a : b);
+    /** One batched walk giving every given round's {@link RoundSpan}; rounds with no windows are absent. */
+    private Map<UUID, RoundSpan> roundSpans(List<UUID> roundIds) {
+        RoundWindows loaded = loadWindows(roundIds);
+        Map<UUID, List<Instant>> startsByRound = new LinkedHashMap<>();
+        Set<UUID> windowsWithMatch = new LinkedHashSet<>();
+        for (Map.Entry<SectionAvailabilityWindow, Match> pair : loaded.pairs()) {
+            startsByRound
+                    .computeIfAbsent(pair.getKey().getRoundId(), id -> new ArrayList<>())
+                    .add(pair.getValue().getMatchDate());
+            windowsWithMatch.add(pair.getKey().getId());
+        }
+        Map<UUID, List<LocalDate>> matchlessDatesByRound = new LinkedHashMap<>();
+        for (SectionAvailabilityWindow window : loaded.windows()) {
+            if (!windowsWithMatch.contains(window.getId())) {
+                matchlessDatesByRound
+                        .computeIfAbsent(window.getRoundId(), id -> new ArrayList<>())
+                        .add(window.getWindowDate());
+            }
+        }
+        Map<UUID, RoundSpan> result = new LinkedHashMap<>();
+        Set<UUID> ids = new LinkedHashSet<>(startsByRound.keySet());
+        ids.addAll(matchlessDatesByRound.keySet());
+        for (UUID roundId : ids) {
+            List<Instant> starts = startsByRound.getOrDefault(roundId, List.of());
+            result.put(roundId, new RoundSpan(
+                    starts.stream().filter(java.util.Objects::nonNull).min(Comparator.naturalOrder()).orElse(null),
+                    ReopenWindow.latestStart(starts, matchlessDatesByRound.getOrDefault(roundId, List.of()))));
         }
         return result;
     }
 
-    /** Earliest covered match kickoff of one round, or {@code null} when it covers none. */
-    private Instant earliestKickoff(UUID roundId) {
-        return earliestKickoffs(List.of(roundId)).get(roundId);
+    private RoundSpan roundSpan(UUID roundId) {
+        return roundSpans(List.of(roundId)).getOrDefault(roundId, RoundSpan.NONE);
     }
 
     @Override
@@ -602,13 +639,16 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
     }
 
     private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round) {
-        return toDto(round, earliestKickoff(round.getId()));
+        return toDto(round, roundSpan(round.getId()));
     }
 
-    private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round, Instant firstMatchKickoff) {
+    private SectionAvailabilityRoundDto toDto(SectionAvailabilityRound round, RoundSpan span) {
         SectionAvailabilityRoundResponsesDto responses = buildResponsesDto(round);
+        Instant now = clock.instant();
+        boolean canReopen = AutoCloseSchedule.canReopen(round.isAutoClose(), round.getScheduledCloseAt(), now)
+                && ReopenWindow.allows(span.latestStart(), now);
         return sectionAvailabilityRoundMapper.toDto(
-                round, responses.sectionName(), firstMatchKickoff, responses.brackets());
+                round, responses.sectionName(), span.earliestKickoff(), responses.brackets(), canReopen);
     }
 
     private String sectionName(UUID sectionId) {
