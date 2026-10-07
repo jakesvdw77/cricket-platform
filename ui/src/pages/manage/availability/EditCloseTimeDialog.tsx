@@ -8,6 +8,7 @@ import { openRound, updateRoundCloseTime } from '../../../api/sectionAvailabilit
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../utils/datetimeLocal'
 import { errorDetail } from '../../../utils/errorDetail'
 import { defaultCloseTime, validateCloseTime } from './pollHelpers'
+import { invalidateAvailabilityCounters } from '../../../api/availabilitySummaryApi'
 
 // Which poll the dialog edits: a squad poll is addressed by match + poll id, a group poll by round id.
 export type CloseTimeTarget = { kind: 'SQUAD'; matchId: string; pollId: string } | { kind: 'GROUP'; roundId: string }
@@ -88,6 +89,7 @@ function EditCloseTimeForm({
       // Even a failed reopen has saved the close time, so refresh in both cases. The prefixes cover
       // the dashboard lists, the Responses page ('detail' and 'responses') and a match's poll tab.
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+      invalidateAvailabilityCounters(queryClient, clubId)
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-fixture-groups'] })
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })

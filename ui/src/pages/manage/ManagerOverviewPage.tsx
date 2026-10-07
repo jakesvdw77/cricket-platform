@@ -7,6 +7,7 @@ import type { BrandIconName } from '../../components/BrandIcon'
 import { QuickActions } from '../../components/QuickActions'
 import type { QuickAction } from '../../components/QuickActions'
 import { CardProgressBar } from '../../components/CardProgressBar'
+import { keyFigureCardSx, keyFigureValueSx } from '../../components/PageCounters'
 import { badgeSx } from '../../components/RecordCard'
 import { keycloak } from '../../auth/keycloak'
 import { getManagerOverview } from '../../api/overviewApi'
@@ -15,7 +16,7 @@ import type { OverviewMatch, OverviewPoll, OverviewResult } from '../../api/over
 // docs/specs/079-manager-shell-and-overview.md: the /manage index - what needs the manager's
 // attention now. The navigation the old tile grid carried lives in the shell's menus.
 
-const cardSx = { bgcolor: 'background.paper', boxShadow: 2, p: 2, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }
+const cardSx = keyFigureCardSx
 
 function firstName(): string | undefined {
   const parsed = keycloak.tokenParsed as { given_name?: string; name?: string } | undefined
@@ -117,13 +118,7 @@ function KeyFigure({ value, label, warn = false }: { value: number; label: strin
       <Typography
         component="b"
         data-testid="key-figure-value"
-        sx={{
-          fontSize: '1.6rem',
-          fontWeight: 700,
-          lineHeight: 1.1,
-          fontVariantNumeric: 'tabular-nums',
-          color: warn ? 'warning.main' : 'text.primary',
-        }}
+        sx={keyFigureValueSx(warn)}
       >
         {value}
       </Typography>

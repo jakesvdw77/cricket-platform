@@ -4574,6 +4574,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ManagerOverviewDto"
+  /api/v1/manage/clubs/{clubId}/availability/summary:
+    get:
+      tags:
+      - availability-summary-controller
+      operationId: summary
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AvailabilitySummaryDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/selection-pool:
     get:
       tags:
@@ -6287,6 +6306,25 @@ components:
           type:
           - string
           - "null"
+    AvailabilitySummaryDto:
+      type: object
+      description: "Availability counters over the open polls in the caller's scope. closingSoon counts open polls closing within the next 48 hours."
+      properties:
+        openPolls:
+          type: integer
+          format: int32
+        playersResponded:
+          type: integer
+          format: int32
+        playersInAudience:
+          type: integer
+          format: int32
+        answersAwaited:
+          type: integer
+          format: int64
+        closingSoon:
+          type: integer
+          format: int32
     ManagerOverviewDto:
       type: object
       description: "The manager overview, scoped to the caller. 'This week' is the start of today to the start of today plus 7 days in the server default zone."

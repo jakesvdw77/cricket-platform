@@ -261,4 +261,65 @@ class OverviewPollsTest {
             assertThat(dto.repliedCount()).isZero();
         });
     }
+
+    @Test
+    void squadPollWithPlayersExposesSquadAndOnlySquadMembersWhoAnswered() {
+        Match match = match(true);
+        MatchAvailabilityPoll poll = squadPoll(match, null);
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+        UUID leftTheSquad = UUID.randomUUID();
+        when(pollRepository.findOpenByMatchClubId(CLUB_ID)).thenReturn(List.of(poll));
+        when(matchRepository.findAllById(anyCollection())).thenReturn(List.of(match));
+        when(teamRepository.findAllById(anyCollection())).thenReturn(List.of(home));
+        when(squadRepository.findByTeamIdInAndSeasonIdIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(member(a), member(b)));
+        when(playerAvailabilityRepository.findByPollIdIn(anyCollection()))
+                .thenReturn(List.of(answer(poll, a), answer(poll, leftTheSquad)));
+
+        List<OverviewPolls.OpenPoll> result = polls.openPollsWithPlayers(CLUB_ID, Optional.empty());
+
+        assertThat(result).singleElement().satisfies(open -> {
+            assertThat(open.audience()).containsExactlyInAnyOrder(a, b);
+            assertThat(open.responded()).containsExactly(a);
+            assertThat(open.poll().repliedCount()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void groupPollWithPlayersCountsAnAnswerToAnySingleWindowAsResponded() {
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound round = SectionAvailabilityRound.builder().id(roundId).clubId(CLUB_ID)
+                .sectionId(SENIORS).description("Seniors").open(true).build();
+        UUID w1 = UUID.randomUUID();
+        UUID w2 = UUID.randomUUID();
+        UUID both = UUID.randomUUID();
+        UUID onlyFirst = UUID.randomUUID();
+        UUID none = UUID.randomUUID();
+        when(roundRepository.findByClubIdAndOpenTrue(CLUB_ID)).thenReturn(List.of(round));
+        when(windowRepository.findByRoundIdIn(anyCollection())).thenReturn(List.of(
+                SectionAvailabilityWindow.builder().id(w1).roundId(roundId).build(),
+                SectionAvailabilityWindow.builder().id(w2).roundId(roundId).build()));
+        when(responseRepository.findByWindowIdIn(anyCollection())).thenReturn(List.of(
+                SectionAvailabilityResponse.builder().windowId(w1).playerProfileId(both).build(),
+                SectionAvailabilityResponse.builder().windowId(w2).playerProfileId(both).build(),
+                SectionAvailabilityResponse.builder().windowId(w1).playerProfileId(onlyFirst).build()));
+        when(playerSectionRepository.findBySectionIdIn(anyCollection())).thenReturn(List.of(
+                PlayerSection.builder().playerProfileId(both).sectionId(SENIORS).build(),
+                PlayerSection.builder().playerProfileId(onlyFirst).sectionId(SENIORS).build(),
+                PlayerSection.builder().playerProfileId(none).sectionId(SENIORS).build()));
+        when(playerProfileRepository.findAllById(anyCollection())).thenReturn(List.of(
+                PlayerProfile.builder().id(both).active(true).build(),
+                PlayerProfile.builder().id(onlyFirst).active(true).build(),
+                PlayerProfile.builder().id(none).active(true).build()));
+
+        List<OverviewPolls.OpenPoll> result = polls.openPollsWithPlayers(CLUB_ID, Optional.empty());
+
+        assertThat(result).singleElement().satisfies(open -> {
+            assertThat(open.audience()).containsExactlyInAnyOrder(both, onlyFirst, none);
+            assertThat(open.responded()).containsExactlyInAnyOrder(both, onlyFirst);
+            // the poll's own figure still needs every window
+            assertThat(open.poll().repliedCount()).isEqualTo(1);
+        });
+    }
 }

@@ -175,6 +175,9 @@ describe('EditCloseTimeDialog', () => {
       expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'section-availability-rounds'] }),
     )
     expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'availability-polls'] })
+    // 081: the Polls counters and the Overview key figures refresh too.
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'availability-summary'] })
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'overview'] })
   })
 
   it('cancel closes without saving', async () => {

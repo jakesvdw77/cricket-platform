@@ -94,14 +94,27 @@ public class OverviewPolls {
         this.accessService = accessService;
     }
 
+    /**
+     * An open poll with the players behind its counts: {@code audience} is who was asked, {@code
+     * responded} the audience members with at least one real answer (for a group poll, in any one
+     * window, unlike {@code poll.repliedCount()} which needs every window).
+     */
+    public record OpenPoll(OverviewPollDto poll, Set<UUID> audience, Set<UUID> responded) {
+    }
+
     /** All open in-scope polls, squad and group, unsorted. */
     public List<OverviewPollDto> openPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
-        List<OverviewPollDto> result = new ArrayList<>(squadPolls(clubId, accessibleSectionIds));
+        return openPollsWithPlayers(clubId, accessibleSectionIds).stream().map(OpenPoll::poll).toList();
+    }
+
+    /** The same polls as {@link #openPolls}, from the same queries, each with its player sets. */
+    public List<OpenPoll> openPollsWithPlayers(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
+        List<OpenPoll> result = new ArrayList<>(squadPolls(clubId, accessibleSectionIds));
         result.addAll(groupPolls(clubId, accessibleSectionIds));
         return result;
     }
 
-    private List<OverviewPollDto> squadPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
+    private List<OpenPoll> squadPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
         List<MatchAvailabilityPoll> polls = pollRepository.findOpenByMatchClubId(clubId);
         if (polls.isEmpty()) {
             return List.of();
@@ -147,20 +160,23 @@ public class OverviewPolls {
                     .add(answer.getPlayerProfileId());
         }
 
-        List<OverviewPollDto> result = new ArrayList<>();
+        List<OpenPoll> result = new ArrayList<>();
         for (MatchAvailabilityPoll poll : scoped) {
             Match match = matchesById.get(poll.getMatchId());
             Set<UUID> squad = squads.getOrDefault(new SquadKey(poll.getTeamId(), match.getSeasonId()), Set.of());
             Set<UUID> answered = new HashSet<>(answeredByPollId.getOrDefault(poll.getId(), Set.of()));
             answered.retainAll(squad);
-            result.add(new OverviewPollDto(
-                    AvailabilityPollType.SQUAD,
-                    poll.getId(),
-                    match.getId(),
-                    squadTitle(poll, match, teamsById),
-                    answered.size(),
-                    squad.size(),
-                    poll.getScheduledCloseAt()));
+            result.add(new OpenPoll(
+                    new OverviewPollDto(
+                            AvailabilityPollType.SQUAD,
+                            poll.getId(),
+                            match.getId(),
+                            squadTitle(poll, match, teamsById),
+                            answered.size(),
+                            squad.size(),
+                            poll.getScheduledCloseAt()),
+                    squad,
+                    answered));
         }
         return result;
     }
@@ -187,7 +203,7 @@ public class OverviewPolls {
         return own + " v " + opponent + ", " + date;
     }
 
-    private List<OverviewPollDto> groupPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
+    private List<OpenPoll> groupPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
         List<SectionAvailabilityRound> rounds = roundRepository.findByClubIdAndOpenTrue(clubId).stream()
                 .filter(round -> accessibleSectionIds.isEmpty()
                         || accessibleSectionIds.get().contains(round.getSectionId()))
@@ -213,7 +229,7 @@ public class OverviewPolls {
         Map<UUID, Set<UUID>> audienceBySectionId = audiences(
                 rounds.stream().map(SectionAvailabilityRound::getSectionId).collect(Collectors.toSet()));
 
-        List<OverviewPollDto> result = new ArrayList<>();
+        List<OpenPoll> result = new ArrayList<>();
         for (SectionAvailabilityRound round : rounds) {
             Set<UUID> audience = audienceBySectionId.getOrDefault(round.getSectionId(), Set.of());
             List<UUID> windowIds = windowIdsByRoundId.getOrDefault(round.getId(), List.of());
@@ -221,14 +237,21 @@ public class OverviewPolls {
                     .filter(player -> windowIds.stream()
                             .allMatch(window -> answeredByWindowId.getOrDefault(window, Set.of()).contains(player)))
                     .count();
-            result.add(new OverviewPollDto(
-                    AvailabilityPollType.GROUP,
-                    round.getId(),
-                    null,
-                    round.getDescription(),
-                    replied,
-                    audience.size(),
-                    round.getScheduledCloseAt()));
+            Set<UUID> responded = audience.stream()
+                    .filter(player -> windowIds.stream()
+                            .anyMatch(window -> answeredByWindowId.getOrDefault(window, Set.of()).contains(player)))
+                    .collect(Collectors.toSet());
+            result.add(new OpenPoll(
+                    new OverviewPollDto(
+                            AvailabilityPollType.GROUP,
+                            round.getId(),
+                            null,
+                            round.getDescription(),
+                            replied,
+                            audience.size(),
+                            round.getScheduledCloseAt()),
+                    audience,
+                    responded));
         }
         return result;
     }
