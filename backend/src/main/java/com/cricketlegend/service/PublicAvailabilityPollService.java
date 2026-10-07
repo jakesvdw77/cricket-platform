@@ -1,19 +1,24 @@
 package com.cricketlegend.service;
 
-import com.cricketlegend.domain.AvailabilityStatus;
-import com.cricketlegend.dto.PublicAvailabilityPollDto;
+import com.cricketlegend.dto.PublicAnswersDto;
+import com.cricketlegend.dto.PublicAnswersRequest;
+import com.cricketlegend.dto.PublicPollHeaderDto;
+import com.cricketlegend.dto.PublicVerifyRequest;
+import com.cricketlegend.dto.PublicVerifyResponseDto;
 import java.util.UUID;
 
 /**
- * Public, unauthenticated surface for docs/specs/032-match-availability-polls.md, entirely under
- * {@code /api/v1/public/polls}. No {@code clubId} parameter anywhere — every method resolves the
- * {@code Match}/{@code Team}/{@code League}/{@code Season} context entirely from the poll's own
- * id, since the poll's UUID is the only thing gating access (see the spec's Non-goals/Rollout
- * Notes on this deliberate trust posture).
+ * Public, unauthenticated surface of a squad poll (docs/specs/032, reshaped by
+ * docs/specs/077-public-availability-form-verification.md): a header, a verify step, and answers
+ * that need the token verify issued. Nothing about any player is returned before a successful verify.
  */
 public interface PublicAvailabilityPollService {
 
-    PublicAvailabilityPollDto getPoll(UUID pollId);
+    PublicPollHeaderDto getHeader(UUID pollId);
 
-    PublicAvailabilityPollDto setAvailability(UUID pollId, UUID playerProfileId, AvailabilityStatus status);
+    PublicVerifyResponseDto verify(UUID pollId, PublicVerifyRequest request, String clientAddress);
+
+    PublicAnswersDto getAnswers(UUID pollId, UUID playerId, String token);
+
+    PublicAnswersDto saveAnswers(UUID pollId, UUID playerId, String token, PublicAnswersRequest request);
 }

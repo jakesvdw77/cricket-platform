@@ -27,6 +27,17 @@ public interface PlayerProfileRepository extends JpaRepository<PlayerProfile, UU
             """)
     List<PlayerProfile> findByClubIdWithoutDateOfBirth(@Param("clubId") UUID clubId);
 
+    /**
+     * The date of birth of each ACTIVE player among {@code ids}, in one joined query (the 077
+     * public verify step). Inactive players are not returned at all.
+     */
+    @Query("""
+            select p.id as playerProfileId, pe.dateOfBirth as dateOfBirth
+            from PlayerProfile p, Person pe
+            where pe.id = p.personId and p.active = true and p.id in :ids
+            """)
+    List<PlayerDateOfBirthView> findActiveDatesOfBirth(@Param("ids") java.util.Collection<UUID> ids);
+
     /** Active players of the club — the manager overview's key figure for an unrestricted caller (079). */
     long countByClubIdAndActiveTrue(UUID clubId);
 

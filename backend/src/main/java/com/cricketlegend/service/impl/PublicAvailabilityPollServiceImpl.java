@@ -1,6 +1,6 @@
 package com.cricketlegend.service.impl;
 
-import com.cricketlegend.domain.AvailabilityStatus;
+import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
@@ -8,9 +8,15 @@ import com.cricketlegend.domain.PlayerAvailability;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.PlayerAvailabilityRowDto;
-import com.cricketlegend.dto.PublicAvailabilityPollDto;
+import com.cricketlegend.dto.PublicAnswerDto;
+import com.cricketlegend.dto.PublicAnswersDto;
+import com.cricketlegend.dto.PublicAnswersRequest;
+import com.cricketlegend.dto.PublicPollHeaderDto;
+import com.cricketlegend.dto.PublicVerifyRequest;
+import com.cricketlegend.dto.PublicVerifyResponseDto;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.PollClosedException;
+import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -19,24 +25,29 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.AvailabilityPollSquadResolver;
 import com.cricketlegend.service.PublicAvailabilityPollService;
+import com.cricketlegend.service.support.MatchSideNames;
+import com.cricketlegend.service.support.PublicAudienceMember;
+import com.cricketlegend.service.support.PublicAvailabilityToken;
+import com.cricketlegend.service.support.PublicAvailabilityVerifier;
+import com.cricketlegend.service.support.PublicPollKind;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Business rules per docs/specs/032-match-availability-polls.md: both methods resolve {@code
- * MatchAvailabilityPoll} -&gt; {@code Match} -&gt; ({@code Team}/{@code League}/{@code Season} for
- * display names) entirely from {@code pollId}, no {@code clubId} anywhere — the poll's own UUID is
- * the entire access boundary. {@link #setAvailability} 404s ({@link NotFoundException}) if {@code
- * pollId} doesn't exist or {@code playerProfileId} isn't one of the poll's own resolved squad rows
- * (not a real {@code TeamSquadMember} for this poll's team+season), then 409s ({@link
- * PollClosedException}) if the poll is currently closed, otherwise upserts the {@link
- * PlayerAvailability} row (find-by-poll-and-player, else build new) — {@code updatedBy} always
- * {@code null}, no authenticated identity on this write path. Squad/response resolution reuses the
- * same shared {@link AvailabilityPollSquadResolver} as {@code MatchAvailabilityPollServiceImpl}.
+ * Public squad poll rules (docs/specs/077): the header carries no player data; {@link #verify}
+ * matches only players of this poll's own squad ({@link AvailabilityPollSquadResolver}); answers
+ * require the token {@code verify} issued for this poll and player, the player must still belong to
+ * the squad (404 otherwise), and a closed poll refuses writes (409). Saves set {@code source =
+ * PUBLIC_LINK}.
+ *
+ * <p>{@link #verify} is deliberately NOT {@code @Transactional}: the attempt counters it writes must
+ * commit even though a failed verification ends in an exception, so each lookup and counter write
+ * runs in its own short transaction instead.
  */
 @Service
 public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPollService {
@@ -48,6 +59,8 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
     private final SeasonRepository seasonRepository;
     private final PlayerAvailabilityRepository playerAvailabilityRepository;
     private final AvailabilityPollSquadResolver squadResolver;
+    private final PublicAvailabilityVerifier verifier;
+    private final PublicAvailabilityToken tokens;
 
     public PublicAvailabilityPollServiceImpl(
             MatchAvailabilityPollRepository matchAvailabilityPollRepository,
@@ -56,7 +69,9 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
             LeagueRepository leagueRepository,
             SeasonRepository seasonRepository,
             PlayerAvailabilityRepository playerAvailabilityRepository,
-            AvailabilityPollSquadResolver squadResolver) {
+            AvailabilityPollSquadResolver squadResolver,
+            PublicAvailabilityVerifier verifier,
+            PublicAvailabilityToken tokens) {
         this.matchAvailabilityPollRepository = matchAvailabilityPollRepository;
         this.matchRepository = matchRepository;
         this.teamRepository = teamRepository;
@@ -64,98 +79,95 @@ public class PublicAvailabilityPollServiceImpl implements PublicAvailabilityPoll
         this.seasonRepository = seasonRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
         this.squadResolver = squadResolver;
+        this.verifier = verifier;
+        this.tokens = tokens;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PublicAvailabilityPollDto getPoll(UUID pollId) {
+    public PublicPollHeaderDto getHeader(UUID pollId) {
         MatchAvailabilityPoll poll = findPollOrThrow(pollId);
         Match match = findMatchOrThrow(poll);
-        return toDto(poll, match);
+        Map<UUID, Team> teams = new HashMap<>();
+        teamRepository.findAllById(teamIds(poll, match)).forEach(team -> teams.put(team.getId(), team));
+        Team pollTeam = teams.get(poll.getTeamId());
+        return new PublicPollHeaderDto(
+                poll.getId(),
+                poll.isOpen(),
+                match.getClubId(),
+                MatchSideNames.home(match, teams),
+                MatchSideNames.away(match, teams),
+                match.getMatchDate(),
+                match.getVenue(),
+                match.getLeagueId() == null
+                        ? null
+                        : leagueRepository.findById(match.getLeagueId()).map(League::getName).orElse(null),
+                seasonRepository.findById(match.getSeasonId()).map(Season::getLabel).orElse(null),
+                pollTeam == null ? null : pollTeam.getName(),
+                poll.getScheduledCloseAt());
+    }
+
+    @Override
+    public PublicVerifyResponseDto verify(UUID pollId, PublicVerifyRequest request, String clientAddress) {
+        MatchAvailabilityPoll poll = findPollOrThrow(pollId);
+        Match match = findMatchOrThrow(poll);
+        List<PublicAudienceMember> audience = squadResolver.resolveSquadRows(poll.getTeamId(), match.getSeasonId())
+                .stream()
+                .map(row -> new PublicAudienceMember(
+                        row.playerProfileId(), row.firstName(), row.lastName(), row.squadJerseyNumber()))
+                .toList();
+        return verifier.verify(PublicPollKind.POLL, pollId, audience, request, clientAddress,
+                () -> teamRepository.findById(poll.getTeamId()).map(Team::getName).orElse(null));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicAnswersDto getAnswers(UUID pollId, UUID playerId, String token) {
+        MatchAvailabilityPoll poll = findPollOrThrow(pollId);
+        authorise(poll, playerId, token);
+        return playerAvailabilityRepository.findByPollIdAndPlayerProfileId(pollId, playerId)
+                .map(answer -> new PublicAnswersDto(List.of(new PublicAnswerDto(null, answer.getStatus()))))
+                .orElseGet(() -> new PublicAnswersDto(List.of()));
     }
 
     @Override
     @Transactional
-    public PublicAvailabilityPollDto setAvailability(
-            UUID pollId, UUID playerProfileId, AvailabilityStatus status) {
+    public PublicAnswersDto saveAnswers(UUID pollId, UUID playerId, String token, PublicAnswersRequest request) {
         MatchAvailabilityPoll poll = findPollOrThrow(pollId);
-        Match match = findMatchOrThrow(poll);
-
-        List<PlayerAvailabilityRowDto> squadRows =
-                squadResolver.resolveSquadRows(poll.getTeamId(), match.getSeasonId());
-        boolean inSquad = squadRows.stream().anyMatch(row -> row.playerProfileId().equals(playerProfileId));
-        if (!inSquad) {
-            throw new NotFoundException(
-                    "Player " + playerProfileId + " is not part of this poll's own squad");
+        authorise(poll, playerId, token);
+        if (request.answers().size() != 1) {
+            throw new ValidationException("A squad poll takes exactly one answer");
         }
-
         if (!poll.isOpen()) {
             throw new PollClosedException("Poll is closed: " + pollId);
         }
-
         PlayerAvailability availability = playerAvailabilityRepository
-                .findByPollIdAndPlayerProfileId(pollId, playerProfileId)
-                .orElseGet(() -> PlayerAvailability.builder()
-                        .pollId(pollId)
-                        .playerProfileId(playerProfileId)
-                        .build());
-        availability.setStatus(status);
-        playerAvailabilityRepository.save(availability);
-
-        return toDto(poll, match);
+                .findByPollIdAndPlayerProfileId(pollId, playerId)
+                .orElseGet(() -> PlayerAvailability.builder().pollId(pollId).playerProfileId(playerId).build());
+        availability.setStatus(request.answers().get(0).status());
+        availability.setSource(AnswerSource.PUBLIC_LINK);
+        PlayerAvailability saved = playerAvailabilityRepository.save(availability);
+        return new PublicAnswersDto(List.of(new PublicAnswerDto(null, saved.getStatus())));
     }
 
-    private PublicAvailabilityPollDto toDto(MatchAvailabilityPoll poll, Match match) {
-        String homeTeamName = resolveTeamName(match.getHomeTeamId(), match.getHomeTeamName());
-        String awayTeamName = resolveTeamName(match.getAwayTeamId(), match.getAwayTeamName());
-        String teamName = resolveTeamName(poll.getTeamId(), null);
-        String leagueName = match.getLeagueId() == null ? null : findLeagueName(match.getLeagueId());
-        String seasonLabel = findSeasonLabel(match.getSeasonId());
-
-        List<PlayerAvailabilityRowDto> rows = rowsWithStatuses(poll, match.getSeasonId());
-
-        return new PublicAvailabilityPollDto(
-                poll.getId(),
-                poll.isOpen(),
-                homeTeamName,
-                awayTeamName,
-                match.getMatchDate(),
-                match.getVenue(),
-                leagueName,
-                seasonLabel,
-                teamName,
-                rows);
-    }
-
-    private List<PlayerAvailabilityRowDto> rowsWithStatuses(MatchAvailabilityPoll poll, UUID seasonId) {
-        List<PlayerAvailabilityRowDto> squadRows = squadResolver.resolveSquadRows(poll.getTeamId(), seasonId);
-        Map<UUID, AvailabilityStatus> statusByPlayerId =
-                playerAvailabilityRepository.findByPollId(poll.getId()).stream()
-                        .collect(Collectors.toMap(
-                                PlayerAvailability::getPlayerProfileId, PlayerAvailability::getStatus));
-        return squadRows.stream()
-                .map(row -> new PlayerAvailabilityRowDto(
-                        row.playerProfileId(),
-                        row.firstName(),
-                        row.lastName(),
-                        row.squadJerseyNumber(),
-                        statusByPlayerId.get(row.playerProfileId())))
-                .toList();
-    }
-
-    private String resolveTeamName(UUID teamId, String fallbackName) {
-        if (teamId == null) {
-            return fallbackName;
+    /** Token first (401), then the player must still belong to the poll's squad (404). */
+    private void authorise(MatchAvailabilityPoll poll, UUID playerId, String token) {
+        tokens.validate(token, PublicPollKind.POLL, poll.getId(), playerId);
+        Match match = findMatchOrThrow(poll);
+        Optional<PlayerAvailabilityRowDto> member = squadResolver
+                .resolveSquadRows(poll.getTeamId(), match.getSeasonId()).stream()
+                .filter(row -> row.playerProfileId().equals(playerId))
+                .findFirst();
+        if (member.isEmpty()) {
+            throw new NotFoundException("Player " + playerId + " is not part of this poll's own squad");
         }
-        return teamRepository.findById(teamId).map(Team::getName).orElse(fallbackName);
     }
 
-    private String findLeagueName(UUID leagueId) {
-        return leagueRepository.findById(leagueId).map(League::getName).orElse(null);
-    }
-
-    private String findSeasonLabel(UUID seasonId) {
-        return seasonRepository.findById(seasonId).map(Season::getLabel).orElse(null);
+    private List<UUID> teamIds(MatchAvailabilityPoll poll, Match match) {
+        return java.util.stream.Stream.of(poll.getTeamId(), match.getHomeTeamId(), match.getAwayTeamId())
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private MatchAvailabilityPoll findPollOrThrow(UUID pollId) {

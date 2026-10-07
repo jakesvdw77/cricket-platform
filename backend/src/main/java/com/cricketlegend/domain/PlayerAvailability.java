@@ -51,6 +51,12 @@ public class PlayerAvailability {
     @Column(nullable = false)
     private AvailabilityStatus status;
 
+    /** Who wrote this answer; a manager write resets it to MANAGER (077). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    @Builder.Default
+    private AnswerSource source = AnswerSource.MANAGER;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

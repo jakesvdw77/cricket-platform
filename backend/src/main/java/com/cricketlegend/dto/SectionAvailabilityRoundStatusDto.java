@@ -12,8 +12,15 @@ import java.util.UUID;
  * sharing the same {@code dayPart} across different dates, so a specific bracket is only ever
  * addressed by its own {@code windowId} from here on, not {@code dayPart} alone. {@code status} is
  * {@code null} when that player hasn't responded to this bracket yet. See
- * docs/specs/063-section-availability-and-flexible-squads.md.
+ * docs/specs/063-section-availability-and-flexible-squads.md. {@code viaLink} is true when the
+ * answer came through the public link (077).
  */
 public record SectionAvailabilityRoundStatusDto(
-        UUID windowId, DayPart dayPart, LocalDate windowDate, AvailabilityStatus status) {
+        UUID windowId, DayPart dayPart, LocalDate windowDate, AvailabilityStatus status, Boolean viaLink) {
+
+    /** A status entry with no "via link" marker. */
+    public SectionAvailabilityRoundStatusDto(
+            UUID windowId, DayPart dayPart, LocalDate windowDate, AvailabilityStatus status) {
+        this(windowId, dayPart, windowDate, status, null);
+    }
 }
