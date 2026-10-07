@@ -25,6 +25,8 @@ export interface PlayerAvailabilityRow {
   lastName: string
   squadJerseyNumber: number | null
   status: AvailabilityStatus | null
+  // True when the player answered through the public link (077); null/absent for older data.
+  viaLink?: boolean | null
 }
 
 export interface MatchAvailabilityPollResponses {

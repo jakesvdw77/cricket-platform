@@ -67,6 +67,8 @@ export interface SectionAvailabilityRoundStatus {
   dayPart: DayPart
   windowDate: string
   status: AvailabilityStatus | null
+  // True when this answer came through the public link (077); null/absent otherwise.
+  viaLink?: boolean | null
 }
 
 // jerseyNumber is the player's standing PlayerProfile.jerseyNumber (031), not a per-squad number
