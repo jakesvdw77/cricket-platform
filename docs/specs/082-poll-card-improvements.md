@@ -18,6 +18,7 @@ Goals:
 - Changing the other card grids (Matches, Players, Leagues); they keep today's grid unless the user asks.
 - Changing how polls are created, closed automatically or shared.
 - Changing the response indicator (progress bar and legend) itself.
+- The icons on other cards (Matches, Leagues, Teams and so on); they keep theirs unless the user asks.
 
 ## User Stories
 
@@ -41,6 +42,7 @@ Rule: let `latest` be the start of the poll's latest match (a squad poll has one
 - **Grid:** the polls dashboard grid shows at most three columns on wide screens: `repeat(auto-fill, minmax(min(380px, 100%), 1fr))` capped so that no more than three columns are created (for example `repeat(auto-fill, minmax(max(380px, calc((100% - 32px) / 3)), 1fr))`, to be settled in the build), still one column on a phone and two where two fit. The other pages keep the shared `cardGridSx`.
 - **Close time row:** in `PollCard` the "Poll closes" line moves above the response indicator block (progress bar, legend, answered text). It is emphasised: larger and bolder than the other detail lines, with a tinted background strip or chip; amber when the poll closes within 24 hours (the existing warning tone), neutral otherwise, and the existing edit pencil stays. A closed poll shows "Closed" with the close time in the neutral tone.
 - **Countdown:** the close-time row also shows a live countdown while the poll is open and has a close time: "3 days 4 h left" while more than a day away, "5 h 12 min left" within a day (amber, with the row), and "42 min left" within the last hour, ticking every minute (every second in the last minute). When the time runs out it shows "Closing now" until the card refreshes and then "Closed". It is a small chip beside the close time, `role="timer"` with a full-sentence accessible name (for example "Closes in 5 hours 12 minutes") and no live announcements, so screen readers are not interrupted every minute. A poll without a close time (automatic closing off) or a closed poll shows no countdown. It is built as a shared, general component, not a poll-only piece: `Countdown` in `ui/src/components/Countdown/` (four-file anatomy) with props `target` (an ISO time), `phrase` (`'left'` for "3 days 4 h left", `'to go'` for "3 days 4 h to go"), `warnWithinHours` (default 24, the point at which it turns amber, `0` for never) and `ariaPrefix` (for example "Closes in" or "Starts in"), so the poll card uses it for closing and the match card can use it later for "Starts in" without changes. A shared hook (`useCountdown`) drives it, not a timer per card where avoidable, and it stops when the card unmounts or the tab is hidden. Using it on the match card is out of scope for this spec.
+- **Card icon:** the poll card's leading avatar (today a 56 px solid green square with a small MUI calendar glyph) becomes the brand availability icon `nav/availability-polls`, drawn through `BrandIcon` on the standard icon tile at the card's 56 px avatar size, so the icon fills the space and the card matches the rest of the brand icon use. The same icon is used for group and squad polls (the type chip already says which). The `RecordCard` avatar slot is not changed for other cards.
 - **Matches dialog:** each match in `PollMatchesDialog` is a link to its match page (`/manage/fixtures/matches/:matchId`), styled as a link with a visible focus state, opening in the same tab.
 - **Reopen:** in the card footer, Reopen is disabled with a short explanation ("The matches in this poll are in the past") when the rule above says no, and the Reopen path in `EditCloseTimeDialog` is not reachable. The server rule is the authority; if it still refuses, show its message.
 
@@ -57,6 +59,7 @@ Per `docs/standards/testing.md`:
 - On a large screen the polls page shows at most three cards per row; on a laptop it looks as it does today or wider.
 - The close time is above the response indicator and visibly highlighted; it turns amber within 24 hours of closing.
 - An open poll with a close time shows a live countdown that moves on by itself and turns amber within 24 hours.
+- The poll card shows the brand availability icon at avatar size, not the green square with the small glyph.
 - Clicking a match in the Matches dialog opens that match.
 - Reopen is unavailable in the UI and refused by the server for polls whose latest match began more than 24 hours ago, and still works inside the grace and for future matches.
 
