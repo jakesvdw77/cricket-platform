@@ -46,7 +46,7 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 - Coverage: show past slots.
 
 **3. One toolbar layout.**
-- Desktop: the toolbar card holds the shared filters in a fixed order (League, Section, Team where it applies) and search, the same on every view. The view-specific controls sit on a line directly above the content, on the right, sharing it with a "Showing ..." scope text on the left. The Poll type becomes a small three-way toggle (All, Group, Squad) there, instead of a dropdown.
+- Desktop: the toolbar card holds the shared filters in a fixed order (League, Section, Team where it applies) and search, the same on every view. The view-specific controls sit on a line directly above the content, on the right, sharing it with a "Showing ..." scope text on the left. The Poll type becomes two small toggles (Group polls, Squad polls) there, instead of a dropdown, and sorting becomes a text link in the scope text.
 - Phone: one row with search and a "Filters" button. The button shows a badge with the number of active filters; it opens a bottom sheet with all the filters of the current view (shared and view-specific) and "Clear all" and "Done". Active filters also show as removable chips under the toolbar.
 
 **4. Counters follow the filters.** The Availability summary endpoint (081) takes the same filter values (league, section, poll type, include closed) and returns the figures for exactly what the list shows. A short line under the counters says what they cover when filters are set ("Showing: Vets › Over 40, League X"). With "Show closed polls" on, the first counter reads "Polls shown" instead of "Open polls".
@@ -69,12 +69,12 @@ Filter model (shared across tabs, address sync, persistence, clear), `FilterBar`
 - **Season** is not a toolbar filter (a small label beside the title on Players and Coverage; none on Polls).
 - **"Players still to answer"** replaces "Answers awaited" (distinct players still owing an answer in the polls shown).
 - **Polls gets a Team filter**, as well as League and Section: teams are easier for managers. Squad polls filter by their team; group polls by the teams of the matches in their slots.
-- **The poll type toggle sits above the cards**, on a line it shares with the "Showing ..." scope text (no row of its own). The same pattern applies to the other views: each view's own toggles (Show closed and sort on Polls, Show past games and Hide players with no answers on Players, Show past slots on Coverage) sit on the line above its content; the toolbar card holds only the shared filters and search.
+- **The poll type is two small toggles above the cards** ("Group polls" and "Squad polls", both on by default, the last one cannot be switched off), in the same light style as the Players toggles (the three-way control was too heavy), on a line shared with the "Showing ..." scope text (no row of its own). **Sorting is a quiet text link** inside the scope text ("soonest first ↕", click to reverse), not a round icon button. The same pattern applies to the other views: each view's own toggles (Show closed and sort on Polls, Show past games and Hide players with no answers on Players, Show past slots on Coverage) sit on the line above its content; the toolbar card holds only the shared filters and search.
 
 ## Open Questions
 
 - Whether a "history" option for Polls (older polls and seasons) is wanted later.
-- On a phone the type toggle moves into the Filters sheet (as in the mockup); confirm that is acceptable.
+- On a phone the type toggles and sorting move into the Filters sheet (as in the mockup); confirm that is acceptable.
 
 ## Rollout Notes
 
