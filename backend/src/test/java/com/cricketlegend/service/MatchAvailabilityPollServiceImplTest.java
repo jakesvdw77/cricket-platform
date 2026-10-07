@@ -95,7 +95,8 @@ class MatchAvailabilityPollServiceImplTest {
                 coverageService,
                 squadResolver,
                 matchAvailabilityPollMapper,
-                accessService);
+                accessService,
+                java.time.Clock.systemUTC());
     }
 
     @BeforeEach
@@ -819,6 +820,112 @@ class MatchAvailabilityPollServiceImplTest {
         service.open(authentication, clubId, matchId, pollId);
 
         assertThat(poll.isOpen()).isTrue();
+    }
+
+    // --- 082: manual reopen refused once the match started more than 24 hours ago ---
+
+    private static final Instant NOW_082 = Instant.parse("2026-10-07T12:00:00Z");
+
+    private MatchAvailabilityPollServiceImpl serviceAt(Instant now) {
+        return new MatchAvailabilityPollServiceImpl(
+                matchRepository,
+                matchAvailabilityPollRepository,
+                playerAvailabilityRepository,
+                coverageService,
+                squadResolver,
+                matchAvailabilityPollMapper,
+                accessService,
+                java.time.Clock.fixed(now, java.time.ZoneOffset.UTC));
+    }
+
+    private MatchAvailabilityPoll closedPollWithMatchAt(
+            UUID clubId, UUID matchId, UUID pollId, Instant matchDate, boolean autoClose, Instant scheduledCloseAt) {
+        MatchAvailabilityPoll poll =
+                closedPollWithSchedule(clubId, matchId, UUID.randomUUID(), pollId, autoClose, scheduledCloseAt);
+        matchRepository.findById(matchId).orElseThrow().setMatchDate(matchDate);
+        return poll;
+    }
+
+    @Test
+    void openThrowsWhenTheMatchStartedMoreThan24HoursAgo() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = closedPollWithMatchAt(
+                clubId, matchId, pollId, NOW_082.minus(25, ChronoUnit.HOURS), false, null);
+
+        assertThatThrownBy(() -> serviceAt(NOW_082).open(authentication, clubId, matchId, pollId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class)
+                .hasMessage("This poll can no longer be reopened because its matches are in the past.");
+        assertThat(poll.isOpen()).isFalse();
+        verify(matchAvailabilityPollRepository, never()).save(any(MatchAvailabilityPoll.class));
+    }
+
+    @Test
+    void openStillWorksInsideTheGraceAtTheEdgeAndForAFutureMatch() {
+        for (Instant matchDate : List.of(
+                NOW_082.minus(23, ChronoUnit.HOURS), NOW_082.minus(24, ChronoUnit.HOURS),
+                NOW_082.plus(2, ChronoUnit.DAYS))) {
+            UUID clubId = UUID.randomUUID();
+            UUID matchId = UUID.randomUUID();
+            UUID pollId = UUID.randomUUID();
+            MatchAvailabilityPoll poll = closedPollWithMatchAt(clubId, matchId, pollId, matchDate, false, null);
+
+            serviceAt(NOW_082).open(authentication, clubId, matchId, pollId);
+
+            assertThat(poll.isOpen()).as("match at %s", matchDate).isTrue();
+        }
+    }
+
+    @Test
+    void theAutoCloseRuleStillAppliesInsideTheGrace() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID pollId = UUID.randomUUID();
+        MatchAvailabilityPoll poll = closedPollWithMatchAt(
+                clubId, matchId, pollId, NOW_082.minus(1, ChronoUnit.HOURS), true, NOW_082.minusSeconds(1));
+
+        assertThatThrownBy(() -> serviceAt(NOW_082).open(authentication, clubId, matchId, pollId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class)
+                .hasMessageContaining("automatic close time");
+        assertThat(poll.isOpen()).isFalse();
+    }
+
+    @Test
+    void listedPollsCarryCanReopenFromBothRules() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID pastMatchId = UUID.randomUUID();
+        UUID recentMatchId = UUID.randomUUID();
+        UUID autoClosedMatchId = UUID.randomUUID();
+        Match past = match(clubId, pastMatchId, teamId, UUID.randomUUID(), seasonId);
+        past.setMatchDate(NOW_082.minus(3, ChronoUnit.DAYS));
+        Match recent = match(clubId, recentMatchId, teamId, UUID.randomUUID(), seasonId);
+        recent.setMatchDate(NOW_082.minus(2, ChronoUnit.HOURS));
+        Match autoClosed = match(clubId, autoClosedMatchId, teamId, UUID.randomUUID(), seasonId);
+        autoClosed.setMatchDate(NOW_082.minus(2, ChronoUnit.HOURS));
+        MatchAvailabilityPoll pastPoll = poll(UUID.randomUUID(), pastMatchId, teamId, false);
+        pastPoll.setAutoClose(false);
+        MatchAvailabilityPoll recentPoll = poll(UUID.randomUUID(), recentMatchId, teamId, false);
+        recentPoll.setAutoClose(false);
+        MatchAvailabilityPoll autoClosedPoll = poll(UUID.randomUUID(), autoClosedMatchId, teamId, false);
+        autoClosedPoll.setAutoClose(true);
+        autoClosedPoll.setScheduledCloseAt(NOW_082.minus(1, ChronoUnit.DAYS));
+        when(matchAvailabilityPollRepository.findClosedByMatchClubId(clubId))
+                .thenReturn(List.of(pastPoll, recentPoll, autoClosedPoll));
+        when(matchRepository.findAllById(any())).thenReturn(List.of(past, recent, autoClosed));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(any(), any(), any())).thenReturn(Set.of());
+        when(squadResolver.resolveSquadRows(any(), any())).thenReturn(List.of());
+
+        List<OpenAvailabilityPollDto> result = serviceAt(NOW_082).listClosedForClub(authentication, clubId, null);
+
+        assertThat(result).extracting(OpenAvailabilityPollDto::matchId, OpenAvailabilityPollDto::canReopen)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(pastMatchId, false),
+                        org.assertj.core.groups.Tuple.tuple(recentMatchId, true),
+                        org.assertj.core.groups.Tuple.tuple(autoClosedMatchId, false));
     }
 
     // --- 064: autoClose / scheduledCloseAt ---
