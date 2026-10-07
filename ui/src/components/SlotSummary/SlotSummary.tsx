@@ -38,13 +38,21 @@ export function SlotSummary({ heading, counts, testIdPrefix, compact = false, ch
 
   return (
     <Stack spacing={compact ? 0.75 : 1.5}>
-      <Typography
-        variant={compact ? 'subtitle2' : 'subtitle1'}
-        component={compact ? 'h4' : 'h3'}
-        fontWeight={700}
-      >
-        {heading}
-      </Typography>
+      {/* docs/specs/082: 'N of M answered' shares the heading's line, right-aligned and never broken
+          inside; when the row is too tight it wraps onto its own line under the heading, left-aligned. */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', columnGap: 1.5, rowGap: 0.25 }}>
+        <Typography
+          variant={compact ? 'subtitle2' : 'subtitle1'}
+          component={compact ? 'h4' : 'h3'}
+          fontWeight={700}
+          sx={{ flex: '1 1 auto', minWidth: 0 }}
+        >
+          {heading}
+        </Typography>
+        <Typography variant="body2" fontWeight={700} color="text.primary" sx={{ whiteSpace: 'nowrap' }}>
+          {answered} of {total} answered
+        </Typography>
+      </Box>
       {children}
       <Box sx={{ display: 'flex', height: compact ? 8 : 12, borderRadius: 6, overflow: 'hidden', bgcolor: 'divider' }} aria-hidden>
         {segments.map((segment) => (
@@ -55,19 +63,51 @@ export function SlotSummary({ heading, counts, testIdPrefix, compact = false, ch
           />
         ))}
       </Box>
-      <Stack direction="row" columnGap={compact ? 1.5 : 2} rowGap={0.25} flexWrap="wrap">
-        {segments.map((segment) => (
-          <Stack key={segment.key} direction="row" spacing={compact ? 0.5 : 0.75} alignItems="center">
-            <Box sx={{ width: compact ? 8 : 10, height: compact ? 8 : 10, borderRadius: '50%', bgcolor: segment.color, flexShrink: 0 }} aria-hidden />
-            <Typography variant={compact ? 'caption' : 'body2'}>
-              {segment.label} {segment.count}
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-      <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary">
-        {answered} of {total} answered
-      </Typography>
+      {/* docs/specs/082 Legend labels: ONE grid so the dots, words and counts form straight columns
+          across both rows - [dot][word][count] x 2 pairs, the second pair set off by a wider gap, items
+          in the order Available, Unsure / Unavailable, No response. Body-size words in the primary text
+          colour, bold tabular counts, 10px dots; the word stays beside the dot (never colour alone). Each
+          item wrapper is display: contents, so its cells are direct grid children; the cells read in
+          order as 'Available 4'. Under ~300px of card width it falls back to one pair per row. */}
+      <Box sx={{ containerType: 'inline-size' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, auto)',
+            justifyContent: 'start',
+            columnGap: 1,
+            rowGap: 0.5,
+            alignItems: 'center',
+            '& [data-pair="2"] > :first-of-type': { ml: 2 },
+            '@container (max-width: 299px)': {
+              gridTemplateColumns: 'repeat(3, auto)',
+              '& [data-pair="2"] > :first-of-type': { ml: 0 },
+            },
+          }}
+        >
+          {segments.map((segment, index) => (
+            <Box
+              key={segment.key}
+              data-legend={`${segment.label} ${segment.count}`}
+              data-pair={index % 2 === 0 ? '1' : '2'}
+              sx={{ display: 'contents' }}
+            >
+              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: segment.color }} aria-hidden />
+              <Typography variant="body2" component="span" color="text.primary">
+                {segment.label}
+              </Typography>
+              <Typography
+                variant="body2"
+                component="span"
+                color="text.primary"
+                sx={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+              >
+                {segment.count}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
     </Stack>
   )
 }
