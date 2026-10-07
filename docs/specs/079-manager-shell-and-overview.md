@@ -42,7 +42,6 @@ New read-only overview endpoint(s), scoped to the caller. The exact shape is def
 | Teams not yet announced for matches this week | match sides |
 | Open availability polls with replied of total and the close time | availability polls, responses (064 to 067, 073, 074) |
 | Recent results (win or loss and margin) | not available yet; the card shows an empty state and the endpoint returns an empty list until Results exists |
-| Counts for the menu badges (open polls, unread notifications) | polls, notifications |
 | Key numbers (active players and similar) | players |
 
 No such endpoint exists today. Rules: the club comes from the managed-club context as elsewhere; every figure is limited to the sections the caller can administer (`AccessService.canAdministerSection` and the section tree, as 076 does); no N+1 queries (batched, one query per kind of data).
@@ -74,7 +73,7 @@ Reference: the interactive mockup above. Tokens come from `ui/src/theme.ts`; no 
 
 Per `docs/standards/testing.md`:
 - Backend unit and integration (Testcontainers) for the overview service: scoping by section (a section manager sees only their sections, a club admin everything, another club's data never), batched queries (a guard test for query counts), week boundaries, empty club.
-- Frontend component tests for the side menu (groups, active item, badges, keyboard), the bottom bar and Menu sheet (opens, closes four ways, navigates), the header (club colour, light colour text, logo fallback) and the overview cards (data, empty states).
+- Frontend component tests for the side menu (groups, active item, keyboard), the bottom bar and Menu sheet (opens, closes four ways, navigates), the header (club colour, light colour text, logo fallback) and the overview cards (data, empty states).
 - Existing manager page tests updated only where the shell change breaks them.
 - Storybook stories for each new component.
 - Playwright smoke: log in as a manager, see the overview, navigate by the side menu.
@@ -101,7 +100,6 @@ Answered by the user on 2026-10-06:
 - **"Back to Dashboard":** the always-visible menu replaces it. A back link stays **only on detail and edit pages** and returns to the list the person came from.
 
 Defaults assumed unless the user changes them (they match the mockup):
-- Menu count badges: open polls that still await answers, and unread notifications.
 - Overview icon: the user generates it as `nav/overview.svg`.
 
 ## Amendment 2026-10-06: availability menu entries
@@ -110,4 +108,4 @@ Requested by the user while using the shell: **Communication moves to the People
 
 ## Rollout Notes
 
-Slices, each shippable: (1) the new shell, header and menus with the existing dashboard content moved to the Overview page unchanged, plus the Overview icon; (2) the overview endpoint and cards; (3) menu badges. Slice 1 delivers the navigation and look; slices 2 and 3 add information. Spec 078's brand icons and the availability public form (077) benefit from this shell, which is why the look is settled first.
+Slices, each shippable: (1) the new shell, header and menus with the existing dashboard content moved to the Overview page unchanged, plus the Overview icon; (2) the overview endpoint and cards; Slice 1 delivers the navigation and look; slice 2 adds information. A third slice, menu count badges, was dropped on 2026-10-06: the Notifications entry is where managers write and send notifications to their players, not an inbox, so no menu entry carries a count. Receiving notifications will be a bell in the header for every user, a separate later feature. (The shell's unused `badges` slots can stay or be removed when the bell is designed.) Spec 078's brand icons and the availability public form (077) benefit from this shell, which is why the look is settled first.
