@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
+import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import JoinInnerOutlinedIcon from '@mui/icons-material/JoinInnerOutlined'
@@ -10,8 +10,9 @@ import { EmptyState } from '../../../components/EmptyState'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
-import { availabilitySummaryKey, getAvailabilitySummary } from '../../../api/availabilitySummaryApi'
-import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
+import { availabilitySummaryKey, getAvailabilitySummary, typeFilterFor } from '../../../api/availabilitySummaryApi'
+import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../api/availabilitySummaryApi'
+import { scopeFilterText } from '../../../utils/availabilityScope'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 import { useAvailabilityHubState } from './hubContext'
 
@@ -34,15 +35,16 @@ function activeView(pathname: string): HubView {
 }
 
 // docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
-function counterItems(summary: AvailabilitySummary): PageCounterItem[] {
+function counterItems(summary: AvailabilitySummary, showClosed: boolean): PageCounterItem[] {
   return [
-    { id: 'open-polls', value: summary.openPolls, label: 'Open polls', active: true },
+    // With Show closed on the figure counts closed polls too, so it reads "Polls shown".
+    { id: 'open-polls', value: summary.openPolls, label: showClosed ? 'Polls shown' : 'Open polls', active: true },
     { id: 'players-responded', value: `${summary.playersResponded} / ${summary.playersInAudience}`, label: 'Players responded' },
     {
-      id: 'answers-awaited',
-      value: summary.answersAwaited,
-      label: 'Answers awaited',
-      tone: summary.answersAwaited > 0 ? 'warning' : 'default',
+      id: 'players-still-to-answer',
+      value: summary.playersStillToAnswer,
+      label: 'Players still to answer',
+      tone: summary.playersStillToAnswer > 0 ? 'warning' : 'default',
     },
     {
       id: 'closing-soon',
@@ -64,10 +66,18 @@ export default function AvailabilityHubLayout() {
   const view = activeView(pathname)
   const hub = useAvailabilityHubState(clubId, view !== 'polls')
 
-  // The counters belong to the Polls view only; a failed request hides the row, the page still works.
+  // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
+  // the poll type toggles and Show closed. A failed request hides the row, the page still works.
+  // Only what the Polls list itself filters by is sent: the list filters by section only until slice 3 of 083,
+  // which adds leagueId and teamId here together with the list filters.
+  const summaryFilters: AvailabilitySummaryFilters = {
+    sectionId: hub.filters.sectionId,
+    type: typeFilterFor(hub.showGroup, hub.showSquad),
+    includeClosed: hub.showClosed,
+  }
   const summaryQuery = useQuery({
-    queryKey: availabilitySummaryKey(clubId ?? ''),
-    queryFn: () => getAvailabilitySummary(clubId as string),
+    queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
+    queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
     enabled: Boolean(clubId) && view === 'polls',
     retry: false,
   })
@@ -76,6 +86,8 @@ export default function AvailabilityHubLayout() {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
+  // The caption is built from exactly the filters sent to the summary (section only for now).
+  const scope = scopeFilterText({ sections: hub.sections, sectionId: summaryFilters.sectionId })
   const showCounters = view === 'polls' && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
@@ -120,7 +132,17 @@ export default function AvailabilityHubLayout() {
       />
 
       {showCounters && (
-        <PageCounters items={summaryQuery.data ? counterItems(summaryQuery.data) : []} loading={summaryQuery.isPending} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <PageCounters
+            items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed) : []}
+            loading={summaryQuery.isPending}
+          />
+          {scope && (
+            <Typography variant="caption" color="text.secondary" data-testid="counters-scope">
+              {`Showing: ${scope}`}
+            </Typography>
+          )}
+        </Box>
       )}
 
       <Outlet context={hub} />

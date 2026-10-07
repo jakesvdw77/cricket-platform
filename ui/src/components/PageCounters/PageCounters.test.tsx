@@ -17,7 +17,7 @@ function renderCounters(items: PageCounterItem[], loading = false) {
 const items: PageCounterItem[] = [
   { id: 'a', value: 3, label: 'Open polls' },
   { id: 'b', value: '5 / 9', label: 'Players responded' },
-  { id: 'c', value: 4, label: 'Answers awaited', tone: 'warning' },
+  { id: 'c', value: 4, label: 'Players still to answer', tone: 'warning' },
 ]
 
 describe('PageCounters', () => {

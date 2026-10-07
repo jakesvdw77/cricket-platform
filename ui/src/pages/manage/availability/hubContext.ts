@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAvailabilityFilters } from '../../../hooks/useAvailabilityFilters'
 import type { AvailabilityFilters } from '../../../hooks/useAvailabilityFilters'
@@ -25,6 +25,15 @@ export interface AvailabilityHubContext {
   leaguesLoading: boolean
   leaguesError: boolean
   sections: Section[]
+  // docs/specs/083: the Polls view's poll-type toggles (both on by default) and Show closed polls switch. They
+  // live here, not in the Polls page, because the counters (owned by the layout) must describe the same list.
+  // Per-visit choices, not persisted; Show closed is preset by a ?showClosed=true link.
+  showGroup: boolean
+  setShowGroup: (value: boolean) => void
+  showSquad: boolean
+  setShowSquad: (value: boolean) => void
+  showClosed: boolean
+  setShowClosed: (value: boolean) => void
   // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League"; pass the
   // teams in view to include the chosen team's name.
   scopeText: (teams?: { id: string; name: string }[]) => string
@@ -34,6 +43,10 @@ export interface AvailabilityHubContext {
 export function useAvailabilityHubState(clubId: string | undefined, seasonsEnabled: boolean): AvailabilityHubContext {
   const { filters, setFilters, clearFilters } = useAvailabilityFilters(clubId)
   const { seasonId, seasonsLoading } = useAvailabilitySeason(clubId, seasonsEnabled)
+  const [searchParams] = useSearchParams()
+  const [showGroup, setShowGroup] = useState(true)
+  const [showSquad, setShowSquad] = useState(true)
+  const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId as string),
@@ -57,6 +70,12 @@ export function useAvailabilityHubState(clubId: string | undefined, seasonsEnabl
     leaguesLoading: leaguesQuery.isLoading,
     leaguesError: leaguesQuery.isError,
     sections,
+    showGroup,
+    setShowGroup,
+    showSquad,
+    setShowSquad,
+    showClosed,
+    setShowClosed,
     scopeText: (teams) =>
       scopeFilterText({ sections, sectionId: filters.sectionId, leagues, leagueId: filters.leagueId, teams, teamId: filters.teamId }),
   }
