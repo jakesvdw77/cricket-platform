@@ -23,7 +23,7 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 
 ## Goals
 
-- One filter model for all three views: the choices that mean the same thing (Season, League, Section, Team where it applies) are shared and remembered as you move between Polls, Players and Coverage.
+- One filter model for all three views: the choices that mean the same thing (League, Section, Team where it applies) are shared and remembered as you move between Polls, Players and Coverage.
 - The counters always describe what the list shows.
 - A League filter on Polls, and a compact control for the poll type.
 - One toolbar layout on all three views, desktop and phone.
@@ -36,7 +36,9 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 
 ## Proposed design
 
-**1. Shared filters, remembered across the three views.** Season, League, Section and Team live in one shared state owned by the hub layout, saved per club in one place (`usePersistedListFilters`, one key), and mirrored in the page address (for example `?section=...&league=...`) so the back button and shared links keep the same view. Switching tabs keeps them; "Clear filters" clears all. Where a filter does not apply to a view (Team on Polls, for example) it is simply not shown there, but its value is kept for when the manager returns.
+**Decision (user, 2026-10-07): Season is not a toolbar filter.** Seasons are not important for the Polls view (polls are about what is open now; a history option can come later), so Season leaves the toolbars. Players and Coverage still need a season to work (rosters and squads are per season), so they keep one: a small clickable label beside the page title ("2026 season ▾", default the current season, shared and remembered across Players and Coverage) that opens a list of seasons. Polls shows no season control. This frees a field of space on every toolbar.
+
+**1. Shared filters, remembered across the three views.** League, Section and Team (Players only) live in one shared state owned by the hub layout, saved per club in one place (`usePersistedListFilters`, one key), and mirrored in the page address (for example `?section=...&league=...`) so the back button and shared links keep the same view. Switching tabs keeps them; "Clear filters" clears all. Where a filter does not apply to a view (Team on Polls, for example) it is simply not shown there, but its value is kept for when the manager returns.
 
 **2. View-specific controls stay with their view.**
 - Polls: search, type, show closed, sort.
@@ -44,10 +46,10 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 - Coverage: show past slots.
 
 **3. One toolbar layout.**
-- Desktop: row 1 holds the shared filters in a fixed order (Season, League, Section, Team) with the same widths on every view; row 2 holds search on the left and the view-specific controls on the right. The Poll type becomes a small three-way toggle (All, Group, Squad) in the view-specific cluster instead of a dropdown.
+- Desktop: row 1 holds the shared filters in a fixed order (League, Section, Team) with the same widths on every view; row 2 holds search on the left and the view-specific controls on the right. The Poll type becomes a small three-way toggle (All, Group, Squad) in the view-specific cluster instead of a dropdown.
 - Phone: one row with search and a "Filters" button. The button shows a badge with the number of active filters; it opens a bottom sheet with all the filters of the current view (shared and view-specific) and "Clear all" and "Done". Active filters also show as removable chips under the toolbar.
 
-**4. Counters follow the filters.** The Availability summary endpoint (081) takes the same filter values (season, league, section, poll type, include closed) and returns the figures for exactly what the list shows. A short line under the counters says what they cover when filters are set ("Showing: Vets › Over 40, League X"). With "Show closed polls" on, the first counter reads "Polls shown" instead of "Open polls".
+**4. Counters follow the filters.** The Availability summary endpoint (081) takes the same filter values (league, section, poll type, include closed) and returns the figures for exactly what the list shows. A short line under the counters says what they cover when filters are set ("Showing: Vets › Over 40, League X"). With "Show closed polls" on, the first counter reads "Polls shown" instead of "Open polls".
 
 **5. Clearer counter wording.** Replace "Answers awaited" (a sum that double-counts players) with **"Players still to answer"**: distinct players who still owe at least one answer in the polls shown (13 in the example, which matches 18 minus 5 when one audience covers everyone). The total of missing answers per poll stays visible on each poll card. To be confirmed by the user.
 
@@ -55,7 +57,7 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 
 ## API Contract (outline, finalised in planning)
 
-- `GET .../availability-polls/open`, `.../closed` and `.../section-availability-rounds` gain optional `seasonId` and `leagueId` filters (polls are matched through their matches' season and league), alongside the existing section filter.
+- `GET .../availability-polls/open`, `.../closed` and `.../section-availability-rounds` gain an optional `leagueId` filter (polls are matched through their matches' league), alongside the existing section filter; no season parameter for polls.
 - `GET .../availability/summary` gains `seasonId`, `leagueId`, `sectionId`, `type` and `includeClosed` parameters and returns the distinct "players still to answer" figure.
 
 ## Test Plan (outline)
@@ -65,7 +67,7 @@ Filter model (shared across tabs, address sync, persistence, clear), `FilterBar`
 ## Open Questions
 
 - The counter wording and definition in point 5, and whether "Players still to answer" is the right replacement.
-- Default Season: the current season (as Players and Coverage do now) or none? Does a poll belong to a season only through its matches?
+- The season label on Players and Coverage: current season by default, and whether a "history" option for Polls (past polls and seasons) is wanted later.
 - Does the Polls view show a Team filter, or only Season, League and Section?
 - Should the shared filters live in the page address, in saved settings, or both (this design proposes both)?
 - Whether the type toggle sits in the toolbar's right cluster or above the cards.
