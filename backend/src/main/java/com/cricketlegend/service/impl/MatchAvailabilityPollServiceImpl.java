@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
@@ -274,6 +275,8 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                         .playerProfileId(playerProfileId)
                         .build());
         availability.setStatus(status);
+        // A manager override clears the "via link" marker (077).
+        availability.setSource(AnswerSource.MANAGER);
         playerAvailabilityRepository.save(availability);
 
         return buildResponsesDto(poll, match.getSeasonId());
@@ -431,21 +434,20 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
 
     private List<PlayerAvailabilityRowDto> rowsWithStatuses(MatchAvailabilityPoll poll, UUID seasonId) {
         List<PlayerAvailabilityRowDto> squadRows = squadResolver.resolveSquadRows(poll.getTeamId(), seasonId);
-        Map<UUID, AvailabilityStatus> statusByPlayerId =
+        Map<UUID, PlayerAvailability> answerByPlayerId =
                 playerAvailabilityRepository.findByPollId(poll.getId()).stream()
-                        .collect(Collectors.toMap(
-                                PlayerAvailability::getPlayerProfileId, PlayerAvailability::getStatus));
-        return squadRows.stream().map(row -> withStatus(row, statusByPlayerId)).toList();
+                        .collect(Collectors.toMap(PlayerAvailability::getPlayerProfileId, answer -> answer));
+        return squadRows.stream().map(row -> withStatus(row, answerByPlayerId.get(row.playerProfileId()))).toList();
     }
 
-    private PlayerAvailabilityRowDto withStatus(
-            PlayerAvailabilityRowDto row, Map<UUID, AvailabilityStatus> statusByPlayerId) {
+    private PlayerAvailabilityRowDto withStatus(PlayerAvailabilityRowDto row, PlayerAvailability answer) {
         return new PlayerAvailabilityRowDto(
                 row.playerProfileId(),
                 row.firstName(),
                 row.lastName(),
                 row.squadJerseyNumber(),
-                statusByPlayerId.get(row.playerProfileId()));
+                answer == null ? null : answer.getStatus(),
+                answer != null && answer.getSource() == AnswerSource.PUBLIC_LINK);
     }
 
     private long countStatus(List<PlayerAvailabilityRowDto> rows, AvailabilityStatus status) {

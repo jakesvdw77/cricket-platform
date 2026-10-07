@@ -1,46 +1,64 @@
 package com.cricketlegend.controller;
 
-import com.cricketlegend.dto.PublicSectionAvailabilityRoundDto;
-import com.cricketlegend.dto.SetSectionAvailabilityRoundPlayerRequest;
+import com.cricketlegend.dto.PublicAnswersDto;
+import com.cricketlegend.dto.PublicAnswersRequest;
+import com.cricketlegend.dto.PublicRoundHeaderDto;
+import com.cricketlegend.dto.PublicVerifyRequest;
+import com.cricketlegend.dto.PublicVerifyResponseDto;
 import com.cricketlegend.service.PublicSectionAvailabilityRoundService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * docs/specs/063-section-availability-and-flexible-squads.md's public, unauthenticated round
- * surface — the round-model revision's own "one shared link per section per day," replacing the
- * prior pass's bare-window equivalent. Mirrors {@link PublicAvailabilityPollController}'s bare-
- * {@code @RestController} precedent exactly. No {@code @PreAuthorize} on either method — a
- * round's own unguessable UUID is the entire access boundary, the same deliberate tradeoff
- * docs/specs/032's own Rollout Notes already made.
+ * The public, unauthenticated group poll surface ({@code /api/v1/public/**} is {@code permitAll}).
+ * Since docs/specs/077-public-availability-form-verification.md the poll's UUID only opens the
+ * header; any player data needs a successful {@code verify} and its {@code X-Public-Token}.
  */
 @RestController
 public class PublicSectionAvailabilityRoundController {
 
-    private final PublicSectionAvailabilityRoundService publicSectionAvailabilityRoundService;
+    static final String TOKEN_HEADER = "X-Public-Token";
 
-    public PublicSectionAvailabilityRoundController(
-            PublicSectionAvailabilityRoundService publicSectionAvailabilityRoundService) {
-        this.publicSectionAvailabilityRoundService = publicSectionAvailabilityRoundService;
+    private final PublicSectionAvailabilityRoundService roundService;
+
+    public PublicSectionAvailabilityRoundController(PublicSectionAvailabilityRoundService roundService) {
+        this.roundService = roundService;
     }
 
     @GetMapping("/api/v1/public/section-availability-rounds/{roundId}")
-    public ResponseEntity<PublicSectionAvailabilityRoundDto> getRound(@PathVariable UUID roundId) {
-        return ResponseEntity.ok(publicSectionAvailabilityRoundService.getRound(roundId));
+    public ResponseEntity<PublicRoundHeaderDto> getRound(@PathVariable UUID roundId) {
+        return ResponseEntity.ok(roundService.getHeader(roundId));
     }
 
-    @PutMapping("/api/v1/public/section-availability-rounds/{roundId}/players/{playerProfileId}")
-    public ResponseEntity<PublicSectionAvailabilityRoundDto> setAvailability(
+    @PostMapping("/api/v1/public/section-availability-rounds/{roundId}/verify")
+    public ResponseEntity<PublicVerifyResponseDto> verify(
+            @PathVariable UUID roundId, @Valid @RequestBody PublicVerifyRequest request, HttpServletRequest http) {
+        return ResponseEntity.ok(roundService.verify(roundId, request, http.getRemoteAddr()));
+    }
+
+    @GetMapping("/api/v1/public/section-availability-rounds/{roundId}/players/{playerId}/answers")
+    public ResponseEntity<PublicAnswersDto> getAnswers(
             @PathVariable UUID roundId,
-            @PathVariable UUID playerProfileId,
-            @Valid @RequestBody SetSectionAvailabilityRoundPlayerRequest request) {
-        return ResponseEntity.ok(publicSectionAvailabilityRoundService.setAvailability(
-                roundId, playerProfileId, request.windowId(), request.status()));
+            @PathVariable UUID playerId,
+            @RequestHeader(value = TOKEN_HEADER, required = false) String token) {
+        return ResponseEntity.ok(roundService.getAnswers(roundId, playerId, token));
+    }
+
+    @PutMapping("/api/v1/public/section-availability-rounds/{roundId}/players/{playerId}/answers")
+    public ResponseEntity<PublicAnswersDto> putAnswers(
+            @PathVariable UUID roundId,
+            @PathVariable UUID playerId,
+            @RequestHeader(value = TOKEN_HEADER, required = false) String token,
+            @Valid @RequestBody PublicAnswersRequest request) {
+        return ResponseEntity.ok(roundService.saveAnswers(roundId, playerId, token, request));
     }
 }

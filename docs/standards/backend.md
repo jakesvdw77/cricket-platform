@@ -14,6 +14,12 @@ The contract every backend-touching agent is briefed with by path, not by vague 
   | `NotFoundException` | 404 |
   | `ConflictException` | 409 |
   | `ValidationException` | 400 |
+  | `InvalidPublicTokenException` | 401 (public availability pass missing, expired or wrong scope; spec 077) |
+  | `PublicVerificationFailedException` | 403 (generic failed public check, carries `triesLeft`; spec 077) |
+  | `PublicVerificationLockedException` | 423 (name locked after repeated failures, carries `retryAfterSeconds`; spec 077) |
+  | `PublicRateLimitedException` | 429 (per-address limit, carries `retryAfterSeconds`; spec 077) |
+
+  The four public-availability exceptions (spec 077) are deliberately their own types rather than subclasses of the three bases, because no base carries 401, 403, 423 or 429; they are mapped in `GlobalExceptionHandler` to a `ProblemDetail` with their extra properties. They are the only exceptions allowed to extend `RuntimeException` directly.
 
   Extend this table here before introducing a new *base* type — don't invent a new HTTP-status category ad hoc in a controller.
 

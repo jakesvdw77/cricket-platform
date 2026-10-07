@@ -215,12 +215,12 @@ class SectionAvailabilityRoundControllerIntegrationTest {
                         .with(admin))
                 .andExpect(status().isConflict());
 
-        // Public read still works, and reflects the closed state, the renamed description, and the override above.
+        // The public header still works and reflects the closed state and the renamed description.
         mockMvc.perform(get("/api/v1/public/section-availability-rounds/{roundId}", roundId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").value("Renamed fixtures"))
                 .andExpect(jsonPath("$.open").value(false))
-                .andExpect(jsonPath("$.responses[0].statuses[0].status").value("AVAILABLE"));
+                .andExpect(jsonPath("$.windows[0].open").value(false));
 
         // The admin override is accepted on a closed round (066, a manager correction).
         mockMvc.perform(put(
@@ -229,36 +229,6 @@ class SectionAvailabilityRoundControllerIntegrationTest {
                                 roundId,
                                 playerId)
                         .with(admin)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"windowId\": \"" + windowId + "\", \"status\": \"UNSURE\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.responses[0].statuses[0].status").value("UNSURE"));
-
-        // A public write against a closed round is still rejected.
-        mockMvc.perform(put(
-                                "/api/v1/public/section-availability-rounds/{roundId}/players/{playerId}",
-                                roundId,
-                                playerId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"windowId\": \"" + windowId + "\", \"status\": \"UNAVAILABLE\"}"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void publicCallerCanSelfReportAvailabilityWithNoAuthorizationHeader() throws Exception {
-        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
-        Section section = sectionRepository.save(newSection(club.getId(), "Juniors"));
-        UUID playerId = addPlayerTaggedToSection(club.getId(), section.getId(), "Bob");
-        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
-        Match match = saveFutureFlexibleMatch(club, section, "U15 Colts");
-        String createResponse = createRound(admin, club.getId(), section.getId(), match.getId());
-        String roundId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.id");
-        String windowId = com.jayway.jsonpath.JsonPath.read(createResponse, "$.brackets[0].windowId");
-
-        mockMvc.perform(put(
-                                "/api/v1/public/section-availability-rounds/{roundId}/players/{playerId}",
-                                roundId,
-                                playerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"windowId\": \"" + windowId + "\", \"status\": \"UNSURE\"}"))
                 .andExpect(status().isOk())

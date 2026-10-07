@@ -37,6 +37,33 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /** 077: the single generic verify failure, with the tries left on the key. */
+    @ExceptionHandler(PublicVerificationFailedException.class)
+    ProblemDetail handlePublicVerificationFailed(PublicVerificationFailedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setProperty("triesLeft", ex.getTriesLeft());
+        return problem;
+    }
+
+    @ExceptionHandler(PublicVerificationLockedException.class)
+    ProblemDetail handlePublicVerificationLocked(PublicVerificationLockedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return problem;
+    }
+
+    @ExceptionHandler(PublicRateLimitedException.class)
+    ProblemDetail handlePublicRateLimited(PublicRateLimitedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidPublicTokenException.class)
+    ProblemDetail handleInvalidPublicToken(InvalidPublicTokenException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(ValidationException.class)
     ProblemDetail handleValidation(ValidationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

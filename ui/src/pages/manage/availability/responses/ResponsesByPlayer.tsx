@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Box, Chip, FormControlLabel, Switch, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
-import { hasAnyAnswer, playerName, playerNumber, slotHeading, sortPlayers, statusFor } from './responseHelpers'
+import { ViaLinkMarker } from './ViaLinkMarker'
+import { hasAnyAnswer, playerName, playerNumber, slotHeading, sortPlayers, statusFor, viaLinkFor } from './responseHelpers'
 import type { OverrideProps, ResponseRow } from './responseHelpers'
 import type { SectionAvailabilityRoundBracket } from '../../../../api/sectionAvailabilityApi'
 
@@ -57,6 +58,7 @@ export function ResponsesByPlayer({
                   const status = statusFor(row, bracket.windowId)
                   return (
                     <TableCell key={bracket.windowId}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                       <StatusOverrideMenu
                         playerName={playerName(row)}
                         slotLabel={slotHeading(bracket)}
@@ -74,6 +76,8 @@ export function ResponsesByPlayer({
                           />
                         )}
                       </StatusOverrideMenu>
+                      {viaLinkFor(row, bracket.windowId) && <ViaLinkMarker />}
+                      </Box>
                     </TableCell>
                   )
                 })}

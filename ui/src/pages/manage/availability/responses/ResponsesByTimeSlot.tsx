@@ -5,7 +5,8 @@ import type { AvailabilityStatus } from '../../../../api/matchAvailabilityApi'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { SlotMatches } from './SlotMatches'
-import { playerName, playerNumber, ROW_HEIGHT, SCROLL_BOX_MAX_HEIGHT, slotHeading, STATUS_ORDER } from './responseHelpers'
+import { ViaLinkMarker } from './ViaLinkMarker'
+import { playerName, playerNumber, ROW_HEIGHT, SCROLL_BOX_MAX_HEIGHT, slotHeading, STATUS_ORDER, viaLinkFor } from './responseHelpers'
 import type { OverrideProps, ResponseRow, SlotGroup } from './responseHelpers'
 
 const GROUP_KEY: Record<AvailabilityStatus, 'available' | 'unsure' | 'unavailable'> = {
@@ -63,6 +64,7 @@ function PlayerRow({
           <Typography component="span" variant="body2">
             {playerName(row)}
           </Typography>
+          {viaLinkFor(row, slot.bracket.windowId) && <ViaLinkMarker />}
         </ButtonBase>
       )}
     </StatusOverrideMenu>

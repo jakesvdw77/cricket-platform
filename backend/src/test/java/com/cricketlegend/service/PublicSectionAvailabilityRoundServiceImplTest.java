@@ -7,21 +7,32 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityRound;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
-import com.cricketlegend.dto.PublicSectionAvailabilityRoundDto;
+import com.cricketlegend.dto.PublicAnswerDto;
+import com.cricketlegend.dto.PublicAnswersDto;
+import com.cricketlegend.dto.PublicAnswersRequest;
 import com.cricketlegend.dto.SectionAvailabilityResponseRowDto;
-import com.cricketlegend.dto.SectionAvailabilityRoundStatusDto;
+import com.cricketlegend.exception.InvalidPublicTokenException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.SectionAvailabilityWindowClosedException;
+import com.cricketlegend.exception.ValidationException;
+import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityRoundRepository;
+import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.PublicSectionAvailabilityRoundServiceImpl;
+import com.cricketlegend.service.support.PublicAvailabilityToken;
+import com.cricketlegend.service.support.PublicAvailabilityVerifier;
+import com.cricketlegend.service.support.PublicPollKind;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -29,170 +40,143 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Unit tests for PublicSectionAvailabilityRoundServiceImpl — the fixture-group-selection
- * revision's public, unauthenticated surface (docs/specs/063-section-availability-and-flexible-
- * squads.md): happy-path get/set against a specific {@code windowId}, unknown {@code roundId} 404,
- * a {@code windowId} not belonging to this round 404, not-in-audience 404, closed-bracket 409.
- */
+/** Business rules of the public group poll answers (docs/specs/077). */
 @ExtendWith(MockitoExtension.class)
 class PublicSectionAvailabilityRoundServiceImplTest {
 
-    @Mock
-    private SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository;
+    @Mock private SectionAvailabilityRoundRepository roundRepository;
+    @Mock private SectionAvailabilityWindowRepository windowRepository;
+    @Mock private SectionAvailabilityWindowMatchRepository windowMatchRepository;
+    @Mock private SectionAvailabilityResponseRepository responseRepository;
+    @Mock private SectionRepository sectionRepository;
+    @Mock private MatchRepository matchRepository;
+    @Mock private TeamRepository teamRepository;
+    @Mock private SectionAvailabilityAudienceResolver audienceResolver;
+    @Mock private PublicAvailabilityVerifier verifier;
 
-    @Mock
-    private SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
-
-    @Mock
-    private SectionAvailabilityResponseRepository sectionAvailabilityResponseRepository;
-
-    @Mock
-    private SectionRepository sectionRepository;
-
-    @Mock
-    private SectionAvailabilityAudienceResolver audienceResolver;
-
+    private final PublicAvailabilityToken tokens = new PublicAvailabilityToken("secret", Clock.systemUTC());
     private PublicSectionAvailabilityRoundServiceImpl service;
+
+    private final UUID roundId = UUID.randomUUID();
+    private final UUID sectionId = UUID.randomUUID();
+    private final UUID playerId = UUID.randomUUID();
+    private final UUID openWindow = UUID.randomUUID();
+    private final UUID otherOpenWindow = UUID.randomUUID();
+    private final UUID closedWindow = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        service = new PublicSectionAvailabilityRoundServiceImpl(
-                sectionAvailabilityRoundRepository,
-                sectionAvailabilityWindowRepository,
-                sectionAvailabilityResponseRepository,
-                sectionRepository,
-                audienceResolver);
+        service = new PublicSectionAvailabilityRoundServiceImpl(roundRepository, windowRepository,
+                windowMatchRepository, responseRepository, sectionRepository, matchRepository, teamRepository,
+                audienceResolver, verifier, tokens);
     }
 
-    private SectionAvailabilityRound round(UUID id, UUID sectionId) {
-        return SectionAvailabilityRound.builder()
-                .id(id)
-                .clubId(UUID.randomUUID())
-                .sectionId(sectionId)
-                .description("Saturday fixtures")
-                .firstMatchDate(LocalDate.of(2026, 9, 27))
-                .lastMatchDate(LocalDate.of(2026, 9, 27))
-                .autoClose(true)
-                .open(true)
-                .build();
+    private String token() {
+        return tokens.issue(PublicPollKind.ROUND, roundId, playerId).token();
     }
 
-    @Test
-    void getRoundReturns404WhenRoundIdDoesNotExist() {
-        UUID roundId = UUID.randomUUID();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.getRound(roundId)).isInstanceOf(NotFoundException.class);
+    private SectionAvailabilityWindow window(UUID id, boolean open) {
+        return SectionAvailabilityWindow.builder().id(id).roundId(roundId).windowDate(LocalDate.of(2026, 11, 7))
+                .dayPart(DayPart.MORNING).open(open).build();
     }
 
-    @Test
-    void getRoundReturnsEachBracketsOwnPerPlayerStatuses() {
-        UUID roundId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID morningWindowId = UUID.randomUUID();
-        UUID playerId = UUID.randomUUID();
-        SectionAvailabilityRound round = round(roundId, sectionId);
-        SectionAvailabilityWindow morning = SectionAvailabilityWindow.builder()
-                .id(morningWindowId).roundId(roundId).sectionId(sectionId)
-                .windowDate(LocalDate.of(2026, 9, 27)).dayPart(DayPart.MORNING).open(true).build();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round));
-        when(sectionAvailabilityWindowRepository.findByRoundId(roundId)).thenReturn(List.of(morning));
+    private void roundWithWindows() {
+        when(roundRepository.findById(roundId)).thenReturn(Optional.of(
+                SectionAvailabilityRound.builder().id(roundId).sectionId(sectionId).open(true).build()));
         when(audienceResolver.resolveAudience(sectionId))
-                .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Alice", "A", 7, null)));
-        when(sectionAvailabilityResponseRepository.findByWindowId(morningWindowId)).thenReturn(List.of(
-                SectionAvailabilityResponse.builder().windowId(morningWindowId).playerProfileId(playerId)
-                        .status(AvailabilityStatus.AVAILABLE).build()));
+                .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Al", "Ex", 3, null)));
+        org.mockito.Mockito.lenient().when(windowRepository.findByRoundId(roundId)).thenReturn(List.of(
+                window(openWindow, true), window(otherOpenWindow, true), window(closedWindow, false)));
+    }
 
-        PublicSectionAvailabilityRoundDto dto = service.getRound(roundId);
-
-        assertThat(dto.roundId()).isEqualTo(roundId);
-        assertThat(dto.description()).isEqualTo("Saturday fixtures");
-        assertThat(dto.responses()).hasSize(1);
-        assertThat(dto.responses().get(0).statuses()).hasSize(1);
-        SectionAvailabilityRoundStatusDto status = dto.responses().get(0).statuses().get(0);
-        assertThat(status.windowId()).isEqualTo(morningWindowId);
-        assertThat(status.status()).isEqualTo(AvailabilityStatus.AVAILABLE);
+    private static PublicAnswersRequest request(PublicAnswerDto... answers) {
+        return new PublicAnswersRequest(List.of(answers));
     }
 
     @Test
-    void setAvailabilityRejectsAPlayerNotInTheRoundsOwnAudience() {
-        UUID roundId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID playerId = UUID.randomUUID();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round(roundId, sectionId)));
+    void savesEveryAnswerWithSourcePublicLinkAndUpsertsExistingRows() {
+        roundWithWindows();
+        SectionAvailabilityResponse existing = SectionAvailabilityResponse.builder().windowId(openWindow)
+                .playerProfileId(playerId).status(AvailabilityStatus.AVAILABLE).source(AnswerSource.MANAGER).build();
+        when(responseRepository.findByPlayerProfileIdAndWindowIdIn(any(), any())).thenReturn(List.of(existing));
+        when(responseRepository.saveAll(any())).thenAnswer(call -> call.getArgument(0));
+
+        PublicAnswersDto result = service.saveAnswers(roundId, playerId, token(), request(
+                new PublicAnswerDto(openWindow, AvailabilityStatus.UNSURE),
+                new PublicAnswerDto(otherOpenWindow, AvailabilityStatus.AVAILABLE)));
+
+        assertThat(existing.getStatus()).isEqualTo(AvailabilityStatus.UNSURE);
+        assertThat(existing.getSource()).isEqualTo(AnswerSource.PUBLIC_LINK);
+        assertThat(result.answers()).hasSize(2);
+    }
+
+    @Test
+    void oneClosedWindowRejectsTheWholeCall() {
+        roundWithWindows();
+
+        assertThatThrownBy(() -> service.saveAnswers(roundId, playerId, token(), request(
+                new PublicAnswerDto(openWindow, AvailabilityStatus.AVAILABLE),
+                new PublicAnswerDto(closedWindow, AvailabilityStatus.AVAILABLE))))
+                .isInstanceOf(SectionAvailabilityWindowClosedException.class);
+        verify(responseRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void aWindowOfAnotherRoundIsNotFound() {
+        roundWithWindows();
+
+        assertThatThrownBy(() -> service.saveAnswers(roundId, playerId, token(), request(
+                new PublicAnswerDto(UUID.randomUUID(), AvailabilityStatus.AVAILABLE))))
+                .isInstanceOf(NotFoundException.class);
+        verify(responseRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void emptyDuplicateOrWindowlessAnswersAreInvalid() {
+        roundWithWindows();
+
+        assertThatThrownBy(() -> service.saveAnswers(roundId, playerId, token(), request()))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.saveAnswers(roundId, playerId, token(), request(
+                new PublicAnswerDto(null, AvailabilityStatus.AVAILABLE))))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.saveAnswers(roundId, playerId, token(), request(
+                new PublicAnswerDto(openWindow, AvailabilityStatus.AVAILABLE),
+                new PublicAnswerDto(openWindow, AvailabilityStatus.UNSURE))))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void aTokenForAnotherRoundIsRefused() {
+        when(roundRepository.findById(roundId)).thenReturn(Optional.of(
+                SectionAvailabilityRound.builder().id(roundId).sectionId(sectionId).open(true).build()));
+        String wrong = tokens.issue(PublicPollKind.ROUND, UUID.randomUUID(), playerId).token();
+
+        assertThatThrownBy(() -> service.getAnswers(roundId, playerId, wrong))
+                .isInstanceOf(InvalidPublicTokenException.class);
+    }
+
+    @Test
+    void aPlayerOutsideTheAudienceIsNotFound() {
+        when(roundRepository.findById(roundId)).thenReturn(Optional.of(
+                SectionAvailabilityRound.builder().id(roundId).sectionId(sectionId).open(true).build()));
         when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.setAvailability(
-                        roundId, playerId, UUID.randomUUID(), AvailabilityStatus.AVAILABLE))
+        assertThatThrownBy(() -> service.getAnswers(roundId, playerId, token()))
                 .isInstanceOf(NotFoundException.class);
-        verify(sectionAvailabilityResponseRepository, never()).save(any());
     }
 
     @Test
-    void setAvailabilityRejectsAWindowNotBelongingToThisRound() {
-        UUID roundId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID playerId = UUID.randomUUID();
-        UUID windowId = UUID.randomUUID();
-        SectionAvailabilityWindow otherRoundsWindow = SectionAvailabilityWindow.builder()
-                .id(windowId).roundId(UUID.randomUUID()).sectionId(sectionId).dayPart(DayPart.MORNING).open(true)
-                .build();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round(roundId, sectionId)));
-        when(audienceResolver.resolveAudience(sectionId))
-                .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Alice", "A", null, null)));
-        when(sectionAvailabilityWindowRepository.findById(windowId)).thenReturn(Optional.of(otherRoundsWindow));
+    void getAnswersListsOnlyThisPlayersAnswersForTheRoundsWindows() {
+        roundWithWindows();
+        when(responseRepository.findByPlayerProfileIdAndWindowIdIn(any(), any())).thenReturn(List.of(
+                SectionAvailabilityResponse.builder().windowId(openWindow).playerProfileId(playerId)
+                        .status(AvailabilityStatus.UNAVAILABLE).build()));
 
-        assertThatThrownBy(() -> service.setAvailability(roundId, playerId, windowId, AvailabilityStatus.AVAILABLE))
-                .isInstanceOf(NotFoundException.class);
-        verify(sectionAvailabilityResponseRepository, never()).save(any());
-    }
-
-    @Test
-    void setAvailabilityRejectsAWriteAgainstAClosedBracket() {
-        UUID roundId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID playerId = UUID.randomUUID();
-        UUID windowId = UUID.randomUUID();
-        SectionAvailabilityWindow closedWindow = SectionAvailabilityWindow.builder()
-                .id(windowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING).open(false).build();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round(roundId, sectionId)));
-        when(audienceResolver.resolveAudience(sectionId))
-                .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Alice", "A", null, null)));
-        when(sectionAvailabilityWindowRepository.findById(windowId)).thenReturn(Optional.of(closedWindow));
-
-        assertThatThrownBy(() -> service.setAvailability(roundId, playerId, windowId, AvailabilityStatus.AVAILABLE))
-                .isInstanceOf(SectionAvailabilityWindowClosedException.class);
-        verify(sectionAvailabilityResponseRepository, never()).save(any());
-    }
-
-    @Test
-    void setAvailabilityUpsertsTheResponseAgainstTheResolvedWindow() {
-        UUID roundId = UUID.randomUUID();
-        UUID sectionId = UUID.randomUUID();
-        UUID windowId = UUID.randomUUID();
-        UUID playerId = UUID.randomUUID();
-        SectionAvailabilityWindow openWindow = SectionAvailabilityWindow.builder()
-                .id(windowId).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING).open(true).build();
-        when(sectionAvailabilityRoundRepository.findById(roundId)).thenReturn(Optional.of(round(roundId, sectionId)));
-        when(audienceResolver.resolveAudience(sectionId))
-                .thenReturn(List.of(new SectionAvailabilityResponseRowDto(playerId, "Alice", "A", null, null)));
-        when(sectionAvailabilityWindowRepository.findById(windowId)).thenReturn(Optional.of(openWindow));
-        when(sectionAvailabilityResponseRepository.findByWindowIdAndPlayerProfileId(windowId, playerId))
-                .thenReturn(Optional.empty());
-        when(sectionAvailabilityWindowRepository.findByRoundId(roundId)).thenReturn(List.of(openWindow));
-        when(sectionAvailabilityResponseRepository.findByWindowId(windowId)).thenReturn(List.of());
-
-        service.setAvailability(roundId, playerId, windowId, AvailabilityStatus.AVAILABLE);
-
-        ArgumentCaptor<SectionAvailabilityResponse> captor = ArgumentCaptor.forClass(SectionAvailabilityResponse.class);
-        verify(sectionAvailabilityResponseRepository).save(captor.capture());
-        assertThat(captor.getValue().getWindowId()).isEqualTo(windowId);
-        assertThat(captor.getValue().getPlayerProfileId()).isEqualTo(playerId);
-        assertThat(captor.getValue().getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
+        assertThat(service.getAnswers(roundId, playerId, token()).answers())
+                .containsExactly(new PublicAnswerDto(openWindow, AvailabilityStatus.UNAVAILABLE));
     }
 }

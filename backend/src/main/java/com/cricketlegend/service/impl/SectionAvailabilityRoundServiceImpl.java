@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.config.AccessService;
+import com.cricketlegend.domain.AnswerSource;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
@@ -479,6 +480,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                         .playerProfileId(playerProfileId)
                         .build());
         response.setStatus(status);
+        // A manager override clears the "via link" marker (077).
+        response.setSource(AnswerSource.MANAGER);
         sectionAvailabilityResponseRepository.save(response);
 
         return buildResponsesDto(round);
@@ -537,14 +540,23 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
         List<SectionAvailabilityWindow> windows = sortedWindowsByRoundId(round.getId());
 
         Map<UUID, Map<UUID, AvailabilityStatus>> statusByWindowThenPlayer = new LinkedHashMap<>();
+        Map<UUID, Set<UUID>> viaLinkByWindow = new LinkedHashMap<>();
         List<SectionAvailabilityRoundBracketDto> brackets = new ArrayList<>();
+        Map<UUID, List<SectionAvailabilityResponse>> responsesByWindow = new LinkedHashMap<>();
+        for (SectionAvailabilityWindow window : windows) {
+            responsesByWindow.put(window.getId(), sectionAvailabilityResponseRepository.findByWindowId(window.getId()));
+        }
         for (SectionAvailabilityWindow window : windows) {
             Map<UUID, AvailabilityStatus> statusByPlayerId =
-                    sectionAvailabilityResponseRepository.findByWindowId(window.getId()).stream()
+                    responsesByWindow.get(window.getId()).stream()
                             .collect(Collectors.toMap(
                                     SectionAvailabilityResponse::getPlayerProfileId,
                                     SectionAvailabilityResponse::getStatus));
             statusByWindowThenPlayer.put(window.getId(), statusByPlayerId);
+            viaLinkByWindow.put(window.getId(), responsesByWindow.get(window.getId()).stream()
+                    .filter(response -> response.getSource() == AnswerSource.PUBLIC_LINK)
+                    .map(SectionAvailabilityResponse::getPlayerProfileId)
+                    .collect(Collectors.toSet()));
             long coveredMatchCount =
                     sectionAvailabilityWindowMatchRepository.findByWindowId(window.getId()).size();
             brackets.add(new SectionAvailabilityRoundBracketDto(
@@ -569,7 +581,8 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
                                         window.getId(),
                                         window.getDayPart(),
                                         window.getWindowDate(),
-                                        statusByWindowThenPlayer.get(window.getId()).get(row.playerProfileId())))
+                                        statusByWindowThenPlayer.get(window.getId()).get(row.playerProfileId()),
+                                        viaLinkByWindow.get(window.getId()).contains(row.playerProfileId())))
                                 .toList()))
                 .toList();
 

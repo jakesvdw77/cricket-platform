@@ -1,20 +1,24 @@
 package com.cricketlegend.service;
 
-import com.cricketlegend.domain.AvailabilityStatus;
-import com.cricketlegend.dto.PublicSectionAvailabilityRoundDto;
+import com.cricketlegend.dto.PublicAnswersDto;
+import com.cricketlegend.dto.PublicAnswersRequest;
+import com.cricketlegend.dto.PublicRoundHeaderDto;
+import com.cricketlegend.dto.PublicVerifyRequest;
+import com.cricketlegend.dto.PublicVerifyResponseDto;
 import java.util.UUID;
 
 /**
- * Public, unauthenticated surface for a {@code SectionAvailabilityRound} — mirrors {@code
- * PublicAvailabilityPollService}'s exact shape (no {@code clubId} anywhere, the round's own
- * unguessable UUID is the entire access boundary). Per the fixture-group-selection revision,
- * {@link #setAvailability} is now {@code windowId}-keyed rather than {@code dayPart}-keyed. See
- * docs/specs/063-section-availability-and-flexible-squads.md.
+ * Public, unauthenticated surface of a group poll ({@code SectionAvailabilityRound}), the same shape
+ * as {@link PublicAvailabilityPollService} with one answer per window. See
+ * docs/specs/077-public-availability-form-verification.md.
  */
 public interface PublicSectionAvailabilityRoundService {
 
-    PublicSectionAvailabilityRoundDto getRound(UUID roundId);
+    PublicRoundHeaderDto getHeader(UUID roundId);
 
-    PublicSectionAvailabilityRoundDto setAvailability(
-            UUID roundId, UUID playerProfileId, UUID windowId, AvailabilityStatus status);
+    PublicVerifyResponseDto verify(UUID roundId, PublicVerifyRequest request, String clientAddress);
+
+    PublicAnswersDto getAnswers(UUID roundId, UUID playerId, String token);
+
+    PublicAnswersDto saveAnswers(UUID roundId, UUID playerId, String token, PublicAnswersRequest request);
 }

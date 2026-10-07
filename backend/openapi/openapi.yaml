@@ -6,42 +6,12 @@ servers:
 - url: http://localhost:8082
   description: Generated server url
 paths:
-  /api/v1/public/section-availability-rounds/{roundId}/players/{playerProfileId}:
-    put:
-      tags:
-      - public-section-availability-round-controller
-      operationId: setAvailability
-      parameters:
-      - name: roundId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: playerProfileId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SetSectionAvailabilityRoundPlayerRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PublicSectionAvailabilityRoundDto"
-  /api/v1/public/polls/{pollId}/players/{playerProfileId}:
-    put:
+  /api/v1/public/polls/{pollId}:
+    get:
       tags:
       - public-availability-poll-controller
-      operationId: setAvailability_1
+      operationId: publicPollHeader
+      summary: Poll header only. No players, no responses.
       parameters:
       - name: pollId
         in: path
@@ -49,7 +19,32 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: playerProfileId
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicPollHeaderDto"
+        "404":
+          description: Unknown id
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/polls/{pollId}/verify:
+    post:
+      tags:
+      - public-availability-poll-controller
+      operationId: publicPollVerify
+      summary: >-
+        Identify a player of this poll by name and date of birth. Lenient name matching, the date
+        decides. VERIFIED carries a 30 minute token; PICK lists same-name same-date candidates (repeat
+        with playerId); NO_DATE_OF_BIRTH means the player has no date on record. Anything else is the
+        generic 403 with triesLeft. 5 failures per name lock it for 15 minutes (423); more than 30
+        calls per client address per 15 minutes is 429. Both carry retryAfterSeconds.
+      parameters:
+      - name: pollId
         in: path
         required: true
         schema:
@@ -59,7 +54,118 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SetPlayerAvailabilityRequest"
+              $ref: "#/components/schemas/PublicVerifyRequest"
+        required: true
+      responses:
+        "200":
+          description: VERIFIED, PICK or NO_DATE_OF_BIRTH
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicVerifyResponseDto"
+        "400":
+          description: Invalid body
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Generic failure, property triesLeft (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: Locked, property retryAfterSeconds (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Too many calls from this address, property retryAfterSeconds (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/polls/{pollId}/players/{playerId}/answers:
+    get:
+      tags:
+      - public-availability-poll-controller
+      operationId: publicPollGetAnswers
+      summary: The verified player's saved answers (empty if none). Needs X-Public-Token.
+      parameters:
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Public-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAnswersDto"
+        "401":
+          description: Missing, invalid, expired or wrong-scope token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id, or the player does not belong to this poll
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+      - public-availability-poll-controller
+      operationId: publicPollPutAnswers
+      summary: >-
+        Saves all submitted answers in one transaction (source PUBLIC_LINK). Squad poll: exactly one
+        answer with windowId null. Group poll: windowIds of this round, all open, partial allowed.
+      parameters:
+      - name: pollId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Public-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicAnswersRequest"
         required: true
       responses:
         "200":
@@ -67,7 +173,223 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/PublicAvailabilityPollDto"
+                $ref: "#/components/schemas/PublicAnswersDto"
+        "400":
+          description: Invalid answers
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing, invalid, expired or wrong-scope token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id, window of another round, or player not in the poll
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Poll or a submitted window is closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/section-availability-rounds/{roundId}:
+    get:
+      tags:
+      - public-section-availability-round-controller
+      operationId: publicRoundHeader
+      summary: Poll header only. No players, no responses.
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicRoundHeaderDto"
+        "404":
+          description: Unknown id
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/section-availability-rounds/{roundId}/verify:
+    post:
+      tags:
+      - public-section-availability-round-controller
+      operationId: publicRoundVerify
+      summary: >-
+        Identify a player of this poll by name and date of birth. Lenient name matching, the date
+        decides. VERIFIED carries a 30 minute token; PICK lists same-name same-date candidates (repeat
+        with playerId); NO_DATE_OF_BIRTH means the player has no date on record. Anything else is the
+        generic 403 with triesLeft. 5 failures per name lock it for 15 minutes (423); more than 30
+        calls per client address per 15 minutes is 429. Both carry retryAfterSeconds.
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicVerifyRequest"
+        required: true
+      responses:
+        "200":
+          description: VERIFIED, PICK or NO_DATE_OF_BIRTH
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicVerifyResponseDto"
+        "400":
+          description: Invalid body
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Generic failure, property triesLeft (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: Locked, property retryAfterSeconds (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Too many calls from this address, property retryAfterSeconds (integer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/section-availability-rounds/{roundId}/players/{playerId}/answers:
+    get:
+      tags:
+      - public-section-availability-round-controller
+      operationId: publicRoundGetAnswers
+      summary: The verified player's saved answers (empty if none). Needs X-Public-Token.
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Public-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAnswersDto"
+        "401":
+          description: Missing, invalid, expired or wrong-scope token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id, or the player does not belong to this poll
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+      - public-section-availability-round-controller
+      operationId: publicRoundPutAnswers
+      summary: >-
+        Saves all submitted answers in one transaction (source PUBLIC_LINK). Squad poll: exactly one
+        answer with windowId null. Group poll: windowIds of this round, all open, partial allowed.
+      parameters:
+      - name: roundId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-Public-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicAnswersRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicAnswersDto"
+        "400":
+          description: Invalid answers
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing, invalid, expired or wrong-scope token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown id, window of another round, or player not in the poll
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Poll or a submitted window is closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/platform/subscriptions/{id}:
     get:
       tags:
@@ -3753,44 +4075,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeadDto"
-  /api/v1/public/section-availability-rounds/{roundId}:
-    get:
-      tags:
-      - public-section-availability-round-controller
-      operationId: getRound
-      parameters:
-      - name: roundId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PublicSectionAvailabilityRoundDto"
-  /api/v1/public/polls/{pollId}:
-    get:
-      tags:
-      - public-availability-poll-controller
-      operationId: getPoll
-      parameters:
-      - name: pollId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PublicAvailabilityPollDto"
   /api/v1/public/clubs:
     get:
       tags:
@@ -4509,22 +4793,6 @@ components:
       required:
       - status
       - windowId
-    PublicSectionAvailabilityRoundDto:
-      type: object
-      properties:
-        roundId:
-          type: string
-          format: uuid
-        description:
-          type: string
-        sectionName:
-          type: string
-        open:
-          type: boolean
-        responses:
-          type: array
-          items:
-            $ref: "#/components/schemas/SectionAvailabilityRoundResponseRowDto"
     SectionAvailabilityRoundResponseRowDto:
       type: object
       properties:
@@ -4562,6 +4830,9 @@ components:
           - AVAILABLE
           - UNAVAILABLE
           - UNSURE
+        viaLink:
+          type: [boolean, 'null']
+          description: True when the player answered through the public link (077), false or null otherwise.
     SetPlayerAvailabilityRequest:
       type: object
       properties:
@@ -4592,33 +4863,9 @@ components:
           - AVAILABLE
           - UNAVAILABLE
           - UNSURE
-    PublicAvailabilityPollDto:
-      type: object
-      properties:
-        pollId:
-          type: string
-          format: uuid
-        open:
-          type: boolean
-        homeTeamName:
-          type: string
-        awayTeamName:
-          type: string
-        matchDate:
-          type: string
-          format: date-time
-        venue:
-          type: string
-        leagueName:
-          type: string
-        seasonLabel:
-          type: string
-        teamName:
-          type: string
-        responses:
-          type: array
-          items:
-            $ref: "#/components/schemas/PlayerAvailabilityRowDto"
+        viaLink:
+          type: [boolean, 'null']
+          description: True when the player answered through the public link (077), false or null otherwise.
     UpdateSubscriptionRequest:
       type: object
       properties:
@@ -4633,6 +4880,197 @@ components:
           format: date
       required:
       - productId
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        triesLeft:
+          type: integer
+          format: int32
+        retryAfterSeconds:
+          type: integer
+          format: int64
+    PublicVerifyRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+          minLength: 1
+        lastName:
+          type: string
+          maxLength: 100
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+        playerId:
+          type: [string, 'null']
+          format: uuid
+      required:
+      - dateOfBirth
+      - firstName
+      - lastName
+    PublicVerifyResponseDto:
+      type: object
+      description: VERIFIED sets playerId, firstName, lastName, token, expiresAt. PICK sets only candidates. NO_DATE_OF_BIRTH sets only status. Unused fields are omitted.
+      properties:
+        status:
+          type: string
+          enum:
+          - VERIFIED
+          - PICK
+          - NO_DATE_OF_BIRTH
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPickCandidateDto"
+      required:
+      - status
+    PublicPickCandidateDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        shirtNumber:
+          type: [integer, 'null']
+          format: int32
+        teamLabel:
+          type: [string, 'null']
+    PublicAnswerDto:
+      type: object
+      properties:
+        windowId:
+          type: [string, 'null']
+          format: uuid
+          description: Null for a squad poll, the window id for a group poll.
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNAVAILABLE
+          - UNSURE
+      required:
+      - status
+    PublicAnswersRequest:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAnswerDto"
+      required:
+      - answers
+    PublicAnswersDto:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAnswerDto"
+    PublicPollHeaderDto:
+      type: object
+      properties:
+        pollId:
+          type: string
+          format: uuid
+        open:
+          type: boolean
+        clubId:
+          type: string
+          format: uuid
+        homeTeamName:
+          type: [string, 'null']
+        awayTeamName:
+          type: [string, 'null']
+        matchDate:
+          type: string
+          format: date-time
+        venue:
+          type: [string, 'null']
+        leagueName:
+          type: [string, 'null']
+        seasonLabel:
+          type: [string, 'null']
+        teamName:
+          type: [string, 'null']
+        scheduledCloseAt:
+          type: [string, 'null']
+          format: date-time
+    PublicRoundHeaderDto:
+      type: object
+      properties:
+        roundId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        sectionName:
+          type: [string, 'null']
+        open:
+          type: boolean
+        clubId:
+          type: string
+          format: uuid
+        scheduledCloseAt:
+          type: [string, 'null']
+          format: date-time
+        windows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicRoundWindowDto"
+    PublicRoundWindowDto:
+      type: object
+      properties:
+        windowId:
+          type: string
+          format: uuid
+        windowDate:
+          type: string
+          format: date
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        open:
+          type: boolean
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicRoundMatchDto"
+    PublicRoundMatchDto:
+      type: object
+      properties:
+        homeTeamName:
+          type: [string, 'null']
+        awayTeamName:
+          type: [string, 'null']
     ClubSummaryDto:
       type: object
       properties:
