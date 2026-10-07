@@ -50,6 +50,11 @@ export function statusFor(row: ResponseRow, windowId: string): AvailabilityStatu
   return row.statuses.find((entry) => entry.windowId === windowId)?.status ?? null
 }
 
+// True when this player's answer for the slot came through the public link (077).
+export function viaLinkFor(row: ResponseRow, windowId: string): boolean {
+  return row.statuses.find((entry) => entry.windowId === windowId)?.viaLink === true
+}
+
 export function hasAnyAnswer(row: ResponseRow): boolean {
   return row.statuses.some((entry) => entry.status !== null)
 }

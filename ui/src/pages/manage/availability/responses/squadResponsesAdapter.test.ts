@@ -111,4 +111,14 @@ describe('toSquadResponsesModel', () => {
     expect(at(new Date(2026, 9, 15, 12, 0))).toBe('AFTERNOON')
     expect(at(new Date(2026, 9, 15, 14, 0))).toBe('AFTERNOON')
   })
+
+  it('carries the via link flag onto the synthetic status', () => {
+    const withLink = {
+      ...responses,
+      responses: [{ ...responses.responses[0], viaLink: true }, responses.responses[1]],
+    }
+    const { rows } = toSquadResponsesModel({ responses: withLink, poll, match, teamsById })
+    expect(rows[0].statuses[0].viaLink).toBe(true)
+    expect(rows[1].statuses[0].viaLink).toBeUndefined()
+  })
 })

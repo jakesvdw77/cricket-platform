@@ -56,7 +56,7 @@ export function toSquadResponsesModel({
       firstName: row.firstName,
       lastName: row.lastName,
       jerseyNumber: row.squadJerseyNumber,
-      statuses: [{ windowId, dayPart, windowDate, status: row.status }],
+      statuses: [{ windowId, dayPart, windowDate, status: row.status, viaLink: row.viaLink }],
     })),
     matches: [
       {
