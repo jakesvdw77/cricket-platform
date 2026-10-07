@@ -294,6 +294,14 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     expect(screen.queryByText('Unknown team')).not.toBeInTheDocument()
   })
 
+  it('ignores a team chosen on Polls or Players: it is not in the caption and the hub does not load teams for it', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: null, sectionId: null, teamId: 'team-2' }))
+    renderPage()
+
+    const caption = await screen.findByText(/^Showing 3 slots/)
+    expect(caption).not.toHaveTextContent('Villagers 2')
+  })
+
   it('shows an error state when the grid fails', async () => {
     listPlayerAvailability.mockRejectedValue(new Error('boom'))
     renderPage()

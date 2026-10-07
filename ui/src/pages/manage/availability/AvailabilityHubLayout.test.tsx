@@ -10,7 +10,13 @@ import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
 import type { Season } from '../../../api/seasonApi'
 import type { AvailabilityHubContext } from './hubContext'
 
-vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../../api/leagueApi', () => ({
+  listLeagues: () => Promise.resolve([{ id: 'lg-1', name: 'Over 40 League' }]),
+}))
+const listTeamsForClub = vi.fn()
+vi.mock('../../../api/teamApi', () => ({
+  listTeamsForClub: (...args: unknown[]) => listTeamsForClub(...args),
+}))
 vi.mock('../../../api/sectionApi', () => ({
   listSections: () =>
     Promise.resolve([
@@ -38,6 +44,8 @@ const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playe
 beforeEach(() => {
   getAvailabilitySummary.mockReset()
   getAvailabilitySummary.mockResolvedValue(summary)
+  listTeamsForClub.mockReset()
+  listTeamsForClub.mockResolvedValue([{ id: 'tm-1', name: 'Lions' }])
   listSeasons.mockReset()
   listSeasons.mockResolvedValue(SEASONS)
   localStorage.clear()
@@ -258,7 +266,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
     expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', {
-      sectionId: null, type: 'ALL', includeClosed: false,
+      leagueId: null, sectionId: null, teamId: null, type: 'ALL', includeClosed: false,
     })
     for (const label of ['Open polls', 'Players responded', 'Players still to answer', 'Close in 48 hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
@@ -319,21 +327,43 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Vets › Over 40')
   })
 
-  it('does not send or show the league and team filters until the list filters by them (slice 3)', async () => {
+  it('follows the league and team filters and names them in the scope line', async () => {
     const user = userEvent.setup()
     renderAt('/manage/availability')
     await waitFor(() => expect(values()).toHaveLength(4))
-    const calls = getAvailabilitySummary.mock.calls.length
 
     await user.click(screen.getByRole('button', { name: 'pick league and team' }))
-    await user.click(screen.getByRole('button', { name: 'pick section' }))
 
-    await waitFor(() => expect(getAvailabilitySummary.mock.calls.length).toBeGreaterThan(calls))
-    for (const [, sent] of getAvailabilitySummary.mock.calls) {
-      expect(sent).not.toHaveProperty('leagueId')
-      expect(sent).not.toHaveProperty('teamId')
-    }
-    expect(await screen.findByTestId('counters-scope')).toHaveTextContent(/^Showing: Vets › Over 40$/)
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ leagueId: 'lg-1', teamId: 'tm-1' })),
+    )
+    expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Over 40 League · Lions')
+  })
+
+  it('drops a stored team that is not among the teams, from the request and the scope line', async () => {
+    localStorage.setItem('availability:filters:club-1', JSON.stringify({ leagueId: null, sectionId: null, teamId: 'gone' }))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(values()).toHaveLength(4))
+    expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', expect.objectContaining({ teamId: null }))
+    expect(screen.queryByTestId('counters-scope')).not.toBeInTheDocument()
+  })
+
+  it('holds the summary request and hides the counters when the team list fails', async () => {
+    listTeamsForClub.mockRejectedValue(new Error('boom'))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(listTeamsForClub).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
+    expect(getAvailabilitySummary).not.toHaveBeenCalled()
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('does not load teams for the Coverage view', async () => {
+    renderAt('/manage/availability/coverage')
+
+    await screen.findByText(/^Coverage view/)
+    expect(listTeamsForClub).not.toHaveBeenCalled()
   })
 
   it('follows the poll type toggle and Show closed, and reads Polls shown when closed are included', async () => {

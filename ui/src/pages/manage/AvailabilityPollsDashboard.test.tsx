@@ -62,10 +62,12 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
 })
 
 vi.mock('../../api/teamApi', () => ({
-  listTeamsForClub: (clubId: string) => listTeamsForClub(clubId),
+  listTeamsForClub: (clubId: string, params?: unknown) => listTeamsForClub(clubId, params),
 }))
 
-vi.mock('../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../api/leagueApi', () => ({
+  listLeagues: () => Promise.resolve([{ id: 'league-1', name: 'Premier League' }]),
+}))
 vi.mock('../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -495,15 +497,90 @@ describe('AvailabilityPollsDashboard', () => {
       delete (window as { matchMedia?: unknown }).matchMedia
     })
 
-    it('shows Section and search only (League and Team come with slice 3), no Type select', async () => {
+    it('shows League, Section, Team and search, no Type select', async () => {
       renderDashboard('test-club-id')
       await screen.findByText('No open polls')
 
-      expect(screen.getByLabelText('Section')).toBeInTheDocument()
+      const order = ['League', 'Section', 'Team'].map((name) => screen.getByLabelText(name))
+      expect(order).toHaveLength(3)
       expect(screen.getByLabelText('Search')).toBeInTheDocument()
-      expect(screen.queryByLabelText('League')).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('Team')).not.toBeInTheDocument()
       expect(screen.queryByLabelText('Type')).not.toBeInTheDocument()
+    })
+
+    it('sends League and Team with every list request, scopes the Team options by section, and refetches', async () => {
+      const user = userEvent.setup()
+      listSections.mockResolvedValue([JUNIORS])
+      listTeamsForClub.mockImplementation((_clubId: string, params?: { sectionId?: string }) =>
+        Promise.resolve(
+          params?.sectionId
+            ? [makeTeam({ id: 'team-home', name: 'Home Team' })]
+            : [makeTeam({ id: 'team-home', name: 'Home Team' }), makeTeam({ id: 'team-2', name: 'Other Team' })],
+        ),
+      )
+      renderDashboard('test-club-id')
+      await screen.findByText('No open polls')
+
+      await user.click(screen.getByLabelText('League'))
+      await user.click(await screen.findByRole('option', { name: 'Premier League' }))
+      await waitFor(() => expect(listOpenPolls).toHaveBeenLastCalledWith('test-club-id', { leagueId: 'league-1' }))
+      expect(listRounds).toHaveBeenLastCalledWith('test-club-id', { leagueId: 'league-1', open: true })
+
+      await user.click(screen.getByLabelText('Section'))
+      await user.click(within(await screen.findByRole('treeitem', { name: 'Juniors' })).getByText('Juniors'))
+      await waitFor(() => expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+      await user.click(screen.getByLabelText('Team'))
+      expect(await screen.findByRole('option', { name: 'All teams in section' })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Other Team' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('option', { name: 'Home Team' }))
+
+      await waitFor(() =>
+        expect(listOpenPolls).toHaveBeenLastCalledWith('test-club-id', {
+          leagueId: 'league-1', sectionId: 'section-1', teamId: 'team-home',
+        }),
+      )
+      expect(listRounds).toHaveBeenLastCalledWith('test-club-id', {
+        leagueId: 'league-1', sectionId: 'section-1', teamId: 'team-home', open: true,
+      })
+    })
+
+    it('carries League and Team into the closed requests when Show closed is on', async () => {
+      renderDashboard('test-club-id', '/manage/availability?league=league-1&showClosed=true')
+
+      await waitFor(() => expect(listClosedPolls).toHaveBeenCalledWith('test-club-id', { leagueId: 'league-1' }))
+      expect(listRounds).toHaveBeenCalledWith('test-club-id', { leagueId: 'league-1', open: false })
+    })
+
+    it('holds the list requests and shows the error state when the team list fails to load', async () => {
+      listTeamsForClub.mockImplementation((_clubId: string, params?: unknown) =>
+        params ? Promise.reject(new Error('boom')) : Promise.resolve([]),
+      )
+      renderDashboard('test-club-id')
+
+      expect(await screen.findByText("Couldn't load availability polls")).toBeInTheDocument()
+      expect(listOpenPolls).not.toHaveBeenCalled()
+      expect(listRounds).not.toHaveBeenCalled()
+    })
+
+    it('treats a stored team the chosen section does not hold as all teams', async () => {
+      listSections.mockResolvedValue([JUNIORS])
+      localStorage.setItem('availability:filters:test-club-id', JSON.stringify({ leagueId: null, sectionId: 'section-1', teamId: 'gone' }))
+      listTeamsForClub.mockResolvedValue([makeTeam()])
+      renderDashboard('test-club-id')
+
+      await waitFor(() => expect(listOpenPolls).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+      expect(listOpenPolls).not.toHaveBeenCalledWith('test-club-id', expect.objectContaining({ teamId: 'gone' }))
+    })
+
+    it('a league filter with nothing matching shows the filtered empty state, and Clear all resets League', async () => {
+      const user = userEvent.setup()
+      setPhone(true)
+      renderDashboard('test-club-id', '/manage/availability?league=league-1')
+
+      expect(await screen.findByText('No matching polls')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /^Filters/ }))
+      await user.click(await screen.findByRole('button', { name: 'Clear all' }))
+      expect(await screen.findByText('No open polls')).toBeInTheDocument()
+      await waitFor(() => expect(listOpenPolls).toHaveBeenLastCalledWith('test-club-id', {}))
     })
 
     it('puts the count, the sort link and the toggles on the line above the cards', async () => {

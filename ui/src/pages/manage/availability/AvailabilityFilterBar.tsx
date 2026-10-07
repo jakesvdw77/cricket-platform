@@ -4,7 +4,7 @@ import type { FilterBarChip } from '../../../components/FilterBar'
 import { useAvailabilityHub } from './hubContext'
 
 export interface AvailabilityFilterBarProps {
-  // Which shared filters this view shows. Polls shows only Section until slice 3 of 083.
+  // Which shared filters this view shows.
   show: { league?: boolean; section?: boolean; team?: boolean }
   // Team options and the (validated) chosen team, for the views that show Team.
   teams?: { id: string; name: string }[]

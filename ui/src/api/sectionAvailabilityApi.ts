@@ -148,6 +148,9 @@ function fixtureGroupsPath(clubId: string, sectionId: string): string {
 export interface ListRoundsParams {
   sectionId?: string
   open?: boolean
+  // docs/specs/083: the shared League and Team filters, validated server-side.
+  leagueId?: string
+  teamId?: string
 }
 
 // Plain array response, not Page<T> - a club's section availability rounds are a small, bounded,
@@ -157,6 +160,8 @@ export async function listRounds(clubId: string, params: ListRoundsParams = {}):
     params: {
       ...(params.sectionId ? { sectionId: params.sectionId } : {}),
       ...(params.open !== undefined ? { open: params.open } : {}),
+      ...(params.leagueId ? { leagueId: params.leagueId } : {}),
+      ...(params.teamId ? { teamId: params.teamId } : {}),
     },
   })
   return data

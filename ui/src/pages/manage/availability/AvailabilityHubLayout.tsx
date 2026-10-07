@@ -64,21 +64,21 @@ export default function AvailabilityHubLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = activeView(pathname)
-  const hub = useAvailabilityHubState(clubId, view !== 'polls')
+  const hub = useAvailabilityHubState(clubId, view !== 'polls', view !== 'coverage')
 
   // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
   // the poll type toggles and Show closed. A failed request hides the row, the page still works.
-  // Only what the Polls list itself filters by is sent: the list filters by section only until slice 3 of 083,
-  // which adds leagueId and teamId here together with the list filters.
   const summaryFilters: AvailabilitySummaryFilters = {
+    leagueId: hub.filters.leagueId,
     sectionId: hub.filters.sectionId,
+    teamId: hub.validTeamId,
     type: typeFilterFor(hub.showGroup, hub.showSquad),
     includeClosed: hub.showClosed,
   }
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
-    enabled: Boolean(clubId) && view === 'polls',
+    enabled: Boolean(clubId) && view === 'polls' && !hub.teamsLoading && !hub.teamsError,
     retry: false,
   })
 
@@ -86,9 +86,16 @@ export default function AvailabilityHubLayout() {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  // The caption is built from exactly the filters sent to the summary (section only for now).
-  const scope = scopeFilterText({ sections: hub.sections, sectionId: summaryFilters.sectionId })
-  const showCounters = view === 'polls' && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
+  // The caption is built from exactly the filters sent to the summary.
+  const scope = scopeFilterText({
+    sections: hub.sections,
+    sectionId: summaryFilters.sectionId,
+    leagues: hub.leagues,
+    leagueId: summaryFilters.leagueId,
+    teams: hub.teams,
+    teamId: summaryFilters.teamId,
+  })
+  const showCounters = view === 'polls' && !hub.teamsError && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

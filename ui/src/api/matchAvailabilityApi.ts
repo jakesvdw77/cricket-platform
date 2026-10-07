@@ -169,6 +169,17 @@ export interface ListOpenPollsParams {
   // docs/specs/035-section-scoped-access.md: narrows to one section's (and its descendants')
   // open polls — validated server-side, never a client-side filter over the full result.
   sectionId?: string
+  // docs/specs/083: the shared League and Team filters, validated server-side like sectionId.
+  leagueId?: string
+  teamId?: string
+}
+
+function pollListParams(params: ListOpenPollsParams) {
+  return {
+    ...(params.sectionId ? { sectionId: params.sectionId } : {}),
+    ...(params.leagueId ? { leagueId: params.leagueId } : {}),
+    ...(params.teamId ? { teamId: params.teamId } : {}),
+  }
 }
 
 // Plain array response, not Page<T> — see docs/specs/034-availability-polls-dashboard.md's API
@@ -176,7 +187,7 @@ export interface ListOpenPollsParams {
 // not by match history).
 export async function listOpenPolls(clubId: string, params: ListOpenPollsParams = {}): Promise<OpenAvailabilityPoll[]> {
   const { data } = await api.get<OpenAvailabilityPoll[]>(`/manage/clubs/${clubId}/availability-polls/open`, {
-    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+    params: pollListParams(params),
   })
   return data
 }
@@ -186,7 +197,7 @@ export async function listOpenPolls(clubId: string, params: ListOpenPollsParams 
 // the 50 most recent so the list stays bounded.
 export async function listClosedPolls(clubId: string, params: ListOpenPollsParams = {}): Promise<OpenAvailabilityPoll[]> {
   const { data } = await api.get<OpenAvailabilityPoll[]>(`/manage/clubs/${clubId}/availability-polls/closed`, {
-    params: { ...(params.sectionId ? { sectionId: params.sectionId } : {}) },
+    params: pollListParams(params),
   })
   return data
 }

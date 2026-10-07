@@ -28,7 +28,7 @@ type PollListItem =
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
 // pattern (the header and New poll action live in AvailabilityHubLayout, 073): a RecordCard grid mixing both kinds.
-// docs/specs/083: the toolbar is the shared FilterBar (Section from the hub's shared filters, plus search).
+// docs/specs/083: the toolbar is the shared FilterBar (League, Section and Team from the hub's shared filters, plus search).
 // The poll type is two light toggles (Group polls, Squad polls - both on by default, the last one cannot be
 // switched off), the sort order a quiet text link, and 'Show closed polls' a switch (mirroring MatchList's
 // 'Show past matches') that also fetches closed polls; they sit on the line above the cards (in the Filters
@@ -39,9 +39,14 @@ type PollListItem =
 // shared, persisted filter (replacing 043's per-view key). Search is a non-persisted useState and is
 // deliberately not sent to the counters (083 lists only the shared filters, type and Show closed as counter inputs).
 export default function AvailabilityPollsDashboard() {
-  const { clubId, filters, showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed } =
-    useAvailabilityHub()
-  const { sectionId } = filters
+  const {
+    clubId, filters, teams: teamOptions, validTeamId: teamId, teamsLoading, teamsError,
+    showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed,
+  } = useAvailabilityHub()
+  const { sectionId, leagueId } = filters
+  const scopeParams = { leagueId: leagueId ?? undefined, sectionId: sectionId ?? undefined, teamId: teamId ?? undefined }
+  // Held until the team list loaded (and not at all if it failed), so the requests carry a validated team.
+  const ready = Boolean(clubId) && !teamsLoading && !teamsError
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -53,27 +58,27 @@ export default function AvailabilityPollsDashboard() {
   const wantGroup = showGroup
 
   const pollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'availability-polls', 'open', sectionId],
-    queryFn: () => listOpenPolls(clubId as string, { sectionId: sectionId ?? undefined }),
-    enabled: Boolean(clubId) && wantSquad,
+    queryKey: ['managed-club', clubId, 'availability-polls', 'open', { leagueId, sectionId, teamId }],
+    queryFn: () => listOpenPolls(clubId as string, scopeParams),
+    enabled: ready && wantSquad,
   })
 
   const roundsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'open', sectionId],
-    queryFn: () => listRounds(clubId as string, { sectionId: sectionId ?? undefined, open: true }),
-    enabled: Boolean(clubId) && wantGroup,
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'open', { leagueId, sectionId, teamId }],
+    queryFn: () => listRounds(clubId as string, { ...scopeParams, open: true }),
+    enabled: ready && wantGroup,
   })
 
   const closedPollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'availability-polls', 'closed', sectionId],
-    queryFn: () => listClosedPolls(clubId as string, { sectionId: sectionId ?? undefined }),
-    enabled: Boolean(clubId) && wantSquad && showClosed,
+    queryKey: ['managed-club', clubId, 'availability-polls', 'closed', { leagueId, sectionId, teamId }],
+    queryFn: () => listClosedPolls(clubId as string, scopeParams),
+    enabled: ready && wantSquad && showClosed,
   })
 
   const closedRoundsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'closed', sectionId],
-    queryFn: () => listRounds(clubId as string, { sectionId: sectionId ?? undefined, open: false }),
-    enabled: Boolean(clubId) && wantGroup && showClosed,
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'closed', { leagueId, sectionId, teamId }],
+    queryFn: () => listRounds(clubId as string, { ...scopeParams, open: false }),
+    enabled: ready && wantGroup && showClosed,
   })
 
   const { data: teams } = useQuery({
@@ -159,9 +164,11 @@ export default function AvailabilityPollsDashboard() {
   }
 
   const isLoading =
+    teamsLoading ||
     (wantSquad && (pollsQuery.isLoading || (showClosed && closedPollsQuery.isLoading))) ||
     (wantGroup && (roundsQuery.isLoading || (showClosed && closedRoundsQuery.isLoading)))
   const isError =
+    teamsError ||
     (wantSquad && (pollsQuery.isError || (showClosed && closedPollsQuery.isError))) ||
     (wantGroup && (roundsQuery.isError || (showClosed && closedRoundsQuery.isError)))
 
@@ -181,7 +188,7 @@ export default function AvailabilityPollsDashboard() {
   const isSearching = search.trim().length > 0
   const pollWord = showClosed ? 'polls' : 'open polls'
   const typeLimited = !(showGroup && showSquad)
-  const isFiltering = isSearching || typeLimited || sectionId !== null
+  const isFiltering = isSearching || typeLimited || sectionId !== null || leagueId !== null || teamId !== null
 
   // The last type toggle left on cannot be switched off.
   const typeToggles = (
@@ -209,9 +216,11 @@ export default function AvailabilityPollsDashboard() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* League and Team join this toolbar in slice 3 of 083, when the poll lists can filter by them. */}
       <AvailabilityFilterBar
-        show={{ section: true }}
+        show={{ league: true, section: true, team: true }}
+        teams={teamOptions}
+        teamId={teamId}
+        teamAllLabel={sectionId ? 'All teams in section' : 'All teams'}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by team, opponent or description"
@@ -284,7 +293,7 @@ export default function AvailabilityPollsDashboard() {
           description={
             isSearching
               ? `No ${pollWord} match "${search.trim()}". Try a different search.`
-              : `No ${pollWord} match the current filters. Try a different type or section.`
+              : `No ${pollWord} match the current filters. Try a different type, section, league or team.`
           }
         />
       )}

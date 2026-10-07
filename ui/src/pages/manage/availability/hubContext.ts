@@ -8,6 +8,8 @@ import { listLeagues } from '../../../api/leagueApi'
 import type { League } from '../../../api/leagueApi'
 import { listSections } from '../../../api/sectionApi'
 import type { Section } from '../../../api/sectionApi'
+import { listTeamsForClub } from '../../../api/teamApi'
+import type { Team } from '../../../api/teamApi'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 
 // docs/specs/083: what the Availability hub layout hands its three views through the Outlet context -
@@ -25,6 +27,14 @@ export interface AvailabilityHubContext {
   leaguesLoading: boolean
   leaguesError: boolean
   sections: Section[]
+  // docs/specs/083: the teams of the chosen section (all the club's when none), loaded once here for the Team
+  // filter and the "Showing: ..." text. validTeamId is the chosen team, or null when it is not one of those teams
+  // (a stored team the section no longer holds counts as "all teams"). teamsLoading holds the requests that carry it.
+  teams: Team[]
+  teamsLoading: boolean
+  // The team list failed to load: the Polls and Players views hold their requests and show their error state.
+  teamsError: boolean
+  validTeamId: string | null
   // docs/specs/083: the Polls view's poll-type toggles (both on by default) and Show closed polls switch. They
   // live here, not in the Polls page, because the counters (owned by the layout) must describe the same list.
   // Per-visit choices, not persisted; Show closed is preset by a ?showClosed=true link.
@@ -34,13 +44,18 @@ export interface AvailabilityHubContext {
   setShowSquad: (value: boolean) => void
   showClosed: boolean
   setShowClosed: (value: boolean) => void
-  // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League"; pass the
-  // teams in view to include the chosen team's name.
-  scopeText: (teams?: { id: string; name: string }[]) => string
+  // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League". The chosen
+  // team's name is included only with withTeam, for the views that actually filter by team (Polls, Players).
+  scopeText: (options?: { withTeam?: boolean }) => string
 }
 
 // Owned by the hub layout; also used by test stand-ins for it.
-export function useAvailabilityHubState(clubId: string | undefined, seasonsEnabled: boolean): AvailabilityHubContext {
+// Coverage needs neither the season nor the team list, hence the two flags.
+export function useAvailabilityHubState(
+  clubId: string | undefined,
+  seasonsEnabled: boolean,
+  teamsEnabled = true,
+): AvailabilityHubContext {
   const { filters, setFilters, clearFilters } = useAvailabilityFilters(clubId)
   const { seasonId, seasonsLoading } = useAvailabilitySeason(clubId, seasonsEnabled)
   const [searchParams] = useSearchParams()
@@ -57,6 +72,13 @@ export function useAvailabilityHubState(clubId: string | undefined, seasonsEnabl
     queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
+  const teamsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'teams', { sectionId: filters.sectionId }],
+    queryFn: () => listTeamsForClub(clubId as string, { sectionId: filters.sectionId ?? undefined }),
+    enabled: Boolean(clubId) && teamsEnabled,
+  })
+  const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data])
+  const validTeamId = filters.teamId && teams.some((team) => team.id === filters.teamId) ? filters.teamId : null
   const leagues = useMemo(() => leaguesQuery.data ?? [], [leaguesQuery.data])
   const sections = useMemo(() => sectionsQuery.data ?? [], [sectionsQuery.data])
   return {
@@ -70,14 +92,25 @@ export function useAvailabilityHubState(clubId: string | undefined, seasonsEnabl
     leaguesLoading: leaguesQuery.isLoading,
     leaguesError: leaguesQuery.isError,
     sections,
+    teams,
+    teamsLoading: teamsQuery.isLoading,
+    teamsError: teamsQuery.isError,
+    validTeamId,
     showGroup,
     setShowGroup,
     showSquad,
     setShowSquad,
     showClosed,
     setShowClosed,
-    scopeText: (teams) =>
-      scopeFilterText({ sections, sectionId: filters.sectionId, leagues, leagueId: filters.leagueId, teams, teamId: filters.teamId }),
+    scopeText: (options) =>
+      scopeFilterText({
+        sections,
+        sectionId: filters.sectionId,
+        leagues,
+        leagueId: filters.leagueId,
+        teams,
+        teamId: options?.withTeam ? filters.teamId : null,
+      }),
   }
 }
 

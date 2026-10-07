@@ -6,7 +6,6 @@ import { Button } from '../../components/Button'
 import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
-import { listTeamsForClub } from '../../api/teamApi'
 import { AvailabilityGrid } from './playerAvailability/AvailabilityGrid'
 import type { AvailabilityGridHandle } from './playerAvailability/AvailabilityGrid'
 import { filterPlayers, firstUpcomingGame } from './playerAvailability/gridHelpers'
@@ -21,7 +20,8 @@ import { useAvailabilityHub } from './availability/hubContext'
 // no "All seasons" option: the grid is one season's games by design (the spec bounds it to one season
 // and one section), and a multi-season grid would hit the server's hard cap for nothing.
 export default function PlayerAvailabilityPage() {
-  const { clubId, filters, seasonId, seasonsLoading, scopeText } = useAvailabilityHub()
+  const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId, scopeText } =
+    useAvailabilityHub()
   const gridRef = useRef<AvailabilityGridHandle>(null)
 
   const [search, setSearch] = useState('')
@@ -29,20 +29,9 @@ export default function PlayerAvailabilityPage() {
   const [hideUnanswered, setHideUnanswered] = useState(false)
   const { leagueId, sectionId } = filters
 
-  const teamsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', { sectionId }],
-    queryFn: () => listTeamsForClub(clubId as string, { sectionId: sectionId ?? undefined }),
-    enabled: Boolean(clubId),
-  })
-
-  const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data])
-
-  // A stored team that is not in the chosen section's teams is treated as "all teams".
-  const teamId = filters.teamId && teams.some((team) => team.id === filters.teamId) ? filters.teamId : null
-
-  // Held until the seasons and the team list have finished their first load, so the request
-  // carries the derived season default and a validated team.
-  const filtersReady = Boolean(clubId) && !seasonsLoading && !teamsQuery.isLoading
+  // Held until the seasons and the team list have finished their first load (and not at all if the team list
+  // failed), so the request carries the derived season default and a validated team.
+  const filtersReady = Boolean(clubId) && !seasonsLoading && !teamsLoading && !teamsError
 
   const gridQuery = useQuery({
     queryKey: ['managed-club', clubId, 'player-availability', { seasonId, leagueId, sectionId, teamId, includePast }],
@@ -70,7 +59,7 @@ export default function PlayerAvailabilityPage() {
   const upcoming = firstUpcomingGame(games, new Date())
   // The grid is replaced by an empty state when there are no games or none has a poll yet.
   const showsGrid = games.some((game) => game.pollType !== null)
-  const loading = !gridQuery.data && !gridQuery.isError
+  const loading = !gridQuery.data && !gridQuery.isError && !teamsError
 
   const jumpButton = showsGrid && gridQuery.data && (
     <Button
@@ -100,7 +89,7 @@ export default function PlayerAvailabilityPage() {
     </>
   )
 
-  const scopeFilters = scopeText(teams)
+  const scopeFilters = scopeText({ withTeam: true })
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -127,7 +116,7 @@ export default function PlayerAvailabilityPage() {
         </Box>
       )}
 
-      {gridQuery.isError && (
+      {(gridQuery.isError || teamsError) && (
         <EmptyState
           title="Couldn't load player availability"
           description="Something went wrong loading the grid. Please try again."
