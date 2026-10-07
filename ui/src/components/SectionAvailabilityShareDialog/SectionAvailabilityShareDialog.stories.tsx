@@ -12,6 +12,7 @@ const ROUND: SectionAvailabilityRound = {
   lastMatchDate: '2026-10-04',
   autoClose: true,
   scheduledCloseAt: '2026-10-02T09:00:00Z',
+  canReopen: true,
   open: true,
   brackets: [
     {

@@ -11,6 +11,7 @@ import type {
   SectionAvailabilityRoundMatch,
   SectionAvailabilityRoundResponses,
 } from '../../api/sectionAvailabilityApi'
+import { legend } from '../../test/legend'
 
 const listRounds = vi.fn()
 const getRoundResponses = vi.fn()
@@ -49,6 +50,7 @@ function makeRound(overrides: Partial<SectionAvailabilityRound> = {}): SectionAv
     firstMatchKickoff: '2026-06-06T09:00:00Z',
     autoClose: true,
     scheduledCloseAt: '2026-06-05T09:00:00Z',
+    canReopen: true,
     open: true,
     brackets: BRACKETS,
     ...overrides,
@@ -273,17 +275,17 @@ describe('GroupPollResponsesPage', () => {
     expect(screen.getAllByText('2 of 4 answered')).toHaveLength(2)
     // Morning: Available 1 / Unsure 1 / Unavailable 0 / No response 2 (of 4).
     const morning = within(screen.getByRole('heading', { level: 3, name: /· Morning$/ }).closest('div[aria-label$="summary"]') as HTMLElement)
-    expect(morning.getByText('Available 1')).toBeInTheDocument()
-    expect(morning.getByText('Unsure 1')).toBeInTheDocument()
-    expect(morning.getByText('Unavailable 0')).toBeInTheDocument()
-    expect(morning.getByText('No response 2')).toBeInTheDocument()
+    expect(morning.getByText(legend('Available 1'))).toBeInTheDocument()
+    expect(morning.getByText(legend('Unsure 1'))).toBeInTheDocument()
+    expect(morning.getByText(legend('Unavailable 0'))).toBeInTheDocument()
+    expect(morning.getByText(legend('No response 2'))).toBeInTheDocument()
     expect(screen.getByTestId('window-1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
     expect(screen.getByTestId('window-1-bar-UNSURE')).toHaveStyle({ width: '25%' })
     expect(screen.getByTestId('window-1-bar-UNAVAILABLE')).toHaveStyle({ width: '0%' })
     expect(screen.getByTestId('window-1-bar-NONE')).toHaveStyle({ width: '50%' })
     // Afternoon: Available 1 / Unavailable 1.
     expect(screen.getByTestId('window-2-bar-UNAVAILABLE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByText('Unavailable 1')).toBeInTheDocument()
+    expect(screen.getByText(legend('Unavailable 1'))).toBeInTheDocument()
   })
 
   it('search filters players in every view while Summary totals stay full', async () => {
@@ -307,7 +309,7 @@ describe('GroupPollResponsesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Summary' }))
     expect(screen.getAllByText(/of 4 answered/)).toHaveLength(2)
-    expect(screen.getAllByText(/No response 2/)).toHaveLength(2)
+    expect(screen.getAllByText(legend('No response 2'))).toHaveLength(2)
   })
 
   it("sets a player's answer via the override menu, by windowId, and updates the page", async () => {
@@ -470,8 +472,28 @@ describe('GroupPollResponsesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit close time' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
     await waitFor(() => expect(openRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
+  })
+
+  it('disables the reopen pencil with the reason on a closed poll that cannot be reopened', async () => {
+    listRounds.mockResolvedValue([makeRound({ open: false, canReopen: false })])
+    getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+    renderPage()
+    await loaded()
+
+    const pencil = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
+    expect(pencil).toBeDisabled()
+    expect(pencil.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
+    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the close-time pencil enabled on an open poll even when canReopen is false', async () => {
+    listRounds.mockResolvedValue([makeRound({ canReopen: false })])
+    renderPage()
+    await loaded()
+
+    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeEnabled()
   })
 
   it('opens the share dialog', async () => {

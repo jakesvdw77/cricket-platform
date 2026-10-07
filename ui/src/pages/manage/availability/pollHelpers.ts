@@ -6,6 +6,9 @@ import type { PollItem } from './pollItem'
 // Why 'Share invite' is disabled on a closed poll (the backend refuses public answers for one).
 export const SHARE_CLOSED_REASON = 'Share invite is unavailable: this poll is closed'
 
+// docs/specs/082: why 'Reopen poll' is disabled - every match of the poll started more than 24 hours ago.
+export const REOPEN_PAST_REASON = 'The matches in this poll are in the past'
+
 const HOUR_IN_MS = 60 * 60 * 1000
 const DAY_IN_MS = 24 * HOUR_IN_MS
 

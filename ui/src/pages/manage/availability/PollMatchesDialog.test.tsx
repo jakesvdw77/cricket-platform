@@ -27,6 +27,7 @@ const poll: OpenAvailabilityPoll = {
   venue: null,
   autoClose: true,
   scheduledCloseAt: null,
+  canReopen: true,
   availableCount: 0,
   unavailableCount: 0,
   unsureCount: 0,
@@ -46,6 +47,7 @@ const round: SectionAvailabilityRound = {
   firstMatchKickoff: '2030-06-01T09:00:00Z',
   autoClose: true,
   scheduledCloseAt: null,
+  canReopen: true,
   open: true,
   brackets: [
     { dayPart: 'MORNING', windowDate: '2030-06-01', windowId: 'w1', availableCount: 0, unavailableCount: 0, unsureCount: 0, noResponseCount: 0, coveredMatchCount: 1 },
@@ -98,17 +100,29 @@ describe('PollMatchesDialog', () => {
     expect(getRoundMatches).toHaveBeenCalledWith('club-1', 'round-1')
   })
 
+  it('links each group match to its match page and closes the dialog on navigation', async () => {
+    getRoundMatches.mockResolvedValue([match({ matchId: 'm9' })])
+    const user = userEvent.setup()
+    const { onClose } = renderDialog({ kind: 'GROUP', round })
+
+    const link = await screen.findByRole('link', { name: 'U13 A vs Rivals CC' })
+    expect(link).toHaveAttribute('href', '/manage/fixtures/matches/m9')
+    expect(link).not.toHaveAttribute('target')
+    await user.click(link)
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it('shows an error when the matches cannot be loaded', async () => {
     getRoundMatches.mockRejectedValue(new Error('boom'))
     renderDialog({ kind: 'GROUP', round })
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this poll's matches")
   })
 
-  it('shows a squad poll\'s single match with an Open match link to the match view page', async () => {
+  it('shows a squad poll\'s single match as a link to the match view page', async () => {
     renderDialog({ kind: 'SQUAD', poll })
 
     expect(screen.getByText(/Venue TBC/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open match' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Unknown team vs Unknown team' })).toHaveAttribute(
       'href',
       '/manage/fixtures/matches/match-1',
     )

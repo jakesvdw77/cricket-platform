@@ -11,7 +11,8 @@ import java.util.UUID;
  * fixed pair (see Data Model Changes, the fixture-group-selection revision). {@code
  * firstMatchKickoff} is the exact earliest covered match kickoff (docs/specs/066), used by clients
  * for the default close time and its validation. See
- * docs/specs/063-section-availability-and-flexible-squads.md.
+ * docs/specs/063-section-availability-and-flexible-squads.md. {@code canReopen} (docs/specs/082)
+ * is true when both reopen rules allow a reopen right now.
  */
 public record SectionAvailabilityRoundDto(
         UUID id,
@@ -24,5 +25,6 @@ public record SectionAvailabilityRoundDto(
         Instant scheduledCloseAt,
         Instant firstMatchKickoff,
         boolean open,
-        List<SectionAvailabilityRoundBracketDto> brackets) {
+        List<SectionAvailabilityRoundBracketDto> brackets,
+        boolean canReopen) {
 }

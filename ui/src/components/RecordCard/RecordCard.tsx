@@ -70,8 +70,11 @@ export interface RecordCardAvatar {
   // children on a broken/missing src, no extra logic needed here). Typically `initialsFromName(name)`
   // for a record with no fixed icon, or a plain MUI icon element for one that never has a photo at
   // all (e.g. a Product, a Subscription).
-  fallback: ReactNode
+  fallback?: ReactNode
   shape?: 'circular' | 'rounded'
+  // docs/specs/082: a ready-made 56px element (e.g. a BrandIcon tile) drawn in place of the solid
+  // Avatar - no green square behind it. When set, imageUrl/fallback/shape are ignored.
+  element?: ReactNode
 }
 
 // Generic second footer action, e.g. a per-card async action like "Resend welcome email"
@@ -383,7 +386,8 @@ export function RecordCard({
             spacing={1.5}
             sx={{ minWidth: 0, ...(titleWrap && { flex: 1 }) }}
           >
-            {avatar && (
+            {avatar?.element}
+            {avatar && !avatar.element && (
               <Avatar
                 src={avatar.imageUrl ?? undefined}
                 variant={avatar.shape === 'rounded' ? 'rounded' : 'circular'}

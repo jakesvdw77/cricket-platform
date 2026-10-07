@@ -14,7 +14,7 @@ import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailab
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
-import { SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
+import { REOPEN_PAST_REASON, SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
@@ -85,6 +85,7 @@ export default function GroupPollResponsesPage() {
   }
 
   const closed = !responses.open
+  const reopenBlocked = closed && !round.canReopen
   const override: OverrideProps = {
     pendingKey,
     onOverride: async (row, windowId, status) => {
@@ -131,9 +132,19 @@ export default function GroupPollResponsesPage() {
           <Typography variant="body2" color="text.secondary">
             {responses.sectionName} · {closesRowText(responses.open, round.autoClose, round.scheduledCloseAt)}
           </Typography>
-          <IconButton size="small" aria-label="Edit close time" title="Edit close time" onClick={() => setCloseTimeOpen(true)}>
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
+          {/* docs/specs/082: on a closed poll this pencil is the Reopen path, so it is disabled with the reason
+              when the matches are in the past (the span carries the tooltip, a disabled button gets none). */}
+          <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
+            <IconButton
+              size="small"
+              aria-label={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
+              title={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
+              disabled={reopenBlocked}
+              onClick={() => setCloseTimeOpen(true)}
+            >
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+          </span>
         </Stack>
       }
       open={responses.open}

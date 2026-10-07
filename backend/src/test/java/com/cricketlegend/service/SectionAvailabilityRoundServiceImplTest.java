@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -132,7 +133,8 @@ class SectionAvailabilityRoundServiceImplTest {
                 sectionAvailabilityRoundMapper,
                 matchSquadMemberRepository,
                 coverageService,
-                accessService);
+                accessService,
+                java.time.Clock.systemUTC());
         org.mockito.Mockito.lenient()
                 .when(coverageService.resolveAny(any()))
                 .thenReturn(MatchPollCoverageService.Coverage.NONE);
@@ -158,7 +160,7 @@ class SectionAvailabilityRoundServiceImplTest {
     private void stubEmptyBracketsFor(UUID sectionId) {
         when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(section(UUID.randomUUID(), sectionId)));
         when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
-        when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any())).thenAnswer(invocation -> {
+        when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any(), anyBoolean())).thenAnswer(invocation -> {
             SectionAvailabilityRound round = invocation.getArgument(0);
             return new SectionAvailabilityRoundDto(
                     round.getId(),
@@ -171,7 +173,8 @@ class SectionAvailabilityRoundServiceImplTest {
                     round.getScheduledCloseAt(),
                     invocation.getArgument(2),
                     round.isOpen(),
-                    List.of());
+                    List.of(),
+                    invocation.getArgument(4));
         });
     }
 
@@ -973,13 +976,13 @@ class SectionAvailabilityRoundServiceImplTest {
         org.mockito.Mockito.lenient().when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
         org.mockito.Mockito.lenient().when(sectionRepository.findById(sectionId))
                 .thenReturn(Optional.of(section(clubId, sectionId)));
-        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any()))
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any(), anyBoolean()))
                 .thenAnswer(invocation -> {
                     SectionAvailabilityRound r = invocation.getArgument(0);
                     return new SectionAvailabilityRoundDto(
                             r.getId(), r.getSectionId(), null, r.getDescription(), r.getFirstMatchDate(),
                             r.getLastMatchDate(), r.isAutoClose(), r.getScheduledCloseAt(),
-                            invocation.getArgument(2), r.isOpen(), List.of());
+                            invocation.getArgument(2), r.isOpen(), List.of(), invocation.getArgument(4));
                 });
         return round;
     }
@@ -1145,7 +1148,7 @@ class SectionAvailabilityRoundServiceImplTest {
         org.mockito.Mockito.lenient().when(audienceResolver.resolveAudience(sectionId)).thenReturn(List.of());
         org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundId(any()))
                 .thenReturn(List.of());
-        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any()))
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundMapper.toDto(any(), any(), any(), any(), anyBoolean()))
                 .thenReturn(null);
 
         service.create(
@@ -1233,5 +1236,178 @@ class SectionAvailabilityRoundServiceImplTest {
                 .containsExactly(early, early.plusSeconds(86400));
         verify(sectionAvailabilityWindowRepository, times(1)).findByRoundIdIn(any());
         verify(matchRepository, times(1)).findAllById(any());
+    }
+
+    // --- 082: manual reopen refused once the latest match started more than 24 hours ago ---
+
+    private static final Instant NOW_082 = Instant.parse("2026-10-07T12:00:00Z");
+
+    private SectionAvailabilityRoundServiceImpl serviceAt(Instant now) {
+        return new SectionAvailabilityRoundServiceImpl(
+                sectionAvailabilityRoundRepository,
+                sectionAvailabilityWindowRepository,
+                sectionAvailabilityWindowMatchRepository,
+                sectionAvailabilityResponseRepository,
+                sectionRepository,
+                teamRepository,
+                matchRepository,
+                leagueRepository,
+                audienceResolver,
+                matchResolver,
+                sectionAvailabilityRoundMapper,
+                matchSquadMemberRepository,
+                coverageService,
+                accessService,
+                java.time.Clock.fixed(now, java.time.ZoneOffset.UTC));
+    }
+
+    /**
+     * A closed round with one window per entry of {@code matchStartsPerWindow}; a window whose list
+     * is empty has no match and sits on {@code matchlessDate}.
+     */
+    private SectionAvailabilityRound closedRoundWithWindows(
+            UUID clubId, UUID roundId, boolean autoClose, Instant scheduledCloseAt,
+            java.time.LocalDate matchlessDate, List<List<Instant>> matchStartsPerWindow) {
+        UUID sectionId = UUID.randomUUID();
+        SectionAvailabilityRound closed = round(roundId, clubId, sectionId, false);
+        closed.setAutoClose(autoClose);
+        closed.setScheduledCloseAt(scheduledCloseAt);
+        List<SectionAvailabilityWindow> windows = new java.util.ArrayList<>();
+        List<SectionAvailabilityWindowMatch> windowMatches = new java.util.ArrayList<>();
+        List<Match> matches = new java.util.ArrayList<>();
+        for (List<Instant> starts : matchStartsPerWindow) {
+            SectionAvailabilityWindow window = SectionAvailabilityWindow.builder()
+                    .id(UUID.randomUUID()).roundId(roundId).sectionId(sectionId).dayPart(DayPart.MORNING)
+                    .windowDate(matchlessDate).open(false).build();
+            windows.add(window);
+            for (Instant start : starts) {
+                UUID matchId = UUID.randomUUID();
+                matches.add(Match.builder().id(matchId).matchDate(start).build());
+                windowMatches.add(
+                        SectionAvailabilityWindowMatch.builder().windowId(window.getId()).matchId(matchId).build());
+            }
+        }
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundRepository.findById(roundId))
+                .thenReturn(Optional.of(closed));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityRoundRepository.findByClubId(clubId))
+                .thenReturn(List.of(closed));
+        org.mockito.Mockito.lenient().when(accessService.accessibleSectionIds(authentication, clubId))
+                .thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient()
+                .when(sectionAvailabilityRoundRepository.save(any(SectionAvailabilityRound.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundId(roundId))
+                .thenReturn(windows);
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowRepository.findByRoundIdIn(any()))
+                .thenReturn(windows);
+        org.mockito.Mockito.lenient().when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any()))
+                .thenReturn(windowMatches);
+        org.mockito.Mockito.lenient().when(matchRepository.findAllById(any())).thenReturn(matches);
+        org.mockito.Mockito.lenient().doReturn(Optional.of(section(UUID.randomUUID(), sectionId)))
+                .when(sectionRepository).findById(sectionId);
+        org.mockito.Mockito.lenient().doReturn(List.of()).when(audienceResolver).resolveAudience(sectionId);
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            SectionAvailabilityRound r = invocation.getArgument(0);
+            return new SectionAvailabilityRoundDto(
+                    r.getId(), r.getSectionId(), null, r.getDescription(), r.getFirstMatchDate(),
+                    r.getLastMatchDate(), r.isAutoClose(), r.getScheduledCloseAt(),
+                    invocation.getArgument(2), r.isOpen(), List.of(), invocation.getArgument(4));
+        }).when(sectionAvailabilityRoundMapper).toDto(any(), any(), any(), any(), anyBoolean());
+        return closed;
+    }
+
+    private static final java.time.LocalDate LONG_AGO = java.time.LocalDate.of(2026, 1, 1);
+
+    @Test
+    void openThrowsWhenTheLatestMatchOfTheRoundStartedMoreThan24HoursAgo() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound closed = closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO,
+                List.of(List.of(NOW_082.minus(25, ChronoUnit.HOURS), NOW_082.minus(5, ChronoUnit.DAYS))));
+
+        assertThatThrownBy(() -> serviceAt(NOW_082).open(authentication, clubId, roundId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class)
+                .hasMessage("This poll can no longer be reopened because its matches are in the past.");
+        assertThat(closed.isOpen()).isFalse();
+        verify(sectionAvailabilityRoundRepository, never()).save(any(SectionAvailabilityRound.class));
+    }
+
+    @Test
+    void openUsesTheLatestMatchAcrossAllWindowsOfTheRound() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound closed = closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO,
+                List.of(List.of(NOW_082.minus(9, ChronoUnit.DAYS)), List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
+
+        SectionAvailabilityRoundDto dto = serviceAt(NOW_082).open(authentication, clubId, roundId);
+
+        assertThat(closed.isOpen()).isTrue();
+        assertThat(dto.canReopen()).isTrue();
+    }
+
+    @Test
+    void openStillWorksAtTheEdgeAndForFutureMatches() {
+        for (Instant start : List.of(NOW_082.minus(24, ChronoUnit.HOURS), NOW_082.plus(2, ChronoUnit.DAYS))) {
+            UUID clubId = UUID.randomUUID();
+            UUID roundId = UUID.randomUUID();
+            SectionAvailabilityRound closed =
+                    closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO, List.of(List.of(start)));
+
+            serviceAt(NOW_082).open(authentication, clubId, roundId);
+
+            assertThat(closed.isOpen()).as("match at %s", start).isTrue();
+        }
+    }
+
+    @Test
+    void aWindowWithoutAMatchFallsBackToTheEndOfItsDate() {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        Instant now = java.time.LocalDate.of(2026, 10, 7).atTime(12, 0).atZone(zone).toInstant();
+        UUID clubId = UUID.randomUUID();
+        UUID refusedId = UUID.randomUUID();
+        closedRoundWithWindows(clubId, refusedId, false, null, java.time.LocalDate.of(2026, 10, 4), List.of(List.of()));
+        assertThatThrownBy(() -> serviceAt(now).open(authentication, clubId, refusedId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class);
+
+        UUID allowedId = UUID.randomUUID();
+        SectionAvailabilityRound allowed = closedRoundWithWindows(
+                clubId, allowedId, false, null, java.time.LocalDate.of(2026, 10, 6), List.of(List.of()));
+        serviceAt(now).open(authentication, clubId, allowedId);
+        assertThat(allowed.isOpen()).isTrue();
+    }
+
+    @Test
+    void theAutoCloseRuleStillAppliesToARoundWithFutureMatches() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        SectionAvailabilityRound closed = closedRoundWithWindows(clubId, roundId, true,
+                NOW_082.minusSeconds(1), LONG_AGO, List.of(List.of(NOW_082.plus(2, ChronoUnit.DAYS))));
+
+        assertThatThrownBy(() -> serviceAt(NOW_082).open(authentication, clubId, roundId))
+                .isInstanceOf(com.cricketlegend.exception.ReopenWindowPassedException.class)
+                .hasMessageContaining("automatic close time");
+        assertThat(closed.isOpen()).isFalse();
+    }
+
+    @Test
+    void listedRoundsCarryCanReopenFromBothRules() {
+        UUID clubId = UUID.randomUUID();
+        UUID roundId = UUID.randomUUID();
+        closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO,
+                List.of(List.of(NOW_082.minus(3, ChronoUnit.DAYS))));
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+                .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
+
+        UUID recentId = UUID.randomUUID();
+        closedRoundWithWindows(clubId, recentId, false, null, LONG_AGO,
+                List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+                .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(true);
+
+        UUID autoClosedId = UUID.randomUUID();
+        closedRoundWithWindows(clubId, autoClosedId, true, NOW_082.minusSeconds(60), LONG_AGO,
+                List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, false))
+                .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
     }
 }

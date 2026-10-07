@@ -20,5 +20,6 @@ public interface MatchAvailabilityPollMapper {
             long availableCount,
             long unavailableCount,
             long unsureCount,
-            long noResponseCount);
+            long noResponseCount,
+            boolean canReopen);
 }

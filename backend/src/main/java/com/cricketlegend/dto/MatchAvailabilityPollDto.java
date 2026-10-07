@@ -7,7 +7,7 @@ import java.util.UUID;
  * Read shape of a {@link com.cricketlegend.domain.MatchAvailabilityPoll}, one per real-{@code
  * Team} side of a {@link com.cricketlegend.domain.Match} — the admin list/create/open/close
  * response, carrying a response-count summary alongside the poll's own fields. See
- * docs/specs/032-match-availability-polls.md.
+ * docs/specs/032-match-availability-polls.md. {@code canReopen} per docs/specs/082.
  */
 public record MatchAvailabilityPollDto(
         UUID id,
@@ -18,5 +18,6 @@ public record MatchAvailabilityPollDto(
         long unsureCount,
         long noResponseCount,
         boolean autoClose,
-        Instant scheduledCloseAt) {
+        Instant scheduledCloseAt,
+        boolean canReopen) {
 }

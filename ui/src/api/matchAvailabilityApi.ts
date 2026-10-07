@@ -13,6 +13,8 @@ export interface MatchAvailabilityPoll {
   // have - scheduledCloseAt is kickoff minus 24h when autoClose, else null.
   autoClose: boolean
   scheduledCloseAt: string | null
+  // docs/specs/082: whether a reopen is allowed right now (auto-close rule and the matches-in-the-past rule).
+  canReopen: boolean
   availableCount: number
   unavailableCount: number
   unsureCount: number
@@ -152,6 +154,8 @@ export interface OpenAvailabilityPoll {
   venue: string | null
   autoClose: boolean
   scheduledCloseAt: string | null
+  // docs/specs/082: whether a reopen is allowed right now (auto-close rule and the matches-in-the-past rule).
+  canReopen: boolean
   availableCount: number
   unavailableCount: number
   unsureCount: number

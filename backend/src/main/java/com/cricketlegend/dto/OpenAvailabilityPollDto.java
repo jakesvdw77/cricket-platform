@@ -11,7 +11,8 @@ import java.util.UUID;
  * per {@code Match}'s own invariant, same for {@code awayTeamId}/{@code awayTeamName} — the
  * frontend resolves the null one the same way {@code MatchList.tsx}/{@code MatchFormPage.tsx}
  * already do, not re-solved server-side. See docs/specs/034-availability-polls-dashboard.md's API
- * Contract.
+ * Contract. {@code canReopen} (docs/specs/082) is true when both reopen rules (automatic close
+ * time, matches not in the past) allow a reopen right now; clients only show it for closed polls.
  */
 public record OpenAvailabilityPollDto(
         UUID pollId,
@@ -31,5 +32,6 @@ public record OpenAvailabilityPollDto(
         List<AvailabilityRespondentDto> unavailableRespondents,
         List<AvailabilityRespondentDto> unsureRespondents,
         boolean autoClose,
-        Instant scheduledCloseAt) {
+        Instant scheduledCloseAt,
+        boolean canReopen) {
 }

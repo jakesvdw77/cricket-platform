@@ -8,6 +8,7 @@ import type { PollItem } from './pollItem'
 import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityRound } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
+import { legend } from '../../../test/legend'
 
 const closePoll = vi.fn()
 const closeRound = vi.fn()
@@ -44,6 +45,7 @@ const poll: OpenAvailabilityPoll = {
   venue: 'Home Ground',
   autoClose: true,
   scheduledCloseAt: '2030-05-31T09:00:00Z',
+  canReopen: true,
   availableCount: 2,
   unavailableCount: 1,
   unsureCount: 0,
@@ -63,6 +65,7 @@ const round: SectionAvailabilityRound = {
   firstMatchKickoff: '2030-06-01T09:00:00Z',
   autoClose: false,
   scheduledCloseAt: null,
+  canReopen: true,
   open: true,
   brackets: [
     { dayPart: 'MORNING', windowDate: '2030-06-01', windowId: 'w1', availableCount: 1, unavailableCount: 1, unsureCount: 0, noResponseCount: 2, coveredMatchCount: 2 },
@@ -93,7 +96,7 @@ function renderCard(item: PollItem, open = true) {
   return { onChanged }
 }
 
-const FOOTER = ['Close', 'Matches', 'Responses', 'Share invite']
+const FOOTER = ['Close poll', 'Matches', 'Responses', 'Share invite']
 
 function footerNames(): (string | null)[] {
   const footer = screen.getByRole('button', { name: 'Matches' }).parentElement as HTMLElement
@@ -117,7 +120,7 @@ describe('PollCard - squad poll', () => {
     expect(screen.getByText('Home')).toBeInTheDocument()
     expect(screen.getByText(/ · Home Ground$/)).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(1)
-    expect(screen.getByText('Available 2')).toBeInTheDocument()
+    expect(screen.getByText(legend('Available 2'))).toBeInTheDocument()
     expect(screen.getByText('3 of 4 answered')).toBeInTheDocument()
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: '50%' })
     expect(screen.getByTestId('poll-1-bar-NONE')).toHaveStyle({ width: '25%' })
@@ -171,7 +174,7 @@ describe('PollCard - squad poll', () => {
   it('Close confirms before calling closePoll, then reports the change', async () => {
     const user = userEvent.setup()
     const { onChanged } = renderCard({ kind: 'SQUAD', poll })
-    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'Close poll' }))
     expect(closePoll).not.toHaveBeenCalled()
     await user.click(await screen.findByRole('button', { name: 'Close poll' }))
     await waitFor(() => expect(closePoll).toHaveBeenCalledWith('club-1', 'match-1', 'poll-1'))
@@ -184,8 +187,8 @@ describe('PollCard - squad poll', () => {
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
     expect(screen.getByText('Poll closed')).toBeInTheDocument()
-    expect(footerNames()).toEqual(['Reopen', 'Matches', 'Responses', 'Share invite is unavailable: this poll is closed'])
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    expect(footerNames()).toEqual(['Reopen poll', 'Matches', 'Responses', 'Share invite is unavailable: this poll is closed'])
+    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
   })
 })
@@ -283,7 +286,7 @@ describe('PollCard - whole-card click-through', () => {
   })
 
   it.each([
-    ['Close', 'Close this poll?'],
+    ['Close poll', 'Close this poll?'],
     ['Edit description', 'Edit description'],
     ['Delete', 'Delete this group poll?'],
     ['Edit close time', 'Edit close time'],
@@ -309,12 +312,12 @@ describe('PollCard - Poll closes line', () => {
     renderCard({ kind: 'SQUAD', poll })
 
     const label = screen.getByText('Poll closes')
-    expect(label).toHaveStyle({ width: '78px' })
-    const value = screen.getByRole('button', { name: 'Edit close time' }).closest('div') as HTMLElement
-    expect(value).toHaveTextContent(new Date(poll.scheduledCloseAt as string).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))
-    // The line has the calendar-cross icon and shares one row with its label and value.
-    expect(label.parentElement?.querySelector('[data-testid="EventBusyOutlinedIcon"]')).toBeInTheDocument()
-    expect(label.parentElement).toContainElement(value)
+    const row = screen.getByTestId('poll-closes-row')
+    expect(row).toHaveTextContent(new Date(poll.scheduledCloseAt as string).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))
+    // The row has the calendar-cross icon and shares one strip with its label, value and pencil.
+    expect(row.querySelector('[data-testid="EventBusyOutlinedIcon"]')).toBeInTheDocument()
+    expect(row).toContainElement(label)
+    expect(row).toContainElement(screen.getByRole('button', { name: 'Edit close time' }))
   })
 
   it('reads Manually with the pencil when an open poll has Autoclose off', () => {
@@ -345,5 +348,71 @@ describe('PollCard - Poll closes line', () => {
     renderCard({ kind: 'SQUAD', poll })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Edit close time' }))
     expect(await screen.findByRole('dialog', { name: 'Edit close time' })).toBeInTheDocument()
+  })
+})
+
+// docs/specs/082-poll-card-improvements.md
+describe('PollCard - spec 082', () => {
+  const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000 + 30_000).toISOString()
+
+  it('puts the close row before the response indicator', () => {
+    renderCard({ kind: 'SQUAD', poll })
+    const row = screen.getByTestId('poll-closes-row')
+    const indicator = screen.getByTestId('poll-1-bar-AVAILABLE')
+    expect(row.compareDocumentPosition(indicator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(row).getByText('Poll closes')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Edit close time' })).toBeInTheDocument()
+  })
+
+  it('is amber with a countdown within 24 hours of closing', () => {
+    renderCard({ kind: 'SQUAD', poll: { ...poll, scheduledCloseAt: inHours(5) } })
+    expect(screen.getByTestId('poll-closes-row')).toHaveAttribute('data-tone', 'warning')
+    const timer = screen.getByRole('timer')
+    expect(timer).toHaveTextContent(/^5 h \d+ min left$/)
+    expect(timer).toHaveAttribute('data-warn', 'true')
+  })
+
+  it('is neutral with a countdown while the close time is more than a day away', () => {
+    renderCard({ kind: 'SQUAD', poll: { ...poll, scheduledCloseAt: inHours(72) } })
+    expect(screen.getByTestId('poll-closes-row')).toHaveAttribute('data-tone', 'neutral')
+    expect(screen.getByRole('timer')).toHaveTextContent(/^3 days/)
+  })
+
+  it('has no countdown for a poll without a close time', () => {
+    renderCard({ kind: 'GROUP', round })
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.getByTestId('poll-closes-row')).toHaveAttribute('data-tone', 'neutral')
+  })
+
+  it('has no countdown and stays neutral on a closed poll, even with a close time inside 24 hours', () => {
+    renderCard({ kind: 'SQUAD', poll: { ...poll, scheduledCloseAt: inHours(5) } }, false)
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.getByTestId('poll-closes-row')).toHaveAttribute('data-tone', 'neutral')
+  })
+
+  it('disables Reopen poll with its reason when the matches are in the past', async () => {
+    renderCard({ kind: 'SQUAD', poll: { ...poll, canReopen: false } }, false)
+    const reopen = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
+    expect(reopen).toBeDisabled()
+    expect(reopen.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
+    await userEvent.setup({ pointerEventsCheck: 0 }).click(reopen)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('disables Reopen poll on a closed group poll that cannot be reopened', () => {
+    renderCard({ kind: 'GROUP', round: { ...round, open: false, canReopen: false } })
+    expect(screen.getByRole('button', { name: 'The matches in this poll are in the past' })).toBeDisabled()
+  })
+
+  it('enables Reopen poll when canReopen is true', () => {
+    renderCard({ kind: 'GROUP', round: { ...round, open: false, canReopen: true } })
+    expect(screen.getByRole('button', { name: 'Reopen poll' })).toBeEnabled()
+  })
+
+  it('draws the brand availability icon tile instead of an avatar', () => {
+    renderCard({ kind: 'SQUAD', poll })
+    const tile = screen.getByTestId('brand-icon-tile')
+    expect(tile).toHaveStyle({ width: '56px', height: '56px' })
+    expect(document.querySelector('.MuiAvatar-root')).not.toBeInTheDocument()
   })
 })

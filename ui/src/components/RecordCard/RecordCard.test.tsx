@@ -334,6 +334,20 @@ describe('RecordCard', () => {
     expect(avatar).toHaveTextContent('JA')
   })
 
+  it('renders an avatar element in place of the solid Avatar (no green square)', () => {
+    render(
+      <RecordCard
+        title="Weekend fixtures"
+        avatar={{ element: <span data-testid="custom-avatar" /> }}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('custom-avatar')).toBeInTheDocument()
+    expect(document.querySelector('.MuiAvatar-root')).not.toBeInTheDocument()
+  })
+
   it('renders a rounded avatar with an image src when imageUrl is given', () => {
     render(
       <RecordCard

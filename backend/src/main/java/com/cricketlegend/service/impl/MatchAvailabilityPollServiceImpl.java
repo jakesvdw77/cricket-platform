@@ -27,6 +27,8 @@ import com.cricketlegend.service.AvailabilityPollSquadResolver;
 import com.cricketlegend.service.MatchAvailabilityPollService;
 import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.support.AutoCloseSchedule;
+import com.cricketlegend.service.support.ReopenWindow;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -86,6 +88,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     private final AvailabilityPollSquadResolver squadResolver;
     private final MatchAvailabilityPollMapper matchAvailabilityPollMapper;
     private final AccessService accessService;
+    private final Clock clock;
 
     public MatchAvailabilityPollServiceImpl(
             MatchRepository matchRepository,
@@ -94,7 +97,8 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             MatchPollCoverageService coverageService,
             AvailabilityPollSquadResolver squadResolver,
             MatchAvailabilityPollMapper matchAvailabilityPollMapper,
-            AccessService accessService) {
+            AccessService accessService,
+            Clock clock) {
         this.matchRepository = matchRepository;
         this.matchAvailabilityPollRepository = matchAvailabilityPollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
@@ -102,6 +106,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         this.squadResolver = squadResolver;
         this.matchAvailabilityPollMapper = matchAvailabilityPollMapper;
         this.accessService = accessService;
+        this.clock = clock;
     }
 
     @Override
@@ -110,7 +115,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         Match match = findMatchOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
         return matchAvailabilityPollRepository.findByMatchId(matchId).stream()
-                .map(poll -> toDto(poll, match.getSeasonId()))
+                .map(poll -> toDto(poll, match))
                 .toList();
     }
 
@@ -152,7 +157,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 .build();
         poll = matchAvailabilityPollRepository.save(poll);
 
-        return toDto(poll, match.getSeasonId());
+        return toDto(poll, match);
     }
 
     @Override
@@ -172,7 +177,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         poll.setAutoClose(request.autoClose());
         poll.setScheduledCloseAt(validated);
         poll = matchAvailabilityPollRepository.save(poll);
-        return toDto(poll, match.getSeasonId());
+        return toDto(poll, match);
     }
 
     @Override
@@ -186,12 +191,17 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         }
         // Reopening is only allowed until the automatic close time, else the auto-close job would
         // undo it within minutes.
-        if (!AutoCloseSchedule.canReopen(poll.isAutoClose(), poll.getScheduledCloseAt(), Instant.now())) {
+        Instant now = clock.instant();
+        if (!AutoCloseSchedule.canReopen(poll.isAutoClose(), poll.getScheduledCloseAt(), now)) {
             throw new ReopenWindowPassedException("This poll can no longer be reopened because its automatic close time has passed.");
+        }
+        // docs/specs/082: and not once its match started more than 24 hours ago.
+        if (!matchWithinReopenGrace(match, now)) {
+            throw new ReopenWindowPassedException(ReopenWindow.REFUSED_MESSAGE);
         }
         poll.setOpen(true);
         poll = matchAvailabilityPollRepository.save(poll);
-        return toDto(poll, match.getSeasonId());
+        return toDto(poll, match);
     }
 
     @Override
@@ -205,7 +215,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         }
         poll.setOpen(false);
         poll = matchAvailabilityPollRepository.save(poll);
-        return toDto(poll, match.getSeasonId());
+        return toDto(poll, match);
     }
 
     @Override
@@ -382,7 +392,8 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 unavailable,
                 unsure,
                 poll.isAutoClose(),
-                poll.getScheduledCloseAt());
+                poll.getScheduledCloseAt(),
+                canReopen(poll, match));
     }
 
     private List<AvailabilityRespondentDto> respondents(List<PlayerAvailabilityRowDto> rows, AvailabilityStatus status) {
@@ -422,14 +433,27 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 "/poll/" + poll.getId());
     }
 
-    private MatchAvailabilityPollDto toDto(MatchAvailabilityPoll poll, UUID seasonId) {
-        List<PlayerAvailabilityRowDto> rows = rowsWithStatuses(poll, seasonId);
+    private MatchAvailabilityPollDto toDto(MatchAvailabilityPoll poll, Match match) {
+        List<PlayerAvailabilityRowDto> rows = rowsWithStatuses(poll, match.getSeasonId());
         return matchAvailabilityPollMapper.toDto(
                 poll,
                 countStatus(rows, AvailabilityStatus.AVAILABLE),
                 countStatus(rows, AvailabilityStatus.UNAVAILABLE),
                 countStatus(rows, AvailabilityStatus.UNSURE),
-                countNoResponse(rows));
+                countNoResponse(rows),
+                canReopen(poll, match));
+    }
+
+    /** Both reopen rules (automatic close time, docs/specs/082 matches-in-the-past) allow it now. */
+    private boolean canReopen(MatchAvailabilityPoll poll, Match match) {
+        Instant now = clock.instant();
+        return AutoCloseSchedule.canReopen(poll.isAutoClose(), poll.getScheduledCloseAt(), now)
+                && matchWithinReopenGrace(match, now);
+    }
+
+    private static boolean matchWithinReopenGrace(Match match, Instant now) {
+        return ReopenWindow.allows(
+                ReopenWindow.latestStart(java.util.Collections.singletonList(match.getMatchDate()), List.of()), now);
     }
 
     private List<PlayerAvailabilityRowDto> rowsWithStatuses(MatchAvailabilityPoll poll, UUID seasonId) {

@@ -21,5 +21,6 @@ public interface SectionAvailabilityRoundMapper {
     SectionAvailabilityRoundDto toDto(
             SectionAvailabilityRound round, String sectionName,
             Instant firstMatchKickoff,
-            List<SectionAvailabilityRoundBracketDto> brackets);
+            List<SectionAvailabilityRoundBracketDto> brackets,
+            boolean canReopen);
 }
