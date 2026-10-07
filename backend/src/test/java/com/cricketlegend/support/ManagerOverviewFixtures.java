@@ -3,6 +3,8 @@ package com.cricketlegend.support;
 import static com.cricketlegend.PlatformRoleJwtPostProcessors.withSubject;
 
 import com.cricketlegend.domain.AvailabilityStatus;
+import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
+import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.DayPart;
@@ -87,6 +89,7 @@ public final class ManagerOverviewFixtures {
     private final SectionAvailabilityRoundRepository roundRepository;
     private final SectionAvailabilityWindowRepository windowRepository;
     private final SectionAvailabilityResponseRepository responseRepository;
+    private final SectionAvailabilityWindowMatchRepository windowMatchRepository;
     private final JdbcTemplate jdbcTemplate;
 
     private final List<UUID> clubIds = new ArrayList<>();
@@ -112,6 +115,7 @@ public final class ManagerOverviewFixtures {
         roundRepository = ctx.getBean(SectionAvailabilityRoundRepository.class);
         windowRepository = ctx.getBean(SectionAvailabilityWindowRepository.class);
         responseRepository = ctx.getBean(SectionAvailabilityResponseRepository.class);
+        windowMatchRepository = ctx.getBean(SectionAvailabilityWindowMatchRepository.class);
         jdbcTemplate = ctx.getBean(JdbcTemplate.class);
     }
 
@@ -205,6 +209,21 @@ public final class ManagerOverviewFixtures {
                     .playerProfileId(player.getId()).status(AvailabilityStatus.AVAILABLE).build());
         }
         return round;
+    }
+
+    /** Puts {@code match} in the (only) window of {@code round}, as a fixture slot of the group poll. */
+    public void linkMatch(SectionAvailabilityRound round, Match match) {
+        SectionAvailabilityWindow window = windowRepository.findByRoundIdIn(List.of(round.getId())).get(0);
+        windowMatchRepository.save(
+                SectionAvailabilityWindowMatch.builder().windowId(window.getId()).matchId(match.getId()).build());
+    }
+
+    public void closeSquadPoll(MatchAvailabilityPoll poll) {
+        jdbcTemplate.update("update match_availability_poll set open = false where id = ?", poll.getId());
+    }
+
+    public void closeGroupPoll(SectionAvailabilityRound round) {
+        jdbcTemplate.update("update section_availability_round set open = false where id = ?", round.getId());
     }
 
     public JwtRequestPostProcessor clubAdmin(World w) {

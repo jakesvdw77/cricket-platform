@@ -31,6 +31,7 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.impl.MatchAvailabilityPollServiceImpl;
+import com.cricketlegend.service.support.AvailabilityPollFilter;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -724,9 +725,36 @@ class MatchAvailabilityPollServiceImplTest {
 
         List<OpenAvailabilityPollDto> result = service.listClosedForClub(authentication, clubId, null);
 
-        assertThat(result).hasSize(MatchAvailabilityPollServiceImpl.CLOSED_POLLS_LIMIT);
+        assertThat(result).hasSize(AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
         assertThat(result).extracting(OpenAvailabilityPollDto::pollId)
                 .containsExactlyElementsOf(polls.subList(0, 50).stream().map(MatchAvailabilityPoll::getId).toList());
+    }
+
+    @Test
+    void listsLeaveOutPollsOfDeactivatedMatchesOpenAndClosed() {
+        UUID clubId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        UUID activeMatchId = UUID.randomUUID();
+        UUID inactiveMatchId = UUID.randomUUID();
+        Match active = match(clubId, activeMatchId, teamId, UUID.randomUUID(), seasonId);
+        Match inactive = match(clubId, inactiveMatchId, teamId, UUID.randomUUID(), seasonId);
+        inactive.setActive(false);
+        List<MatchAvailabilityPoll> open = List.of(
+                poll(UUID.randomUUID(), activeMatchId, teamId, true), poll(UUID.randomUUID(), inactiveMatchId, teamId, true));
+        List<MatchAvailabilityPoll> closed = List.of(
+                poll(UUID.randomUUID(), activeMatchId, teamId, false), poll(UUID.randomUUID(), inactiveMatchId, teamId, false));
+        when(matchAvailabilityPollRepository.findOpenByMatchClubId(clubId)).thenReturn(open);
+        when(matchAvailabilityPollRepository.findClosedByMatchClubId(clubId)).thenReturn(closed);
+        when(matchRepository.findAllById(any())).thenReturn(List.of(active, inactive));
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+        when(accessService.resolveMatchSectionIds(eq(clubId), any(), any())).thenReturn(Set.of(UUID.randomUUID()));
+        when(squadResolver.resolveSquadRows(eq(teamId), eq(seasonId))).thenReturn(List.of());
+
+        assertThat(service.listOpenForClub(authentication, clubId, null))
+                .extracting(OpenAvailabilityPollDto::matchId).containsExactly(activeMatchId);
+        assertThat(service.listClosedForClub(authentication, clubId, null))
+                .extracting(OpenAvailabilityPollDto::matchId).containsExactly(activeMatchId);
     }
 
     @Test

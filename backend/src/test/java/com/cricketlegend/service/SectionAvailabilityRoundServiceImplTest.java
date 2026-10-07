@@ -43,6 +43,7 @@ import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.SectionAvailabilityRoundServiceImpl;
+import com.cricketlegend.service.support.AvailabilityPollFilter;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -219,7 +220,7 @@ class SectionAvailabilityRoundServiceImplTest {
 
         List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, false);
 
-        assertThat(result).hasSize(SectionAvailabilityRoundServiceImpl.CLOSED_ROUNDS_LIMIT);
+        assertThat(result).hasSize(AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
         assertThat(result).allMatch(dto -> !dto.open());
         assertThat(result.get(0).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(59));
         assertThat(result.get(49).lastMatchDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 1).plusDays(10));
