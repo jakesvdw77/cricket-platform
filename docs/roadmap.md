@@ -4,9 +4,18 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
-## Resume here: 076 Team Selection (phase 2 built, awaiting smoke tests, browser check and review)
+## Resume here: 083 Availability filters and toolbars (design approved, next is the plan)
 
-Branch `feature/076-team-selection`, draft PR #81, not merged. Current state: the feature is built, the spec body now agrees with the code (the seven user decisions are in the last section of [`specs/076-team-selection.md`](specs/076-team-selection.md), "Phase 1 build record and how to resume", with a "Phase 2 status" paragraph), and the phase 2 tests and stories are written and verified (141 backend tests and 98 frontend tests added; backend suite 1500 green, frontend touched-area green). Remaining: the smoke tests, the browser check of the six practical scenarios, then mark the PR ready and merge after the user's review. Other open threads from the same period: `055` and `058` are the user's own untracked drafts (never commit them); `058` must be re-read against `076` before it is built.
+Design only so far. Spec [`specs/083-availability-filters-and-toolbars.md`](specs/083-availability-filters-and-toolbars.md) (all decisions recorded in its Decisions section) and the approved mockup https://claude.ai/artifact/17eTLdFJq6k2JDiewedBfx. Next steps: `/plan-feature 083`, then build in slices: (1) the shared filter model (League, Section, Team shared and remembered across Polls, Players and Coverage, kept in one saved key and the page address) and the unified toolbar on the three views, with the phone Filters sheet and badge; (2) the filtered counters ("Players still to answer" replaces "Answers awaited") with the backend filter parameters on the 081 summary endpoint; (3) the League and Team filters on Polls (poll listings gain `leagueId` and `teamId`). Season leaves the toolbars (a small label beside the title on Players and Coverage). Only the Availability pages for now; the pattern may become the standard later.
+
+Other open items, in no order:
+- **Before the public availability form (077) goes live in production:** set `PUBLIC_AVAILABILITY_TOKEN_SECRET` to a long random value; decide forwarded-address handling if the site is behind a proxy (the per-address limit uses the connection address); fix players with no date of birth using the Players "Missing date of birth" filter.
+- **Counters on other pages (081 slices 3 and 4):** Players (active, in a squad this season, missing a date of birth as a quick filter, new this month) and Matches (this week, teams not announced, without a poll, played this season), after the counters per page are agreed.
+- **Match card countdown:** "Starts in ..." using the shared `Countdown` component (082), a small change.
+- **Notifications:** a bell in the header for every user (receiving), and the manager "send notifications" section behind the Notifications menu entry; needs its own spec and mockups. No menu count badges (decided).
+- **Contract drift guard (optional):** the standards say CI fails on OpenAPI drift but no step does; a permanent test with a short baseline is about half a day (design in the contract-check discussion).
+- **Brand icons:** more icons are generated in Claude web in the original style and added with `npm run icons:strip`; the Overview, Player availability and Team availability icons exist.
+- **Smoke test:** `ui/e2e/manager-team-selection.spec.ts` is written but has never been run (needs local Keycloak credentials).
 
 ## Active
 
