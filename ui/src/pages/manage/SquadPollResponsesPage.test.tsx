@@ -9,6 +9,7 @@ import { formatMatchDateTime } from './availability/pollHelpers'
 import type { AvailabilityStatus, MatchAvailabilityPoll, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
 import type { Match } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
+import { legend } from '../../test/legend'
 
 const listPolls = vi.fn()
 const getPollResponses = vi.fn()
@@ -51,6 +52,7 @@ function makePoll(overrides: Partial<MatchAvailabilityPoll> = {}): MatchAvailabi
     open: true,
     autoClose: true,
     scheduledCloseAt: '2030-06-05T09:00:00Z',
+    canReopen: true,
     availableCount: 1,
     unavailableCount: 1,
     unsureCount: 1,
@@ -264,10 +266,10 @@ describe('SquadPollResponsesPage', () => {
     await user.type(screen.getByLabelText('Search players'), 'jane')
     await user.click(screen.getByRole('button', { name: 'Summary' }))
 
-    expect(screen.getByText('Available 1')).toBeInTheDocument()
-    expect(screen.getByText('Unsure 1')).toBeInTheDocument()
-    expect(screen.getByText('Unavailable 1')).toBeInTheDocument()
-    expect(screen.getByText('No response 1')).toBeInTheDocument()
+    expect(screen.getByText(legend('Available 1'))).toBeInTheDocument()
+    expect(screen.getByText(legend('Unsure 1'))).toBeInTheDocument()
+    expect(screen.getByText(legend('Unavailable 1'))).toBeInTheDocument()
+    expect(screen.getByText(legend('No response 1'))).toBeInTheDocument()
     expect(screen.getByText('3 of 4 answered')).toBeInTheDocument()
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
     expect(screen.getByTestId('poll-1-bar-NONE')).toHaveStyle({ width: '25%' })
@@ -365,6 +367,26 @@ describe('SquadPollResponsesPage', () => {
     )
   })
 
+  it('disables the reopen pencil with the reason on a closed poll that cannot be reopened', async () => {
+    listPolls.mockResolvedValue([makePoll({ open: false, canReopen: false })])
+    getPollResponses.mockResolvedValue(makeResponses({ open: false }))
+    renderPage()
+    await loaded()
+
+    const pencil = screen.getByRole('button', { name: 'The matches in this poll are in the past' })
+    expect(pencil).toBeDisabled()
+    expect(pencil.parentElement).toHaveAttribute('title', 'The matches in this poll are in the past')
+    expect(screen.queryByRole('button', { name: 'Edit close time' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the close-time pencil enabled on an open poll even when canReopen is false', async () => {
+    listPolls.mockResolvedValue([makePoll({ canReopen: false })])
+    renderPage()
+    await loaded()
+
+    expect(screen.getByRole('button', { name: 'Edit close time' })).toBeEnabled()
+  })
+
   it('opens the dialog in Reopen mode on a closed poll, saving then opening', async () => {
     const user = userEvent.setup()
     listPolls.mockResolvedValue([makePoll({ open: false, autoClose: false, scheduledCloseAt: null })])
@@ -376,7 +398,7 @@ describe('SquadPollResponsesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit close time' }))
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
 
     await waitFor(() => expect(openPoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1'))
     expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null })

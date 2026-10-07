@@ -5,13 +5,14 @@ import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from 'rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import AvailabilityPollsDashboard from './AvailabilityPollsDashboard'
-import { CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
+import { POLL_CARD_GRID_TEMPLATE_COLUMNS } from '../../utils/cardGrid'
 import type { OpenAvailabilityPoll } from '../../api/matchAvailabilityApi'
 import type {
   SectionAvailabilityRound,
   SectionAvailabilityRoundMatch,
 } from '../../api/sectionAvailabilityApi'
 import type { Team } from '../../api/teamApi'
+import { legend } from '../../test/legend'
 
 const listOpenPolls = vi.fn()
 const listClosedPolls = vi.fn()
@@ -112,6 +113,7 @@ function makePoll(overrides: Partial<OpenAvailabilityPoll> = {}): OpenAvailabili
     venue: 'Home Ground',
     autoClose: true,
     scheduledCloseAt: '2026-05-31T09:00:00Z',
+    canReopen: true,
     availableCount: 2,
     unavailableCount: 1,
     unsureCount: 0,
@@ -137,6 +139,7 @@ function makeRound(overrides: Partial<SectionAvailabilityRound> = {}): SectionAv
     firstMatchKickoff: '2026-06-06T09:00:00Z',
     autoClose: true,
     scheduledCloseAt: '2026-06-05T09:00:00Z',
+    canReopen: true,
     open: true,
     brackets: [
       {
@@ -271,16 +274,16 @@ describe('AvailabilityPollsDashboard', () => {
     expect(screen.getByText('Home')).toBeInTheDocument()
     // Subtitle: the shared date style plus the venue, never the raw locale string.
     expect(screen.getByText(/ · Home Ground$/)).toBeInTheDocument()
-    expect(screen.getByText('Available 2')).toBeInTheDocument()
-    expect(screen.getByText('Unavailable 1')).toBeInTheDocument()
-    expect(screen.getByText('Unsure 0')).toBeInTheDocument()
-    expect(screen.getByText('No response 3')).toBeInTheDocument()
+    expect(screen.getByText(legend('Available 2'))).toBeInTheDocument()
+    expect(screen.getByText(legend('Unavailable 1'))).toBeInTheDocument()
+    expect(screen.getByText(legend('Unsure 0'))).toBeInTheDocument()
+    expect(screen.getByText(legend('No response 3'))).toBeInTheDocument()
     expect(screen.getByText('3 of 6 answered')).toBeInTheDocument()
     // 09:00Z is MORNING in a zone up to UTC+2; assert only that a slot heading is shown.
     expect(screen.getByRole('heading', { level: 4, name: /· (Morning|Afternoon)$/ })).toBeInTheDocument()
     expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: `${(2 / 6) * 100}%` })
     expect(screen.getByText('Poll closes')).toBeInTheDocument()
-    expect(screen.getAllByRole('button').filter((b) => ['Close', 'Matches', 'Responses', 'Share invite'].includes(b.getAttribute('aria-label') ?? '')).map((b) => b.getAttribute('aria-label'))).toEqual(['Close', 'Matches', 'Responses', 'Share invite'])
+    expect(screen.getAllByRole('button').filter((b) => ['Close poll', 'Matches', 'Responses', 'Share invite'].includes(b.getAttribute('aria-label') ?? '')).map((b) => b.getAttribute('aria-label'))).toEqual(['Close poll', 'Matches', 'Responses', 'Share invite'])
   })
 
   it("a squad card's Responses button goes to the squad poll's Responses page", async () => {
@@ -647,11 +650,11 @@ describe('AvailabilityPollsDashboard', () => {
 
       renderDashboard('test-club-id', '/manage/availability?showClosed=true')
       await screen.findByText('Closed')
-      expect(screen.queryByRole('button', { name: /^close$/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^close poll$/i })).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Reopen' }))
+      await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
       expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Reopen' }))
+      await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
 
       await waitFor(() => expect(openPoll).toHaveBeenCalledWith('test-club-id', 'match-9', 'poll-closed'))
       expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-9', 'poll-closed', {
@@ -670,7 +673,7 @@ describe('AvailabilityPollsDashboard', () => {
 
       renderDashboard('test-club-id')
       await screen.findByText('Open')
-      await user.click(screen.getByRole('button', { name: /^close$/i }))
+      await user.click(screen.getByRole('button', { name: /^close poll$/i }))
       expect(closePoll).not.toHaveBeenCalled()
       expect(await screen.findByText('Close this poll?')).toBeInTheDocument()
       expect(screen.getByText(/choosing a new close time/i)).toBeInTheDocument()
@@ -686,7 +689,7 @@ describe('AvailabilityPollsDashboard', () => {
 
       renderDashboard('test-club-id')
       await screen.findByText('Open')
-      await user.click(screen.getByRole('button', { name: /^close$/i }))
+      await user.click(screen.getByRole('button', { name: /^close poll$/i }))
       await user.click(await screen.findByRole('button', { name: 'Cancel' }))
 
       expect(closePoll).not.toHaveBeenCalled()
@@ -697,12 +700,12 @@ describe('AvailabilityPollsDashboard', () => {
       listClosedPolls.mockResolvedValue([makePoll({ pollId: 'poll-late', autoClose: true, scheduledCloseAt: '2026-05-31T09:00:00Z' })])
 
       renderDashboard('test-club-id', '/manage/availability?showClosed=true')
-      await user.click(await screen.findByRole('button', { name: 'Reopen' }))
+      await user.click(await screen.findByRole('button', { name: 'Reopen poll' }))
 
       expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
       // The match and its default close time are both long past, so the future-time rule blocks it.
       expect(screen.getByText('Choose a closing time in the future.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Reopen' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Reopen poll' })).toBeDisabled()
       expect(openPoll).not.toHaveBeenCalled()
     })
 
@@ -716,8 +719,8 @@ describe('AvailabilityPollsDashboard', () => {
 
       renderDashboard('test-club-id', '/manage/availability?showClosed=true')
       await screen.findByText('Closed')
-      await user.click(screen.getByRole('button', { name: 'Reopen' }))
-      await user.click(await screen.findByRole('button', { name: 'Reopen' }))
+      await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
+      await user.click(await screen.findByRole('button', { name: 'Reopen poll' }))
 
       expect(
         await screen.findByText('This poll can no longer be reopened because its automatic close time has passed.'),
@@ -735,8 +738,8 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id', '/manage/availability?showClosed=true')
       await screen.findByRole('heading', { name: 'Closed group poll' })
       expect(screen.getByText('Closed')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Reopen' }))
-      await user.click(await screen.findByRole('button', { name: 'Reopen' }))
+      await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
+      await user.click(await screen.findByRole('button', { name: 'Reopen poll' }))
 
       await waitFor(() => expect(openRound).toHaveBeenCalledWith('test-club-id', 'round-closed'))
       expect(updateRoundCloseTime).toHaveBeenCalledWith('test-club-id', 'round-closed', { autoClose: false, scheduledCloseAt: null })
@@ -904,7 +907,7 @@ describe('AvailabilityPollsDashboard', () => {
       expect(screen.getByText('U13 Boys · 3 matches')).toBeInTheDocument()
       expect(screen.getByRole('heading', { level: 4, name: /· Morning$/ })).toBeInTheDocument()
       expect(screen.getByRole('heading', { level: 4, name: /· Afternoon$/ })).toBeInTheDocument()
-      expect(screen.getByText('Available 5')).toBeInTheDocument()
+      expect(screen.getByText(legend('Available 5'))).toBeInTheDocument()
       expect(screen.getByText('6 of 8 answered')).toBeInTheDocument()
       expect(screen.getByTestId('window-1-bar-AVAILABLE')).toHaveStyle({ width: '62.5%' })
       expect(screen.getByTestId('window-2-bar-NONE')).toHaveStyle({ width: '50%' })
@@ -916,8 +919,8 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { level: 3, name: 'Sat 6 Jun - U13 Boys fixtures' })
-      const names = ['Close', 'Matches', 'Responses', 'Share invite']
-      const footer = screen.getByRole('button', { name: 'Close' }).parentElement as HTMLElement
+      const names = ['Close poll', 'Matches', 'Responses', 'Share invite']
+      const footer = screen.getByRole('button', { name: 'Close poll' }).parentElement as HTMLElement
       expect(within(footer).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(names)
       expect(footer).toHaveStyle({ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' })
     })
@@ -928,7 +931,7 @@ describe('AvailabilityPollsDashboard', () => {
 
       const heading = await screen.findByRole('heading', { level: 3, name: 'Sat 6 Jun - U13 Boys fixtures' })
       const grid = heading.closest('.MuiCard-root')?.parentElement as HTMLElement
-      expect(grid).toHaveStyle({ display: 'grid', gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS, alignItems: 'stretch' })
+      expect(grid).toHaveStyle({ display: 'grid', gridTemplateColumns: POLL_CARD_GRID_TEMPLATE_COLUMNS, alignItems: 'stretch' })
     })
 
     it('renders a round owning three brackets with three slot summaries, not capped at two', async () => {
@@ -964,7 +967,7 @@ describe('AvailabilityPollsDashboard', () => {
       renderDashboard('test-club-id')
 
       await screen.findByRole('heading', { name: 'Sat 6 Jun - U13 Boys fixtures' })
-      await user.click(screen.getByRole('button', { name: /^close$/i }))
+      await user.click(screen.getByRole('button', { name: /^close poll$/i }))
       expect(closeRound).not.toHaveBeenCalled()
       await user.click(await screen.findByRole('button', { name: 'Close poll' }))
 

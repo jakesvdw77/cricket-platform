@@ -16,7 +16,7 @@ import type { Team } from '../../api/teamApi'
 import { listSections } from '../../api/sectionApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { PollCard } from './availability/PollCard'
-import { cardGridSx } from '../../utils/cardGrid'
+import { pollCardGridSx } from '../../utils/cardGrid'
 import { squadPollTitle } from './availability/pollHelpers'
 import { invalidateAvailabilityCounters } from '../../api/availabilitySummaryApi'
 
@@ -234,7 +234,7 @@ export default function AvailabilityPollsDashboard() {
       />
 
       {visibleItems.length > 0 && (
-        <Box sx={cardGridSx}>
+        <Box sx={pollCardGridSx}>
           {visibleItems.map((item) =>
             item.kind === 'SQUAD' ? (
               <PollCard

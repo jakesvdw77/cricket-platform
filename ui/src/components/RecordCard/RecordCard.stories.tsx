@@ -7,6 +7,7 @@ import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { Box, Typography } from '@mui/material'
 import { RecordCard } from './RecordCard'
+import { BrandIcon } from '../BrandIcon'
 
 // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in one
 // globally; adding a second nested <MemoryRouter> throws ("You cannot render a <Router> inside
@@ -239,6 +240,18 @@ export const WithPhotoAvatar: Story = {
       onClick: () => undefined,
       icon: <ToggleOffOutlinedIcon fontSize="small" />,
     },
+  },
+}
+
+// docs/specs/082: a BrandIcon tile (48px icon + 4px padding = the 56px avatar box) instead of the solid Avatar.
+export const WithBrandIconAvatar: Story = {
+  args: {
+    title: 'Villagers 1 vs CBC',
+    avatar: { element: <BrandIcon name="nav/availability-polls" size={48} /> },
+    badge: { label: 'Squad poll', tone: 'squadPoll' },
+    description: 'Sat 3 Oct, 09:00 · Central Oval',
+    editLabel: 'Edit',
+    onEdit: () => undefined,
   },
 }
 

@@ -130,7 +130,7 @@ describe('EditCloseTimeDialog', () => {
     expect(screen.getByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
     // The passed close time is gone, so the default is offered instead.
     expect(screen.queryByText('Choose a closing time in the future.')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
 
     await waitFor(() => expect(openPoll).toHaveBeenCalledWith('club-1', 'match-1', 'poll-1'))
     expect(updatePollCloseTime).toHaveBeenCalledTimes(1)
@@ -140,7 +140,7 @@ describe('EditCloseTimeDialog', () => {
   it('on a closed group poll Reopen saves then calls openRound', async () => {
     const user = userEvent.setup()
     renderDialog({ reopen: true })
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
 
     await waitFor(() => expect(openRound).toHaveBeenCalledWith('club-1', 'round-1'))
     expect(updateRoundCloseTime.mock.invocationCallOrder[0]).toBeLessThan(openRound.mock.invocationCallOrder[0])

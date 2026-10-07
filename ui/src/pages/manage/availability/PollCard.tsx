@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { IconButton, Stack } from '@mui/material'
+import { Box, IconButton, Stack, Typography, alpha } from '@mui/material'
+import type { Theme } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useMutation } from '@tanstack/react-query'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -13,7 +13,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import { RecordCard } from '../../../components/RecordCard'
-import { DetailLine } from '../../../components/DetailLine'
+import { BrandIcon } from '../../../components/BrandIcon'
+import { Countdown, useCountdown } from '../../../components/Countdown'
 import { SlotSummary } from '../../../components/SlotSummary'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { PollShareDialog } from '../../../components/PollShareDialog'
@@ -28,6 +29,7 @@ import { EditCloseTimeDialog } from './EditCloseTimeDialog'
 import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
 import {
+  REOPEN_PAST_REASON,
   SHARE_CLOSED_REASON,
   closesRow,
   formatMatchDateTime,
@@ -79,8 +81,9 @@ function matchCountLabel(count: number): string {
 
 // docs/specs/066-poll-close-time-and-unified-cards.md: the one card both poll kinds render as, on
 // RecordCard: header (avatar, title, badges, delete), a subtitle, one SlotSummary per time slot, a
-// "Poll closes" DetailLine with its pencil (073), and the same four footer buttons in the same order - Close (Reopen
-// once closed), Matches, Responses, Share. It returns the RecordCard itself as the grid item (no
+// highlighted "Poll closes" strip above them with its pencil and a live countdown (073, 082), and the
+// same four footer buttons in the same order - Close poll (Reopen poll once closed), Matches,
+// Responses, Share. It returns the RecordCard itself as the grid item (no
 // wrapper) so the dashboard grid can stretch every card in a row to the tallest; every expansion is
 // a dialog rendered as a sibling, so a card never changes height on its own. Each card owns its own
 // mutations so one card's pending state never leaks onto another's.
@@ -167,6 +170,10 @@ export function PollCard({
       : `${formatMatchDateTime(item.poll.matchDate)} · ${item.poll.venue ?? 'Venue TBC'}`
 
   const closes = closesRow(isOpen, autoClose, scheduledCloseAt)
+  const canReopen = item.kind === 'GROUP' ? item.round.canReopen : item.poll.canReopen
+  // docs/specs/082: the countdown (and the amber tone) exist only for an open poll with a close time.
+  const countdownTarget = isOpen && autoClose && scheduledCloseAt ? scheduledCloseAt : null
+  const closingSoon = useCountdown(countdownTarget).warn
 
   const squadTeamName = item.kind === 'SQUAD' ? squadPollTeamName(item.poll, teamsById) : ''
 
@@ -182,7 +189,9 @@ export function PollCard({
         // docs/specs/073: the whole card opens the Responses page, like the Match card.
         viewTo={pollResponsesPath(item)}
         description={subtitle}
-        avatar={{ fallback: <EventAvailableOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+        // docs/specs/082: the brand availability icon on its standard tile; 48px icon + 4px padding on
+        // each side is the 56px avatar box.
+        avatar={{ element: <BrandIcon name="nav/availability-polls" size={48} padding={4} /> }}
         badge={{ label: item.kind === 'GROUP' ? 'Group poll' : 'Squad poll', tone: item.kind === 'GROUP' ? 'groupPoll' : 'squadPoll' }}
         badges={badges}
         // Long titles wrap (up to three lines) instead of truncating beside the pencil.
@@ -200,8 +209,16 @@ export function PollCard({
         }}
         footerButtons={[
           isOpen
-            ? { label: 'Close', icon: <LockOutlinedIcon fontSize="small" />, onClick: () => setCloseOpen(true), disabled: closeMutation.isPending }
-            : { label: 'Reopen', icon: <LockOpenOutlinedIcon fontSize="small" />, onClick: () => setCloseTimeOpen(true) },
+            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: () => setCloseOpen(true), disabled: closeMutation.isPending }
+            : {
+                label: 'Reopen poll',
+                // Same disabled + reason pattern as Share on a closed poll (docs/specs/082).
+                ariaLabel: canReopen ? undefined : REOPEN_PAST_REASON,
+                title: canReopen ? undefined : REOPEN_PAST_REASON,
+                icon: <LockOpenOutlinedIcon fontSize="small" />,
+                disabled: !canReopen,
+                onClick: () => setCloseTimeOpen(true),
+              },
           { label: 'Matches', icon: <EventNoteOutlinedIcon fontSize="small" />, onClick: () => setMatchesOpen(true) },
           {
             label: 'Responses',
@@ -226,39 +243,61 @@ export function PollCard({
               : null
         }
       >
-        {/* The summary area grows (flex: 1) so the Closes row sits at the bottom of the body and the
-            footer below it lines up across the cards of a row. */}
+        {/* docs/specs/082: the close time is read first - a tinted strip above the response indicator,
+            amber within 24 hours of closing, neutral otherwise (and once closed). */}
+        <Box
+          data-testid="poll-closes-row"
+          data-tone={closingSoon ? 'warning' : 'neutral'}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            columnGap: 1,
+            rowGap: 0.5,
+            px: 1.5,
+            py: 1,
+            borderRadius: 1,
+            border: 1,
+            bgcolor: (theme: Theme) =>
+              closingSoon ? alpha(theme.palette.warning.main, 0.14) : alpha(theme.palette.primary.main, 0.08),
+            borderColor: (theme: Theme) => (closingSoon ? alpha(theme.palette.warning.main, 0.5) : theme.palette.divider),
+            color: closingSoon ? 'warning.dark' : 'text.primary',
+          }}
+        >
+          <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'inherit' }}>
+            <EventBusyOutlinedIcon fontSize="small" />
+          </Box>
+          <Typography variant="body2" component="span" sx={{ color: closingSoon ? 'warning.dark' : 'text.secondary', fontWeight: 600 }}>
+            {closes.label}
+          </Typography>
+          <Typography variant="subtitle1" component="span" fontWeight={700} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+            {closes.value}
+          </Typography>
+          {/* Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
+              position: relative keeps it above the card's stretched link. */}
+          {isOpen && (
+            <IconButton
+              size="small"
+              aria-label="Edit close time"
+              title="Edit close time"
+              onClick={() => setCloseTimeOpen(true)}
+              sx={{ position: 'relative', p: '2px', color: 'inherit' }}
+            >
+              <EditOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+          {countdownTarget && (
+            <Box sx={{ ml: { sm: 'auto' } }}>
+              <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" />
+            </Box>
+          )}
+        </Box>
+        {/* The summary area grows (flex: 1) so the footer below lines up across the cards of a row. */}
         <Stack spacing={1.5} sx={{ flex: 1 }}>
           {slotsFor(item).map((slot) => (
             <SlotSummary key={slot.key} heading={slot.heading} counts={slot.counts} testIdPrefix={slot.key} compact />
           ))}
         </Stack>
-        <DetailLine
-          icon={<EventBusyOutlinedIcon fontSize="small" />}
-          label={closes.label}
-          labelWidth={78}
-          value={
-            <Stack direction="row" alignItems="center" spacing={0.5}>
-              <span>{closes.value}</span>
-              {/* Only while open (Reopen in the footer opens the same dialog once closed). Its own
-                  position: relative keeps it above the card's stretched link; it is sized to the text line
-                  so the row is no taller than a text-only DetailLine. */}
-              {isOpen && (
-                <IconButton
-                  size="small"
-                  aria-label="Edit close time"
-                  title="Edit close time"
-                  onClick={() => setCloseTimeOpen(true)}
-                  // A 20px square (the body2 line height) so the date and the pencil share one line and
-                  // the value lines up with its label.
-                  sx={{ position: 'relative', p: '2px' }}
-                >
-                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              )}
-            </Stack>
-          }
-        />
       </RecordCard>
 
       {item.kind === 'GROUP' && (

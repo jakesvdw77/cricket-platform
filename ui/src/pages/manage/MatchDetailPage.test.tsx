@@ -141,6 +141,7 @@ function makePoll(overrides: Partial<MatchAvailabilityPoll> = {}): MatchAvailabi
     open: true,
     autoClose: true,
     scheduledCloseAt: null,
+    canReopen: true,
     availableCount: 0,
     unavailableCount: 0,
     unsureCount: 0,

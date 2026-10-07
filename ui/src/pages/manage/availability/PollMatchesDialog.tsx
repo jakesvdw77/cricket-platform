@@ -1,4 +1,5 @@
 import { Dialog, DialogActions, DialogContent, DialogTitle, Link as MuiLink, Stack, Typography } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
@@ -7,6 +8,16 @@ import type { Team } from '../../../api/teamApi'
 import { formatBracketLabel } from '../../../utils/dayPart'
 import { formatMatchDateTime, matchLabel, squadPollHref, squadPollTitle } from './pollHelpers'
 import type { PollItem } from './pollItem'
+
+// docs/specs/082: a match in the dialog is a same-tab link to its match page - underlined so it reads as
+// a link, with a visible focus ring - and the dialog closes as the navigation starts.
+const matchLinkSx: SxProps<Theme> = {
+  display: 'block',
+  color: 'primary.main',
+  borderRadius: 0.5,
+  '&:hover': { color: 'primary.dark' },
+  '&:focus-visible': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: 2 },
+}
 
 // docs/specs/066: the card's Matches button - a small dialog (not an in-card panel, so the card's
 // height never changes on its own) listing the matches a poll covers. A group poll lists every
@@ -29,18 +40,23 @@ export function PollMatchesDialog({
       <DialogTitle id="poll-matches-title">Matches</DialogTitle>
       <DialogContent>
         {item.kind === 'GROUP' ? (
-          <GroupMatches clubId={clubId} round={item.round} open={open} />
+          <GroupMatches clubId={clubId} round={item.round} open={open} onClose={onClose} />
         ) : (
           <Stack spacing={0.5}>
-            <Typography variant="body2" fontWeight={600}>
+            <MuiLink
+              component={RouterLink}
+              to={squadPollHref(item.poll)}
+              variant="body2"
+              fontWeight={600}
+              underline="always"
+              onClick={onClose}
+              sx={matchLinkSx}
+            >
               {squadPollTitle(item.poll, teamsById)}
-            </Typography>
+            </MuiLink>
             <Typography variant="body2" color="text.secondary">
               {formatMatchDateTime(item.poll.matchDate)} · {item.poll.venue ?? 'Venue TBC'}
             </Typography>
-            <MuiLink component={RouterLink} to={squadPollHref(item.poll)} variant="body2" onClick={onClose}>
-              Open match
-            </MuiLink>
           </Stack>
         )}
       </DialogContent>
@@ -57,10 +73,12 @@ function GroupMatches({
   clubId,
   round,
   open,
+  onClose,
 }: {
   clubId: string
   round: Extract<PollItem, { kind: 'GROUP' }>['round']
   open: boolean
+  onClose: () => void
 }) {
   // Same key the Responses page uses, so the two share one cached request.
   const matchesQuery = useQuery({
@@ -100,9 +118,17 @@ function GroupMatches({
             )}
             {matches.map((match) => (
               <Stack key={`${match.matchId}-${match.teamId}`} spacing={0.25}>
-                <Typography variant="body2" fontWeight={600}>
+                <MuiLink
+                  component={RouterLink}
+                  to={squadPollHref(match)}
+                  variant="body2"
+                  fontWeight={600}
+                  underline="always"
+                  onClick={onClose}
+                  sx={matchLinkSx}
+                >
                   {matchLabel(match)}
-                </Typography>
+                </MuiLink>
                 <Typography variant="caption" color="text.secondary">
                   {formatMatchDateTime(match.matchDate)}
                   {match.leagueName ? ` · ${match.leagueName}` : ''}

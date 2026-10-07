@@ -38,6 +38,8 @@ export interface SectionAvailabilityRound {
   firstMatchKickoff: string
   autoClose: boolean
   scheduledCloseAt: string | null
+  // docs/specs/082: whether a reopen is allowed right now (auto-close rule and the matches-in-the-past rule).
+  canReopen: boolean
   open: boolean
   // However many windows this round actually owns, one to several - no longer a fixed pair.
   brackets: SectionAvailabilityRoundBracket[]

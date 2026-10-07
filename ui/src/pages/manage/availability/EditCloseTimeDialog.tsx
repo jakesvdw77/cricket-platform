@@ -101,7 +101,7 @@ function EditCloseTimeForm({
   })
 
   const pending = saveMutation.isPending
-  const primaryLabel = reopen ? 'Reopen' : 'Save'
+  const primaryLabel = reopen ? 'Reopen poll' : 'Save'
   const pendingLabel = reopen ? 'Reopening…' : 'Saving…'
 
   return (

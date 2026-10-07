@@ -24,7 +24,7 @@ import {
   squadPollSideLabel,
   squadPollTeamName,
   squadPollTitle,
-  SHARE_CLOSED_REASON,
+  REOPEN_PAST_REASON, SHARE_CLOSED_REASON,
 } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
 import { ResponsesPageShell } from './availability/responses/ResponsesPageShell'
@@ -120,6 +120,7 @@ export default function SquadPollResponsesPage() {
     awayTeamName: match.awayTeamName,
   }
   const closed = !responses.open
+  const reopenBlocked = closed && !poll.canReopen
   const override: OverrideProps = {
     pendingKey,
     onOverride: async (row, _windowId, status) => {
@@ -185,9 +186,19 @@ export default function SquadPollResponsesPage() {
             <Typography variant="body2" color="text.secondary">
               {closesRowText(responses.open, poll.autoClose, poll.scheduledCloseAt)}
             </Typography>
-            <IconButton size="small" aria-label="Edit close time" title="Edit close time" onClick={() => setCloseTimeOpen(true)}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
+            {/* docs/specs/082: on a closed poll this pencil is the Reopen path, so it is disabled with the reason
+                when the matches are in the past (the span carries the tooltip, a disabled button gets none). */}
+            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
+              <IconButton
+                size="small"
+                aria-label={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
+                title={reopenBlocked ? REOPEN_PAST_REASON : 'Edit close time'}
+                disabled={reopenBlocked}
+                onClick={() => setCloseTimeOpen(true)}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Stack>
         </Stack>
       }
