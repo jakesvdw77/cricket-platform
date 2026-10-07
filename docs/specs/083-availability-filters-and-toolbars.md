@@ -36,7 +36,7 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 
 ## Proposed design
 
-**Decision (user, 2026-10-07): Season is not a toolbar filter.** Seasons are not important for the Polls view (polls are about what is open now; a history option can come later), so Season leaves the toolbars. Players and Coverage still need a season to work (rosters and squads are per season), so they keep one: a small clickable label beside the page title ("2026 season ▾", default the current season, shared and remembered across Players and Coverage) that opens a list of seasons. Polls shows no season control. This frees a field of space on every toolbar.
+**Decision (user, 2026-10-07, revised later the same day): there is no Season control on any Availability view.** Seasons are not important for Polls (polls are about what is open now; a history option can come later), so Season leaves the toolbars. Players and Coverage still need a season to work (rosters and squads are per season), so they always use the default season (the one containing today, else the most recently created). The earlier "2026 season ▾" label beside the title is dropped. Looking at a past season on Players or Coverage is not possible for now; "Show past games" and "Show past slots" cover past games within the current season. This frees a field of space on every toolbar.
 
 **1. Shared filters, remembered across the three views.** League, Section and Team (Players only) live in one shared state owned by the hub layout, saved per club in one place (`usePersistedListFilters`, one key), and mirrored in the page address (for example `?section=...&league=...`) so the back button and shared links keep the same view. Switching tabs keeps them; "Clear filters" clears all. Where a filter does not apply to a view (Team on Polls, for example) it is simply not shown there, but its value is kept for when the manager returns.
 
@@ -58,7 +58,7 @@ The three Availability views (Polls, Players, Coverage) each have their own tool
 ## API Contract (outline, finalised in planning)
 
 - `GET .../availability-polls/open`, `.../closed` and `.../section-availability-rounds` gain an optional `leagueId` filter (polls are matched through their matches' league), alongside the existing section filter; no season parameter for polls.
-- `GET .../availability/summary` gains `seasonId`, `leagueId`, `sectionId`, `type` and `includeClosed` parameters and returns the distinct "players still to answer" figure.
+- `GET .../availability/summary` gains `leagueId`, `sectionId`, `teamId`, `type` and `includeClosed` parameters and returns the distinct "players still to answer" figure.
 
 ## Test Plan (outline)
 
@@ -66,7 +66,7 @@ Filter model (shared across tabs, address sync, persistence, clear), `FilterBar`
 
 ## Decisions (user, 2026-10-07)
 
-- **Season** is not a toolbar filter (a small label beside the title on Players and Coverage; none on Polls).
+- **Season** is not a toolbar filter and there is no season control on any view; Players and Coverage use the default season (revised 2026-10-07: the label beside the title was dropped).
 - **"Players still to answer"** replaces "Answers awaited" (distinct players still owing an answer in the polls shown).
 - **Polls gets a Team filter**, as well as League and Section: teams are easier for managers. Squad polls filter by their team; group polls by the teams of the matches in their slots.
 - **The poll type is two small toggles above the cards** ("Group polls" and "Squad polls", both on by default, the last one cannot be switched off), in the same light style as the Players toggles (the three-way control was too heavy), on a line shared with the "Showing ..." scope text (no row of its own). **Sorting is a quiet text link** inside the scope text ("soonest first ↕", click to reverse), not a round icon button. The same pattern applies to the other views: each view's own toggles (Show closed and sort on Polls, Show past games and Hide players with no answers on Players, Show past slots on Coverage) sit on the line above its content; the toolbar card holds only the shared filters and search.
