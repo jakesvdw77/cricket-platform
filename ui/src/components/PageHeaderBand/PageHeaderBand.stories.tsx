@@ -18,7 +18,7 @@ export default meta
 type Story = StoryObj<typeof PageHeaderBand>
 
 // Representative markup resembling RecordDetailScreen's own header content — a back link plus an
-// avatar/title/badge/Edit row — to demonstrate the band's chrome the way it actually gets used.
+// avatar/title/badge/Edit row — to show the plain header (081) the way it actually gets used.
 const sampleHeaderContent = (
   <>
     <MuiButton
@@ -39,7 +39,7 @@ const sampleHeaderContent = (
           M
         </Avatar>
         <Stack spacing={0.5}>
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             1st XI vs 2nd XI
           </Typography>
           <Chip size="small" label="Upcoming" variant="outlined" sx={{ alignSelf: 'flex-start' }} />
@@ -57,14 +57,13 @@ export const Default: Story = {
     children: sampleHeaderContent,
   },
   render: (args) => (
-    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'grey.100' }}>
+    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'background.default' }}>
       <PageHeaderBand {...args} />
     </Box>
   ),
 }
 
-// Demonstrates the one club-colour-dependent element in the whole component — the 3px top accent
-// bar re-tints via withClubBranding(), everything else in the band stays flat white regardless.
+// The header is identical under a club-branded theme — nothing in it is club-coloured (081).
 export const WithClubBranding: Story = {
   args: {
     children: sampleHeaderContent,
@@ -77,7 +76,7 @@ export const WithClubBranding: Story = {
     ),
   ],
   render: (args) => (
-    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'grey.100' }}>
+    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'background.default' }}>
       <PageHeaderBand {...args} />
     </Box>
   ),

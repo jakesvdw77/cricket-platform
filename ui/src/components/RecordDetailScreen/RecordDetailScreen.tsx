@@ -99,7 +99,7 @@ export function RecordDetailScreen({
               </Avatar>
             )}
             <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
                 {title}
               </Typography>
               {badge && (

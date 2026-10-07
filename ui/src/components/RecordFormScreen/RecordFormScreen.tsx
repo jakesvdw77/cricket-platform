@@ -42,13 +42,13 @@ export function RecordFormScreen({ title, backTo, backLabel, actions, headerActi
             data-testid="record-form-title-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
           >
-            <Typography variant="h6" component="h1" sx={{ fontWeight: 700, minWidth: 0 }}>
+            <Typography variant="h5" component="h1" sx={{ fontWeight: 700, minWidth: 0 }}>
               {title}
             </Typography>
             <Box sx={{ flex: 'none' }}>{headerAction}</Box>
           </Box>
         ) : (
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             {title}
           </Typography>
         )}

@@ -321,7 +321,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 </Avatar>
               )}
               <Typography
-                variant="h6"
+                variant="h5"
                 component="h1"
                 aria-label={title}
                 sx={{

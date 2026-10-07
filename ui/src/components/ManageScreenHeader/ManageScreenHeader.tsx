@@ -56,7 +56,7 @@ export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, 
             width: '100%',
           }}
         >
-          <Typography variant="h6" component="h1" fontWeight={700}>
+          <Typography variant="h5" component="h1" fontWeight={700}>
             {title}
           </Typography>
           {middle}

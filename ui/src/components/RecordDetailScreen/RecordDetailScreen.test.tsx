@@ -199,19 +199,15 @@ describe('RecordDetailScreen', () => {
 
     // PageHeaderBand renders a single Box wrapping the Back link + title/badge/Edit Stack
     // directly — the Back link's own DOM parent is that Box, so this asserts the header content is
-    // an immediate child of an element carrying PageHeaderBand's own distinguishing treatment
-    // (flat white background, 3px solid primary.main top accent), rather than just re-rendering.
+    // an immediate child of the plain PageHeaderBand container.
     const backLink = screen.getByRole('link', { name: /back to players/i })
     const editLink = screen.getByRole('link', { name: /edit/i })
     const band = backLink.parentElement as HTMLElement
 
     expect(band.contains(editLink)).toBe(true)
-    expect(band).toHaveStyle({
-      backgroundColor: 'rgb(255, 255, 255)',
-      borderTopWidth: '3px',
-      borderTopStyle: 'solid',
-      borderTopColor: 'rgb(47, 110, 79)', // baseTheme.palette.primary.main
-    })
+    // docs/specs/081: the header is a plain container on the page wash — no accent line.
+    expect(band).not.toHaveStyle({ borderTopWidth: '3px' })
+    expect(band).not.toHaveStyle({ backgroundColor: 'rgb(255, 255, 255)' })
   })
 
   // docs/specs/046-header-body-elevation-standard.md
