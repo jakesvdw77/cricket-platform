@@ -213,7 +213,7 @@ export default function ClubOverviewPage() {
               {initialsFromName(profile.name)}
             </Avatar>
             <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
                 {profile.name}
               </Typography>
               {profile.type && (

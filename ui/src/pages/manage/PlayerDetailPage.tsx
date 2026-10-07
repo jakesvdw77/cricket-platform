@@ -131,7 +131,7 @@ export default function PlayerDetailPage() {
               {initialsFromName(fullName(player))}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
                 {fullName(player)}
               </Typography>
               {/* Section chip row directly under the name — the player's tagged sections relocated

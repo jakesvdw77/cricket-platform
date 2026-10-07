@@ -96,18 +96,14 @@ describe('ManageScreenHeader', () => {
     )
 
     // PageHeaderBand renders a single Box wrapping ManageScreenHeader's own back-link+title-row
-    // Box directly — the Back link's own DOM grandparent is that PageHeaderBand Box, carrying its
-    // distinguishing treatment (flat white background, 3px solid primary.main top accent).
+    // Box directly — the Back link's own DOM grandparent is that PageHeaderBand Box, a plain container.
     const backLink = screen.getByRole('link', { name: /back to dashboard/i })
     const band = backLink.parentElement?.parentElement as HTMLElement
 
     expect(band).toContainElement(screen.getByRole('heading', { name: 'Club Contacts' }))
-    expect(band).toHaveStyle({
-      backgroundColor: 'rgb(255, 255, 255)',
-      borderTopWidth: '3px',
-      borderTopStyle: 'solid',
-      borderTopColor: 'rgb(47, 110, 79)', // baseTheme.palette.primary.main
-    })
+    // docs/specs/081: the header is a plain container on the page wash — no accent line.
+    expect(band).not.toHaveStyle({ borderTopWidth: '3px' })
+    expect(band).not.toHaveStyle({ backgroundColor: 'rgb(255, 255, 255)' })
   })
 
   // docs/specs/046-header-body-elevation-standard.md: fontWeight 700 replaces the component's old

@@ -270,7 +270,7 @@ export default function TeamDetailPage() {
               {initialsFromName(team.name)}
             </Avatar>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h1" noWrap sx={{ fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
                 {team.name}
               </Typography>
               {/* The "badges under the name" chip row replacing the old "Details" section entirely

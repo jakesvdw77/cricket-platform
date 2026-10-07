@@ -263,7 +263,7 @@ export default function LeagueViewLayout() {
                 <EmojiEventsOutlinedIcon fontSize="small" />
               </Avatar>
               <Typography
-                variant="h6"
+                variant="h5"
                 component="h1"
                 sx={{ fontWeight: 700, minWidth: 0, overflowWrap: 'anywhere' }}
               >
