@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Box, Chip, FormControlLabel, Switch, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { Box, Chip, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { CompactSwitch } from '../../../../components/CompactSwitch'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { ViaLinkMarker } from './ViaLinkMarker'
@@ -23,10 +24,9 @@ export function ResponsesByPlayer({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <FormControlLabel
-        control={<Switch checked={hideUnanswered} onChange={(event) => setHideUnanswered(event.target.checked)} />}
-        label="Hide players who haven't answered"
-      />
+      <Box>
+        <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players who haven't answered" noWrap={false} />
+      </Box>
       <Box sx={{ overflowX: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
         <Table size="small" aria-label="Responses by player">
           <TableHead>

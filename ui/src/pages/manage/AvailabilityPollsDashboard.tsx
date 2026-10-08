@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, FormControlLabel, Switch } from '@mui/material'
+import { Box } from '@mui/material'
+import { CompactSwitch } from '../../components/CompactSwitch'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
@@ -218,31 +219,15 @@ export default function AvailabilityPollsDashboard() {
   // The last type toggle left on cannot be switched off.
   const typeToggles = (
     <>
-      <FormControlLabel
-        control={<Switch checked={showGroup} disabled={showGroup && !showSquad} onChange={(event) => setShowGroup(event.target.checked)} />}
-        label="Group polls"
-        sx={{ whiteSpace: 'nowrap', mr: 0 }}
-      />
-      <FormControlLabel
-        control={<Switch checked={showSquad} disabled={showSquad && !showGroup} onChange={(event) => setShowSquad(event.target.checked)} />}
-        label="Squad polls"
-        sx={{ whiteSpace: 'nowrap', mr: 0 }}
-      />
+      <CompactSwitch checked={showGroup} disabled={showGroup && !showSquad} onChange={setShowGroup} label="Group polls" />
+      <CompactSwitch checked={showSquad} disabled={showSquad && !showGroup} onChange={setShowSquad} label="Squad polls" />
     </>
   )
   const closedToggle = (
-    <FormControlLabel
-      control={<Switch checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} />}
-      label="Show closed polls"
-      sx={{ whiteSpace: 'nowrap', mr: 0 }}
-    />
+    <CompactSwitch checked={showClosed} onChange={setShowClosed} label="Show closed polls" />
   )
   const closingSoonToggle = (
-    <FormControlLabel
-      control={<Switch checked={closingSoon} onChange={(event) => setClosingSoon(event.target.checked)} />}
-      label="Closing within 48 h"
-      sx={{ whiteSpace: 'nowrap', mr: 0 }}
-    />
+    <CompactSwitch checked={closingSoon} onChange={setClosingSoon} label="Closing within 48 h" />
   )
   const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
 

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Box, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { useSearchParams } from 'react-router-dom'
+import { useDocumentTitle } from '../../../../hooks/useDocumentTitle'
 import { Input } from '../../../../components/Input'
 import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
@@ -60,6 +61,8 @@ export function ResponsesPageShell({
   emptyText,
   children,
 }: ResponsesPageShellProps) {
+  // docs/specs/085 (C8): the browser tab names the poll.
+  useDocumentTitle(title)
   // Neither the view nor the search is persisted: a fresh visit starts on By time slot.
   const [searchParams] = useSearchParams()
   const returnTo = safeReturnTo(searchParams.get('returnTo'))

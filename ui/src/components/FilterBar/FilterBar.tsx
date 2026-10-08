@@ -230,7 +230,7 @@ export function FilterBar({
         <Box data-testid="filter-sheet-fields" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
           {fieldsFor(true)}
           {viewControls && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: 28 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: { xs: 44, sm: 28 } }}>
               {viewControls}
             </Box>
           )}

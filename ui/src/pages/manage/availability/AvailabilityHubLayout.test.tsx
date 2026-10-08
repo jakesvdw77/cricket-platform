@@ -129,6 +129,20 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('href', '/manage/availability/coverage')
   })
 
+  it('names the view in the browser tab title and restores it on unmount (085)', () => {
+    document.title = 'Cricket Legend'
+    for (const [path, title] of [
+      ['/manage/availability', 'Polls · Availability'],
+      ['/manage/availability/players', 'Players · Availability'],
+      ['/manage/availability/coverage', 'Match-day cover · Availability'],
+    ]) {
+      const { unmount } = renderAt(path)
+      expect(document.title).toBe(title)
+      unmount()
+    }
+    expect(document.title).toBe('Cricket Legend')
+  })
+
   it('marks Polls as the current view on /manage/availability, with or without a trailing slash and ?showClosed=true', () => {
     for (const path of ['/manage/availability', '/manage/availability/', '/manage/availability?showClosed=true']) {
       const { unmount } = renderAt(path)

@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, CircularProgress, FormControlLabel, Switch } from '@mui/material'
+import { Alert, Box, CircularProgress } from '@mui/material'
 import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined'
 import { Button } from '../../components/Button'
+import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
@@ -76,16 +77,8 @@ export default function PlayerAvailabilityPage() {
 
   const toggles = (
     <>
-      <FormControlLabel
-        control={<Switch checked={includePast} onChange={(event) => setIncludePast(event.target.checked)} />}
-        label="Show past games"
-        sx={{ whiteSpace: 'nowrap', mr: 0 }}
-      />
-      <FormControlLabel
-        control={<Switch checked={hideUnanswered} onChange={(event) => setHideUnanswered(event.target.checked)} />}
-        label="Hide players with no answers"
-        sx={{ mr: 0 }}
-      />
+      <CompactSwitch checked={includePast} onChange={setIncludePast} label="Show past games" />
+      <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players with no answers" />
     </>
   )
 

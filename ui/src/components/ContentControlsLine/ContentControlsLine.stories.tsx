@@ -1,4 +1,4 @@
-import { FormControlLabel, Switch } from '@mui/material'
+import { CompactSwitch } from '../CompactSwitch'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { ContentControlsLine, SortLink } from './ContentControlsLine'
 
@@ -12,7 +12,7 @@ export default meta
 type Story = StoryObj<typeof ContentControlsLine>
 
 const toggle = (label: string, checked = false) => (
-  <FormControlLabel control={<Switch checked={checked} onChange={() => undefined} />} label={label} sx={{ mr: 0 }} />
+  <CompactSwitch checked={checked} onChange={() => undefined} label={label} />
 )
 
 export const Polls: Story = {

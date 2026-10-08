@@ -86,3 +86,24 @@ export const Hover: Story = {
 }
 
 export const Loading: Story = { args: { items: [], loading: true } }
+
+// docs/specs/085: the compact density used by the Availability Polls page.
+export const Compact: Story = {
+  args: {
+    density: 'compact',
+    items: [
+      { ...base[0], active: true, kind: 'reset', hint: 'Show all', onSelect: noop },
+      { ...base[1], kind: 'drill', hint: 'See who', onSelect: noop },
+      { ...base[2], tone: 'warning', kind: 'drill', hint: 'See who', onSelect: noop },
+      { ...base[3], tone: 'warning', kind: 'filter', hint: 'Tap to filter', onSelect: noop },
+    ],
+  },
+}
+
+export const CompactActive: Story = {
+  args: { ...Compact.args, items: (Compact.args?.items ?? []).map((item, index) => ({ ...item, active: index === 3 })) },
+}
+
+export const CompactWarning: Story = { args: { density: 'compact', items: Warning.args?.items ?? [] } }
+
+export const CompactLoading: Story = { args: { density: 'compact', items: [], loading: true } }

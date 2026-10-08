@@ -13,6 +13,7 @@ import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
 import { availabilitySummaryKey, getAvailabilitySummary, typeFilterFor } from '../../../api/availabilitySummaryApi'
 import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../api/availabilitySummaryApi'
+import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 import { useAvailabilityHubState } from './hubContext'
@@ -98,6 +99,8 @@ export default function AvailabilityHubLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = activeView(pathname)
+  // docs/specs/085 (C8): the browser tab names the view; the visible page title stays "Availability".
+  useDocumentTitle(`${VIEWS.find((entry) => entry.value === view)?.label ?? 'Polls'} · Availability`)
   const hub = useAvailabilityHubState(clubId, view !== 'polls', view !== 'coverage')
 
   // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
@@ -181,6 +184,7 @@ export default function AvailabilityHubLayout() {
 
       {showCounters && (
         <PageCounters
+          density="compact"
           items={
             summaryQuery.data
               ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon, (tab) => setPanel({ open: true, tab }))
