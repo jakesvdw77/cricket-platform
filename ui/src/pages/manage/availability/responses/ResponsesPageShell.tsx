@@ -92,7 +92,7 @@ export function ResponsesPageShell({
       />
 
       {(meta || single) && (
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'flex-end' }, justifyContent: 'space-between', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: { sm: 'wrap' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', gap: 1.5 }}>
           <Box sx={{ minWidth: 0 }}>{meta}</Box>
           {single && (
             <Box sx={{ ml: { sm: 'auto' }, flex: '0 0 auto', maxWidth: '100%' }}>

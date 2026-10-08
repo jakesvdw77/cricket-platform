@@ -75,20 +75,21 @@ export function ResponseGauge(props: ResponseGaugeProps) {
     )
   }
 
+  // One wide block: the legend (with "N of M answered" in front of it in status mode) sits on one row above the bar, so the
+  // gauge is two lines tall on a wide screen and only wraps the legend onto a second row when the space runs out.
   return (
     <Box
       role="group"
       aria-label="Response summary"
       data-testid={testIdPrefix}
-      sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: { xs: '100%', sm: 360 }, maxWidth: '100%', minWidth: 0 }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: { xs: '100%', sm: 'min(640px, 100%)' }, maxWidth: '100%', minWidth: 0 }}
     >
-      {props.mode === 'status' && (
-        <Typography variant="caption" fontWeight={700} color="text.primary" sx={{ alignSelf: 'flex-end' }}>
-          {answered} of {total} answered
-        </Typography>
-      )}
-      {bar(8)}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.25 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.25 }}>
+        {props.mode === 'status' && (
+          <Typography variant="caption" fontWeight={700} color="text.primary" sx={{ whiteSpace: 'nowrap', mr: 0.5 }}>
+            {answered} of {total} answered
+          </Typography>
+        )}
         {segments.map((segment) => (
           <Typography
             key={segment.key}
@@ -105,6 +106,7 @@ export function ResponseGauge(props: ResponseGaugeProps) {
           </Typography>
         ))}
       </Box>
+      {bar(8)}
     </Box>
   )
 }
