@@ -101,3 +101,39 @@ describe('useFillViewportHeight', () => {
     expect(disconnect).toHaveBeenCalled()
   })
 })
+
+describe('useFillViewportHeight shrink case', () => {
+  it('observes the box parent and the elements above it, so shrinking content re-measures', () => {
+    const observedNodes: Element[] = []
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observed = callback
+        }
+        observe(node: Element) {
+          observedNodes.push(node)
+        }
+        disconnect() {}
+      },
+    )
+    const above = document.createElement('div')
+    const host = document.createElement('div')
+    document.body.append(above, host)
+    const { unmount } = render(<Box />, { container: host.appendChild(document.createElement('div')) })
+
+    expect(observedNodes).toContain(document.body)
+    expect(observedNodes).toContain(screen.getByTestId('box').parentElement)
+
+    top = 400
+    act(() => observed?.())
+    expect(screen.getByTestId('box')).toHaveTextContent('376')
+    // The alert above disappears: the box top moves up and the box grows again.
+    top = 200
+    act(() => observed?.())
+    expect(screen.getByTestId('box')).toHaveTextContent('576')
+    unmount()
+    above.remove()
+    host.remove()
+  })
+})

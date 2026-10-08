@@ -105,7 +105,9 @@ function ByGame({ games, players, now }: { games: GameColumn[]; players: PlayerR
   const [answer, setAnswer] = useState<AnswerStatus | null>(null)
 
   const opening = useMemo(() => openingGame(columns, now), [columns, now])
-  const index = Math.max(0, columns.findIndex((game) => game.matchId === (selectedId ?? opening?.matchId)))
+  const selectedIndex = selectedId ? columns.findIndex((game) => game.matchId === selectedId) : -1
+  const openingIndex = columns.findIndex((game) => game.matchId === opening?.matchId)
+  const index = selectedIndex >= 0 ? selectedIndex : Math.max(0, openingIndex)
   const game = columns[index]
   const go = (step: number) => {
     const next = columns[index + step]
@@ -162,7 +164,7 @@ function ByGame({ games, players, now }: { games: GameColumn[]; players: PlayerR
                   aria-pressed={selected}
                   onClick={() => setAnswer(selected ? null : status)}
                   sx={{
-                    minHeight: 36,
+                    minHeight: 44,
                     px: 1.5,
                     borderRadius: 99,
                     fontSize: '0.78rem',
@@ -238,8 +240,10 @@ function ByPlayer({ games, players, now }: { games: GameColumn[]; players: Playe
           <Box
             key={game.matchId}
             data-testid="strip-game"
+            role="columnheader"
+            aria-label={`${shortDate(new Date(game.matchDate))}, ${kickoffText(game.matchDate)}, ${game.label}`}
             title={`${shortDate(new Date(game.matchDate))} · ${kickoffText(game.matchDate)} · ${game.label}`}
-            sx={{ width: MARK_COL_WIDTH, textAlign: 'center', fontSize: '0.6rem', lineHeight: 1.15, color: 'text.secondary' }}
+            sx={{ width: MARK_COL_WIDTH, textAlign: 'center', fontSize: '0.66rem', lineHeight: 1.15, color: 'text.secondary' }}
           >
             <Box component="span" sx={{ display: 'block', fontWeight: 700 }}>
               {shortDate(new Date(game.matchDate))}
@@ -260,12 +264,10 @@ function ByPlayer({ games, players, now }: { games: GameColumn[]; players: Playe
       )}
       {players.map((player) => {
         const expanded = expandedId === player.playerProfileId
-        const panelId = `player-games-${player.playerProfileId}`
         return (
           <Box key={player.playerProfileId} sx={{ borderBottom: 1, borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
             <ButtonBase
               aria-expanded={expanded}
-              aria-controls={panelId}
               onClick={() => setExpandedId(expanded ? null : player.playerProfileId)}
               sx={{ display: 'flex', width: '100%', minHeight: ROW_MIN_HEIGHT, gap: 0.5, px: 1, textAlign: 'left', borderRadius: 1 }}
             >
@@ -287,7 +289,7 @@ function ByPlayer({ games, players, now }: { games: GameColumn[]; players: Playe
               />
             </ButtonBase>
             <Collapse in={expanded} unmountOnExit>
-              <Box id={panelId} sx={{ bgcolor: 'action.hover', borderRadius: 1, mx: 0.5, mb: 0.75, px: 1, py: 0.5 }}>
+              <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, mx: 0.5, mb: 0.75, px: 1, py: 0.5 }}>
                 {columns.map((game) => {
                   const cell = cellFor(player, game.matchId)
                   return (

@@ -67,9 +67,28 @@ test.describe('Availability Players view layout (085-availability-polish.md)', (
     const titleBox = await page.getByRole('heading', { level: 1, name: 'Availability' }).boundingBox();
     expect(jumpBox && titleBox && legendBox && jumpBox.y < legendBox.y && jumpBox.x > titleBox.x).toBeTruthy();
     if (await jump.isEnabled()) {
+      const before = await grid.evaluate((node) => node.scrollLeft);
       await jump.click();
-      // Scrolling is smooth: wait for the grid to settle, and for the page to stay put.
-      await page.waitForTimeout(800);
+      // Scrolling is smooth: poll until the grid has moved sideways (or was already showing the target), page still put.
+      await expect
+        .poll(async () => {
+          const after = await grid.evaluate((node) => node.scrollLeft);
+          return after !== before || before === 0 ? 'moved-or-at-start' : 'waiting';
+        })
+        .toBe('moved-or-at-start');
+      // The first upcoming game's column header is inside the grid box.
+      await expect(async () => {
+        const box = await grid.boundingBox();
+        const visible = await grid.getByRole('columnheader').evaluateAll(
+          (heads, g) =>
+            heads.some((h) => {
+              const r = h.getBoundingClientRect();
+              return r.width > 0 && r.left >= (g as { x: number }).x && r.right <= (g as { x: number; width: number }).x + (g as { width: number }).width;
+            }),
+          box,
+        );
+        expect(visible).toBe(true);
+      }).toPass();
       expect(await page.evaluate(() => window.scrollY)).toBe(0);
     }
   });

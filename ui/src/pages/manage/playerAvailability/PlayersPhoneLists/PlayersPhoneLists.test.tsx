@@ -155,6 +155,22 @@ describe('PlayersPhoneLists', () => {
       expect(screen.queryByRole('group', { name: 'Filter by answer' })).not.toBeInTheDocument()
     })
 
+    it('falls back to the opening game, not the first, when a filter drops the selected game', async () => {
+      const user = userEvent.setup()
+      const view = renderLists()
+      await user.click(screen.getByRole('button', { name: 'Next game' }))
+      expect(screen.getByText(/Game 4 of 6/)).toBeInTheDocument()
+
+      view.rerender(
+        <MemoryRouter>
+          <PlayersPhoneLists games={GAMES.filter((game) => game.matchId !== 'm4')} players={PLAYERS} now={NOW} />
+        </MemoryRouter>,
+      )
+      // Opening game (Mon 5 Oct, Lions v Wolves) is game 3 of the remaining 5.
+      expect(screen.getByText(/Game 3 of 5/)).toBeInTheDocument()
+      expect(screen.getByText(/Lions v Wolves/)).toBeInTheDocument()
+    })
+
     it('keeps the chosen answer chip while stepping between games', async () => {
       const user = userEvent.setup()
       renderLists({ now: SAT_EARLY })

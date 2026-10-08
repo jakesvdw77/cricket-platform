@@ -14,7 +14,8 @@ export function SlotMatches({ matches }: { matches: SectionAvailabilityRoundMatc
       </Typography>
     )
   }
-  const separator = { '&::before': { content: '"·"', mr: 1.5, display: { xs: 'none', sm: 'inline' } } }
+  // The '·' is generated content with an empty alternative text, so screen readers skip it.
+  const separator = { '&::before': { content: '"·" / ""', mr: 1.5, display: { xs: 'none', sm: 'inline' } } }
   return (
     <Box
       data-testid="slot-matches"
@@ -22,12 +23,12 @@ export function SlotMatches({ matches }: { matches: SectionAvailabilityRoundMatc
         display: 'grid',
         gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'max-content max-content minmax(0, 1fr)' },
         columnGap: 1.5,
-        rowGap: { xs: 1, sm: 0.5 },
+        rowGap: { xs: 1.5, sm: 0.5 },
         alignItems: 'baseline',
       }}
     >
       {matches.map((match) => (
-        <Box key={`${match.matchId}-${match.teamId}`} data-testid="slot-match" sx={{ display: 'contents' }}>
+        <Box key={`${match.matchId}-${match.teamId}`} data-testid="slot-match" sx={{ display: { xs: 'grid', sm: 'contents' }, rowGap: 0.25 }}>
           <Typography variant="body2" color="text.primary" fontWeight={600}>
             {match.teamName} v {match.opponentLabel}
           </Typography>

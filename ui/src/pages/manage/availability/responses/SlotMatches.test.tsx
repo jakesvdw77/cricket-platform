@@ -36,7 +36,6 @@ describe('SlotMatches', () => {
     // A line without a league leaves the third cell empty so the columns still line up.
     expect(rows[1].children[2]).toBeEmptyDOMElement()
     expect(getComputedStyle(grid).display).toBe('grid')
-    expect(getComputedStyle(rows[0]).display).toBe('contents')
   })
 
   it('uses three columns from sm and a single stacked column on a phone', () => {
@@ -50,5 +49,13 @@ describe('SlotMatches', () => {
 
     expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/)
     expect(css).toMatch(/@media \(min-width:\s*600px\)[^]*max-content max-content/)
+    const rowCss = Array.from(document.querySelectorAll('style'))
+      .flatMap((style) => Array.from(style.sheet?.cssRules ?? []))
+      .map((rule) => rule.cssText)
+      .filter((text) => Array.from(screen.getAllByTestId('slot-match')[0].classList).some((name) => text.includes(`.${name}`)))
+      .join('\n')
+    // Each match is its own tight block on a phone (larger gap between matches), and dissolves into the shared grid from sm.
+    expect(rowCss).toMatch(/display:\s*grid/)
+    expect(rowCss).toMatch(/@media \(min-width:\s*600px\)[^]*display:\s*contents/)
   })
 })

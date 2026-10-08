@@ -81,7 +81,7 @@ function CounterBody({ item, interactive, compact }: { item: PageCounterItem; in
           data-testid={`page-counter-${item.id}-marker`}
           sx={
             compact
-              ? { ...markerSx, top: '50%', transform: 'translateY(-50%)', right: 10, ...(kind === 'drill' ? { fontSize: '1.15rem' } : { fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em' }) }
+              ? { ...markerSx, top: '50%', transform: 'translateY(-50%)', right: 10, ...(kind === 'drill' ? { fontSize: '1.15rem' } : { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }) }
               : kind === 'drill'
                 ? { ...markerSx, fontSize: '1.2rem' }
                 : { ...markerSx, top: 9, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }
