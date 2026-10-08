@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
@@ -51,11 +51,9 @@ export function FixtureGroupCard({
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null
   const defaultCloseAtValue = earliestKickoff ? toDatetimeLocal(defaultCloseTime(earliestKickoff).toISOString()) : ''
   const closeAtValue = editedCloseAt ?? defaultCloseAtValue
-  const closeAtError = validateCloseTime(
-    autoClose,
-    closeAtValue ? fromDatetimeLocal(closeAtValue) : null,
-    earliestKickoff,
-  )
+  // Nothing ticked means no close time to validate (the submit action is disabled anyway), so no red error.
+  const closeAtError =
+    selectedIds.size > 0 ? validateCloseTime(autoClose, closeAtValue ? fromDatetimeLocal(closeAtValue) : null, earliestKickoff) : null
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -84,9 +82,19 @@ export function FixtureGroupCard({
   const canSubmit =
     selectedIds.size > 0 && description.trim().length > 0 && !closeAtError && !createMutation.isPending
   const highlighted = Boolean(highlightMatchId) && group.matches.some((match) => match.matchId === highlightMatchId)
+  // docs/specs/085: every fixture of this group is already in a poll, so there is nothing to open here: no editable
+  // description, Autoclose or close time and no disabled action, just the list with the covering poll's link.
+  const fullyCovered = group.matches.length > 0 && group.matches.every((match) => match.alreadyPolled)
+
+  // Arriving from an "Open a poll" link (?matchId=): bring the outlined card into view, since later groups sit below the
+  // fold and the manager would otherwise think the fixture is not there.
+  const cardRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (highlighted) cardRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  }, [highlighted])
 
   return (
-    <Card variant="outlined" sx={highlighted ? { borderColor: 'primary.main', borderWidth: 2 } : undefined}>
+    <Card ref={cardRef} variant="outlined" sx={highlighted ? { borderColor: 'primary.main', borderWidth: 2 } : undefined}>
       <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" useFlexGap spacing={1}>
           <Typography variant="subtitle1" fontWeight={600}>
@@ -95,25 +103,34 @@ export function FixtureGroupCard({
           <Chip size="small" label={`${group.matches.length} fixture${group.matches.length === 1 ? '' : 's'}`} />
         </Stack>
 
-        <Input label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
+        {fullyCovered ? (
+          <Typography variant="body2" color="text.secondary">
+            Every fixture here is already in a poll.
+          </Typography>
+        ) : (
+          <>
+            <Input label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
 
-        <Stack spacing={0.5}>
-          <FormControlLabel
-            control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
-            label="Autoclose"
-          />
-          {autoClose && (
-            <Input
-              label="Closes at"
-              type="datetime-local"
-              value={closeAtValue}
-              onChange={(event) => setEditedCloseAt(event.target.value)}
-              error={Boolean(closeAtError)}
-              helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
-              InputLabelProps={{ shrink: true }}
-            />
-          )}
-        </Stack>
+            <Stack spacing={0.5}>
+              <FormControlLabel
+                control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
+                label="Autoclose"
+              />
+              {autoClose && (
+                <Input
+                  label="Closes at"
+                  type="datetime-local"
+                  value={closeAtValue}
+                  onChange={(event) => setEditedCloseAt(event.target.value)}
+                  error={Boolean(closeAtError)}
+                  helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
+            </Stack>
+
+          </>
+        )}
 
         <Divider />
 
@@ -155,11 +172,13 @@ export function FixtureGroupCard({
           </Alert>
         )}
 
-        <Box>
-          <Button disabled={!canSubmit} onClick={() => createMutation.mutate()}>
-            {createMutation.isPending ? 'Opening…' : `Open poll for ${selectedIds.size} selected fixture${selectedIds.size === 1 ? '' : 's'}`}
-          </Button>
-        </Box>
+        {!fullyCovered && (
+          <Box>
+            <Button disabled={!canSubmit} onClick={() => createMutation.mutate()}>
+              {createMutation.isPending ? 'Opening…' : `Open poll for ${selectedIds.size} selected fixture${selectedIds.size === 1 ? '' : 's'}`}
+            </Button>
+          </Box>
+        )}
       </CardContent>
     </Card>
   )

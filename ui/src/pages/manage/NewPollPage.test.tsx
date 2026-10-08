@@ -491,7 +491,14 @@ describe('NewPollPage', () => {
       expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).toBeDisabled()
       expect(screen.getByLabelText('Include U13 Boys A vs Rivals CC')).not.toBeChecked()
       expect(screen.getByRole('link', { name: 'Existing Saturday poll' })).toHaveAttribute('href', '/manage/availability/group/round-9')
-      expect(screen.getByRole('button', { name: 'Open poll for 0 selected fixtures' })).toBeDisabled()
+      // docs/specs/085: a group whose fixtures are all covered has nothing to open: no editable fields, no red error and
+      // no disabled "0 selected" action, just a note.
+      expect(screen.getByText('Every fixture here is already in a poll.')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Description')).toBeNull()
+      expect(screen.queryByLabelText('Autoclose')).toBeNull()
+      expect(screen.queryByLabelText('Closes at')).toBeNull()
+      expect(screen.queryByText(/A closing time is required/)).toBeNull()
+      expect(screen.queryByRole('button', { name: /Open poll for/ })).toBeNull()
     })
 
     it("renders a match covered by a SQUAD poll disabled, linking to that match's Availability tab", async () => {
@@ -613,6 +620,37 @@ describe('NewPollPage', () => {
       renderPage(`${GROUP_PATH}&matchId=match-2`)
 
       expect(await screen.findByLabelText('Include U13 Boys A vs United CC')).toBeChecked()
+    })
+
+    it('scrolls the outlined group into view when arriving from an Open a poll link (085)', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      getFixtureGroups.mockResolvedValueOnce([makeGroup()])
+      renderPage(`${GROUP_PATH}&matchId=match-2`)
+
+      await screen.findByLabelText('Include U13 Boys A vs United CC')
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' })
+    })
+
+    it('does not scroll when no group is outlined (085)', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      getFixtureGroups.mockResolvedValueOnce([makeGroup()])
+      renderPage(GROUP_PATH)
+
+      await screen.findByLabelText('Include U13 Boys A vs United CC')
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    })
+
+    it('shows no closing-time error when every fixture is unticked (085)', async () => {
+      const user = userEvent.setup()
+      getFixtureGroups.mockResolvedValueOnce([makeGroup()])
+      renderPage(GROUP_PATH)
+
+      await user.click(await screen.findByLabelText('Include U13 Boys A vs Rivals CC'))
+      await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
+      expect(screen.queryByText(/A closing time is required/)).toBeNull()
+      expect(screen.getByRole('button', { name: 'Open poll for 0 selected fixtures' })).toBeDisabled()
     })
   })
 })
