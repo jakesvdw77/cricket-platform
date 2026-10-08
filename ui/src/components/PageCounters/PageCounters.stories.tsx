@@ -46,7 +46,7 @@ const noop = () => undefined
 export const Filter: Story = {
   args: {
     items: [
-      { ...base[0], active: true, kind: 'reset', hint: 'Show all', onSelect: noop },
+      { ...base[0], active: true, kind: 'filter', hint: 'Tap to filter', onSelect: noop },
       base[1],
       base[2],
       { ...base[3], tone: 'warning', kind: 'filter', hint: 'Tap to filter', onSelect: noop },
@@ -69,7 +69,7 @@ export const DrillDown: Story = {
 export const Zero: Story = {
   args: {
     items: [
-      { ...base[0], active: true, kind: 'reset', onSelect: noop },
+      { ...base[0], active: true, kind: 'filter', onSelect: noop },
       { ...base[1], value: '0 / 24', kind: 'drill', onSelect: noop },
       { ...base[2], value: 0, kind: 'drill', hint: 'See who', onSelect: noop },
       { ...base[3], value: 0, kind: 'filter', hint: 'Tap to filter', onSelect: noop },
@@ -92,7 +92,7 @@ export const Compact: Story = {
   args: {
     density: 'compact',
     items: [
-      { ...base[0], active: true, kind: 'reset', hint: 'Show all', onSelect: noop },
+      { ...base[0], kind: 'drill', hint: 'See polls', onSelect: noop },
       { ...base[1], kind: 'drill', hint: 'See who', onSelect: noop },
       { ...base[2], tone: 'warning', kind: 'drill', hint: 'See who', onSelect: noop },
       { ...base[3], tone: 'warning', kind: 'filter', hint: 'Tap to filter', onSelect: noop },

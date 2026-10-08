@@ -55,7 +55,9 @@ describe('useChangeAnswer (085 F)', () => {
     const keys = invalidate.mock.calls.map((call) => JSON.stringify((call[0] as { queryKey: unknown }).queryKey))
     expect(keys).toContain(JSON.stringify(['managed-club', 'club-1', 'player-availability']))
     expect(keys).toContain(JSON.stringify(['managed-club', 'club-1', 'availability-summary']))
-    expect(result.current.handlers.pendingKey).toBeNull()
+    expect(keys).toContain(JSON.stringify(['managed-club', 'club-1', 'availability-polls']))
+    expect(keys).toContain(JSON.stringify(['managed-club', 'club-1', 'section-availability-rounds']))
+    expect(result.current.handlers.pendingKeys.size).toBe(0)
   })
 
   it('saves a group poll game with setRoundPlayerStatus and the window id looked up from the round matches', async () => {
@@ -96,7 +98,7 @@ describe('useChangeAnswer (085 F)', () => {
     expect(ok).toBe(false)
     await waitFor(() => expect(result.current.error).toBe('Something went wrong saving that answer. Please try again.'))
     expect(invalidate).not.toHaveBeenCalled()
-    expect(result.current.handlers.pendingKey).toBeNull()
+    expect(result.current.handlers.pendingKeys.size).toBe(0)
   })
 
   it('refuses a game without a poll', async () => {
@@ -123,6 +125,45 @@ describe('useChangeAnswer (085 F)', () => {
 
     expect(ok).toBe(false)
     expect(setRoundPlayerStatus).not.toHaveBeenCalled()
+    // Its own message, not the generic retry text.
+    expect(result.current.error).toBe('This game changed since the grid loaded. Refresh the page and try again.')
+  })
+
+  it('keeps both cells pending while two saves overlap, and each re-enables only when its own save settles', async () => {
+    let finishFirst: () => void = () => undefined
+    setPlayerStatus.mockImplementationOnce(() => new Promise<void>((resolve) => { finishFirst = resolve }))
+    const second = makeGame({ matchId: 'm-second', pollType: 'SQUAD', pollId: 'poll-2', roundId: null })
+    const { result } = renderHook(() => useChangeAnswer('club-1'), { wrapper })
+
+    let firstDone: Promise<boolean> = Promise.resolve(false)
+    act(() => {
+      firstDone = result.current.handlers.onChange(PLAYER, SQUAD, 'AVAILABLE')
+    })
+    await act(async () => {
+      await result.current.handlers.onChange(PLAYER, second, 'AVAILABLE')
+    })
+
+    // The second save finished; the first is still running and its cell is still disabled.
+    expect([...result.current.handlers.pendingKeys]).toEqual(['p1:m-squad'])
+    await act(async () => {
+      finishFirst()
+      await firstDone
+    })
+    expect(result.current.handlers.pendingKeys.size).toBe(0)
+  })
+
+  it('keeps a failure visible when another save succeeds afterwards, and clears it on the next attempt', async () => {
+    setPlayerStatus.mockRejectedValueOnce(new Error('boom'))
+    const { result } = renderHook(() => useChangeAnswer('club-1'), { wrapper })
+
+    await act(async () => {
+      await result.current.handlers.onChange(PLAYER, SQUAD, 'AVAILABLE')
+    })
+    expect(result.current.error).toBe('Something went wrong saving that answer. Please try again.')
+    await act(async () => {
+      await result.current.handlers.onChange(PLAYER, SQUAD, 'UNSURE')
+    })
+    expect(result.current.error).toBeNull()
   })
 })
 

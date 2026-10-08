@@ -559,6 +559,20 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       expect(screen.getByText('Thursday fixtures')).toBeInTheDocument()
     })
 
+    it('closes the polls panel when the view leaves Polls, so it is not open on return', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await user.click(await screen.findByRole('button', { name: /Open polls/ }))
+      expect(await screen.findByRole('heading', { level: 2, name: 'Open polls' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('link', { name: 'Players', hidden: true }))
+      await user.click(await screen.findByRole('link', { name: 'Polls' }))
+
+      await screen.findByRole('button', { name: /Open polls/ })
+      expect(screen.queryByRole('heading', { level: 2, name: 'Open polls' })).not.toBeInTheDocument()
+    })
+
     it('shows loading rows until the Polls page has registered its polls', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)

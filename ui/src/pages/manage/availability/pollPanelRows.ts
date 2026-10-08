@@ -13,9 +13,11 @@ export interface PollPanelRow {
   open: boolean
   autoClose: boolean
   scheduledCloseAt: string | null
-  // "N of M answered". A group poll with several slots reports its best-answered slot.
+  // "N of M answered". The poll data only has per-slot totals, so a group poll with several slots reports its
+  // best-answered slot (`bestSlot`), which the panel labels as such rather than claiming everyone answered every slot.
   answered: number
   total: number
+  bestSlot?: boolean
   path: string
 }
 
@@ -51,8 +53,15 @@ export function groupPollRow(round: SectionAvailabilityRound): PollPanelRow {
     scheduledCloseAt: round.scheduledCloseAt,
     answered,
     total,
+    bestSlot: round.brackets.length > 1,
     path: groupPollResponsesPath(round.id),
   }
+}
+
+// The "N of M answered" text, or null when there is nobody to count (total 0).
+export function answeredText(row: PollPanelRow): string | null {
+  if (row.total === 0) return null
+  return `${row.answered} of ${row.total} answered${row.bestSlot ? ' (best slot)' : ''}`
 }
 
 const CLOSING_SOON_MS = 48 * 60 * 60 * 1000

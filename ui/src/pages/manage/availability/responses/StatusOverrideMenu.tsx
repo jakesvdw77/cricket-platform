@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
-import { ListSubheader, Menu, MenuItem } from '@mui/material'
+import { Divider, ListSubheader, Menu, MenuItem } from '@mui/material'
 import type { AvailabilityStatus } from '../../../../api/matchAvailabilityApi'
 import { STATUS_LABEL } from '../../../../utils/availabilityStatus'
 import { STATUS_ORDER } from './responseHelpers'
@@ -54,7 +54,7 @@ export function StatusOverrideMenu({
         'aria-haspopup': 'menu',
         'aria-expanded': Boolean(anchorEl),
       })}
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} MenuListProps={{ 'aria-label': title }}>
         {title && (
           <ListSubheader component="div" sx={{ lineHeight: 1.5, py: 0.75, bgcolor: 'background.paper' }}>
             {title}
@@ -72,10 +72,9 @@ export function StatusOverrideMenu({
             {STATUS_LABEL[option]}
           </MenuItem>
         ))}
+        {extraItem && <Divider component="li" role="separator" />}
         {extraItem && (
           <MenuItem
-            divider={false}
-            sx={{ borderTop: 1, borderColor: 'divider', mt: 0.5 }}
             onClick={() => {
               setAnchorEl(null)
               extraItem.onSelect()

@@ -1,10 +1,11 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Chip, Link, Skeleton, Typography } from '@mui/material'
 import { Countdown } from '../../../../components/Countdown'
 import { SidePanel } from '../../../../components/SidePanel'
 import { badgeSx } from '../../../../components/RecordCard'
 import { closesRowText } from '../pollHelpers'
-import { closesWithin48Hours, pollsPanelHeader, sortPollRows } from '../pollPanelRows'
+import { answeredText, closesWithin48Hours, pollsPanelHeader, sortPollRows } from '../pollPanelRows'
 import type { PollPanelRow } from '../pollPanelRows'
 
 export type PollsPanelKind = 'all' | 'closing-soon'
@@ -24,6 +25,7 @@ export interface PollsPanelProps {
 }
 
 const SKELETON_ROWS = 4
+const CLOCK_TICK_MS = 60_000
 
 function PollRow({ row }: { row: PollPanelRow }) {
   return (
@@ -48,9 +50,11 @@ function PollRow({ row }: { row: PollPanelRow }) {
               {closesRowText(row.open, row.autoClose, row.scheduledCloseAt)}
             </Typography>
           )}
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 'auto', whiteSpace: 'nowrap' }}>
-            {row.answered} of {row.total} answered
-          </Typography>
+          {answeredText(row) && (
+            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 'auto', whiteSpace: 'nowrap' }}>
+              {answeredText(row)}
+            </Typography>
+          )}
         </Box>
       </Link>
     </Box>
@@ -58,8 +62,20 @@ function PollRow({ row }: { row: PollPanelRow }) {
 }
 
 function PanelContent({ kind, rows, showClosed, scope, now }: Omit<PollsPanelProps, 'open' | 'onClose'>) {
-  const clock = now ?? Date.now()
-  const shown = rows ? sortPollRows(kind === 'closing-soon' ? rows.filter((row) => closesWithin48Hours(row, clock)) : rows) : null
+  // The 48-hour list reads the clock; it ticks once a minute while this content is mounted (the panel is open) so a
+  // poll whose close time passes leaves the list. A fixed `now` (tests) disables the tick.
+  const [clock, setClock] = useState(() => now ?? Date.now())
+  useEffect(() => {
+    if (now !== undefined || kind !== 'closing-soon') return undefined
+    setClock(Date.now())
+    const timer = setInterval(() => setClock(Date.now()), CLOCK_TICK_MS)
+    return () => clearInterval(timer)
+  }, [now, kind])
+  const effectiveClock = now ?? clock
+  const shown = useMemo(
+    () => (rows ? sortPollRows(kind === 'closing-soon' ? rows.filter((row) => closesWithin48Hours(row, effectiveClock)) : rows) : null),
+    [rows, kind, effectiveClock],
+  )
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, flex: 1 }}>
       {shown && (

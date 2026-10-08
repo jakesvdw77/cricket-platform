@@ -254,7 +254,7 @@ export default function AvailabilityPollsDashboard() {
       />
 
       <ContentControlsLine
-        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}$`}
+        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}`}
         sortAction={sortLink}
         controls={
           <>

@@ -260,7 +260,7 @@ describe('PlayersPhoneLists', () => {
   })
 
   describe('changing an answer (085 F)', () => {
-    const handlers = () => ({ pendingKey: null as string | null, onChange: vi.fn().mockResolvedValue(true) })
+    const handlers = () => ({ pendingKeys: new Set<string>(), onChange: vi.fn().mockResolvedValue(true) })
 
     it('By game: the status pill opens the menu and choosing an answer calls the handler', async () => {
       const user = userEvent.setup()
@@ -292,6 +292,19 @@ describe('PlayersPhoneLists', () => {
       // m5 and m6 are NOT_IN_POLL for Anton: no button.
       expect(within(games[4]).queryByRole('button')).toBeNull()
       expect(within(games[5]).queryByRole('button')).toBeNull()
+    })
+
+    it('the change-answer targets are at least 44 x 44 px in both lists', async () => {
+      const user = userEvent.setup()
+      renderLists({ now: SAT_EARLY, changeAnswer: handlers() })
+
+      const byGame = screen.getAllByRole('button', { name: /Bob Jones, Sat 3 Oct Morning/ })[0]
+      expect(getComputedStyle(byGame)).toMatchObject({ minHeight: '44px', minWidth: '44px' })
+
+      await user.click(screen.getByRole('button', { name: 'By player' }))
+      await user.click(screen.getByRole('button', { name: /^Anton de Villiers/ }))
+      const target = within(screen.getAllByTestId('player-game')[1]).getByRole('button')
+      expect(getComputedStyle(target)).toMatchObject({ minHeight: '44px', minWidth: '44px' })
     })
 
     it('without handlers the pills are plain', () => {

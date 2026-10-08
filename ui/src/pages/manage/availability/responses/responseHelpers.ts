@@ -31,12 +31,6 @@ export function playerName(row: ResponseRow): string {
   return `${row.firstName} ${row.lastName}`
 }
 
-// Number and name stay separate (not squadDisplayName's "#7 Jane Smith" string) because both views
-// render the number in its own aligned column/cell.
-export function playerNumber(row: ResponseRow): number | null {
-  return row.jerseyNumber
-}
-
 // "Sat 3 Oct · Morning" - the shared bracket formatter with this page's dot separator.
 export function slotHeading(bracket: Pick<SectionAvailabilityRoundBracket, 'windowDate' | 'dayPart'>): string {
   return formatBracketLabel(bracket.windowDate, bracket.dayPart, ' · ')

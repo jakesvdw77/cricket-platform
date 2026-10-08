@@ -261,7 +261,7 @@ describe('AvailabilityGrid', () => {
   })
 
   describe('changing an answer (085 F)', () => {
-    const handlers = () => ({ pendingKey: null as string | null, onChange: vi.fn().mockResolvedValue(true) })
+    const handlers = () => ({ pendingKeys: new Set<string>(), onChange: vi.fn().mockResolvedValue(true) })
 
     it('a cell with a poll is a button named by its cell label that opens the answer menu instead of navigating', async () => {
       const user = userEvent.setup()
@@ -314,7 +314,7 @@ describe('AvailabilityGrid', () => {
 
     it('disables only the cell whose own save is running', async () => {
       const user = userEvent.setup()
-      const change = { ...handlers(), pendingKey: 'p1:m1' }
+      const change = { ...handlers(), pendingKeys: new Set(['p1:m1']) }
       renderGrid({ changeAnswer: change })
 
       const busy = screen.getByTestId('cell-p1-m1').querySelector('button') as HTMLElement

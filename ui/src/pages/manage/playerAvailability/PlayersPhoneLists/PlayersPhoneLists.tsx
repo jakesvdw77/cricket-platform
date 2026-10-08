@@ -218,7 +218,7 @@ function ByGame({ games, players, now, changeAnswer }: { games: GameColumn[]; pl
                   {picked && <PickedDot />}
                 </Box>
                 {changeAnswer && canChangeAnswer(game, { matchId: game.matchId, status, picked }) ? (
-                  <ChangeAnswerMenu player={player} game={game} cell={{ matchId: game.matchId, status, picked }} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT, px: 0.5 }}>
+                  <ChangeAnswerMenu player={player} game={game} cell={{ matchId: game.matchId, status, picked }} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT, minWidth: ROW_MIN_HEIGHT, px: 0.5 }}>
                     <StatusPill status={status} />
                   </ChangeAnswerMenu>
                 ) : (
@@ -314,7 +314,7 @@ function ByPlayer({ games, players, now, changeAnswer }: { games: GameColumn[]; 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {cell?.picked && <PickedDot />}
                         {changeAnswer && canChangeAnswer(game, cell) ? (
-                          <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT - 8, px: 0.5 }}>
+                          <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT, minWidth: ROW_MIN_HEIGHT, px: 0.5 }}>
                             <StatusPill status={cell.status} />
                           </ChangeAnswerMenu>
                         ) : (

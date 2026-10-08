@@ -112,6 +112,14 @@ export async function listAvailabilitySummaryPlayers(
 
 // Call alongside any poll/round create, open, close, delete or response change so the counters and the
 // Overview key figures refresh.
+// docs/specs/085: after one answer changes outside the Responses pages (the Players grid and lists): the counters, and
+// the Polls page's poll and round lists (their "N of M answered" and the polls panel read them).
+export function invalidatePollAnswers(queryClient: QueryClient, clubId: string | undefined) {
+  invalidateAvailabilityCounters(queryClient, clubId)
+  queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+  queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'section-availability-rounds'] })
+}
+
 export function invalidateAvailabilityCounters(queryClient: QueryClient, clubId: string | undefined) {
   queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-summary'] })
   queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'overview'] })

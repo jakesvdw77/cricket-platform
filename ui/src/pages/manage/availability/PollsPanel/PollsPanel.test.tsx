@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -95,6 +95,26 @@ describe('PollsPanel', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Closing within 48 hours' })).toBeInTheDocument()
     expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('1 open poll closing within 48 hours')
     expect(screen.getAllByTestId('polls-panel-row')).toHaveLength(1)
+  })
+
+  it('drops a poll from the closing-soon list when its close time passes while the panel stays open', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(NOW)
+    try {
+      const { unmount } = renderPanel({ kind: 'closing-soon', showClosed: false, now: undefined })
+      expect(screen.getAllByTestId('polls-panel-row')).toHaveLength(1)
+
+      act(() => {
+        vi.setSystemTime(NOW + 31 * 3_600_000)
+        vi.advanceTimersByTime(60_000)
+      })
+      expect(screen.queryAllByTestId('polls-panel-row')).toHaveLength(0)
+      unmount()
+      // No timer is left running after the panel unmounts.
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows loading rows until the polls are known, and an empty note for none', () => {

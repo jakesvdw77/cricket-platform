@@ -14,9 +14,8 @@ export interface PageCounterItem {
   // Makes the counter a real button.
   onSelect?: () => void
   // docs/specs/084: what selecting does. 'filter' (default) toggles a filter of the list below: a toggle button
-  // (aria-pressed) with a small "filter" tag. 'reset' is the same toggle behaviour without the tag (the card that
-  // clears the filters). 'drill' opens something else: a plain button with a ">" marker, no aria-pressed.
-  kind?: 'filter' | 'reset' | 'drill'
+  // (aria-pressed) with a small "filter" tag. 'drill' opens something else: a plain button with a ">" marker, no aria-pressed.
+  kind?: 'filter' | 'drill'
 }
 
 export interface PageCountersProps {
@@ -74,7 +73,7 @@ function CounterBody({ item, interactive, compact }: { item: PageCounterItem; in
   const kind = item.kind ?? 'filter'
   return (
     <>
-      {interactive && kind !== 'reset' && (
+      {interactive && (
         <Box
           component="span"
           aria-hidden
@@ -116,7 +115,7 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
   const compact = density === 'compact'
   const cardSx = compact ? compactCardSx : keyFigureCardSx
   // Room for the corner marker on a selectable compact card, so it never overlaps the text.
-  const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) && (item.kind ?? 'filter') !== 'reset' ? { pr: item.kind === 'drill' ? 4 : 6.5 } : {})
+  const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) ? { pr: item.kind === 'drill' ? 4 : 6.5 } : {})
   if (loading) {
     return (
       <Box sx={compact ? compactGridSx : gridSx} aria-busy="true" data-testid="page-counters-loading">

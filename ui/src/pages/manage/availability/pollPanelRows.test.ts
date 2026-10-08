@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityRound } from '../../../api/sectionAvailabilityApi'
-import { closesWithin48Hours, groupPollRow, pollsPanelHeader, sortPollRows, squadPollRow } from './pollPanelRows'
+import { answeredText, closesWithin48Hours, groupPollRow, pollsPanelHeader, sortPollRows, squadPollRow } from './pollPanelRows'
 import type { PollPanelRow } from './pollPanelRows'
 
 const NOW = new Date('2026-06-01T10:00:00Z').getTime()
@@ -80,5 +80,18 @@ describe('row builders', () => {
       ],
     } as SectionAvailabilityRound
     expect(groupPollRow(round)).toMatchObject({ kind: 'GROUP', title: 'Thursday fixtures', open: false, answered: 7, total: 10, path: '/manage/availability/group/r1' })
+  })
+
+  it('marks a multi-slot group row as best slot and a single-slot or squad row as exact', () => {
+    const slot = { availableCount: 1, unsureCount: 0, unavailableCount: 0, noResponseCount: 1 }
+    const base = { id: 'r', description: 'D', open: true, autoClose: false, scheduledCloseAt: null }
+    expect(answeredText(groupPollRow({ ...base, brackets: [slot, slot] } as unknown as SectionAvailabilityRound))).toBe('1 of 2 answered (best slot)')
+    expect(answeredText(groupPollRow({ ...base, brackets: [slot] } as unknown as SectionAvailabilityRound))).toBe('1 of 2 answered')
+  })
+
+  it('has no figure for a round with no slots or nobody to count', () => {
+    const round = { id: 'r', description: 'D', open: true, autoClose: false, scheduledCloseAt: null, brackets: [] } as unknown as SectionAvailabilityRound
+    expect(groupPollRow(round)).toMatchObject({ answered: 0, total: 0 })
+    expect(answeredText(groupPollRow(round))).toBeNull()
   })
 })

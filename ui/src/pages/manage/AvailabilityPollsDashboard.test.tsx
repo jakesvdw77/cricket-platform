@@ -1263,6 +1263,18 @@ describe('AvailabilityPollsDashboard poll panel rows and no 48-hour filter (085 
     expect(screen.queryByText(/closing within 48/i)).not.toBeInTheDocument()
   })
 
+  it('words the scope line exactly, plural and singular, with no stray characters', async () => {
+    const user = userEvent.setup()
+    renderDashboard('test-club-id')
+
+    const plural = await screen.findByText(/Showing 2 open polls/)
+    expect(plural.textContent).toMatch(/^Showing 2 open polls( · .*)?$/)
+    await user.type(screen.getByPlaceholderText('Search by team, opponent or description'), 'Round')
+    const singular = await screen.findByText(/Showing 1 open poll/)
+    expect(singular.textContent).toMatch(/^Showing 1 open poll( · .*)?$/)
+    expect(singular.textContent).not.toContain('$')
+  })
+
   it('registers the polls it shows (open ones, and closed ones with Show closed) with the hub', async () => {
     const user = userEvent.setup()
     renderDashboard('test-club-id')

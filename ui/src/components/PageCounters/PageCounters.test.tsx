@@ -204,14 +204,6 @@ describe('PageCounters', () => {
       ])
     })
 
-    it('a reset counter is a pressed-state button with no tag', () => {
-      renderCounters([{ ...items[0], kind: 'reset', active: true, hint: 'Show all', onSelect: vi.fn() }])
-
-      expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
-      expect(screen.getByText('Show all')).toBeInTheDocument()
-    })
-
     it('at zero the active filter counter stays a pressed button so it can be switched off', async () => {
       const onSelect = vi.fn()
       renderCounters([{ id: 'z', value: 0, label: 'Close in 48 hours', onSelect, active: true }])

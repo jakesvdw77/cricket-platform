@@ -10,7 +10,10 @@ import { cellLabel, dateHeading, kickoffText, playerFullName, pollPath } from '.
 
 // True when a cell has a poll behind it, so its answer can be changed (NOT_IN_POLL and games without a poll cannot).
 export function canChangeAnswer(game: GameColumn, cell: AvailabilityCell | undefined): cell is AvailabilityCell {
-  return Boolean(cell && cell.status !== 'NOT_IN_POLL' && game.pollType && pollPath(game))
+  if (!cell || cell.status === 'NOT_IN_POLL' || !game.pollType) return false
+  // A poll id is needed to save (a group poll's round id, or its poll id; a squad poll's poll id).
+  const hasPollId = game.pollType === 'GROUP' ? Boolean(game.roundId ?? game.pollId) : Boolean(game.pollId)
+  return hasPollId && Boolean(pollPath(game))
 }
 
 // docs/specs/085 (F): the shared "change this one answer" control of the Players grid and the phone lists - the Responses
@@ -41,7 +44,7 @@ export function ChangeAnswerMenu({
       playerName={playerFullName(player)}
       slotLabel={when}
       status={current}
-      disabled={handlers.pendingKey === answerKey(player, game)}
+      disabled={handlers.pendingKeys.has(answerKey(player, game))}
       onSelect={(next) => handlers.onChange(player, game, next)}
       title={`${playerFullName(player)}, ${when}, ${game.label}`}
       extraItem={path ? { label: 'Open poll', onSelect: () => navigate(path) } : undefined}

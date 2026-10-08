@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
@@ -116,6 +116,12 @@ export default function AvailabilityHubLayout() {
   // The players panel: open/closed and its tab are local state, not in the address.
   const [panel, setPanel] = useState<{ open: boolean; tab: PlayersPanelTab }>({ open: false, tab: 'awaiting' })
   const [pollsPanel, setPollsPanel] = useState<{ open: boolean; kind: PollsPanelKind }>({ open: false, kind: 'all' })
+  // Leaving Polls closes both panels, so coming back never shows one stale.
+  useEffect(() => {
+    if (view === 'polls') return
+    setPanel((current) => (current.open ? { ...current, open: false } : current))
+    setPollsPanel((current) => (current.open ? { ...current, open: false } : current))
+  }, [view])
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
