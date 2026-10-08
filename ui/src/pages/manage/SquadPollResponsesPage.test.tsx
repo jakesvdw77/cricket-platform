@@ -275,6 +275,33 @@ describe('SquadPollResponsesPage', () => {
     expect(screen.queryByRole('img', { name: /Available/ })).not.toBeInTheDocument()
   })
 
+  it('Player tab: chips with counts, no Slot selector for the single slot, a chip filter and a status sort (085 J)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+    await user.click(screen.getByRole('button', { name: 'Player' }))
+
+    expect(screen.queryByRole('combobox', { name: 'Slot' })).not.toBeInTheDocument()
+    const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
+    expect(chips.getByRole('button', { name: 'All 4' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'No response 1' })).toBeInTheDocument()
+
+    const names = () =>
+      within(screen.getByRole('table', { name: 'Responses by player' })).getAllByRole('row').slice(1).map((row) => within(row).getAllByRole('cell')[0].textContent)
+    await user.click(chips.getByRole('button', { name: 'Unsure 1' }))
+    expect(names()).toEqual(['Bob Jones'])
+    await user.click(chips.getByRole('button', { name: 'Unsure 1' }))
+
+    const status = screen.getAllByRole('columnheader')[1]
+    await user.click(within(status).getByRole('button'))
+    expect(status).toHaveAttribute('aria-sort', 'ascending')
+    expect(names()[names().length - 1]).toBe('Cal Ng')
+    await user.click(within(status).getByRole('button'))
+    expect(status).toHaveAttribute('aria-sort', 'descending')
+    expect(names()[0]).toBe('Cal Ng')
+  })
+
   it('shows the squad empty text when there are no players', async () => {
     getPollResponses.mockResolvedValue(makeResponses({ responses: [] }))
     renderPage()

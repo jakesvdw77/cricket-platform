@@ -289,6 +289,110 @@ describe('GroupPollResponsesPage', () => {
     expect(getComputedStyle(rows[0]).backgroundColor).not.toBe(getComputedStyle(rows[1]).backgroundColor)
   })
 
+  describe('Player tab status chips, sorting and slot selector (085 J)', () => {
+    async function openPlayerTab() {
+      const user = userEvent.setup()
+      renderPage()
+      await loaded()
+      await user.click(screen.getByRole('button', { name: 'Player' }))
+      return user
+    }
+    const names = () =>
+      within(screen.getByRole('table', { name: 'Responses by player' }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+
+    it('shows chips with the first slot\'s counts over all players, and a Slot selector for several slots', async () => {
+      await openPlayerTab()
+
+      const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
+      expect(chips.getByRole('button', { name: 'All 4' })).toHaveAttribute('aria-pressed', 'true')
+      expect(chips.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'Unsure 1' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'Unavailable 0' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Morning/)
+    })
+
+    it('a chip shows only those players, again or All shows everyone, and the counts ignore search and chip', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      expect(names()).toEqual(['Amy Lee', 'Cal Ng'])
+      expect(screen.getByRole('button', { name: 'No response 2' })).toHaveAttribute('aria-pressed', 'true')
+      await user.type(screen.getByLabelText('Search players'), 'cal')
+      expect(names()).toEqual(['Cal Ng'])
+      // Counts still describe all four players.
+      expect(screen.getByRole('button', { name: 'All 4' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+
+      await user.clear(screen.getByLabelText('Search players'))
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      expect(names()).toHaveLength(4)
+      await user.click(screen.getByRole('button', { name: 'Unsure 1' }))
+      await user.click(screen.getByRole('button', { name: 'All 4' }))
+      expect(names()).toHaveLength(4)
+    })
+
+    it('combines the chip with the hide-unanswered switch', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      // Of the two with no answer in Morning, Cal has none at all (hidden); Amy answered Afternoon.
+      expect(names()).toEqual(['Amy Lee'])
+    })
+
+    it('sorts by name by default, reverses on a second click, and shows aria-sort and an arrow', async () => {
+      const user = await openPlayerTab()
+      const player = screen.getByRole('columnheader', { name: /Player/ })
+      expect(player).toHaveAttribute('aria-sort', 'ascending')
+      expect(names()).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
+
+      await user.click(within(player).getByRole('button'))
+      expect(player).toHaveAttribute('aria-sort', 'descending')
+      expect(names()).toEqual(['Jane Smith', 'Cal Ng', 'Amy Lee', 'Bob Jones'])
+      expect(screen.getByRole('columnheader', { name: /Morning/ })).toHaveAttribute('aria-sort', 'none')
+    })
+
+    it('a slot heading sorts by status (Available, Unsure, Unavailable, No response) and reverses on a second click', async () => {
+      const user = await openPlayerTab()
+      const morning = () => screen.getByRole('columnheader', { name: /Morning/ })
+
+      await user.click(within(morning()).getByRole('button'))
+      expect(morning()).toHaveAttribute('aria-sort', 'ascending')
+      expect(screen.getByRole('columnheader', { name: /Player/ })).toHaveAttribute('aria-sort', 'none')
+      expect(names()).toEqual(['Jane Smith', 'Bob Jones', 'Amy Lee', 'Cal Ng'])
+
+      await user.click(within(morning()).getByRole('button'))
+      expect(morning()).toHaveAttribute('aria-sort', 'descending')
+      expect(names()).toEqual(['Amy Lee', 'Cal Ng', 'Bob Jones', 'Jane Smith'])
+    })
+
+    it('clicking another slot\'s heading selects it: the chips and the status sort follow, the other column stays', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(within(screen.getByRole('columnheader', { name: /Afternoon/ })).getByRole('button'))
+
+      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Afternoon/)
+      expect(screen.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+      expect(screen.getByRole('columnheader', { name: /Morning/ })).toBeInTheDocument()
+      expect(names()).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
+    })
+
+    it('choosing a slot in the selector changes what the chips count', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('combobox', { name: 'Slot' }))
+      await user.click(screen.getByRole('option', { name: /Afternoon/ }))
+
+      expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
+    })
+  })
+
   it('hides players who have not answered in By player', async () => {
     const user = userEvent.setup()
     renderPage()

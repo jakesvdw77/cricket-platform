@@ -164,7 +164,7 @@ export function ResponsesPageShell({
 
       {view === 'slot' && <ResponsesByTimeSlot slots={slots} override={override} slotBars={multiSlot} />}
       {view === 'player' && responses.rows.length > 0 && (
-        <ResponsesByPlayer rows={filteredRows} brackets={slots.map((slot) => slot.bracket)} override={override} />
+        <ResponsesByPlayer rows={filteredRows} allRows={responses.rows} brackets={slots.map((slot) => slot.bracket)} override={override} />
       )}
 
       {children}

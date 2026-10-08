@@ -118,6 +118,43 @@ export function answeredCoverage(
   return coverage
 }
 
+// docs/specs/085 (J): the Player tab's status chips and sorting. 'NONE' is "No response". The chip order and the status sort
+// order are the same: Available, Unsure, Unavailable, No response.
+export type StatusFilter = AvailabilityStatus | 'NONE'
+export const STATUS_FILTER_ORDER: StatusFilter[] = ['AVAILABLE', 'UNSURE', 'UNAVAILABLE', 'NONE']
+
+export type StatusCounts = Record<StatusFilter, number> & { all: number }
+
+const statusKey = (status: AvailabilityStatus | null): StatusFilter => status ?? 'NONE'
+
+// How many of the given players gave each answer for one slot (and how many there are): pass ALL the players, so the
+// counts never follow the search, the chip or the hide switch.
+export function statusCountsForSlot(rows: ResponseRow[], windowId: string): StatusCounts {
+  const counts: StatusCounts = { all: rows.length, AVAILABLE: 0, UNSURE: 0, UNAVAILABLE: 0, NONE: 0 }
+  rows.forEach((row) => {
+    counts[statusKey(statusFor(row, windowId))] += 1
+  })
+  return counts
+}
+
+// Only the players whose answer for the slot matches; null keeps everyone.
+export function filterByStatus(rows: ResponseRow[], windowId: string, filter: StatusFilter | null): ResponseRow[] {
+  return filter ? rows.filter((row) => statusKey(statusFor(row, windowId)) === filter) : rows
+}
+
+export type PlayerSort = { key: 'player'; direction: 'asc' | 'desc' } | { key: 'status'; windowId: string; direction: 'asc' | 'desc' }
+
+// Sorts a copy. Player: by name (last name, then first), A to Z or reversed. Status: by the slot's answer in the order
+// Available, Unsure, Unavailable, No response (reversed for desc), players with the same answer staying in name order.
+export function sortPlayerRows(rows: ResponseRow[], sort: PlayerSort): ResponseRow[] {
+  const byName = sortPlayers(rows)
+  if (sort.key === 'player') return sort.direction === 'asc' ? byName : byName.reverse()
+  const rank = (row: ResponseRow) => STATUS_FILTER_ORDER.indexOf(statusKey(statusFor(row, sort.windowId)))
+  const factor = sort.direction === 'asc' ? 1 : -1
+  // Array.prototype.sort is stable, so the name order is kept within one answer.
+  return byName.sort((a, b) => (rank(a) - rank(b)) * factor)
+}
+
 // What the page hands each view so a tap on a player can set their answer (or not, when closed).
 export interface OverrideProps {
   // `${playerProfileId}:${windowId}` of the in-flight override, so only that control is disabled.

@@ -5,6 +5,9 @@ import type {
 } from '../../../../api/sectionAvailabilityApi'
 import {
   answeredCoverage,
+  filterByStatus,
+  sortPlayerRows,
+  statusCountsForSlot,
   filterPlayers,
   groupBySlot,
   hasAnyAnswer,
@@ -123,6 +126,38 @@ describe('responseHelpers', () => {
 
     it('is empty for no rows', () => {
       expect(answeredCoverage([], two)).toEqual({ all: 0, some: 0, none: 0 })
+    })
+  })
+
+  describe('Player tab chips and sorting (085 J)', () => {
+    // w1: Jane AVAILABLE, Bob UNSURE, Amy none; w2: Jane UNAVAILABLE, Bob none, Amy none.
+    it('counts every answer of one slot over all players', () => {
+      expect(statusCountsForSlot(rows, 'w1')).toEqual({ all: 3, AVAILABLE: 1, UNSURE: 1, UNAVAILABLE: 0, NONE: 1 })
+      expect(statusCountsForSlot(rows, 'w2')).toEqual({ all: 3, AVAILABLE: 0, UNSURE: 0, UNAVAILABLE: 1, NONE: 2 })
+      expect(statusCountsForSlot([], 'w1')).toEqual({ all: 0, AVAILABLE: 0, UNSURE: 0, UNAVAILABLE: 0, NONE: 0 })
+    })
+
+    it('filters by the slot\'s answer, with No response meaning no answer, and null keeping everyone', () => {
+      expect(filterByStatus(rows, 'w1', 'AVAILABLE').map(playerName)).toEqual(['Jane Smith'])
+      expect(filterByStatus(rows, 'w2', 'NONE').map(playerName)).toEqual(['Bob Jones', 'Amy Lee'])
+      expect(filterByStatus(rows, 'w1', null)).toBe(rows)
+    })
+
+    it('sorts by name A to Z by default and reversed', () => {
+      expect(sortPlayerRows(rows, { key: 'player', direction: 'asc' }).map(playerName)).toEqual(['Bob Jones', 'Amy Lee', 'Jane Smith'])
+      expect(sortPlayerRows(rows, { key: 'player', direction: 'desc' }).map(playerName)).toEqual(['Jane Smith', 'Amy Lee', 'Bob Jones'])
+    })
+
+    it('sorts by a slot\'s answer in the order Available, Unsure, Unavailable, No response, keeping name order within one answer', () => {
+      expect(sortPlayerRows(rows, { key: 'status', windowId: 'w1', direction: 'asc' }).map(playerName)).toEqual(['Jane Smith', 'Bob Jones', 'Amy Lee'])
+      expect(sortPlayerRows(rows, { key: 'status', windowId: 'w2', direction: 'asc' }).map(playerName)).toEqual(['Jane Smith', 'Bob Jones', 'Amy Lee'])
+      expect(sortPlayerRows(rows, { key: 'status', windowId: 'w1', direction: 'desc' }).map(playerName)).toEqual(['Amy Lee', 'Bob Jones', 'Jane Smith'])
+    })
+
+    it('does not change its input', () => {
+      const copy = [...rows]
+      sortPlayerRows(rows, { key: 'status', windowId: 'w1', direction: 'desc' })
+      expect(rows).toEqual(copy)
     })
   })
 })
