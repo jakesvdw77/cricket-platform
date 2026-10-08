@@ -65,6 +65,8 @@ None. No new or changed endpoint; `openapi.yaml` is untouched. The phone lists u
 - **C1 Toolbar panel.** The row with the Time slot | Player | Summary tabs and "Search players" is wrapped in the same white elevated panel as the other pages' toolbars (`filterPanelSx` from `ui/src/utils/filterPanel.ts`, the look `FilterBar` uses). Layout inside is unchanged (stacked on a phone, one row from sm).
 - **C2 Name lists.** In the Available / Unsure / Unavailable lists (the player row in `ResponsesByTimeSlot.tsx`) the shirt number (`#9`, `#97`) moves to a fixed-width, right-aligned column after the name, so the name starts at the left edge. Rows without a number keep the column empty so names still align. The row remains the tap target for the override menu.
 - **C3 Match lines.** `SlotMatches` renders each match as a row with columns: match (`Team v Opponent`, bold), date and time, league. Columns align across the lines of one slot (CSS grid, or a shared `grid-template-columns` per list) and the separators line up. On a phone each match stacks (match, then date and time, then league). The Summary cards use the same component and get the same alignment. Empty-league lines leave the third column empty.
+- **C4 Player tab shirt numbers.** On the Player tab (`ResponsesByPlayer.tsx`, a table with `#`, Player and one column per time slot) the `#` column header and its numbers are right-aligned in a narrow fixed-width column, so the number sits next to the name. Rows without a number keep the cell empty.
+- **C5 Alternating rows.** The rows of the Player tab table alternate between the panel background and a light tint (an opaque tint from the theme, as the Players grid uses, not a raw colour), so a name can be followed across to its status. The hover state, the override menu tap target and the "Hide players who haven't answered" switch are unchanged. Applies to this table only for now; see Open Questions.
 
 ### D. Players on desktop and tablet (mockup presented, to be confirmed)
 
@@ -105,6 +107,7 @@ Per `docs/standards/testing.md`:
 - Every Availability toggle uses the shared small switch and caption-size label; no page defines its own toggle style.
 - On both the group and the squad poll Responses pages the tabs and search sit in the white elevated panel.
 - In the Available, Unsure and Unavailable lists the player's name starts at the left edge and the shirt number is right-aligned in its own column.
+- On the Player tab the `#` column is right-aligned next to the name and the table rows alternate in a light tint (readable in light mode, with the status pills still legible on both tints).
 - Match lines under a slot heading align in columns (match | date and time | league), and stack on a phone.
 - On the Players view at desktop and tablet width, with the Filters row at its tallest, the page has no vertical scrollbar of its own while the grid is taller than the window; the grid never scrolls the page when it reaches its end; below about 150 px of available height the page scrolls instead; sticky headers and the sticky player column still work.
 - "Jump to today" is right-aligned in the page header on Players (grid shown, not on a phone); the header height does not change when switching views.
@@ -116,7 +119,7 @@ Per `docs/standards/testing.md`:
 
 Likely slices, each its own PR (the first two are independent):
 1. **Compact counters and shared toggles** (A, B).
-2. **Responses page polish** (C1–C3, both poll types).
+2. **Responses page polish** (C1–C5; C1–C3 on both poll types, C4–C5 on the Player tab).
 3. **Players on desktop and tablet** (D1 sizing hook, D2 header action, D3 legend). Held until the user confirms D.
 4. **Players on a phone** (E, `PlayersPhoneLists`).
 
@@ -132,3 +135,4 @@ Mockups:
 2. **D1–D3 desktop layout** (sizing to the window, Jump to today in the header, legend above the grid in one row): mockup presented, to be confirmed by the user.
 3. **Browser tab title** (nice-to-have): include the view, e.g. "Players · Availability"? Not part of the slices unless the user says yes.
 4. **Phone legend wording:** shorten "Not in this game's poll (or no poll)" to "No poll" on the phone lists?
+5. **Alternating rows beyond the Player tab:** should the Summary table, the Time slot name lists, the Players grid and the Match-day cover lists get the same alternating tint, or only the Player tab? Drafted as the Player tab only.
