@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation, useOutletContext } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -34,9 +34,14 @@ function season(id: string, label: string, startDate: string, endDate: string): 
 const SEASONS = [season('s-old', '2025', '2025-01-01', '2025-12-31'), season('s-now', '2026', '2026-01-01', '2026-12-31')]
 
 const getAvailabilitySummary = vi.fn()
+const listAvailabilitySummaryPlayers = vi.fn()
 vi.mock('../../../api/availabilitySummaryApi', async () => {
   const actual = await vi.importActual<typeof import('../../../api/availabilitySummaryApi')>('../../../api/availabilitySummaryApi')
-  return { ...actual, getAvailabilitySummary: (...args: unknown[]) => getAvailabilitySummary(...args) }
+  return {
+    ...actual,
+    getAvailabilitySummary: (...args: unknown[]) => getAvailabilitySummary(...args),
+    listAvailabilitySummaryPlayers: (...args: unknown[]) => listAvailabilitySummaryPlayers(...args),
+  }
 })
 
 const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playersInAudience: 20, playersStillToAnswer: 8.5, closingSoon: 0 }
@@ -44,6 +49,11 @@ const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playe
 beforeEach(() => {
   getAvailabilitySummary.mockReset()
   getAvailabilitySummary.mockResolvedValue(summary)
+  listAvailabilitySummaryPlayers.mockReset()
+  listAvailabilitySummaryPlayers.mockResolvedValue({
+    content: [{ playerProfileId: 'pl-1', displayName: 'Ann Lee', polls: [{ kind: 'SQUAD', id: 'p1', matchId: 'm1', title: 'Lions vs Rivals' }] }],
+    totalElements: 1, totalPages: 1, number: 0, size: 25, last: true,
+  })
   listTeamsForClub.mockReset()
   listTeamsForClub.mockResolvedValue([{ id: 'tm-1', name: 'Lions' }])
   listSeasons.mockReset()
@@ -504,18 +514,78 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       expect(screen.queryByTestId('page-counter-closing-soon-marker')).not.toBeInTheDocument()
     })
 
-    it('the players counters are drill-down cards with a hint but are not clickable yet', async () => {
+    it('the players counters are drill-down buttons (no aria-pressed) that open the panel on the matching tab', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability')
-      await screen.findByRole('button', { name: /Close in 48 hours/ })
+      const responded = await screen.findByRole('button', { name: /Players responded/ })
+      expect(responded).not.toHaveAttribute('aria-pressed')
+      expect(screen.getByTestId('page-counter-players-responded-marker')).toHaveTextContent('›')
+
+      await user.click(screen.getByRole('button', { name: /Players still to answer/ }))
+      expect(await screen.findByRole('tab', { name: /Still to answer/ })).toHaveAttribute('aria-selected', 'true')
+      await screen.findByText('Ann Lee')
+      await user.click(screen.getByRole('button', { name: 'Close players list' }))
+      await waitFor(() => expect(screen.queryByRole('tab', { name: /Still to answer/ })).not.toBeInTheDocument())
+
+      await user.click(responded)
+      expect(await screen.findByRole('tab', { name: /Responded/ })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('tab', { name: 'Responded · 12' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Still to answer · 8.5' })).toBeInTheDocument()
+    })
+
+    it('the panel request carries the summary filters plus closingSoon, and no panel request before it opens', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await user.click(await screen.findByRole('button', { name: 'pick league and team' }))
+      await user.click(await screen.findByRole('button', { name: 'toggle group' }))
+      await user.click(await screen.findByRole('button', { name: 'toggle closed' }))
+      await user.click(await screen.findByRole('button', { name: /Close in 48 hours/ }))
+      expect(listAvailabilitySummaryPlayers).not.toHaveBeenCalled()
+
+      await user.click(await screen.findByRole('button', { name: /Players still to answer/ }))
+
+      await waitFor(() => expect(listAvailabilitySummaryPlayers).toHaveBeenCalled())
+      expect(listAvailabilitySummaryPlayers.mock.calls[0][0]).toBe('club-1')
+      expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toEqual({
+        leagueId: 'lg-1', sectionId: null, teamId: 'tm-1', type: 'SQUAD', includeClosed: true,
+        closingSoon: true, kind: 'awaiting', search: '',
+      })
+      expect(await screen.findByTestId('players-panel-scope')).toHaveTextContent('Showing: Over 40 League · Lions')
+    })
+
+    it('keeps the panel open when the summary goes pending (a filter change) or fails behind it', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await user.click(await screen.findByRole('button', { name: /Players still to answer/ }))
+      await screen.findByText('Ann Lee')
+
+      // The filter change lands behind the open panel; its summary is pending, then fails.
+      let fail: (reason: Error) => void = () => undefined
+      getAvailabilitySummary.mockReturnValue(new Promise((_resolve, reject) => { fail = reject }))
+      fireEvent.click(screen.getByText('pick section'))
+      await waitFor(() => expect(getAvailabilitySummary).toHaveBeenCalledTimes(2))
+      expect(screen.getByRole('tab', { name: /Still to answer/ })).toBeInTheDocument()
+      expect(screen.getByText('Ann Lee')).toBeInTheDocument()
+
+      await act(async () => fail(new Error('boom')))
+      expect(screen.getByRole('tab', { name: /Still to answer/ })).toBeInTheDocument()
+      expect(screen.getByText('Ann Lee')).toBeInTheDocument()
+    })
+
+    it('at zero the players counters are plain cards that open nothing', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue({ ...summary, playersResponded: 0, playersStillToAnswer: 0 })
+      renderAt('/manage/availability')
+      await waitFor(() => expect(screen.getByTestId('page-counter-players-responded')).toBeInTheDocument())
 
       expect(screen.queryByRole('button', { name: /Players responded/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Players still to answer/ })).not.toBeInTheDocument()
-      expect(screen.getByTestId('page-counter-players-responded')).not.toHaveAttribute('aria-pressed')
       await user.click(screen.getByTestId('page-counter-players-still-to-answer'))
-      expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+      expect(listAvailabilitySummaryPlayers).not.toHaveBeenCalled()
     })
   })
 })
-

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
@@ -15,6 +16,8 @@ import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../a
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 import { useAvailabilityHubState } from './hubContext'
+import { PlayersPanel } from './PlayersPanel'
+import type { PlayersPanelTab } from './PlayersPanel'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
@@ -36,13 +39,14 @@ function activeView(pathname: string): HubView {
 
 // docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
 // docs/specs/084: "Close in 48 hours" is a filter of the list (active while on) and the first counter resets it;
-// the two players counters are drill-downs (the panel that opens them arrives in a later slice, so they are not
-// selectable yet). The figures never change with the filter: the summary request does not carry it.
+// the two players counters are drill-downs that open the players panel on the matching tab (plain cards at zero,
+// by PageCounters' zero rule). The figures never change with the filter: the summary request does not carry it.
 function counterItems(
   summary: AvailabilitySummary,
   showClosed: boolean,
   closingSoon: boolean,
   setClosingSoon: (value: boolean) => void,
+  openPlayers: (tab: PlayersPanelTab) => void,
 ): PageCounterItem[] {
   return [
     // With Show closed on the figure counts closed polls too, so it reads "Polls shown".
@@ -61,6 +65,7 @@ function counterItems(
       label: 'Players responded',
       kind: 'drill',
       hint: 'See who',
+      onSelect: () => openPlayers('responded'),
     },
     {
       id: 'players-still-to-answer',
@@ -69,6 +74,7 @@ function counterItems(
       tone: summary.playersStillToAnswer > 0 ? 'warning' : 'default',
       kind: 'drill',
       hint: 'See who',
+      onSelect: () => openPlayers('awaiting'),
     },
     {
       id: 'closing-soon',
@@ -103,6 +109,8 @@ export default function AvailabilityHubLayout() {
     type: typeFilterFor(hub.showGroup, hub.showSquad),
     includeClosed: hub.showClosed,
   }
+  // The players panel: open/closed and its tab are local state, not in the address.
+  const [panel, setPanel] = useState<{ open: boolean; tab: PlayersPanelTab }>({ open: false, tab: 'awaiting' })
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
@@ -173,8 +181,27 @@ export default function AvailabilityHubLayout() {
 
       {showCounters && (
         <PageCounters
-          items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon) : []}
+          items={
+            summaryQuery.data
+              ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon, (tab) => setPanel({ open: true, tab }))
+              : []
+          }
           loading={summaryQuery.isPending}
+        />
+      )}
+
+      {/* Independent of the counters row: a failed or pending summary refetch must not unmount an open panel. */}
+      {view === 'polls' && !hub.teamsError && (
+        <PlayersPanel
+          open={panel.open}
+          onClose={() => setPanel((current) => ({ ...current, open: false }))}
+          clubId={clubId}
+          tab={panel.tab}
+          onTabChange={(tab) => setPanel((current) => ({ ...current, tab }))}
+          // Exactly the summary's filters, plus the 48-hour flag.
+          filters={{ ...summaryFilters, closingSoon: hub.closingSoon }}
+          counts={{ responded: summaryQuery.data?.playersResponded ?? 0, awaiting: summaryQuery.data?.playersStillToAnswer ?? 0 }}
+          scope={scope}
         />
       )}
 

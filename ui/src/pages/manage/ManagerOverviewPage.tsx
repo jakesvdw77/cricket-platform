@@ -12,6 +12,7 @@ import { badgeSx } from '../../components/RecordCard'
 import { keycloak } from '../../auth/keycloak'
 import { getManagerOverview } from '../../api/overviewApi'
 import type { OverviewMatch, OverviewPoll, OverviewResult } from '../../api/overviewApi'
+import { groupPollResponsesPath, squadPollResponsesPath } from '../../utils/pollRoutes'
 
 // docs/specs/079-manager-shell-and-overview.md: the /manage index - what needs the manager's
 // attention now. The navigation the old tile grid carried lives in the shell's menus.
@@ -61,8 +62,8 @@ function matchLink(match: OverviewMatch): string {
 }
 
 function pollLink(poll: OverviewPoll): string {
-  if (poll.kind === 'SQUAD' && poll.matchId) return `/manage/availability/squad/${poll.matchId}/${poll.id}`
-  return `/manage/availability/group/${poll.id}`
+  if (poll.kind === 'SQUAD' && poll.matchId) return squadPollResponsesPath(poll.matchId, poll.id)
+  return groupPollResponsesPath(poll.id)
 }
 
 function sideProgress(selected: number, max: number | null): string {
