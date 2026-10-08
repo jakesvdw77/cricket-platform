@@ -1,7 +1,7 @@
 # 085 — Availability Polish
 
 **Depends on:** 081 (page counters), 083 (filters, toolbars, `ContentControlsLine`), 084 (clickable counters), 064–066 and 067 (poll cards and the group and squad Responses pages), 068 (Players grid and its legend), 073 and 074 (availability hub; Coverage is now Match-day cover), 079 (Overview key-figure cards, which share `keyFigureCardSx` with `PageCounters`)
-**Status:** implemented in PR #104 (built 2026-10-08 in one branch; items A to I; standards reviews done, the second review's fixes in progress), awaiting the user's browser check. Written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses pages), D (Players on desktop and tablet), E (Players on a phone); F, G, H, I were added later the same day at the user's request. Storybook and Playwright were not run when it was built.
+**Status:** implemented in PR #104 (built 2026-10-08 in one branch; items A to J; two standards reviews done and their fixes made), awaiting the user's browser check. Written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses pages), D (Players on desktop and tablet), E (Players on a phone); F, G, H, I and J were added later the same day at the user's request. Storybook and Playwright were not run when it was built.
 
 ## Problem & Goals
 
@@ -186,7 +186,7 @@ Decided by the user (2026-10-08): one branch and one PR for the whole spec, buil
 2. **Responses page polish** (C1–C7, C9; C1–C3, C6, C7 and C9 on both poll types, C4–C5 on the Player tab).
 3. **Players on desktop and tablet** (D1 sizing hook, D2 header action, D3 legend).
 4. **Players on a phone** (E, `PlayersPhoneLists`).
-5. Later the same day, at the user's request: **F** change an answer from the Players grid and lists, **G** poll lists behind the Open polls and Close in 48 hours counters (replacing the 48-hour list filter), **H** the New group poll page fixes, **I** the compact toolbar and spacing, plus review fix commits.
+5. Later the same day, at the user's request: **F** change an answer from the Players grid and lists, **G** poll lists behind the Open polls and Close in 48 hours counters (replacing the 48-hour list filter), **H** the New group poll page fixes, **I** the compact toolbar and spacing, **J** status chips and sorting on the Responses Player tab, plus review fix commits.
 
 Mockups:
 - Counters, gap variant (figures 5 and 6): https://claude.ai/artifact/17AcuMRL6c79Btf5rqzAyL
