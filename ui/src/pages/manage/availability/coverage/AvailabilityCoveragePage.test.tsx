@@ -7,6 +7,7 @@ import AvailabilityCoveragePage from './AvailabilityCoveragePage'
 import { at, makeGame, makePlayer } from '../../playerAvailability/testData'
 import type { PlayerAvailability } from '../../../../api/playerAvailabilityApi'
 import type { Season } from '../../../../api/seasonApi'
+import { AvailabilityHubStub } from '../../../../test/AvailabilityHubStub'
 
 // The first render of the page is cold (MUI select, tree select, five queries).
 configure({ asyncUtilTimeout: 5000 })
@@ -27,8 +28,7 @@ vi.mock('../../../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string, params?: unknown) => listTeamsForClub(clubId, params),
 }))
 
-const STORAGE_KEY = 'availabilityCoverage:filters:test-club-id'
-const PLAYERS_STORAGE_KEY = 'playerAvailability:filters:test-club-id'
+const STORAGE_KEY = 'availability:filters:test-club-id'
 
 function season(id: string, label: string, startDate: string, endDate: string): Season {
   return { id, clubId: 'test-club-id', label, startDate, endDate, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', updatedBy: null }
@@ -73,15 +73,17 @@ beforeEach(() => {
   ])
 })
 
-function renderPage(clubId: string | null = 'test-club-id') {
+function renderPage(clubId: string | null = 'test-club-id', path = '/manage/availability/coverage') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/availability/coverage']}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/manage" element={<Outlet context={{ clubId: clubId ?? undefined }} />}>
             <Route path="availability" element={<div>Polls List</div>} />
-            <Route path="availability/coverage" element={<AvailabilityCoveragePage />} />
+            <Route element={<AvailabilityHubStub />}>
+              <Route path="availability/coverage" element={<AvailabilityCoveragePage />} />
+            </Route>
           </Route>
           <Route path="/manage/availability" element={<div>Polls List</div>} />
         </Routes>
@@ -91,7 +93,7 @@ function renderPage(clubId: string | null = 'test-club-id') {
 }
 
 async function loaded() {
-  await screen.findByText('3 slots')
+  await screen.findByText(/^Showing 3 slots/)
 }
 
 describe('AvailabilityCoveragePage (docs/specs/074)', () => {
@@ -112,7 +114,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
   it('uses the singular count line for a single slot', async () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [SAT_V1, SAT_V2] }))
     renderPage()
-    expect(await screen.findByText('1 slot')).toBeInTheDocument()
+    expect(await screen.findByText(/^Showing 1 slot\b/)).toBeInTheDocument()
   })
 
   it('computes the verdict from the leagues\' XI sizes and resolves team names, with Unknown team as a fallback', async () => {
@@ -166,31 +168,18 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     expect(listTeamsForClub).toHaveBeenCalledWith('test-club-id', undefined)
   })
 
-  it('lets a stored season win and ignores a stale stored season', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: 'season-old', leagueId: null, sectionId: null }))
-    const stored = renderPage()
-    await loaded()
-    await waitFor(() =>
-      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-old' })),
-    )
-    stored.unmount()
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: 'gone', leagueId: null, sectionId: null }))
+  it('ignores a season saved by an older version and always uses the default', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: 'season-old', leagueId: null, sectionId: null, teamId: null }))
     renderPage()
     await loaded()
     expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-now' }))
   })
 
-  it('sends Season, League and Section and persists them under its own key, not the Players key', async () => {
+  it('sends League and Section and saves them in the shared key (and the address), no Season field', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
-
-    await user.click(screen.getByLabelText('Season'))
-    await user.click(await screen.findByRole('option', { name: '2025' }))
-    await waitFor(() =>
-      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-old' })),
-    )
+    expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
 
     await user.click(screen.getByLabelText('League'))
     await user.click(await screen.findByRole('option', { name: 'Premier League' }))
@@ -202,7 +191,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     await user.click(within(await screen.findByRole('treeitem', { name: 'Juniors' })).getByText('Juniors'))
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', {
-        seasonId: 'season-old',
+        seasonId: 'season-now',
         leagueId: 'league-1',
         sectionId: 'section-1',
         includePast: false,
@@ -210,18 +199,25 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     )
 
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) as string)).toEqual({
-      seasonId: 'season-old',
       leagueId: 'league-1',
       sectionId: 'section-1',
+      teamId: null,
     })
-    expect(localStorage.getItem(PLAYERS_STORAGE_KEY)).toBeNull()
+    expect(screen.getByTestId('hub-location')).toHaveTextContent('league=league-1')
   })
 
-  it('does not read the Players view\'s stored filters', async () => {
-    localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify({ seasonId: 'season-old', leagueId: 'league-2', sectionId: null, teamId: null }))
+  it('shares the Players view\'s saved filters (one key), but never sends its team', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: 'team-2' }))
     renderPage()
     await loaded()
-    expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-now', leagueId: undefined }))
+    await waitFor(() =>
+      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', {
+        seasonId: 'season-now',
+        leagueId: 'league-2',
+        sectionId: undefined,
+        includePast: false,
+      }),
+    )
   })
 
   it('has no Team filter', async () => {
@@ -254,7 +250,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     renderPage()
     await loaded()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Showing the first 4 games and 3 players, so some slots or counts may be incomplete. Narrow the filters (season, league or section) to see the rest.',
+      'Showing the first 4 games and 3 players, so some slots or counts may be incomplete. Narrow the filters (league or section) to see the rest.',
     )
   })
 
@@ -309,7 +305,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [], players: [] }))
     const empty = renderPage()
     expect(await screen.findByText('No games to cover')).toBeInTheDocument()
-    expect(screen.getByText(/Try another season, section or league, or show past slots/)).toBeInTheDocument()
+    expect(screen.getByText(/Try another section or league, or show past slots/)).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Legend' })).not.toBeInTheDocument()
     empty.unmount()
 

@@ -13,6 +13,7 @@ import type { PageCounterItem } from '../../../components/PageCounters'
 import { availabilitySummaryKey, getAvailabilitySummary } from '../../../api/availabilitySummaryApi'
 import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
+import { useAvailabilityHubState } from './hubContext'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
@@ -54,12 +55,14 @@ function counterItems(summary: AvailabilitySummary): PageCounterItem[] {
 
 // docs/specs/073: the shared layout route of the Polls, Players and Coverage views - the "Availability" header,
 // a Polls | Players | Coverage switch that is real navigation, and New poll on Polls only. Forwards the club id
-// through its own Outlet context so each view keeps its existing useOutletContext hook.
+// through its own Outlet context. docs/specs/083: it also owns the shared League/Section/Team filters and the
+// default season (saved per club, mirrored in the address) and hands them to the three views through that context.
 export default function AvailabilityHubLayout() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = activeView(pathname)
+  const hub = useAvailabilityHubState(clubId, view !== 'polls')
 
   // The counters belong to the Polls view only; a failed request hides the row, the page still works.
   const summaryQuery = useQuery({
@@ -120,7 +123,7 @@ export default function AvailabilityHubLayout() {
         <PageCounters items={summaryQuery.data ? counterItems(summaryQuery.data) : []} loading={summaryQuery.isPending} />
       )}
 
-      <Outlet context={{ clubId }} />
+      <Outlet context={hub} />
     </Box>
   )
 }

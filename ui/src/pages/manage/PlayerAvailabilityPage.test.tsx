@@ -8,6 +8,7 @@ import PlayerAvailabilityPage from './PlayerAvailabilityPage'
 import { at, makeGame, makePlayer } from './playerAvailability/testData'
 import type { PlayerAvailability } from '../../api/playerAvailabilityApi'
 import type { Season } from '../../api/seasonApi'
+import { AvailabilityHubStub } from '../../test/AvailabilityHubStub'
 
 const listPlayerAvailability = vi.fn()
 const listSeasons = vi.fn()
@@ -25,7 +26,7 @@ vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string, params: unknown) => listTeamsForClub(clubId, params),
 }))
 
-const STORAGE_KEY = 'playerAvailability:filters:test-club-id'
+const STORAGE_KEY = 'availability:filters:test-club-id'
 
 function season(id: string, label: string, startDate: string, endDate: string, createdAt = '2026-01-01T00:00:00Z'): Season {
   return { id, clubId: 'test-club-id', label, startDate, endDate, active: true, createdAt, updatedAt: createdAt, updatedBy: null }
@@ -48,10 +49,10 @@ function makeResult(overrides: Partial<PlayerAvailability> = {}): PlayerAvailabi
   }
 }
 
-// MUI's useMediaQuery reads window.matchMedia; jsdom has none. sm and up matches when `wide`.
+// MUI's useMediaQuery reads window.matchMedia; jsdom has none. Only the "below sm" query matches on a phone.
 function setViewport(wide: boolean) {
   window.matchMedia = ((query: string) => ({
-    matches: wide,
+    matches: !wide && query.includes('max-width'),
     media: query,
     onchange: null,
     addListener: () => undefined,
@@ -103,25 +104,23 @@ afterEach(() => {
   delete window.matchMedia
 })
 
-function renderPage(clubId: string | null = 'test-club-id') {
+function renderPage(clubId: string | null = 'test-club-id', path = '/manage/availability/players') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/availability/players']}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/manage" element={<Outlet context={{ clubId: clubId ?? undefined }} />}>
             <Route index element={<div>Dashboard</div>} />
             <Route path="availability" element={<div>Polls List</div>} />
-            <Route path="availability/players" element={<PlayerAvailabilityPage />} />
+            <Route element={<AvailabilityHubStub />}>
+              <Route path="availability/players" element={<PlayerAvailabilityPage />} />
+            </Route>
           </Route>
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
-}
-
-function moreFilters(): HTMLElement {
-  return document.getElementById('player-availability-more-filters') as HTMLElement
 }
 
 async function loaded() {
@@ -139,24 +138,26 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.queryByRole('link', { name: 'Availability Polls' })).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Search players')).toBeInTheDocument()
-    expect(screen.getByText('2 players · 1 game')).toBeInTheDocument()
+    expect(screen.getByText(/^Showing 2 players · 1 game/)).toBeInTheDocument()
   })
 
-  it('lays the filters out as Season, Section, Team, League, then search and toggles in a second row', async () => {
+  it('lays the filters out as League, Section, Team, then search, with the toggles on the line above the grid and no Season field (083)', async () => {
     renderPage()
     await loaded()
 
-    const order = ['Season', 'Section', 'Team', 'League'].map((name) => screen.getByLabelText(name))
+    const order = ['League', 'Section', 'Team'].map((name) => screen.getByLabelText(name))
     for (let i = 0; i < order.length - 1; i += 1) {
       expect(order[i].compareDocumentPosition(order[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
     const search = screen.getByPlaceholderText('Search players')
-    expect(order[3].compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(order[2].compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
     const toggle = screen.getByRole('checkbox', { name: 'Show past games' })
     expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(
       toggle.compareDocumentPosition(screen.getByRole('button', { name: 'Jump to today' })) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
   })
 
   it('defaults the season via pickDefaultSeasonId and sends only the set params', async () => {
@@ -175,36 +176,19 @@ describe('PlayerAvailabilityPage', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
-  it('lets a stored season win over the default and never overwrites it', async () => {
+  it('ignores a season saved by an older version and always uses the default', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: 'season-old', leagueId: null, sectionId: null, teamId: null }))
     renderPage()
     await loaded()
 
-    await waitFor(() =>
-      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-old' })),
-    )
-    expect(listPlayerAvailability).not.toHaveBeenCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-now' }))
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) as string).seasonId).toBe('season-old')
-  })
-
-  it('falls back to the default when the stored season no longer exists', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: 'gone', leagueId: null, sectionId: null, teamId: null }))
-    renderPage()
-    await loaded()
-
     expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-now' }))
+    expect(listPlayerAvailability).not.toHaveBeenCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-old' }))
   })
 
-  it('persists Season, League, Section and Team, but not search', async () => {
+  it('persists League, Section and Team in the shared key and the address, but not search', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
-
-    await user.click(screen.getByLabelText('Season'))
-    await user.click(await screen.findByRole('option', { name: '2025' }))
-    await waitFor(() =>
-      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-old' })),
-    )
 
     await user.click(screen.getByLabelText('League'))
     await user.click(await screen.findByRole('option', { name: 'Premier League' }))
@@ -224,7 +208,7 @@ describe('PlayerAvailabilityPage', () => {
     await user.click(screen.getByRole('option', { name: 'Juniors A' }))
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', {
-        seasonId: 'season-old',
+        seasonId: 'season-now',
         leagueId: 'league-1',
         sectionId: 'section-1',
         teamId: 'team-1',
@@ -235,17 +219,30 @@ describe('PlayerAvailabilityPage', () => {
     await user.type(screen.getByPlaceholderText('Search players'), 'jane')
 
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) as string)).toEqual({
-      seasonId: 'season-old',
       leagueId: 'league-1',
       sectionId: 'section-1',
       teamId: 'team-1',
     })
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('jane')
+    expect(screen.getByTestId('hub-location')).toHaveTextContent('league=league-1')
+    expect(screen.getByTestId('hub-location')).toHaveTextContent('section=section-1')
+    expect(screen.getByTestId('hub-location')).toHaveTextContent('team=team-1')
+    expect(screen.getByTestId('hub-location')).not.toHaveTextContent('jane')
+  })
+
+  it('shares the filters other views saved (one key), and the address wins over the saved value', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: null }))
+    renderPage('test-club-id', '/manage/availability/players?league=league-1')
+    await loaded()
+
+    await waitFor(() =>
+      expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ leagueId: 'league-1' })),
+    )
   })
 
   it('clears the team when the section changes', async () => {
     const user = userEvent.setup()
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: null, leagueId: null, sectionId: null, teamId: 'team-2' }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: null, sectionId: null, teamId: 'team-2' }))
     renderPage()
     await loaded()
     await waitFor(() =>
@@ -264,7 +261,7 @@ describe('PlayerAvailabilityPage', () => {
   })
 
   it('restores a stored League/Section/Team on return', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ seasonId: null, leagueId: 'league-2', sectionId: null, teamId: 'team-2' }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: 'team-2' }))
     renderPage()
     await loaded()
 
@@ -303,7 +300,7 @@ describe('PlayerAvailabilityPage', () => {
 
     expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
-    expect(screen.getByText('1 player · 1 game')).toBeInTheDocument()
+    expect(screen.getByText(/^Showing 1 player · 1 game/)).toBeInTheDocument()
     // Client-side only: no refetch.
     expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
   })
@@ -429,39 +426,41 @@ describe('PlayerAvailabilityPage', () => {
   })
 
   describe('on a phone (xs)', () => {
-    it('shows Team and League and search, with the rest behind a Filters toggle', async () => {
+    it('shows search and a Filters button; the sheet holds League, Section, Team and the two toggles', async () => {
       const user = userEvent.setup()
       setViewport(false)
       renderPage()
       await loaded()
 
       expect(screen.getByPlaceholderText('Search players')).toBeVisible()
-      expect(screen.getByLabelText('Team')).toBeVisible()
-      expect(screen.getByLabelText('League')).toBeVisible()
+      // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
+    expect(screen.queryByRole('combobox', { name: 'League' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Show past games' })).not.toBeInTheDocument()
+      // Jump to today stays on the page.
+      expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
 
-      const toggle = screen.getByRole('button', { name: 'Filters' })
-      expect(toggle).toHaveAttribute('aria-expanded', 'false')
-      expect(toggle).toHaveAttribute('aria-controls', 'player-availability-more-filters')
-      expect(moreFilters()).not.toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Filters' }))
 
-      await user.click(toggle)
-
-      expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      await waitFor(() => expect(moreFilters()).toBeVisible())
-      expect(within(moreFilters()).getByLabelText('Season')).toBeInTheDocument()
+      expect(await screen.findByLabelText('League')).toBeInTheDocument()
+      expect(screen.getByLabelText('Section')).toBeInTheDocument()
+      expect(screen.getByLabelText('Team')).toBeInTheDocument()
       expect(screen.getByRole('checkbox', { name: 'Show past games' })).toBeInTheDocument()
       expect(screen.getByRole('checkbox', { name: 'Hide players with no answers' })).toBeInTheDocument()
-
-      await user.click(toggle)
-      expect(toggle).toHaveAttribute('aria-expanded', 'false')
-      await waitFor(() => expect(moreFilters()).not.toBeVisible())
     })
 
-    it('shows every filter without opening anything from sm up', async () => {
+    it('badges the Filters button with the set filters and shows a removable chip', async () => {
+      const user = userEvent.setup()
+      setViewport(false)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: null }))
       renderPage()
       await loaded()
 
-      expect(moreFilters()).toBeVisible()
+      expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Remove filter Division Two' }))
+      await waitFor(() =>
+        expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ leagueId: undefined })),
+      )
+      expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
     })
   })
 })

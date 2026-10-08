@@ -84,4 +84,16 @@ describe('usePersistedListFilters', () => {
     expect(result.current[0]).not.toHaveProperty('search')
     expect(JSON.parse(localStorage.getItem('search-check:filters') as string)).not.toHaveProperty('search')
   })
+
+  it('merges two updates made in the same tick onto the latest state', () => {
+    const { result } = renderHook(() => usePersistedListFilters('multi:filters', { a: null as string | null, b: null as string | null }))
+
+    act(() => {
+      result.current[1]({ a: 'one' })
+      result.current[1]({ b: 'two' })
+    })
+
+    expect(result.current[0]).toEqual({ a: 'one', b: 'two' })
+    expect(JSON.parse(localStorage.getItem('multi:filters') as string)).toEqual({ a: 'one', b: 'two' })
+  })
 })
