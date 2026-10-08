@@ -40,8 +40,10 @@ class PublicAvailabilityTokenTest {
         PublicAvailabilityToken tokens = tokenAt(NOW, "secret");
         String token = tokens.issue(PublicPollKind.POLL, pollId, playerId).token();
         String[] parts = token.split("\\.");
-        String flippedSignature = parts[1].substring(0, parts[1].length() - 1)
-                + (parts[1].endsWith("A") ? "B" : "A");
+        // Change the FIRST signature character: all six of its bits are significant. The last character of a
+        // 32-byte signature (43 base64url characters) carries only four data bits, so flipping it between
+        // some letters (A, B, C, D) decodes to the same bytes and the signature would still validate.
+        String flippedSignature = (parts[1].startsWith("A") ? "B" : "A") + parts[1].substring(1);
         String otherPayload = tokens.issue(PublicPollKind.POLL, pollId, UUID.randomUUID()).token().split("\\.")[0];
 
         assertInvalid(tokens, parts[0] + "." + flippedSignature);
