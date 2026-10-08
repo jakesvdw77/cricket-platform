@@ -109,6 +109,27 @@ The user clicked "Polls shown" (the first counter reads "Polls shown" once Show 
 - **Replaces the 084 filter behaviour (decided by the user's request, recommended default).** The 48-hour list filter, its removable chip, its switch in the phone Filters sheet and the "closing within 48 hours" scope text are removed; the poll list is only filtered by the shared filters, the Group / Squad toggles and Show closed. The counters keep their labels and figures. "Players responded" and "Players still to answer" are unchanged.
 - **Label.** The first counter keeps "Open polls" while Show closed is off and "Polls shown" while it is on (083 decision, so the figure always matches the list); the panel header spells out how many are open and how many are closed, so "Polls shown 3" is no longer ambiguous.
 
+### H. New group poll page (added 2026-10-08, user review)
+
+- **Fully covered groups are read-only.** In `FixtureGroupCard.tsx` a proposed group whose fixtures are all already in a poll no longer shows the editable Description, Autoclose and "Closes at" fields (the closing time showed a red "A closing time is required" error on an empty field) nor a disabled "Open poll for 0 selected fixtures" button; it shows "Every fixture here is already in a poll." and the covering poll's link. A group with some fixtures free stays editable, and unticking every fixture shows no red error (the disabled action is enough).
+- **The linked group scrolls into view.** Arriving from an "Open a poll" link (`?matchId=`, for example from a Players grid column header or Match-day cover), the outlined group is scrolled to the middle of the screen, so a group far down the page is not mistaken for missing. Built and confirmed by the user (commit `f636659`).
+
+### I. A tighter toolbar and page spacing on the Availability pages (added 2026-10-08, user request)
+
+The filter toolbar (League, Section, Team, Search) is about 72 px tall next to 44 px counter cards, and 24 px gaps between the page header, the counters, the toolbar, the scope line and the content make the page look loose. A compact density for the Availability pages only:
+
+| | Now | Compact |
+|---|---|---|
+| Toolbar panel padding | 16 px | 8 px |
+| Toolbar fields | 40 px (small input) | 36 px |
+| Toolbar panel height | about 72 px | about 52 px |
+| Gap between header, counters, toolbar and content (hub layout and Polls dashboard) | 24 px (`gap: 3`) | 12 px (`gap: 1.5`) |
+| Gap between rows inside the toolbar panel | 16 px | 8 px |
+
+- Applies to `FilterBar` (desktop card and the phone search row) and the shared `filterPanelSx` surface where the Availability pages use it (Polls, Players, Match-day cover, and the Responses pages' toolbar panel from C1); implemented as a `density` option (default unchanged), so the other list pages (`ListToolbar`, Matches, Players, Leagues and so on) keep today's look until the user decides to roll it out.
+- The page gaps are changed in `AvailabilityHubLayout.tsx` and `AvailabilityPollsDashboard.tsx` (and the Players and Match-day cover pages if they set their own).
+- Unchanged: the fields' labels and behaviour, the phone Filters sheet, chips and badge, touch targets (44 px minimum for tappable controls on a phone, so the phone toolbar keeps its field height).
+
 ## Test Plan
 
 Per `docs/standards/testing.md`:
@@ -142,6 +163,8 @@ Per `docs/standards/testing.md`:
 - Below the tablet breakpoint the Players view shows "By game" first, opening on the next game day, with working arrows, swipe and filtering chips; "By player" shows the next four games per player and expands to all of that player's games; the legend sits under the switch.
 - Clicking a mark in the Players grid, or a status pill / game mark on the phone lists, opens a menu to change that one answer (with an "Open poll" entry) instead of navigating away; the answer saves through the existing override endpoints for both squad and group polls, the cell updates, and cells with no poll are not clickable.
 - Clicking "Open polls" / "Polls shown" or "Close in 48 hours" opens a slide-in panel (bottom sheet on a phone) listing those polls with Open / Closed chips, closing times, answered counts and links to their Responses pages; the 48-hour list filter, chip and phone toggle no longer exist.
+- A fully covered fixture group on the New group poll page is read-only with a note, and a linked group is scrolled into view (H).
+- On the Availability pages the toolbar panel is about 52 px tall with 8 px padding and 36 px fields, and the gaps between the page header, counters, toolbar and content are 12 px; the other list pages are unchanged (I).
 - No new endpoint, no `openapi.yaml` change; the phone lists send the same request as the grid.
 
 ## Rollout Notes
