@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { PlayersPhoneLists } from './PlayersPhoneLists'
 import { at, makeGame, makePlayer } from '../testData'
 
@@ -256,6 +256,48 @@ describe('PlayersPhoneLists', () => {
       renderLists({ games: [NO_POLL] })
       expect(screen.getByText('No polls opened yet for these games')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Go to Availability Polls' })).toBeInTheDocument()
+    })
+  })
+
+  describe('changing an answer (085 F)', () => {
+    const handlers = () => ({ pendingKey: null as string | null, onChange: vi.fn().mockResolvedValue(true) })
+
+    it('By game: the status pill opens the menu and choosing an answer calls the handler', async () => {
+      const user = userEvent.setup()
+      const change = handlers()
+      renderLists({ now: SAT_EARLY, changeAnswer: change })
+
+      const pill = screen.getAllByRole('button', { name: /Bob Jones, Sat 3 Oct Morning, Lions v Tigers: Unavailable/ })[0]
+      expect(pill).toHaveAttribute('aria-haspopup', 'menu')
+      await user.click(pill)
+      expect(screen.getByRole('menuitem', { name: 'Unavailable' })).toHaveClass('Mui-selected')
+      await user.click(screen.getByRole('menuitem', { name: 'Available' }))
+
+      const [player, game, status] = change.onChange.mock.calls[0]
+      expect([player.playerProfileId, game.matchId, status]).toEqual(['p2', 'm1', 'AVAILABLE'])
+    })
+
+    it('By player: a game in an expanded row opens the menu, and a game without a poll stays plain', async () => {
+      const user = userEvent.setup()
+      const change = handlers()
+      renderLists({ now: SAT_EARLY, changeAnswer: change })
+      await user.click(screen.getByRole('button', { name: 'By player' }))
+      await user.click(screen.getByRole('button', { name: /^Anton de Villiers/ }))
+
+      const games = screen.getAllByTestId('player-game')
+      await user.click(within(games[1]).getByRole('button'))
+      await user.click(screen.getByRole('menuitem', { name: 'Unavailable' }))
+      expect(change.onChange.mock.calls[0][1].matchId).toBe('m2')
+      expect(change.onChange.mock.calls[0][2]).toBe('UNAVAILABLE')
+      // m5 and m6 are NOT_IN_POLL for Anton: no button.
+      expect(within(games[4]).queryByRole('button')).toBeNull()
+      expect(within(games[5]).queryByRole('button')).toBeNull()
+    })
+
+    it('without handlers the pills are plain', () => {
+      renderLists({ now: SAT_EARLY })
+
+      expect(within(screen.getByRole('list')).queryAllByRole('button')).toHaveLength(0)
     })
   })
 })

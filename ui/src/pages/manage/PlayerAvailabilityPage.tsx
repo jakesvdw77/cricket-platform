@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, CircularProgress, useMediaQuery } from '@mui/material'
+import { Alert, Box, CircularProgress, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
 import { AvailabilityGrid } from './playerAvailability/AvailabilityGrid'
+import { useChangeAnswer } from './playerAvailability/useChangeAnswer'
 import { PlayersPhoneLists } from './playerAvailability/PlayersPhoneLists'
 import type { AvailabilityGridHandle } from './playerAvailability/AvailabilityGrid'
 import { filterPlayers, firstUpcomingGame } from './playerAvailability/gridHelpers'
@@ -27,6 +28,8 @@ export default function PlayerAvailabilityPage() {
   const theme = useTheme()
   // Same idiom as FilterBar and ContentControlsLine: the phone has no Jump to today in the header.
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
+
+  const { handlers: changeAnswer, error: changeError } = useChangeAnswer(clubId)
 
   const [search, setSearch] = useState('')
   const [includePast, setIncludePast] = useState(false)
@@ -123,13 +126,19 @@ export default function PlayerAvailabilityPage() {
         </Alert>
       )}
 
+      {changeError && (
+        <Typography variant="body2" color="error.main" role="alert">
+          {changeError}
+        </Typography>
+      )}
+
       {gridQuery.data && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {/* docs/specs/085 (E): below the tablet breakpoint the grid gives way to two vertical lists. */}
           {isPhone ? (
-            <PlayersPhoneLists games={games} players={visiblePlayers} />
+            <PlayersPhoneLists games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
           ) : (
-            <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} />
+            <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
           )}
         </Box>
       )}

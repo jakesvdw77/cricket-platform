@@ -11,7 +11,9 @@ import { statusTintSx } from '../../../../utils/availabilityStatus'
 import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { CellMark } from '../CellMark'
 import { GridEmptyState } from '../GridEmptyState'
+import { ChangeAnswerMenu, canChangeAnswer } from '../ChangeAnswerMenu'
 import { Legend } from '../Legend'
+import type { ChangeAnswerHandlers } from '../useChangeAnswer'
 import {
   ANSWER_STATUSES,
   answerCounts,
@@ -39,6 +41,8 @@ export interface PlayersPhoneListsProps {
   players: PlayerRow[]
   // Only for tests and stories: the clock that decides the next game day.
   now?: Date
+  // docs/specs/085 (F): when given, the status pill / mark of an answer opens the change-answer menu.
+  changeAnswer?: ChangeAnswerHandlers
 }
 
 type Mode = 'game' | 'player'
@@ -96,7 +100,7 @@ function PickedDot() {
   )
 }
 
-function ByGame({ games, players, now }: { games: GameColumn[]; players: PlayerRow[]; now: Date }) {
+function ByGame({ games, players, now, changeAnswer }: { games: GameColumn[]; players: PlayerRow[]; now: Date; changeAnswer?: ChangeAnswerHandlers }) {
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now), [groups, now])
@@ -213,7 +217,13 @@ function ByGame({ games, players, now }: { games: GameColumn[]; players: PlayerR
                   </Typography>
                   {picked && <PickedDot />}
                 </Box>
-                <StatusPill status={status} />
+                {changeAnswer && canChangeAnswer(game, { matchId: game.matchId, status, picked }) ? (
+                  <ChangeAnswerMenu player={player} game={game} cell={{ matchId: game.matchId, status, picked }} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT, px: 0.5 }}>
+                    <StatusPill status={status} />
+                  </ChangeAnswerMenu>
+                ) : (
+                  <StatusPill status={status} />
+                )}
               </Box>
             ))}
           </Box>
@@ -225,7 +235,7 @@ function ByGame({ games, players, now }: { games: GameColumn[]; players: PlayerR
 
 const MARK_COL_WIDTH = 44
 
-function ByPlayer({ games, players, now }: { games: GameColumn[]; players: PlayerRow[]; now: Date }) {
+function ByPlayer({ games, players, now, changeAnswer }: { games: GameColumn[]; players: PlayerRow[]; now: Date; changeAnswer?: ChangeAnswerHandlers }) {
   const columns = useMemo(() => orderedGames(groupGames(games)), [games])
   const strip = useMemo(() => nextFourGames(columns, now), [columns, now])
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -303,7 +313,13 @@ function ByPlayer({ games, players, now }: { games: GameColumn[]; players: Playe
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {cell?.picked && <PickedDot />}
-                        <StatusPill status={cell ? cell.status : 'NOT_IN_POLL'} />
+                        {changeAnswer && canChangeAnswer(game, cell) ? (
+                          <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer} sx={{ minHeight: ROW_MIN_HEIGHT - 8, px: 0.5 }}>
+                            <StatusPill status={cell.status} />
+                          </ChangeAnswerMenu>
+                        ) : (
+                          <StatusPill status={cell ? cell.status : 'NOT_IN_POLL'} />
+                        )}
                       </Box>
                     </Box>
                   )
@@ -321,7 +337,7 @@ function ByPlayer({ games, players, now }: { games: GameColumn[]; players: Playe
 // is one scroll direction. "By game" opens on the next game day: a game selector (arrows and swipe), status chips that
 // filter, and one tall list. "By player" is a row per player with a mark for each of the next four games; tapping a
 // row lists all of that player's games. Same data, filters and search as the grid.
-export function PlayersPhoneLists({ games, players, now }: PlayersPhoneListsProps): ReactNode {
+export function PlayersPhoneLists({ games, players, now, changeAnswer }: PlayersPhoneListsProps): ReactNode {
   const [mode, setMode] = useState<Mode>('game')
   const clock = useMemo(() => now ?? new Date(), [now])
 
@@ -341,7 +357,7 @@ export function PlayersPhoneLists({ games, players, now }: PlayersPhoneListsProp
         <ToggleButton value="player">By player</ToggleButton>
       </ToggleButtonGroup>
       {mode === 'player' && <Legend phone />}
-      {mode === 'game' ? <ByGame games={games} players={players} now={clock} /> : <ByPlayer games={games} players={players} now={clock} />}
+      {mode === 'game' ? <ByGame games={games} players={players} now={clock} changeAnswer={changeAnswer} /> : <ByPlayer games={games} players={players} now={clock} changeAnswer={changeAnswer} />}
     </Box>
   )
 }

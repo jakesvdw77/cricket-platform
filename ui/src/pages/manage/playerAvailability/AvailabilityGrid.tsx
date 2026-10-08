@@ -7,6 +7,8 @@ import type { SystemStyleObject } from '@mui/system'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
 import { CellMark } from './CellMark'
+import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
+import type { ChangeAnswerHandlers } from './useChangeAnswer'
 import { GridEmptyState } from './GridEmptyState'
 import { Legend } from './Legend'
 import {
@@ -172,8 +174,8 @@ function GameHeader({
 // the keyboard-reachable link.
 export const AvailabilityGrid = forwardRef<
   AvailabilityGridHandle,
-  { games: GameColumn[]; players: PlayerRow[]; now?: Date }
->(function AvailabilityGrid({ games, players, now }, ref) {
+  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers }
+>(function AvailabilityGrid({ games, players, now, changeAnswer }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
   const firstColRef = useRef<HTMLTableCellElement>(null)
@@ -353,10 +355,18 @@ export const AvailabilityGrid = forwardRef<
                       key={game.matchId}
                       data-testid={`cell-${player.playerProfileId}-${game.matchId}`}
                       align="center"
-                      onClick={path ? () => navigate(path) : undefined}
-                      sx={{ px: 0.5, py: 0.75, cursor: path ? 'pointer' : 'default' }}
+                      // docs/specs/085 (F): with the change handlers a cell that has a poll is a button opening the answer menu;
+                      // without them (older callers) a click still opens the poll.
+                      onClick={path && !changeAnswer ? () => navigate(path) : undefined}
+                      sx={{ px: 0.5, py: 0.75, cursor: path && !changeAnswer ? 'pointer' : 'default' }}
                     >
-                      {cell && <CellMark status={cell.status} picked={cell.picked} label={cellLabel(player, game, cell)} />}
+                      {cell && changeAnswer && canChangeAnswer(game, cell) ? (
+                        <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer}>
+                          <CellMark status={cell.status} picked={cell.picked} />
+                        </ChangeAnswerMenu>
+                      ) : (
+                        cell && <CellMark status={cell.status} picked={cell.picked} label={cellLabel(player, game, cell)} />
+                      )}
                     </TableCell>
                   )
                 })}
