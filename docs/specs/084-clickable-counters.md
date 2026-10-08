@@ -1,7 +1,7 @@
 # 084 — Clickable Counters
 
 **Depends on:** 081 (page counters, whose selectable form this reuses), 083 (filtered counters and the Availability filter model), 073 and 074 (availability hub; the Coverage view is now called Match-day cover), 065 and 066 (poll Responses pages)
-**Status:** draft — written 2026-10-08 from the user's request ("I like that the cards are clickable; they all should be clickable if possible or makes sense"), revised the same day with the user's answers. Scope is the Availability Polls page only. No mockup yet and nothing built. The backend contract is an outline to finalise in planning, like 083.
+**Status:** draft — written 2026-10-08 from the user's request ("I like that the cards are clickable; they all should be clickable if possible or makes sense"), revised the same day with the user's answers. Scope is the Availability Polls page only. The mockup (https://claude.ai/artifact/P7LqFQinmqPXFcuRrPhnJS: the counters at rest, the 48-hour filter, the players panel on desktop and phone) was approved by the user on 2026-10-08 ("That looks good"); the spec text has not been reviewed line by line yet. Nothing built. The backend contract is an outline to finalise in planning, like 083.
 
 ## Problem & Goals
 
