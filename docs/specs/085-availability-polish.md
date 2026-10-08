@@ -68,6 +68,7 @@ None. No new or changed endpoint; `openapi.yaml` is untouched. The phone lists u
 - **C4 Player tab shirt numbers.** On the Player tab (`ResponsesByPlayer.tsx`, a table with `#`, Player and one column per time slot) the `#` column header and its numbers are right-aligned in a narrow fixed-width column, so the number sits next to the name. Rows without a number keep the cell empty.
 - **C5 Alternating rows.** The rows of the Player tab table alternate between the panel background and a light tint (an opaque tint from the theme, as the Players grid uses, not a raw colour), so a name can be followed across to its status. The hover state, the override menu tap target and the "Hide players who haven't answered" switch are unchanged. Applies to this table only for now; see Open Questions.
 - **C6 No Summary tab, a gauge in the header.** The Summary tab (`ResponsesSummary.tsx`) is removed, leaving Time slot | Player. The coloured response gauge moves into the page header, right-aligned in the poll's info line (the row with the poll type, status, section, close time and edit icon), so it is visible on both tabs and adds no row; on a phone it takes its own full-width line under the info. Mockup: https://claude.ai/artifact/MtuNUFa7cuP86kWoyBMrpq. **Multi-slot polls:** the header gauge is for the whole poll, a slim stacked bar with the counts underneath: players who answered every slot ("answered all"), some slots ("some") and none ("none"), the same "answered every slot" meaning the poll cards use, and each slot card on the Time slot tab keeps its own counts and gains a thin bar (Available, Unsure, Unavailable, No response) that replaces the old Summary card. **Single-slot polls (and squad polls):** the header gauge shows the four-status split (Available, Unsure, Unavailable, No response) with the "N of M answered" figure, and no per-slot bar (it would repeat the header). The gauge is computed from the data the Responses pages already load (state in planning whether any endpoint change is needed; none is expected). Old links or bookmarks to the Summary tab fall back to Time slot.
+- **C7 Show / Hide on "No response".** At the bottom of each slot card the collapsible "No response (3)" bar has a plain "SHOW" text button. Make it stand out: an arrow icon next to the label (a down arrow with "Show", an up arrow with "Hide", the icon switching with the state), the whole bar is the click target, `aria-expanded` is set, and the focus ring and hover state are visible. The count stays in the bar's label. Same treatment wherever the same collapsible bar is used (check the squad poll page).
 
 ### D. Players on desktop and tablet (mockup presented, to be confirmed)
 
@@ -110,6 +111,7 @@ Per `docs/standards/testing.md`:
 - In the Available, Unsure and Unavailable lists the player's name starts at the left edge and the shirt number is right-aligned in its own column.
 - On the Player tab the `#` column is right-aligned next to the name and the table rows alternate in a light tint (readable in light mode, with the status pills still legible on both tints).
 - The Responses pages have two tabs (Time slot | Player). A slim gauge sits in the page header on both tabs (right-aligned in the poll's info line on desktop, its own line on a phone): answered all / some / none for a poll with several slots, the four-status split for a single-slot or squad poll; each slot card of a multi-slot poll has its own thin bar; the old Summary tab and its cards are gone.
+- The "No response" bar of each slot card shows an arrow next to Show / Hide, the whole bar toggles it, and it announces its expanded state.
 - Match lines under a slot heading align in columns (match | date and time | league), and stack on a phone.
 - On the Players view at desktop and tablet width, with the Filters row at its tallest, the page has no vertical scrollbar of its own while the grid is taller than the window; the grid never scrolls the page when it reaches its end; below about 150 px of available height the page scrolls instead; sticky headers and the sticky player column still work.
 - "Jump to today" is right-aligned in the page header on Players (grid shown, not on a phone); the header height does not change when switching views.
@@ -121,7 +123,7 @@ Per `docs/standards/testing.md`:
 
 Likely slices, each its own PR (the first two are independent):
 1. **Compact counters and shared toggles** (A, B).
-2. **Responses page polish** (C1–C6; C1–C3 and C6 on both poll types, C4–C5 on the Player tab).
+2. **Responses page polish** (C1–C7; C1–C3, C6 and C7 on both poll types, C4–C5 on the Player tab).
 3. **Players on desktop and tablet** (D1 sizing hook, D2 header action, D3 legend). Held until the user confirms D.
 4. **Players on a phone** (E, `PlayersPhoneLists`).
 
@@ -133,9 +135,10 @@ Mockups:
 
 ## Open Questions
 
-1. **"Show / Hide arrow buttons"** (raised on the group poll Responses page): which control does the user mean? Not visible in the screenshot. Not specified until answered.
+1. ~~"Show / Hide arrow buttons"~~ resolved: it is the "No response (3)" bar at the bottom of each slot card (C7).
 2. **D1–D3 desktop layout** (sizing to the window, Jump to today in the header, legend above the grid in one row): mockup presented, to be confirmed by the user.
 3. **Browser tab title** (nice-to-have): include the view, e.g. "Players · Availability"? Not part of the slices unless the user says yes.
 4. **Phone legend wording:** shorten "Not in this game's poll (or no poll)" to "No poll" on the phone lists?
 5. **Alternating rows beyond the Player tab:** should the Summary table, the Time slot name lists, the Players grid and the Match-day cover lists get the same alternating tint, or only the Player tab? Drafted as the Player tab only.
 6. **Header gauge definition (C6):** drafted as answered all / some / none slots for a multi-slot poll and the four-status split for a single-slot or squad poll; confirm, and say if a single gauge style for every poll is preferred.
+7. **Nested scrolling on the Time slot cards:** the Available list inside a slot card has its own inner scrollbar (a maximum height), inside a page that also scrolls. Should the lists grow to their full length and let the page scroll (no inner scrollbar), or keep the inner scroll? Not drafted either way; flagged because it is the same double-scroll problem as the Players grid.
