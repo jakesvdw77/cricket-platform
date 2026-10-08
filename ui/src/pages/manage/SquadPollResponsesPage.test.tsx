@@ -9,7 +9,6 @@ import { formatMatchDateTime } from './availability/pollHelpers'
 import type { AvailabilityStatus, MatchAvailabilityPoll, MatchAvailabilityPollResponses } from '../../api/matchAvailabilityApi'
 import type { Match } from '../../api/matchApi'
 import type { Team } from '../../api/teamApi'
-import { legend } from '../../test/legend'
 
 const listPolls = vi.fn()
 const getPollResponses = vi.fn()
@@ -131,7 +130,7 @@ function renderPage(clubId: string | null = 'test-club-id', matchId = 'match-1',
 const SLOT = /· (Morning|Afternoon)$/
 
 function column(status: 'Available' | 'Unsure' | 'Unavailable') {
-  return screen.getByRole('region', { name: new RegExp(`^${status} players, .*(Morning|Afternoon)$`) })
+  return screen.getByRole('group', { name: new RegExp(`^${status} players, .*(Morning|Afternoon)$`) })
 }
 
 async function loaded() {
@@ -259,20 +258,21 @@ describe('SquadPollResponsesPage', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
   })
 
-  it('shows Summary with the counts and "N of M answered", unaffected by search', async () => {
+  it('shows the four-status header gauge with "N of M answered", unaffected by search, and no Summary tab or per-slot bar (085)', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
     await user.type(screen.getByLabelText('Search players'), 'jane')
-    await user.click(screen.getByRole('button', { name: 'Summary' }))
 
-    expect(screen.getByText(legend('Available 1'))).toBeInTheDocument()
-    expect(screen.getByText(legend('Unsure 1'))).toBeInTheDocument()
-    expect(screen.getByText(legend('Unavailable 1'))).toBeInTheDocument()
-    expect(screen.getByText(legend('No response 1'))).toBeInTheDocument()
-    expect(screen.getByText('3 of 4 answered')).toBeInTheDocument()
-    expect(screen.getByTestId('poll-1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByTestId('poll-1-bar-NONE')).toHaveStyle({ width: '25%' })
+    expect(screen.queryByRole('button', { name: 'Summary' })).not.toBeInTheDocument()
+    const gauge = screen.getByRole('group', { name: 'Response summary' })
+    for (const text of ['Available 1', 'Unsure 1', 'Unavailable 1', 'No response 1']) {
+      expect(gauge.querySelector(`[data-legend="${text}"]`)).not.toBeNull()
+    }
+    expect(within(gauge).getByText('3 of 4 answered')).toBeInTheDocument()
+    expect(screen.getByTestId('response-gauge-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
+    expect(screen.getByTestId('response-gauge-bar-NONE')).toHaveStyle({ width: '25%' })
+    expect(screen.queryByRole('img', { name: /Available/ })).not.toBeInTheDocument()
   })
 
   it('shows the squad empty text when there are no players', async () => {

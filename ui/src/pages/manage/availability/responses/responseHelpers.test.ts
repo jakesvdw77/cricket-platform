@@ -4,6 +4,7 @@ import type {
   SectionAvailabilityRoundMatch,
 } from '../../../../api/sectionAvailabilityApi'
 import {
+  answeredCoverage,
   filterPlayers,
   groupBySlot,
   hasAnyAnswer,
@@ -95,5 +96,33 @@ describe('responseHelpers', () => {
 
   it('sorts players by last then first name', () => {
     expect(sortPlayers(rows).map(playerName)).toEqual(['Bob Jones', 'Amy Lee', 'Jane Smith'])
+  })
+
+  describe('answeredCoverage (085)', () => {
+    const two = [bracket('w1', '2026-10-03', 'MORNING'), bracket('w2', '2026-10-03', 'AFTERNOON')]
+
+    it('counts players who answered every slot, some slots and none', () => {
+      expect(answeredCoverage(rows, two)).toEqual({ all: 1, some: 1, none: 1 })
+    })
+
+    it('ignores answers for windows that are not in the brackets and null answers', () => {
+      const stray: ResponseRow = {
+        ...row('p4', 'Stray', 'Answer', ['AVAILABLE', null]),
+        statuses: [
+          { windowId: 'other', dayPart: 'MORNING', windowDate: '2026-10-03', status: 'AVAILABLE' },
+          { windowId: 'w1', dayPart: 'MORNING', windowDate: '2026-10-03', status: 'AVAILABLE' },
+          { windowId: 'w2', dayPart: 'AFTERNOON', windowDate: '2026-10-03', status: null },
+        ],
+      }
+      expect(answeredCoverage([stray], two)).toEqual({ all: 0, some: 1, none: 0 })
+    })
+
+    it('with a single slot a player either answered it or not', () => {
+      expect(answeredCoverage(rows, [two[0]])).toEqual({ all: 2, some: 0, none: 1 })
+    })
+
+    it('is empty for no rows', () => {
+      expect(answeredCoverage([], two)).toEqual({ all: 0, some: 0, none: 0 })
+    })
   })
 })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Chip, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { Box, Chip, lighten, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { CompactSwitch } from '../../../../components/CompactSwitch'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
@@ -31,7 +31,9 @@ export function ResponsesByPlayer({
         <Table size="small" aria-label="Responses by player">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ width: 56 }}>#</TableCell>
+              <TableCell align="right" sx={{ width: 48, maxWidth: 48, pr: 1 }}>
+                #
+              </TableCell>
               <TableCell>Player</TableCell>
               {brackets.map((bracket) => (
                 <TableCell key={bracket.windowId} sx={{ whiteSpace: 'nowrap' }}>
@@ -51,8 +53,14 @@ export function ResponsesByPlayer({
               </TableRow>
             )}
             {visible.map((row) => (
-              <TableRow key={row.playerProfileId}>
-                <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{playerNumber(row) ?? ''}</TableCell>
+              <TableRow
+                key={row.playerProfileId}
+                // Alternate rows: an opaque theme tint (as the Players grid uses), so a name can be followed across.
+                sx={(theme) => ({ '&:nth-of-type(even)': { bgcolor: lighten(theme.palette.primary.main, 0.95) } })}
+              >
+                <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', width: 48, maxWidth: 48, pr: 1 }}>
+                  {playerNumber(row) ?? ''}
+                </TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{playerName(row)}</TableCell>
                 {brackets.map((bracket) => {
                   const status = statusFor(row, bracket.windowId)

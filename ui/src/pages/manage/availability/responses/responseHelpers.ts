@@ -13,11 +13,8 @@ import { formatBracketLabel } from '../../../../utils/dayPart'
 // The group order the spec fixes (Available, Unsure, Unavailable), also the override menu's order.
 export const STATUS_ORDER: AvailabilityStatus[] = ['AVAILABLE', 'UNSURE', 'UNAVAILABLE']
 
-// The By time slot answer lists scroll after this many rows (docs/specs/065: about 12).
+// The height of a player row in the By time slot lists (the lists grow, the page scrolls: docs/specs/085 C9).
 export const ROW_HEIGHT = 32
-export const SCROLL_ROWS = 12
-const SCROLL_BOX_PADDING = 8
-export const SCROLL_BOX_MAX_HEIGHT = ROW_HEIGHT * SCROLL_ROWS + SCROLL_BOX_PADDING
 
 export type ResponseRow = SectionAvailabilityRoundResponseRow
 
@@ -107,6 +104,24 @@ export function groupBySlot(
     })
     return group
   })
+}
+
+// docs/specs/085 (C6): how many players answered every slot, some slots or none. An answer counts for a slot
+// only when its windowId is one of the brackets and its status is set (a row's statuses can carry other
+// windows, or null answers, so statuses.length is not used). Pass the UNFILTERED rows: a search never changes it.
+export function answeredCoverage(
+  rows: ResponseRow[],
+  brackets: Pick<SectionAvailabilityRoundBracket, 'windowId'>[],
+): { all: number; some: number; none: number } {
+  const windowIds = new Set(brackets.map((bracket) => bracket.windowId))
+  const coverage = { all: 0, some: 0, none: 0 }
+  rows.forEach((row) => {
+    const answered = new Set(row.statuses.filter((entry) => entry.status !== null && windowIds.has(entry.windowId)).map((entry) => entry.windowId)).size
+    if (answered === 0) coverage.none += 1
+    else if (answered === windowIds.size) coverage.all += 1
+    else coverage.some += 1
+  })
+  return coverage
 }
 
 // What the page hands each view so a tap on a player can set their answer (or not, when closed).

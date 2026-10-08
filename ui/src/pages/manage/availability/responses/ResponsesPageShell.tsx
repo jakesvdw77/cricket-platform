@@ -5,16 +5,17 @@ import SearchIcon from '@mui/icons-material/Search'
 import { useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../../hooks/useDocumentTitle'
 import { Input } from '../../../../components/Input'
+import { ResponseGauge } from '../../../../components/ResponseGauge'
+import { filterPanelSx } from '../../../../utils/filterPanel'
 import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
 import type { SectionAvailabilityRoundBracket, SectionAvailabilityRoundMatch } from '../../../../api/sectionAvailabilityApi'
-import { filterPlayers, groupBySlot } from './responseHelpers'
+import { answeredCoverage, filterPlayers, groupBySlot } from './responseHelpers'
 import type { OverrideProps, ResponseRow } from './responseHelpers'
 import { ResponsesByTimeSlot } from './ResponsesByTimeSlot'
 import { ResponsesByPlayer } from './ResponsesByPlayer'
-import { ResponsesSummary } from './ResponsesSummary'
 
-type View = 'slot' | 'player' | 'summary'
+type View = 'slot' | 'player'
 
 // docs/specs/076-team-selection.md: the selection dialog's 'Change answer' link carries a returnTo
 // query parameter. Only a same-app relative path under /manage/ is honoured (anything else, such as
@@ -74,11 +75,12 @@ export function ResponsesPageShell({
     () => groupBySlot({ brackets: responses.brackets, responses: filteredRows }, matches),
     [responses.brackets, filteredRows, matches],
   )
-  // Summary always shows the full totals, whatever the search says.
-  const summarySlots = useMemo(
-    () => groupBySlot({ brackets: responses.brackets, responses: responses.rows }, matches),
-    [responses.brackets, responses.rows, matches],
-  )
+  // The header gauge counts everyone, whatever the search says (unfiltered rows). Several slots: how many players
+  // answered all / some / none of them. One slot (or a squad poll, which arrives as one): the four-status split from
+  // the slot's own totals.
+  const multiSlot = responses.brackets.length > 1
+  const coverage = useMemo(() => answeredCoverage(responses.rows, responses.brackets), [responses.rows, responses.brackets])
+  const single = responses.brackets[0]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -89,36 +91,58 @@ export function ResponsesPageShell({
         action={headerAction}
       />
 
-      {meta}
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
-        <ToggleButtonGroup
-          value={view}
-          exclusive
-          size="small"
-          aria-label="Responses view"
-          sx={segmentedSwitchSx}
-          onChange={(_event, next: View | null) => next && setView(next)}
-        >
-          <ToggleButton value="slot">Time slot</ToggleButton>
-          <ToggleButton value="player">Player</ToggleButton>
-          <ToggleButton value="summary">Summary</ToggleButton>
-        </ToggleButtonGroup>
-        <Box sx={{ flex: { sm: '1 1 0' }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
-          <Input
-            label="Search players"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
+      {(meta || single) && (
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'flex-end' }, justifyContent: 'space-between', gap: 1.5 }}>
+          <Box sx={{ minWidth: 0 }}>{meta}</Box>
+          {single && (
+            <Box sx={{ ml: { sm: 'auto' }, flex: '0 0 auto', maxWidth: '100%' }}>
+              {multiSlot ? (
+                <ResponseGauge mode="poll" coverage={coverage} />
+              ) : (
+                <ResponseGauge
+                  mode="status"
+                  counts={{
+                    available: single.availableCount,
+                    unsure: single.unsureCount,
+                    unavailable: single.unavailableCount,
+                    noResponse: single.noResponseCount,
+                  }}
+                />
+              )}
+            </Box>
+          )}
         </Box>
-      </Stack>
+      )}
+
+      <Box sx={filterPanelSx}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+          <ToggleButtonGroup
+            value={view}
+            exclusive
+            size="small"
+            aria-label="Responses view"
+            sx={segmentedSwitchSx}
+            onChange={(_event, next: View | null) => next && setView(next)}
+          >
+            <ToggleButton value="slot">Time slot</ToggleButton>
+            <ToggleButton value="player">Player</ToggleButton>
+          </ToggleButtonGroup>
+          <Box sx={{ flex: { sm: '1 1 0' }, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
+            <Input
+              label="Search players"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </Stack>
+      </Box>
 
       {!open && (
         <Typography variant="body2" color="text.secondary">
@@ -137,11 +161,10 @@ export function ResponsesPageShell({
         </Typography>
       )}
 
-      {view === 'slot' && <ResponsesByTimeSlot slots={slots} override={override} />}
+      {view === 'slot' && <ResponsesByTimeSlot slots={slots} override={override} slotBars={multiSlot} />}
       {view === 'player' && responses.rows.length > 0 && (
         <ResponsesByPlayer rows={filteredRows} brackets={slots.map((slot) => slot.bracket)} override={override} />
       )}
-      {view === 'summary' && <ResponsesSummary slots={summarySlots} />}
 
       {children}
     </Box>

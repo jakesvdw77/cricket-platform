@@ -1,9 +1,11 @@
-import { Stack, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import type { SectionAvailabilityRoundMatch } from '../../../../api/sectionAvailabilityApi'
 import { formatMatchDateTime } from '../pollHelpers'
 
-// docs/specs/065: a slot's matches (team v opponent, time, league), shared by the By time slot
-// blocks and the Summary cards.
+// docs/specs/065 + 085 (C3): a slot's matches as aligned columns - match (Team v Opponent, bold), date and time,
+// league. One CSS grid per list, each match a `display: contents` row, so the columns (and their separators) line up
+// across all the lines of the slot. On a phone each match stacks (match, date and time, league). An empty league
+// leaves the third cell empty.
 export function SlotMatches({ matches }: { matches: SectionAvailabilityRoundMatch[] }) {
   if (matches.length === 0) {
     return (
@@ -12,17 +14,35 @@ export function SlotMatches({ matches }: { matches: SectionAvailabilityRoundMatc
       </Typography>
     )
   }
+  const separator = { '&::before': { content: '"·"', mr: 1.5, display: { xs: 'none', sm: 'inline' } } }
   return (
-    <Stack spacing={0.5}>
+    <Box
+      data-testid="slot-matches"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'max-content max-content minmax(0, 1fr)' },
+        columnGap: 1.5,
+        rowGap: { xs: 1, sm: 0.5 },
+        alignItems: 'baseline',
+      }}
+    >
       {matches.map((match) => (
-        <Typography key={`${match.matchId}-${match.teamId}`} variant="body2" color="text.secondary">
-          <Typography component="span" variant="body2" color="text.primary" fontWeight={600}>
+        <Box key={`${match.matchId}-${match.teamId}`} data-testid="slot-match" sx={{ display: 'contents' }}>
+          <Typography variant="body2" color="text.primary" fontWeight={600}>
             {match.teamName} v {match.opponentLabel}
           </Typography>
-          {` · ${formatMatchDateTime(match.matchDate)}`}
-          {match.leagueName ? ` · ${match.leagueName}` : ''}
-        </Typography>
+          <Typography variant="body2" color="text.secondary" sx={separator}>
+            {formatMatchDateTime(match.matchDate)}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={match.leagueName ? separator : { display: { xs: 'none', sm: 'block' } }}
+          >
+            {match.leagueName ?? ''}
+          </Typography>
+        </Box>
       ))}
-    </Stack>
+    </Box>
   )
 }
