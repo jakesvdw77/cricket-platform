@@ -124,9 +124,9 @@ Per `docs/standards/testing.md`:
 
 ## Rollout Notes
 
-Likely slices, each its own PR (the first two are independent):
-1. **Compact counters and shared toggles** (A, B).
-2. **Responses page polish** (C1–C9; C1–C3 and C6–C9 on both poll types, C4–C5 on the Player tab; C8 is page-wide and can ship in slice 1).
+Decided by the user (2026-10-08): one branch and one PR for the whole spec, built in one go, then the standards reviews, because all of it is frontend-only work on the Availability pages. Inside that PR, one commit per item so it can be reviewed (and if needed reverted) piece by piece:
+1. **Compact counters, shared toggles and the browser tab title** (A, B, C8).
+2. **Responses page polish** (C1–C7, C9; C1–C3, C6, C7 and C9 on both poll types, C4–C5 on the Player tab).
 3. **Players on desktop and tablet** (D1 sizing hook, D2 header action, D3 legend).
 4. **Players on a phone** (E, `PlayersPhoneLists`).
 
