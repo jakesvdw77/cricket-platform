@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Box, FormControlLabel, Switch } from '@mui/material'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
@@ -28,28 +28,26 @@ type PollListItem =
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
 // pattern (the header and New poll action live in AvailabilityHubLayout, 073): a RecordCard grid mixing both kinds.
-// docs/specs/083: the toolbar is the shared FilterBar (Section from the hub's shared filters, plus search);
-// the poll type is two light toggles (Group polls, Squad polls - both on by default, the last one cannot be
-// switched off) and the sort order a quiet text link, on the line above the cards (in the Filters sheet on a phone). The two open-poll queries are
-// merged client-side - open polls are bounded to what is live right now, as 034 already reasoned
-// (spec's Non-goals: no union endpoint). Section is the hub's shared, persisted filter (083, replacing
-// 043's per-view key); search stays its own non-persisted useState. The 'Show closed polls' switch
-// (mirroring MatchList's 'Show past matches') also fetches closed polls into the same list; it is
-// never persisted, only preset by a ?showClosed=true link (the 'covered by' links).
+// docs/specs/083: the toolbar is the shared FilterBar (Section from the hub's shared filters, plus search).
+// The poll type is two light toggles (Group polls, Squad polls - both on by default, the last one cannot be
+// switched off), the sort order a quiet text link, and 'Show closed polls' a switch (mirroring MatchList's
+// 'Show past matches') that also fetches closed polls; they sit on the line above the cards (in the Filters
+// sheet on a phone). The type toggles and Show closed live in the hub context, because the layout's counters
+// follow them; they are per-visit, never persisted (Show closed is only preset by a ?showClosed=true link,
+// the 'covered by' links). The two open-poll queries are merged client-side - open polls are bounded to what
+// is live right now, as 034 already reasoned (spec's Non-goals: no union endpoint). Section is the hub's
+// shared, persisted filter (replacing 043's per-view key). Search is a non-persisted useState and is
+// deliberately not sent to the counters (083 lists only the shared filters, type and Show closed as counter inputs).
 export default function AvailabilityPollsDashboard() {
-  const { clubId, filters, scopeText } = useAvailabilityHub()
+  const { clubId, filters, showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed } =
+    useAvailabilityHub()
   const { sectionId } = filters
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [searchParams] = useSearchParams()
-  const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
   // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
   // covered match first.
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
-  // docs/specs/083: the poll type as two toggles, both on by default; a per-visit view choice, not persisted.
-  const [showGroup, setShowGroup] = useState(true)
-  const [showSquad, setShowSquad] = useState(true)
 
   const wantSquad = showSquad
   const wantGroup = showGroup
@@ -208,7 +206,6 @@ export default function AvailabilityPollsDashboard() {
     />
   )
   const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
-  const scopeFilters = scopeText()
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -246,7 +243,7 @@ export default function AvailabilityPollsDashboard() {
       />
 
       <ContentControlsLine
-        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
+        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}`}
         sortAction={sortLink}
         controls={
           <>

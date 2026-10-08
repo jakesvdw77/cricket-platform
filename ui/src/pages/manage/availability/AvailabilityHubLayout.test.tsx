@@ -11,7 +11,13 @@ import type { Season } from '../../../api/seasonApi'
 import type { AvailabilityHubContext } from './hubContext'
 
 vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
-vi.mock('../../../api/sectionApi', () => ({ listSections: () => Promise.resolve([]) }))
+vi.mock('../../../api/sectionApi', () => ({
+  listSections: () =>
+    Promise.resolve([
+      { id: 'sec-1', name: 'Over 40', parentSectionId: 'sec-0' },
+      { id: 'sec-0', name: 'Vets', parentSectionId: null },
+    ]),
+}))
 
 const listSeasons = vi.fn()
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (...args: unknown[]) => listSeasons(...args) }))
@@ -27,7 +33,7 @@ vi.mock('../../../api/availabilitySummaryApi', async () => {
   return { ...actual, getAvailabilitySummary: (...args: unknown[]) => getAvailabilitySummary(...args) }
 })
 
-const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playersInAudience: 20, answersAwaited: 8.5, closingSoon: 0 }
+const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playersInAudience: 20, playersStillToAnswer: 8.5, closingSoon: 0 }
 
 beforeEach(() => {
   getAvailabilitySummary.mockReset()
@@ -38,7 +44,8 @@ beforeEach(() => {
 })
 
 function View({ name }: { name: string }) {
-  const { clubId, filters, setFilters, seasonId } = useOutletContext<AvailabilityHubContext>()
+  const { clubId, filters, setFilters, seasonId, showGroup, setShowGroup, showClosed, setShowClosed } =
+    useOutletContext<AvailabilityHubContext>()
   const { pathname, search } = useLocation()
   return (
     <div>
@@ -46,6 +53,15 @@ function View({ name }: { name: string }) {
       <div data-testid="ctx">{`section=${filters.sectionId ?? 'none'} season=${seasonId ?? 'none'}`}</div>
       <button type="button" onClick={() => setFilters({ sectionId: 'sec-1' })}>
         pick section
+      </button>
+      <button type="button" onClick={() => setFilters({ leagueId: 'lg-1', teamId: 'tm-1' })}>
+        pick league and team
+      </button>
+      <button type="button" onClick={() => setShowGroup(!showGroup)}>
+        toggle group
+      </button>
+      <button type="button" onClick={() => setShowClosed(!showClosed)}>
+        toggle closed
       </button>
     </div>
   )
@@ -241,8 +257,10 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     renderAt('/manage/availability')
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
-    expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1')
-    for (const label of ['Open polls', 'Players responded', 'Answers awaited', 'Close in 48 hours']) {
+    expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', {
+      sectionId: null, type: 'ALL', includeClosed: false,
+    })
+    for (const label of ['Open polls', 'Players responded', 'Players still to answer', 'Close in 48 hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
     expect(screen.getByTestId('page-counter-open-polls')).toHaveAttribute('data-active', 'true')
@@ -250,22 +268,22 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
   })
 
   it('uses the warning tone only for awaited and closing counters above zero', async () => {
-    getAvailabilitySummary.mockResolvedValue({ ...summary, answersAwaited: 5, closingSoon: 2 })
+    getAvailabilitySummary.mockResolvedValue({ ...summary, playersStillToAnswer: 5, closingSoon: 2 })
     renderAt('/manage/availability')
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '5', '2']))
     const colour = (id: string) => getComputedStyle(screen.getByTestId(`page-counter-${id}`).querySelector('b') as HTMLElement).color
-    expect(colour('answers-awaited')).toBe(colour('closing-soon'))
-    expect(colour('answers-awaited')).not.toBe(colour('open-polls'))
+    expect(colour('players-still-to-answer')).toBe(colour('closing-soon'))
+    expect(colour('players-still-to-answer')).not.toBe(colour('open-polls'))
   })
 
   it('keeps the neutral tone at zero', async () => {
-    getAvailabilitySummary.mockResolvedValue({ ...summary, answersAwaited: 0, closingSoon: 0 })
+    getAvailabilitySummary.mockResolvedValue({ ...summary, playersStillToAnswer: 0, closingSoon: 0 })
     renderAt('/manage/availability')
 
     await waitFor(() => expect(values()).toHaveLength(4))
     const colour = (id: string) => getComputedStyle(screen.getByTestId(`page-counter-${id}`).querySelector('b') as HTMLElement).color
-    expect(colour('answers-awaited')).toBe(colour('open-polls'))
+    expect(colour('players-still-to-answer')).toBe(colour('open-polls'))
     expect(colour('closing-soon')).toBe(colour('open-polls'))
   })
 
@@ -285,6 +303,65 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
     expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
     expect(screen.getByText(/^Polls view for club-1/)).toBeInTheDocument()
+  })
+
+  it('refetches with the section filter and shows it in the scope line', async () => {
+    const user = userEvent.setup()
+    renderAt('/manage/availability')
+    await waitFor(() => expect(values()).toHaveLength(4))
+    expect(screen.queryByTestId('counters-scope')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'pick section' }))
+
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ sectionId: 'sec-1' })),
+    )
+    expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Vets › Over 40')
+  })
+
+  it('does not send or show the league and team filters until the list filters by them (slice 3)', async () => {
+    const user = userEvent.setup()
+    renderAt('/manage/availability')
+    await waitFor(() => expect(values()).toHaveLength(4))
+    const calls = getAvailabilitySummary.mock.calls.length
+
+    await user.click(screen.getByRole('button', { name: 'pick league and team' }))
+    await user.click(screen.getByRole('button', { name: 'pick section' }))
+
+    await waitFor(() => expect(getAvailabilitySummary.mock.calls.length).toBeGreaterThan(calls))
+    for (const [, sent] of getAvailabilitySummary.mock.calls) {
+      expect(sent).not.toHaveProperty('leagueId')
+      expect(sent).not.toHaveProperty('teamId')
+    }
+    expect(await screen.findByTestId('counters-scope')).toHaveTextContent(/^Showing: Vets › Over 40$/)
+  })
+
+  it('follows the poll type toggle and Show closed, and reads Polls shown when closed are included', async () => {
+    const user = userEvent.setup()
+    renderAt('/manage/availability')
+    await waitFor(() => expect(values()).toHaveLength(4))
+    expect(screen.getByText('Open polls')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'toggle group' }))
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ type: 'SQUAD', includeClosed: false })),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'toggle closed' }))
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ type: 'SQUAD', includeClosed: true })),
+    )
+    expect(await screen.findByText('Polls shown')).toBeInTheDocument()
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('presets Show closed from ?showClosed=true', async () => {
+    renderAt('/manage/availability?showClosed=true')
+
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', expect.objectContaining({ includeClosed: true })),
+    )
+    expect(await screen.findByText('Polls shown')).toBeInTheDocument()
   })
 
   it('renders no counters and makes no request on Players and Coverage', () => {

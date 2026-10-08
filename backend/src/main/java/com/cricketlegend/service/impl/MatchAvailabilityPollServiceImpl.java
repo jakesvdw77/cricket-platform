@@ -27,6 +27,7 @@ import com.cricketlegend.service.AvailabilityPollSquadResolver;
 import com.cricketlegend.service.MatchAvailabilityPollService;
 import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.support.AutoCloseSchedule;
+import com.cricketlegend.service.support.AvailabilityPollFilter;
 import com.cricketlegend.service.support.ReopenWindow;
 import java.time.Clock;
 import java.time.Instant;
@@ -77,9 +78,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollService {
 
     private static final Logger log = LoggerFactory.getLogger(MatchAvailabilityPollServiceImpl.class);
-
-    /** Server-side cap on {@link #listClosedForClub}: the 50 most recent closed polls. */
-    public static final int CLOSED_POLLS_LIMIT = 50;
 
     private final MatchRepository matchRepository;
     private final MatchAvailabilityPollRepository matchAvailabilityPollRepository;
@@ -307,7 +305,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     }
 
     /**
-     * Closed squad polls, most recent match first, capped at {@link #CLOSED_POLLS_LIMIT} (the 50
+     * Closed squad polls, most recent match first, capped at {@link AvailabilityPollFilter#CLOSED_POLLS_LIMIT} (the 50
      * most recent that the caller can reach — closed history is otherwise unbounded). Same
      * section-scope narrowing and response shape as {@link #listOpenForClub}.
      */
@@ -322,7 +320,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 clubId,
                 sectionId,
                 matchAvailabilityPollRepository.findClosedByMatchClubId(clubId),
-                CLOSED_POLLS_LIMIT);
+                AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
     }
 
     /**
@@ -351,8 +349,8 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 break;
             }
             Match match = matchesById.get(poll.getMatchId());
-            if (match == null) {
-                continue;
+            if (match == null || !match.isActive()) {
+                continue; // polls of deactivated matches are hidden everywhere (docs/specs/083)
             }
             Set<UUID> matchSectionIds =
                     accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId());

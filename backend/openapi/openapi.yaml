@@ -4586,6 +4586,40 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ALL
+          enum:
+          - ALL
+          - GROUP
+          - SQUAD
+      - name: includeClosed
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           description: OK
@@ -6310,7 +6344,7 @@ components:
           - "null"
     AvailabilitySummaryDto:
       type: object
-      description: "Availability counters over the open polls in the caller's scope. closingSoon counts open polls closing within the next 48 hours."
+      description: "Availability counters over the polls shown in the caller's scope, narrowed by the optional league, section, team, type and includeClosed filters (open polls only unless includeClosed). playersStillToAnswer is the number of distinct players who still owe at least one answer in the polls shown. closingSoon counts open polls closing within the next 48 hours."
       properties:
         openPolls:
           type: integer
@@ -6321,9 +6355,9 @@ components:
         playersInAudience:
           type: integer
           format: int32
-        answersAwaited:
+        playersStillToAnswer:
           type: integer
-          format: int64
+          format: int32
         closingSoon:
           type: integer
           format: int32

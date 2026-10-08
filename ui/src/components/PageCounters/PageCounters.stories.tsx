@@ -13,7 +13,7 @@ type Story = StoryObj<typeof PageCounters>
 const base = [
   { id: 'open', value: 4, label: 'Open polls' },
   { id: 'responded', value: '18 / 24', label: 'Players responded' },
-  { id: 'awaited', value: 6, label: 'Answers awaited' },
+  { id: 'awaited', value: 6, label: 'Players still to answer' },
   { id: 'closing', value: 2, label: 'Close in 48 hours' },
 ]
 

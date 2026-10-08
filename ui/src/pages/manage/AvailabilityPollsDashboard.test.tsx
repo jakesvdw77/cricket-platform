@@ -506,13 +506,15 @@ describe('AvailabilityPollsDashboard', () => {
       expect(screen.queryByLabelText('Type')).not.toBeInTheDocument()
     })
 
-    it('puts the scope text, the sort link and the toggles on the line above the cards', async () => {
+    it('puts the count, the sort link and the toggles on the line above the cards', async () => {
       listSections.mockResolvedValue([JUNIORS])
       listOpenPolls.mockResolvedValue([makePoll()])
       localStorage.setItem('availability:filters:test-club-id', JSON.stringify({ leagueId: null, sectionId: 'section-1', teamId: null, seasonId: null }))
       renderDashboard('test-club-id')
 
-      expect(await screen.findByText(/^Showing 1 open poll · Juniors/)).toBeInTheDocument()
+      // The scope ("Showing: Juniors") is the hub counters' caption now, not part of this line.
+      const countLine = await screen.findByText(/^Showing 1 open poll/)
+      expect(countLine).not.toHaveTextContent('Juniors')
       expect(screen.getByRole('button', { name: 'soonest first' })).toBeInTheDocument()
       expect(screen.getByRole('checkbox', { name: 'Show closed polls' })).not.toBeChecked()
     })

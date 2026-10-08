@@ -41,6 +41,7 @@ import com.cricketlegend.service.SectionAvailabilityAudienceResolver;
 import com.cricketlegend.service.SectionAvailabilityMatchResolver;
 import com.cricketlegend.service.SectionAvailabilityRoundService;
 import com.cricketlegend.service.support.AutoCloseSchedule;
+import com.cricketlegend.service.support.AvailabilityPollFilter;
 import com.cricketlegend.service.support.ReopenWindow;
 import com.cricketlegend.service.support.RoundSpan;
 import com.cricketlegend.service.support.RoundWindows;
@@ -103,9 +104,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityRoundService {
 
     private static final Logger log = LoggerFactory.getLogger(SectionAvailabilityRoundServiceImpl.class);
-
-    /** Server-side cap on {@code list(..., open=false)}: the 50 most recent closed rounds. */
-    public static final int CLOSED_ROUNDS_LIMIT = 50;
 
     private final SectionAvailabilityRoundRepository sectionAvailabilityRoundRepository;
     private final SectionAvailabilityWindowRepository sectionAvailabilityWindowRepository;
@@ -177,7 +175,7 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             // Closed history is unbounded: most recent first, capped at the 50 most recent.
             rounds = rounds.sorted(Comparator.comparing(
                             SectionAvailabilityRound::getLastMatchDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                    .limit(CLOSED_ROUNDS_LIMIT);
+                    .limit(AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
         }
         List<SectionAvailabilityRound> visible = rounds.toList();
         // One batched walk for every returned round instead of three queries per round.

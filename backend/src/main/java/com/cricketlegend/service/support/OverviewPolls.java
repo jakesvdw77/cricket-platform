@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +69,7 @@ public class OverviewPolls {
     private final PlayerSectionRepository playerSectionRepository;
     private final PlayerProfileRepository playerProfileRepository;
     private final AccessService accessService;
+    private final AvailabilityPollFilters pollFilters;
 
     public OverviewPolls(
             MatchAvailabilityPollRepository pollRepository,
@@ -80,7 +82,8 @@ public class OverviewPolls {
             SectionAvailabilityResponseRepository responseRepository,
             PlayerSectionRepository playerSectionRepository,
             PlayerProfileRepository playerProfileRepository,
-            AccessService accessService) {
+            AccessService accessService,
+            AvailabilityPollFilters pollFilters) {
         this.pollRepository = pollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
         this.squadRepository = squadRepository;
@@ -92,14 +95,20 @@ public class OverviewPolls {
         this.playerSectionRepository = playerSectionRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.accessService = accessService;
+        this.pollFilters = pollFilters;
     }
 
     /**
      * An open poll with the players behind its counts: {@code audience} is who was asked, {@code
      * responded} the audience members with at least one real answer (for a group poll, in any one
-     * window, unlike {@code poll.repliedCount()} which needs every window).
+     * window, unlike {@code poll.repliedCount()} which needs every window); {@code awaiting} the
+     * audience members who have not fully answered (a squad member without a real answer; for a
+     * group poll, anyone who has not answered every window), so {@code awaiting.size()} equals
+     * {@code totalCount - repliedCount}; {@code open} is false for a closed poll (only returned
+     * when the filter includes closed polls).
      */
-    public record OpenPoll(OverviewPollDto poll, Set<UUID> audience, Set<UUID> responded) {
+    public record OpenPoll(
+            OverviewPollDto poll, Set<UUID> audience, Set<UUID> responded, Set<UUID> awaiting, boolean open) {
     }
 
     /** All open in-scope polls, squad and group, unsorted. */
@@ -109,13 +118,32 @@ public class OverviewPolls {
 
     /** The same polls as {@link #openPolls}, from the same queries, each with its player sets. */
     public List<OpenPoll> openPollsWithPlayers(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
-        List<OpenPoll> result = new ArrayList<>(squadPolls(clubId, accessibleSectionIds));
-        result.addAll(groupPolls(clubId, accessibleSectionIds));
+        return pollsWithPlayers(clubId, accessibleSectionIds, AvailabilityPollFilter.OPEN_ONLY);
+    }
+
+    /**
+     * The in-scope polls matching {@code filter} (docs/specs/083): open ones, plus closed ones (the
+     * {@value AvailabilityPollFilter#CLOSED_POLLS_LIMIT} most recent of each kind that match) when {@code filter.includeClosed()}.
+     */
+    public List<OpenPoll> pollsWithPlayers(
+            UUID clubId, Optional<Set<UUID>> accessibleSectionIds, AvailabilityPollFilter filter) {
+        List<OpenPoll> result = new ArrayList<>();
+        if (filter.includesSquad()) {
+            result.addAll(squadPolls(clubId, accessibleSectionIds, filter));
+        }
+        if (filter.includesGroup()) {
+            result.addAll(groupPolls(clubId, accessibleSectionIds, filter));
+        }
         return result;
     }
 
-    private List<OpenPoll> squadPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
-        List<MatchAvailabilityPoll> polls = pollRepository.findOpenByMatchClubId(clubId);
+    private List<OpenPoll> squadPolls(
+            UUID clubId, Optional<Set<UUID>> accessibleSectionIds, AvailabilityPollFilter filter) {
+        List<MatchAvailabilityPoll> polls = new ArrayList<>(pollRepository.findOpenByMatchClubId(clubId));
+        int openCount = polls.size();
+        if (filter.includeClosed()) {
+            polls.addAll(pollRepository.findClosedByMatchClubId(clubId));
+        }
         if (polls.isEmpty()) {
             return List.of();
         }
@@ -135,9 +163,22 @@ public class OverviewPolls {
         Map<UUID, Team> teamsById = teamRepository.findAllById(teamIds).stream()
                 .collect(Collectors.toMap(Team::getId, Function.identity()));
 
-        List<MatchAvailabilityPoll> scoped = polls.stream()
-                .filter(poll -> inScope(clubId, matchesById.get(poll.getMatchId()), teamsById, accessibleSectionIds))
-                .toList();
+        List<MatchAvailabilityPoll> scoped = new ArrayList<>();
+        Set<UUID> openIds = new HashSet<>();
+        for (int i = 0; i < polls.size(); i++) {
+            MatchAvailabilityPoll poll = polls.get(i);
+            Match match = matchesById.get(poll.getMatchId());
+            if (!inScope(clubId, match, teamsById, accessibleSectionIds)
+                    || !filter.matchesSquad(poll, match, filterSectionIds(clubId, match, teamsById, filter))) {
+                continue;
+            }
+            if (i < openCount) {
+                openIds.add(poll.getId());
+                scoped.add(poll);
+            } else if (scoped.size() - openIds.size() < AvailabilityPollFilter.CLOSED_POLLS_LIMIT) {
+                scoped.add(poll);
+            }
+        }
         if (scoped.isEmpty()) {
             return List.of();
         }
@@ -166,6 +207,8 @@ public class OverviewPolls {
             Set<UUID> squad = squads.getOrDefault(new SquadKey(poll.getTeamId(), match.getSeasonId()), Set.of());
             Set<UUID> answered = new HashSet<>(answeredByPollId.getOrDefault(poll.getId(), Set.of()));
             answered.retainAll(squad);
+            Set<UUID> awaiting = new HashSet<>(squad);
+            awaiting.removeAll(answered);
             result.add(new OpenPoll(
                     new OverviewPollDto(
                             AvailabilityPollType.SQUAD,
@@ -176,9 +219,20 @@ public class OverviewPolls {
                             squad.size(),
                             poll.getScheduledCloseAt()),
                     squad,
-                    answered));
+                    answered,
+                    awaiting,
+                    openIds.contains(poll.getId())));
         }
         return result;
+    }
+
+    /** The match's own-club sections, only worked out when the filter narrows by section. */
+    private Set<UUID> filterSectionIds(
+            UUID clubId, Match match, Map<UUID, Team> teamsById, AvailabilityPollFilter filter) {
+        if (filter.sectionIds() == null || match == null) {
+            return Set.of();
+        }
+        return accessService.resolveMatchSectionIds(clubId, match.getHomeTeamId(), match.getAwayTeamId(), teamsById);
     }
 
     private boolean inScope(
@@ -203,11 +257,30 @@ public class OverviewPolls {
         return own + " v " + opponent + ", " + date;
     }
 
-    private List<OpenPoll> groupPolls(UUID clubId, Optional<Set<UUID>> accessibleSectionIds) {
-        List<SectionAvailabilityRound> rounds = roundRepository.findByClubIdAndOpenTrue(clubId).stream()
-                .filter(round -> accessibleSectionIds.isEmpty()
-                        || accessibleSectionIds.get().contains(round.getSectionId()))
+    private List<OpenPoll> groupPolls(
+            UUID clubId, Optional<Set<UUID>> accessibleSectionIds, AvailabilityPollFilter filter) {
+        List<SectionAvailabilityRound> inScope = (filter.includeClosed()
+                        ? roundRepository.findByClubId(clubId)
+                        : roundRepository.findByClubIdAndOpenTrue(clubId))
+                .stream()
+                        .filter(round -> accessibleSectionIds.isEmpty()
+                                || accessibleSectionIds.get().contains(round.getSectionId()))
+                        .toList();
+        Map<UUID, List<Match>> slotMatches = filter.needsGroupMatches() && !inScope.isEmpty()
+                ? pollFilters.slotMatchesByRoundId(
+                        inScope.stream().map(SectionAvailabilityRound::getId).toList())
+                : Map.of();
+        List<SectionAvailabilityRound> matching = inScope.stream()
+                .filter(round -> filter.matchesGroup(round, slotMatches.getOrDefault(round.getId(), List.of())))
                 .toList();
+        List<SectionAvailabilityRound> rounds = new ArrayList<>(
+                matching.stream().filter(SectionAvailabilityRound::isOpen).toList());
+        rounds.addAll(matching.stream()
+                .filter(round -> !round.isOpen())
+                .sorted(Comparator.comparing(
+                        SectionAvailabilityRound::getLastMatchDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(AvailabilityPollFilter.CLOSED_POLLS_LIMIT)
+                .toList());
         if (rounds.isEmpty()) {
             return List.of();
         }
@@ -233,10 +306,12 @@ public class OverviewPolls {
         for (SectionAvailabilityRound round : rounds) {
             Set<UUID> audience = audienceBySectionId.getOrDefault(round.getSectionId(), Set.of());
             List<UUID> windowIds = windowIdsByRoundId.getOrDefault(round.getId(), List.of());
-            long replied = audience.stream()
+            Set<UUID> repliedEvery = audience.stream()
                     .filter(player -> windowIds.stream()
                             .allMatch(window -> answeredByWindowId.getOrDefault(window, Set.of()).contains(player)))
-                    .count();
+                    .collect(Collectors.toSet());
+            Set<UUID> awaiting = new HashSet<>(audience);
+            awaiting.removeAll(repliedEvery);
             Set<UUID> responded = audience.stream()
                     .filter(player -> windowIds.stream()
                             .anyMatch(window -> answeredByWindowId.getOrDefault(window, Set.of()).contains(player)))
@@ -247,11 +322,13 @@ public class OverviewPolls {
                             round.getId(),
                             null,
                             round.getDescription(),
-                            replied,
+                            repliedEvery.size(),
                             audience.size(),
                             round.getScheduledCloseAt()),
                     audience,
-                    responded));
+                    responded,
+                    awaiting,
+                    round.isOpen()));
         }
         return result;
     }

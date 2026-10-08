@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.AvailabilityPollType;
+import com.cricketlegend.domain.AvailabilityPollTypeFilter;
 import com.cricketlegend.domain.AvailabilityStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
@@ -33,6 +34,7 @@ import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,6 +91,9 @@ class OverviewPollsTest {
     @Mock
     private AccessService accessService;
 
+    @Mock
+    private AvailabilityPollFilters pollFilters;
+
     private OverviewPolls polls;
     private final Team home = Team.builder().id(UUID.randomUUID()).clubId(CLUB_ID).sectionId(SENIORS)
             .name("Villagers 1").build();
@@ -97,7 +102,7 @@ class OverviewPollsTest {
     void setUp() {
         polls = new OverviewPolls(pollRepository, playerAvailabilityRepository, squadRepository, matchRepository,
                 teamRepository, roundRepository, windowRepository, responseRepository, playerSectionRepository,
-                playerProfileRepository, accessService);
+                playerProfileRepository, accessService, pollFilters);
         lenient().when(pollRepository.findOpenByMatchClubId(CLUB_ID)).thenReturn(List.of());
         lenient().when(roundRepository.findByClubIdAndOpenTrue(CLUB_ID)).thenReturn(List.of());
     }
@@ -283,6 +288,8 @@ class OverviewPollsTest {
             assertThat(open.audience()).containsExactlyInAnyOrder(a, b);
             assertThat(open.responded()).containsExactly(a);
             assertThat(open.poll().repliedCount()).isEqualTo(1);
+            assertThat(open.awaiting()).containsExactly(b);
+            assertThat(open.open()).isTrue();
         });
     }
 
@@ -320,6 +327,211 @@ class OverviewPollsTest {
             assertThat(open.responded()).containsExactlyInAnyOrder(both, onlyFirst);
             // the poll's own figure still needs every window
             assertThat(open.poll().repliedCount()).isEqualTo(1);
+            // awaiting = audience minus the 'replied every window' set
+            assertThat(open.awaiting()).containsExactlyInAnyOrder(onlyFirst, none);
+            assertThat(open.awaiting()).hasSize((int) (open.poll().totalCount() - open.poll().repliedCount()));
         });
+    }
+
+    // ---- docs/specs/083: filters and closed polls ----
+
+    private static AvailabilityPollFilter filter(
+            UUID leagueId, Set<UUID> sectionIds, UUID teamId, AvailabilityPollTypeFilter type, boolean includeClosed) {
+        return new AvailabilityPollFilter(leagueId, sectionIds, teamId, type, includeClosed);
+    }
+
+    private Match matchInLeague(UUID leagueId) {
+        return Match.builder().id(UUID.randomUUID()).clubId(CLUB_ID).homeTeamId(home.getId())
+                .awayTeamName("Occasionals").leagueId(leagueId).seasonId(SEASON)
+                .matchDate(Instant.parse("2031-06-07T10:00:00Z")).active(true).build();
+    }
+
+    private void stubSquadWorld(List<MatchAvailabilityPoll> open, List<MatchAvailabilityPoll> closed, Match... matches) {
+        when(pollRepository.findOpenByMatchClubId(CLUB_ID)).thenReturn(open);
+        lenient().when(pollRepository.findClosedByMatchClubId(CLUB_ID)).thenReturn(closed);
+        when(matchRepository.findAllById(anyCollection())).thenReturn(List.of(matches));
+        when(teamRepository.findAllById(anyCollection())).thenReturn(List.of(home));
+        lenient().when(squadRepository.findByTeamIdInAndSeasonIdIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of());
+        lenient().when(playerAvailabilityRepository.findByPollIdIn(anyCollection())).thenReturn(List.of());
+    }
+
+    @Test
+    void squadPollsAreNarrowedByLeague() {
+        UUID league = UUID.randomUUID();
+        Match inLeague = matchInLeague(league);
+        Match otherLeague = matchInLeague(UUID.randomUUID());
+        Match noLeague = matchInLeague(null);
+        MatchAvailabilityPoll keep = squadPoll(inLeague, null);
+        stubSquadWorld(List.of(keep, squadPoll(otherLeague, null), squadPoll(noLeague, null)), List.of(),
+                inLeague, otherLeague, noLeague);
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(
+                CLUB_ID, Optional.empty(), filter(league, null, null, AvailabilityPollTypeFilter.ALL, false));
+
+        assertThat(result).extracting(open -> open.poll().id()).containsExactly(keep.getId());
+    }
+
+    @Test
+    void squadPollsAreNarrowedByTeam() {
+        Match match = match(true);
+        UUID otherTeam = UUID.randomUUID();
+        MatchAvailabilityPoll mine = squadPoll(match, null);
+        MatchAvailabilityPoll theirs = MatchAvailabilityPoll.builder().id(UUID.randomUUID()).matchId(match.getId())
+                .teamId(otherTeam).open(true).build();
+        stubSquadWorld(List.of(mine, theirs), List.of(), match);
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(
+                CLUB_ID, Optional.empty(), filter(null, null, home.getId(), AvailabilityPollTypeFilter.SQUAD, false));
+
+        assertThat(result).extracting(open -> open.poll().id()).containsExactly(mine.getId());
+    }
+
+    @Test
+    void squadPollsAreNarrowedBySectionThroughTheMatchsOwnClubSections() {
+        Match seniorsMatch = match(true);
+        Match juniorsMatch = match(true);
+        MatchAvailabilityPoll seniorsPoll = squadPoll(seniorsMatch, null);
+        MatchAvailabilityPoll juniorsPoll = squadPoll(juniorsMatch, null);
+        stubSquadWorld(List.of(seniorsPoll, juniorsPoll), List.of(), seniorsMatch, juniorsMatch);
+        Map<UUID, Team> teams = Map.of(home.getId(), home);
+        when(accessService.resolveMatchSectionIds(CLUB_ID, home.getId(), null, teams))
+                .thenReturn(Set.of(SENIORS), Set.of(JUNIORS));
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(null, Set.of(JUNIORS), null, AvailabilityPollTypeFilter.ALL, false));
+
+        assertThat(result).extracting(open -> open.poll().id()).containsExactly(juniorsPoll.getId());
+    }
+
+    @Test
+    void typeGroupLeavesSquadPollsUnloadedAndTypeSquadLeavesGroupRoundsUnloaded() {
+        when(roundRepository.findByClubIdAndOpenTrue(CLUB_ID)).thenReturn(List.of());
+
+        polls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter(null, null, null, AvailabilityPollTypeFilter.GROUP, false));
+        verifyNoInteractions(pollRepository);
+
+        polls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter(null, null, null, AvailabilityPollTypeFilter.SQUAD, false));
+        org.mockito.Mockito.verify(pollRepository).findOpenByMatchClubId(CLUB_ID);
+        org.mockito.Mockito.verify(roundRepository, org.mockito.Mockito.times(1)).findByClubIdAndOpenTrue(CLUB_ID);
+    }
+
+    @Test
+    void closedSquadPollsAreOnlyReturnedWhenAskedForAndAreMarkedClosed() {
+        Match match = match(true);
+        MatchAvailabilityPoll open = squadPoll(match, null);
+        MatchAvailabilityPoll closed = MatchAvailabilityPoll.builder().id(UUID.randomUUID()).matchId(match.getId())
+                .teamId(home.getId()).open(false).build();
+        stubSquadWorld(List.of(open), List.of(closed), match);
+
+        List<OverviewPolls.OpenPoll> openOnly = polls.pollsWithPlayers(
+                CLUB_ID, Optional.empty(), AvailabilityPollFilter.OPEN_ONLY);
+        List<OverviewPolls.OpenPoll> withClosed = polls.pollsWithPlayers(
+                CLUB_ID, Optional.empty(), filter(null, null, null, AvailabilityPollTypeFilter.ALL, true));
+
+        assertThat(openOnly).extracting(p -> p.poll().id()).containsExactly(open.getId());
+        assertThat(withClosed).extracting(p -> p.poll().id()).containsExactly(open.getId(), closed.getId());
+        assertThat(withClosed).extracting(OverviewPolls.OpenPoll::open).containsExactly(true, false);
+    }
+
+    @Test
+    void closedSquadPollsAreCappedAtTheFiftyMostRecentThatMatch() {
+        Match match = match(true);
+        List<MatchAvailabilityPoll> closed = new ArrayList<>();
+        for (int i = 0; i < AvailabilityPollFilter.CLOSED_POLLS_LIMIT + 5; i++) {
+            closed.add(MatchAvailabilityPoll.builder().id(UUID.randomUUID()).matchId(match.getId())
+                    .teamId(home.getId()).open(false).build());
+        }
+        MatchAvailabilityPoll open = squadPoll(match, null);
+        stubSquadWorld(List.of(open), closed, match);
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(
+                CLUB_ID, Optional.empty(), filter(null, null, null, AvailabilityPollTypeFilter.ALL, true));
+
+        assertThat(result).hasSize(1 + AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
+        assertThat(result.stream().filter(OverviewPolls.OpenPoll::open)).hasSize(1);
+        assertThat(result.stream().skip(1).map(p -> p.poll().id()).toList())
+                .containsExactlyElementsOf(closed.subList(0, AvailabilityPollFilter.CLOSED_POLLS_LIMIT).stream()
+                        .map(MatchAvailabilityPoll::getId).toList());
+    }
+
+    private SectionAvailabilityRound round(UUID sectionId, boolean open, LocalDate lastMatchDate) {
+        return SectionAvailabilityRound.builder().id(UUID.randomUUID()).clubId(CLUB_ID).sectionId(sectionId)
+                .description("r").open(open).lastMatchDate(lastMatchDate).build();
+    }
+
+    private void stubEmptyGroupDetail() {
+        lenient().when(windowRepository.findByRoundIdIn(anyCollection())).thenReturn(List.of());
+        lenient().when(playerSectionRepository.findBySectionIdIn(anyCollection())).thenReturn(List.of());
+    }
+
+    @Test
+    void groupRoundsAreNarrowedBySection() {
+        SectionAvailabilityRound seniors = round(SENIORS, true, null);
+        SectionAvailabilityRound juniors = round(JUNIORS, true, null);
+        when(roundRepository.findByClubIdAndOpenTrue(CLUB_ID)).thenReturn(List.of(seniors, juniors));
+        stubEmptyGroupDetail();
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(null, Set.of(JUNIORS), null, AvailabilityPollTypeFilter.GROUP, false));
+
+        assertThat(result).extracting(p -> p.poll().id()).containsExactly(juniors.getId());
+        verifyNoInteractions(pollFilters);
+    }
+
+    @Test
+    void groupRoundsAreNarrowedByTheLeagueAndTeamOfTheirSlotMatches() {
+        UUID league = UUID.randomUUID();
+        SectionAvailabilityRound inLeague = round(SENIORS, true, null);
+        SectionAvailabilityRound otherLeague = round(SENIORS, true, null);
+        SectionAvailabilityRound noSlots = round(SENIORS, true, null);
+        when(roundRepository.findByClubIdAndOpenTrue(CLUB_ID)).thenReturn(List.of(inLeague, otherLeague, noSlots));
+        Match leagueMatch = matchInLeague(league);
+        Match elsewhere = matchInLeague(UUID.randomUUID());
+        when(pollFilters.slotMatchesByRoundId(anyCollection())).thenReturn(Map.of(
+                inLeague.getId(), List.of(elsewhere, leagueMatch), otherLeague.getId(), List.of(elsewhere)));
+        stubEmptyGroupDetail();
+
+        List<OverviewPolls.OpenPoll> byLeague = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(league, null, null, AvailabilityPollTypeFilter.GROUP, false));
+        List<OverviewPolls.OpenPoll> byTeam = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(null, null, home.getId(), AvailabilityPollTypeFilter.GROUP, false));
+        List<OverviewPolls.OpenPoll> byUnknownTeam = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(null, null, UUID.randomUUID(), AvailabilityPollTypeFilter.GROUP, false));
+
+        assertThat(byLeague).extracting(p -> p.poll().id()).containsExactly(inLeague.getId());
+        assertThat(byTeam).extracting(p -> p.poll().id()).containsExactlyInAnyOrder(inLeague.getId(), otherLeague.getId());
+        assertThat(byUnknownTeam).isEmpty();
+    }
+
+    @Test
+    void closedRoundsAreReturnedMostRecentFirstCappedAndMarkedClosed() {
+        SectionAvailabilityRound open = round(SENIORS, true, LocalDate.of(2031, 1, 1));
+        List<SectionAvailabilityRound> all = new ArrayList<>(List.of(open));
+        for (int i = 0; i < AvailabilityPollFilter.CLOSED_POLLS_LIMIT + 3; i++) {
+            all.add(round(SENIORS, false, LocalDate.of(2030, 1, 1).plusDays(i)));
+        }
+        SectionAvailabilityRound newest = all.get(all.size() - 1);
+        when(roundRepository.findByClubId(CLUB_ID)).thenReturn(all);
+        stubEmptyGroupDetail();
+
+        List<OverviewPolls.OpenPoll> result = polls.pollsWithPlayers(CLUB_ID, Optional.empty(),
+                filter(null, null, null, AvailabilityPollTypeFilter.GROUP, true));
+
+        assertThat(result).hasSize(1 + AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
+        assertThat(result.get(0).open()).isTrue();
+        assertThat(result.get(1).poll().id()).isEqualTo(newest.getId());
+        assertThat(result.stream().skip(1)).allMatch(p -> !p.open());
+    }
+
+    @Test
+    void openOnlyFilterKeepsTodaysQueries() {
+        polls.pollsWithPlayers(CLUB_ID, Optional.empty(), AvailabilityPollFilter.OPEN_ONLY);
+
+        org.mockito.Mockito.verify(pollRepository).findOpenByMatchClubId(CLUB_ID);
+        org.mockito.Mockito.verify(roundRepository).findByClubIdAndOpenTrue(CLUB_ID);
+        org.mockito.Mockito.verify(pollRepository, org.mockito.Mockito.never()).findClosedByMatchClubId(CLUB_ID);
+        org.mockito.Mockito.verify(roundRepository, org.mockito.Mockito.never()).findByClubId(CLUB_ID);
+        verifyNoInteractions(pollFilters);
     }
 }

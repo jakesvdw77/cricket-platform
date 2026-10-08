@@ -140,7 +140,7 @@ public class MatchAvailabilityPollController {
 
     /**
      * Closed squad polls, most recent match first, capped server-side at the 50 most recent (see
-     * {@code MatchAvailabilityPollServiceImpl.CLOSED_POLLS_LIMIT}). Mirrors {@link #listOpen}.
+     * {@code AvailabilityPollFilter.CLOSED_POLLS_LIMIT}). Mirrors {@link #listOpen}.
      */
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/availability-polls/closed")

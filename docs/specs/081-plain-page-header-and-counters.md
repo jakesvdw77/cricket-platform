@@ -38,7 +38,7 @@ Each page with counters gets one small read-only summary endpoint under the mana
 
 | Page | Endpoint | Returns |
 |---|---|---|
-| Availability | `GET /api/v1/manage/clubs/{clubId}/availability/summary` | `openPolls`, `playersResponded`, `playersInAudience`, `answersAwaited`, `closingSoon` (open polls closing within 48 hours) |
+| Availability | `GET /api/v1/manage/clubs/{clubId}/availability/summary` | `openPolls`, `playersResponded`, `playersInAudience`, `answersAwaited` (renamed `playersStillToAnswer`, a distinct-player count, and filters added in 083), `closingSoon` (open polls closing within 48 hours) |
 | Players | `GET /api/v1/manage/clubs/{clubId}/players/summary` | `active`, `inSquadThisSeason`, `missingDateOfBirth`, `newThisMonth` |
 | Matches | `GET /api/v1/manage/clubs/{clubId}/matches/summary` | `thisWeek`, `teamsNotAnnounced`, `withoutPoll`, `playedThisSeason` |
 
