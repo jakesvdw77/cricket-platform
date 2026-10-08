@@ -119,4 +119,24 @@ describe('ManageScreenHeader', () => {
     expect(heading).toHaveStyle({ fontWeight: '700' })
     expect(heading).not.toHaveStyle({ fontWeight: '600' })
   })
+
+  it('renders a subtitle directly under the title in the same cell, and nothing when omitted', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Availability" subtitle="Showing: Vets" />
+      </MemoryRouter>,
+    )
+    const heading = screen.getByRole('heading', { level: 1, name: 'Availability' })
+    const subtitle = screen.getByTestId('header-subtitle')
+    expect(subtitle).toHaveTextContent('Showing: Vets')
+    expect(subtitle.parentElement).toBe(heading.parentElement)
+    expect(heading.nextElementSibling).toBe(subtitle)
+
+    rerender(
+      <MemoryRouter>
+        <ManageScreenHeader title="Availability" />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
+  })
 })

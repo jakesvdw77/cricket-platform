@@ -317,14 +317,14 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     const user = userEvent.setup()
     renderAt('/manage/availability')
     await waitFor(() => expect(values()).toHaveLength(4))
-    expect(screen.queryByTestId('counters-scope')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'pick section' }))
 
     await waitFor(() =>
       expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ sectionId: 'sec-1' })),
     )
-    expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Vets › Over 40')
+    expect(await screen.findByTestId('header-subtitle')).toHaveTextContent('Showing: Vets › Over 40')
   })
 
   it('follows the league and team filters and names them in the scope line', async () => {
@@ -337,7 +337,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     await waitFor(() =>
       expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ leagueId: 'lg-1', teamId: 'tm-1' })),
     )
-    expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Over 40 League · Lions')
+    expect(await screen.findByTestId('header-subtitle')).toHaveTextContent('Showing: Over 40 League · Lions')
   })
 
   it('drops a stored team that is not among the teams, from the request and the scope line', async () => {
@@ -346,7 +346,30 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
 
     await waitFor(() => expect(values()).toHaveLength(4))
     expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', expect.objectContaining({ teamId: null }))
-    expect(screen.queryByTestId('counters-scope')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
+  })
+
+  it('puts the scope under the Availability title, only on Polls, and keeps it when the counters fail', async () => {
+    const user = userEvent.setup()
+    getAvailabilitySummary.mockRejectedValue(new Error('boom'))
+    renderAt('/manage/availability')
+    await user.click(screen.getByRole('button', { name: 'pick section' }))
+
+    const subtitle = await screen.findByTestId('header-subtitle')
+    expect(subtitle).toHaveTextContent('Showing: Vets › Over 40')
+    expect(subtitle.previousElementSibling).toBe(screen.getByRole('heading', { level: 1, name: 'Availability' }))
+    await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('shows no scope caption on Players or Match-day cover', async () => {
+    localStorage.setItem('availability:filters:club-1', JSON.stringify({ leagueId: null, sectionId: 'sec-1', teamId: null }))
+    for (const path of ['/manage/availability/players', '/manage/availability/coverage']) {
+      const { unmount } = renderAt(path)
+      await screen.findByTestId('ctx')
+      expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('holds the summary request and hides the counters when the team list fails', async () => {
