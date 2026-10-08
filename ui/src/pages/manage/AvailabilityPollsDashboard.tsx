@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Box, FormControlLabel, Switch } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -24,6 +24,18 @@ type PollListItem =
   | { kind: 'SQUAD'; key: string; sortDate: number; poll: OpenAvailabilityPoll; open: boolean }
   | { kind: 'GROUP'; key: string; sortDate: number; round: SectionAvailabilityRound }
 
+const CLOCK_TICK_MS = 60_000
+const CLOSING_SOON_MS = 48 * 60 * 60 * 1000
+
+function closesWithin48Hours(item: PollListItem, now: number): boolean {
+  const open = item.kind === 'SQUAD' ? item.open : item.round.open
+  const autoClose = item.kind === 'SQUAD' ? item.poll.autoClose : item.round.autoClose
+  const closeAt = item.kind === 'SQUAD' ? item.poll.scheduledCloseAt : item.round.scheduledCloseAt
+  if (!open || !autoClose || !closeAt) return false
+  const time = new Date(closeAt).getTime()
+  return time > now && time <= now + CLOSING_SOON_MS
+}
+
 // docs/specs/064-unified-availability-polls.md: the one place every open poll lives. Extends
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
@@ -41,7 +53,7 @@ type PollListItem =
 export default function AvailabilityPollsDashboard() {
   const {
     clubId, filters, teams: teamOptions, validTeamId: teamId, teamsLoading, teamsError,
-    showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed,
+    showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed, closingSoon, setClosingSoon,
   } = useAvailabilityHub()
   const { sectionId, leagueId } = filters
   const scopeParams = { leagueId: leagueId ?? undefined, sectionId: sectionId ?? undefined, teamId: teamId ?? undefined }
@@ -53,6 +65,16 @@ export default function AvailabilityPollsDashboard() {
   // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
   // covered match first.
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
+
+  // The clock the 48-hour filter reads. It ticks once a minute, and only while the filter is on, so a poll whose
+  // close time passes while the page stays open leaves the list (the lists themselves are not refetched for it).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!closingSoon) return undefined
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS)
+    return () => clearInterval(timer)
+  }, [closingSoon])
 
   const wantSquad = showSquad
   const wantGroup = showGroup
@@ -137,18 +159,21 @@ export default function AvailabilityPollsDashboard() {
   // description and section name - client-side, as both sources are unpaginated.
   const visibleItems = useMemo(() => {
     const term = search.trim().toLowerCase()
+    // docs/specs/084: "Close in 48 hours" - the backend's rule (closeAt after now and not after now + 48 h), on
+    // open polls only. A poll without a scheduled close (autoClose off) never matches.
+    const base = closingSoon ? allItems.filter((item) => closesWithin48Hours(item, now)) : allItems
     const filtered = term
-      ? allItems.filter((item) => {
+      ? base.filter((item) => {
           const haystack =
             item.kind === 'SQUAD'
               ? squadPollTitle(item.poll, teamsById)
               : `${item.round.description} ${item.round.sectionName}`
           return haystack.toLowerCase().includes(term)
         })
-      : allItems
+      : base
     const sorted = [...filtered].sort((a, b) => a.sortDate - b.sortDate)
     return sort === 'desc' ? sorted.reverse() : sorted
-  }, [allItems, search, sort, teamsById])
+  }, [allItems, search, sort, teamsById, closingSoon, now])
 
   const invalidatePolls = () => {
     queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
@@ -188,7 +213,7 @@ export default function AvailabilityPollsDashboard() {
   const isSearching = search.trim().length > 0
   const pollWord = showClosed ? 'polls' : 'open polls'
   const typeLimited = !(showGroup && showSquad)
-  const isFiltering = isSearching || typeLimited || sectionId !== null || leagueId !== null || teamId !== null
+  const isFiltering = isSearching || typeLimited || closingSoon || sectionId !== null || leagueId !== null || teamId !== null
 
   // The last type toggle left on cannot be switched off.
   const typeToggles = (
@@ -212,6 +237,13 @@ export default function AvailabilityPollsDashboard() {
       sx={{ whiteSpace: 'nowrap', mr: 0 }}
     />
   )
+  const closingSoonToggle = (
+    <FormControlLabel
+      control={<Switch checked={closingSoon} onChange={(event) => setClosingSoon(event.target.checked)} />}
+      label="Closing within 48 h"
+      sx={{ whiteSpace: 'nowrap', mr: 0 }}
+    />
+  )
   const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
 
   return (
@@ -224,8 +256,8 @@ export default function AvailabilityPollsDashboard() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by team, opponent or description"
-        extraChips={
-          typeLimited
+        extraChips={[
+          ...(typeLimited
             ? [
                 {
                   key: 'type',
@@ -236,23 +268,26 @@ export default function AvailabilityPollsDashboard() {
                   },
                 },
               ]
-            : []
-        }
+            : []),
+          ...(closingSoon ? [{ key: 'closing-soon', label: 'Closing within 48 h', onRemove: () => setClosingSoon(false) }] : []),
+        ]}
         viewControls={
           <>
             {typeToggles}
             {closedToggle}
+            {closingSoonToggle}
             {sortLink}
           </>
         }
         onClearedAll={() => {
           setShowGroup(true)
           setShowSquad(true)
+          setClosingSoon(false)
         }}
       />
 
       <ContentControlsLine
-        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}`}
+        scope={`Showing ${visibleItems.length} ${showClosed ? '' : 'open '}${visibleItems.length === 1 ? 'poll' : 'polls'}${closingSoon ? ' closing within 48 hours' : ''}`}
         sortAction={sortLink}
         controls={
           <>

@@ -44,6 +44,10 @@ export interface AvailabilityHubContext {
   setShowSquad: (value: boolean) => void
   showClosed: boolean
   setShowClosed: (value: boolean) => void
+  // docs/specs/084: the "Close in 48 hours" quick filter - only open polls whose scheduled close is within the
+  // next 48 hours. Per-visit like the toggles above, not persisted, not sent to the summary.
+  closingSoon: boolean
+  setClosingSoon: (value: boolean) => void
   // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League". The chosen
   // team's name is included only with withTeam, for the views that actually filter by team (Polls, Players).
   scopeText: (options?: { withTeam?: boolean }) => string
@@ -62,6 +66,7 @@ export function useAvailabilityHubState(
   const [showGroup, setShowGroup] = useState(true)
   const [showSquad, setShowSquad] = useState(true)
   const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
+  const [closingSoon, setClosingSoon] = useState(false)
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId as string),
@@ -102,6 +107,8 @@ export function useAvailabilityHubState(
     setShowSquad,
     showClosed,
     setShowClosed,
+    closingSoon,
+    setClosingSoon,
     scopeText: (options) =>
       scopeFilterText({
         sections,
