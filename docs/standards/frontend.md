@@ -28,7 +28,7 @@ A CI script fails the build if any component folder is missing its test or story
 
 Every list screen (`ProductList` down through `MatchList`, `PlayerList`, `SponsorList`, etc.) composes from the same three pieces, in this order — a new list screen follows this shape rather than inventing its own:
 
-1. **`ManageScreenHeader`** — title (+ back link). Its own primary "create" action (e.g. "Add Match", "Add Player") renders via the `action` prop, top-right alongside the title — not inside the toolbar row below. `action` takes any `ReactNode`, typically a single `Button`.
+1. **`ManageScreenHeader`** — title (+ back link). Its own primary "create" action (e.g. "Add Match", "Add Player") renders via the `action` prop, top-right alongside the title — not inside the toolbar row below. `action` takes any `ReactNode`, typically a single `Button`. An optional `subtitle` is a small caption directly under the title in the same cell (the Availability hub's "Showing: ..." scope), not another row.
 2. **`ListToolbar`** — search (flexes to fill), an optional single extra filter control via the `filters` prop (e.g. a `SectionTreeSelect`, rendered inline with search/sort on desktop, its own full-width row on mobile), and sort. `createLabel`/`onCreate` are deprecated on this component — new screens use `ManageScreenHeader`'s `action` instead; existing screens have all been migrated. `ListToolbar` renders its own bordered, shadowed `background.paper` surface (`docs/specs/043-list-toolbar-gold-standard.md`) — a caller never wraps it in its own card `Box`; every list screen gets the same surface automatically just by rendering `ListToolbar`.
 3. The record list itself (a grid/stack of `RecordCard`s, or an `EmptyState`).
 

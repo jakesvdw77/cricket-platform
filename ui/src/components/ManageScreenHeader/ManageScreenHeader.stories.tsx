@@ -43,3 +43,12 @@ export const WithMiddleAndAction: Story = {
     action: <Button onClick={() => undefined}>New poll</Button>,
   },
 }
+
+// docs/specs/083: a small caption directly under the title.
+export const WithSubtitle: Story = {
+  args: {
+    title: 'Availability',
+    subtitle: 'Showing: Vets › Over 40 · TVL Division 1 T20',
+    action: <Button onClick={() => undefined}>New poll</Button>,
+  },
+}

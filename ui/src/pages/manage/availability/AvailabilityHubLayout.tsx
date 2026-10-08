@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import JoinInnerOutlinedIcon from '@mui/icons-material/JoinInnerOutlined'
@@ -129,6 +129,9 @@ export default function AvailabilityHubLayout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader
         title="Availability"
+        // The scope of the Polls list and counters, under the title; only on Polls and only when a filter is set.
+        // Shown even if the counters failed to load, because it describes the list too.
+        subtitle={view === 'polls' && scope ? `Showing: ${scope}` : undefined}
         middle={
           <Box component="nav" aria-label="Availability views" sx={{ display: 'flex', flexDirection: 'column', alignSelf: { xs: 'stretch', sm: 'auto' } }}>
             <ToggleButtonGroup value={view} exclusive size="small" aria-label="Availability views" sx={segmentedSwitchSx}>
@@ -169,17 +172,10 @@ export default function AvailabilityHubLayout() {
       />
 
       {showCounters && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <PageCounters
-            items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon) : []}
-            loading={summaryQuery.isPending}
-          />
-          {scope && (
-            <Typography variant="caption" color="text.secondary" data-testid="counters-scope">
-              {`Showing: ${scope}`}
-            </Typography>
-          )}
-        </Box>
+        <PageCounters
+          items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon) : []}
+          loading={summaryQuery.isPending}
+        />
       )}
 
       <Outlet context={hub} />
