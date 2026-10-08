@@ -5,6 +5,7 @@ import { alpha, darken, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
 import { EmptyState } from '../../../components/EmptyState'
+import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
 import { CellMark } from './CellMark'
 import { Legend } from './Legend'
@@ -27,8 +28,9 @@ import {
 
 // docs/specs/068: the grid is its own scroll box (both axes) so the page body never scrolls
 // sideways. Header rows are sticky at fixed heights so each row can offset the one above it.
-export const SCROLL_BOX_MAX_HEIGHT = 'calc(100vh - 320px)'
-export const SCROLL_BOX_MIN_HEIGHT = 240
+// docs/specs/085 (D1): its height is measured (useFillViewportHeight) so the box ends at the bottom of the window and
+// the page itself does not scroll; below SCROLL_BOX_MIN_HEIGHT the page scrolls instead.
+export const SCROLL_BOX_MIN_HEIGHT = 150
 export const DATE_ROW_HEIGHT = 34
 export const SLOT_ROW_HEIGHT = 26
 // The player column sizes to its content between these bounds; the real width is measured at runtime
@@ -175,6 +177,7 @@ export const AvailabilityGrid = forwardRef<
   const headerRefs = useRef(new Map<string, HTMLElement>())
   const firstColRef = useRef<HTMLTableCellElement>(null)
   const [firstColWidth, setFirstColWidth] = useState<number>(FIRST_COL_MIN_WIDTH.sm)
+  const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
 
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
@@ -230,14 +233,16 @@ export const AvailabilityGrid = forwardRef<
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Legend />
       <Box
+        ref={fill.ref}
         role="region"
         aria-label="Player availability grid, scrolls sideways"
         tabIndex={0}
         sx={{
           overflow: 'auto',
-          maxHeight: SCROLL_BOX_MAX_HEIGHT,
+          height: fill.height,
           minHeight: SCROLL_BOX_MIN_HEIGHT,
           border: 1,
           borderColor: 'divider',
@@ -438,7 +443,6 @@ export const AvailabilityGrid = forwardRef<
           </TableFooter>
         </Table>
       </Box>
-      <Legend />
     </Box>
   )
 })

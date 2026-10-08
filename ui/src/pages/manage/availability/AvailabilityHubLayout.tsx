@@ -16,6 +16,7 @@ import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../a
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
+import { JumpToTodayButton } from './JumpToTodayButton'
 import { useAvailabilityHubState } from './hubContext'
 import { PlayersPanel } from './PlayersPanel'
 import type { PlayersPanelTab } from './PlayersPanel'
@@ -169,6 +170,12 @@ export default function AvailabilityHubLayout() {
             <Button onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               New poll
             </Button>
+          ) : view === 'players' && hub.jumpToToday ? (
+            // docs/specs/085 (D2): the Players view registers Jump to today; it takes the place of the placeholder
+            // below (not on a phone: the phone lists have no such button, and the view does not register it).
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <JumpToTodayButton action={hub.jumpToToday} />
+            </Box>
           ) : (
             // Reserves the New poll button's width from sm up so the switch stays put when you move between
             // views instead of jumping to the right edge. visibility: hidden keeps it out of the tab order

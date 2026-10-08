@@ -1,8 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, CircularProgress } from '@mui/material'
-import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined'
-import { Button } from '../../components/Button'
+import { Alert, Box, CircularProgress, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
@@ -21,9 +20,12 @@ import { useAvailabilityHub } from './availability/hubContext'
 // no "All seasons" option: the grid is one season's games by design (the spec bounds it to one season
 // and one section), and a multi-season grid would hit the server's hard cap for nothing.
 export default function PlayerAvailabilityPage() {
-  const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId, scopeText } =
+  const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId, scopeText, setJumpToToday } =
     useAvailabilityHub()
   const gridRef = useRef<AvailabilityGridHandle>(null)
+  const theme = useTheme()
+  // Same idiom as FilterBar and ContentControlsLine: the phone has no Jump to today in the header.
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
 
   const [search, setSearch] = useState('')
   const [includePast, setIncludePast] = useState(false)
@@ -53,27 +55,25 @@ export default function PlayerAvailabilityPage() {
     [gridQuery.data, search, hideUnanswered],
   )
 
-  if (!clubId) {
-    return <EmptyState title="Not authorized" description="No club is associated with your account." />
-  }
-
   const upcoming = firstUpcomingGame(games, new Date())
   // The grid is replaced by an empty state when there are no games or none has a poll yet.
   const showsGrid = games.some((game) => game.pollType !== null)
   const loading = !gridQuery.data && !gridQuery.isError && !teamsError
 
-  const jumpButton = showsGrid && gridQuery.data && (
-    <Button
-      variant="secondary"
-      size="sm"
-      startIcon={<TodayOutlinedIcon fontSize="small" />}
-      disabled={!upcoming}
-      onClick={() => upcoming && gridRef.current?.scrollToGame(upcoming.matchId)}
-      sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}
-    >
-      Jump to today
-    </Button>
-  )
+  // docs/specs/085 (D2): Jump to today lives in the hub header, not on this page: this view registers it with the hub
+  // (shown only where the grid is shown) and takes it away again when it goes.
+  const upcomingMatchId = upcoming?.matchId
+  const showJump = Boolean(showsGrid && gridQuery.data && !isPhone)
+  useEffect(() => {
+    setJumpToToday(
+      showJump ? { disabled: !upcomingMatchId, onClick: () => upcomingMatchId && gridRef.current?.scrollToGame(upcomingMatchId) } : null,
+    )
+    return () => setJumpToToday(null)
+  }, [showJump, upcomingMatchId, setJumpToToday])
+
+  if (!clubId) {
+    return <EmptyState title="Not authorized" description="No club is associated with your account." />
+  }
 
   const toggles = (
     <>
@@ -100,7 +100,6 @@ export default function PlayerAvailabilityPage() {
       <ContentControlsLine
         scope={!showsGrid ? '' : `Showing ${visiblePlayers.length} ${visiblePlayers.length === 1 ? 'player' : 'players'} · ${games.length} ${games.length === 1 ? 'game' : 'games'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
         controls={toggles}
-        pinned={jumpButton}
       />
 
       {loading && (

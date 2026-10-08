@@ -51,6 +51,17 @@ export interface AvailabilityHubContext {
   // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League". The chosen
   // team's name is included only with withTeam, for the views that actually filter by team (Polls, Players).
   scopeText: (options?: { withTeam?: boolean }) => string
+  // docs/specs/085 (D2): the Players view registers Jump to today here (null when it should not be shown) and
+  // the layout renders it in the header action slot.
+  jumpToToday: HubHeaderAction | null
+  setJumpToToday: (action: HubHeaderAction | null) => void
+}
+
+// docs/specs/085 (D2): the one header action a view can ask the layout to render at the top right (where Polls has
+// New poll). Only Players uses it (Jump to today); null means the layout keeps its invisible placeholder.
+export interface HubHeaderAction {
+  onClick: () => void
+  disabled: boolean
 }
 
 // Owned by the hub layout; also used by test stand-ins for it.
@@ -67,6 +78,7 @@ export function useAvailabilityHubState(
   const [showSquad, setShowSquad] = useState(true)
   const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
   const [closingSoon, setClosingSoon] = useState(false)
+  const [jumpToToday, setJumpToToday] = useState<HubHeaderAction | null>(null)
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId as string),
@@ -109,6 +121,8 @@ export function useAvailabilityHubState(
     setShowClosed,
     closingSoon,
     setClosingSoon,
+    jumpToToday,
+    setJumpToToday,
     scopeText: (options) =>
       scopeFilterText({
         sections,

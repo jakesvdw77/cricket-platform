@@ -154,9 +154,6 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
     const toggle = screen.getByRole('checkbox', { name: 'Show past games' })
     expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(
-      toggle.compareDocumentPosition(screen.getByRole('button', { name: 'Jump to today' })) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
   })
 
@@ -319,6 +316,24 @@ describe('PlayerAvailabilityPage', () => {
     expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
   })
 
+  it('puts Jump to today in the hub header action slot, not in the content controls line (085)', async () => {
+    renderPage()
+    await loaded()
+
+    const jump = screen.getByRole('button', { name: 'Jump to today' })
+    expect(screen.getByTestId('hub-header-action')).toContainElement(jump)
+    expect(screen.getByText(/^Showing 2 players/).parentElement).not.toContainElement(jump)
+  })
+
+  it('takes Jump to today away from the header when the view goes (085)', async () => {
+    const view = renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
+
+    view.unmount()
+    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+  })
+
   it('Jump to today scrolls the first upcoming game column into view', async () => {
     const user = userEvent.setup()
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [PAST, FUTURE], players: [makePlayer('p1', 'Jane', 'Smith', 7, [['m-past', 'AVAILABLE'], ['m-future', 'UNSURE']])] }))
@@ -444,8 +459,8 @@ describe('PlayerAvailabilityPage', () => {
       // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
     expect(screen.queryByRole('combobox', { name: 'League' })).not.toBeInTheDocument()
       expect(screen.queryByRole('checkbox', { name: 'Show past games' })).not.toBeInTheDocument()
-      // Jump to today stays on the page.
-      expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
+      // No Jump to today on a phone (085): the header slot stays empty.
+      expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Filters' }))
 

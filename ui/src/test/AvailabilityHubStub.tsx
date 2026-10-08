@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
+import { JumpToTodayButton } from '../pages/manage/availability/JumpToTodayButton'
 import { useAvailabilityHubState } from '../pages/manage/availability/hubContext'
 
 // Test stand-in for AvailabilityHubLayout (docs/specs/083): same shared filters and season state, handed
@@ -12,6 +13,8 @@ export function AvailabilityHubStub() {
   return (
     <>
       <div data-testid="hub-location">{`${pathname}${search}`}</div>
+      {/* The header action slot (085 D2), as the real layout renders it. */}
+      <div data-testid="hub-header-action">{hub.jumpToToday && <JumpToTodayButton action={hub.jumpToToday} />}</div>
       <Outlet context={hub} />
     </>
   )

@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { AvailabilityGrid, DATE_ROW_HEIGHT, SCROLL_BOX_MAX_HEIGHT, SLOT_ROW_HEIGHT } from './AvailabilityGrid'
+import { AvailabilityGrid, DATE_ROW_HEIGHT, SCROLL_BOX_MIN_HEIGHT, SLOT_ROW_HEIGHT } from './AvailabilityGrid'
 import type { AvailabilityGridHandle } from './AvailabilityGrid'
 import { at, makeGame, makePlayer } from './testData'
 
@@ -138,7 +138,7 @@ describe('AvailabilityGrid', () => {
     renderGrid()
 
     const box = screen.getByRole('region', { name: /player availability grid/i })
-    expect(box).toHaveStyle({ overflow: 'auto', maxHeight: SCROLL_BOX_MAX_HEIGHT })
+    expect(box).toHaveStyle({ overflow: 'auto', minHeight: `${SCROLL_BOX_MIN_HEIGHT}px`, overscrollBehavior: 'contain' })
     expect(box).toHaveAttribute('tabindex', '0')
     expect(screen.getByRole('table')).toHaveStyle({ borderCollapse: 'separate' })
 
@@ -226,9 +226,25 @@ describe('AvailabilityGrid', () => {
     expect(screen.getByText('No players to show.')).toBeInTheDocument()
   })
 
-  it('shows the legend under the grid', () => {
+  it('shows the legend above the grid (085)', () => {
     renderGrid()
-    expect(screen.getByRole('list', { name: 'Legend' })).toBeInTheDocument()
+
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    const box = screen.getByRole('region', { name: /player availability grid/i })
+    expect(legend.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(legend.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('sizes the scroll box to the window from its measured top (085)', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 720, configurable: true })
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return { top: this.getAttribute('role') === 'region' ? 300 : 0, height: 0, width: 100 } as DOMRect
+    })
+    renderGrid()
+
+    // 720 - 300 - 24 bottom padding.
+    expect(screen.getByRole('region', { name: /player availability grid/i })).toHaveStyle({ height: '396px' })
+    spy.mockRestore()
   })
 
   it('says so when no games match', () => {

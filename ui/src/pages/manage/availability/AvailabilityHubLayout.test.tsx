@@ -62,7 +62,7 @@ beforeEach(() => {
 })
 
 function View({ name }: { name: string }) {
-  const { clubId, filters, setFilters, seasonId, showGroup, setShowGroup, showClosed, setShowClosed } =
+  const { clubId, filters, setFilters, seasonId, showGroup, setShowGroup, showClosed, setShowClosed, setJumpToToday } =
     useOutletContext<AvailabilityHubContext>()
   const { pathname, search } = useLocation()
   return (
@@ -80,6 +80,12 @@ function View({ name }: { name: string }) {
       </button>
       <button type="button" onClick={() => setShowClosed(!showClosed)}>
         toggle closed
+      </button>
+      <button type="button" onClick={() => setJumpToToday({ disabled: false, onClick: () => window.dispatchEvent(new Event('jumped')) })}>
+        register jump
+      </button>
+      <button type="button" onClick={() => setJumpToToday(null)}>
+        clear jump
       </button>
     </div>
   )
@@ -127,6 +133,23 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute('href', '/manage/availability/players')
     expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('href', '/manage/availability/coverage')
+  })
+
+  it('renders the Jump to today action a view registers in the header slot of Players, replacing the placeholder (085)', async () => {
+    const user = userEvent.setup()
+    const jumped = vi.fn()
+    window.addEventListener('jumped', jumped)
+    renderAt('/manage/availability/players')
+
+    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'register jump' }))
+    await user.click(screen.getByRole('button', { name: 'Jump to today' }))
+    expect(jumped).toHaveBeenCalledTimes(1)
+    // The placeholder New poll is gone while the real button shows.
+    expect(screen.queryByRole('button', { name: 'New poll', hidden: true })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'clear jump' }))
+    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+    window.removeEventListener('jumped', jumped)
   })
 
   it('names the view in the browser tab title and restores it on unmount (085)', () => {
