@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Theme } from '@mui/material'
 import { Box, InputAdornment, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../../hooks/useDocumentTitle'
 import { Input } from '../../../../components/Input'
 import { ResponseGauge } from '../../../../components/ResponseGauge'
-import { filterPanelSx } from '../../../../utils/filterPanel'
+import { compactFieldsSx, compactFilterPanelSx } from '../../../../utils/filterPanel'
 import { segmentedSwitchSx } from '../../../../utils/segmentedSwitch'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
 import type { SectionAvailabilityRoundBracket, SectionAvailabilityRoundMatch } from '../../../../api/sectionAvailabilityApi'
@@ -83,7 +84,7 @@ export function ResponsesPageShell({
   const single = responses.brackets[0]
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <ManageScreenHeader
         title={title}
         backTo={returnTo ?? backTo}
@@ -114,7 +115,7 @@ export function ResponsesPageShell({
         </Box>
       )}
 
-      <Box sx={filterPanelSx}>
+      <Box sx={[compactFilterPanelSx as object, (theme: Theme) => ({ [theme.breakpoints.up('sm')]: compactFieldsSx })]}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
           <ToggleButtonGroup
             value={view}

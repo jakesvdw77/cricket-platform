@@ -26,6 +26,7 @@ export function AvailabilityFilterBar({ show, teams, teamId, onClearedAll, ...re
   return (
     <FilterBar
       {...rest}
+      density="compact"
       leagues={show.league ? leagues : undefined}
       sections={show.section ? sections : undefined}
       teams={show.team ? (teams ?? []) : undefined}

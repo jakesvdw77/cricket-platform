@@ -89,7 +89,7 @@ export default function PlayerAvailabilityPage() {
   const scopeFilters = scopeText({ withTeam: true })
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <AvailabilityFilterBar
         show={{ league: true, section: true, team: true }}
         teams={teams}

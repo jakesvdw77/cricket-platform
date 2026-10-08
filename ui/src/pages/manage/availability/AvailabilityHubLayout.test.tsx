@@ -164,6 +164,14 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     window.removeEventListener('jumped', jumped)
   })
 
+  it('spaces the header, counters, toolbar and content 12 px apart on every view (085 I)', () => {
+    for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage']) {
+      const { container, unmount } = renderAt(path)
+      expect(getComputedStyle(container.firstElementChild as HTMLElement).gap).toBe('12px')
+      unmount()
+    }
+  })
+
   it('names the view in the browser tab title and restores it on unmount (085)', () => {
     document.title = 'Cricket Legend'
     for (const [path, title] of [

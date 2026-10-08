@@ -88,7 +88,7 @@ export default function AvailabilityCoveragePage() {
   const scopeFilters = scopeText()
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <AvailabilityFilterBar show={{ league: true, section: true }} viewControls={pastToggle} />
 
       <ContentControlsLine

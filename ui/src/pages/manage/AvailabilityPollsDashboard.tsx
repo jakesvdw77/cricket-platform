@@ -217,7 +217,7 @@ export default function AvailabilityPollsDashboard() {
   const sortLink = <SortLink label={sort === 'asc' ? 'soonest first' : 'latest first'} onToggle={() => setSort(sort === 'asc' ? 'desc' : 'asc')} />
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <AvailabilityFilterBar
         show={{ league: true, section: true, team: true }}
         teams={teamOptions}

@@ -139,7 +139,7 @@ export default function AvailabilityHubLayout() {
   const showCounters = view === 'polls' && !hub.teamsError && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <ManageScreenHeader
         title="Availability"
         // The scope of the Polls list and counters, under the title; only on Polls and only when a filter is set.
