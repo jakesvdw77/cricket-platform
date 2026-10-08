@@ -19,6 +19,8 @@ import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 import { JumpToTodayButton } from './JumpToTodayButton'
 import { useAvailabilityHubState } from './hubContext'
 import { PlayersPanel } from './PlayersPanel'
+import { PollsPanel } from './PollsPanel'
+import type { PollsPanelKind } from './PollsPanel'
 import type { PlayersPanelTab } from './PlayersPanel'
 
 type HubView = 'polls' | 'players' | 'coverage'
@@ -40,14 +42,14 @@ function activeView(pathname: string): HubView {
 }
 
 // docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
-// docs/specs/084: "Close in 48 hours" is a filter of the list (active while on) and the first counter resets it;
-// the two players counters are drill-downs that open the players panel on the matching tab (plain cards at zero,
-// by PageCounters' zero rule). The figures never change with the filter: the summary request does not carry it.
+// docs/specs/085 (G): all four are drill-downs that open a slide-in panel - "Open polls" (or "Polls shown" with Show
+// closed on) and "Close in 48 hours" open the polls panel, the two players counters open the players panel. A counter
+// at zero is a plain card (PageCounters' zero rule). The figures never change with a panel: the summary request does
+// not carry them.
 function counterItems(
   summary: AvailabilitySummary,
   showClosed: boolean,
-  closingSoon: boolean,
-  setClosingSoon: (value: boolean) => void,
+  openPolls: (kind: PollsPanelKind) => void,
   openPlayers: (tab: PlayersPanelTab) => void,
 ): PageCounterItem[] {
   return [
@@ -56,10 +58,9 @@ function counterItems(
       id: 'open-polls',
       value: summary.openPolls,
       label: showClosed ? 'Polls shown' : 'Open polls',
-      active: !closingSoon,
-      onSelect: () => setClosingSoon(false),
-      kind: 'reset',
-      hint: 'Show all',
+      kind: 'drill',
+      hint: 'See polls',
+      onSelect: () => openPolls('all'),
     },
     {
       id: 'players-responded',
@@ -83,10 +84,9 @@ function counterItems(
       value: summary.closingSoon,
       label: 'Close in 48 hours',
       tone: summary.closingSoon > 0 ? 'warning' : 'default',
-      active: closingSoon,
-      onSelect: () => setClosingSoon(!closingSoon),
-      kind: 'filter',
-      hint: 'Tap to filter',
+      kind: 'drill',
+      hint: 'See polls',
+      onSelect: () => openPolls('closing-soon'),
     },
   ]
 }
@@ -115,6 +115,7 @@ export default function AvailabilityHubLayout() {
   }
   // The players panel: open/closed and its tab are local state, not in the address.
   const [panel, setPanel] = useState<{ open: boolean; tab: PlayersPanelTab }>({ open: false, tab: 'awaiting' })
+  const [pollsPanel, setPollsPanel] = useState<{ open: boolean; kind: PollsPanelKind }>({ open: false, kind: 'all' })
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
@@ -194,7 +195,12 @@ export default function AvailabilityHubLayout() {
           density="compact"
           items={
             summaryQuery.data
-              ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon, (tab) => setPanel({ open: true, tab }))
+              ? counterItems(
+                  summaryQuery.data,
+                  hub.showClosed,
+                  (kind) => setPollsPanel({ open: true, kind }),
+                  (tab) => setPanel({ open: true, tab }),
+                )
               : []
           }
           loading={summaryQuery.isPending}
@@ -209,9 +215,20 @@ export default function AvailabilityHubLayout() {
           clubId={clubId}
           tab={panel.tab}
           onTabChange={(tab) => setPanel((current) => ({ ...current, tab }))}
-          // Exactly the summary's filters, plus the 48-hour flag.
-          filters={{ ...summaryFilters, closingSoon: hub.closingSoon }}
+          // Exactly the summary's filters.
+          filters={summaryFilters}
           counts={{ responded: summaryQuery.data?.playersResponded ?? 0, awaiting: summaryQuery.data?.playersStillToAnswer ?? 0 }}
+          scope={scope}
+        />
+      )}
+
+      {view === 'polls' && !hub.teamsError && (
+        <PollsPanel
+          open={pollsPanel.open}
+          onClose={() => setPollsPanel((current) => ({ ...current, open: false }))}
+          kind={pollsPanel.kind}
+          rows={hub.pollRows}
+          showClosed={hub.showClosed}
           scope={scope}
         />
       )}

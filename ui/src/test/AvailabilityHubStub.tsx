@@ -16,6 +16,8 @@ export function AvailabilityHubStub() {
       {/* The header action slot (085 D2), as the real layout renders it. */}
       <div data-testid="hub-header-action">{hub.jumpToToday && <JumpToTodayButton action={hub.jumpToToday} />}</div>
       <Outlet context={hub} />
+      {/* The polls the Polls page registered for the polls panel (085 G), as title and open state. */}
+      <div data-testid="hub-poll-rows">{hub.pollRows ? JSON.stringify(hub.pollRows.map((row) => [row.title, row.open])) : 'none'}</div>
     </>
   )
 }

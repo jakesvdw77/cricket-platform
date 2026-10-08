@@ -7,7 +7,7 @@ import type { AvailabilitySummaryPlayer, AvailabilitySummaryPlayersPage } from '
 import { PlayersPanel } from './PlayersPanel'
 import type { PlayersPanelTab } from './PlayersPanel'
 
-const FILTERS = { type: 'ALL' as const, includeClosed: false, closingSoon: false }
+const FILTERS = { type: 'ALL' as const, includeClosed: false }
 
 const players: AvailabilitySummaryPlayer[] = [
   {

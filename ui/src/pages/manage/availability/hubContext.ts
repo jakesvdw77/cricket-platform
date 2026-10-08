@@ -10,6 +10,7 @@ import { listSections } from '../../../api/sectionApi'
 import type { Section } from '../../../api/sectionApi'
 import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
+import type { PollPanelRow } from './pollPanelRows'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 
 // docs/specs/083: what the Availability hub layout hands its three views through the Outlet context -
@@ -44,10 +45,10 @@ export interface AvailabilityHubContext {
   setShowSquad: (value: boolean) => void
   showClosed: boolean
   setShowClosed: (value: boolean) => void
-  // docs/specs/084: the "Close in 48 hours" quick filter - only open polls whose scheduled close is within the
-  // next 48 hours. Per-visit like the toggles above, not persisted, not sent to the summary.
-  closingSoon: boolean
-  setClosingSoon: (value: boolean) => void
+  // docs/specs/085 (G): the polls the Polls page shows (before its search), registered by that page for the polls panel
+  // behind the Open polls / Close in 48 hours counters; null until loaded or when the page is not mounted.
+  pollRows: PollPanelRow[] | null
+  setPollRows: (rows: PollPanelRow[] | null) => void
   // The set shared filters as text for the scope line, e.g. "Vets › Over 40 · Over 40 League". The chosen
   // team's name is included only with withTeam, for the views that actually filter by team (Polls, Players).
   scopeText: (options?: { withTeam?: boolean }) => string
@@ -77,7 +78,7 @@ export function useAvailabilityHubState(
   const [showGroup, setShowGroup] = useState(true)
   const [showSquad, setShowSquad] = useState(true)
   const [showClosed, setShowClosed] = useState(() => searchParams.get('showClosed') === 'true')
-  const [closingSoon, setClosingSoon] = useState(false)
+  const [pollRows, setPollRows] = useState<PollPanelRow[] | null>(null)
   const [jumpToToday, setJumpToToday] = useState<HubHeaderAction | null>(null)
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
@@ -119,8 +120,8 @@ export function useAvailabilityHubState(
     setShowSquad,
     showClosed,
     setShowClosed,
-    closingSoon,
-    setClosingSoon,
+    pollRows,
+    setPollRows,
     jumpToToday,
     setJumpToToday,
     scopeText: (options) =>

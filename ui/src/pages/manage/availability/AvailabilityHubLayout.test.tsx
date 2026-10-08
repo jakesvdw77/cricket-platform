@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation, useOutletContext } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -62,7 +62,7 @@ beforeEach(() => {
 })
 
 function View({ name }: { name: string }) {
-  const { clubId, filters, setFilters, seasonId, showGroup, setShowGroup, showClosed, setShowClosed, setJumpToToday } =
+  const { clubId, filters, setFilters, seasonId, showGroup, setShowGroup, showClosed, setShowClosed, setJumpToToday, setPollRows } =
     useOutletContext<AvailabilityHubContext>()
   const { pathname, search } = useLocation()
   return (
@@ -83,6 +83,18 @@ function View({ name }: { name: string }) {
       </button>
       <button type="button" onClick={() => setJumpToToday({ disabled: false, onClick: () => window.dispatchEvent(new Event('jumped')) })}>
         register jump
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setPollRows([
+            { key: 'g1', kind: 'GROUP', title: 'Thursday fixtures', open: true, autoClose: true, scheduledCloseAt: new Date(Date.now() + 30 * 3_600_000).toISOString(), answered: 15, total: 18, path: '/manage/availability/group/g1' },
+            { key: 's1', kind: 'SQUAD', title: 'Lions vs Rivals', open: true, autoClose: true, scheduledCloseAt: new Date(Date.now() + 100 * 3_600_000).toISOString(), answered: 3, total: 11, path: '/manage/availability/squad/m1/s1' },
+            { key: 's2', kind: 'SQUAD', title: 'Lions vs Old', open: false, autoClose: true, scheduledCloseAt: new Date(Date.now() - 24 * 3_600_000).toISOString(), answered: 9, total: 11, path: '/manage/availability/squad/m2/s2' },
+          ])
+        }
+      >
+        register polls
       </button>
       <button type="button" onClick={() => setJumpToToday(null)}>
         clear jump
@@ -308,7 +320,7 @@ describe('Availability routes (docs/specs/073 section 1)', () => {
 describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
   const values = () => screen.getAllByTestId('page-counter-value').map((node) => node.textContent)
 
-  it('shows the four counters on Polls with the active Open polls and the N / M responded text', async () => {
+  it('shows the four counters on Polls with Open polls as a drill-down and the N / M responded text', async () => {
     renderAt('/manage/availability')
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
@@ -318,7 +330,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     for (const label of ['Open polls', 'Players responded', 'Players still to answer', 'Close in 48 hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
-    expect(screen.getByTestId('page-counter-open-polls')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('page-counter-open-polls-marker')).toHaveTextContent('›')
     expect(screen.getByTestId('page-counter-players-responded')).not.toHaveAttribute('data-active')
   })
 
@@ -478,57 +490,78 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
   describe('clickable counters (084)', () => {
     const withClosing = { ...summary, closingSoon: 2 }
 
-    it('Close in 48 hours is a filter toggle: pressed when on, and Open polls then stops being the active one', async () => {
+    it('both poll counters are drill-downs with a chevron and no filter tag or pressed state', async () => {
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      const open = await screen.findByRole('button', { name: /Open polls/ })
+      const closing = screen.getByRole('button', { name: /Close in 48 hours/ })
+
+      for (const button of [open, closing]) expect(button).not.toHaveAttribute('aria-pressed')
+      expect(screen.getByTestId('page-counter-open-polls-marker')).toHaveTextContent('›')
+      expect(screen.getByTestId('page-counter-closing-soon-marker')).toHaveTextContent('›')
+      expect(screen.queryByText('Tap to filter')).not.toBeInTheDocument()
+      expect(screen.queryByText('Show all')).not.toBeInTheDocument()
+    })
+
+    it('Open polls opens the polls panel with the registered polls, soonest closing first, closed after', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability')
-      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
-      const open = screen.getByRole('button', { name: /Open polls/ })
-      expect(closing).toHaveAttribute('aria-pressed', 'false')
-      expect(open).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getAllByText('Tap to filter')).toHaveLength(1)
-      expect(screen.getByText('Show all')).toBeInTheDocument()
-      // The reset card carries no "filter" tag; the real filter does.
-      expect(screen.queryByTestId('page-counter-open-polls-marker')).not.toBeInTheDocument()
-      expect(screen.getByTestId('page-counter-closing-soon-marker')).toHaveTextContent('filter')
+      await user.click(await screen.findByRole('button', { name: 'register polls' }))
 
-      await user.click(closing)
-      expect(closing).toHaveAttribute('aria-pressed', 'true')
-      expect(open).toHaveAttribute('aria-pressed', 'false')
-      expect(closing).toHaveAttribute('data-active', 'true')
+      await user.click(await screen.findByRole('button', { name: /Open polls/ }))
 
-      await user.click(closing)
-      expect(closing).toHaveAttribute('aria-pressed', 'false')
-      expect(open).toHaveAttribute('aria-pressed', 'true')
+      expect(await screen.findByRole('heading', { level: 2, name: 'Open polls' })).toBeInTheDocument()
+      // Show closed is off: the header counts the open ones in the list the page registered.
+      expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('2 open polls')
+      const rows = screen.getAllByTestId('polls-panel-row')
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining('Thursday fixtures'),
+        expect.stringContaining('Lions vs Rivals'),
+        expect.stringContaining('Lions vs Old'),
+      ])
+      expect(within(rows[0]).getByRole('link')).toHaveAttribute('href', '/manage/availability/group/g1')
+      await user.click(screen.getByRole('button', { name: 'Close polls list' }))
+      await waitFor(() => expect(screen.queryByRole('heading', { level: 2, name: 'Open polls' })).not.toBeInTheDocument())
     })
 
-    it('Open polls resets the filter', async () => {
-      const user = userEvent.setup()
-      getAvailabilitySummary.mockResolvedValue(withClosing)
-      renderAt('/manage/availability')
-      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
-      await user.click(closing)
-      expect(closing).toHaveAttribute('aria-pressed', 'true')
-
-      await user.click(screen.getByRole('button', { name: /Open polls/ }))
-
-      expect(closing).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
-    })
-
-    it('reads the reset card as Polls shown with Show closed on, and it still resets', async () => {
+    it('with Show closed on the first counter reads Polls shown and the panel header spells out open and closed', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability?showClosed=true')
-      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
-      await user.click(closing)
+      await user.click(await screen.findByRole('button', { name: 'register polls' }))
 
-      await user.click(screen.getByRole('button', { name: /Polls shown/ }))
+      await user.click(await screen.findByRole('button', { name: /Polls shown/ }))
 
-      expect(closing).toHaveAttribute('aria-pressed', 'false')
+      expect(await screen.findByRole('heading', { level: 2, name: 'Polls shown' })).toBeInTheDocument()
+      expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('3 polls shown, 2 open and 1 closed')
     })
 
-    it('does not touch the summary request or the figures when the filter is on', async () => {
+    it('Close in 48 hours opens the panel with only the open polls closing within 48 hours', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await user.click(await screen.findByRole('button', { name: 'register polls' }))
+
+      await user.click(await screen.findByRole('button', { name: /Close in 48 hours/ }))
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Closing within 48 hours' })).toBeInTheDocument()
+      expect(screen.getByTestId('polls-panel-header')).toHaveTextContent('1 open poll closing within 48 hours')
+      expect(screen.getAllByTestId('polls-panel-row')).toHaveLength(1)
+      expect(screen.getByText('Thursday fixtures')).toBeInTheDocument()
+    })
+
+    it('shows loading rows until the Polls page has registered its polls', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+
+      await user.click(await screen.findByRole('button', { name: /Open polls/ }))
+
+      expect(await screen.findByTestId('polls-panel-loading')).toBeInTheDocument()
+    })
+
+    it('does not touch the summary request or the figures when a panel opens, and has no closingSoon flag', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability')
@@ -542,13 +575,17 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       expect(screen.getAllByTestId('page-counter-value').map((node) => node.textContent)).toEqual(['3', '12 / 20', '8.5', '2'])
     })
 
-    it('Close in 48 hours at zero is a plain card with no filter tag', async () => {
-      getAvailabilitySummary.mockResolvedValue(summary)
+    it('at zero the poll counters are plain cards that open nothing', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue({ ...summary, openPolls: 0, closingSoon: 0 })
       renderAt('/manage/availability')
       await waitFor(() => expect(screen.getByTestId('page-counter-closing-soon')).toBeInTheDocument())
 
+      expect(screen.queryByRole('button', { name: /Open polls/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Close in 48 hours/ })).not.toBeInTheDocument()
       expect(screen.queryByTestId('page-counter-closing-soon-marker')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('page-counter-closing-soon'))
+      expect(screen.queryByTestId('polls-panel-header')).not.toBeInTheDocument()
     })
 
     it('the players counters are drill-down buttons (no aria-pressed) that open the panel on the matching tab', async () => {
@@ -571,14 +608,13 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       expect(screen.getByRole('tab', { name: 'Still to answer · 8.5' })).toBeInTheDocument()
     })
 
-    it('the panel request carries the summary filters plus closingSoon, and no panel request before it opens', async () => {
+    it('the panel request carries exactly the summary filters, and no panel request before it opens', async () => {
       const user = userEvent.setup()
       getAvailabilitySummary.mockResolvedValue(withClosing)
       renderAt('/manage/availability')
       await user.click(await screen.findByRole('button', { name: 'pick league and team' }))
       await user.click(await screen.findByRole('button', { name: 'toggle group' }))
       await user.click(await screen.findByRole('button', { name: 'toggle closed' }))
-      await user.click(await screen.findByRole('button', { name: /Close in 48 hours/ }))
       expect(listAvailabilitySummaryPlayers).not.toHaveBeenCalled()
 
       await user.click(await screen.findByRole('button', { name: /Players still to answer/ }))
@@ -587,7 +623,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       expect(listAvailabilitySummaryPlayers.mock.calls[0][0]).toBe('club-1')
       expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toEqual({
         leagueId: 'lg-1', sectionId: null, teamId: 'tm-1', type: 'SQUAD', includeClosed: true,
-        closingSoon: true, kind: 'awaiting', search: '',
+        kind: 'awaiting', search: '',
       })
       expect(await screen.findByTestId('players-panel-scope')).toHaveTextContent('Showing: Over 40 League · Lions')
     })
