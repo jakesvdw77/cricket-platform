@@ -18,11 +18,11 @@ import { useAvailabilityHubState } from './hubContext'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
-// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds Coverage.
+// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds it (as Coverage, renamed Match-day cover in the 083 follow-up).
 const VIEWS: { value: HubView; label: string; to: string; icon: ReactNode }[] = [
   { value: 'polls', label: 'Polls', to: '/manage/availability', icon: <EventAvailableOutlinedIcon fontSize="small" /> },
   { value: 'players', label: 'Players', to: '/manage/availability/players', icon: <GridOnOutlinedIcon fontSize="small" /> },
-  { value: 'coverage', label: 'Coverage', to: '/manage/availability/coverage', icon: <JoinInnerOutlinedIcon fontSize="small" /> },
+  { value: 'coverage', label: 'Match-day cover', to: '/manage/availability/coverage', icon: <JoinInnerOutlinedIcon fontSize="small" /> },
 ]
 
 // The active view comes from the pathname: ending in /players is Players, /coverage is Coverage,
@@ -56,7 +56,7 @@ function counterItems(summary: AvailabilitySummary, showClosed: boolean): PageCo
 }
 
 // docs/specs/073: the shared layout route of the Polls, Players and Coverage views - the "Availability" header,
-// a Polls | Players | Coverage switch that is real navigation, and New poll on Polls only. Forwards the club id
+// a Polls | Players | Match-day cover switch that is real navigation, and New poll on Polls only. Forwards the club id
 // through its own Outlet context. docs/specs/083: it also owns the shared League/Section/Team filters and the
 // default season (saved per club, mirrored in the address) and hands them to the three views through that context.
 export default function AvailabilityHubLayout() {
@@ -111,7 +111,9 @@ export default function AvailabilityHubLayout() {
                   to={entry.to}
                   value={entry.value}
                   aria-current={entry.value === view ? 'page' : undefined}
-                  sx={{ gap: 0.75 }}
+                  // Tighter side padding on a phone so the longer "Match-day cover" label fits three equal parts at 375 px;
+                  // the extra ampersands beat the shared switch's own padding.
+                  sx={{ gap: 0.75, '&&&': { px: { xs: 1.25, sm: 2 } } }}
                 >
                   {entry.icon}
                   {entry.label}

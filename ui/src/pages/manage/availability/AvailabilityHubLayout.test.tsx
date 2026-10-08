@@ -106,17 +106,17 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
 }
 
 describe('AvailabilityHubLayout (docs/specs/073)', () => {
-  it('titles the page Availability with no back link (079) and a switch of exactly Polls, Players and Coverage links', () => {
+  it('titles the page Availability with no back link (079) and a switch of exactly Polls, Players and Match-day cover links', () => {
     renderAt('/manage/availability')
 
     expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Availability views' })
     const links = nav.querySelectorAll('a')
-    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Coverage'])
+    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Match-day cover'])
     expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute('href', '/manage/availability/players')
-    expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('href', '/manage/availability/coverage')
+    expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('href', '/manage/availability/coverage')
   })
 
   it('marks Polls as the current view on /manage/availability, with or without a trailing slash and ?showClosed=true', () => {
@@ -139,11 +139,11 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
   })
 
-  it('marks Coverage as current on /manage/availability/coverage (with or without a trailing slash) and renders the Coverage view', () => {
+  it('marks Match-day cover as current on /manage/availability/coverage (with or without a trailing slash) and renders the Coverage view', () => {
     for (const path of ['/manage/availability/coverage', '/manage/availability/coverage/']) {
       const { unmount } = renderAt(path)
-      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveClass('Mui-selected')
+      expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveClass('Mui-selected')
       expect(screen.getByRole('link', { name: 'Polls' })).not.toHaveAttribute('aria-current')
       expect(screen.getByRole('link', { name: 'Players' })).not.toHaveAttribute('aria-current')
       expect(screen.getByText(/^Coverage view for club-1 at \/manage\/availability\/coverage/)).toBeInTheDocument()
@@ -166,7 +166,7 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     await user.click(screen.getByRole('link', { name: 'Players' }))
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Coverage' }))
+    await user.click(screen.getByRole('link', { name: 'Match-day cover' }))
     expect(screen.getByText('Coverage view for club-1 at /manage/availability/coverage')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Polls' }))

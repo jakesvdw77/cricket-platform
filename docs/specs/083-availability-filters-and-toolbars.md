@@ -5,7 +5,7 @@
 
 ## Problem
 
-The three Availability views (Polls, Players, Coverage) each have their own toolbar with their own filters, and they do not agree with each other:
+The three Availability views (Polls, Players, Match-day cover; named Coverage when this spec was written) each have their own toolbar with their own filters, and they do not agree with each other:
 - **The counters ignore the filters.** The four counters under the header always cover every open poll in the manager's scope, while the list below is filtered by section, type and the closed toggle. The numbers look stale and cause confusion.
 - **"Answers awaited" is unclear.** (See "What the counters mean" below.)
 - **The toolbars differ.** Polls has Search, Type, Section, a Show closed toggle and a sort arrow. Players has Season, Section, Team, League, Search, Show past games and Hide players with no answers. Coverage has Season, Section, League and Show past slots.

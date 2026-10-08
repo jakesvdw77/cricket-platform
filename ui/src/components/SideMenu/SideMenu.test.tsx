@@ -34,7 +34,7 @@ describe('SideMenu', () => {
       'Communication',
       'Polls',
       'Player availability',
-      'Team availability',
+      'Match-day cover',
       'Club profile',
       'Gallery',
       'Notifications',
@@ -66,11 +66,11 @@ describe('SideMenu', () => {
     }
   })
 
-  it('highlights Player availability and Team availability on their own routes only', () => {
+  it('highlights Player availability and Match-day cover on their own routes only', () => {
     for (const [path, name] of [
       ['/manage/availability/players', 'Player availability'],
       ['/manage/player-availability', 'Player availability'],
-      ['/manage/availability/coverage', 'Team availability'],
+      ['/manage/availability/coverage', 'Match-day cover'],
     ]) {
       const { unmount } = renderMenu(path)
       expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')

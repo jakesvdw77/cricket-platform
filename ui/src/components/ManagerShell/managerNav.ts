@@ -122,7 +122,7 @@ export const MANAGER_NAV: NavGroup[] = [
       },
       {
         id: 'team-availability',
-        label: 'Team availability',
+        label: 'Match-day cover',
         description: 'Squad cover for each team',
         to: '/manage/availability/coverage',
         icon: 'nav/availability-team',
