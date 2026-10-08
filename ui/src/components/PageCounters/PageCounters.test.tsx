@@ -7,10 +7,10 @@ import type { PageCounterItem } from './PageCounters'
 import { baseTheme } from '../../theme'
 import { hoverTintColor } from './keyFigureStyle'
 
-function renderCounters(items: PageCounterItem[], loading = false) {
+function renderCounters(items: PageCounterItem[], loading = false, density?: 'comfortable' | 'compact') {
   return render(
     <ThemeProvider theme={baseTheme}>
-      <PageCounters items={items} loading={loading} />
+      <PageCounters items={items} loading={loading} density={density} />
     </ThemeProvider>,
   )
 }
@@ -96,6 +96,57 @@ describe('PageCounters', () => {
     expect(css).toMatch(/@media \(min-width:\s*900px\)[^]*repeat\(4,\s*1fr\)/)
   })
 
+  describe('compact density (085)', () => {
+    it('renders one-line cards: row direction and a minimum height of 44 px', () => {
+      renderCounters(items, false, 'compact')
+
+      const card = screen.getByTestId('page-counter-a')
+      expect(getComputedStyle(card).flexDirection).toBe('row')
+      expect(getComputedStyle(card).minHeight).toBe('44px')
+    })
+
+    it('keeps the comfortable look by default', () => {
+      renderCounters(items)
+
+      expect(getComputedStyle(screen.getByTestId('page-counter-a')).flexDirection).toBe('column')
+      expect(getComputedStyle(screen.getByTestId('page-counter-a')).minHeight).not.toBe('44px')
+    })
+
+    it('uses a 6 px gap and truncates the label with an ellipsis', () => {
+      const { container } = renderCounters(items, false, 'compact')
+
+      expect(getComputedStyle(container.firstElementChild as HTMLElement).gap).toBe('6px')
+      expect(getComputedStyle(screen.getByText('Open polls')).textOverflow).toBe('ellipsis')
+    })
+
+    it('keeps markers, aria-pressed, the zero rule and the hidden hint', () => {
+      renderCounters(
+        [
+          { ...items[0], kind: 'filter', onSelect: vi.fn(), hint: 'Tap to filter', active: true },
+          { ...items[1], kind: 'drill', onSelect: vi.fn(), hint: 'See who' },
+          { id: 'z', value: 0, label: 'Zero', onSelect: vi.fn() },
+        ],
+        false,
+        'compact',
+      )
+
+      expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('filter')
+      expect(screen.getByTestId('page-counter-b-marker')).toHaveTextContent('›')
+      expect(getComputedStyle(screen.getByTestId('page-counter-a-marker')).top).toBe('50%')
+      expect(screen.getByText('See who')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Zero/ })).not.toBeInTheDocument()
+    })
+
+    it('shows four compact skeleton cards while loading', () => {
+      const { container } = renderCounters(items, true, 'compact')
+
+      expect(screen.getByTestId('page-counters-loading')).toHaveAttribute('aria-busy', 'true')
+      expect(container.querySelectorAll('.MuiCard-root')).toHaveLength(4)
+      expect(getComputedStyle(container.querySelector('.MuiCard-root') as HTMLElement).minHeight).toBe('44px')
+    })
+  })
+
   describe('counter kinds and the zero rule (084)', () => {
     it('defaults to a filter counter: a toggle button with a "filter" tag and aria-pressed', () => {
       renderCounters([{ ...items[0], onSelect: vi.fn() }])
@@ -151,14 +202,6 @@ describe('PageCounters', () => {
         'page-counter-c',
         'page-counter-d',
       ])
-    })
-
-    it('a reset counter is a pressed-state button with no tag', () => {
-      renderCounters([{ ...items[0], kind: 'reset', active: true, hint: 'Show all', onSelect: vi.fn() }])
-
-      expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
-      expect(screen.getByText('Show all')).toBeInTheDocument()
     })
 
     it('at zero the active filter counter stays a pressed button so it can be switched off', async () => {

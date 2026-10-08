@@ -13,6 +13,26 @@ export const keyFigureCardSx = {
   minWidth: 0,
 }
 
+// docs/specs/085: the compact variant of the card (PageCounters density="compact"): one line, value then label,
+// baseline aligned, about 44 px tall. Right padding leaves room for the corner marker, which is centred vertically.
+export const compactCardSx = {
+  ...keyFigureCardSx,
+  flexDirection: 'row',
+  alignItems: 'baseline',
+  gap: 1,
+  minHeight: 44,
+  py: 1.25,
+  pl: 2,
+  pr: 2,
+  boxSizing: 'border-box',
+}
+
+export const compactValueSx = (warn: boolean) => ({
+  ...keyFigureValueSx(warn),
+  fontSize: '1.2rem',
+  flex: '0 0 auto',
+})
+
 export function keyFigureValueSx(warn: boolean) {
   return {
     fontSize: '1.6rem',

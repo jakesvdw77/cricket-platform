@@ -5,13 +5,11 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import GroupPollResponsesPage from './GroupPollResponsesPage'
-import { SCROLL_BOX_MAX_HEIGHT } from './availability/responses/responseHelpers'
 import type {
   SectionAvailabilityRound,
   SectionAvailabilityRoundMatch,
   SectionAvailabilityRoundResponses,
 } from '../../api/sectionAvailabilityApi'
-import { legend } from '../../test/legend'
 
 const listRounds = vi.fn()
 const getRoundResponses = vi.fn()
@@ -139,7 +137,7 @@ function slotSection(dayPart: 'Morning' | 'Afternoon') {
 }
 
 function column(dayPart: 'Morning' | 'Afternoon', status: 'Available' | 'Unsure' | 'Unavailable') {
-  return screen.getByRole('region', { name: new RegExp(`^${status} players, .*${dayPart}$`) })
+  return screen.getByRole('group', { name: new RegExp(`^${status} players, .*${dayPart}$`) })
 }
 
 async function loaded() {
@@ -185,7 +183,7 @@ describe('GroupPollResponsesPage', () => {
 
     // Jane: Available in the morning, no response in the afternoon; Bob differs by slot.
     expect(within(column('Morning', 'Available')).getByText('Jane Smith')).toBeInTheDocument()
-    expect(within(column('Morning', 'Available')).getByText('#7')).toBeInTheDocument()
+    expect(within(column('Morning', 'Available')).queryByText('#7')).toBeNull()
     expect(within(column('Morning', 'Unsure')).getByText('Bob Jones')).toBeInTheDocument()
     expect(within(column('Afternoon', 'Available')).getByText('Bob Jones')).toBeInTheDocument()
     expect(within(column('Afternoon', 'Unavailable')).getByText('Amy Lee')).toBeInTheDocument()
@@ -218,16 +216,41 @@ describe('GroupPollResponsesPage', () => {
     expect(screen.queryByText('Cal Ng')).not.toBeInTheDocument()
   })
 
-  it('puts each answer list in its own labelled, scrollable box', async () => {
+  it('puts each answer list in its own labelled group that grows (no inner scrollbar, 085)', async () => {
     renderPage()
     await loaded()
 
     const box = column('Morning', 'Available')
-    expect(box).toHaveAttribute('tabindex', '0')
-    expect(box).toHaveStyle({ overflowY: 'auto' })
-    // 12 rows of 32px plus the box's 4px padding top and bottom.
-    expect(SCROLL_BOX_MAX_HEIGHT).toBe(32 * 12 + 8)
-    expect(box).toHaveStyle({ maxHeight: `${SCROLL_BOX_MAX_HEIGHT}px` })
+    expect(box).not.toHaveAttribute('tabindex')
+    expect(box).not.toHaveStyle({ overflowY: 'auto' })
+    expect(box).not.toHaveStyle({ maxHeight: '392px' })
+  })
+
+  it('lists the player names with a divider between them and no shirt number (085)', async () => {
+    renderPage()
+    await loaded()
+
+    const jane = within(column('Morning', 'Available')).getByRole('button', { name: /Jane Smith/ })
+    expect(jane.textContent).toBe('Jane Smith')
+    expect(within(jane).queryByTestId('player-number')).toBeNull()
+    expect(getComputedStyle(jane).borderBottomWidth).toBe('1px')
+  })
+
+  it('shows the arrow, the word Show / Hide and aria-expanded on the whole No response bar (085)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+
+    const toggle = slotSection('Morning').getByRole('button', { name: /show no response players/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    const label = slotSection('Morning').getByTestId('no-response-toggle-label')
+    expect(label).toHaveTextContent('Show')
+    expect(label.querySelector('[data-testid="KeyboardArrowDownIcon"]')).not.toBeNull()
+    await user.click(toggle)
+    const open = slotSection('Morning').getByRole('button', { name: /hide no response players/i })
+    expect(open).toHaveAttribute('aria-expanded', 'true')
+    expect(slotSection('Morning').getByTestId('no-response-toggle-label')).toHaveTextContent('Hide')
+    expect(slotSection('Morning').getByTestId('no-response-toggle-label').querySelector('[data-testid="KeyboardArrowUpIcon"]')).not.toBeNull()
   })
 
   it('switches to By player: one aligned column per slot, sorted by name', async () => {
@@ -238,9 +261,9 @@ describe('GroupPollResponsesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
     const table = screen.getByRole('table', { name: 'Responses by player' })
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(4)
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(3)
     const bodyRows = within(table).getAllByRole('row').slice(1)
-    expect(bodyRows.map((row) => within(row).getAllByRole('cell')[1].textContent)).toEqual([
+    expect(bodyRows.map((row) => within(row).getAllByRole('cell')[0].textContent)).toEqual([
       'Bob Jones',
       'Amy Lee',
       'Cal Ng',
@@ -250,6 +273,124 @@ describe('GroupPollResponsesPage', () => {
     expect(within(bodyRows[0]).getByText('Unsure')).toBeInTheDocument()
     expect(within(bodyRows[0]).getByText('Available')).toBeInTheDocument()
     expect(within(bodyRows[2]).getAllByText('No response')).toHaveLength(2)
+  })
+
+  it('has no shirt number column and alternates the row tint in By player (085)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await loaded()
+    await user.click(screen.getByRole('button', { name: 'Player' }))
+
+    const table = screen.getByRole('table', { name: 'Responses by player' })
+    expect(within(table).queryByRole('columnheader', { name: '#' })).toBeNull()
+    const rows = within(table).getAllByRole('row').slice(1)
+    // The first row and every second row after it carry an opaque tint from the theme; the others stay on the panel colour.
+    expect(getComputedStyle(rows[0]).backgroundColor).toMatch(/^rgb\(/)
+    expect(getComputedStyle(rows[0]).backgroundColor).not.toBe(getComputedStyle(rows[1]).backgroundColor)
+  })
+
+  describe('Player tab status chips, sorting and slot selector (085 J)', () => {
+    async function openPlayerTab() {
+      const user = userEvent.setup()
+      renderPage()
+      await loaded()
+      await user.click(screen.getByRole('button', { name: 'Player' }))
+      return user
+    }
+    const names = () =>
+      within(screen.getByRole('table', { name: 'Responses by player' }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+
+    it('shows chips with the first slot\'s counts over all players, and a Slot selector for several slots', async () => {
+      await openPlayerTab()
+
+      const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
+      expect(chips.getByRole('button', { name: 'All 4' })).toHaveAttribute('aria-pressed', 'true')
+      expect(chips.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'Unsure 1' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'Unavailable 0' })).toBeInTheDocument()
+      expect(chips.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Morning/)
+    })
+
+    it('a chip shows only those players, again or All shows everyone, and the counts ignore search and chip', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      expect(names()).toEqual(['Amy Lee', 'Cal Ng'])
+      expect(screen.getByRole('button', { name: 'No response 2' })).toHaveAttribute('aria-pressed', 'true')
+      await user.type(screen.getByLabelText('Search players'), 'cal')
+      expect(names()).toEqual(['Cal Ng'])
+      // Counts still describe all four players.
+      expect(screen.getByRole('button', { name: 'All 4' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+
+      await user.clear(screen.getByLabelText('Search players'))
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      expect(names()).toHaveLength(4)
+      await user.click(screen.getByRole('button', { name: 'Unsure 1' }))
+      await user.click(screen.getByRole('button', { name: 'All 4' }))
+      expect(names()).toHaveLength(4)
+    })
+
+    it('combines the chip with the hide-unanswered switch', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
+      await user.click(screen.getByRole('button', { name: 'No response 2' }))
+      // Of the two with no answer in Morning, Cal has none at all (hidden); Amy answered Afternoon.
+      expect(names()).toEqual(['Amy Lee'])
+    })
+
+    it('sorts by name by default, reverses on a second click, and shows aria-sort and an arrow', async () => {
+      const user = await openPlayerTab()
+      const player = screen.getByRole('columnheader', { name: /Player/ })
+      expect(player).toHaveAttribute('aria-sort', 'ascending')
+      expect(names()).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
+
+      await user.click(within(player).getByRole('button'))
+      expect(player).toHaveAttribute('aria-sort', 'descending')
+      expect(names()).toEqual(['Jane Smith', 'Cal Ng', 'Amy Lee', 'Bob Jones'])
+      expect(screen.getByRole('columnheader', { name: /Morning/ })).toHaveAttribute('aria-sort', 'none')
+    })
+
+    it('a slot heading sorts by status (Available, Unsure, Unavailable, No response) and reverses on a second click', async () => {
+      const user = await openPlayerTab()
+      const morning = () => screen.getByRole('columnheader', { name: /Morning/ })
+
+      await user.click(within(morning()).getByRole('button'))
+      expect(morning()).toHaveAttribute('aria-sort', 'ascending')
+      expect(screen.getByRole('columnheader', { name: /Player/ })).toHaveAttribute('aria-sort', 'none')
+      expect(names()).toEqual(['Jane Smith', 'Bob Jones', 'Amy Lee', 'Cal Ng'])
+
+      await user.click(within(morning()).getByRole('button'))
+      expect(morning()).toHaveAttribute('aria-sort', 'descending')
+      expect(names()).toEqual(['Amy Lee', 'Cal Ng', 'Bob Jones', 'Jane Smith'])
+    })
+
+    it('clicking another slot\'s heading selects it: the chips and the status sort follow, the other column stays', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(within(screen.getByRole('columnheader', { name: /Afternoon/ })).getByRole('button'))
+
+      expect(screen.getByRole('combobox', { name: 'Slot' })).toHaveTextContent(/Afternoon/)
+      expect(screen.getByRole('button', { name: 'Available 1' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'No response 2' })).toBeInTheDocument()
+      expect(screen.getByRole('columnheader', { name: /Morning/ })).toBeInTheDocument()
+      expect(names()).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
+    })
+
+    it('choosing a slot in the selector changes what the chips count', async () => {
+      const user = await openPlayerTab()
+
+      await user.click(screen.getByRole('combobox', { name: 'Slot' }))
+      await user.click(screen.getByRole('option', { name: /Afternoon/ }))
+
+      expect(screen.getByRole('button', { name: 'Unavailable 1' })).toBeInTheDocument()
+    })
   })
 
   it('hides players who have not answered in By player', async () => {
@@ -265,30 +406,43 @@ describe('GroupPollResponsesPage', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
   })
 
-  it('shows Summary with per-slot counts and "N of M answered"', async () => {
+  it('has two tabs only: Time slot and Player, no Summary (085)', async () => {
+    renderPage()
+    await loaded()
+
+    expect(screen.getByRole('button', { name: 'Time slot' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Player' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Summary' })).not.toBeInTheDocument()
+  })
+
+  it('puts the tabs and search inside the filter panel (085)', async () => {
+    renderPage()
+    await loaded()
+
+    const panel = screen.getByLabelText('Search players').closest('div[class*="MuiBox-root"]')?.parentElement?.parentElement as HTMLElement
+    expect(within(panel).getByRole('button', { name: 'Time slot' })).toBeInTheDocument()
+    expect(getComputedStyle(panel).boxShadow).not.toBe('none')
+  })
+
+  it('shows the header gauge on both tabs: answered all / some / none for a poll with several slots, and a thin bar per slot (085)', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    await user.click(screen.getByRole('button', { name: 'Summary' }))
-
-    expect(screen.getAllByText('2 of 4 answered')).toHaveLength(2)
-    // Morning: Available 1 / Unsure 1 / Unavailable 0 / No response 2 (of 4).
-    const morning = within(screen.getByRole('heading', { level: 3, name: /· Morning$/ }).closest('div[aria-label$="summary"]') as HTMLElement)
-    expect(morning.getByText(legend('Available 1'))).toBeInTheDocument()
-    expect(morning.getByText(legend('Unsure 1'))).toBeInTheDocument()
-    expect(morning.getByText(legend('Unavailable 0'))).toBeInTheDocument()
-    expect(morning.getByText(legend('No response 2'))).toBeInTheDocument()
-    expect(screen.getByTestId('window-1-bar-AVAILABLE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByTestId('window-1-bar-UNSURE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByTestId('window-1-bar-UNAVAILABLE')).toHaveStyle({ width: '0%' })
+    // Bob answered both slots; Jane and Amy one; Cal none.
+    const gauge = screen.getByRole('group', { name: 'Response summary' })
+    expect(gauge).toHaveTextContent('1answered all')
+    expect(gauge).toHaveTextContent('2some')
+    expect(gauge).toHaveTextContent('1none')
+    // Per-slot thin bar from the bracket totals (Morning: 1 / 1 / 0 / 2).
+    expect(screen.getByRole('img', { name: '1 Available, 1 Unsure, 0 Unavailable, 2 No response' })).toBeInTheDocument()
     expect(screen.getByTestId('window-1-bar-NONE')).toHaveStyle({ width: '50%' })
-    // Afternoon: Available 1 / Unavailable 1.
-    expect(screen.getByTestId('window-2-bar-UNAVAILABLE')).toHaveStyle({ width: '25%' })
-    expect(screen.getByText(legend('Unavailable 1'))).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Player' }))
+    expect(screen.getByRole('group', { name: 'Response summary' })).toHaveTextContent('1answered all')
   })
 
-  it('search filters players in every view while Summary totals stay full', async () => {
+  it('search filters players in every view while the header gauge stays full', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
@@ -307,9 +461,8 @@ describe('GroupPollResponsesPage', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument()
     expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Summary' }))
-    expect(screen.getAllByText(/of 4 answered/)).toHaveLength(2)
-    expect(screen.getAllByText(legend('No response 2'))).toHaveLength(2)
+    expect(screen.getByRole('group', { name: 'Response summary' })).toHaveTextContent('1answered all')
+    expect(screen.getByRole('group', { name: 'Response summary' })).toHaveTextContent('2some')
   })
 
   it("sets a player's answer via the override menu, by windowId, and updates the page", async () => {

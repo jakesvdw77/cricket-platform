@@ -10,7 +10,8 @@ import { Button } from '../Button'
 import { Input } from '../Input'
 import { SectionTreeSelect } from '../SectionTreeSelect'
 import type { Section } from '../../api/sectionApi'
-import { filterPanelSx } from '../../utils/filterPanel'
+import { compactFieldsSx, filterPanelSxFor } from '../../utils/filterPanel'
+import type { ToolbarDensity } from '../../utils/filterPanel'
 import { sectionPathLabel } from '../../utils/availabilityScope'
 
 // The unset League and Team show their explicit "All ..." value under an always-floated label, the same as
@@ -53,6 +54,9 @@ export interface FilterBarProps {
   extraChips?: FilterBarChip[]
   // Clears the filters (the sheet's "Clear all").
   onClearAll: () => void
+  // docs/specs/085 (I): 'compact' (the Availability pages) has an 8 px panel padding and gap and 36 px fields on
+  // desktop; 'comfortable' (default) is the original look. The phone toolbar keeps its tap heights in both.
+  density?: ToolbarDensity
 }
 
 // docs/specs/083-availability-filters-and-toolbars.md: the one toolbar of the Availability views.
@@ -76,6 +80,7 @@ export function FilterBar({
   viewControls,
   extraChips = [],
   onClearAll,
+  density = 'comfortable',
 }: FilterBarProps) {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
@@ -163,8 +168,11 @@ export function FilterBar({
 
   if (!isPhone) {
     return (
-      <Box sx={filterPanelSx}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={filterPanelSxFor(density)}>
+        <Box
+          data-testid="filter-bar-fields"
+          sx={[{ display: 'flex', flexWrap: 'wrap', gap: density === 'compact' ? 1 : 2 }, ...(density === 'compact' ? [compactFieldsSx] : [])]}
+        >
           {fieldsFor(false)}
           {search && <Box sx={{ flex: '2 1 220px', minWidth: 0 }}>{search}</Box>}
         </Box>
@@ -174,7 +182,7 @@ export function FilterBar({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Box sx={[filterPanelSx as object, { flexDirection: 'row', alignItems: 'center', gap: 1, p: 1 }]}>
+      <Box sx={[filterPanelSxFor(density) as object, { flexDirection: 'row', alignItems: 'center', gap: 1, p: 1 }]}>
         {search && <Box sx={{ flex: 1, minWidth: 0 }}>{search}</Box>}
         <MuiButton
           variant="outlined"
@@ -230,7 +238,7 @@ export function FilterBar({
         <Box data-testid="filter-sheet-fields" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
           {fieldsFor(true)}
           {viewControls && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: 28 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 0.5, minHeight: { xs: 44, sm: 28 } }}>
               {viewControls}
             </Box>
           )}

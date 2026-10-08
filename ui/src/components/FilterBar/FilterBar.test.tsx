@@ -188,3 +188,58 @@ describe('FilterBar on a phone (docs/specs/083)', () => {
     expect(fieldWrapper).not.toHaveStyle({ flex: '1 1 160px' })
   })
 })
+
+describe('FilterBar density (085 I)', () => {
+  const css = (element: HTMLElement) =>
+    Array.from(document.querySelectorAll('style'))
+      .flatMap((style) => Array.from(style.sheet?.cssRules ?? []))
+      .map((rule) => rule.cssText)
+      .filter((text) => Array.from(element.classList).some((name) => text.includes(`.${name}`)))
+      .join('\n')
+
+  it('keeps the original padding, gap and 40 px fields by default', () => {
+    setPhone(false)
+    render(<FilterBar {...props()} />)
+
+    const fields = screen.getByTestId('filter-bar-fields')
+    const panel = fields.parentElement as HTMLElement
+    expect(getComputedStyle(panel).padding).toBe('16px')
+    expect(getComputedStyle(fields).gap).toBe('16px')
+    expect(css(fields)).not.toMatch(/36px/)
+  })
+
+  it('compact has an 8 px panel padding and gap and 36 px fields on desktop', () => {
+    setPhone(false)
+    render(<FilterBar {...props()} density="compact" />)
+
+    const fields = screen.getByTestId('filter-bar-fields')
+    const panel = fields.parentElement as HTMLElement
+    expect(getComputedStyle(panel).padding).toBe('8px')
+    expect(getComputedStyle(panel).gap).toBe('8px')
+    expect(getComputedStyle(fields).gap).toBe('8px')
+    expect(css(fields)).toMatch(/\.MuiOutlinedInput-root[^{]*\{[^}]*height:\s*36px/)
+  })
+
+  it('centres the value of the Select-based fields (League, Team) in the 36 px box, and only in compact', () => {
+    setPhone(false)
+    const { unmount } = render(<FilterBar {...props()} density="compact" />)
+    const compactCss = css(screen.getByTestId('filter-bar-fields'))
+    expect(compactCss).toMatch(/\.MuiSelect-select\.MuiOutlinedInput-input[^{]*\{[^}]*min-height:\s*0/)
+    expect(compactCss).toMatch(/\.MuiSelect-select\.MuiOutlinedInput-input[^{]*\{[^}]*align-items:\s*center/)
+    // Same floated label with the explicit "All ..." value as in the comfortable look.
+    expect(screen.getByLabelText('League')).toHaveTextContent('All leagues')
+    expect(screen.getByLabelText('Team')).toHaveTextContent('All teams')
+    unmount()
+
+    render(<FilterBar {...props()} />)
+    expect(css(screen.getByTestId('filter-bar-fields'))).not.toMatch(/MuiSelect-select/)
+  })
+
+  it('the phone toolbar is unchanged by density: search plus Filters button, no 36 px fields', () => {
+    setPhone(true)
+    render(<FilterBar {...props()} density="compact" />)
+
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+    expect(screen.queryByTestId('filter-bar-fields')).not.toBeInTheDocument()
+  })
+})

@@ -4,12 +4,12 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
-## Resume here: 083 Availability filters and toolbars (all three slices built, in review)
+## Resume here: 085 Availability polish (built, awaiting the browser check; PR #104)
 
-Spec [`specs/083-availability-filters-and-toolbars.md`](specs/083-availability-filters-and-toolbars.md), plan [`plans/083-availability-filters-and-toolbars.md`](plans/083-availability-filters-and-toolbars.md), approved mockup https://claude.ai/artifact/17eTLdFJq6k2JDiewedBfx. Slice 1 (shared filters and unified toolbar, PR #97) and slice 2 (filtered counters and "Players still to answer", PR #98) are open; slice 3 (League and Team filters on Polls, list parameters `leagueId` and `teamId`) is built on top. Season has no control on any view (Players and Coverage use the current season); a past-season or history view is a possible later feature. Still to do: look at all three views in a browser at 375 px and desktop, run the Playwright golden path, then merge in order. Follow-ups noted in review: a query-count case for the round list with a league or team filter; sharing the slot matches between the filter and the date spans; possibly extending the pattern to other list pages (not decided).
+Specs 083 and 084 are merged. Spec [`specs/085-availability-polish.md`](specs/085-availability-polish.md) and plan [`plans/085-availability-polish.md`](plans/085-availability-polish.md) are built in one PR (#104, one commit per item): compact counters, small toggles, browser tab titles, the Responses pages (header gauge, no Summary tab, aligned lists), the Players grid (one scrollbar, Jump to today in the header, legend above), the phone lists (By game / By player), changing an answer from the Players grid (F) and poll lists behind the Open polls and Close in 48 hours counters (G). Still to do: the user's browser check (Storybook and Playwright were never run), then merge. Mockups are linked in the spec.
 
 Other open items, in no order:
-- **Clickable counters (spec 084, slices 1 and 2 built, in review):** on the Availability Polls page, "Players responded" and "Players still to answer" open a per-player list (Responded and Still to answer tabs), and "Close in 48 hours" becomes a list filter. The same pattern for the Overview and the Players and Matches pages comes later; reminders are not decided.
+- **Clickable counters (spec 084, merged):** Players responded / Still to answer open a per-player panel; the same pattern for the Overview, Players and Matches counters is later (see "Counters on other pages"); reminders are not decided. Spec 085 (G) changes "Open polls" and "Close in 48 hours" to open poll lists too.
 - **Before the public availability form (077) goes live in production:** set `PUBLIC_AVAILABILITY_TOKEN_SECRET` to a long random value; decide forwarded-address handling if the site is behind a proxy (the per-address limit uses the connection address); fix players with no date of birth using the Players "Missing date of birth" filter.
 - **Counters on other pages (081 slices 3 and 4):** Players (active, in a squad this season, missing a date of birth as a quick filter, new this month) and Matches (this week, teams not announced, without a poll, played this season), after the counters per page are agreed.
 - **Match card countdown:** "Starts in ..." using the shared `Countdown` component (082), a small change.
@@ -17,6 +17,11 @@ Other open items, in no order:
 - **Contract drift guard (optional):** the standards say CI fails on OpenAPI drift but no step does; a permanent test with a short baseline is about half a day (design in the contract-check discussion).
 - **Brand icons:** more icons are generated in Claude web in the original style and added with `npm run icons:strip`; the Overview, Player availability and Team availability icons exist.
 - **Smoke test:** `ui/e2e/manager-team-selection.spec.ts` is written but has never been run (needs local Keycloak credentials).
+
+## Suggestions (ideas, not specced)
+
+- **Poll test mode (suggested 2026-10-08):** a manager can try a poll as a player would see it, with nothing skipped (wording, audience, slots and the identity steps), from a "Test poll" entry next to Share invite. A start question asks "Just testing (nothing is saved)" or "Answer on behalf of a player" (pick the player from the poll's audience; the manager has the player's details, so a live test or confirmation is possible). A coloured banner stays visible during the run; nothing reaches the public submit endpoint until the last step; a test ends with "nothing was recorded"; an on-behalf run ends with a review of exactly what will be recorded and a save button named after the player, enabled only after ticking "I am recording this on behalf of ...". A saved on-behalf answer is marked as entered by a manager (like the "via link" marker) with who and when. Design points to settle in a spec: a sandbox for the identity checks so test runs never count towards a real player's lock-out (spec 077), who may use it (section managers or club admins), and whether the player is told (no messaging exists yet). Parked by the user on 2026-10-08 as a suggestion; needs a spec and mockups.
+
 
 ## Active
 

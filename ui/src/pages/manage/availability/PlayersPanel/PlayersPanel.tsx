@@ -5,23 +5,18 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import {
   Box,
   ButtonBase,
-  Drawer,
-  IconButton,
   InputAdornment,
   Link,
   Skeleton,
   Tab,
   Tabs,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SearchIcon from '@mui/icons-material/Search'
-import { BottomSheet } from '../../../../components/BottomSheet'
 import { Button } from '../../../../components/Button'
 import { Input } from '../../../../components/Input'
+import { SidePanel } from '../../../../components/SidePanel'
 import {
   availabilitySummaryPlayersKey,
   listAvailabilitySummaryPlayers,
@@ -42,8 +37,8 @@ export interface PlayersPanelProps {
   // The tab shown; the panel does not own it (the hub layout does, so a counter can pre-select it).
   tab: PlayersPanelTab
   onTabChange: (tab: PlayersPanelTab) => void
-  // Exactly what the summary was asked, plus the 48-hour flag.
-  filters: AvailabilitySummaryFilters & { closingSoon?: boolean }
+  // Exactly what the summary was asked.
+  filters: AvailabilitySummaryFilters
   // The two counter figures, shown on the tabs.
   counts: { responded: number; awaiting: number }
   // The "Showing: ..." text of the page (empty = no shared filter set).
@@ -146,10 +141,6 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
   })
   const players = query.data?.pages.flatMap((page) => page.content) ?? []
 
-  // The tab figures are the page counters, which the 48-hour filter does not change; the list is narrowed by it,
-  // so the scope line says so.
-  const scopeLine = [scope, filters.closingSoon ? 'closing within 48 hours' : ''].filter(Boolean).join(' · ')
-
   const emptyText =
     search !== ''
       ? `No players match "${search}".`
@@ -221,9 +212,9 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
           </Button>
         )}
       </Box>
-      {scopeLine && (
+      {scope && (
         <Typography variant="caption" color="text.secondary" data-testid="players-panel-scope">
-          {`Showing: ${scopeLine}`}
+          {`Showing: ${scope}`}
         </Typography>
       )}
     </Box>
@@ -233,44 +224,21 @@ function PanelContent({ clubId, tab, onTabChange, filters, counts, scope, isPhon
 const TITLE = 'Players'
 
 // docs/specs/084: the panel behind the two players counters on the Polls page - a bottom sheet on a phone, a right
-// drawer from sm up. Two tabs (Responded / Still to answer, pre-selected by the clicked counter), a debounced name
-// search, one row per player with the polls they answered or still owe (each a link to that poll's Responses page),
-// and the page's own "Showing: ..." scope. Loads its own pages (25 at a time); a failure stays inside the panel.
-// Closing returns focus to the counter that opened it (the Modal's default).
+// drawer from sm up (the shared SidePanel chrome). Two tabs (Responded / Still to answer, pre-selected by the clicked
+// counter), a debounced name search, one row per player with the polls they answered or still owe (each a link to that
+// poll's Responses page), and the page's own "Showing: ..." scope. Loads its own pages (25 at a time); a failure stays
+// inside the panel. Closing returns focus to the counter that opened it (the Modal's default).
 export function PlayersPanel({ open, onClose: close, ...content }: PlayersPanelProps) {
-  const theme = useTheme()
   const [searchText, setSearchText] = useState('')
   const onClose = () => {
     setSearchText('')
     close()
   }
   const shared = { searchText, onSearchTextChange: setSearchText }
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
-
-  if (isPhone) {
-    return (
-      <BottomSheet open={open} onOpen={() => undefined} onClose={onClose} ariaLabel={TITLE} title={TITLE} closeLabel="Close players list">
-        {open && <PanelContent {...content} {...shared} isPhone />}
-      </BottomSheet>
-    )
-  }
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{ 'aria-label': TITLE, sx: { width: 420, maxWidth: '100vw', p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 } }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" component="h2" fontWeight={700}>
-          {TITLE}
-        </Typography>
-        <IconButton aria-label="Close players list" onClick={onClose} size="small">
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-      <PanelContent {...content} {...shared} isPhone={false} />
-    </Drawer>
+    <SidePanel open={open} onClose={onClose} title={TITLE} closeLabel="Close players list">
+      {(isPhone) => <PanelContent {...content} {...shared} isPhone={isPhone} />}
+    </SidePanel>
   )
 }

@@ -64,7 +64,7 @@ function Harness({ initialTab = 'awaiting', onClose, ...rest }: Partial<PlayersP
         clubId="club-1"
         tab={tab}
         onTabChange={setTab}
-        filters={{ leagueId: 'lg-1', type: 'ALL', includeClosed: false, closingSoon: true }}
+        filters={{ leagueId: 'lg-1', type: 'ALL', includeClosed: false }}
         counts={{ responded: 12, awaiting: 6 }}
         scope="Vets › Over 40"
         {...rest}
@@ -92,7 +92,8 @@ describe('PlayersPanel (084)', () => {
     expect(await screen.findByRole('tab', { name: 'Still to answer · 6' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Responded · 12' })).toHaveAttribute('aria-selected', 'false')
     await waitFor(() => expect(listAvailabilitySummaryPlayers).toHaveBeenCalledTimes(1))
-    expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toMatchObject({ kind: 'awaiting', leagueId: 'lg-1', closingSoon: true })
+    expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toMatchObject({ kind: 'awaiting', leagueId: 'lg-1' })
+    expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).not.toHaveProperty('closingSoon')
 
     await user.click(screen.getByRole('tab', { name: 'Responded · 12' }))
     expect(screen.getByRole('tab', { name: 'Responded · 12' })).toHaveAttribute('aria-selected', 'true')
@@ -144,20 +145,11 @@ describe('PlayersPanel (084)', () => {
     expect(screen.getByTestId('players-panel-scope')).toHaveTextContent('Showing: Vets › Over 40')
   })
 
-  it('omits the scope line when no shared filter is set and the 48-hour filter is off', async () => {
-    renderPanel({ scope: '', filters: { type: 'ALL', includeClosed: false, closingSoon: false } })
+  it('omits the scope line when no shared filter is set', async () => {
+    renderPanel({ scope: '', filters: { type: 'ALL', includeClosed: false } })
 
     await screen.findByText('Ann Lee')
     expect(screen.queryByTestId('players-panel-scope')).not.toBeInTheDocument()
-  })
-
-  it('says the list is narrowed to polls closing within 48 hours, even with no shared filter set', async () => {
-    const { unmount } = renderPanel({ scope: '' })
-    expect(await screen.findByTestId('players-panel-scope')).toHaveTextContent('Showing: closing within 48 hours')
-    unmount()
-
-    renderPanel()
-    expect(await screen.findByTestId('players-panel-scope')).toHaveTextContent('Showing: Vets › Over 40 · closing within 48 hours')
   })
 
   it('keeps the search text when the window crosses the phone breakpoint', async () => {

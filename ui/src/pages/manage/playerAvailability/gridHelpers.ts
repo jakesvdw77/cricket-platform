@@ -181,3 +181,67 @@ export function openPollPath(game: GameColumn): string {
   const section = game.sectionId ? `&sectionId=${game.sectionId}` : ''
   return `/manage/availability/new?type=group${section}&matchId=${game.matchId}`
 }
+
+// docs/specs/085 (E): the helpers behind the phone lists (By game, By player).
+
+// The four answers a phone chip can filter on. NOT_IN_POLL is not one: a player outside a game's poll is not in its list.
+export type AnswerStatus = 'AVAILABLE' | 'UNSURE' | 'UNAVAILABLE' | 'NO_RESPONSE'
+export const ANSWER_STATUSES: AnswerStatus[] = ['AVAILABLE', 'UNSURE', 'UNAVAILABLE', 'NO_RESPONSE']
+
+// Index (in the left-to-right order) of the first game of the next game day - the same day the desktop "Next game
+// day" chip marks (nextGameDayMarker: a game earlier today still counts as today). -1 when every game is before today.
+export function nextGameDayIndex(columns: GameColumn[], now: Date): number {
+  const today = startOfDay(now).getTime()
+  return columns.findIndex((game) => startOfDay(new Date(game.matchDate)).getTime() >= today)
+}
+
+// The game the phone lists open on: the first game of the next game day; with none upcoming, the last (most recent) game.
+export function openingGame(columns: GameColumn[], now: Date): GameColumn | undefined {
+  const index = nextGameDayIndex(columns, now)
+  return index >= 0 ? columns[index] : columns[columns.length - 1]
+}
+
+// The games of the By player strip: four, starting at the next game day (or the last four when all are past).
+export function nextFourGames(columns: GameColumn[], now: Date, count = 4): GameColumn[] {
+  const index = nextGameDayIndex(columns, now)
+  return index >= 0 ? columns.slice(index, index + count) : columns.slice(-count)
+}
+
+// How many of the given players gave each answer for one game.
+export function answerCounts(players: PlayerRow[], matchId: string): Record<AnswerStatus, number> {
+  const counts: Record<AnswerStatus, number> = { AVAILABLE: 0, UNSURE: 0, UNAVAILABLE: 0, NO_RESPONSE: 0 }
+  for (const player of players) {
+    const status = cellFor(player, matchId)?.status
+    if (status && (ANSWER_STATUSES as string[]).includes(status)) counts[status as AnswerStatus] += 1
+  }
+  return counts
+}
+
+export interface GamePlayer {
+  player: PlayerRow
+  status: AnswerStatus
+  picked: boolean
+}
+
+// The players that have one of the four answers for a game, in the order given (optionally only one answer). Players
+// outside the game's poll (NOT_IN_POLL, or no cell) are left out.
+export function playersForGame(players: PlayerRow[], matchId: string, status: AnswerStatus | null = null): GamePlayer[] {
+  const rows: GamePlayer[] = []
+  for (const player of players) {
+    const cell = cellFor(player, matchId)
+    if (!cell || !(ANSWER_STATUSES as string[]).includes(cell.status)) continue
+    if (status && cell.status !== status) continue
+    rows.push({ player, status: cell.status as AnswerStatus, picked: cell.picked })
+  }
+  return rows
+}
+
+// "15 Oct" - the short date over a column of the By player strip.
+export function shortDate(date: Date): string {
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`
+}
+
+// True when the grid (or the phone lists) is replaced by an empty state: no games, or no game has a poll yet.
+export function hasNothingToShow(games: GameColumn[]): boolean {
+  return games.length === 0 || games.every((game) => game.pollType === null)
+}

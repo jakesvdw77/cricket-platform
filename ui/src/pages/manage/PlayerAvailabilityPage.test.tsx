@@ -26,6 +26,13 @@ vi.mock('../../api/teamApi', () => ({
   listTeamsForClub: (clubId: string, params: unknown) => listTeamsForClub(clubId, params),
 }))
 
+const setRoundPlayerStatus = vi.fn()
+const getRoundMatches = vi.fn()
+vi.mock('../../api/sectionAvailabilityApi', () => ({
+  setRoundPlayerStatus: (...args: unknown[]) => setRoundPlayerStatus(...args),
+  getRoundMatches: (...args: unknown[]) => getRoundMatches(...args),
+}))
+
 const STORAGE_KEY = 'availability:filters:test-club-id'
 
 function season(id: string, label: string, startDate: string, endDate: string, createdAt = '2026-01-01T00:00:00Z'): Season {
@@ -123,6 +130,10 @@ function renderPage(clubId: string | null = 'test-club-id', path = '/manage/avai
   )
 }
 
+async function phoneLoaded() {
+  await screen.findByRole('group', { name: 'Players view' })
+}
+
 async function loaded() {
   await screen.findByRole('table', { name: 'Player availability by game' })
 }
@@ -154,9 +165,6 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
     const toggle = screen.getByRole('checkbox', { name: 'Show past games' })
     expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(
-      toggle.compareDocumentPosition(screen.getByRole('button', { name: 'Jump to today' })) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
   })
 
@@ -319,6 +327,54 @@ describe('PlayerAvailabilityPage', () => {
     expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
   })
 
+  it('puts Jump to today in the hub header action slot, not in the content controls line (085)', async () => {
+    renderPage()
+    await loaded()
+
+    const jump = screen.getByRole('button', { name: 'Jump to today' })
+    expect(screen.getByTestId('hub-header-action')).toContainElement(jump)
+    expect(screen.getByText(/^Showing 2 players/).parentElement).not.toContainElement(jump)
+  })
+
+  it('takes Jump to today away from the header when the view goes (085)', async () => {
+    const view = renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
+
+    view.unmount()
+    expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
+  })
+
+  it('changes an answer from a grid cell: saves with the looked-up window, refreshes the grid (085 F)', async () => {
+    const user = userEvent.setup()
+    getRoundMatches.mockResolvedValue([{ matchId: 'm-future', windowId: 'win-1' }])
+    setRoundPlayerStatus.mockResolvedValue({})
+    renderPage()
+    await loaded()
+
+    await user.click(within(screen.getByTestId('cell-p2-m-future')).getByRole('button'))
+    await user.click(screen.getByRole('menuitem', { name: 'Unsure' }))
+
+    await waitFor(() => expect(setRoundPlayerStatus).toHaveBeenCalledWith('test-club-id', 'round-1', 'p2', 'win-1', 'UNSURE'))
+    await waitFor(() => expect(listPlayerAvailability).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows an error and keeps the old answer when saving an answer fails (085 F)', async () => {
+    const user = userEvent.setup()
+    getRoundMatches.mockResolvedValue([{ matchId: 'm-future', windowId: 'win-1' }])
+    setRoundPlayerStatus.mockRejectedValue(new Error('nope'))
+    renderPage()
+    await loaded()
+
+    await user.click(within(screen.getByTestId('cell-p2-m-future')).getByRole('button'))
+    await user.click(screen.getByRole('menuitem', { name: 'Unsure' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong saving that answer. Please try again.')
+    expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
+    expect(within(screen.getByTestId('cell-p2-m-future')).getByRole('button', { name: /No response/ })).toBeInTheDocument()
+  })
+
   it('Jump to today scrolls the first upcoming game column into view', async () => {
     const user = userEvent.setup()
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [PAST, FUTURE], players: [makePlayer('p1', 'Jane', 'Smith', 7, [['m-past', 'AVAILABLE'], ['m-future', 'UNSURE']])] }))
@@ -438,14 +494,14 @@ describe('PlayerAvailabilityPage', () => {
       const user = userEvent.setup()
       setViewport(false)
       renderPage()
-      await loaded()
+      await phoneLoaded()
 
       expect(screen.getByPlaceholderText('Search players')).toBeVisible()
       // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
     expect(screen.queryByRole('combobox', { name: 'League' })).not.toBeInTheDocument()
       expect(screen.queryByRole('checkbox', { name: 'Show past games' })).not.toBeInTheDocument()
-      // Jump to today stays on the page.
-      expect(screen.getByRole('button', { name: 'Jump to today' })).toBeInTheDocument()
+      // No Jump to today on a phone (085): the header slot stays empty.
+      expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Filters' }))
 
@@ -456,12 +512,44 @@ describe('PlayerAvailabilityPage', () => {
       expect(screen.getByRole('checkbox', { name: 'Hide players with no answers' })).toBeInTheDocument()
     })
 
+    it('shows the By game / By player lists instead of the grid, with the same data (085)', async () => {
+      setViewport(false)
+      renderPage()
+      await phoneLoaded()
+
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'By game' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.getByText('Bob Jones')).toBeInTheDocument()
+      expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
+    })
+
+    it('applies the search to the phone lists', async () => {
+      const user = userEvent.setup()
+      setViewport(false)
+      renderPage()
+      await phoneLoaded()
+
+      await user.type(screen.getByPlaceholderText('Search players'), 'jane')
+
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
+    })
+
+    it('keeps the empty states on a phone', async () => {
+      setViewport(false)
+      listPlayerAvailability.mockResolvedValue(makeResult({ games: [], players: [] }))
+      renderPage()
+
+      expect(await screen.findByText('No games match these filters')).toBeInTheDocument()
+    })
+
     it('badges the Filters button with the set filters and shows a removable chip', async () => {
       const user = userEvent.setup()
       setViewport(false)
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: null }))
       renderPage()
-      await loaded()
+      await phoneLoaded()
 
       expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Remove filter Division Two' }))

@@ -1,6 +1,6 @@
 import { alpha, Box, ButtonBase, Card as MuiCard, Skeleton, Typography } from '@mui/material'
 import type { Theme } from '@mui/material'
-import { keyFigureCardSx, keyFigureValueSx, selectableCardSx } from './keyFigureStyle'
+import { compactCardSx, compactValueSx, keyFigureCardSx, keyFigureValueSx, selectableCardSx } from './keyFigureStyle'
 
 export interface PageCounterItem {
   id: string
@@ -14,14 +14,16 @@ export interface PageCounterItem {
   // Makes the counter a real button.
   onSelect?: () => void
   // docs/specs/084: what selecting does. 'filter' (default) toggles a filter of the list below: a toggle button
-  // (aria-pressed) with a small "filter" tag. 'reset' is the same toggle behaviour without the tag (the card that
-  // clears the filters). 'drill' opens something else: a plain button with a ">" marker, no aria-pressed.
-  kind?: 'filter' | 'reset' | 'drill'
+  // (aria-pressed) with a small "filter" tag. 'drill' opens something else: a plain button with a ">" marker, no aria-pressed.
+  kind?: 'filter' | 'drill'
 }
 
 export interface PageCountersProps {
   items: PageCounterItem[]
   loading?: boolean
+  // docs/specs/085: 'comfortable' (default, the Overview key-figure look) or 'compact' (one line, about 44 px,
+  // 6 px gap). Only the Availability Polls page uses compact.
+  density?: 'comfortable' | 'compact'
 }
 
 const SKELETON_COUNT = 4
@@ -31,6 +33,7 @@ const gridSx = {
   gap: 1.5,
   gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
 }
+const compactGridSx = { ...gridSx, gap: 0.75 }
 
 // Screen-reader-only text (the visible cue is the corner marker).
 const visuallyHidden = {
@@ -66,28 +69,35 @@ const markerSx = {
   lineHeight: 1,
 }
 
-function CounterBody({ item, interactive }: { item: PageCounterItem; interactive: boolean }) {
+function CounterBody({ item, interactive, compact }: { item: PageCounterItem; interactive: boolean; compact: boolean }) {
   const kind = item.kind ?? 'filter'
   return (
     <>
-      {interactive && kind !== 'reset' && (
+      {interactive && (
         <Box
           component="span"
           aria-hidden
           data-testid={`page-counter-${item.id}-marker`}
           sx={
-            kind === 'drill'
-              ? { ...markerSx, fontSize: '1.2rem' }
-              : { ...markerSx, top: 9, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }
+            compact
+              ? { ...markerSx, top: '50%', transform: 'translateY(-50%)', right: 10, ...(kind === 'drill' ? { fontSize: '1.15rem' } : { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }) }
+              : kind === 'drill'
+                ? { ...markerSx, fontSize: '1.2rem' }
+                : { ...markerSx, top: 9, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }
           }
         >
           {kind === 'drill' ? '›' : 'filter'}
         </Box>
       )}
-      <Typography component="b" data-testid="page-counter-value" sx={keyFigureValueSx(item.tone === 'warning')}>
+      <Typography component="b" data-testid="page-counter-value" sx={compact ? compactValueSx(item.tone === 'warning') : keyFigureValueSx(item.tone === 'warning')}>
         {item.value}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={compact ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : undefined}
+        title={compact ? item.label : undefined}
+      >
         {item.label}
       </Typography>
       {interactive && item.hint && (
@@ -101,14 +111,18 @@ function CounterBody({ item, interactive }: { item: PageCounterItem; interactive
 
 // docs/specs/081: a row of counters under a page header, in the Overview key-figure card style. Four across
 // from md, two by two below. A counter with onSelect is a real toggle button; others are plain cards.
-export function PageCounters({ items, loading = false }: PageCountersProps) {
+export function PageCounters({ items, loading = false, density = 'comfortable' }: PageCountersProps) {
+  const compact = density === 'compact'
+  const cardSx = compact ? compactCardSx : keyFigureCardSx
+  // Room for the corner marker on a selectable compact card, so it never overlaps the text.
+  const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) ? { pr: item.kind === 'drill' ? 4 : 6.5 } : {})
   if (loading) {
     return (
-      <Box sx={gridSx} aria-busy="true" data-testid="page-counters-loading">
+      <Box sx={compact ? compactGridSx : gridSx} aria-busy="true" data-testid="page-counters-loading">
         {Array.from({ length: SKELETON_COUNT }, (_, index) => (
-          <MuiCard key={index} sx={keyFigureCardSx}>
-            <Skeleton variant="rounded" width="40%" height={28} />
-            <Skeleton variant="text" width="70%" />
+          <MuiCard key={index} sx={cardSx}>
+            <Skeleton variant="rounded" width={compact ? 24 : '40%'} height={compact ? 20 : 28} />
+            <Skeleton variant="text" width={compact ? '55%' : '70%'} sx={compact ? { flex: 1 } : undefined} />
           </MuiCard>
         ))}
       </Box>
@@ -116,7 +130,7 @@ export function PageCounters({ items, loading = false }: PageCountersProps) {
   }
 
   return (
-    <Box sx={gridSx}>
+    <Box sx={compact ? compactGridSx : gridSx}>
       {items.map((item) =>
         isInteractive(item) ? (
           <ButtonBase
@@ -126,26 +140,28 @@ export function PageCounters({ items, loading = false }: PageCountersProps) {
             data-testid={`page-counter-${item.id}`}
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({
-                ...keyFigureCardSx,
+                ...cardSx,
+                ...markerPr(item),
                 borderRadius: `${theme.shape.borderRadius}px`,
                 position: 'relative',
-                alignItems: 'flex-start',
+                alignItems: compact ? 'baseline' : 'flex-start',
+                justifyContent: compact ? 'flex-start' : undefined,
                 textAlign: 'left',
                 outline: item.active ? activeOutline(theme) : '2px solid transparent',
                 ...selectableCardSx(theme),
                 '&.Mui-focusVisible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
               })}
           >
-            <CounterBody item={item} interactive={isInteractive(item)} />
+            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} />
           </ButtonBase>
         ) : (
           <MuiCard
             key={item.id}
             data-testid={`page-counter-${item.id}`}
             data-active={item.active ? 'true' : undefined}
-            sx={(theme) => ({ ...keyFigureCardSx, outline: item.active ? activeOutline(theme) : '2px solid transparent' })}
+            sx={(theme) => ({ ...cardSx, outline: item.active ? activeOutline(theme) : '2px solid transparent' })}
           >
-            <CounterBody item={item} interactive={isInteractive(item)} />
+            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} />
           </MuiCard>
         ),
       )}

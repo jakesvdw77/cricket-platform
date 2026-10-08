@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import { Box, ButtonBase, Stack, Typography } from '@mui/material'
-import { Button } from '../../../../components/Button'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import { ResponseGauge } from '../../../../components/ResponseGauge'
 import type { AvailabilityStatus } from '../../../../api/matchAvailabilityApi'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { SlotMatches } from './SlotMatches'
 import { ViaLinkMarker } from './ViaLinkMarker'
-import { playerName, playerNumber, ROW_HEIGHT, SCROLL_BOX_MAX_HEIGHT, slotHeading, STATUS_ORDER, viaLinkFor } from './responseHelpers'
+import { playerName, ROW_HEIGHT, slotHeading, STATUS_ORDER, viaLinkFor } from './responseHelpers'
 import type { OverrideProps, ResponseRow, SlotGroup } from './responseHelpers'
 
 const GROUP_KEY: Record<AvailabilityStatus, 'available' | 'unsure' | 'unavailable'> = {
@@ -15,7 +17,7 @@ const GROUP_KEY: Record<AvailabilityStatus, 'available' | 'unsure' | 'unavailabl
   UNAVAILABLE: 'unavailable',
 }
 
-// A player row: shirt number + name, tapping opens the override menu.
+// A player row: the name (no shirt number: it only took space), a divider under it, tapping opens the override menu.
 function PlayerRow({
   row,
   slot,
@@ -27,7 +29,6 @@ function PlayerRow({
   status: AvailabilityStatus | null
   override: OverrideProps
 }) {
-  const number = playerNumber(row)
   return (
     <StatusOverrideMenu
       playerName={playerName(row)}
@@ -48,20 +49,14 @@ function PlayerRow({
             py: 0.75,
             minHeight: ROW_HEIGHT,
             textAlign: 'left',
-            borderRadius: 1,
+            borderRadius: 0,
+            borderBottom: 1,
+            borderColor: 'divider',
             '&:hover': { bgcolor: 'action.hover' },
             '&[aria-disabled="true"]': { cursor: 'default' },
           }}
         >
-          <Typography
-            component="span"
-            variant="body2"
-            color="text.secondary"
-            sx={{ minWidth: 28, fontVariantNumeric: 'tabular-nums' }}
-          >
-            {number != null ? `#${number}` : ''}
-          </Typography>
-          <Typography component="span" variant="body2">
+          <Typography component="span" variant="body2" sx={{ flex: '1 1 auto', minWidth: 0 }}>
             {playerName(row)}
           </Typography>
           {viaLinkFor(row, slot.bracket.windowId) && <ViaLinkMarker />}
@@ -93,13 +88,8 @@ function StatusColumn({
           {rows.length}
         </Typography>
       </Stack>
-      {/* SCROLL_ROWS rows tall, then it scrolls in its own box rather than stretching the page. */}
-      <Box
-        role="region"
-        tabIndex={0}
-        aria-label={`${STATUS_LABEL[status]} players, ${heading}`}
-        sx={{ maxHeight: SCROLL_BOX_MAX_HEIGHT, overflowY: 'auto', p: 0.5, minHeight: 48 }}
-      >
+      {/* docs/specs/085 (C9): the list grows to its full length and the page scrolls, so this is not a scroll box. */}
+      <Box role="group" aria-label={`${STATUS_LABEL[status]} players, ${heading}`} sx={{ p: 0.5, minHeight: 48, '& > button:last-of-type': { borderBottom: 0 } }}>
         {rows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 0.75 }}>
             None
@@ -112,7 +102,7 @@ function StatusColumn({
   )
 }
 
-function SlotBlock({ slot, override }: { slot: SlotGroup; override: OverrideProps }) {
+function SlotBlock({ slot, override, slotBar }: { slot: SlotGroup; override: OverrideProps; slotBar: boolean }) {
   // Per slot, not persisted (docs/specs/065): a section can have dozens of non-responders.
   const [noResponseOpen, setNoResponseOpen] = useState(false)
   const heading = slotHeading(slot.bracket)
@@ -145,28 +135,65 @@ function SlotBlock({ slot, override }: { slot: SlotGroup; override: OverrideProp
           </Typography>
         </Stack>
         <SlotMatches matches={slot.matches} />
+        {slotBar && (
+          <ResponseGauge
+            mode="status"
+            variant="thin"
+            testIdPrefix={slot.bracket.windowId}
+            counts={{
+              available: slot.bracket.availableCount,
+              unsure: slot.bracket.unsureCount,
+              unavailable: slot.bracket.unavailableCount,
+              noResponse: slot.bracket.noResponseCount,
+            }}
+          />
+        )}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
           {STATUS_ORDER.map((status) => (
             <StatusColumn key={status} status={status} slot={slot} rows={slot[GROUP_KEY[status]]} override={slotOverride} />
           ))}
         </Box>
         <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          {/* docs/specs/085 (C7): the whole bar is the click target. The button is an overlay so the "No response (n)"
+              heading stays a real heading; the Show / Hide text and arrow are decoration for it. */}
+          <Box
+            sx={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 36,
+              borderRadius: 1,
+              ...(slot.noResponse.length > 0 && { '&:hover': { bgcolor: 'action.hover' } }),
+            }}
+          >
             <Typography variant="subtitle2" fontWeight={700} component="h4" sx={{ pl: 0.5 }}>
               No response ({slot.noResponse.length})
             </Typography>
             {slot.noResponse.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-expanded={noResponseOpen}
-                aria-label={`${noResponseOpen ? 'Hide' : 'Show'} no response players, ${heading}`}
-                onClick={() => setNoResponseOpen((prev) => !prev)}
-              >
-                {noResponseOpen ? 'Hide' : 'Show'}
-              </Button>
+              <>
+                <Box
+                  aria-hidden
+                  data-testid="no-response-toggle-label"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, pr: 0.5, color: 'primary.main', fontWeight: 700, fontSize: '0.8125rem' }}
+                >
+                  {noResponseOpen ? 'Hide' : 'Show'}
+                  {noResponseOpen ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+                </Box>
+                <ButtonBase
+                  aria-expanded={noResponseOpen}
+                  aria-label={`${noResponseOpen ? 'Hide' : 'Show'} no response players, ${heading}`}
+                  onClick={() => setNoResponseOpen((prev) => !prev)}
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 1,
+                    '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 1 },
+                  }}
+                />
+              </>
             )}
-          </Stack>
+          </Box>
           {noResponseOpen && (
             <Box sx={{ mt: 0.5, columnWidth: 200, columnGap: 1 }}>
               {slot.noResponse.map((row) => (
@@ -184,11 +211,11 @@ function SlotBlock({ slot, override }: { slot: SlotGroup; override: OverrideProp
 
 // docs/specs/065 "By time slot" (the default view): per slot, its matches then who is Available /
 // Unsure / Unavailable, with a collapsible No response row.
-export function ResponsesByTimeSlot({ slots, override }: { slots: SlotGroup[]; override: OverrideProps }) {
+export function ResponsesByTimeSlot({ slots, override, slotBars = false }: { slots: SlotGroup[]; override: OverrideProps; slotBars?: boolean }) {
   return (
     <Stack spacing={2}>
       {slots.map((slot) => (
-        <SlotBlock key={slot.bracket.windowId} slot={slot} override={override} />
+        <SlotBlock key={slot.bracket.windowId} slot={slot} override={override} slotBar={slotBars} />
       ))}
     </Stack>
   )

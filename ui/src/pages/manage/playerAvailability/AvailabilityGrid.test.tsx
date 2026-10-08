@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { AvailabilityGrid, DATE_ROW_HEIGHT, SCROLL_BOX_MAX_HEIGHT, SLOT_ROW_HEIGHT } from './AvailabilityGrid'
+import { AvailabilityGrid, DATE_ROW_HEIGHT, SCROLL_BOX_MIN_HEIGHT, SLOT_ROW_HEIGHT } from './AvailabilityGrid'
 import type { AvailabilityGridHandle } from './AvailabilityGrid'
 import { at, makeGame, makePlayer } from './testData'
 
@@ -138,7 +138,7 @@ describe('AvailabilityGrid', () => {
     renderGrid()
 
     const box = screen.getByRole('region', { name: /player availability grid/i })
-    expect(box).toHaveStyle({ overflow: 'auto', maxHeight: SCROLL_BOX_MAX_HEIGHT })
+    expect(box).toHaveStyle({ overflow: 'auto', minHeight: `${SCROLL_BOX_MIN_HEIGHT}px`, overscrollBehavior: 'contain' })
     expect(box).toHaveAttribute('tabindex', '0')
     expect(screen.getByRole('table')).toHaveStyle({ borderCollapse: 'separate' })
 
@@ -226,9 +226,25 @@ describe('AvailabilityGrid', () => {
     expect(screen.getByText('No players to show.')).toBeInTheDocument()
   })
 
-  it('shows the legend under the grid', () => {
+  it('shows the legend above the grid (085)', () => {
     renderGrid()
-    expect(screen.getByRole('list', { name: 'Legend' })).toBeInTheDocument()
+
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    const box = screen.getByRole('region', { name: /player availability grid/i })
+    expect(legend.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(legend.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('sizes the scroll box to the window from its measured top (085)', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 720, configurable: true })
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return { top: this.getAttribute('role') === 'region' ? 300 : 0, height: 0, width: 100 } as DOMRect
+    })
+    renderGrid()
+
+    // 720 - 300 - 24 bottom padding.
+    expect(screen.getByRole('region', { name: /player availability grid/i })).toHaveStyle({ height: '396px' })
+    spy.mockRestore()
   })
 
   it('says so when no games match', () => {
@@ -242,5 +258,70 @@ describe('AvailabilityGrid', () => {
     expect(screen.getByText('No polls opened yet for these games')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Go to Availability Polls' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  describe('changing an answer (085 F)', () => {
+    const handlers = () => ({ pendingKeys: new Set<string>(), onChange: vi.fn().mockResolvedValue(true) })
+
+    it('a cell with a poll is a button named by its cell label that opens the answer menu instead of navigating', async () => {
+      const user = userEvent.setup()
+      renderGrid({ changeAnswer: handlers() })
+
+      const cell = screen.getByRole('button', { name: /^Anton de Villiers, Sat 3 Oct Morning, Villagers 1 v CBC: Available, group poll, picked$/ })
+      expect(cell).toHaveAttribute('aria-haspopup', 'menu')
+      expect(cell).toHaveAttribute('aria-expanded', 'false')
+      await user.click(cell)
+
+      expect(cell).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByText(/^Anton de Villiers, Sat 3 Oct 09:00, Villagers 1 v CBC$/)).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Available' })).toHaveClass('Mui-selected')
+      expect(screen.getByRole('menuitem', { name: 'Unsure' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Unavailable' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Open poll' })).toBeInTheDocument()
+      expect(screen.queryByTestId('where')).not.toBeInTheDocument()
+    })
+
+    it('does not make cells outside a game poll clickable', () => {
+      renderGrid({ changeAnswer: handlers() })
+
+      // The m3 game has no poll: its cells are plain marks, and so is the NOT_IN_POLL cell of m2 for Amy.
+      expect(screen.getByTestId('cell-p1-m3').querySelector('button')).toBeNull()
+      expect(screen.getByTestId('cell-p3-m2').querySelector('button')).toBeNull()
+    })
+
+    it('choosing an answer hands the player, game and status to the handler', async () => {
+      const user = userEvent.setup()
+      const change = handlers()
+      renderGrid({ changeAnswer: change })
+
+      await user.click(screen.getByTestId('cell-p2-m2').querySelector('button') as HTMLElement)
+      await user.click(screen.getByRole('menuitem', { name: 'Available' }))
+
+      expect(change.onChange).toHaveBeenCalledTimes(1)
+      const [player, game, status] = change.onChange.mock.calls[0]
+      expect([player.playerProfileId, game.matchId, status]).toEqual(['p2', 'm2', 'AVAILABLE'])
+    })
+
+    it('"Open poll" navigates to the poll', async () => {
+      const user = userEvent.setup()
+      renderGrid({ changeAnswer: handlers() })
+
+      await user.click(screen.getByTestId('cell-p1-m1').querySelector('button') as HTMLElement)
+      await user.click(screen.getByRole('menuitem', { name: 'Open poll' }))
+
+      expect(screen.getByTestId('where')).toHaveTextContent('/manage/availability/group/round-1')
+    })
+
+    it('disables only the cell whose own save is running', async () => {
+      const user = userEvent.setup()
+      const change = { ...handlers(), pendingKeys: new Set(['p1:m1']) }
+      renderGrid({ changeAnswer: change })
+
+      const busy = screen.getByTestId('cell-p1-m1').querySelector('button') as HTMLElement
+      expect(busy).toHaveAttribute('aria-disabled', 'true')
+      await user.click(busy)
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      expect(screen.getByTestId('cell-p2-m1').querySelector('button')).toHaveAttribute('aria-disabled', 'false')
+    })
   })
 })

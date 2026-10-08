@@ -85,6 +85,9 @@ const base: FilterBarProps = {
 export const AllFilters: Story = { args: base, render: (args) => <Interactive {...args} /> }
 
 // The Coverage view: no Team, no search.
+// docs/specs/085 (I): the compact density the Availability pages use - 8 px panel padding and gap, 36 px fields.
+export const Compact: Story = { args: { ...base, density: 'compact' }, render: (args) => <Interactive {...args} /> }
+
 export const NoTeamNoSearch: Story = {
   args: { ...base, teams: undefined, searchPlaceholder: undefined },
   render: (args) => <Interactive {...args} />,

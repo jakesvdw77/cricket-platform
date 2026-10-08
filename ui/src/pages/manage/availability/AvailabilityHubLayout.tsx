@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
@@ -13,10 +13,14 @@ import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
 import { availabilitySummaryKey, getAvailabilitySummary, typeFilterFor } from '../../../api/availabilitySummaryApi'
 import type { AvailabilitySummary, AvailabilitySummaryFilters } from '../../../api/availabilitySummaryApi'
+import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
+import { JumpToTodayButton } from './JumpToTodayButton'
 import { useAvailabilityHubState } from './hubContext'
 import { PlayersPanel } from './PlayersPanel'
+import { PollsPanel } from './PollsPanel'
+import type { PollsPanelKind } from './PollsPanel'
 import type { PlayersPanelTab } from './PlayersPanel'
 
 type HubView = 'polls' | 'players' | 'coverage'
@@ -38,14 +42,14 @@ function activeView(pathname: string): HubView {
 }
 
 // docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
-// docs/specs/084: "Close in 48 hours" is a filter of the list (active while on) and the first counter resets it;
-// the two players counters are drill-downs that open the players panel on the matching tab (plain cards at zero,
-// by PageCounters' zero rule). The figures never change with the filter: the summary request does not carry it.
+// docs/specs/085 (G): all four are drill-downs that open a slide-in panel - "Open polls" (or "Polls shown" with Show
+// closed on) and "Close in 48 hours" open the polls panel, the two players counters open the players panel. A counter
+// at zero is a plain card (PageCounters' zero rule). The figures never change with a panel: the summary request does
+// not carry them.
 function counterItems(
   summary: AvailabilitySummary,
   showClosed: boolean,
-  closingSoon: boolean,
-  setClosingSoon: (value: boolean) => void,
+  openPolls: (kind: PollsPanelKind) => void,
   openPlayers: (tab: PlayersPanelTab) => void,
 ): PageCounterItem[] {
   return [
@@ -54,10 +58,9 @@ function counterItems(
       id: 'open-polls',
       value: summary.openPolls,
       label: showClosed ? 'Polls shown' : 'Open polls',
-      active: !closingSoon,
-      onSelect: () => setClosingSoon(false),
-      kind: 'reset',
-      hint: 'Show all',
+      kind: 'drill',
+      hint: 'See polls',
+      onSelect: () => openPolls('all'),
     },
     {
       id: 'players-responded',
@@ -81,10 +84,9 @@ function counterItems(
       value: summary.closingSoon,
       label: 'Close in 48 hours',
       tone: summary.closingSoon > 0 ? 'warning' : 'default',
-      active: closingSoon,
-      onSelect: () => setClosingSoon(!closingSoon),
-      kind: 'filter',
-      hint: 'Tap to filter',
+      kind: 'drill',
+      hint: 'See polls',
+      onSelect: () => openPolls('closing-soon'),
     },
   ]
 }
@@ -98,6 +100,8 @@ export default function AvailabilityHubLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = activeView(pathname)
+  // docs/specs/085 (C8): the browser tab names the view; the visible page title stays "Availability".
+  useDocumentTitle(`${VIEWS.find((entry) => entry.value === view)?.label ?? 'Polls'} · Availability`)
   const hub = useAvailabilityHubState(clubId, view !== 'polls', view !== 'coverage')
 
   // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
@@ -111,6 +115,13 @@ export default function AvailabilityHubLayout() {
   }
   // The players panel: open/closed and its tab are local state, not in the address.
   const [panel, setPanel] = useState<{ open: boolean; tab: PlayersPanelTab }>({ open: false, tab: 'awaiting' })
+  const [pollsPanel, setPollsPanel] = useState<{ open: boolean; kind: PollsPanelKind }>({ open: false, kind: 'all' })
+  // Leaving Polls closes both panels, so coming back never shows one stale.
+  useEffect(() => {
+    if (view === 'polls') return
+    setPanel((current) => (current.open ? { ...current, open: false } : current))
+    setPollsPanel((current) => (current.open ? { ...current, open: false } : current))
+  }, [view])
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
@@ -134,7 +145,7 @@ export default function AvailabilityHubLayout() {
   const showCounters = view === 'polls' && !hub.teamsError && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <ManageScreenHeader
         title="Availability"
         // The scope of the Polls list and counters, under the title; only on Polls and only when a filter is set.
@@ -166,6 +177,12 @@ export default function AvailabilityHubLayout() {
             <Button onClick={() => navigate('/manage/availability/new')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               New poll
             </Button>
+          ) : view === 'players' && hub.jumpToToday ? (
+            // docs/specs/085 (D2): the Players view registers Jump to today; it takes the place of the placeholder
+            // below (not on a phone: the phone lists have no such button, and the view does not register it).
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <JumpToTodayButton action={hub.jumpToToday} />
+            </Box>
           ) : (
             // Reserves the New poll button's width from sm up so the switch stays put when you move between
             // views instead of jumping to the right edge. visibility: hidden keeps it out of the tab order
@@ -181,9 +198,15 @@ export default function AvailabilityHubLayout() {
 
       {showCounters && (
         <PageCounters
+          density="compact"
           items={
             summaryQuery.data
-              ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon, (tab) => setPanel({ open: true, tab }))
+              ? counterItems(
+                  summaryQuery.data,
+                  hub.showClosed,
+                  (kind) => setPollsPanel({ open: true, kind }),
+                  (tab) => setPanel({ open: true, tab }),
+                )
               : []
           }
           loading={summaryQuery.isPending}
@@ -198,9 +221,20 @@ export default function AvailabilityHubLayout() {
           clubId={clubId}
           tab={panel.tab}
           onTabChange={(tab) => setPanel((current) => ({ ...current, tab }))}
-          // Exactly the summary's filters, plus the 48-hour flag.
-          filters={{ ...summaryFilters, closingSoon: hub.closingSoon }}
+          // Exactly the summary's filters.
+          filters={summaryFilters}
           counts={{ responded: summaryQuery.data?.playersResponded ?? 0, awaiting: summaryQuery.data?.playersStillToAnswer ?? 0 }}
+          scope={scope}
+        />
+      )}
+
+      {view === 'polls' && !hub.teamsError && (
+        <PollsPanel
+          open={pollsPanel.open}
+          onClose={() => setPollsPanel((current) => ({ ...current, open: false }))}
+          kind={pollsPanel.kind}
+          rows={hub.pollRows}
+          showClosed={hub.showClosed}
           scope={scope}
         />
       )}

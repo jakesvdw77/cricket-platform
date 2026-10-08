@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Box, CircularProgress, FormControlLabel, Switch } from '@mui/material'
+import { Alert, Box, CircularProgress } from '@mui/material'
 import { Button } from '../../../../components/Button'
+import { CompactSwitch } from '../../../../components/CompactSwitch'
 import { ContentControlsLine } from '../../../../components/ContentControlsLine'
 import { EmptyState } from '../../../../components/EmptyState'
 import { listPlayerAvailability } from '../../../../api/playerAvailabilityApi'
@@ -82,16 +83,12 @@ export default function AvailabilityCoveragePage() {
   const anyPoll = slots.some((slot) => slot.teams.some((team) => team.hasPoll))
 
   const pastToggle = (
-    <FormControlLabel
-      control={<Switch checked={includePast} onChange={(event) => setIncludePast(event.target.checked)} />}
-      label="Show past slots"
-      sx={{ mr: 0, whiteSpace: 'nowrap' }}
-    />
+    <CompactSwitch checked={includePast} onChange={setIncludePast} label="Show past slots" />
   )
   const scopeFilters = scopeText()
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <AvailabilityFilterBar show={{ league: true, section: true }} viewControls={pastToggle} />
 
       <ContentControlsLine
