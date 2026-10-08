@@ -13,6 +13,11 @@ import type { Section } from '../../api/sectionApi'
 import { filterPanelSx } from '../../utils/filterPanel'
 import { sectionPathLabel } from '../../utils/availabilityScope'
 
+// The unset League and Team show their explicit "All ..." value under an always-floated label, the same as
+// Section's "All sections", so every field looks alike. The "All" row is the empty value: it is never a chip
+// and never counts as an active filter.
+const allValueSelectProps = { InputLabelProps: { shrink: true }, SelectProps: { displayEmpty: true } }
+
 export interface FilterBarOption {
   id: string
   name: string
@@ -109,7 +114,7 @@ export function FilterBar({
     <>
       {leagues && onLeagueChange && (
         <Box sx={fieldSx}>
-          <Input select label="League" value={leagueId ?? ''} onChange={(event) => onLeagueChange(event.target.value || null)}>
+          <Input select label="League" {...allValueSelectProps} value={leagueId ?? ''} onChange={(event) => onLeagueChange(event.target.value || null)}>
             <MenuItem value="">All leagues</MenuItem>
             {leagues.map((league) => (
               <MenuItem key={league.id} value={league.id}>
@@ -126,7 +131,7 @@ export function FilterBar({
       )}
       {teams && onTeamChange && (
         <Box sx={fieldSx}>
-          <Input select label="Team" value={teamId ?? ''} onChange={(event) => onTeamChange(event.target.value || null)}>
+          <Input select label="Team" {...allValueSelectProps} value={teamId ?? ''} onChange={(event) => onTeamChange(event.target.value || null)}>
             <MenuItem value="">{teamAllLabel}</MenuItem>
             {teams.map((team) => (
               <MenuItem key={team.id} value={team.id}>
