@@ -56,7 +56,7 @@ export function ResponsesByPlayer({
               <TableRow
                 key={row.playerProfileId}
                 // Alternate rows: an opaque theme tint (as the Players grid uses), so a name can be followed across.
-                sx={(theme) => ({ '&:nth-of-type(even)': { bgcolor: lighten(theme.palette.primary.main, 0.95) } })}
+                sx={(theme) => ({ '&:nth-of-type(odd)': { bgcolor: lighten(theme.palette.primary.main, 0.95) } })}
               >
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', width: 48, maxWidth: 48, pr: 1 }}>
                   {playerNumber(row) ?? ''}

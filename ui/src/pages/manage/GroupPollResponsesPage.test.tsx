@@ -286,8 +286,8 @@ describe('GroupPollResponsesPage', () => {
     expect(within(table).getByRole('columnheader', { name: '#' })).toHaveStyle({ textAlign: 'right' })
     const rows = within(table).getAllByRole('row').slice(1)
     expect(within(rows[0]).getAllByRole('cell')[0]).toHaveStyle({ textAlign: 'right' })
-    // Every second row carries an opaque tint from the theme; the others stay on the panel colour.
-    expect(getComputedStyle(rows[1]).backgroundColor).toMatch(/^rgb\(/)
+    // The first row and every second row after it carry an opaque tint from the theme; the others stay on the panel colour.
+    expect(getComputedStyle(rows[0]).backgroundColor).toMatch(/^rgb\(/)
     expect(getComputedStyle(rows[0]).backgroundColor).not.toBe(getComputedStyle(rows[1]).backgroundColor)
   })
 
