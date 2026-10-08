@@ -1,7 +1,7 @@
 # 085 — Availability Polish
 
 **Depends on:** 081 (page counters), 083 (filters, toolbars, `ContentControlsLine`), 084 (clickable counters), 064–066 and 067 (poll cards and the group and squad Responses pages), 068 (Players grid and its legend), 073 and 074 (availability hub; Coverage is now Match-day cover), 079 (Overview key-figure cards, which share `keyFigureCardSx` with `PageCounters`)
-**Status:** draft — written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the small findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses pages), D (Players on desktop and tablet), E (Players on a phone, "yes that looks great"). D1–D3 (Players on desktop and tablet) confirmed by the user on 2026-10-08 ("1. Yes", answering the first open item). Nothing built.
+**Status:** implemented in PR #104 (built 2026-10-08, standards review fixed), awaiting the user's browser check. Written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the small findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses pages), D (Players on desktop and tablet), E (Players on a phone). Storybook and Playwright were not run when it was built.
 
 ## Problem & Goals
 
