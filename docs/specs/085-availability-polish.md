@@ -1,7 +1,7 @@
 # 085 — Availability Polish
 
 **Depends on:** 081 (page counters), 083 (filters, toolbars, `ContentControlsLine`), 084 (clickable counters), 064–066 and 067 (poll cards and the group and squad Responses pages), 068 (Players grid and its legend), 073 and 074 (availability hub; Coverage is now Match-day cover), 079 (Overview key-figure cards, which share `keyFigureCardSx` with `PageCounters`)
-**Status:** draft — written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the small findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses page), E (Players on a phone, "yes that looks great"). **D1–D3 (Players on desktop and tablet): mockup presented, to be confirmed** — the user approved the phone part and asked to see the full layouts, and has not yet said yes to the desktop part. Nothing built.
+**Status:** draft — written 2026-10-08 from the user's review of the built 083/084 pages in the browser; the small findings were raised one at a time and are combined here. Agreed by the user: A (counters), B (toggles), C (Responses page), E (Players on a phone, "yes that looks great"). D1–D3 (Players on desktop and tablet) confirmed by the user on 2026-10-08 ("1. Yes", answering the first open item). Nothing built.
 
 ## Problem & Goals
 
@@ -70,7 +70,7 @@ None. No new or changed endpoint; `openapi.yaml` is untouched. The phone lists u
 - **C6 No Summary tab, a gauge in the header.** The Summary tab (`ResponsesSummary.tsx`) is removed, leaving Time slot | Player. The coloured response gauge moves into the page header, right-aligned in the poll's info line (the row with the poll type, status, section, close time and edit icon), so it is visible on both tabs and adds no row; on a phone it takes its own full-width line under the info. Mockup: https://claude.ai/artifact/MtuNUFa7cuP86kWoyBMrpq. **Multi-slot polls:** the header gauge is for the whole poll, a slim stacked bar with the counts underneath: players who answered every slot ("answered all"), some slots ("some") and none ("none"), the same "answered every slot" meaning the poll cards use, and each slot card on the Time slot tab keeps its own counts and gains a thin bar (Available, Unsure, Unavailable, No response) that replaces the old Summary card. **Single-slot polls (and squad polls):** the header gauge shows the four-status split (Available, Unsure, Unavailable, No response) with the "N of M answered" figure, and no per-slot bar (it would repeat the header). The gauge is computed from the data the Responses pages already load (state in planning whether any endpoint change is needed; none is expected). Old links or bookmarks to the Summary tab fall back to Time slot.
 - **C7 Show / Hide on "No response".** At the bottom of each slot card the collapsible "No response (3)" bar has a plain "SHOW" text button. Make it stand out: an arrow icon next to the label (a down arrow with "Show", an up arrow with "Hide", the icon switching with the state), the whole bar is the click target, `aria-expanded` is set, and the focus ring and hover state are visible. The count stays in the bar's label. Same treatment wherever the same collapsible bar is used (check the squad poll page).
 
-### D. Players on desktop and tablet (mockup presented, to be confirmed)
+### D. Players on desktop and tablet (agreed)
 
 Applies from the tablet breakpoint up (`sm` and above, `theme.breakpoints.up('sm')`); the grid stays on desktop and tablet. Files: `ui/src/pages/manage/PlayerAvailabilityPage.tsx`, `playerAvailability/AvailabilityGrid.tsx`, `playerAvailability/Legend.tsx`, `availability/AvailabilityHubLayout.tsx`.
 
@@ -131,12 +131,12 @@ Mockups:
 - Counters, gap variant (figures 5 and 6): https://claude.ai/artifact/17AcuMRL6c79Btf5rqzAyL
 - Players phone lists (By game / By player): https://claude.ai/artifact/8pLSkdAXZDAXU9cwtbtTAL
 - Grid scroll options (option 1 chosen): https://claude.ai/artifact/NboSCFBhbsQsDf6fJpJ3y8
-- Combined Players layouts, desktop and phone (desktop part to be confirmed): https://claude.ai/artifact/56L3BkDVpZz48U9XtHzeM9
+- Combined Players layouts, desktop and phone (desktop part confirmed): https://claude.ai/artifact/56L3BkDVpZz48U9XtHzeM9
 
 ## Open Questions
 
 1. ~~"Show / Hide arrow buttons"~~ resolved: it is the "No response (3)" bar at the bottom of each slot card (C7).
-2. **D1–D3 desktop layout** (sizing to the window, Jump to today in the header, legend above the grid in one row): mockup presented, to be confirmed by the user.
+2. ~~D1–D3 desktop layout~~ confirmed by the user (2026-10-08).
 3. **Browser tab title** (nice-to-have): include the view, e.g. "Players · Availability"? Not part of the slices unless the user says yes.
 4. **Phone legend wording:** shorten "Not in this game's poll (or no poll)" to "No poll" on the phone lists?
 5. **Alternating rows beyond the Player tab:** should the Summary table, the Time slot name lists, the Players grid and the Match-day cover lists get the same alternating tint, or only the Player tab? Drafted as the Player tab only.
