@@ -7,6 +7,7 @@ import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
 import { AvailabilityGrid } from './playerAvailability/AvailabilityGrid'
+import { PlayersPhoneLists } from './playerAvailability/PlayersPhoneLists'
 import type { AvailabilityGridHandle } from './playerAvailability/AvailabilityGrid'
 import { filterPlayers, firstUpcomingGame } from './playerAvailability/gridHelpers'
 import { AvailabilityFilterBar } from './availability/AvailabilityFilterBar'
@@ -124,7 +125,12 @@ export default function PlayerAvailabilityPage() {
 
       {gridQuery.data && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} />
+          {/* docs/specs/085 (E): below the tablet breakpoint the grid gives way to two vertical lists. */}
+          {isPhone ? (
+            <PlayersPhoneLists games={games} players={visiblePlayers} />
+          ) : (
+            <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} />
+          )}
         </Box>
       )}
     </Box>

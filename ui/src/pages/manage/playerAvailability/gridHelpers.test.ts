@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  answerCounts,
   cellLabel,
   dateHeading,
   filterPlayers,
@@ -10,11 +11,16 @@ import {
   groupGames,
   hasAnswers,
   kickoffText,
+  nextFourGames,
+  nextGameDayIndex,
   nextGameDayMarker,
+  openingGame,
   openPollPath,
   orderedGames,
   pollKindLabel,
+  playersForGame,
   pollPath,
+  shortDate,
   slotLabel,
 } from './gridHelpers'
 import { at, makeGame, makePlayer } from './testData'
@@ -152,5 +158,66 @@ describe('labels and paths', () => {
     const path = openPollPath(makeGame({ matchId: 'm7', sectionId: null, teamId: null }))
     expect(path).toBe('/manage/availability/new?type=group&matchId=m7')
     expect(path).not.toContain('null')
+  })
+})
+
+describe('phone list helpers (085 E)', () => {
+  const COLUMNS = [SAT_AM_1, SAT_AM_2, SAT_PM, SUN_PM]
+  const MON = makeGame({ matchId: 'm5', matchDate: at(10, 5, 9) })
+  const TUE = makeGame({ matchId: 'm6', matchDate: at(10, 6, 9) })
+  const WED = makeGame({ matchId: 'm7', matchDate: at(10, 7, 9) })
+  const ALL = [...COLUMNS, MON, TUE, WED]
+
+  it('opens on the first game of the next game day, even when an earlier game today has gone', () => {
+    // Saturday 15:00: the morning games have kicked off, but Saturday is still "today".
+    const now = new Date(2026, 9, 3, 15, 0)
+    expect(openingGame(ALL, now)?.matchId).toBe('m1')
+    expect(nextGameDayIndex(ALL, now)).toBe(0)
+  })
+
+  it('opens on the next day with a game when today has none', () => {
+    expect(openingGame(ALL, new Date(2026, 9, 4, 20, 0))?.matchId).toBe('m4')
+    expect(nextGameDayMarker(groupGames(ALL), new Date(2026, 9, 4, 20, 0))?.dateKey).toBe('2026-10-04')
+  })
+
+  it('opens on the last game when every game is past, and finds no upcoming day', () => {
+    const now = new Date(2026, 9, 20)
+    expect(nextGameDayIndex(ALL, now)).toBe(-1)
+    expect(openingGame(ALL, now)?.matchId).toBe('m7')
+    expect(openingGame([], now)).toBeUndefined()
+  })
+
+  it('takes the next four games from the next game day, or the last four when all are past', () => {
+    expect(nextFourGames(ALL, new Date(2026, 9, 3, 8, 0)).map((game) => game.matchId)).toEqual(['m1', 'm2', 'm3', 'm4'])
+    expect(nextFourGames(ALL, new Date(2026, 9, 5, 8, 0)).map((game) => game.matchId)).toEqual(['m5', 'm6', 'm7'])
+    expect(nextFourGames(ALL, new Date(2026, 9, 20)).map((game) => game.matchId)).toEqual(['m4', 'm5', 'm6', 'm7'])
+  })
+
+  const PLAYERS = [
+    makePlayer('p1', 'Anton', 'de Villiers', 17, [['m1', 'AVAILABLE', true], ['m2', 'NOT_IN_POLL']]),
+    makePlayer('p2', 'Bob', 'Jones', null, [['m1', 'NO_RESPONSE'], ['m2', 'UNSURE']]),
+    makePlayer('p3', 'Amy', 'Lee', 4, [['m1', 'AVAILABLE']]),
+    makePlayer('p4', 'Cal', 'Ng', null, [['m1', 'UNAVAILABLE']]),
+  ]
+
+  it('counts the four answers of a game, leaving out players outside its poll', () => {
+    expect(answerCounts(PLAYERS, 'm1')).toEqual({ AVAILABLE: 2, UNSURE: 0, UNAVAILABLE: 1, NO_RESPONSE: 1 })
+    expect(answerCounts(PLAYERS, 'm2')).toEqual({ AVAILABLE: 0, UNSURE: 1, UNAVAILABLE: 0, NO_RESPONSE: 0 })
+  })
+
+  it('lists the players with an answer for a game, in order, optionally one answer, with the picked flag', () => {
+    expect(playersForGame(PLAYERS, 'm1').map((row) => [row.player.playerProfileId, row.status, row.picked])).toEqual([
+      ['p1', 'AVAILABLE', true],
+      ['p2', 'NO_RESPONSE', false],
+      ['p3', 'AVAILABLE', false],
+      ['p4', 'UNAVAILABLE', false],
+    ])
+    expect(playersForGame(PLAYERS, 'm1', 'AVAILABLE').map((row) => row.player.playerProfileId)).toEqual(['p1', 'p3'])
+    // p1 is NOT_IN_POLL for m2 and p3, p4 have no cell for it.
+    expect(playersForGame(PLAYERS, 'm2').map((row) => row.player.playerProfileId)).toEqual(['p2'])
+  })
+
+  it('formats the short strip date', () => {
+    expect(shortDate(new Date(2026, 9, 15))).toBe('15 Oct')
   })
 })

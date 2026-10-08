@@ -123,6 +123,10 @@ function renderPage(clubId: string | null = 'test-club-id', path = '/manage/avai
   )
 }
 
+async function phoneLoaded() {
+  await screen.findByRole('group', { name: 'Players view' })
+}
+
 async function loaded() {
   await screen.findByRole('table', { name: 'Player availability by game' })
 }
@@ -453,7 +457,7 @@ describe('PlayerAvailabilityPage', () => {
       const user = userEvent.setup()
       setViewport(false)
       renderPage()
-      await loaded()
+      await phoneLoaded()
 
       expect(screen.getByPlaceholderText('Search players')).toBeVisible()
       // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
@@ -471,12 +475,44 @@ describe('PlayerAvailabilityPage', () => {
       expect(screen.getByRole('checkbox', { name: 'Hide players with no answers' })).toBeInTheDocument()
     })
 
+    it('shows the By game / By player lists instead of the grid, with the same data (085)', async () => {
+      setViewport(false)
+      renderPage()
+      await phoneLoaded()
+
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'By game' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.getByText('Bob Jones')).toBeInTheDocument()
+      expect(listPlayerAvailability).toHaveBeenCalledTimes(1)
+    })
+
+    it('applies the search to the phone lists', async () => {
+      const user = userEvent.setup()
+      setViewport(false)
+      renderPage()
+      await phoneLoaded()
+
+      await user.type(screen.getByPlaceholderText('Search players'), 'jane')
+
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+      expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
+    })
+
+    it('keeps the empty states on a phone', async () => {
+      setViewport(false)
+      listPlayerAvailability.mockResolvedValue(makeResult({ games: [], players: [] }))
+      renderPage()
+
+      expect(await screen.findByText('No games match these filters')).toBeInTheDocument()
+    })
+
     it('badges the Filters button with the set filters and shows a removable chip', async () => {
       const user = userEvent.setup()
       setViewport(false)
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ leagueId: 'league-2', sectionId: null, teamId: null }))
       renderPage()
-      await loaded()
+      await phoneLoaded()
 
       expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Remove filter Division Two' }))

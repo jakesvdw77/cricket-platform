@@ -4,10 +4,10 @@ import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, T
 import { alpha, darken, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
-import { EmptyState } from '../../../components/EmptyState'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
 import { CellMark } from './CellMark'
+import { GridEmptyState } from './GridEmptyState'
 import { Legend } from './Legend'
 import {
   cellFor,
@@ -16,6 +16,7 @@ import {
   footerCounts,
   footerLabel,
   footerText,
+  hasNothingToShow,
   groupGames,
   kickoffText,
   nextGameDayMarker,
@@ -209,28 +210,7 @@ export const AvailabilityGrid = forwardRef<
     },
   }))
 
-  if (games.length === 0) {
-    return (
-      <EmptyState
-        title="No games match these filters"
-        description="Try a different season, league, section or team, or turn on Show past games."
-      />
-    )
-  }
-
-  if (columns.every((game) => game.pollType === null)) {
-    return (
-      <EmptyState
-        title="No polls opened yet for these games"
-        description="Open an availability poll and the answers will appear here."
-        action={
-          <Link component={RouterLink} to="/manage/availability" underline="always">
-            Go to Availability Polls
-          </Link>
-        }
-      />
-    )
-  }
+  if (hasNothingToShow(columns)) return <GridEmptyState games={columns} />
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
