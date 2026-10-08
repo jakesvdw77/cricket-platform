@@ -183,7 +183,7 @@ describe('GroupPollResponsesPage', () => {
 
     // Jane: Available in the morning, no response in the afternoon; Bob differs by slot.
     expect(within(column('Morning', 'Available')).getByText('Jane Smith')).toBeInTheDocument()
-    expect(within(column('Morning', 'Available')).getByText('#7')).toBeInTheDocument()
+    expect(within(column('Morning', 'Available')).queryByText('#7')).toBeNull()
     expect(within(column('Morning', 'Unsure')).getByText('Bob Jones')).toBeInTheDocument()
     expect(within(column('Afternoon', 'Available')).getByText('Bob Jones')).toBeInTheDocument()
     expect(within(column('Afternoon', 'Unavailable')).getByText('Amy Lee')).toBeInTheDocument()
@@ -226,15 +226,14 @@ describe('GroupPollResponsesPage', () => {
     expect(box).not.toHaveStyle({ maxHeight: '392px' })
   })
 
-  it('lists the name first and the shirt number in a right-aligned column; no number leaves the cell empty (085)', async () => {
+  it('lists the player names with a divider between them and no shirt number (085)', async () => {
     renderPage()
     await loaded()
 
     const jane = within(column('Morning', 'Available')).getByRole('button', { name: /Jane Smith/ })
-    expect(jane.textContent).toBe('Jane Smith#7')
-    expect(getComputedStyle(within(jane).getByTestId('player-number')).textAlign).toBe('right')
-    const bob = within(column('Morning', 'Unsure')).getByRole('button', { name: /Bob Jones/ })
-    expect(within(bob).getByTestId('player-number')).toBeEmptyDOMElement()
+    expect(jane.textContent).toBe('Jane Smith')
+    expect(within(jane).queryByTestId('player-number')).toBeNull()
+    expect(getComputedStyle(jane).borderBottomWidth).toBe('1px')
   })
 
   it('shows the arrow, the word Show / Hide and aria-expanded on the whole No response bar (085)', async () => {
@@ -262,9 +261,9 @@ describe('GroupPollResponsesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
     const table = screen.getByRole('table', { name: 'Responses by player' })
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(4)
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(3)
     const bodyRows = within(table).getAllByRole('row').slice(1)
-    expect(bodyRows.map((row) => within(row).getAllByRole('cell')[1].textContent)).toEqual([
+    expect(bodyRows.map((row) => within(row).getAllByRole('cell')[0].textContent)).toEqual([
       'Bob Jones',
       'Amy Lee',
       'Cal Ng',
@@ -276,16 +275,15 @@ describe('GroupPollResponsesPage', () => {
     expect(within(bodyRows[2]).getAllByText('No response')).toHaveLength(2)
   })
 
-  it('right-aligns the # column and alternates the row tint in By player (085)', async () => {
+  it('has no shirt number column and alternates the row tint in By player (085)', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
     const table = screen.getByRole('table', { name: 'Responses by player' })
-    expect(within(table).getByRole('columnheader', { name: '#' })).toHaveStyle({ textAlign: 'right' })
+    expect(within(table).queryByRole('columnheader', { name: '#' })).toBeNull()
     const rows = within(table).getAllByRole('row').slice(1)
-    expect(within(rows[0]).getAllByRole('cell')[0]).toHaveStyle({ textAlign: 'right' })
     // The first row and every second row after it carry an opaque tint from the theme; the others stay on the panel colour.
     expect(getComputedStyle(rows[0]).backgroundColor).toMatch(/^rgb\(/)
     expect(getComputedStyle(rows[0]).backgroundColor).not.toBe(getComputedStyle(rows[1]).backgroundColor)

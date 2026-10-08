@@ -4,7 +4,7 @@ import { CompactSwitch } from '../../../../components/CompactSwitch'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { ViaLinkMarker } from './ViaLinkMarker'
-import { hasAnyAnswer, playerName, playerNumber, slotHeading, sortPlayers, statusFor, viaLinkFor } from './responseHelpers'
+import { hasAnyAnswer, playerName, slotHeading, sortPlayers, statusFor, viaLinkFor } from './responseHelpers'
 import type { OverrideProps, ResponseRow } from './responseHelpers'
 import type { SectionAvailabilityRoundBracket } from '../../../../api/sectionAvailabilityApi'
 
@@ -31,9 +31,6 @@ export function ResponsesByPlayer({
         <Table size="small" aria-label="Responses by player">
           <TableHead>
             <TableRow>
-              <TableCell align="right" sx={{ width: 48, maxWidth: 48, pr: 1 }}>
-                #
-              </TableCell>
               <TableCell>Player</TableCell>
               {brackets.map((bracket) => (
                 <TableCell key={bracket.windowId} sx={{ whiteSpace: 'nowrap' }}>
@@ -45,7 +42,7 @@ export function ResponsesByPlayer({
           <TableBody>
             {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={brackets.length + 2}>
+                <TableCell colSpan={brackets.length + 1}>
                   <Typography variant="body2" color="text.secondary">
                     No players to show.
                   </Typography>
@@ -58,9 +55,6 @@ export function ResponsesByPlayer({
                 // Alternate rows: an opaque theme tint (as the Players grid uses), so a name can be followed across.
                 sx={(theme) => ({ '&:nth-of-type(odd)': { bgcolor: lighten(theme.palette.primary.main, 0.95) } })}
               >
-                <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', width: 48, maxWidth: 48, pr: 1 }}>
-                  {playerNumber(row) ?? ''}
-                </TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{playerName(row)}</TableCell>
                 {brackets.map((bracket) => {
                   const status = statusFor(row, bracket.windowId)

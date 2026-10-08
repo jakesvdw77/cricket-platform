@@ -8,7 +8,7 @@ import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus
 import { StatusOverrideMenu } from './StatusOverrideMenu'
 import { SlotMatches } from './SlotMatches'
 import { ViaLinkMarker } from './ViaLinkMarker'
-import { playerName, playerNumber, ROW_HEIGHT, slotHeading, STATUS_ORDER, viaLinkFor } from './responseHelpers'
+import { playerName, ROW_HEIGHT, slotHeading, STATUS_ORDER, viaLinkFor } from './responseHelpers'
 import type { OverrideProps, ResponseRow, SlotGroup } from './responseHelpers'
 
 const GROUP_KEY: Record<AvailabilityStatus, 'available' | 'unsure' | 'unavailable'> = {
@@ -17,8 +17,7 @@ const GROUP_KEY: Record<AvailabilityStatus, 'available' | 'unsure' | 'unavailabl
   UNAVAILABLE: 'unavailable',
 }
 
-// A player row: the name first, then the shirt number in a fixed-width right-aligned column (empty when the player has
-// none, so names still line up), tapping opens the override menu.
+// A player row: the name (no shirt number: it only took space), a divider under it, tapping opens the override menu.
 function PlayerRow({
   row,
   slot,
@@ -30,7 +29,6 @@ function PlayerRow({
   status: AvailabilityStatus | null
   override: OverrideProps
 }) {
-  const number = playerNumber(row)
   return (
     <StatusOverrideMenu
       playerName={playerName(row)}
@@ -51,7 +49,9 @@ function PlayerRow({
             py: 0.75,
             minHeight: ROW_HEIGHT,
             textAlign: 'left',
-            borderRadius: 1,
+            borderRadius: 0,
+            borderBottom: 1,
+            borderColor: 'divider',
             '&:hover': { bgcolor: 'action.hover' },
             '&[aria-disabled="true"]': { cursor: 'default' },
           }}
@@ -60,15 +60,6 @@ function PlayerRow({
             {playerName(row)}
           </Typography>
           {viaLinkFor(row, slot.bracket.windowId) && <ViaLinkMarker />}
-          <Typography
-            component="span"
-            variant="body2"
-            color="text.secondary"
-            data-testid="player-number"
-            sx={{ flex: '0 0 auto', width: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-          >
-            {number != null ? `#${number}` : ''}
-          </Typography>
         </ButtonBase>
       )}
     </StatusOverrideMenu>
@@ -98,7 +89,7 @@ function StatusColumn({
         </Typography>
       </Stack>
       {/* docs/specs/085 (C9): the list grows to its full length and the page scrolls, so this is not a scroll box. */}
-      <Box role="group" aria-label={`${STATUS_LABEL[status]} players, ${heading}`} sx={{ p: 0.5, minHeight: 48 }}>
+      <Box role="group" aria-label={`${STATUS_LABEL[status]} players, ${heading}`} sx={{ p: 0.5, minHeight: 48, '& > button:last-of-type': { borderBottom: 0 } }}>
         {rows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 0.75 }}>
             None

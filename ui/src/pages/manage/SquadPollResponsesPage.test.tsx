@@ -211,7 +211,7 @@ describe('SquadPollResponsesPage', () => {
     expect(screen.getByRole('heading', { level: 3, name: SLOT })).toBeInTheDocument()
     expect(screen.getByText(/Home Team v Rivals CC/)).toBeInTheDocument()
     expect(within(column('Available')).getByText('Jane Smith')).toBeInTheDocument()
-    expect(within(column('Available')).getByText('#7')).toBeInTheDocument()
+    expect(within(column('Available')).queryByText('#7')).toBeNull()
     expect(within(column('Unsure')).getByText('Bob Jones')).toBeInTheDocument()
     expect(within(column('Unavailable')).getByText('Amy Lee')).toBeInTheDocument()
   })
@@ -249,9 +249,9 @@ describe('SquadPollResponsesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Player' }))
 
     const table = screen.getByRole('table', { name: 'Responses by player' })
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(3)
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(2)
     const bodyRows = within(table).getAllByRole('row').slice(1)
-    expect(bodyRows.map((r) => within(r).getAllByRole('cell')[1].textContent)).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
+    expect(bodyRows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['Bob Jones', 'Amy Lee', 'Cal Ng', 'Jane Smith'])
 
     await user.click(screen.getByRole('checkbox', { name: "Hide players who haven't answered" }))
     expect(screen.queryByText('Cal Ng')).not.toBeInTheDocument()
