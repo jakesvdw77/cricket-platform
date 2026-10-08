@@ -286,4 +286,106 @@ class AvailabilitySummaryControllerIntegrationTest {
 
         summary(fixtures.clubAdmin(other), w, "type", "SQUAD").andExpect(status().isForbidden());
     }
+
+    // ---- players list (docs/specs/084) ----
+
+    private static final String PLAYERS = "/api/v1/manage/clubs/{clubId}/availability/summary/players";
+
+    private ResultActions players(JwtRequestPostProcessor caller, World w, String... paramPairs) throws Exception {
+        var request = get(PLAYERS, w.club().getId()).with(caller);
+        for (int i = 0; i < paramPairs.length; i += 2) {
+            request = request.param(paramPairs[i], paramPairs[i + 1]);
+        }
+        return mockMvc.perform(request);
+    }
+
+    @Test
+    void playersListEqualsTheCountersAndEachPlayerAppearsOnceWithTheirPolls() throws Exception {
+        World w = seed();
+
+        players(fixtures.clubAdmin(w), w, "kind", "responded")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].polls.length()").value(1))
+                .andExpect(jsonPath("$.content[0].polls[0].title").isNotEmpty());
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting")
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.content[?(@.displayName == 'R2 Player')].polls.length()").value(1));
+        players(fixtures.clubAdmin(w), w, "kind", "AWAITING").andExpect(jsonPath("$.totalElements").value(4));
+    }
+
+    @Test
+    void playersListFollowsTypeSearchClosingSoonAndSectionFilters() throws Exception {
+        World w = seed();
+
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "type", "GROUP")
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].displayName").value("Bob Player"))
+                .andExpect(jsonPath("$.content[0].polls[0].matchId").doesNotExist());
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "search", "r2")
+                .andExpect(jsonPath("$.totalElements").value(1));
+        // seniors squad poll (1 day) and the seniors group poll (10 hours) close within 48 hours
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "closingSoon", "true")
+                .andExpect(jsonPath("$.totalElements").value(2));
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "sectionId", w.juniors().getId().toString())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void playersListIsScopedToASectionManagersSections() throws Exception {
+        World w = seed();
+
+        players(fixtures.sectionManager(w.juniors()), w, "kind", "awaiting")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+        players(fixtures.sectionManager(w.juniors()), w, "kind", "awaiting", "sectionId", w.seniors().getId().toString())
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void playersListPagesAndCapsThePageSizeAtOneHundred() throws Exception {
+        World w = seed();
+
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "size", "3")
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.totalPages").value(2));
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "size", "3", "page", "1")
+                .andExpect(jsonPath("$.content.length()").value(1));
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "size", "500")
+                .andExpect(jsonPath("$.size").value(100));
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting").andExpect(jsonPath("$.size").value(25));
+    }
+
+    @Test
+    void playersListRejectsABadKindAndForeignIdsAndOtherClubs() throws Exception {
+        World w = seed();
+        World other = fixtures.world();
+        League foreign = fixtures.league(other, 11);
+
+        players(fixtures.clubAdmin(w), w, "kind", "nope").andExpect(status().isBadRequest());
+        // a missing kind is the same 400 (ProblemDetail with the same detail) as a bad one
+        players(fixtures.clubAdmin(w), w, "kind", "nope")
+                .andExpect(jsonPath("$.detail").value("kind must be 'responded' or 'awaiting'"));
+        players(fixtures.clubAdmin(w), w)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("kind must be 'responded' or 'awaiting'"));
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "leagueId", foreign.getId().toString())
+                .andExpect(status().isNotFound());
+        players(fixtures.clubAdmin(w), w, "kind", "awaiting", "teamId", other.seniors1().getId().toString())
+                .andExpect(status().isNotFound());
+        players(fixtures.clubAdmin(other), w, "kind", "awaiting").andExpect(status().isForbidden());
+        players(fixtures.nobody(), w, "kind", "awaiting").andExpect(status().isForbidden());
+    }
+
+    @Test
+    void playersListOfAnEmptyClubIsAnEmptyPage() throws Exception {
+        World w = fixtures.world();
+
+        players(fixtures.clubAdmin(w), w, "kind", "responded")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.content.length()").value(0));
+    }
 }

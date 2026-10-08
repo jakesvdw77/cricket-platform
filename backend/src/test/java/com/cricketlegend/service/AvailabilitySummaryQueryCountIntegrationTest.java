@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.cricketlegend.AbstractIntegrationTest;
 import com.cricketlegend.domain.AvailabilityPollTypeFilter;
+import com.cricketlegend.domain.AvailabilitySummaryPlayerKind;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.SectionAvailabilityRound;
@@ -15,6 +16,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import org.springframework.data.domain.PageRequest;
 import java.util.Map;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
@@ -72,6 +74,7 @@ class AvailabilitySummaryQueryCountIntegrationTest {
         for (int i = 0; i < size; i++) {
             boolean juniors = i % 2 == 1;
             PlayerProfile rostered = fixtures.rosterPlayer(w, juniors ? w.juniorsTeam() : w.seniors1(), "Rostered" + i);
+            fixtures.rosterPlayer(w, juniors ? w.juniorsTeam() : w.seniors1(), "Idle" + i); // owes an answer
             Match match = fixtures.match(
                     w, juniors ? w.juniorsTeam() : w.seniors1(), null, now.plus(Duration.ofDays(2 + i)), true, league);
             fixtures.squadPoll(match, juniors ? w.juniorsTeam() : w.seniors1(),
@@ -165,6 +168,64 @@ class AvailabilitySummaryQueryCountIntegrationTest {
                 leagueByClubId.get(small.club().getId()).getId(), null, null, null, true);
         long largeCount = statementsFor(largeManager, large.club().getId(),
                 leagueByClubId.get(large.club().getId()).getId(), null, null, null, true);
+
+        assertThat(largeCount).isEqualTo(smallCount);
+    }
+
+    private long playerStatements(Authentication caller, UUID clubId, AvailabilitySummaryPlayerKind kind, UUID leagueId,
+            UUID sectionId, UUID teamId, boolean includeClosed, boolean closingSoon, String search, int pageSize) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        var page = summaryService.players(caller, clubId, kind, leagueId, sectionId, teamId, null, includeClosed,
+                closingSoon, search, PageRequest.of(0, pageSize));
+        assertThat(page.getTotalElements()).isPositive();
+        return statistics.getPrepareStatementCount();
+    }
+
+    @Test
+    void playersListIssuesTheSameNumberOfStatementsForASmallClubAsForALargeOne() {
+        World small = seedClub(2);
+        World large = seedClub(14);
+        Authentication platformAdmin = new TestingAuthenticationToken("ops", "n/a", "ROLE_platform_admin");
+
+        for (AvailabilitySummaryPlayerKind kind : AvailabilitySummaryPlayerKind.values()) {
+            long smallCount = playerStatements(platformAdmin, small.club().getId(), kind, null, null, null, false,
+                    false, null, 25);
+            long largeCount = playerStatements(platformAdmin, large.club().getId(), kind, null, null, null, false,
+                    false, null, 25);
+            assertThat(largeCount).as(kind.name()).isEqualTo(smallCount);
+        }
+    }
+
+    @Test
+    void playersListWithEveryFilterAndPagingKeepsTheStatementCountConstant() {
+        World small = seedClub(2);
+        World large = seedClub(14);
+        Authentication platformAdmin = new TestingAuthenticationToken("ops", "n/a", "ROLE_platform_admin");
+
+        long smallCount = playerStatements(platformAdmin, small.club().getId(), AvailabilitySummaryPlayerKind.AWAITING,
+                leagueByClubId.get(small.club().getId()).getId(), small.seniors().getId(), small.seniors1().getId(),
+                true, false, "r", 2);
+        long largeCount = playerStatements(platformAdmin, large.club().getId(), AvailabilitySummaryPlayerKind.AWAITING,
+                leagueByClubId.get(large.club().getId()).getId(), large.seniors().getId(), large.seniors1().getId(),
+                true, false, "r", 2);
+
+        assertThat(largeCount).isEqualTo(smallCount);
+    }
+
+    @Test
+    void playersListForASectionScopedCallerKeepsTheStatementCountConstant() {
+        World small = seedClub(2);
+        World large = seedClub(14);
+        Authentication smallManager =
+                new TestingAuthenticationToken(fixtures.sectionManagerSubject(small.seniors()), "n/a");
+        Authentication largeManager =
+                new TestingAuthenticationToken(fixtures.sectionManagerSubject(large.seniors()), "n/a");
+
+        long smallCount = playerStatements(smallManager, small.club().getId(), AvailabilitySummaryPlayerKind.AWAITING,
+                null, null, null, true, false, null, 25);
+        long largeCount = playerStatements(largeManager, large.club().getId(), AvailabilitySummaryPlayerKind.AWAITING,
+                null, null, null, true, false, null, 25);
 
         assertThat(largeCount).isEqualTo(smallCount);
     }

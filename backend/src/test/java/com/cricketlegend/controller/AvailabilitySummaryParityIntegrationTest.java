@@ -31,7 +31,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * lists it describes: for the same section (with descendants), poll type toggles and closed
  * toggle, the counter equals the squad poll list(s) plus the group round list(s). Includes
  * deactivated matches, whose squad polls are hidden in both. League and team (docs/specs/083 slice
- * 3) are part of the combinations: the lists and the summary share one AvailabilityPollFilter.
+ * 3) are part of the combinations: the lists and the summary share one AvailabilityPollFilter. The
+ * players list (docs/specs/084) must also have totalElements equal to playersResponded and
+ * playersStillToAnswer under the same filters.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -107,6 +109,37 @@ class AvailabilitySummaryParityIntegrationTest {
         return json.isArray() ? json.size() : json.path("openPolls").asInt();
     }
 
+    /** Counter values {responded, stillToAnswer} of the summary for the filters. */
+    private int[] summaryPlayers(JwtRequestPostProcessor caller, World w, String[] filters, String type, boolean closed)
+            throws Exception {
+        String body = mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/availability/summary", w.club().getId())
+                        .with(caller)
+                        .params(toParams(concat(filters, "type", type, "includeClosed", String.valueOf(closed)))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var json = objectMapper.readTree(body);
+        return new int[] {json.path("playersResponded").asInt(), json.path("playersStillToAnswer").asInt()};
+    }
+
+    private int playersTotal(
+            JwtRequestPostProcessor caller, World w, String[] filters, String type, boolean closed, String kind)
+            throws Exception {
+        String body = mockMvc.perform(
+                        get("/api/v1/manage/clubs/{clubId}/availability/summary/players", w.club().getId())
+                                .with(caller)
+                                .params(toParams(concat(filters, "type", type, "includeClosed", String.valueOf(closed),
+                                        "kind", kind, "closingSoon", "false"))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).path("totalElements").asInt();
+    }
+
+    private static org.springframework.util.MultiValueMap<String, String> toParams(String[] pairs) {
+        var params = new org.springframework.util.LinkedMultiValueMap<String, String>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            params.add(pairs[i], pairs[i + 1]);
+        }
+        return params;
+    }
+
     private int summaryCount(JwtRequestPostProcessor caller, World w, String[] filters, String type, boolean closed)
             throws Exception {
         return count(caller, "/api/v1/manage/clubs/{clubId}/availability/summary", w.club().getId(),
@@ -180,6 +213,15 @@ class AvailabilitySummaryParityIntegrationTest {
                                             section, league, team, type, closed)
                                     .isEqualTo(expected);
                             nonZero += expected > 0 ? 1 : 0;
+                            int[] counters = summaryPlayers(admin, w, filters, type, closed);
+                            assertThat(playersTotal(admin, w, filters, type, closed, "responded"))
+                                    .as("responded players: section=%s league=%s team=%s type=%s closed=%s",
+                                            section, league, team, type, closed)
+                                    .isEqualTo(counters[0]);
+                            assertThat(playersTotal(admin, w, filters, type, closed, "awaiting"))
+                                    .as("awaiting players: section=%s league=%s team=%s type=%s closed=%s",
+                                            section, league, team, type, closed)
+                                    .isEqualTo(counters[1]);
                         }
                     }
                 }

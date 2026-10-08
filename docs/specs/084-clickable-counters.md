@@ -63,14 +63,15 @@ States: **loading** (row skeletons inside the panel, counters unaffected); **emp
 
 ## API Contract (outline, finalised in planning)
 
-The 083 summary returns counts only (`AvailabilitySummaryController`), and no existing endpoint returns the distinct-player breakdown (the Players grid is per season and game; the Responses endpoints are per poll). A new read-only endpoint is proposed, sharing the summary's filter parameters and its section scoping, so panel and counters cannot disagree. The existing summary response is unchanged apart from the new `closingSoon` parameter.
+The 083 summary returns counts only (`AvailabilitySummaryController`), and no existing endpoint returns the distinct-player breakdown (the Players grid is per season and game; the Responses endpoints are per poll). A new read-only endpoint is proposed, sharing the summary's filter parameters and its section scoping, so panel and counters cannot disagree. The existing summary response is unchanged.
 
 | Endpoint | Access | Purpose |
 |---|---|---|
-| `GET /api/v1/manage/clubs/{clubId}/availability/summary/players?kind=responded\|awaiting&leagueId&sectionId&teamId&type&includeClosed&closingSoon&search&page&size` | `@PreAuthorize("@access.canAccessClub(authentication, #clubId)")`, section-scoped via `AccessService.accessibleSectionIds` | A `Page` of `AvailabilitySummaryPlayerDto { playerProfileId, displayName, polls: [{ pollKind, pollId, matchId?, title }] }` |
+| `GET /api/v1/manage/clubs/{clubId}/availability/summary/players?kind=responded\|awaiting&leagueId&sectionId&teamId&type&includeClosed&closingSoon&search&page&size` | `@PreAuthorize("@access.canAccessClub(authentication, #clubId)")`, section-scoped via `AccessService.accessibleSectionIds` | A `Page` of `AvailabilitySummaryPlayerDto { playerProfileId, displayName, polls: [{ kind, id, matchId?, title }] }` (`kind` is SQUAD or GROUP; `matchId` is null for a group poll) |
 
-- Pagination per `docs/standards/backend.md` (Page/size, default 25, maximum 100, never unbounded). `totalElements` must equal the matching counter (`playersResponded`, `playersStillToAnswer`) for the same filters; the two share one query/definition in the backend so they cannot drift.
-- `closingSoon` is added to the summary, this endpoint and the poll list endpoints so one backend definition of "within 48 hours" serves all; applying it client-side is the fallback if planning finds the list already carries the close time.
+- `kind` accepts `responded` or `awaiting`, case-insensitively; missing or anything else is a 400 (the same body as other validation errors). A client `sort` is ignored: the order is fixed (most polls first, then name, then player id).
+- Pagination per `docs/standards/backend.md` (Page/size, default 25, maximum 100, never unbounded). Paging is done in memory over the bounded poll aggregation, a documented exception (plan decision 3). `totalElements` must equal the matching counter (`playersResponded`, `playersStillToAnswer`) for the same filters; the two share one query/definition in the backend so they cannot drift.
+- `closingSoon` exists only on this endpoint (open polls closing within 48 hours, the same definition and constant the summary's `closingSoon` counter uses). The summary and the poll list endpoints do not get the parameter: the Polls page applies the 48-hour filter client-side from the close time the list already carries.
 - Fixed query count regardless of data size; `openapi.yaml` additions only (no renames).
 
 ## UI Requirements
@@ -85,7 +86,7 @@ The 083 summary returns counts only (`AvailabilitySummaryController`), and no ex
 
 Per `docs/standards/testing.md`:
 - **Frontend:** counters (filter vs drill-down semantics, `aria-pressed`, non-clickable at zero, keyboard); the 48-hour filter (toggle, chip, badge, scope text, clear, reset card, counters unchanged); `PlayersPanel` (pre-selected tab, switching, per-player grouping, links to both poll routes, search, loading/empty/error/more, bottom sheet vs right drawer).
-- **Backend:** the players endpoint (a player in two polls appears once with two entries; Responded and Still to answer totals equal the summary counters for the same filters; section-manager scoping; another club 403; paging and size cap; statement count); `closingSoon` on the summary and list endpoints.
+- **Backend:** the players endpoint (a player in two polls appears once with two entries; Responded and Still to answer totals equal the summary counters for the same filters; section-manager scoping; another club 403; paging and size cap; statement count); `closingSoon` on the players endpoint (open polls only, 48 hours); the Polls page's client-side 48-hour filter is covered by the frontend tests.
 - **Contract:** `openapi.yaml` diff showing only the new endpoint and parameter.
 - **Playwright smoke:** click "Players still to answer", see a player, follow a poll link.
 
@@ -110,7 +111,7 @@ None.
 ## Rollout Notes
 
 Next steps: a mockup (counters pressed/hover/focus, the panel on phone and desktop), then a plan. Likely slices, each its own PR:
-1. The 48-hour filter (with `closingSoon` on the backend) and the clickable filter counters.
+1. The 48-hour filter (client-side; `closingSoon` exists only on the players endpoint of slice 2) and the clickable filter counters.
 2. The players endpoint, then `PlayersPanel` wired to the two players counters.
 
 Decided (user, 2026-10-08): the two-kind counter pattern (filter or drill-down, both through `PageCounters`) becomes the standard for the counters on later pages.
