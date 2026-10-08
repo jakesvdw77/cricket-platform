@@ -15,7 +15,7 @@ Goals:
 
 ## Non-goals
 
-- **No backend, API or data change.** Everything is presentation over the data and endpoints that exist today.
+- **No backend, API or data change** (F reuses the existing override endpoints). Everything is presentation over the data and endpoints that exist today.
 - **No per-match or per-team (group by team) view on desktop.** Dropped by the user.
 - **The Polls | Players | Match-day cover switch in the header stays** on wide screens (the side menu can drive the same views). Left as it is; may be revisited.
 - **The page title stays "Availability"**; it does not show the current view.
@@ -89,6 +89,16 @@ Below the tablet breakpoint (`down('sm')`) the grid is replaced by a new **`Play
 - **By player:** one row per player with a mark for each of the **next four games** (`CellMark`), under a strip with the date and match label of those four games; tapping a row expands the full list of that player's games with their marks. The **legend sits directly under the switch** (compact, wraps); on the phone lists the "Not in this game's poll (or no poll)" entry reads "No poll" (decided).
 - Reuses `CellMark`, `cellFor`, `cellLabel`, `kickoffText`, `groupGames`/`orderedGames` and the player filtering from `gridHelpers.ts` rather than re-deriving them. Rows are at least 44 px high. Players with no games or no polls show the existing empty states.
 
+### F. Change an answer from the Players grid and lists (added 2026-10-08, user request)
+
+Clicking a mark in the Players grid currently navigates to the poll's page (`pollPath(game)` in `AvailabilityGrid.tsx`), where all the poll's players are listed, so it is hard to see which player and game the click was about. Instead the click opens a small menu to change that one answer, the same as the override on the Responses pages.
+
+- **Menu.** Clicking a cell with a poll opens the shared `StatusOverrideMenu` (Available / Unsure / Unavailable, the current answer selected), titled with the player's name and the game ("Anton de Villiers, Thu 15 Oct 07:15 v POHBS"). A last entry **"Open poll"** keeps the old route reachable. The cell is a real button (keyboard reachable, `aria-haspopup`, `aria-expanded`, focus ring); the existing cell label ("Anton de Villiers, Thu 15 Oct ..., Available") stays its accessible name. Cells with no poll for that game (`NOT_IN_POLL`) are not clickable.
+- **Saving.** Squad poll games use `setPlayerStatus(clubId, matchId, pollId, playerProfileId, status)` (`matchAvailabilityApi.ts`). Group poll games use `setRoundPlayerStatus(clubId, roundId, playerProfileId, windowId, status)` (`sectionAvailabilityApi.ts`); the window id is not in the grid's `GameColumn`, so it is looked up from `getRoundMatches(clubId, roundId)` (which returns `matchId` and `windowId`) through React Query, loaded when the menu is first opened for that round and cached. No backend or `openapi.yaml` change. Both calls also work on a closed poll (a manager's correction), as on the Responses pages.
+- **After a save.** The grid and phone lists refresh (invalidate the player-availability queries and `invalidateAvailabilityCounters`), the cell shows the new mark, and the cell is disabled while its save is running; a failure shows the same error message pattern as the Responses pages and keeps the old answer.
+- **Phone.** The same menu opens from the status pill on a By game row and from a game's mark in an expanded By player row (so the grid's click change and the phone lists behave alike).
+- **Not in scope.** Changing answers in bulk, and a "No response" entry (as on the Responses pages, an answer can be set but not cleared).
+
 ## Test Plan
 
 Per `docs/standards/testing.md`:
@@ -120,6 +130,7 @@ Per `docs/standards/testing.md`:
 - "Jump to today" is right-aligned in the page header on Players (grid shown, not on a phone); the header height does not change when switching views.
 - The legend is a single compact row directly above the grid and visible without scrolling at 1280×720.
 - Below the tablet breakpoint the Players view shows "By game" first, opening on the next game day, with working arrows, swipe and filtering chips; "By player" shows the next four games per player and expands to all of that player's games; the legend sits under the switch.
+- Clicking a mark in the Players grid, or a status pill / game mark on the phone lists, opens a menu to change that one answer (with an "Open poll" entry) instead of navigating away; the answer saves through the existing override endpoints for both squad and group polls, the cell updates, and cells with no poll are not clickable.
 - No new endpoint, no `openapi.yaml` change; the phone lists send the same request as the grid.
 
 ## Rollout Notes
