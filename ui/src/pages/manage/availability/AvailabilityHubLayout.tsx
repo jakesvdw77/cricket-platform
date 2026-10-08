@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import JoinInnerOutlinedIcon from '@mui/icons-material/JoinInnerOutlined'
@@ -18,11 +18,11 @@ import { useAvailabilityHubState } from './hubContext'
 
 type HubView = 'polls' | 'players' | 'coverage'
 
-// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds Coverage.
+// docs/specs/073-availability-hub.md: the views of the hub; docs/specs/074 adds it (as Coverage, renamed Match-day cover in the 083 follow-up).
 const VIEWS: { value: HubView; label: string; to: string; icon: ReactNode }[] = [
   { value: 'polls', label: 'Polls', to: '/manage/availability', icon: <EventAvailableOutlinedIcon fontSize="small" /> },
   { value: 'players', label: 'Players', to: '/manage/availability/players', icon: <GridOnOutlinedIcon fontSize="small" /> },
-  { value: 'coverage', label: 'Coverage', to: '/manage/availability/coverage', icon: <JoinInnerOutlinedIcon fontSize="small" /> },
+  { value: 'coverage', label: 'Match-day cover', to: '/manage/availability/coverage', icon: <JoinInnerOutlinedIcon fontSize="small" /> },
 ]
 
 // The active view comes from the pathname: ending in /players is Players, /coverage is Coverage,
@@ -56,7 +56,7 @@ function counterItems(summary: AvailabilitySummary, showClosed: boolean): PageCo
 }
 
 // docs/specs/073: the shared layout route of the Polls, Players and Coverage views - the "Availability" header,
-// a Polls | Players | Coverage switch that is real navigation, and New poll on Polls only. Forwards the club id
+// a Polls | Players | Match-day cover switch that is real navigation, and New poll on Polls only. Forwards the club id
 // through its own Outlet context. docs/specs/083: it also owns the shared League/Section/Team filters and the
 // default season (saved per club, mirrored in the address) and hands them to the three views through that context.
 export default function AvailabilityHubLayout() {
@@ -64,21 +64,21 @@ export default function AvailabilityHubLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = activeView(pathname)
-  const hub = useAvailabilityHubState(clubId, view !== 'polls')
+  const hub = useAvailabilityHubState(clubId, view !== 'polls', view !== 'coverage')
 
   // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
   // the poll type toggles and Show closed. A failed request hides the row, the page still works.
-  // Only what the Polls list itself filters by is sent: the list filters by section only until slice 3 of 083,
-  // which adds leagueId and teamId here together with the list filters.
   const summaryFilters: AvailabilitySummaryFilters = {
+    leagueId: hub.filters.leagueId,
     sectionId: hub.filters.sectionId,
+    teamId: hub.validTeamId,
     type: typeFilterFor(hub.showGroup, hub.showSquad),
     includeClosed: hub.showClosed,
   }
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
-    enabled: Boolean(clubId) && view === 'polls',
+    enabled: Boolean(clubId) && view === 'polls' && !hub.teamsLoading && !hub.teamsError,
     retry: false,
   })
 
@@ -86,14 +86,24 @@ export default function AvailabilityHubLayout() {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  // The caption is built from exactly the filters sent to the summary (section only for now).
-  const scope = scopeFilterText({ sections: hub.sections, sectionId: summaryFilters.sectionId })
-  const showCounters = view === 'polls' && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
+  // The caption is built from exactly the filters sent to the summary.
+  const scope = scopeFilterText({
+    sections: hub.sections,
+    sectionId: summaryFilters.sectionId,
+    leagues: hub.leagues,
+    leagueId: summaryFilters.leagueId,
+    teams: hub.teams,
+    teamId: summaryFilters.teamId,
+  })
+  const showCounters = view === 'polls' && !hub.teamsError && !summaryQuery.isError && (summaryQuery.isPending || Boolean(summaryQuery.data))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <ManageScreenHeader
         title="Availability"
+        // The scope of the Polls list and counters, under the title; only on Polls and only when a filter is set.
+        // Shown even if the counters failed to load, because it describes the list too.
+        subtitle={view === 'polls' && scope ? `Showing: ${scope}` : undefined}
         middle={
           <Box component="nav" aria-label="Availability views" sx={{ display: 'flex', flexDirection: 'column', alignSelf: { xs: 'stretch', sm: 'auto' } }}>
             <ToggleButtonGroup value={view} exclusive size="small" aria-label="Availability views" sx={segmentedSwitchSx}>
@@ -104,7 +114,9 @@ export default function AvailabilityHubLayout() {
                   to={entry.to}
                   value={entry.value}
                   aria-current={entry.value === view ? 'page' : undefined}
-                  sx={{ gap: 0.75 }}
+                  // Tighter side padding on a phone so the longer "Match-day cover" label fits three equal parts at 375 px;
+                  // the extra ampersands beat the shared switch's own padding.
+                  sx={{ gap: 0.75, '&&&': { px: { xs: 1.25, sm: 2 } } }}
                 >
                   {entry.icon}
                   {entry.label}
@@ -132,17 +144,10 @@ export default function AvailabilityHubLayout() {
       />
 
       {showCounters && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <PageCounters
-            items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed) : []}
-            loading={summaryQuery.isPending}
-          />
-          {scope && (
-            <Typography variant="caption" color="text.secondary" data-testid="counters-scope">
-              {`Showing: ${scope}`}
-            </Typography>
-          )}
-        </Box>
+        <PageCounters
+          items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed) : []}
+          loading={summaryQuery.isPending}
+        />
       )}
 
       <Outlet context={hub} />

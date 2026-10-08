@@ -67,10 +67,10 @@ describe('managerNav', () => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
 
-  it('groups People as Teams, Players, Squads, Communication and Availability as Polls, Player availability, Team availability', () => {
+  it('groups People as Teams, Players, Squads, Communication and Availability as Polls, Player availability, Match-day cover', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
     expect(labels('People')).toEqual(['Teams', 'Players', 'Squads', 'Communication'])
-    expect(labels('Availability')).toEqual(['Polls', 'Player availability', 'Team availability'])
+    expect(labels('Availability')).toEqual(['Polls', 'Player availability', 'Match-day cover'])
   })
 
   it('lights exactly one item on every real path', () => {

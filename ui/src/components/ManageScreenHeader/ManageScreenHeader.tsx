@@ -19,6 +19,10 @@ export interface ManageScreenHeaderProps {
   // Availability hub's view switch). On xs the row stacks title, middle, action. Omitted, the
   // markup is unchanged.
   middle?: ReactNode
+  // docs/specs/083: an optional small caption directly under the title, in the same cell (e.g. the Availability
+  // hub's "Showing: ..." scope). One line with an ellipsis from sm up, may wrap on a phone. Omitted, the markup is
+  // unchanged.
+  subtitle?: ReactNode
 }
 
 // The page-title header (and optional back link) every bare /manage screen needs — RecordFormScreen's
@@ -28,7 +32,7 @@ export interface ManageScreenHeaderProps {
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle, subtitle }: ManageScreenHeaderProps) {
   return (
     <PageHeaderBand>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
@@ -56,9 +60,26 @@ export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, 
             width: '100%',
           }}
         >
-          <Typography variant="h5" component="h1" fontWeight={700}>
-            {title}
-          </Typography>
+          {subtitle ? (
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h5" component="h1" fontWeight={700}>
+                {title}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                component="p"
+                data-testid="header-subtitle"
+                sx={{ m: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: { xs: 'normal', sm: 'nowrap' } }}
+              >
+                {subtitle}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="h5" component="h1" fontWeight={700}>
+              {title}
+            </Typography>
+          )}
           {middle}
           {action}
         </Box>

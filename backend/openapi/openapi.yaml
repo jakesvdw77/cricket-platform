@@ -2537,6 +2537,18 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       - name: open
         in: query
         required: false
@@ -4766,6 +4778,18 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         "200":
           description: OK
@@ -4788,6 +4812,18 @@ paths:
           type: string
           format: uuid
       - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
         in: query
         required: false
         schema:

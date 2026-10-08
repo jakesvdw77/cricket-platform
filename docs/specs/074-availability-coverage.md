@@ -1,5 +1,7 @@
 # 074 — Availability Coverage
 
+> **Renamed Match-day cover (083 follow-up).** The view, its hub tab and its menu entry (formerly Team availability) are now called **Match-day cover**; the route (`/manage/availability/coverage`), icon, spec number and the verdict vocabulary (Covered/Tight/Short) are unchanged. "Coverage" below is the original name.
+
 **Depends on:** `073-availability-hub.md` (the Availability layout route, header and switch this spec adds a third tab and route to; **built first**), `068-player-availability-grid.md` (the `GET …/player-availability` endpoint, its filters, caps and `truncated` flag, and the Players view's filter pattern, all reused as they are), `064-unified-availability-polls.md` and `063-section-availability-and-flexible-squads.md` (squad polls answer per game, group polls answer per date and Morning/Afternoon slot and the answer is repeated on every game of that slot), `069-match-card-redesign.md` (the league's `maxPlayingXiSize` as the playing XI size), `043-list-toolbar-gold-standard.md` and `usePersistedListFilters` (filter persistence), `utils/cardGrid.ts` (the shared card grid), `066`/`069` badge tones (reused for the status badges).
 **Status:** approved (design approved by the user). Design: https://claude.ai/artifact/4x7HDVQG893xvcv8rSQJar
 

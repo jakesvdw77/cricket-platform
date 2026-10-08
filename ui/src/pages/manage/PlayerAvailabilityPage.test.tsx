@@ -425,6 +425,14 @@ describe('PlayerAvailabilityPage', () => {
     expect(screen.getByLabelText('League')).toBeInTheDocument()
   })
 
+  it('holds the grid request and shows the error state when the team list fails to load', async () => {
+    listTeamsForClub.mockRejectedValue(new Error('boom'))
+    renderPage()
+
+    expect(await screen.findByText("Couldn't load player availability")).toBeInTheDocument()
+    expect(listPlayerAvailability).not.toHaveBeenCalled()
+  })
+
   describe('on a phone (xs)', () => {
     it('shows search and a Filters button; the sheet holds League, Section, Team and the two toggles', async () => {
       const user = userEvent.setup()

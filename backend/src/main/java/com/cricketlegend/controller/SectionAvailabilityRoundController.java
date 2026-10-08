@@ -66,8 +66,11 @@ public class SectionAvailabilityRoundController {
             Authentication authentication,
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID teamId,
             @RequestParam(required = false) Boolean open) {
-        return ResponseEntity.ok(sectionAvailabilityRoundService.list(authentication, clubId, sectionId, open));
+        return ResponseEntity.ok(
+                sectionAvailabilityRoundService.list(authentication, clubId, sectionId, leagueId, teamId, open));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

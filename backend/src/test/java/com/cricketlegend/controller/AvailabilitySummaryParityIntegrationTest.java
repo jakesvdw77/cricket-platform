@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cricketlegend.AbstractIntegrationTest;
+import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.SectionAvailabilityRound;
@@ -29,8 +30,8 @@ import org.springframework.test.web.servlet.MockMvc;
  * Parity between the availability summary counter {@code openPolls} (docs/specs/083) and the poll
  * lists it describes: for the same section (with descendants), poll type toggles and closed
  * toggle, the counter equals the squad poll list(s) plus the group round list(s). Includes
- * deactivated matches, whose squad polls are hidden in both. League and team parity comes with
- * slice 3, when the lists gain those filters.
+ * deactivated matches, whose squad polls are hidden in both. League and team (docs/specs/083 slice
+ * 3) are part of the combinations: the lists and the summary share one AvailabilityPollFilter.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -58,8 +59,12 @@ class AvailabilitySummaryParityIntegrationTest {
         fixtures.cleanUp();
     }
 
-    private World seed() {
+    private record Seeded(World w, League league) {
+    }
+
+    private Seeded seed() {
         World w = fixtures.world();
+        League league = fixtures.league(w, 11);
         Instant now = Instant.now();
         PlayerProfile r1 = fixtures.rosterPlayer(w, w.seniors1(), "R1");
         PlayerProfile j1 = fixtures.rosterPlayer(w, w.juniorsTeam(), "J1");
@@ -67,24 +72,29 @@ class AvailabilitySummaryParityIntegrationTest {
         fixtures.tag(w.seniors(), ann);
         fixtures.tag(w.juniors(), fixtures.player(w, "Jay", true));
 
-        fixtures.squadPoll(fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(3))), w.seniors1(), null, r1);
+        Match seniorsLeague = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(3)), true, league);
+        fixtures.squadPoll(seniorsLeague, w.seniors1(), null, r1);
         fixtures.squadPoll(fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(4))), w.seniors1(), null);
-        fixtures.squadPoll(fixtures.match(w, w.juniorsTeam(), null, now.plus(Duration.ofDays(6))), w.juniorsTeam(), null, j1);
-        fixtures.groupPoll(w, w.seniors(), null, ann);
-        fixtures.groupPoll(w, w.juniors(), null);
+        Match juniorsMatch = fixtures.match(w, w.juniorsTeam(), null, now.plus(Duration.ofDays(6)));
+        fixtures.squadPoll(juniorsMatch, w.juniorsTeam(), null, j1);
+        fixtures.linkMatch(fixtures.groupPoll(w, w.seniors(), null, ann), seniorsLeague);
+        fixtures.linkMatch(fixtures.groupPoll(w, w.juniors(), null), juniorsMatch);
+        fixtures.groupPoll(w, w.seniors(), null); // no slot matches at all
         // closed history
-        fixtures.closeSquadPoll(fixtures.squadPoll(
-                fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(5))), w.seniors1(), null, r1));
+        Match closedLeague = fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(5)), true, league);
+        fixtures.closeSquadPoll(fixtures.squadPoll(closedLeague, w.seniors1(), null, r1));
         fixtures.closeSquadPoll(fixtures.squadPoll(
                 fixtures.match(w, w.juniorsTeam(), null, now.minus(Duration.ofDays(6))), w.juniorsTeam(), null));
         SectionAvailabilityRound closedRound = fixtures.groupPoll(w, w.seniors(), null, ann);
+        fixtures.linkMatch(closedRound, closedLeague);
         fixtures.closeGroupPoll(closedRound);
-        // deactivated matches: their squad polls (open and closed) are hidden everywhere
-        Match off = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(9)), false, null);
+        // deactivated league matches: their squad polls are hidden, and as slot matches they satisfy nothing
+        Match off = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(9)), false, league);
         fixtures.squadPoll(off, w.seniors1(), null);
-        Match offPast = fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(9)), false, null);
+        fixtures.linkMatch(fixtures.groupPoll(w, w.juniors(), null), off);
+        Match offPast = fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(9)), false, league);
         fixtures.closeSquadPoll(fixtures.squadPoll(offPast, w.seniors1(), null));
-        return w;
+        return new Seeded(w, league);
     }
 
     private int count(JwtRequestPostProcessor caller, String url, UUID clubId, String... params) throws Exception {
@@ -93,35 +103,32 @@ class AvailabilitySummaryParityIntegrationTest {
             request = request.param(params[i], params[i + 1]);
         }
         String body = mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(body).isArray() ? objectMapper.readTree(body).size()
-                : objectMapper.readTree(body).path("openPolls").asInt();
+        var json = objectMapper.readTree(body);
+        return json.isArray() ? json.size() : json.path("openPolls").asInt();
     }
 
-    private int summaryCount(JwtRequestPostProcessor caller, World w, String sectionId, String type, boolean closed)
+    private int summaryCount(JwtRequestPostProcessor caller, World w, String[] filters, String type, boolean closed)
             throws Exception {
-        String[] params = sectionId == null
-                ? new String[] {"type", type, "includeClosed", String.valueOf(closed)}
-                : new String[] {"type", type, "includeClosed", String.valueOf(closed), "sectionId", sectionId};
-        return count(caller, "/api/v1/manage/clubs/{clubId}/availability/summary", w.club().getId(), params);
+        return count(caller, "/api/v1/manage/clubs/{clubId}/availability/summary", w.club().getId(),
+                concat(filters, "type", type, "includeClosed", String.valueOf(closed)));
     }
 
-    private int listed(JwtRequestPostProcessor caller, World w, String sectionId, String type, boolean closed)
+    private int listed(JwtRequestPostProcessor caller, World w, String[] filters, String type, boolean closed)
             throws Exception {
         UUID clubId = w.club().getId();
-        String[] section = sectionId == null ? new String[0] : new String[] {"sectionId", sectionId};
         int total = 0;
         if (!"GROUP".equals(type)) {
-            total += count(caller, "/api/v1/manage/clubs/{clubId}/availability-polls/open", clubId, section);
+            total += count(caller, "/api/v1/manage/clubs/{clubId}/availability-polls/open", clubId, filters);
             if (closed) {
-                total += count(caller, "/api/v1/manage/clubs/{clubId}/availability-polls/closed", clubId, section);
+                total += count(caller, "/api/v1/manage/clubs/{clubId}/availability-polls/closed", clubId, filters);
             }
         }
         if (!"SQUAD".equals(type)) {
-            String[] open = concat(section, "open", "true");
-            total += count(caller, "/api/v1/manage/clubs/{clubId}/section-availability-rounds", clubId, open);
+            total += count(caller, "/api/v1/manage/clubs/{clubId}/section-availability-rounds", clubId,
+                    concat(filters, "open", "true"));
             if (closed) {
-                String[] shut = concat(section, "open", "false");
-                total += count(caller, "/api/v1/manage/clubs/{clubId}/section-availability-rounds", clubId, shut);
+                total += count(caller, "/api/v1/manage/clubs/{clubId}/section-availability-rounds", clubId,
+                        concat(filters, "open", "false"));
             }
         }
         return total;
@@ -134,24 +141,57 @@ class AvailabilitySummaryParityIntegrationTest {
         return result;
     }
 
+    private static String[] filters(String section, String league, String team) {
+        java.util.List<String> pairs = new java.util.ArrayList<>();
+        if (section != null) {
+            pairs.add("sectionId");
+            pairs.add(section);
+        }
+        if (league != null) {
+            pairs.add("leagueId");
+            pairs.add(league);
+        }
+        if (team != null) {
+            pairs.add("teamId");
+            pairs.add(team);
+        }
+        return pairs.toArray(new String[0]);
+    }
+
     @Test
-    void theSummaryCounterEqualsTheListedPollsForEverySectionTypeAndClosedToggle() throws Exception {
-        World w = seed();
+    void theSummaryCounterEqualsTheListedPollsForEverySectionLeagueTeamTypeAndClosedToggle() throws Exception {
+        Seeded seeded = seed();
+        World w = seeded.w();
         JwtRequestPostProcessor admin = fixtures.clubAdmin(w);
         String[] sections = {null, w.seniors().getId().toString(), w.juniors().getId().toString()};
+        String[] leagues = {null, seeded.league().getId().toString()};
+        String[] teams = {null, w.seniors1().getId().toString(), w.juniorsTeam().getId().toString()};
 
+        int nonZero = 0;
         for (String section : sections) {
-            for (String type : new String[] {"ALL", "SQUAD", "GROUP"}) {
-                for (boolean closed : new boolean[] {false, true}) {
-                    int expected = listed(admin, w, section, type, closed);
-                    assertThat(summaryCount(admin, w, section, type, closed))
-                            .as("section=%s type=%s includeClosed=%s", section, type, closed)
-                            .isEqualTo(expected);
+            for (String league : leagues) {
+                for (String team : teams) {
+                    for (String type : new String[] {"ALL", "SQUAD", "GROUP"}) {
+                        for (boolean closed : new boolean[] {false, true}) {
+                            String[] filters = filters(section, league, team);
+                            int expected = listed(admin, w, filters, type, closed);
+                            assertThat(summaryCount(admin, w, filters, type, closed))
+                                    .as("section=%s league=%s team=%s type=%s includeClosed=%s",
+                                            section, league, team, type, closed)
+                                    .isEqualTo(expected);
+                            nonZero += expected > 0 ? 1 : 0;
+                        }
+                    }
                 }
             }
         }
-        // sanity: the fixtures produce something to compare, and closed polls add to it
-        assertThat(summaryCount(admin, w, null, "ALL", false)).isEqualTo(5);
-        assertThat(summaryCount(admin, w, null, "ALL", true)).isEqualTo(8);
+        // sanity: the fixtures produce something to compare, and closed polls and league narrowing show up
+        assertThat(nonZero).isPositive();
+        assertThat(summaryCount(admin, w, filters(null, null, null), "ALL", false)).isEqualTo(7);
+        assertThat(summaryCount(admin, w, filters(null, null, null), "ALL", true)).isEqualTo(10);
+        assertThat(summaryCount(admin, w, filters(null, seeded.league().getId().toString(), null), "ALL", true))
+                .isEqualTo(4);
+        assertThat(summaryCount(admin, w, filters(null, null, w.juniorsTeam().getId().toString()), "ALL", false))
+                .isEqualTo(2);
     }
 }

@@ -77,6 +77,32 @@ describe('FilterBar on desktop (docs/specs/083)', () => {
     expect(screen.queryByLabelText('Search')).not.toBeInTheDocument()
   })
 
+  it('shows unset League and Team as an explicit "All" value under a floated label, like Section', () => {
+    render(<FilterBar {...props()} />)
+    expect(screen.getByLabelText('League')).toHaveTextContent('All leagues')
+    expect(screen.getByLabelText('Team')).toHaveTextContent('All teams')
+    for (const name of ['League', 'Section', 'Team']) {
+      const label = screen.getAllByText(name, { selector: 'label' })[0]
+      expect(label).toHaveAttribute('data-shrink', 'true')
+    }
+  })
+
+  it('does not count or chip the "All" values as active filters on a phone', () => {
+    setPhone(true)
+    render(<FilterBar {...props()} />)
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Remove filter/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the floated "All" values in the phone sheet too', async () => {
+    setPhone(true)
+    render(<FilterBar {...props()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    expect(await screen.findByLabelText('League')).toHaveTextContent('All leagues')
+    expect(screen.getByLabelText('Team')).toHaveTextContent('All teams')
+    expect(screen.getAllByText('League', { selector: 'label' })[0]).toHaveAttribute('data-shrink', 'true')
+  })
+
   it('reports a League choice and typed search text', async () => {
     setPhone(false)
     const onLeagueChange = vi.fn()

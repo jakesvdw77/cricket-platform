@@ -10,7 +10,13 @@ import type { AvailabilitySummary } from '../../../api/availabilitySummaryApi'
 import type { Season } from '../../../api/seasonApi'
 import type { AvailabilityHubContext } from './hubContext'
 
-vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../../api/leagueApi', () => ({
+  listLeagues: () => Promise.resolve([{ id: 'lg-1', name: 'Over 40 League' }]),
+}))
+const listTeamsForClub = vi.fn()
+vi.mock('../../../api/teamApi', () => ({
+  listTeamsForClub: (...args: unknown[]) => listTeamsForClub(...args),
+}))
 vi.mock('../../../api/sectionApi', () => ({
   listSections: () =>
     Promise.resolve([
@@ -38,6 +44,8 @@ const summary: AvailabilitySummary = { openPolls: 3, playersResponded: 12, playe
 beforeEach(() => {
   getAvailabilitySummary.mockReset()
   getAvailabilitySummary.mockResolvedValue(summary)
+  listTeamsForClub.mockReset()
+  listTeamsForClub.mockResolvedValue([{ id: 'tm-1', name: 'Lions' }])
   listSeasons.mockReset()
   listSeasons.mockResolvedValue(SEASONS)
   localStorage.clear()
@@ -98,17 +106,17 @@ function renderAt(path: string, clubId: string | null = 'club-1') {
 }
 
 describe('AvailabilityHubLayout (docs/specs/073)', () => {
-  it('titles the page Availability with no back link (079) and a switch of exactly Polls, Players and Coverage links', () => {
+  it('titles the page Availability with no back link (079) and a switch of exactly Polls, Players and Match-day cover links', () => {
     renderAt('/manage/availability')
 
     expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /back/i })).not.toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Availability views' })
     const links = nav.querySelectorAll('a')
-    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Coverage'])
+    expect(Array.from(links).map((link) => link.textContent)).toEqual(['Polls', 'Players', 'Match-day cover'])
     expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('link', { name: 'Players' })).toHaveAttribute('href', '/manage/availability/players')
-    expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('href', '/manage/availability/coverage')
+    expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('href', '/manage/availability/coverage')
   })
 
   it('marks Polls as the current view on /manage/availability, with or without a trailing slash and ?showClosed=true', () => {
@@ -131,11 +139,11 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
   })
 
-  it('marks Coverage as current on /manage/availability/coverage (with or without a trailing slash) and renders the Coverage view', () => {
+  it('marks Match-day cover as current on /manage/availability/coverage (with or without a trailing slash) and renders the Coverage view', () => {
     for (const path of ['/manage/availability/coverage', '/manage/availability/coverage/']) {
       const { unmount } = renderAt(path)
-      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByRole('link', { name: 'Coverage' })).toHaveClass('Mui-selected')
+      expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Match-day cover' })).toHaveClass('Mui-selected')
       expect(screen.getByRole('link', { name: 'Polls' })).not.toHaveAttribute('aria-current')
       expect(screen.getByRole('link', { name: 'Players' })).not.toHaveAttribute('aria-current')
       expect(screen.getByText(/^Coverage view for club-1 at \/manage\/availability\/coverage/)).toBeInTheDocument()
@@ -158,7 +166,7 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     await user.click(screen.getByRole('link', { name: 'Players' }))
     expect(screen.getByText('Players view for club-1 at /manage/availability/players')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Coverage' }))
+    await user.click(screen.getByRole('link', { name: 'Match-day cover' }))
     expect(screen.getByText('Coverage view for club-1 at /manage/availability/coverage')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Polls' }))
@@ -258,7 +266,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
     expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', {
-      sectionId: null, type: 'ALL', includeClosed: false,
+      leagueId: null, sectionId: null, teamId: null, type: 'ALL', includeClosed: false,
     })
     for (const label of ['Open polls', 'Players responded', 'Players still to answer', 'Close in 48 hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
@@ -309,31 +317,76 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     const user = userEvent.setup()
     renderAt('/manage/availability')
     await waitFor(() => expect(values()).toHaveLength(4))
-    expect(screen.queryByTestId('counters-scope')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'pick section' }))
 
     await waitFor(() =>
       expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ sectionId: 'sec-1' })),
     )
-    expect(await screen.findByTestId('counters-scope')).toHaveTextContent('Showing: Vets › Over 40')
+    expect(await screen.findByTestId('header-subtitle')).toHaveTextContent('Showing: Vets › Over 40')
   })
 
-  it('does not send or show the league and team filters until the list filters by them (slice 3)', async () => {
+  it('follows the league and team filters and names them in the scope line', async () => {
     const user = userEvent.setup()
     renderAt('/manage/availability')
     await waitFor(() => expect(values()).toHaveLength(4))
-    const calls = getAvailabilitySummary.mock.calls.length
 
     await user.click(screen.getByRole('button', { name: 'pick league and team' }))
+
+    await waitFor(() =>
+      expect(getAvailabilitySummary).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ leagueId: 'lg-1', teamId: 'tm-1' })),
+    )
+    expect(await screen.findByTestId('header-subtitle')).toHaveTextContent('Showing: Over 40 League · Lions')
+  })
+
+  it('drops a stored team that is not among the teams, from the request and the scope line', async () => {
+    localStorage.setItem('availability:filters:club-1', JSON.stringify({ leagueId: null, sectionId: null, teamId: 'gone' }))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(values()).toHaveLength(4))
+    expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', expect.objectContaining({ teamId: null }))
+    expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
+  })
+
+  it('puts the scope under the Availability title, only on Polls, and keeps it when the counters fail', async () => {
+    const user = userEvent.setup()
+    getAvailabilitySummary.mockRejectedValue(new Error('boom'))
+    renderAt('/manage/availability')
     await user.click(screen.getByRole('button', { name: 'pick section' }))
 
-    await waitFor(() => expect(getAvailabilitySummary.mock.calls.length).toBeGreaterThan(calls))
-    for (const [, sent] of getAvailabilitySummary.mock.calls) {
-      expect(sent).not.toHaveProperty('leagueId')
-      expect(sent).not.toHaveProperty('teamId')
+    const subtitle = await screen.findByTestId('header-subtitle')
+    expect(subtitle).toHaveTextContent('Showing: Vets › Over 40')
+    expect(subtitle.previousElementSibling).toBe(screen.getByRole('heading', { level: 1, name: 'Availability' }))
+    await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('shows no scope caption on Players or Match-day cover', async () => {
+    localStorage.setItem('availability:filters:club-1', JSON.stringify({ leagueId: null, sectionId: 'sec-1', teamId: null }))
+    for (const path of ['/manage/availability/players', '/manage/availability/coverage']) {
+      const { unmount } = renderAt(path)
+      await screen.findByTestId('ctx')
+      expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
+      unmount()
     }
-    expect(await screen.findByTestId('counters-scope')).toHaveTextContent(/^Showing: Vets › Over 40$/)
+  })
+
+  it('holds the summary request and hides the counters when the team list fails', async () => {
+    listTeamsForClub.mockRejectedValue(new Error('boom'))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(listTeamsForClub).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
+    expect(getAvailabilitySummary).not.toHaveBeenCalled()
+    expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('does not load teams for the Coverage view', async () => {
+    renderAt('/manage/availability/coverage')
+
+    await screen.findByText(/^Coverage view/)
+    expect(listTeamsForClub).not.toHaveBeenCalled()
   })
 
   it('follows the poll type toggle and Show closed, and reads Polls shown when closed are included', async () => {
