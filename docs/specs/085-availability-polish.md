@@ -99,6 +99,16 @@ Clicking a mark in the Players grid currently navigates to the poll's page (`pol
 - **Phone.** The same menu opens from the status pill on a By game row and from a game's mark in an expanded By player row (so the grid's click change and the phone lists behave alike).
 - **Not in scope.** Changing answers in bulk, and a "No response" entry (as on the Responses pages, an answer can be set but not cleared).
 
+### G. Poll lists from "Open polls / Polls shown" and "Close in 48 hours" (added 2026-10-08, user request)
+
+The user clicked "Polls shown" (the first counter reads "Polls shown" once Show closed polls is on, and then counts closed polls too) and nothing happened, and asked how a closed poll can be an "open poll". The first counter was the reset for the 48-hour filter (already active, so a click did nothing), and "Close in 48 hours" was a list filter (084). Both become the same kind of counter as the two players counters: a drill-down that opens the slide-in panel.
+
+- **Both counters become drill-downs** (`kind: 'drill'`, the `›` marker): "Open polls" (or "Polls shown") and "Close in 48 hours" open a right-hand panel on desktop and tablet and a bottom sheet on a phone (the `PlayersPanel` pattern: `Drawer` / `BottomSheet`, Escape, close button, focus returns to the counter).
+- **Panel content:** one row per poll with its title (for example "Thursday 15 October - Over 40 fixtures"), a Group / Squad chip, an Open / Closed chip, when it closes ("closes in 5 d 11 h", or "closed Fri 2 Oct") and how many have answered ("15 of 18"); each row is a link to that poll's Responses page (`utils/pollRoutes.ts`). Sorted by soonest closing first (closed polls after the open ones). Header text names the scope, for example "3 polls shown, 2 open and 1 closed" for the first counter and "Open polls closing within 48 hours" for the second; the same footer "Showing: ..." line as the players panel.
+- **Same polls as the list.** The first panel lists exactly the polls the page shows (the section, league, team, type and Show closed filters apply, so with Show closed on the closed polls appear, with a Closed chip); the second lists the open polls closing within 48 hours (the existing rule, `scheduledCloseAt` after now and at most 48 hours away). Both are built from the lists the Polls page already loads (no new endpoint), so the counter and the panel always agree; a counter showing 0 is not clickable.
+- **Replaces the 084 filter behaviour (decided by the user's request, recommended default).** The 48-hour list filter, its removable chip, its switch in the phone Filters sheet and the "closing within 48 hours" scope text are removed; the poll list is only filtered by the shared filters, the Group / Squad toggles and Show closed. The counters keep their labels and figures. "Players responded" and "Players still to answer" are unchanged.
+- **Label.** The first counter keeps "Open polls" while Show closed is off and "Polls shown" while it is on (083 decision, so the figure always matches the list); the panel header spells out how many are open and how many are closed, so "Polls shown 3" is no longer ambiguous.
+
 ## Test Plan
 
 Per `docs/standards/testing.md`:
@@ -131,6 +141,7 @@ Per `docs/standards/testing.md`:
 - The legend is a single compact row directly above the grid and visible without scrolling at 1280×720.
 - Below the tablet breakpoint the Players view shows "By game" first, opening on the next game day, with working arrows, swipe and filtering chips; "By player" shows the next four games per player and expands to all of that player's games; the legend sits under the switch.
 - Clicking a mark in the Players grid, or a status pill / game mark on the phone lists, opens a menu to change that one answer (with an "Open poll" entry) instead of navigating away; the answer saves through the existing override endpoints for both squad and group polls, the cell updates, and cells with no poll are not clickable.
+- Clicking "Open polls" / "Polls shown" or "Close in 48 hours" opens a slide-in panel (bottom sheet on a phone) listing those polls with Open / Closed chips, closing times, answered counts and links to their Responses pages; the 48-hour list filter, chip and phone toggle no longer exist.
 - No new endpoint, no `openapi.yaml` change; the phone lists send the same request as the grid.
 
 ## Rollout Notes
