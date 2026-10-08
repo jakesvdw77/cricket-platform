@@ -35,22 +35,50 @@ function activeView(pathname: string): HubView {
 }
 
 // docs/specs/081: the Polls view counters, with the amber tone on the two that need attention.
-function counterItems(summary: AvailabilitySummary, showClosed: boolean): PageCounterItem[] {
+// docs/specs/084: "Close in 48 hours" is a filter of the list (active while on) and the first counter resets it;
+// the two players counters are drill-downs (the panel that opens them arrives in a later slice, so they are not
+// selectable yet). The figures never change with the filter: the summary request does not carry it.
+function counterItems(
+  summary: AvailabilitySummary,
+  showClosed: boolean,
+  closingSoon: boolean,
+  setClosingSoon: (value: boolean) => void,
+): PageCounterItem[] {
   return [
     // With Show closed on the figure counts closed polls too, so it reads "Polls shown".
-    { id: 'open-polls', value: summary.openPolls, label: showClosed ? 'Polls shown' : 'Open polls', active: true },
-    { id: 'players-responded', value: `${summary.playersResponded} / ${summary.playersInAudience}`, label: 'Players responded' },
+    {
+      id: 'open-polls',
+      value: summary.openPolls,
+      label: showClosed ? 'Polls shown' : 'Open polls',
+      active: !closingSoon,
+      onSelect: () => setClosingSoon(false),
+      kind: 'reset',
+      hint: 'Show all',
+    },
+    {
+      id: 'players-responded',
+      value: `${summary.playersResponded} / ${summary.playersInAudience}`,
+      label: 'Players responded',
+      kind: 'drill',
+      hint: 'See who',
+    },
     {
       id: 'players-still-to-answer',
       value: summary.playersStillToAnswer,
       label: 'Players still to answer',
       tone: summary.playersStillToAnswer > 0 ? 'warning' : 'default',
+      kind: 'drill',
+      hint: 'See who',
     },
     {
       id: 'closing-soon',
       value: summary.closingSoon,
       label: 'Close in 48 hours',
       tone: summary.closingSoon > 0 ? 'warning' : 'default',
+      active: closingSoon,
+      onSelect: () => setClosingSoon(!closingSoon),
+      kind: 'filter',
+      hint: 'Tap to filter',
     },
   ]
 }
@@ -145,7 +173,7 @@ export default function AvailabilityHubLayout() {
 
       {showCounters && (
         <PageCounters
-          items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed) : []}
+          items={summaryQuery.data ? counterItems(summaryQuery.data, hub.showClosed, hub.closingSoon, hub.setClosingSoon) : []}
           loading={summaryQuery.isPending}
         />
       )}

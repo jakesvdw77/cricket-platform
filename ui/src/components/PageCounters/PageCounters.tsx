@@ -1,6 +1,6 @@
 import { alpha, Box, ButtonBase, Card as MuiCard, Skeleton, Typography } from '@mui/material'
 import type { Theme } from '@mui/material'
-import { keyFigureCardSx, keyFigureValueSx } from './keyFigureStyle'
+import { keyFigureCardSx, keyFigureValueSx, selectableCardSx } from './keyFigureStyle'
 
 export interface PageCounterItem {
   id: string
@@ -13,6 +13,10 @@ export interface PageCounterItem {
   active?: boolean
   // Makes the counter a real button.
   onSelect?: () => void
+  // docs/specs/084: what selecting does. 'filter' (default) toggles a filter of the list below: a toggle button
+  // (aria-pressed) with a small "filter" tag. 'reset' is the same toggle behaviour without the tag (the card that
+  // clears the filters). 'drill' opens something else: a plain button with a ">" marker, no aria-pressed.
+  kind?: 'filter' | 'reset' | 'drill'
 }
 
 export interface PageCountersProps {
@@ -28,19 +32,66 @@ const gridSx = {
   gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
 }
 
+// Screen-reader-only text (the visible cue is the corner marker).
+const visuallyHidden = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: '1px',
+  margin: '-1px',
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: '1px',
+} as const
+
 const activeOutline = (theme: Theme) => `2px solid ${alpha(theme.palette.primary.main, 0.55)}`
 
-function CounterBody({ item }: { item: PageCounterItem }) {
+// A counter with nothing behind it (figure 0) is a plain card, except the one the list is currently filtered to.
+function isInteractive(item: PageCounterItem) {
+  if (!item.onSelect) return false
+  // 0, "0" and "0 / 24" are zero; "10 / 24" and "0.5" are not.
+  const zero = /^0(\s*\/.*)?$/.test(String(item.value).trim())
+  return !zero || Boolean(item.active)
+}
+
+// The corner marker of a selectable counter: a tag for a filter, a chevron for a drill-down. Decorative - the
+// hint text (visually hidden) carries the meaning for assistive technology.
+const markerSx = {
+  position: 'absolute',
+  top: 8,
+  right: 10,
+  color: 'primary.main',
+  fontWeight: 700,
+  lineHeight: 1,
+}
+
+function CounterBody({ item, interactive }: { item: PageCounterItem; interactive: boolean }) {
+  const kind = item.kind ?? 'filter'
   return (
     <>
+      {interactive && kind !== 'reset' && (
+        <Box
+          component="span"
+          aria-hidden
+          data-testid={`page-counter-${item.id}-marker`}
+          sx={
+            kind === 'drill'
+              ? { ...markerSx, fontSize: '1.2rem' }
+              : { ...markerSx, top: 9, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em' }
+          }
+        >
+          {kind === 'drill' ? '›' : 'filter'}
+        </Box>
+      )}
       <Typography component="b" data-testid="page-counter-value" sx={keyFigureValueSx(item.tone === 'warning')}>
         {item.value}
       </Typography>
       <Typography variant="caption" color="text.secondary">
         {item.label}
       </Typography>
-      {item.onSelect && item.hint && (
-        <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, fontSize: '0.66rem' }}>
+      {interactive && item.hint && (
+        <Typography variant="caption" sx={visuallyHidden}>
           {item.hint}
         </Typography>
       )}
@@ -67,23 +118,25 @@ export function PageCounters({ items, loading = false }: PageCountersProps) {
   return (
     <Box sx={gridSx}>
       {items.map((item) =>
-        item.onSelect ? (
+        isInteractive(item) ? (
           <ButtonBase
             key={item.id}
             onClick={item.onSelect}
-            aria-pressed={Boolean(item.active)}
+            aria-pressed={(item.kind ?? 'filter') !== 'drill' ? Boolean(item.active) : undefined}
             data-testid={`page-counter-${item.id}`}
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({
                 ...keyFigureCardSx,
                 borderRadius: `${theme.shape.borderRadius}px`,
+                position: 'relative',
                 alignItems: 'flex-start',
                 textAlign: 'left',
                 outline: item.active ? activeOutline(theme) : '2px solid transparent',
+                ...selectableCardSx(theme),
                 '&.Mui-focusVisible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
               })}
           >
-            <CounterBody item={item} />
+            <CounterBody item={item} interactive={isInteractive(item)} />
           </ButtonBase>
         ) : (
           <MuiCard
@@ -92,7 +145,7 @@ export function PageCounters({ items, loading = false }: PageCountersProps) {
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({ ...keyFigureCardSx, outline: item.active ? activeOutline(theme) : '2px solid transparent' })}
           >
-            <CounterBody item={item} />
+            <CounterBody item={item} interactive={isInteractive(item)} />
           </MuiCard>
         ),
       )}

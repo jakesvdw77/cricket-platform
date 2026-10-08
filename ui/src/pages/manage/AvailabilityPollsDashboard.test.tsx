@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1241,5 +1241,152 @@ describe('AvailabilityPollsDashboard', () => {
       )
       expect(openRound).not.toHaveBeenCalled()
     })
+  })
+})
+
+// docs/specs/084: the "Close in 48 hours" quick filter, on a fixed clock so the boundary is exact.
+describe('AvailabilityPollsDashboard closing-soon filter (084)', () => {
+  const NOW = new Date('2026-06-01T10:00:00Z').getTime()
+  const at = (hours: number, extraMs = 0) => new Date(NOW + hours * 3_600_000 + extraMs).toISOString()
+  const squad = (id: string, away: string, overrides: Partial<OpenAvailabilityPoll> = {}) =>
+    makePoll({ pollId: id, matchId: `m-${id}`, awayTeamName: away, ...overrides })
+
+  function setPhone(phone: boolean) {
+    window.matchMedia = ((query: string) => ({
+      matches: phone && query.includes('max-width'),
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(NOW)
+    setPhone(false)
+    listTeamsForClub.mockResolvedValue([makeTeam()])
+    listOpenPolls.mockResolvedValue([
+      squad('in', 'Soon CC', { scheduledCloseAt: at(10) }),
+      squad('edge', 'Edge CC', { scheduledCloseAt: at(48) }),
+      squad('over', 'Over CC', { scheduledCloseAt: at(48, 1000) }),
+      squad('past', 'Past CC', { scheduledCloseAt: at(-1) }),
+      squad('manual', 'Manual CC', { autoClose: false, scheduledCloseAt: null }),
+    ])
+    listRounds.mockImplementation((_club: string, params: { open?: boolean }) =>
+      Promise.resolve(
+        params.open
+          ? [
+              makeRound({ id: 'r-in', description: 'Round soon', scheduledCloseAt: at(20) }),
+              makeRound({ id: 'r-far', description: 'Round far', scheduledCloseAt: at(100) }),
+              makeRound({ id: 'r-manual', description: 'Round manual', autoClose: false, scheduledCloseAt: null }),
+            ]
+          : [makeRound({ id: 'r-closed', description: 'Round closed', open: false, scheduledCloseAt: at(5) })],
+      ),
+    )
+    listClosedPolls.mockResolvedValue([squad('closed', 'Closed CC', { scheduledCloseAt: at(5) })])
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // The quick filter is switched on through the phone sheet's switch (the counter lives in the hub layout).
+  async function turnOn(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /^Filters/ }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Closing within 48 h' }))
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+  }
+  const headings = () => screen.queryAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+
+  it('narrows to open polls and rounds closing in (now, now + 48 h], boundary included', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    renderDashboard('test-club-id')
+    await screen.findByText('Showing 8 open polls')
+
+    await turnOn(user)
+
+    expect(await screen.findByText('Showing 3 open polls closing within 48 hours')).toBeInTheDocument()
+    expect(headings().sort()).toEqual(['Home Team vs Edge CC', 'Home Team vs Soon CC', 'Round soon'])
+  })
+
+  it('shows a removable chip that counts in the Filters badge, and removing it restores the list', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    renderDashboard('test-club-id')
+    await screen.findByText('Showing 8 open polls')
+
+    await turnOn(user)
+    expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove filter Closing within 48 h' }))
+
+    expect(await screen.findByText('Showing 8 open polls')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+  })
+
+  it('Clear all in the sheet clears it too', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    renderDashboard('test-club-id')
+    await screen.findByText('Showing 8 open polls')
+    await turnOn(user)
+    await screen.findByText(/closing within 48 hours/)
+
+    await user.click(screen.getByRole('button', { name: /^Filters/ }))
+    await user.click(await screen.findByRole('button', { name: 'Clear all' }))
+
+    expect(await screen.findByText('Showing 8 open polls')).toBeInTheDocument()
+  })
+
+  it('leaves closed polls and rounds out even when their close time is in range (Show closed on)', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    renderDashboard('test-club-id', '/manage/availability?showClosed=true')
+    await screen.findByText('Showing 10 polls')
+
+    await turnOn(user)
+
+    expect(await screen.findByText('Showing 3 polls closing within 48 hours')).toBeInTheDocument()
+    expect(headings()).not.toContain('Home Team vs Closed CC')
+    expect(headings()).not.toContain('Round closed')
+  })
+
+  it('with nothing closing soon shows the filtered empty state, not the New poll one', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    listOpenPolls.mockResolvedValue([squad('over', 'Over CC', { scheduledCloseAt: at(60) })])
+    listRounds.mockResolvedValue([])
+    renderDashboard('test-club-id')
+    await screen.findByText('Showing 1 open poll')
+
+    await turnOn(user)
+
+    expect(await screen.findByText('No matching polls')).toBeInTheDocument()
+  })
+
+  it('drops a poll from the list when its close time passes while the page stays open', async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    setPhone(true)
+    listOpenPolls.mockResolvedValue([
+      squad('soon', 'Soon CC', { scheduledCloseAt: at(0, 90_000) }),
+      squad('later', 'Later CC', { scheduledCloseAt: at(10) }),
+    ])
+    listRounds.mockResolvedValue([])
+    renderDashboard('test-club-id')
+    await screen.findByText('Showing 2 open polls')
+    await turnOn(user)
+    expect(await screen.findByText('Showing 2 open polls closing within 48 hours')).toBeInTheDocument()
+
+    // Two minutes pass: the first poll's close time (90 s ahead) is now behind us.
+    await act(async () => {
+      vi.setSystemTime(NOW + 120_000)
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(await screen.findByText('Showing 1 open poll closing within 48 hours')).toBeInTheDocument()
+    expect(headings()).toEqual(['Home Team vs Later CC'])
   })
 })

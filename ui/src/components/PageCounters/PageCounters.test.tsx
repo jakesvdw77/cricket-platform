@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { PageCounters } from './PageCounters'
 import type { PageCounterItem } from './PageCounters'
 import { baseTheme } from '../../theme'
+import { hoverTintColor } from './keyFigureStyle'
 
 function renderCounters(items: PageCounterItem[], loading = false) {
   return render(
@@ -93,5 +94,111 @@ describe('PageCounters', () => {
 
     expect(css).toMatch(/grid-template-columns:\s*repeat\(2,\s*1fr\)/)
     expect(css).toMatch(/@media \(min-width:\s*900px\)[^]*repeat\(4,\s*1fr\)/)
+  })
+
+  describe('counter kinds and the zero rule (084)', () => {
+    it('defaults to a filter counter: a toggle button with a "filter" tag and aria-pressed', () => {
+      renderCounters([{ ...items[0], onSelect: vi.fn() }])
+
+      expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('filter')
+      expect(screen.getByTestId('page-counter-a-marker')).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('a drill-down counter is a plain button with a chevron and no aria-pressed, even when active', async () => {
+      const onSelect = vi.fn()
+      renderCounters([{ ...items[0], kind: 'drill', onSelect, hint: 'See who', active: true }])
+
+      const button = screen.getByRole('button', { name: /Open polls/ })
+      expect(button).not.toHaveAttribute('aria-pressed')
+      expect(screen.getByTestId('page-counter-a-marker')).toHaveTextContent('›')
+      expect(screen.getByText('See who')).toBeInTheDocument()
+      await userEvent.click(button)
+      expect(onSelect).toHaveBeenCalledTimes(1)
+    })
+
+    it('a plain card has no marker and no hint, whatever its kind', () => {
+      renderCounters([{ ...items[0], kind: 'drill', hint: 'See who' }])
+
+      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
+      expect(screen.queryByText('See who')).not.toBeInTheDocument()
+    })
+
+    it('at zero a selectable counter is a plain card with no marker', () => {
+      const onSelect = vi.fn()
+      renderCounters([
+        { id: 'z', value: 0, label: 'Close in 48 hours', onSelect, hint: 'Tap to filter' },
+        { id: 'zs', value: '0', label: 'Zero as text', onSelect, kind: 'drill' },
+      ])
+
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('page-counter-z-marker')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('page-counter-zs-marker')).not.toBeInTheDocument()
+    })
+
+    it('treats "0 / 24" as zero, but not "10 / 24", "0.5" or 5', () => {
+      const onSelect = vi.fn()
+      renderCounters([
+        { id: 'a', value: '0 / 24', label: 'A', onSelect, kind: 'drill' },
+        { id: 'b', value: '10 / 24', label: 'B', onSelect, kind: 'drill' },
+        { id: 'c', value: '0.5', label: 'C', onSelect, kind: 'drill' },
+        { id: 'd', value: 5, label: 'D', onSelect },
+      ])
+
+      expect(screen.queryByRole('button', { name: /^0 \/ 24/ })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button').map((b) => b.getAttribute('data-testid'))).toEqual([
+        'page-counter-b',
+        'page-counter-c',
+        'page-counter-d',
+      ])
+    })
+
+    it('a reset counter is a pressed-state button with no tag', () => {
+      renderCounters([{ ...items[0], kind: 'reset', active: true, hint: 'Show all', onSelect: vi.fn() }])
+
+      expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryByTestId('page-counter-a-marker')).not.toBeInTheDocument()
+      expect(screen.getByText('Show all')).toBeInTheDocument()
+    })
+
+    it('at zero the active filter counter stays a pressed button so it can be switched off', async () => {
+      const onSelect = vi.fn()
+      renderCounters([{ id: 'z', value: 0, label: 'Close in 48 hours', onSelect, active: true }])
+
+      const button = screen.getByRole('button', { name: /Close in 48 hours/ })
+      expect(button).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.click(button)
+      expect(onSelect).toHaveBeenCalledTimes(1)
+    })
+
+    it('lifts and tints a selectable counter on hover, but not a plain card', () => {
+      renderCounters([{ ...items[0], onSelect: vi.fn() }, items[1]])
+      const css = Array.from(document.querySelectorAll('style'))
+        .flatMap((style) => Array.from(style.sheet?.cssRules ?? []))
+        .map((rule) => rule.cssText)
+        .join('\n')
+      const classOf = (id: string) => Array.from(screen.getByTestId(`page-counter-${id}`).classList).find((name) => name.startsWith('css-')) as string
+
+      expect(css).toMatch(new RegExp(`${classOf('a')}:hover`))
+      expect(css).not.toMatch(new RegExp(`${classOf('b')}:hover`))
+    })
+
+    // The corner marker and the hint are small primary-coloured text on the white key-figure card.
+    it('keeps the marker colour above 4.5:1 against the card background', () => {
+      const luminance = (hex: string) => {
+        const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+      }
+      const rgbToHex = (rgb: string) =>
+        '#' + (rgb.match(/\d+/g) ?? []).map((n) => Number(n).toString(16).padStart(2, '0')).join('')
+      const ratio = (a: string, b: string) => {
+        const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+        return (hi + 0.05) / (lo + 0.05)
+      }
+      expect(ratio(baseTheme.palette.primary.main, baseTheme.palette.background.paper)).toBeGreaterThanOrEqual(4.5)
+      // Hovered: the card colour blended with the hover tint, computed from the theme.
+      expect(ratio(baseTheme.palette.primary.main, rgbToHex(hoverTintColor(baseTheme)))).toBeGreaterThanOrEqual(4.5)
+    })
   })
 })

@@ -426,4 +426,96 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     }
     expect(getAvailabilitySummary).not.toHaveBeenCalled()
   })
+
+  // docs/specs/084
+  describe('clickable counters (084)', () => {
+    const withClosing = { ...summary, closingSoon: 2 }
+
+    it('Close in 48 hours is a filter toggle: pressed when on, and Open polls then stops being the active one', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
+      const open = screen.getByRole('button', { name: /Open polls/ })
+      expect(closing).toHaveAttribute('aria-pressed', 'false')
+      expect(open).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getAllByText('Tap to filter')).toHaveLength(1)
+      expect(screen.getByText('Show all')).toBeInTheDocument()
+      // The reset card carries no "filter" tag; the real filter does.
+      expect(screen.queryByTestId('page-counter-open-polls-marker')).not.toBeInTheDocument()
+      expect(screen.getByTestId('page-counter-closing-soon-marker')).toHaveTextContent('filter')
+
+      await user.click(closing)
+      expect(closing).toHaveAttribute('aria-pressed', 'true')
+      expect(open).toHaveAttribute('aria-pressed', 'false')
+      expect(closing).toHaveAttribute('data-active', 'true')
+
+      await user.click(closing)
+      expect(closing).toHaveAttribute('aria-pressed', 'false')
+      expect(open).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('Open polls resets the filter', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
+      await user.click(closing)
+      expect(closing).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(screen.getByRole('button', { name: /Open polls/ }))
+
+      expect(closing).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('reads the reset card as Polls shown with Show closed on, and it still resets', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability?showClosed=true')
+      const closing = await screen.findByRole('button', { name: /Close in 48 hours/ })
+      await user.click(closing)
+
+      await user.click(screen.getByRole('button', { name: /Polls shown/ }))
+
+      expect(closing).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('does not touch the summary request or the figures when the filter is on', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await screen.findByRole('button', { name: /Close in 48 hours/ })
+      const calls = getAvailabilitySummary.mock.calls.length
+
+      await user.click(screen.getByRole('button', { name: /Close in 48 hours/ }))
+
+      expect(getAvailabilitySummary).toHaveBeenCalledTimes(calls)
+      for (const [, filters] of getAvailabilitySummary.mock.calls) expect(filters).not.toHaveProperty('closingSoon')
+      expect(screen.getAllByTestId('page-counter-value').map((node) => node.textContent)).toEqual(['3', '12 / 20', '8.5', '2'])
+    })
+
+    it('Close in 48 hours at zero is a plain card with no filter tag', async () => {
+      getAvailabilitySummary.mockResolvedValue(summary)
+      renderAt('/manage/availability')
+      await waitFor(() => expect(screen.getByTestId('page-counter-closing-soon')).toBeInTheDocument())
+
+      expect(screen.queryByRole('button', { name: /Close in 48 hours/ })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('page-counter-closing-soon-marker')).not.toBeInTheDocument()
+    })
+
+    it('the players counters are drill-down cards with a hint but are not clickable yet', async () => {
+      const user = userEvent.setup()
+      getAvailabilitySummary.mockResolvedValue(withClosing)
+      renderAt('/manage/availability')
+      await screen.findByRole('button', { name: /Close in 48 hours/ })
+
+      expect(screen.queryByRole('button', { name: /Players responded/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Players still to answer/ })).not.toBeInTheDocument()
+      expect(screen.getByTestId('page-counter-players-responded')).not.toHaveAttribute('aria-pressed')
+      await user.click(screen.getByTestId('page-counter-players-still-to-answer'))
+      expect(screen.getByRole('button', { name: /Open polls/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
 })
+
