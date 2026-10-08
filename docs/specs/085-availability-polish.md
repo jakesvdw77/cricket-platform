@@ -130,6 +130,16 @@ The filter toolbar (League, Section, Team, Search) is about 72 px tall next to 4
 - The page gaps are changed in `AvailabilityHubLayout.tsx` and `AvailabilityPollsDashboard.tsx` (and the Players and Match-day cover pages if they set their own).
 - Unchanged: the fields' labels and behaviour, the phone Filters sheet, chips and badge, touch targets (44 px minimum for tappable controls on a phone, so the phone toolbar keeps its field height).
 
+### J. Status chips and sorting on the Player tab (added 2026-10-08, user request: "love it")
+
+So a manager can see at a glance who is available or not on the Player tab of the Responses page (`ResponsesByPlayer.tsx`, both poll types). Mockup: https://claude.ai/artifact/EJgcSMkgxT8LHmVt8hSRMB.
+
+- **Status chips** directly above the table (and left of the "Hide players who haven't answered" switch): All, Available, Unsure, Unavailable, No response, each with its count, in the same colours as the status pills. Tapping a chip shows only the players with that status; tapping it again, or All, shows everyone. The counts describe the selected slot's answers for all players (not narrowed by the search or the chip).
+- **Sortable headings:** the Player heading sorts by name (default, A to Z; click to reverse); a slot heading sorts by that slot's status in the order Available, Unsure, Unavailable, No response (click again to reverse). The active heading shows an arrow and `aria-sort`; headings are real buttons (keyboard, focus ring). The sort is applied after the search and the chip filter.
+- **Several slots:** a "Slot" selector appears in front of the chips (not for a single-slot or squad poll); the chips and the status sort follow the selected slot, and clicking another slot's heading selects it. The other slots' columns stay visible. Default slot: the first one.
+- **Phone:** the chips wrap onto two lines above the table; the slot selector (multi-slot polls) comes first; headings stay tappable (44 px).
+- Local UI state only (not in the address); both choices reset when leaving the page. The zebra tint, the override menu and the hide-unanswered switch behave as before (the switch and the chips combine).
+
 ## Test Plan
 
 Per `docs/standards/testing.md`:
@@ -166,6 +176,7 @@ Per `docs/standards/testing.md`:
 - Clicking "Open polls" / "Polls shown" or "Close in 48 hours" opens a slide-in panel (bottom sheet on a phone) listing those polls with Open / Closed chips, closing times, answered counts and links to their Responses pages; the 48-hour list filter, chip and phone toggle no longer exist.
 - A fully covered fixture group on the New group poll page is read-only with a note, and a linked group is scrolled into view (H).
 - On the Availability pages the toolbar panel is about 52 px tall with 8 px padding and 36 px fields, and the gaps between the page header, counters, toolbar and content are 12 px; the other list pages are unchanged (I).
+- The Player tab has status chips with counts (All / Available / Unsure / Unavailable / No response) that show only players with that status for the selected slot, sortable headings (name; slot status in the order Available, Unsure, Unavailable, No response) with an arrow and `aria-sort`, and a Slot selector for polls with several slots.
 - No new endpoint, no `openapi.yaml` change; the phone lists send the same request as the grid.
 
 ## Rollout Notes
