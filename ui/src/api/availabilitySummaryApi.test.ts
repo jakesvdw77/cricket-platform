@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import api from './axiosConfig'
-import { availabilitySummaryKey, getAvailabilitySummary, typeFilterFor, invalidateAvailabilityCounters } from './availabilitySummaryApi'
+import { availabilitySummaryKey, availabilitySummaryPlayersKey, listAvailabilitySummaryPlayers, getAvailabilitySummary, typeFilterFor, invalidateAvailabilityCounters } from './availabilitySummaryApi'
 import type { AvailabilitySummary } from './availabilitySummaryApi'
 
 vi.mock('./axiosConfig', () => ({ default: { get: vi.fn() } }))
@@ -55,5 +55,50 @@ describe('availabilitySummaryApi', () => {
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'availability-summary'] })
     expect(spy).toHaveBeenCalledWith({ queryKey: ['managed-club', 'club-1', 'overview'] })
+  })
+
+  describe('players (084)', () => {
+    it('GETs the players with kind, paging and only the filters that are set', async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: { content: [] } })
+
+      await listAvailabilitySummaryPlayers('club-1', { kind: 'awaiting' })
+      expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary/players', {
+        params: { kind: 'awaiting', page: 0, size: 25 },
+      })
+
+      await listAvailabilitySummaryPlayers(
+        'club-1',
+        {
+          kind: 'responded', leagueId: 'l-1', sectionId: 's-1', teamId: 't-1', type: 'GROUP',
+          includeClosed: true, closingSoon: true, search: '  ann ',
+        },
+        2,
+        10,
+      )
+      expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary/players', {
+        params: {
+          kind: 'responded', page: 2, size: 10, leagueId: 'l-1', sectionId: 's-1', teamId: 't-1',
+          type: 'GROUP', includeClosed: true, closingSoon: true, search: 'ann',
+        },
+      })
+    })
+
+    it('omits default and blank filters', async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: {} })
+
+      await listAvailabilitySummaryPlayers('club-1', {
+        kind: 'responded', leagueId: null, type: 'ALL', includeClosed: false, closingSoon: false, search: ' ',
+      })
+      expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary/players', {
+        params: { kind: 'responded', page: 0, size: 25 },
+      })
+    })
+
+    it('keys the players under the summary prefix so the counters invalidation reaches it', () => {
+      const queryClient = new QueryClient()
+      queryClient.setQueryData(availabilitySummaryPlayersKey('club-1', { kind: 'awaiting' }), {})
+      invalidateAvailabilityCounters(queryClient, 'club-1')
+      expect(queryClient.getQueryState(availabilitySummaryPlayersKey('club-1', { kind: 'awaiting' }))?.isInvalidated).toBe(true)
+    })
   })
 })

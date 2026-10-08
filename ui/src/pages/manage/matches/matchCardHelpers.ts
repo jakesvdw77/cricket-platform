@@ -5,6 +5,7 @@ import type { MatchSquad } from '../../../api/matchSquadApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
+import { groupPollResponsesPath, squadPollResponsesPath } from '../../../utils/pollRoutes'
 
 // docs/specs/037-match-improvements.md item 2, shared by the card, the Match View page and the Edit
 // page header (docs/specs/075-match-view-and-edit.md): why Select / Availability / Share are
@@ -152,8 +153,8 @@ export type PollDestination = { kind: 'link'; to: string } | { kind: 'menu'; opt
 
 function pollResponsesTo(match: Match, poll: MatchPoll): string {
   return poll.type === 'GROUP'
-    ? `/manage/availability/group/${poll.roundId ?? poll.pollId}`
-    : `/manage/availability/squad/${match.id}/${poll.pollId}`
+    ? groupPollResponsesPath(poll.roundId ?? poll.pollId)
+    : squadPollResponsesPath(match.id, poll.pollId)
 }
 
 // Where the Availability button (card, Match View, Edit page header) goes (docs/specs/075 section 3):

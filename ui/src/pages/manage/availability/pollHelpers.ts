@@ -2,6 +2,7 @@ import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityFixtureMatch } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 import type { PollItem } from './pollItem'
+import { groupPollResponsesPath, squadPollResponsesPath } from '../../../utils/pollRoutes'
 
 // Why 'Share invite' is disabled on a closed poll (the backend refuses public answers for one).
 export const SHARE_CLOSED_REASON = 'Share invite is unavailable: this poll is closed'
@@ -54,9 +55,9 @@ export function coveredPollHref(match: SectionAvailabilityFixtureMatch): string 
     return '/manage/availability?showClosed=true'
   }
   if (match.existingPollType === 'SQUAD') {
-    return `/manage/availability/squad/${match.matchId}/${match.existingPollId}`
+    return squadPollResponsesPath(match.matchId, match.existingPollId)
   }
-  return `/manage/availability/group/${match.existingPollId}`
+  return groupPollResponsesPath(match.existingPollId)
 }
 
 // Same "resolve whichever side is null against the club's own team list" join MatchList.tsx's
@@ -148,8 +149,8 @@ export function closesRowText(open: boolean, autoClose: boolean, scheduledCloseA
 // button. Group polls by round id, squad polls by match and poll id.
 export function pollResponsesPath(item: PollItem): string {
   return item.kind === 'GROUP'
-    ? `/manage/availability/group/${item.round.id}`
-    : `/manage/availability/squad/${item.poll.matchId}/${item.poll.pollId}`
+    ? groupPollResponsesPath(item.round.id)
+    : squadPollResponsesPath(item.poll.matchId, item.poll.pollId)
 }
 
 // docs/specs/064/066/067, repointed by docs/specs/075: the match's own view page (the Edit page's

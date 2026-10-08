@@ -10,6 +10,16 @@ import static org.mockito.Mockito.when;
 import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.AvailabilityPollTypeFilter;
+import com.cricketlegend.domain.AvailabilitySummaryPlayerKind;
+import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.dto.AvailabilitySummaryPlayerDto;
+import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.PlayerProfileRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.mockito.ArgumentMatchers;
 import com.cricketlegend.dto.AvailabilitySummaryDto;
 import com.cricketlegend.dto.OverviewPollDto;
 import com.cricketlegend.exception.NotFoundException;
@@ -22,7 +32,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -56,13 +69,19 @@ class AvailabilitySummaryServiceImplTest {
     @Mock
     private AvailabilityPollFilters pollFilters;
 
+    @Mock
+    private PlayerProfileRepository playerProfileRepository;
+
+    @Mock
+    private PersonRepository personRepository;
+
     private AvailabilitySummaryServiceImpl service;
     private final Authentication caller = new TestingAuthenticationToken("someone", "n/a");
 
     @BeforeEach
     void setUp() {
         service = new AvailabilitySummaryServiceImpl(
-                overviewPolls, accessService, pollFilters, Clock.fixed(NOW, ZoneOffset.UTC));
+                overviewPolls, accessService, pollFilters, playerProfileRepository, personRepository, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static OpenPoll poll(AvailabilityPollType kind, Instant closeAt, Set<UUID> audience, Set<UUID> responded) {
@@ -271,5 +290,201 @@ class AvailabilitySummaryServiceImplTest {
 
         assertThat(summary()).isEqualTo(new AvailabilitySummaryDto(0, 0, 0, 0, 0));
         verifyNoInteractions(overviewPolls);
+    }
+
+    // ---- players list (docs/specs/084) ----
+
+    private final Map<UUID, String> nameById = new HashMap<>();
+
+    private UUID player(String first, String last) {
+        UUID id = UUID.randomUUID();
+        nameById.put(id, first + " " + last);
+        return id;
+    }
+
+    private void stubNames() {
+        UUID personSeed = UUID.randomUUID();
+        List<PlayerProfile> profiles = new ArrayList<>();
+        List<Person> persons = new ArrayList<>();
+        for (Map.Entry<UUID, String> entry : nameById.entrySet()) {
+            UUID personId = UUID.randomUUID();
+            String[] parts = entry.getValue().split(" ", 2);
+            profiles.add(PlayerProfile.builder().id(entry.getKey()).personId(personId).build());
+            persons.add(Person.builder().id(personId).firstName(parts[0]).lastName(parts.length > 1 ? parts[1] : "").build());
+        }
+        org.mockito.Mockito.lenient().when(playerProfileRepository.findAllById(ArgumentMatchers.anyIterable()))
+                .thenReturn(profiles);
+        org.mockito.Mockito.lenient().when(personRepository.findAllById(ArgumentMatchers.anyIterable())).thenReturn(persons);
+    }
+
+    private Page<AvailabilitySummaryPlayerDto> players(
+            AvailabilitySummaryPlayerKind kind, boolean closingSoon, String search, Pageable pageable, OpenPoll... polls) {
+        unrestrictedWith(polls);
+        stubNames();
+        return service.players(caller, CLUB_ID, kind, null, null, null, null, false, closingSoon, search, pageable);
+    }
+
+    private static final Pageable FIRST = PageRequest.of(0, 25);
+
+    @Test
+    void aPlayerInTwoPollsAppearsOnceWithBothPollRefs() {
+        UUID a = player("Ann", "Adams");
+        OpenPoll first = squad(null, Set.of(a), Set.of(a));
+        OpenPoll second = poll(AvailabilityPollType.GROUP, null, Set.of(a), Set.of(a));
+
+        Page<AvailabilitySummaryPlayerDto> result =
+                players(AvailabilitySummaryPlayerKind.RESPONDED, false, null, FIRST, first, second);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        AvailabilitySummaryPlayerDto dto = result.getContent().get(0);
+        assertThat(dto.displayName()).isEqualTo("Ann Adams");
+        assertThat(dto.polls()).extracting(AvailabilitySummaryPlayerDto.PollRef::id)
+                .containsExactlyInAnyOrder(first.poll().id(), second.poll().id());
+        assertThat(dto.polls()).extracting(AvailabilitySummaryPlayerDto.PollRef::kind)
+                .containsExactlyInAnyOrder(AvailabilityPollType.SQUAD, AvailabilityPollType.GROUP);
+    }
+
+    @Test
+    void kindPicksRespondedOrAwaitingPlayersAndTotalsEqualTheCounters() {
+        UUID a = player("Ann", "Adams");
+        UUID b = player("Bob", "Brown");
+        OpenPoll shown = squad(null, Set.of(a, b), Set.of(a));
+        unrestrictedWith(shown);
+        stubNames();
+
+        Page<AvailabilitySummaryPlayerDto> responded = service.players(
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, false, false, null, FIRST);
+        Page<AvailabilitySummaryPlayerDto> awaiting = service.players(
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.AWAITING, null, null, null, null, false, false, null, FIRST);
+        AvailabilitySummaryDto counters = summary();
+
+        assertThat(responded.getContent()).extracting(AvailabilitySummaryPlayerDto::playerProfileId).containsExactly(a);
+        assertThat(awaiting.getContent()).extracting(AvailabilitySummaryPlayerDto::playerProfileId).containsExactly(b);
+        assertThat(responded.getTotalElements()).isEqualTo(counters.playersResponded());
+        assertThat(awaiting.getTotalElements()).isEqualTo(counters.playersStillToAnswer());
+    }
+
+    @Test
+    void searchIsACaseInsensitiveContainsOnTheDisplayName() {
+        UUID a = player("Ann", "Adams");
+        UUID b = player("Bob", "Brown");
+
+        Page<AvailabilitySummaryPlayerDto> result = players(
+                AvailabilitySummaryPlayerKind.AWAITING, false, "  OWN ", FIRST, squad(null, Set.of(a, b), Set.of()));
+
+        assertThat(result.getContent()).extracting(AvailabilitySummaryPlayerDto::displayName).containsExactly("Bob Brown");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void closingSoonKeepsOnlyOpenPollsClosingWithin48Hours() {
+        UUID soon = player("Sam", "Soon");
+        UUID later = player("Lee", "Later");
+        UUID shut = player("Cy", "Closed");
+        OpenPoll closingSoon = squad(NOW.plus(Duration.ofHours(5)), Set.of(soon), Set.of());
+        OpenPoll farAway = squad(NOW.plus(Duration.ofHours(49)), Set.of(later), Set.of());
+        OpenPoll closedPoll = closed(NOW.plus(Duration.ofHours(5)), Set.of(shut), Set.of());
+
+        Page<AvailabilitySummaryPlayerDto> result = players(
+                AvailabilitySummaryPlayerKind.AWAITING, true, null, FIRST, closingSoon, farAway, closedPoll);
+
+        assertThat(result.getContent()).extracting(AvailabilitySummaryPlayerDto::displayName).containsExactly("Sam Soon");
+    }
+
+    @Test
+    void sortedByNumberOfPollsDescendingThenName() {
+        UUID zed = player("Zed", "Zimmer");
+        UUID amy = player("Amy", "Archer");
+        UUID bea = player("Bea", "Baker");
+
+        Page<AvailabilitySummaryPlayerDto> result = players(
+                AvailabilitySummaryPlayerKind.AWAITING, false, null, FIRST,
+                squad(null, Set.of(zed, amy, bea), Set.of()),
+                squad(null, Set.of(zed), Set.of()));
+
+        assertThat(result.getContent()).extracting(AvailabilitySummaryPlayerDto::displayName)
+                .containsExactly("Zed Zimmer", "Amy Archer", "Bea Baker");
+    }
+
+    @Test
+    void pagesAreSlicedAndPastTheEndIsEmpty() {
+        Set<UUID> audience = new java.util.LinkedHashSet<>();
+        for (int i = 0; i < 5; i++) {
+            audience.add(player("P" + i, "X"));
+        }
+        OpenPoll shown = squad(null, audience, Set.of());
+
+        Page<AvailabilitySummaryPlayerDto> second =
+                players(AvailabilitySummaryPlayerKind.AWAITING, false, null, PageRequest.of(1, 2), shown);
+        Page<AvailabilitySummaryPlayerDto> past =
+                players(AvailabilitySummaryPlayerKind.AWAITING, false, null, PageRequest.of(9, 2), shown);
+
+        assertThat(second.getContent()).extracting(AvailabilitySummaryPlayerDto::displayName).containsExactly("P2 X", "P3 X");
+        assertThat(second.getTotalElements()).isEqualTo(5);
+        assertThat(second.getTotalPages()).isEqualTo(3);
+        assertThat(past.getContent()).isEmpty();
+        assertThat(past.getTotalElements()).isEqualTo(5);
+    }
+
+    @Test
+    void thePageSizeIsClampedToOneHundred() {
+        Set<UUID> audience = new java.util.LinkedHashSet<>();
+        for (int i = 0; i < 130; i++) {
+            audience.add(player("P" + i, "X"));
+        }
+
+        Page<AvailabilitySummaryPlayerDto> result = players(
+                AvailabilitySummaryPlayerKind.AWAITING, false, null, PageRequest.of(0, 500), squad(null, audience, Set.of()));
+
+        assertThat(result.getContent()).hasSize(100);
+        assertThat(result.getSize()).isEqualTo(100);
+        assertThat(result.getTotalElements()).isEqualTo(130);
+    }
+
+    @Test
+    void noPollsOrNobodyOwingGivesAnEmptyPageWithoutNameLookups() {
+        Page<AvailabilitySummaryPlayerDto> none = players(AvailabilitySummaryPlayerKind.AWAITING, false, null, FIRST);
+        UUID a = player("Ann", "Adams");
+        Page<AvailabilitySummaryPlayerDto> nobody = players(
+                AvailabilitySummaryPlayerKind.AWAITING, false, null, FIRST, squad(null, Set.of(a), Set.of(a)));
+
+        assertThat(none.getContent()).isEmpty();
+        assertThat(nobody.getContent()).isEmpty();
+        assertThat(nobody.getTotalElements()).isZero();
+        verifyNoInteractions(playerProfileRepository, personRepository);
+    }
+
+    @Test
+    void aCallerWithNoAccessibleSectionsGetsAnEmptyPageWithoutLoadingPolls() {
+        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false))
+                .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
+
+        Page<AvailabilitySummaryPlayerDto> result = service.players(
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, false, false, null, FIRST);
+
+        assertThat(result.getContent()).isEmpty();
+        verifyNoInteractions(overviewPolls);
+    }
+
+    @Test
+    void anInvalidFilterIdPropagatesFromThePlayersListToo() {
+        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenThrow(new NotFoundException("League not found"));
+
+        assertThatThrownBy(() -> service.players(caller, CLUB_ID, AvailabilitySummaryPlayerKind.AWAITING,
+                        UUID.randomUUID(), null, null, null, false, false, null, FIRST))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void theKindParameterParsesCaseInsensitivelyAndRejectsAnythingElse() {
+        assertThat(AvailabilitySummaryPlayerKind.parse("responded")).isEqualTo(AvailabilitySummaryPlayerKind.RESPONDED);
+        assertThat(AvailabilitySummaryPlayerKind.parse("AWAITING")).isEqualTo(AvailabilitySummaryPlayerKind.AWAITING);
+        assertThatThrownBy(() -> AvailabilitySummaryPlayerKind.parse("nope"))
+                .isInstanceOf(com.cricketlegend.exception.ValidationException.class);
+        assertThatThrownBy(() -> AvailabilitySummaryPlayerKind.parse(null))
+                .isInstanceOf(com.cricketlegend.exception.ValidationException.class);
     }
 }

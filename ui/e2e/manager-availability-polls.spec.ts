@@ -233,4 +233,31 @@ test.describe('Unified availability polls golden path (064-unified-availability-
       await expect(page.getByLabel('Section')).toHaveValue(sectionName);
     }
   });
+
+  // docs/specs/084-clickable-counters.md: "Players still to answer" opens the players panel; a player's poll
+  // links to its Responses page. Needs a club with an open poll that still awaits at least one player (so the
+  // counter is a button); otherwise the test skips. Runs in the mobile and desktop projects.
+  test('Players still to answer opens the panel, shows a player and follows a poll link', async ({ page }) => {
+    await loginAsClubAdmin(page);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await page.goto(`http://${ROOT_DOMAIN}/manage/availability`);
+
+    // Wait for the counters row (any counter card) so a slow load or failed login fails here rather than skipping.
+    await expect(page.getByTestId('page-counter-open-polls')).toBeVisible({ timeout: 15000 });
+    const counter = page.getByRole('button', { name: /Players still to answer/ });
+    test.skip((await counter.count()) === 0, 'No player is awaiting an answer in this club');
+    await counter.click();
+
+    await expect(page.getByRole('tab', { name: /Still to answer/ })).toHaveAttribute('aria-selected', 'true');
+    const firstRow = page.getByTestId('players-panel-row').first();
+    await expect(firstRow).toBeVisible();
+
+    // On desktop the poll links are behind the row; on a phone they are already shown.
+    const rowButton = firstRow.getByRole('button');
+    if (await rowButton.count()) {
+      await rowButton.first().click();
+    }
+    await firstRow.getByRole('link').first().click();
+    await expect(page).toHaveURL(/\/manage\/availability\/(group|squad)\//);
+  });
 });

@@ -4639,6 +4639,84 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AvailabilitySummaryDto"
+  /api/v1/manage/clubs/{clubId}/availability/summary/players:
+    get:
+      tags:
+      - availability-summary-controller
+      operationId: players
+      description: "The players behind the responded / still-to-answer counters for the same filters, each once with the polls that put them in the list. kind is responded or awaiting (400 otherwise). closingSoon keeps only open polls closing within 48 hours. search is a case-insensitive contains on the player name. Sorted by number of polls descending, then name; the page size is capped at 100."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - responded
+          - awaiting
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ALL
+          enum:
+          - ALL
+          - GROUP
+          - SQUAD
+      - name: includeClosed
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: closingSoon
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageAvailabilitySummaryPlayerDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/selection-pool:
     get:
       tags:
@@ -7921,6 +7999,67 @@ components:
           type: boolean
         empty:
           type: boolean
+    PageAvailabilitySummaryPlayerDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilitySummaryPlayerDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    AvailabilitySummaryPlayerDto:
+      type: object
+      description: "One player in the availability players list and the polls that put them there. PollRef.matchId is null for a group poll."
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        polls:
+          type: array
+          items:
+            $ref: "#/components/schemas/PollRef"
+    PollRef:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - SQUAD
+          - GROUP
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        title:
+          type: string
     TeamContactDto:
       type: object
       properties:

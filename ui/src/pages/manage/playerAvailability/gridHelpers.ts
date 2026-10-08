@@ -1,6 +1,7 @@
 import type { AvailabilityCell, CellStatus, GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
 import type { DayPart } from '../../../api/sectionAvailabilityApi'
 import { DAY_PART_LABEL } from '../../../utils/dayPart'
+import { groupPollResponsesPath, squadPollResponsesPath } from '../../../utils/pollRoutes'
 
 // docs/specs/068-player-availability-grid.md: the pure, unit-tested logic behind the grid -
 // header grouping, footer totals, search/hide filtering, the next game and every label string.
@@ -166,10 +167,10 @@ export function cellLabel(player: PlayerRow, game: GameColumn, cell: Availabilit
 export function pollPath(game: GameColumn): string | null {
   if (game.pollType === 'GROUP') {
     const id = game.roundId ?? game.pollId
-    return id ? `/manage/availability/group/${id}` : null
+    return id ? groupPollResponsesPath(id) : null
   }
   if (game.pollType === 'SQUAD' && game.pollId) {
-    return `/manage/availability/squad/${game.matchId}/${game.pollId}`
+    return squadPollResponsesPath(game.matchId, game.pollId)
   }
   return null
 }

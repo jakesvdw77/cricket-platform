@@ -49,6 +49,67 @@ export async function getAvailabilitySummary(
   return data
 }
 
+// docs/specs/084: the players behind the two players counters. `kind` picks the list: responded (answered a poll
+// in the counted set) or awaiting (still owes an answer). The panel sends the summary's filters plus closingSoon.
+export type AvailabilitySummaryPlayerKind = 'responded' | 'awaiting'
+
+export interface AvailabilitySummaryPlayerPoll {
+  kind: 'SQUAD' | 'GROUP'
+  id: string
+  // Null for a group poll.
+  matchId: string | null
+  title: string
+}
+
+export interface AvailabilitySummaryPlayer {
+  playerProfileId: string
+  displayName: string
+  polls: AvailabilitySummaryPlayerPoll[]
+}
+
+export interface AvailabilitySummaryPlayersPage {
+  content: AvailabilitySummaryPlayer[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+  last: boolean
+}
+
+export interface AvailabilitySummaryPlayersFilters extends AvailabilitySummaryFilters {
+  kind: AvailabilitySummaryPlayerKind
+  closingSoon?: boolean
+  search?: string
+}
+
+export const AVAILABILITY_SUMMARY_PLAYERS_PAGE_SIZE = 25
+
+// Under the summary prefix, so invalidateAvailabilityCounters refreshes it too.
+export const availabilitySummaryPlayersKey = (clubId: string, filters: AvailabilitySummaryPlayersFilters) =>
+  ['managed-club', clubId, 'availability-summary', 'players', filters] as const
+
+export async function listAvailabilitySummaryPlayers(
+  clubId: string,
+  filters: AvailabilitySummaryPlayersFilters,
+  page = 0,
+  size = AVAILABILITY_SUMMARY_PLAYERS_PAGE_SIZE,
+): Promise<AvailabilitySummaryPlayersPage> {
+  const params: Record<string, string | number | boolean> = { kind: filters.kind, page, size }
+  if (filters.leagueId) params.leagueId = filters.leagueId
+  if (filters.sectionId) params.sectionId = filters.sectionId
+  if (filters.teamId) params.teamId = filters.teamId
+  if (filters.type && filters.type !== 'ALL') params.type = filters.type
+  if (filters.includeClosed) params.includeClosed = true
+  if (filters.closingSoon) params.closingSoon = true
+  const search = filters.search?.trim()
+  if (search) params.search = search
+  const { data } = await api.get<AvailabilitySummaryPlayersPage>(
+    `/manage/clubs/${clubId}/availability/summary/players`,
+    { params },
+  )
+  return data
+}
+
 // Call alongside any poll/round create, open, close, delete or response change so the counters and the
 // Overview key figures refresh.
 export function invalidateAvailabilityCounters(queryClient: QueryClient, clubId: string | undefined) {
