@@ -40,6 +40,9 @@ interface AddTarget extends Column {
   anchor: HTMLElement
 }
 
+// Compact footer action: small, one line, so Select players and Announce sit side by side.
+const footActionSx = { whiteSpace: 'nowrap', minHeight: 24, py: 0.125, px: 1, fontSize: '0.6875rem', lineHeight: 1.5 } as const
+
 const columnWidth = { xs: GAME_COL_WIDTH.xs + 16, sm: GAME_COL_WIDTH.sm + 24 }
 const nameOf = (player: Pick<TeamSelectionPlayer, 'firstName' | 'lastName'>) => `${player.firstName} ${player.lastName}`.trim()
 const columnLabel = ({ match, side }: Column) => `${match.label}${match.sides.length > 1 ? `, ${side.teamName}` : ''}`
@@ -282,14 +285,14 @@ function BattingMatrix({
               const canAnnounce = side.status === 'READY_TO_ANNOUNCE' && side.sideId !== null
               return (
                 <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...footCellSx, verticalAlign: 'top' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
                     <MuiButton
                       size="small"
                       variant="outlined"
                       component={RouterLink}
                       to={selectTeamPath(match.matchId, side.sideId, side.home)}
                       aria-label={`Select players, ${columnLabel(column)}`}
-                      sx={{ whiteSpace: 'nowrap' }}
+                      sx={footActionSx}
                     >
                       Select players
                     </MuiButton>
@@ -299,7 +302,7 @@ function BattingMatrix({
                         aria-label={`Announce team, ${columnLabel(column)}`}
                         disabled={announcingSideId === side.sideId}
                         onClick={() => onAnnounce(match, side)}
-                        sx={{ whiteSpace: 'nowrap' }}
+                        sx={footActionSx}
                       >
                         {announcingSideId === side.sideId ? 'Announcing…' : 'Announce'}
                       </Button>
