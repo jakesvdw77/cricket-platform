@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Box, MenuItem, Tab, Tabs } from '@mui/material'
+import { Box, MenuItem } from '@mui/material'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
+import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
 import { WebsiteInput } from '../WebsiteInput'
 import { MediaUpload } from '../MediaUpload'
@@ -39,17 +43,6 @@ type FormErrors = Partial<Record<'name' | 'maxPlayingXiSize' | 'ageRange' | 'web
 // same posture as Sponsor's identical fields.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const WEBSITE_PATTERN = /^https?:\/\/.+/i
-
-// Maps each validated field to the tab that holds it, so an error surfaces on a visible tab
-// rather than silently failing on a hidden one — mirrors SponsorForm's FIELD_TAB; every validated
-// field here lives on the Basic Info tab (index 0).
-const FIELD_TAB: Record<keyof FormErrors, number> = {
-  name: 0,
-  maxPlayingXiSize: 0,
-  ageRange: 0,
-  website: 0,
-  email: 0,
-}
 
 function toFormState(initialValues?: Partial<LeaguePayload>): FormState {
   return {
@@ -115,7 +108,6 @@ function blankToNull(value: string): string | null {
 export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
-  const [activeTab, setActiveTab] = useState(0)
 
   const handleChange =
     (field: 'name' | 'maxPlayingXiSize' | 'minAge' | 'maxAge' | 'ageCutoffDate' | 'phone' | 'email') =>
@@ -135,12 +127,7 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
     const validationErrors = validate(values)
     setErrors(validationErrors)
 
-    const errorFields = Object.keys(validationErrors) as Array<keyof FormErrors>
-    if (errorFields.length > 0) {
-      const errorTab = Math.min(...errorFields.map((field) => FIELD_TAB[field] ?? 0))
-      if (errorTab !== activeTab) {
-        setActiveTab(errorTab)
-      }
+    if (Object.keys(validationErrors).length > 0) {
       return
     }
 
@@ -161,115 +148,86 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1' }}>
-      <Tabs
-        value={activeTab}
-        onChange={(_event, next: number) => setActiveTab(next)}
-        variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
-        sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
-      >
-        <Tab label="Basic Info" />
-        <Tab label="Branding" />
-        <Tab label="Social Media" />
-      </Tabs>
+    // docs/specs/091 (D): one full-width form of three sections - Basic info, Contact and Branding and social - in place of
+    // the inner Basic Info / Branding / Social Media tabs. "(optional)" sits in the label and only validation errors show.
+    <Box
+      component="form"
+      id={LEAGUE_FORM_ID}
+      onSubmit={handleSubmit}
+      noValidate
+      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}
+    >
+      <FormSectionHeading icon={<InfoOutlinedIcon />} title="Basic info" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+        <Input label="Name" value={values.name} onChange={handleChange('name')} error={Boolean(errors.name)} helperText={errors.name} />
 
-      <Box
-        component="form"
-        id={LEAGUE_FORM_ID}
-        onSubmit={handleSubmit}
-        noValidate
-        sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}
-      >
-        {activeTab === 0 && (
-          <>
-            <Input
-              label="Name"
-              value={values.name}
-              onChange={handleChange('name')}
-              error={Boolean(errors.name)}
-              helperText={errors.name ?? 'e.g. Riverside Internal T20 League'}
-            />
+        <Input select label="Format" value={values.format} onChange={handleFormatChange}>
+          <MenuItem value="">Not specified</MenuItem>
+          {(Object.keys(LEAGUE_FORMAT_LABELS) as LeagueFormat[]).map((format) => (
+            <MenuItem key={format} value={format}>
+              {LEAGUE_FORMAT_LABELS[format]}
+            </MenuItem>
+          ))}
+        </Input>
 
-            <Input
-              label="Playing XI size"
-              type="number"
-              value={values.maxPlayingXiSize}
-              onChange={handleChange('maxPlayingXiSize')}
-              error={Boolean(errors.maxPlayingXiSize)}
-              helperText={errors.maxPlayingXiSize ?? 'Defaults to 11 — set to 12 for a Vets league, for example'}
-              inputProps={{ min: 1 }}
-            />
+        <Input
+          label="Playing XI size"
+          type="number"
+          value={values.maxPlayingXiSize}
+          onChange={handleChange('maxPlayingXiSize')}
+          error={Boolean(errors.maxPlayingXiSize)}
+          helperText={errors.maxPlayingXiSize}
+          inputProps={{ min: 1 }}
+        />
 
-            <Input
-              label="Min age"
-              type="number"
-              value={values.minAge}
-              onChange={handleChange('minAge')}
-              error={Boolean(errors.ageRange)}
-              helperText={errors.ageRange ?? 'Leave blank for no minimum'}
-              inputProps={{ min: 0 }}
-            />
+        <Input
+          label="Min age (optional)"
+          type="number"
+          value={values.minAge}
+          onChange={handleChange('minAge')}
+          error={Boolean(errors.ageRange)}
+          helperText={errors.ageRange}
+          inputProps={{ min: 0 }}
+        />
 
-            <Input
-              label="Max age"
-              type="number"
-              value={values.maxAge}
-              onChange={handleChange('maxAge')}
-              error={Boolean(errors.ageRange)}
-              helperText="Leave blank for no maximum"
-              inputProps={{ min: 0 }}
-            />
+        <Input
+          label="Max age (optional)"
+          type="number"
+          value={values.maxAge}
+          onChange={handleChange('maxAge')}
+          error={Boolean(errors.ageRange)}
+          inputProps={{ min: 0 }}
+        />
 
-            <Input
-              label="Age cutoff date"
-              type="date"
-              value={values.ageCutoffDate}
-              onChange={handleChange('ageCutoffDate')}
-              InputLabelProps={{ shrink: true }}
-              helperText="Age as of this date — leave blank to use the match's own season start date"
-            />
+        <Input
+          label="Age cutoff date (optional)"
+          type="date"
+          value={values.ageCutoffDate}
+          onChange={handleChange('ageCutoffDate')}
+          InputLabelProps={{ shrink: true }}
+        />
+      </Box>
 
-            <Input
-              select
-              label="Format"
-              value={values.format}
-              onChange={handleFormatChange}
-              helperText="Purely descriptive — has no effect on Playing Conditions"
-            >
-              <MenuItem value="">Not specified</MenuItem>
-              {(Object.keys(LEAGUE_FORMAT_LABELS) as LeagueFormat[]).map((format) => (
-                <MenuItem key={format} value={format}>
-                  {LEAGUE_FORMAT_LABELS[format]}
-                </MenuItem>
-              ))}
-            </Input>
+      <FormSectionHeading icon={<AlternateEmailIcon />} title="Contact" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+        <Input label="Phone (optional)" value={values.phone} onChange={handleChange('phone')} />
 
-            <Input label="Phone" value={values.phone} onChange={handleChange('phone')} />
+        <WebsiteInput label="Website (optional)" value={values.website} onChange={handleWebsiteChange} error={errors.website} showHint={false} />
 
-            <WebsiteInput value={values.website} onChange={handleWebsiteChange} error={errors.website} />
+        <Input
+          label="Email (optional)"
+          type="email"
+          value={values.email}
+          onChange={handleChange('email')}
+          error={Boolean(errors.email)}
+          helperText={errors.email}
+        />
+      </Box>
 
-            <Input
-              label="Email"
-              type="email"
-              value={values.email}
-              onChange={handleChange('email')}
-              error={Boolean(errors.email)}
-              helperText={errors.email}
-            />
-          </>
-        )}
-
-        {activeTab === 1 && (
-          <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
-        )}
-
-        {activeTab === 2 && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
-          </Box>
-        )}
+      <FormSectionHeading icon={<PaletteOutlinedIcon />} title="Branding and social" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '240px minmax(0, 1fr)' }, alignItems: 'start' }}>
+        <MediaUpload label="Logo" value={values.logoUrl} onUploaded={handleLogoUploaded} variant="logo" namespace="manage" />
+        <SocialLinksFields value={values.socialLinks} onChange={handleSocialLinksChange} />
       </Box>
     </Box>
   )
