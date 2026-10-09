@@ -34,6 +34,12 @@ None.
 
 ## Match page (A)
 
+**Revised 2026-10-09 after the user's review of the built page** ("the Polls header looks cleaner, the Match header has left buttons; badge 1 vs badge 2 is redundant; the poll gauge looks nice, team selected could follow that"); mockup boards 1 and 2 of the Matches canvas were redrawn and **approved by the user the same day**. The revision supersedes the matching bullets below:
+- **Header layout like the poll page:** the Back link on the left of the top row, and **Scoring**, **Watch live** (only when the match has the link) and the filled **Edit** on the right of that same row (page-level actions). The title row is the title on the left and the match workflow buttons **Select team**, **Availability** and **Share team sheet** right-aligned beside it (wrapping below the title on a narrow screen). On a phone: Edit sits on the Back row; Select team and Availability are two full-width halves, Share, Scoring and Live thirds under them.
+- **No header badges:** the Announced / Not announced pair (one per own side) and the poll badge leave the header, because each team card shows its own Announced chip and the Poll tile shows the poll. Only an **Inactive** badge stays when the match is inactive.
+- **One title, no duplicate "vs":** the logo tile pair (IRV vs PO) is replaced by a logo tile beside each team name that has a real logo, in the title itself (`[logo] Irene Villagers 1 vs POHBS`); a side with no logo shows no tile (initials add nothing next to the name).
+- **Selection gauge like the poll's:** each team card shows the selection as a 10 px bar with a colour-keyed legend underneath ("● 10 Picked  ● 2 To go"; "squad complete" when full), the same look as the poll response gauge; "10 of 12 picked" stays on the Playing XI row, with the announced chip beside the "Playing XI" label. Match page team cards only (the match card and the list keep their bar).
+
 Same data, actions and states as today; redesigned (mockup boards 1 and 2):
 
 - **Header:** the two team logo tiles (64 px, 52 px on a phone) with "vs" between them, the title at the page-title size (1.75 rem, 1.4 rem on a phone) with the badges under it (Announced status first, then the poll badge, as the card), and on the right **Scoring** and **Watch live** (outlined, only when the match has the link) and **Edit** as the filled dark green primary button. The "Back to Matches" link stays above.

@@ -9,12 +9,12 @@ Players and Matches have a Cards | List switch; Polls, the page the pattern star
 
 Goals:
 - **A. List view:** a Cards | List switch on the Polls view of the Availability hub, with a compact zebra `PollTable`, using the shared pieces from 088.
-- **B. Close / Reopen on the poll page:** a **Close poll** button (and **Reopen poll** once closed) in the header of both the squad and the group poll page, with the same confirmation and rules as the card.
+- **B. Poll actions on the poll page:** a **Close poll** button (and **Reopen poll** once closed), a **Delete poll** button and, for a group poll, an **Edit description** pencil beside the title, in the header of both the squad and the group poll page, with the same confirmations and rules as the card.
 
 ## Non-goals
 
 - No new data, endpoints or migrations: both parts are frontend only, reusing the lists the Polls page already loads and the existing close, reopen and close-time calls.
-- No row actions in the table (Close, Reopen, Matches, Share, Delete stay on the cards); a row opens the poll page, where Close and Reopen now exist. Delete stays on the card only.
+- No row actions in the table (Close, Reopen, Matches, Share, Delete stay on the cards); a row opens the poll page, where the actions a list view needs now exist: Close, Reopen, **Delete** and a group poll's **Edit description** (B). The card keeps all of its own.
 - No change to the counters, the polls panel, the filters, sorting, the Players and Match-day cover views, or what a poll is.
 
 ## User Stories
@@ -36,7 +36,14 @@ Follows the list-view standard (mockup boards 1 and 2):
 - **Columns (phone):** Poll (title, the Type and Status chips under it, then the closing time), Answered ("10/14") and the chevron.
 - Rows are in the same order as the cards; counters, filters, search, the type switches and Show closed apply identically to both views; empty and loading states are the card list's.
 
-## Close / Reopen from the poll page (B)
+## Poll actions on the poll page (B)
+
+**Extended 2026-10-09 at the user's request** ("there is no way to delete or change the header when in the list view; these options should also be on the info page"); mockup boards 3 and 4 of the Polls canvas were updated and **approved by the user the same day**. In addition to Close / Reopen below:
+- **Delete poll** (red outlined button in the header actions, both poll kinds): the card's confirmation ("Delete this squad poll?" / "Delete this group poll?" with its wording), the same delete request, and on success back to the Polls list. A group poll that cannot be deleted shows the server's 409 reason in the card's "Can't delete this poll" notice, and stays.
+- **Edit description** (group poll only): a pencil after the title opens the card's `EditDescriptionDialog`; saving refreshes the title on the page. A squad poll's title is derived from its match, so it has no pencil.
+- Both use shared hooks extracted from the card (`usePollDelete`, and the description edit as a small hook or the existing dialog wired the same way), so the card and the pages cannot drift.
+
+### Close / Reopen
 
 Mockup boards 3 and 4. On the squad and group poll pages, the header actions gain a button beside Open match / Share invite:
 
