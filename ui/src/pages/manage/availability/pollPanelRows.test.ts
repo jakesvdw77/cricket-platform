@@ -69,6 +69,7 @@ describe('row builders', () => {
     } as OpenAvailabilityPoll
     const built = squadPollRow(poll, true, new Map())
     expect(built).toMatchObject({ kind: 'SQUAD', title: 'Lions vs Rivals', open: true, answered: 7, total: 10, path: '/manage/availability/squad/m1/p1' })
+    expect(built.subtitle).toMatch(/^Squad poll · Away · /)
   })
 
   it('builds a group row, reporting its best-answered slot', () => {
@@ -80,6 +81,7 @@ describe('row builders', () => {
       ],
     } as SectionAvailabilityRound
     expect(groupPollRow(round)).toMatchObject({ kind: 'GROUP', title: 'Thursday fixtures', open: false, answered: 7, total: 10, path: '/manage/availability/group/r1' })
+    expect(groupPollRow({ ...round, sectionName: 'Vets' } as SectionAvailabilityRound).subtitle).toBe('Group poll · Vets')
   })
 
   it('marks a multi-slot group row as best slot and a single-slot or squad row as exact', () => {

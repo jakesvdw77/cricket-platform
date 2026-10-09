@@ -659,6 +659,67 @@ describe('AvailabilityPollsDashboard', () => {
     expect(await screen.findByText('New Poll Page')).toBeInTheDocument()
   })
 
+  // docs/specs/090 (A): the Cards | List switch and its remembered preference.
+  describe('list view (090)', () => {
+    beforeEach(() => {
+      listTeamsForClub.mockResolvedValue([makeTeam()])
+      listOpenPolls.mockResolvedValue([makePoll()])
+      listRounds.mockResolvedValue([makeRound()])
+    })
+
+    it('shows cards by default, switches to the table and back', async () => {
+      const user = userEvent.setup()
+      renderDashboard('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })
+      expect(screen.queryByRole('table', { name: 'Polls' })).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      const table = await screen.findByRole('table', { name: 'Polls' })
+      expect(within(table).getAllByTestId('poll-row')).toHaveLength(2)
+      expect(screen.queryByRole('heading', { name: 'Home Team vs Rivals CC' })).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
+      expect(await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })).toBeInTheDocument()
+    })
+
+    it('remembers the chosen view for next time', async () => {
+      const user = userEvent.setup()
+      const { unmount } = renderDashboard('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Home Team vs Rivals CC' })
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      await screen.findByRole('table', { name: 'Polls' })
+      expect(localStorage.getItem('pollList:view')).toBe('list')
+      unmount()
+
+      renderDashboard('test-club-id')
+      expect(await screen.findByRole('table', { name: 'Polls' })).toBeInTheDocument()
+    })
+
+    it('lists the same polls in the same order as the cards, and search narrows the table', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('pollList:view', 'list')
+      renderDashboard('test-club-id')
+
+      const table = await screen.findByRole('table', { name: 'Polls' })
+      const titles = within(table).getAllByRole('link').map((link) => link.textContent)
+      expect(titles).toEqual(['Home Team vs Rivals CC', 'Sat 6 Jun - U13 Boys fixtures'])
+
+      await user.type(screen.getByLabelText('Search'), 'rivals')
+      await waitFor(() => expect(within(screen.getByRole('table', { name: 'Polls' })).getAllByTestId('poll-row')).toHaveLength(1))
+    })
+
+    it('opens the poll page when a row is clicked', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('pollList:view', 'list')
+      renderDashboard('test-club-id')
+
+      await user.click(await screen.findByRole('link', { name: 'Home Team vs Rivals CC' }))
+      expect(await screen.findByText('Squad responses page match-1 poll-1')).toBeInTheDocument()
+    })
+  })
+
   describe('merged squad + group list (064)', () => {
     it('renders both kinds with their own type badges, requesting only open rounds', async () => {
       listTeamsForClub.mockResolvedValue([makeTeam()])

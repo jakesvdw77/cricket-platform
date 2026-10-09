@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box } from '@mui/material'
 import { CompactSwitch } from '../../components/CompactSwitch'
+import { ListViewToggle } from '../../components/ListViewToggle'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
@@ -13,6 +14,8 @@ import type { SectionAvailabilityRound } from '../../api/sectionAvailabilityApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { PollCard } from './availability/PollCard'
+import { PollTable } from './availability/PollTable'
+import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { AvailabilityFilterBar } from './availability/AvailabilityFilterBar'
 import { useAvailabilityHub } from './availability/hubContext'
 import { pollCardGridSx } from '../../utils/cardGrid'
@@ -55,6 +58,8 @@ export default function AvailabilityPollsDashboard() {
   // docs/specs/042-match-list-filters-and-search.md's default-ascending convention - soonest
   // covered match first.
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
+  // docs/specs/090 (A): Cards | List, remembered for this page.
+  const [view, setView] = useListViewPreference('pollList:view')
 
   const wantSquad = showSquad
   const wantGroup = showGroup
@@ -173,6 +178,7 @@ export default function AvailabilityPollsDashboard() {
   // docs/specs/085 (G): hand the polls this page shows (before its search) to the hub, for the polls panel behind the
   // Open polls / Close in 48 hours counters. Registered once everything is loaded; cleared when the page goes.
   const settled = !isLoading && !isError
+  const rowFor = (item: PollListItem) => (item.kind === 'SQUAD' ? squadPollRow(item.poll, item.open, teamsById) : groupPollRow(item.round))
   const panelRows = useMemo(
     () => allItems.map((item) => (item.kind === 'SQUAD' ? squadPollRow(item.poll, item.open, teamsById) : groupPollRow(item.round))),
     [allItems, teamsById],
@@ -242,6 +248,9 @@ export default function AvailabilityPollsDashboard() {
         ]}
         viewControls={
           <>
+            <Box sx={{ width: '100%' }}>
+              <ListViewToggle value={view} onChange={setView} fullWidth />
+            </Box>
             {typeToggles}
             {closedToggle}
             {sortLink}
@@ -258,13 +267,16 @@ export default function AvailabilityPollsDashboard() {
         sortAction={sortLink}
         controls={
           <>
+            <ListViewToggle value={view} onChange={setView} />
             {typeToggles}
             {closedToggle}
           </>
         }
       />
 
-      {visibleItems.length > 0 && (
+      {visibleItems.length > 0 && view === 'list' && <PollTable rows={visibleItems.map(rowFor)} />}
+
+      {visibleItems.length > 0 && view === 'cards' && (
         <Box sx={pollCardGridSx}>
           {visibleItems.map((item) =>
             item.kind === 'SQUAD' ? (
