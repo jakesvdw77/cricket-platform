@@ -166,11 +166,12 @@ public class SectionAvailabilityRoundServiceImpl implements SectionAvailabilityR
             UUID sectionId,
             UUID leagueId,
             UUID teamId,
+            UUID seasonId,
             Boolean open) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         // Validates section/league/team (403/404) and builds the shared narrowing (docs/specs/083).
         AvailabilityPollFilter filter = pollFilters.resolve(
-                authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false);
+                authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false, seasonId);
 
         List<SectionAvailabilityRound> candidates = sectionAvailabilityRoundRepository.findByClubId(clubId).stream()
                 .filter(round ->

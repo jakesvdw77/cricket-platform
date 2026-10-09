@@ -24,11 +24,11 @@ public interface SectionAvailabilityRoundService {
     /**
      * Rounds of the club in the caller's scope, narrowed by the optional {@code sectionId} (with
      * descendants), {@code leagueId} (any active slot match in the league) and {@code teamId} (the
-     * team is a side of any active slot match), through the shared {@code AvailabilityPollFilter}
+     * team is a side of any active slot match) and {@code seasonId} (any active slot match in the season), through the shared {@code AvailabilityPollFilter}
      * (docs/specs/083); 404 for another club's league or team. Closed rounds are capped after narrowing.
      */
     List<SectionAvailabilityRoundDto> list(
-            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId, Boolean open);
+            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId, UUID seasonId, Boolean open);
 
     SectionAvailabilityRoundDto create(
             Authentication authentication, UUID clubId, CreateSectionAvailabilityRoundRequest request);

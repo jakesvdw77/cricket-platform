@@ -71,6 +71,20 @@ public class AvailabilityPollFilters {
             UUID teamId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed) {
+        return resolve(authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed, null);
+    }
+
+    /** As above, additionally narrowed to the season ({@code null} = all seasons); the season is not validated, an unknown one matches nothing. */
+    public AvailabilityPollFilter resolve(
+            Authentication authentication,
+            UUID clubId,
+            Optional<Set<UUID>> accessible,
+            UUID leagueId,
+            UUID sectionId,
+            UUID teamId,
+            AvailabilityPollTypeFilter type,
+            boolean includeClosed,
+            UUID seasonId) {
         if (leagueId != null) {
             leagueRepository
                     .findById(leagueId)
@@ -92,7 +106,7 @@ public class AvailabilityPollFilters {
                 sectionIds.retainAll(accessible.get());
             }
         }
-        return new AvailabilityPollFilter(leagueId, sectionIds, teamId, type, includeClosed);
+        return new AvailabilityPollFilter(leagueId, sectionIds, teamId, type, includeClosed, seasonId);
     }
 
     /** The active matches in the windows of each round, from three batched queries; rounds without slots are absent. */

@@ -209,7 +209,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(matchingSectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, matchingSectionId, null, null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, matchingSectionId, null, null, null, null);
 
         verify(accessService).assertCanAdministerSection(authentication, clubId, matchingSectionId);
         assertThat(result).hasSize(1);
@@ -231,7 +231,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, false);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null, false);
 
         assertThat(result).hasSize(AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
         assertThat(result).allMatch(dto -> !dto.open());
@@ -240,6 +240,8 @@ class SectionAvailabilityRoundServiceImplTest {
     }
 
     // --- list: league / team narrowing through the shared filter (docs/specs/083) ---
+
+    private static final UUID SLOT_SEASON_ID = UUID.randomUUID();
 
     private record Slots(UUID leagueRoundId, UUID teamRoundId, UUID otherRoundId, UUID leagueId, UUID teamId) {
     }
@@ -253,7 +255,7 @@ class SectionAvailabilityRoundServiceImplTest {
         SectionAvailabilityRound otherRound = round(UUID.randomUUID(), clubId, sectionId, true);
         Match inLeague = Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(leagueId)
                 .homeTeamId(UUID.randomUUID()).active(slotMatchActive).build();
-        Match withTeam = Match.builder().id(UUID.randomUUID()).clubId(clubId).awayTeamId(teamId)
+        Match withTeam = Match.builder().id(UUID.randomUUID()).clubId(clubId).awayTeamId(teamId).seasonId(SLOT_SEASON_ID)
                 .homeTeamId(UUID.randomUUID()).active(slotMatchActive).build();
         Match elsewhere = Match.builder().id(UUID.randomUUID()).clubId(clubId).leagueId(UUID.randomUUID())
                 .homeTeamId(UUID.randomUUID()).active(true).build();
@@ -285,9 +287,20 @@ class SectionAvailabilityRoundServiceImplTest {
         when(leagueRepository.findById(slots.leagueId()))
                 .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(slots.leagueId()).clubId(clubId).build()));
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, slots.leagueId(), null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, slots.leagueId(), null, null, null);
 
         assertThat(result).extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.leagueRoundId());
+    }
+
+    @Test
+    void listNarrowsBySeasonToRoundsWithAnActiveSlotMatchInIt() {
+        UUID clubId = UUID.randomUUID();
+        Slots slots = stubSlotWorld(clubId, UUID.randomUUID(), true);
+
+        assertThat(service.list(authentication, clubId, null, null, null, SLOT_SEASON_ID, null))
+                .extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.teamRoundId());
+        assertThat(service.list(authentication, clubId, null, null, null, UUID.randomUUID(), null)).isEmpty();
+        assertThat(service.list(authentication, clubId, null, null, null, null, null)).hasSize(3);
     }
 
     @Test
@@ -298,7 +311,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(teamRepository.findById(slots.teamId())).thenReturn(Optional.of(
                 com.cricketlegend.domain.Team.builder().id(slots.teamId()).clubId(clubId).sectionId(sectionId).build()));
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, slots.teamId(), null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, slots.teamId(), null, null);
 
         assertThat(result).extracting(SectionAvailabilityRoundDto::id).containsExactly(slots.teamRoundId());
         verify(accessService).assertCanAdministerSection(authentication, clubId, sectionId);
@@ -312,7 +325,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(leagueRepository.findById(slots.leagueId()))
                 .thenReturn(Optional.of(com.cricketlegend.domain.League.builder().id(slots.leagueId()).clubId(clubId).build()));
 
-        assertThat(service.list(authentication, clubId, null, slots.leagueId(), null, null)).isEmpty();
+        assertThat(service.list(authentication, clubId, null, slots.leagueId(), null, null, null)).isEmpty();
     }
 
     @Test
@@ -326,9 +339,9 @@ class SectionAvailabilityRoundServiceImplTest {
         org.mockito.Mockito.lenient().when(teamRepository.findById(teamId)).thenReturn(Optional.of(
                 com.cricketlegend.domain.Team.builder().id(teamId).clubId(UUID.randomUUID()).sectionId(UUID.randomUUID()).build()));
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, leagueId, null, null))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, leagueId, null, null, null))
                 .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, null, teamId, null))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.list(authentication, clubId, null, null, teamId, null, null))
                 .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
     }
 
@@ -367,7 +380,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowMatchRepository.findByWindowIdIn(any())).thenReturn(links);
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, leagueId, null, false);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, leagueId, null, null, false);
 
         // narrowed first: the 3 in-league rounds survive although 55 newer ones were closed outside it
         assertThat(result).hasSize(3);
@@ -437,7 +450,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(sectionAvailabilityWindowRepository.findByRoundId(any())).thenReturn(List.of());
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, true);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null, true);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).open()).isTrue();
@@ -453,7 +466,7 @@ class SectionAvailabilityRoundServiceImplTest {
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null, null);
 
         assertThat(result).isEmpty();
     }
@@ -1378,7 +1391,7 @@ class SectionAvailabilityRoundServiceImplTest {
                 Match.builder().id(m2).matchDate(early.plusSeconds(86400)).build()));
         stubEmptyBracketsFor(sectionId);
 
-        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null);
+        List<SectionAvailabilityRoundDto> result = service.list(authentication, clubId, null, null, null, null, null);
 
         assertThat(result).extracting(SectionAvailabilityRoundDto::firstMatchKickoff)
                 .containsExactly(early, early.plusSeconds(86400));
@@ -1544,19 +1557,19 @@ class SectionAvailabilityRoundServiceImplTest {
         UUID roundId = UUID.randomUUID();
         closedRoundWithWindows(clubId, roundId, false, null, LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.DAYS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
 
         UUID recentId = UUID.randomUUID();
         closedRoundWithWindows(clubId, recentId, false, null, LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(true);
 
         UUID autoClosedId = UUID.randomUUID();
         closedRoundWithWindows(clubId, autoClosedId, true, NOW_082.minusSeconds(60), LONG_AGO,
                 List.of(List.of(NOW_082.minus(3, ChronoUnit.HOURS))));
-        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, false))
+        assertThat(serviceAt(NOW_082).list(authentication, clubId, null, null, null, null, false))
                 .extracting(SectionAvailabilityRoundDto::canReopen).containsExactly(false);
     }
 }

@@ -99,6 +99,52 @@ class AvailabilityPollListFiltersIntegrationTest {
         list(admin, w, CLOSED, "teamId", juniors).andExpect(jsonPath("$.length()").value(1));
     }
 
+    /** A second season of the world's club; the given match is moved into it. */
+    private Match moveToOtherSeason(World w, Match match) {
+        var season = context.getBean(com.cricketlegend.repository.SeasonRepository.class)
+                .save(com.cricketlegend.domain.Season.builder().clubId(w.club().getId()).label("2032")
+                        .startDate(java.time.LocalDate.of(2032, 1, 1)).endDate(java.time.LocalDate.of(2032, 12, 31))
+                        .active(false).build());
+        match.setSeasonId(season.getId());
+        return context.getBean(com.cricketlegend.repository.MatchRepository.class).save(match);
+    }
+
+    @Test
+    void seasonIdNarrowsSquadPollsAndRoundsAndAbsentKeepsAll() throws Exception {
+        World w = fixtures.world();
+        Instant now = Instant.now();
+        Match inSeason = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(2)));
+        Match otherSeason = moveToOtherSeason(w, fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(3))));
+        fixtures.squadPoll(inSeason, w.seniors1(), null);
+        fixtures.squadPoll(otherSeason, w.seniors1(), null);
+        Match closedIn = fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(2)));
+        Match closedOther = moveToOtherSeason(w, fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(3))));
+        fixtures.closeSquadPoll(fixtures.squadPoll(closedIn, w.seniors1(), null));
+        fixtures.closeSquadPoll(fixtures.squadPoll(closedOther, w.seniors1(), null));
+        Match roundIn = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(5)));
+        Match roundOther = moveToOtherSeason(w, fixtures.match(w, w.seniors2(), null, now.plus(Duration.ofDays(6))));
+        SectionAvailabilityRound inRound = fixtures.groupPoll(w, w.seniors(), null);
+        fixtures.linkMatch(inRound, roundIn);
+        fixtures.linkMatch(fixtures.groupPoll(w, w.seniors(), null), roundOther);
+        JwtRequestPostProcessor admin = fixtures.clubAdmin(w);
+        String season = w.season().getId().toString();
+
+        list(admin, w, OPEN).andExpect(jsonPath("$.length()").value(2));
+        list(admin, w, OPEN, "seasonId", season)
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].matchId").value(inSeason.getId().toString()));
+        list(admin, w, CLOSED).andExpect(jsonPath("$.length()").value(2));
+        list(admin, w, CLOSED, "seasonId", season)
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].matchId").value(closedIn.getId().toString()));
+        list(admin, w, ROUNDS, "open", "true").andExpect(jsonPath("$.length()").value(2));
+        list(admin, w, ROUNDS, "open", "true", "seasonId", season)
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(inRound.getId().toString()));
+        list(admin, w, ROUNDS, "open", "true", "seasonId", UUID.randomUUID().toString())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     @Test
     void roundListNarrowsByLeagueAndByTeamThroughActiveSlotMatches() throws Exception {
         World w = fixtures.world();
