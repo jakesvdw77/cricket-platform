@@ -123,4 +123,28 @@ describe('PlayingXiSummary', () => {
 
     expect(screen.getByText('No XI selected yet')).toBeInTheDocument()
   })
+
+  // docs/specs/089: the match page's compact variant draws zebra rows instead of a bordered box per player.
+  it('marks the compact zebra variant and still lists every player', () => {
+    const squad = [
+      squadMember({ playerProfileId: 'p-1', firstName: 'Jane', lastName: 'Smith' }),
+      squadMember({ playerProfileId: 'p-2', firstName: 'Sam', lastName: 'Lee' }),
+    ]
+    const { container } = render(
+      <PlayingXiSummary
+        zebra
+        squad={squad}
+        xi={[
+          { playerProfileId: 'p-1', battingOrder: 1, role: 'BATSMAN' },
+          { playerProfileId: 'p-2', battingOrder: 2, role: 'BOWLER' },
+        ]}
+        captainPlayerId={null}
+        wicketKeeperPlayerId={null}
+        twelfthManPlayerId={null}
+      />,
+    )
+    expect(container.querySelector('[data-zebra="true"]')).not.toBeNull()
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+    expect(screen.getByText('Sam Lee')).toBeInTheDocument()
+  })
 })

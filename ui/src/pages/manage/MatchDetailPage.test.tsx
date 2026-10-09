@@ -243,36 +243,31 @@ describe('MatchDetailPage', () => {
   })
 
   describe('header rows', () => {
-    it('lays out Back, badges, title row, divider, details and actions in DOM order', async () => {
+    it('lays out Back, the title row with its badges, the actions, the key figures and the team cards in DOM order', async () => {
       await renderLoaded()
 
       const back = screen.getByRole('link', { name: /back to matches/i })
-      const topRow = screen.getByTestId('match-header-top-row')
       const titleRow = screen.getByTestId('match-header-title-row')
-      const details = screen.getByTestId('match-header-details')
       const actions = screen.getByTestId('match-header-actions')
-      const divider = titleRow.nextElementSibling as HTMLElement
+      const figures = screen.getByTestId('match-key-figures')
+      const cards = screen.getByTestId('match-team-cards')
 
       expect(back).toHaveAttribute('href', '/manage/fixtures/matches')
-      expect(topRow).toContainElement(back)
-      expect(topRow).toContainElement(screen.getByLabelText('Match badges'))
-      expect(divider.tagName).toBe('HR')
+      expect(titleRow).toContainElement(screen.getByLabelText('Match badges'))
       const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(follows(topRow, titleRow)).toBe(true)
-      expect(follows(titleRow, divider)).toBe(true)
-      expect(follows(divider, details)).toBe(true)
-      expect(follows(details, actions)).toBe(true)
+      expect(follows(back, titleRow)).toBe(true)
+      expect(follows(titleRow, actions)).toBe(true)
+      expect(follows(actions, figures)).toBe(true)
+      expect(follows(figures, cards)).toBe(true)
     })
 
-    it('puts Edit on the title row, linking to the edit route, in a no-wrap row', async () => {
+    it('puts the filled primary Edit on the title row, linking to the edit route', async () => {
       await renderLoaded()
 
       const titleRow = screen.getByTestId('match-header-title-row')
-      const edit = screen.getByRole('link', { name: /^edit$/i })
+      const edit = within(titleRow).getByRole('link', { name: /^edit$/i })
       expect(edit).toHaveAttribute('href', '/manage/fixtures/matches/match-1/edit')
-      expect(titleRow).toContainElement(edit)
-      expect(titleRow).toHaveStyle({ flexWrap: 'nowrap', justifyContent: 'space-between' })
-      expect(edit).toHaveStyle({ flex: 'none' })
+      expect(edit.className).toContain('MuiButton-contained')
     })
 
     it('keeps the heading accessible name as the plain "Home vs Away"', async () => {
@@ -416,34 +411,37 @@ describe('MatchDetailPage', () => {
       expect(screen.getByTestId('match-logo-home')).toHaveTextContent('1X')
     })
 
-    it('draws the cricket avatar and no logo boxes when neither side has a logo', async () => {
+    it('always draws a logo tile for each side, with initials when there is no logo', async () => {
       await renderLoaded()
 
-      expect(await screen.findByTestId('match-header-avatar')).toBeInTheDocument()
-      expect(screen.queryByTestId('match-logo-home')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('match-logo-away')).not.toBeInTheDocument()
+      expect(await screen.findByTestId('match-logo-home')).toBeInTheDocument()
+      expect(screen.getByTestId('match-logo-away')).toBeInTheDocument()
     })
   })
 
   describe('details and links', () => {
-    it('shows When always, and Venue and League/Season only when present', async () => {
+    it('shows Starts, Venue and League with its season in the key figures', async () => {
       listLeagues.mockResolvedValue([LEAGUE])
       listSeasons.mockResolvedValue([{ id: 'season-1', label: '2026/27' }])
       await renderLoaded(makeMatch({ leagueId: 'league-1' }))
 
-      expect(await screen.findByText('Premier League · 2026/27')).toBeInTheDocument()
-      expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'When' })).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'Venue' })).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'League' })).toBeInTheDocument()
+      expect(await screen.findByText('Premier League')).toBeInTheDocument()
+      expect(screen.getByText('League · 2026/27')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+      expect(screen.getByTestId('match-figure-starts-value')).toBeInTheDocument()
     })
 
-    it('omits Venue and League when empty', async () => {
+    it('shows TBC for no venue and Friendly for a match with no league', async () => {
       await renderLoaded(makeMatch({ venue: null }))
 
-      expect(screen.getByRole('group', { name: 'When' })).toBeInTheDocument()
-      expect(screen.queryByRole('group', { name: 'Venue' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('group', { name: 'League' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('TBC')
+      expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('Friendly')
+    })
+
+    it('shows the poll state in the key figures: None with no poll, Open with an open one', async () => {
+      await renderLoaded()
+      expect(await screen.findByText('No poll yet')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None')
     })
 
     it('shows Scoring and Watch live only when set, in a new tab with noopener', async () => {
