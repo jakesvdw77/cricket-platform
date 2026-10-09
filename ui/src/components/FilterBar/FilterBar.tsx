@@ -33,16 +33,22 @@ export interface FilterBarChip {
 }
 
 export interface FilterBarProps {
-  // A shared filter shows when its options are passed, always in the order League, Section, Team.
+  // A shared filter shows when its options are passed, always in the order League, Season, Section, Team.
   leagues?: FilterBarOption[]
+  // docs/specs/087: optional Season (Matches keeps it; the Availability pages never pass it). Map a Season's
+  // `label` to `name`.
+  seasons?: FilterBarOption[]
   sections?: Section[]
   teams?: FilterBarOption[]
   leagueId?: string | null
+  seasonId?: string | null
   sectionId?: string | null
   teamId?: string | null
   onLeagueChange?: (leagueId: string | null) => void
+  onSeasonChange?: (seasonId: string | null) => void
   onSectionChange?: (sectionId: string | null) => void
   onTeamChange?: (teamId: string | null) => void
+  seasonAllLabel?: string
   teamAllLabel?: string
   // Search shows when onSearchChange is passed.
   searchValue?: string
@@ -65,14 +71,18 @@ export interface FilterBarProps {
 // every filter and the view's own controls; active choices also show as removable chips under the card.
 export function FilterBar({
   leagues,
+  seasons,
   sections,
   teams,
   leagueId = null,
+  seasonId = null,
   sectionId = null,
   teamId = null,
   onLeagueChange,
+  onSeasonChange,
   onSectionChange,
   onTeamChange,
+  seasonAllLabel = 'All seasons',
   teamAllLabel = 'All teams',
   searchValue = '',
   onSearchChange,
@@ -92,6 +102,13 @@ export function FilterBar({
       key: 'league',
       label: leagues?.find((league) => league.id === leagueId)?.name ?? 'League',
       onRemove: () => onLeagueChange(null),
+    })
+  }
+  if (seasonId && onSeasonChange) {
+    chips.push({
+      key: 'season',
+      label: seasons?.find((season) => season.id === seasonId)?.name ?? 'Season',
+      onRemove: () => onSeasonChange(null),
     })
   }
   if (sectionId && onSectionChange) {
@@ -124,6 +141,18 @@ export function FilterBar({
             {leagues.map((league) => (
               <MenuItem key={league.id} value={league.id}>
                 {league.name}
+              </MenuItem>
+            ))}
+          </Input>
+        </Box>
+      )}
+      {seasons && onSeasonChange && (
+        <Box sx={fieldSx}>
+          <Input select label="Season" {...allValueSelectProps} value={seasonId ?? ''} onChange={(event) => onSeasonChange(event.target.value || null)}>
+            <MenuItem value="">{seasonAllLabel}</MenuItem>
+            {seasons.map((season) => (
+              <MenuItem key={season.id} value={season.id}>
+                {season.name}
               </MenuItem>
             ))}
           </Input>

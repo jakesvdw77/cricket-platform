@@ -99,6 +99,30 @@ export const SectionOnly: Story = {
   render: (args) => <Interactive {...args} />,
 }
 
+// docs/specs/087: the optional Season slot (Matches), between League and Section.
+function WithSeasonsDemo(args: FilterBarProps) {
+  const [seasonId, setSeasonId] = useState<string | null>('s1')
+  return (
+    <Interactive
+      {...args}
+      seasons={[
+        { id: 's1', name: '2026/27' },
+        { id: 's2', name: '2025/26' },
+      ]}
+      seasonId={seasonId}
+      onSeasonChange={setSeasonId}
+    />
+  )
+}
+
+export const WithSeasons: Story = { args: { ...base, density: 'compact' }, render: (args) => <WithSeasonsDemo {...args} /> }
+
+export const WithSeasonsMobile: Story = {
+  args: base,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  render: (args) => <WithSeasonsDemo {...args} />,
+}
+
 export const Mobile: Story = {
   args: base,
   parameters: { viewport: { defaultViewport: 'mobile' } },

@@ -123,6 +123,57 @@ describe('FilterBar on desktop (docs/specs/083)', () => {
   })
 })
 
+const SEASONS = [
+  { id: 's1', name: '2026/27' },
+  { id: 's2', name: '2025/26' },
+]
+
+describe('FilterBar Season slot (docs/specs/087)', () => {
+  it('shows Season between League and Section only when seasons are passed', () => {
+    setPhone(false)
+    const { unmount } = render(<FilterBar {...props()} />)
+    expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
+    unmount()
+
+    render(<FilterBar {...props({ seasons: SEASONS, onSeasonChange: vi.fn() })} />)
+    const labels = ['League', 'Season', 'Section', 'Team', 'Search'].map((name) => screen.getByLabelText(name))
+    labels.slice(1).forEach((field, index) => {
+      expect(labels[index].compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+  })
+
+  it('shows the unset Season as the "All seasons" value, with the passed wording when given, and reports a choice', async () => {
+    setPhone(false)
+    const onSeasonChange = vi.fn()
+    render(<FilterBar {...props({ seasons: SEASONS, onSeasonChange, seasonAllLabel: 'Every season' })} />)
+    const season = screen.getByRole('combobox', { name: 'Season' })
+    expect(season).toHaveTextContent('Every season')
+    await userEvent.click(season)
+    await userEvent.click(await screen.findByRole('option', { name: '2025/26' }))
+    expect(onSeasonChange).toHaveBeenCalledWith('s2')
+  })
+
+  it('counts a chosen season in the phone badge with a removable chip, but never the "All" value', async () => {
+    setPhone(true)
+    const onSeasonChange = vi.fn()
+    const { unmount } = render(<FilterBar {...props({ seasons: SEASONS, onSeasonChange })} />)
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+    unmount()
+
+    render(<FilterBar {...props({ seasons: SEASONS, seasonId: 's1', onSeasonChange })} />)
+    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove filter 2026/27' }))
+    expect(onSeasonChange).toHaveBeenCalledWith(null)
+  })
+
+  it('puts the Season field in the phone sheet', async () => {
+    setPhone(true)
+    render(<FilterBar {...props({ seasons: SEASONS, onSeasonChange: vi.fn() })} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    expect(await screen.findByRole('combobox', { name: 'Season' })).toBeInTheDocument()
+  })
+})
+
 describe('FilterBar on a phone (docs/specs/083)', () => {
   it('shows search and a Filters button, with the fields behind the sheet', () => {
     setPhone(true)
