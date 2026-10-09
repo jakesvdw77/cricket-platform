@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
@@ -87,6 +87,35 @@ function eligiblePlayers(players: TeamSelectionPlayer[], { match, side }: Column
   )
 }
 
+// Which sides are in reorder edit mode. Keyed by side id (not by the announced flag), so the refetch that follows the
+// first move, which un-announces the side, leaves the edit session alone. Not persisted: it resets on leaving the page.
+function useReorderEditing() {
+  const [editing, setEditing] = useState<ReadonlySet<string>>(new Set())
+  const start = useCallback((sideId: string) => setEditing((current) => new Set(current).add(sideId)), [])
+  const stop = useCallback(
+    (sideId: string) =>
+      setEditing((current) => {
+        const next = new Set(current)
+        next.delete(sideId)
+        return next
+      }),
+    [],
+  )
+  // Drops edit state for sides that are no longer in the data.
+  const keepOnly = useCallback(
+    (sideIds: ReadonlySet<string>) =>
+      setEditing((current) => {
+        const next = new Set([...current].filter((id) => sideIds.has(id)))
+        return next.size === current.size ? current : next
+      }),
+    [],
+  )
+  return { editing, start, stop, keepOnly }
+}
+
+// A column in edit mode gets a 2 px primary outline down its left and right edges.
+const editedColumnSx = { boxShadow: (theme: { palette: { primary: { main: string } } }) => `inset 2px 0 0 ${theme.palette.primary.main}, inset -2px 0 0 ${theme.palette.primary.main}` } as const
+
 function BattingMatrix({
   matches,
   busy,
@@ -94,7 +123,9 @@ function BattingMatrix({
   onMove,
   announcingSideId,
   onAnnounce,
-  reorder,
+  editing,
+  onToggleEdit,
+  onKeepEditing,
   shortNames,
   onScrollBox,
 }: {
@@ -104,7 +135,9 @@ function BattingMatrix({
   onMove: (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => void
   announcingSideId: string | null
   onAnnounce: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
-  reorder: boolean
+  editing: ReadonlySet<string>
+  onToggleEdit: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
+  onKeepEditing: (sideIds: ReadonlySet<string>) => void
   shortNames: boolean
   onScrollBox: (element: HTMLDivElement | null) => void
 }) {
@@ -122,6 +155,11 @@ function BattingMatrix({
   const games = useMemo(() => orderedGames(groups), [groups])
   const slotStarts = useMemo(() => slotStartAttrs(groups, (match) => match.matchId), [groups])
   const columns: Column[] = useMemo(() => games.flatMap((match) => match.sides.map((side) => ({ match, side }))), [games])
+  useEffect(() => {
+    onKeepEditing(new Set(columns.flatMap(({ side }) => (side.sideId === null ? [] : [side.sideId]))))
+  }, [columns, onKeepEditing])
+  const isEditing = ({ side }: Column) => side.sideId !== null && editing.has(side.sideId)
+  const editSx = (column: Column) => (isEditing(column) ? editedColumnSx : {})
   const rows = Math.max(1, ...columns.map(({ side }) => side.limits.battingPlaces))
   const positions = Array.from({ length: rows }, (_, index) => index + 1)
   const showUnpositioned = columns.some(({ side }) => side.picks.some((pick) => pick.battingOrder == null && !pick.twelfthMan))
@@ -204,7 +242,7 @@ function BattingMatrix({
                   component="th"
                   scope="col"
                   {...slotAttrs}
-                  sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px`, ...(slotAttrs ? slotSnapTargetSx : {}) }}
+                  sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, ...editSx(column), minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px`, ...(slotAttrs ? slotSnapTargetSx : {}) }}
                 >
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                     <Typography variant="caption" noWrap title={columnLabel(column)} sx={{ fontWeight: 600, lineHeight: 1.25, display: 'block' }}>
@@ -240,11 +278,11 @@ function BattingMatrix({
                 const pick = pickAt(column, position)
                 const open = !pick && position <= side.limits.battingPlaces
                 return (
-                  <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-cell-${match.matchId}-${side.teamId}-${position}`}>
+                  <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...bodyCellSx, ...editSx(column) }} data-testid={`batting-cell-${match.matchId}-${side.teamId}-${position}`}>
                     {pick && (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.25 }}>
                         <PickedName pick={pick} displayName={labelOf(column, pick)} />
-                        {reorder && side.sideId !== null && (
+                        {isEditing(column) && (
                           <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
                             <IconButton
                               size="small"
@@ -298,10 +336,11 @@ function BattingMatrix({
                 12th man
               </Typography>
             </TableCell>
-            {columns.map(({ match, side }) => {
+            {columns.map((column) => {
+              const { match, side } = column
               const twelfth = side.picks.find((pick) => pick.twelfthMan)
               return (
-                <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-twelfth-${match.matchId}-${side.teamId}`}>
+                <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...bodyCellSx, ...editSx(column) }} data-testid={`batting-twelfth-${match.matchId}-${side.teamId}`}>
                   {twelfth ? (
                     <PickedName pick={twelfth} displayName={labelOf({ match, side }, twelfth)} />
                   ) : (
@@ -320,8 +359,10 @@ function BattingMatrix({
                   No position
                 </Typography>
               </TableCell>
-              {columns.map(({ match, side }) => (
-                <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-unpositioned-${match.matchId}-${side.teamId}`}>
+              {columns.map((column) => {
+                const { match, side } = column
+                return (
+                <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...bodyCellSx, ...editSx(column) }} data-testid={`batting-unpositioned-${match.matchId}-${side.teamId}`}>
                   {side.picks
                     .filter((pick) => pick.battingOrder == null && !pick.twelfthMan)
                     .map((pick) => (
@@ -330,7 +371,8 @@ function BattingMatrix({
                       </Box>
                     ))}
                 </TableCell>
-              ))}
+                )
+              })}
             </TableRow>
           )}
         </TableBody>
@@ -344,7 +386,7 @@ function BattingMatrix({
               const { match, side } = column
               const canAnnounce = side.status === 'READY_TO_ANNOUNCE' && side.sideId !== null
               return (
-                <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...footCellSx, verticalAlign: 'top' }}>
+                <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...footCellSx, ...editSx(column), verticalAlign: 'top' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
                     <MuiButton
                       size="small"
@@ -356,6 +398,18 @@ function BattingMatrix({
                     >
                       Select players
                     </MuiButton>
+                    {side.sideId !== null && side.picks.length >= 2 && (
+                      <MuiButton
+                        size="small"
+                        variant={isEditing(column) ? 'contained' : 'outlined'}
+                        aria-pressed={isEditing(column)}
+                        aria-label={`Reorder, ${columnLabel(column)}`}
+                        onClick={() => onToggleEdit(match, side)}
+                        sx={footActionSx}
+                      >
+                        {isEditing(column) ? 'Done' : 'Reorder'}
+                      </MuiButton>
+                    )}
                     {canAnnounce && (
                       <Button
                         size="sm"
@@ -385,22 +439,24 @@ export default function BattingOrderView() {
   const { clubId } = useTeamSelectionHub()
   const picker = usePlayerPick(clubId as string)
   const announce = useAnnounceSide(clubId as string)
-  const [reorder, setReorder] = useState(false)
+  const reorder = useReorderEditing()
   const [shortNames, setShortNames] = useState(readShortNames)
   const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
   const [adding, setAdding] = useState<AddTarget | null>(null)
-  const [pendingMove, setPendingMove] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide; playerId: string; direction: -1 | 1 } | null>(null)
-  // The server un-announces a side on any edit, so a move on an announced side is confirmed first.
-  const requestMove = (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => {
-    if (side.announced) setPendingMove({ match, side, playerId, direction })
-    else picker.move(match, side, playerId, direction)
+  // The server un-announces a side on its first write, so starting to reorder an announced side is confirmed once; the
+  // moves inside that edit session are not asked about again.
+  const [pendingStart, setPendingStart] = useState<string | null>(null)
+  const toggleEdit = (_match: TeamSelectionMatch, side: TeamSelectionSide) => {
+    if (side.sideId === null) return
+    if (reorder.editing.has(side.sideId)) reorder.stop(side.sideId)
+    else if (side.announced) setPendingStart(side.sideId)
+    else reorder.start(side.sideId)
   }
 
   return (
     <MatchesFrame
       controls={
         <>
-          <CompactSwitch checked={reorder} onChange={setReorder} label="Reorder" />
           <CompactSwitch
             checked={shortNames}
             onChange={(value) => {
@@ -438,10 +494,12 @@ export default function BattingOrderView() {
               matches={matches}
               busy={picker.busy}
               onAdd={setAdding}
-              onMove={requestMove}
+              onMove={picker.move}
               announcingSideId={announce.announcingSideId}
               onAnnounce={announce.request}
-              reorder={reorder}
+              editing={reorder.editing}
+              onToggleEdit={toggleEdit}
+              onKeepEditing={reorder.keepOnly}
               shortNames={shortNames}
               onScrollBox={setScrollBox}
             />
@@ -463,15 +521,15 @@ export default function BattingOrderView() {
             </Menu>
             {announce.dialog}
             <ConfirmDialog
-              open={pendingMove !== null}
+              open={pendingStart !== null}
               title="Change an announced team?"
               description="Moving a batter un-announces this team. It will need to be announced again."
-              confirmLabel="Move and un-announce"
+              confirmLabel="Start reordering"
               onConfirm={() => {
-                if (pendingMove) picker.move(pendingMove.match, pendingMove.side, pendingMove.playerId, pendingMove.direction)
-                setPendingMove(null)
+                if (pendingStart) reorder.start(pendingStart)
+                setPendingStart(null)
               }}
-              onClose={() => setPendingMove(null)}
+              onClose={() => setPendingStart(null)}
             />
           </>
         )

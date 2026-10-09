@@ -59,7 +59,8 @@ beforeEach(() => {
   reorderMatchSidePlayers.mockReset().mockResolvedValue({})
 })
 
-const turnReorderOn = async () => userEvent.click(await screen.findByRole('checkbox', { name: 'Reorder' }))
+const reorderButton = (label: string) => screen.findByRole('button', { name: `Reorder, ${label}` })
+const startReorder = async (label = 'Vets A v Oakfield') => userEvent.click(await reorderButton(label))
 const cellAt = (match: string, team: string, position: number) => screen.getByTestId(`batting-cell-${match}-${team}-${position}`)
 
 describe('BattingOrderView', () => {
@@ -207,21 +208,56 @@ describe('BattingOrderView', () => {
       get.mockResolvedValue({ data })
     }
 
-    it('shows no arrows until Reorder is turned on, and hides them again when it is turned off', async () => {
+    it('has no global Reorder switch, and shows no arrows until a column is put in edit mode', async () => {
       threeBatters()
       renderView()
       await screen.findByTestId('batting-cell-x-1-team-1-1')
+      expect(screen.queryByRole('checkbox', { name: 'Reorder' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
-      await turnReorderOn()
+      const button = await reorderButton('Vets A v Oakfield')
+      expect(button).toHaveTextContent('Reorder')
+      expect(button).toHaveAttribute('aria-pressed', 'false')
+      await userEvent.click(button)
+      expect(button).toHaveTextContent('Done')
+      expect(button).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(6)
-      await userEvent.click(screen.getByRole('checkbox', { name: 'Reorder' }))
+      await userEvent.click(button)
+      expect(button).toHaveTextContent('Reorder')
       expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
+    })
+
+    it('puts only the chosen column in edit mode, and several columns can be edited at once', async () => {
+      const data = makeOverview([
+        makeMatch({ matchId: 'x-1', label: 'One', sides: [makeSide({ picks: [makePick('ann', 1), makePick('bob', 2)], pickedCount: 2 })] }),
+        makeMatch({ matchId: 'x-2', label: 'Two', sides: [makeSide({ teamId: 'team-2', sideId: 's2', picks: [makePick('cal', 1), makePick('dee', 2)], pickedCount: 2 })] }),
+      ])
+      get.mockResolvedValue({ data })
+      renderView()
+      await startReorder('One')
+      expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(4)
+      expect(screen.queryByRole('button', { name: /^Move .*, Two$/ })).not.toBeInTheDocument()
+      await startReorder('Two')
+      expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(8)
+      expect(screen.getByRole('button', { name: 'Reorder, One' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: 'Reorder, Two' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('hides Reorder for a side with fewer than two picks or no side yet', async () => {
+      const data = makeOverview([
+        makeMatch({ matchId: 'x-1', label: 'One', sides: [makeSide({ picks: [makePick('ann', 1)], pickedCount: 1 })] }),
+        makeMatch({ matchId: 'x-2', label: 'Two', sides: [makeSide({ teamId: 'team-2', sideId: null, picks: [], pickedCount: 0 })] }),
+        makeMatch({ matchId: 'x-3', label: 'Three', sides: [makeSide({ teamId: 'team-3', sideId: 's3', picks: [makePick('bob', 1), makePick('cy', 2)], pickedCount: 2 })] }),
+      ])
+      get.mockResolvedValue({ data })
+      renderView()
+      await reorderButton('Three')
+      expect(screen.getAllByRole('button', { name: /^Reorder,/ })).toHaveLength(1)
     })
 
     it('swaps a batter with the one above, sending the full batting order to the reorder call', async () => {
       threeBatters()
       renderView()
-      await turnReorderOn()
+      await startReorder()
       const reads = get.mock.calls.length
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
@@ -232,7 +268,7 @@ describe('BattingOrderView', () => {
     it('swaps a batter with the one below', async () => {
       threeBatters()
       renderView()
-      await turnReorderOn()
+      await startReorder()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', ['bob', 'ann', 'cal']))
     })
@@ -240,7 +276,7 @@ describe('BattingOrderView', () => {
     it('disables up at position 1 and down at the last filled position', async () => {
       threeBatters()
       renderView()
-      await turnReorderOn()
+      await startReorder()
       expect(await screen.findByRole('button', { name: 'Move Ann Smith up, Vets A v Oakfield' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'Move Cal Smith down, Vets A v Oakfield' })).toBeDisabled()
@@ -251,7 +287,7 @@ describe('BattingOrderView', () => {
       threeBatters()
       reorderMatchSidePlayers.mockReturnValue(new Promise(() => {}))
       renderView()
-      await turnReorderOn()
+      await startReorder()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Move Bob Smith up, Vets A v Oakfield' })).toBeDisabled())
       fireEvent.click(screen.getByRole('button', { name: 'Move Bob Smith up, Vets A v Oakfield' }))
@@ -262,15 +298,15 @@ describe('BattingOrderView', () => {
       threeBatters()
       reorderMatchSidePlayers.mockRejectedValue({ isAxiosError: true, response: { status: 409, data: { detail: 'Order not allowed.' } } })
       renderView()
-      await turnReorderOn()
+      await startReorder()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('Order not allowed.')
     })
 
-    it('offers no arrows on the 12th man, an empty position, the no position row or an announced side', async () => {
+    it('offers no arrows on the 12th man or an empty position', async () => {
       threeBatters()
       renderView()
-      await turnReorderOn()
+      await startReorder()
       await screen.findByTestId('batting-cell-x-1-team-1-1')
       expect(screen.queryByRole('button', { name: /Move Cy Smith/ })).not.toBeInTheDocument()
       expect(within(cellAt('x-1', 'team-1', 4)).queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
@@ -278,54 +314,52 @@ describe('BattingOrderView', () => {
     })
 
     describe('on an announced side', () => {
-      const move = 'Move Eve Smith down, Vets A v Vets B, Vets B'
-      const announcedSide = () => {
-        const data = makeOverview([
+      const announcedData = (announced: boolean) =>
+        makeOverview([
           makeMatch({
             matchId: 'x-1',
             label: 'Vets A v Oakfield',
-            sides: [makeSide({ announced: true, picks: [makePick('ann', 1), makePick('bob', 2)], pickedCount: 2 })],
+            sides: [makeSide({ announced, picks: [makePick('ann', 1), makePick('bob', 2)], pickedCount: 2 })],
           }),
         ])
-        get.mockResolvedValue({ data })
-      }
 
-      it('shows the arrows', async () => {
+      it('asks once before starting, and does nothing on cancel', async () => {
+        get.mockResolvedValue({ data: announcedData(true) })
         renderView()
-      await turnReorderOn()
-        await screen.findByTestId('batting-cell-m-3-team-b-1')
-        expect(within(cellAt('m-3', 'team-b', 1)).getAllByRole('button')).toHaveLength(2)
-        expect(screen.getByRole('button', { name: move })).toBeInTheDocument()
-      })
-
-      it('asks first, and does nothing on cancel', async () => {
-        announcedSide()
-        renderView()
-      await turnReorderOn()
-        await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
+        await startReorder()
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).getByText('Change an announced team?')).toBeInTheDocument()
-        expect(reorderMatchSidePlayers).not.toHaveBeenCalled()
         await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Reorder, Vets A v Oakfield' })).toHaveAttribute('aria-pressed', 'false')
         expect(reorderMatchSidePlayers).not.toHaveBeenCalled()
       })
 
-      it('sends the reorder on confirm', async () => {
-        announcedSide()
+      it('enters edit mode on confirm, then a move sends the order with no second dialog and the edit state survives the refetch as not announced', async () => {
+        get.mockResolvedValue({ data: announcedData(true) })
         renderView()
-      await turnReorderOn()
-        await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
-        await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Move and un-announce' }))
+        await startReorder()
+        await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start reordering' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(screen.getByRole('button', { name: 'Reorder, Vets A v Oakfield' })).toHaveTextContent('Done')
+        get.mockResolvedValue({ data: announcedData(false) })
+        await userEvent.click(screen.getByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
         await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
         expect(reorderMatchSidePlayers).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', ['bob', 'ann'])
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(1))
+        expect(screen.getByRole('button', { name: 'Reorder, Vets A v Oakfield' })).toHaveAttribute('aria-pressed', 'true')
+        expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(4)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
     })
 
-    it('moves a non-announced side immediately, with no dialog', async () => {
+    it('starts a non-announced side immediately, with no dialog, and moves with no dialog', async () => {
       threeBatters()
       renderView()
-      await turnReorderOn()
+      await startReorder()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
@@ -365,12 +399,11 @@ describe('BattingOrderView', () => {
       expect(localStorage.getItem('teamSelection:battingShortNames')).toBe('true')
     })
 
-    it('starts on when it was saved on, and Reorder always starts off', async () => {
+    it('starts on when it was saved on', async () => {
       localStorage.setItem('teamSelection:battingShortNames', 'true')
       renderView()
       await screen.findByTestId('batting-cell-m-1-team-1-1')
       expect(screen.getByRole('checkbox', { name: 'Short names' })).toBeChecked()
-      expect(screen.getByRole('checkbox', { name: 'Reorder' })).not.toBeChecked()
       expect(cellAt('m-1', 'team-1', 1)).toHaveTextContent('A Smith')
     })
   })
