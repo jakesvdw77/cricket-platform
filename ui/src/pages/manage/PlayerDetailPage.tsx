@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import WcOutlinedIcon from '@mui/icons-material/WcOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
@@ -23,14 +25,17 @@ import { Card } from '../../components/Card'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { avatarSx, badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
+import { PlayerStatusMenu } from '../../components/PlayerStatusMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayers, listPlayerSections } from '../../api/playerApi'
 import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
+import { usePlayerStatusActions } from '../../hooks/usePlayerStatusActions'
 import { initialsFromName } from '../../utils/initials'
+import { playerStatusBadge, playerStatusOf } from '../../utils/playerStatus'
 import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
-import { badgeFor, fullName } from './PlayerList'
+import { fullName } from './PlayerList'
 
 // The uppercase "section label" heading every card on this page uses — copied from
 // RecordDetailScreen.tsx's own section-heading markup (docs/specs/060-player-detail-redesign.md)
@@ -52,10 +57,13 @@ function CardHeading({ children }: { children: string }) {
 // section layout. Data-fetching is unchanged from the previous RecordDetailScreen-based
 // implementation (docs/specs/036-view-first-record-detail-screens.md) — listPlayers (client-side
 // find-by-id, no single-player GET exists), listPlayerSections, listSections, and the
-// badgeFor/fullName mapping imported from PlayerList.tsx.
+// fullName helper imported from PlayerList.tsx. docs/specs/088: the status badge, the Status button and, for an
+// unverified or rejected player, a banner above the cards.
 export default function PlayerDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { playerId } = useParams<{ playerId?: string }>()
+  const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
+  const statusActions = usePlayerStatusActions(clubId)
 
   const {
     data: player,
@@ -108,7 +116,8 @@ export default function PlayerDetailPage() {
   }
 
   const taggedSections = playerSectionsQuery.data ?? []
-  const badge = badgeFor(player)
+  const status = playerStatusOf(player)
+  const badge = playerStatusBadge(status)
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -141,31 +150,73 @@ export default function PlayerDetailPage() {
                 {taggedSections.map((section) => (
                   <Chip key={section.id} size="small" variant="outlined" label={sectionPath(section)} />
                 ))}
-                {badge && <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} />}
+                <Chip size="small" label={badge.label} sx={badgeSx(badge.tone)} data-testid="player-status-badge" />
               </Stack>
             </Stack>
           </Stack>
 
-          <MuiButton
-            component={RouterLink}
-            to={`/manage/players/${player.id}/edit`}
-            variant="outlined"
-            startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{
-              flex: 'none',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-              color: 'primary.dark',
-              borderColor: 'transparent',
-              '&:hover': {
+          <Stack direction="row" spacing={1} sx={{ flex: 'none' }}>
+            <MuiButton
+              variant="outlined"
+              aria-haspopup="menu"
+              startIcon={<ManageAccountsOutlinedIcon fontSize="small" />}
+              onClick={(event) => setStatusAnchor(event.currentTarget)}
+            >
+              Status
+            </MuiButton>
+            <MuiButton
+              component={RouterLink}
+              to={`/manage/players/${player.id}/edit`}
+              variant="outlined"
+              startIcon={<EditOutlinedIcon fontSize="small" />}
+              sx={{
+                flex: 'none',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+                color: 'primary.dark',
                 borderColor: 'transparent',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-              },
-            }}
-          >
-            Edit
-          </MuiButton>
+                '&:hover': {
+                  borderColor: 'transparent',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              Edit
+            </MuiButton>
+          </Stack>
         </Stack>
       </PageHeaderBand>
+
+      {/* docs/specs/088: an unverified or rejected player shows a banner above the cards, with the same Status menu. */}
+      {(status === 'unverified' || status === 'rejected') && (
+        <Box
+          role="status"
+          data-testid="player-status-banner"
+          data-tone={status === 'unverified' ? 'warning' : 'closed'}
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 1.5,
+            px: 1.5,
+            py: 1.25,
+            borderRadius: 1,
+            border: 1,
+            bgcolor: (theme) => alpha(status === 'unverified' ? theme.palette.warning.main : theme.palette.error.main, 0.14),
+            borderColor: (theme) => alpha(status === 'unverified' ? theme.palette.warning.main : theme.palette.error.main, 0.5),
+            color: status === 'unverified' ? 'warning.dark' : 'error.dark',
+          }}
+        >
+          <ErrorOutlineIcon fontSize="small" />
+          <Typography variant="body2" fontWeight={600} sx={{ flex: '1 1 220px' }}>
+            {status === 'unverified'
+              ? 'This player request is waiting for you. Change the status to verify or reject it.'
+              : 'This player request was rejected, so they are hidden from the player list. You can verify them again.'}
+          </Typography>
+          <MuiButton variant="contained" onClick={(event) => setStatusAnchor(event.currentTarget)}>
+            Change status
+          </MuiButton>
+        </Box>
+      )}
 
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
         <Card>
@@ -258,6 +309,14 @@ export default function PlayerDetailPage() {
           </Stack>
         </Card>
       </Box>
+
+      <PlayerStatusMenu
+        status={status}
+        anchorEl={statusAnchor}
+        onClose={() => setStatusAnchor(null)}
+        onAction={(action) => statusActions.requestAction(player, action)}
+      />
+      {statusActions.dialog}
     </Box>
   )
 }

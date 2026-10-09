@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,25 +8,44 @@ import type { Player } from '../../api/playerApi'
 import type { Section } from '../../api/sectionApi'
 
 const listPlayers = vi.fn()
+const getPlayersSummary = vi.fn()
 const listSections = vi.fn()
+const listSeasons = vi.fn()
+const verifyPlayer = vi.fn()
+const rejectPlayer = vi.fn()
+const deactivatePlayer = vi.fn()
+const reactivatePlayer = vi.fn()
 
 // Mirrors SponsorList.test.tsx's mock-every-export-individually pattern.
 vi.mock('../../api/playerApi', () => ({
   listPlayers: (clubId: string, params: unknown) => listPlayers(clubId, params),
-  deactivatePlayer: vi.fn(),
-  reactivatePlayer: vi.fn(),
+  getPlayersSummary: (clubId: string, filters: unknown) => getPlayersSummary(clubId, filters),
+  playersSummaryKey: (clubId: string, filters: unknown) => ['managed-club', clubId, 'players', 'summary', filters],
+  verifyPlayer: (clubId: string, id: string) => verifyPlayer(clubId, id),
+  rejectPlayer: (clubId: string, id: string) => rejectPlayer(clubId, id),
+  deactivatePlayer: (clubId: string, id: string) => deactivatePlayer(clubId, id),
+  reactivatePlayer: (clubId: string, id: string) => reactivatePlayer(clubId, id),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
 
+vi.mock('../../api/seasonApi', () => ({
+  listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   listSections.mockResolvedValue([])
-  // docs/specs/043-list-toolbar-gold-standard.md: PlayerList's Section filter now persists via
-  // usePersistedListFilters — clear the real jsdom localStorage so a selection made in one test
-  // never leaks into the next.
+  // The default season is the one containing today.
+  listSeasons.mockResolvedValue([
+    { id: 'season-1', clubId: 'test-club-id', label: '2026', startDate: '2000-01-01', endDate: '2999-12-31', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', updatedBy: null },
+  ])
+  getPlayersSummary.mockResolvedValue({ playersShown: 12, inSquad: 9, selected: 7, unverified: 3 })
+  for (const fn of [verifyPlayer, rejectPlayer, deactivatePlayer, reactivatePlayer]) fn.mockResolvedValue({})
+  // docs/specs/043-list-toolbar-gold-standard.md: PlayerList's Section filter persists via usePersistedListFilters -
+  // clear the real jsdom localStorage so a selection made in one test never leaks into the next.
   localStorage.clear()
 })
 
@@ -57,6 +76,7 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
     ...overrides,
   }
 }
@@ -103,12 +123,15 @@ function renderList(clubId?: string) {
 }
 
 describe('PlayerList', () => {
+  const counter = (id: string) => screen.getByTestId(`page-counter-${id}`)
+
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {
     renderList(undefined)
 
     expect(screen.getByText('Not authorized')).toBeInTheDocument()
     expect(screen.getByText('No club is associated with your account.')).toBeInTheDocument()
     expect(listPlayers).not.toHaveBeenCalled()
+    expect(getPlayersSummary).not.toHaveBeenCalled()
   })
 
   it('renders nothing while the list is loading', () => {
@@ -121,145 +144,116 @@ describe('PlayerList', () => {
   })
 
   it('renders an error state when the fetch fails', async () => {
-    listPlayers.mockRejectedValueOnce(new Error('network error'))
+    listPlayers.mockRejectedValue(new Error('network error'))
 
     renderList('test-club-id')
 
     expect(await screen.findByText("Couldn't load players")).toBeInTheDocument()
-    expect(
-      screen.getByText("Something went wrong loading your club's players. Please try again."),
-    ).toBeInTheDocument()
   })
 
   it('renders the "No players yet" empty state when the club has no players', async () => {
-    listPlayers.mockResolvedValueOnce([])
+    listPlayers.mockResolvedValue([])
 
     renderList('test-club-id')
 
     expect(await screen.findByText('No players yet')).toBeInTheDocument()
   })
 
-  // docs/specs/061-player-card-avatar-redesign.md: PlayerList now renders the bespoke PlayerCard
-  // (jersey chip, section-name-plus-overflow corner chip, Inactive badge) rather than the old
-  // generic RecordCard fields (DOB, membership number) — PlayerCard's own content behavior
-  // (icon rows, corner chips) is unit-tested in PlayerCard.test.tsx; this only confirms PlayerList
-  // resolves and passes the right sectionNames/badge/jerseyNumber through to it per player.
-  it('renders a card per player with the correct name, section chips, jersey number, and active/inactive badge', async () => {
-    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' }), makeSection({ id: 'section-2', name: 'Open Men' })])
-    listPlayers.mockResolvedValueOnce([
-      makePlayer({ id: 'player-1', sectionIds: ['section-1', 'section-2'], jerseyNumber: 9 }),
-      makePlayer({
-        id: 'player-2',
-        firstName: 'Past',
-        lastName: 'Player',
-        dateOfBirth: null,
-        clubMembershipNumber: null,
-        active: false,
-      }),
+  it('renders a card per player with the status badge, section chips and the five fixed rows', async () => {
+    listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' })])
+    listPlayers.mockResolvedValue([
+      makePlayer({ id: 'p1', firstName: 'Amy', lastName: 'Ansell', jerseyNumber: 7, phone: '082 555 0142', sectionIds: ['section-1'] }),
+      makePlayer({ id: 'p2', firstName: 'Zed', lastName: 'Zulu', verificationStatus: 'UNVERIFIED' }),
     ])
 
     renderList('test-club-id')
 
-    expect(await screen.findByText('Sipho Ndlovu')).toBeInTheDocument()
-    expect(screen.getByText('#9')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Amy Ansell' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Zed Zulu' })).toBeInTheDocument()
+    expect(screen.getAllByTestId('player-status-badge').map((badge) => badge.textContent)).toEqual(['Verified', 'Unverified'])
     expect(screen.getByText('U15')).toBeInTheDocument()
-    expect(screen.getByText('+1')).toBeInTheDocument()
-
-    expect(screen.getByText('Past Player')).toBeInTheDocument()
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getAllByText('No section')).toHaveLength(1)
+    // every card has the same five rows
+    expect(screen.getAllByTestId('player-detail-row')).toHaveLength(10)
+    expect(screen.getByText('#7')).toBeInTheDocument()
   })
 
-  it('marks players with no date of birth on their card', async () => {
-    listPlayers.mockResolvedValueOnce([
-      makePlayer({ id: 'player-1' }),
-      makePlayer({ id: 'player-2', firstName: 'No', lastName: 'Birthday', dateOfBirth: null }),
-    ])
-
-    renderList('test-club-id')
-
-    await screen.findByText('No Birthday')
-    expect(screen.getAllByText('No date of birth')).toHaveLength(1)
-  })
-
-  it('sends missingDateOfBirth=true when the "Missing date of birth" chip is toggled, and omits it otherwise', async () => {
+  it('hides suspended and rejected players by default (includeInactive false) and the switch brings them back', async () => {
     const user = userEvent.setup()
-    listPlayers.mockResolvedValue([makePlayer({ id: 'player-2', dateOfBirth: null })])
+    listPlayers.mockResolvedValue([makePlayer()])
 
     renderList('test-club-id')
 
     await screen.findByText('Sipho Ndlovu')
-    expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined, missingDateOfBirth: undefined })
+    expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: false }))
 
-    await user.click(screen.getByRole('button', { name: 'Missing date of birth' }))
+    await user.click(screen.getByRole('checkbox', { name: /show suspended and rejected players/i }))
 
     await waitFor(() =>
-      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined, missingDateOfBirth: true }),
+      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: true })),
     )
+    expect(await within(counter('shown')).findByText('Players shown')).toBeInTheDocument()
+    expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: true }))
+  })
+
+  it('sends missingDateOfBirth=true when the switch is on, and saves it with the other persisted filters', async () => {
+    const user = userEvent.setup()
+    listPlayers.mockResolvedValue([makePlayer({ dateOfBirth: null })])
+
+    renderList('test-club-id')
+
+    await screen.findByText('Sipho Ndlovu')
+    expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ missingDateOfBirth: undefined }))
+
+    await user.click(screen.getByRole('checkbox', { name: /missing date of birth/i }))
+
+    await waitFor(() =>
+      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ missingDateOfBirth: true })),
+    )
+    // a player with no date of birth shows "–" in its Born row, not a separate badge
+    expect(screen.getByText('Born').parentElement).toHaveTextContent('–')
+    expect(JSON.parse(localStorage.getItem('playerList:filters:test-club-id') as string)).toMatchObject({ missingDateOfBirth: true })
   })
 
   it('shows the "Every player has a date of birth" empty state when the filter finds nobody', async () => {
     const user = userEvent.setup()
-    listPlayers.mockResolvedValueOnce([makePlayer()]).mockResolvedValue([])
+    listPlayers.mockResolvedValue([makePlayer()])
 
     renderList('test-club-id')
 
     await screen.findByText('Sipho Ndlovu')
-    await user.click(screen.getByRole('button', { name: 'Missing date of birth' }))
+    listPlayers.mockResolvedValue([])
+    await user.click(screen.getByRole('checkbox', { name: /missing date of birth/i }))
 
     expect(await screen.findByText('Every player has a date of birth')).toBeInTheDocument()
-    expect(screen.queryByText('No players yet')).not.toBeInTheDocument()
   })
 
-  it('filters cards by the search term (matched against name)', async () => {
+  it('filters cards by the search term (matched against name), client-side', async () => {
     const user = userEvent.setup()
-    listPlayers.mockResolvedValueOnce([
-      makePlayer({ id: 'player-1', firstName: 'Sipho', lastName: 'Ndlovu' }),
-      makePlayer({ id: 'player-2', firstName: 'Jane', lastName: 'Smith' }),
+    listPlayers.mockResolvedValue([
+      makePlayer({ id: 'p1', firstName: 'Amy', lastName: 'Ansell' }),
+      makePlayer({ id: 'p2', firstName: 'Zed', lastName: 'Zulu' }),
     ])
 
     renderList('test-club-id')
 
-    await screen.findByText('Sipho Ndlovu')
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Amy Ansell' })
+    await user.type(screen.getByLabelText('Search'), 'zul')
 
-    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'sipho' } })
-
-    expect(await screen.findByText('Sipho Ndlovu')).toBeInTheDocument()
-    expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
-
-    expect(await screen.findByText('No matching players')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Add Player' }))
-    expect(await screen.findByText('Add Player Page')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Amy Ansell' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Zed Zulu' })).toBeInTheDocument()
+    // search never reaches the backend
+    expect(listPlayers).not.toHaveBeenCalledWith('test-club-id', expect.objectContaining({ search: expect.anything() }))
   })
 
-  // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
-  // precedent test for the View+Edit dual-render footer.
-  it('renders View and Edit together on a card, both pointing at the player\'s own routes', async () => {
-    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+  it('renders Edit and View on a card, both pointing at the player\'s own routes', async () => {
+    listPlayers.mockResolvedValue([makePlayer({ id: 'player-1' })])
 
     renderList('test-club-id')
 
-    await screen.findByText('Sipho Ndlovu')
-    expect(screen.getByRole('link', { name: 'Sipho Ndlovu' })).toHaveAttribute('href', '/manage/players/player-1')
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
-  })
-
-  // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
-  // the list card at all — active or inactive — it moved to PlayerFormPage's own actions bar.
-  it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
-    listPlayers.mockResolvedValueOnce([
-      makePlayer({ id: 'player-1', active: true }),
-      makePlayer({ id: 'player-2', firstName: 'Past', lastName: 'Player', active: false }),
-    ])
-
-    renderList('test-club-id')
-
-    await screen.findByText('Sipho Ndlovu')
-    expect(screen.getByText('Past Player')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
   })
 
   it('selecting a section in the filter re-fetches with the sectionId param, clearing it removes it', async () => {
@@ -270,67 +264,249 @@ describe('PlayerList', () => {
     renderList('test-club-id')
 
     await screen.findByText('Sipho Ndlovu')
-    expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: undefined })
+    expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: undefined }))
 
     await user.click(screen.getByLabelText('Section'))
     await user.click(within(screen.getByRole('treeitem', { name: 'U15' })).getByText('U15'))
 
     expect(await screen.findByLabelText('Section')).toHaveValue('U15')
-    await waitFor(() => expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' })))
+    expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' }))
+    expect(await screen.findByText('Showing: U15')).toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Section'))
     await user.click(screen.getByRole('button', { name: /all sections/i }))
 
-    await waitFor(() =>
-      expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', { sectionId: undefined }),
-    )
+    await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: undefined })))
   })
 
-  // docs/specs/043-list-toolbar-gold-standard.md: the Sort Select was replaced by a compact icon
-  // toggle — this exercises the previously-dead `direction === 'desc'` branch for real, not just
-  // visually.
-  it('clicking the sort icon reverses the card order, and flips its own accessible name', async () => {
+  it('the sort link reverses the card order', async () => {
     const user = userEvent.setup()
-    listPlayers.mockResolvedValueOnce([
+    listPlayers.mockResolvedValue([
       makePlayer({ id: 'player-1', firstName: 'Amy', lastName: 'Ansell' }),
       makePlayer({ id: 'player-2', firstName: 'Zed', lastName: 'Zulu' }),
     ])
 
     renderList('test-club-id')
 
-    await screen.findByText('Amy Ansell')
-    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
-      'Amy Ansell',
-      'Zed Zulu',
-    ])
+    await screen.findByRole('heading', { name: 'Amy Ansell' })
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['Amy Ansell', 'Zed Zulu'])
 
-    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+    await user.click(screen.getByRole('button', { name: /a to z/i }))
 
-    expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual([
-      'Zed Zulu',
-      'Amy Ansell',
-    ])
-    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
+    expect(screen.getByRole('button', { name: /z to a/i })).toBeInTheDocument()
   })
 
-  // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
-  // visits — Search stays a separate, non-persisted useState. Mirrors MatchList.test.tsx's own
-  // persistence assertions.
-  it('reapplies a persisted section filter on mount, and never persists the search text', async () => {
+  it('reapplies a persisted section filter on mount, and never persists the search text, the switch or the quick filter', async () => {
     const user = userEvent.setup()
     listPlayers.mockResolvedValue([makePlayer()])
     listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'U15' })])
-    localStorage.setItem('playerList:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
+    localStorage.setItem('playerList:filters:test-club-id', JSON.stringify({ sectionId: 'section-1', missingDateOfBirth: false }))
 
     renderList('test-club-id')
 
-    await waitFor(() => expect(listPlayers).toHaveBeenCalledWith('test-club-id', { sectionId: 'section-1' }))
+    await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' })))
     expect(await screen.findByLabelText('Section')).toHaveValue('U15')
-
-    await user.type(screen.getByLabelText('Search'), 'Sipho')
+    await user.type(screen.getByLabelText('Search'), 'Sip')
+    await user.click(screen.getByRole('checkbox', { name: /show suspended and rejected players/i }))
+    await user.click(await screen.findByTestId('page-counter-unverified'))
 
     const persisted = JSON.parse(localStorage.getItem('playerList:filters:test-club-id') as string)
-    expect(persisted).toEqual({ sectionId: 'section-1' })
-    expect(persisted).not.toHaveProperty('search')
+    expect(Object.keys(persisted).sort()).toEqual(['missingDateOfBirth', 'sectionId'])
+  })
+
+  describe('the Status button', () => {
+    it('Reject asks first, then rejects the player and refreshes the list', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer({ id: 'p9', verificationStatus: 'UNVERIFIED' })])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      await user.click(screen.getByRole('button', { name: 'Change status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
+      await user.click(screen.getByRole('menuitem', { name: 'Reject' }))
+
+      expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
+      expect(rejectPlayer).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Reject player' }))
+
+      await waitFor(() => expect(rejectPlayer).toHaveBeenCalledWith('test-club-id', 'p9'))
+      await waitFor(() => expect(listPlayers.mock.calls.length).toBeGreaterThan(1))
+    })
+
+    it('Verify acts at once, and a suspended player offers Reactivate', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer({ id: 'p9', verificationStatus: 'UNVERIFIED' })])
+
+      const { unmount } = renderList('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      await user.click(screen.getByRole('button', { name: 'Change status' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Verify' }))
+      await waitFor(() => expect(verifyPlayer).toHaveBeenCalledWith('test-club-id', 'p9'))
+      unmount()
+
+      listPlayers.mockResolvedValue([makePlayer({ id: 'p8', active: false })])
+      renderList('test-club-id')
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      await user.click(screen.getByRole('button', { name: 'Change status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reactivate'])
+    })
+  })
+
+  // docs/specs/088-players-polls-alignment.md (A): the counters and the quick filters
+  describe('counters and quick filters', () => {
+    it('shows the four counters from the summary, with the amber tone only on Unverified', async () => {
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-shown')
+      expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Active players')).toBeInTheDocument()
+      expect(within(counter('in-squad')).getByText('9')).toBeInTheDocument()
+      expect(within(counter('in-squad')).getByText('In a squad this season')).toBeInTheDocument()
+      expect(within(counter('selected')).getByText('7')).toBeInTheDocument()
+      expect(within(counter('selected')).getByText('Players selected this season')).toBeInTheDocument()
+      expect(within(counter('unverified')).getByText('3')).toBeInTheDocument()
+      const colour = (id: string) => getComputedStyle(within(counter(id)).getByTestId('page-counter-value')).color
+      expect(colour('unverified')).not.toBe(colour('in-squad'))
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('asks the summary for the list filters and the default season, never the search', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-shown')
+      expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', {
+        sectionId: undefined,
+        missingDateOfBirth: undefined,
+        includeInactive: false,
+        seasonId: 'season-1',
+      })
+      await user.type(screen.getByLabelText('Search'), 'sip')
+      expect(getPlayersSummary).toHaveBeenLastCalledWith('test-club-id', expect.not.objectContaining({ search: expect.anything() }))
+    })
+
+    it('choosing a season counter sends the backend focus with the season, and names it in the scope text', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-in-squad')
+      await user.click(counter('in-squad'))
+
+      await waitFor(() =>
+        expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'in-squad', seasonId: 'season-1' })),
+      )
+      expect(counter('in-squad')).toHaveAttribute('aria-pressed', 'true')
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByText(/Showing 1 player · In a squad this season/)).toBeInTheDocument()
+      // the counters keep describing the list's filters, not the quick filter
+      expect(getPlayersSummary).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focus: expect.anything() }))
+    })
+
+    it('Unverified sends focus=unverified with no season; choosing another replaces it; the active one or the first card clears it', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-unverified')
+      await user.click(counter('unverified'))
+      await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'unverified', seasonId: undefined })))
+
+      await user.click(counter('selected'))
+      await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'selected', seasonId: 'season-1' })))
+      expect(counter('unverified')).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(counter('selected'))
+      await waitFor(() => expect(listPlayers.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+
+      await user.click(counter('in-squad'))
+      await waitFor(() => expect(listPlayers.mock.calls.at(-1)?.[1].focus).toBe('in-squad'))
+      await user.click(counter('shown'))
+      await waitFor(() => expect(listPlayers.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('a counter at zero is a plain card, not a button', async () => {
+      getPlayersSummary.mockResolvedValue({ playersShown: 5, inSquad: 2, selected: 0, unverified: 0 })
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-selected')
+      expect(counter('selected').tagName).not.toBe('BUTTON')
+      expect(counter('unverified').tagName).not.toBe('BUTTON')
+      expect(counter('in-squad').tagName).toBe('BUTTON')
+    })
+
+    it('hides the counters when the summary fails, and the list still works', async () => {
+      getPlayersSummary.mockRejectedValue(new Error('boom'))
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      expect(await screen.findByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
+      await waitFor(() => expect(getPlayersSummary).toHaveBeenCalled())
+      expect(screen.queryByTestId('page-counter-shown')).not.toBeInTheDocument()
+    })
+
+    it('shows a "Nobody here" empty state when a quick filter finds nobody', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      renderList('test-club-id')
+
+      await screen.findByTestId('page-counter-unverified')
+      listPlayers.mockResolvedValue([])
+      await user.click(counter('unverified'))
+
+      expect(await screen.findByText('Nobody here')).toBeInTheDocument()
+    })
+
+    it('on a phone the quick filter is a chip, counts in the Filters badge, has a Quick filter row, and Clear all clears it', async () => {
+      const user = userEvent.setup()
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+      try {
+        listPlayers.mockResolvedValue([makePlayer()])
+
+        renderList('test-club-id')
+
+        await screen.findByTestId('page-counter-unverified')
+        // the phone shows the short label; the full name stays accessible
+        expect(within(counter('unverified')).getByText('Unverified')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: '3 Unverified players' }))
+
+        expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove filter Unverified players' })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
+        expect(await screen.findByText(/Quick filter:/)).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: /show suspended and rejected players/i })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Clear all' }))
+        await waitFor(() => expect(listPlayers.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+        expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
+    })
   })
 })

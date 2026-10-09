@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlayerDetailPage from './PlayerDetailPage'
@@ -10,9 +11,18 @@ const listPlayers = vi.fn()
 const listPlayerSections = vi.fn()
 const listSections = vi.fn()
 
+const verifyPlayer = vi.fn()
+const rejectPlayer = vi.fn()
+const deactivatePlayer = vi.fn()
+const reactivatePlayer = vi.fn()
+
 vi.mock('../../api/playerApi', () => ({
   listPlayers: (clubId: string) => listPlayers(clubId),
   listPlayerSections: (clubId: string, playerId: string) => listPlayerSections(clubId, playerId),
+  verifyPlayer: (clubId: string, id: string) => verifyPlayer(clubId, id),
+  rejectPlayer: (clubId: string, id: string) => rejectPlayer(clubId, id),
+  deactivatePlayer: (clubId: string, id: string) => deactivatePlayer(clubId, id),
+  reactivatePlayer: (clubId: string, id: string) => reactivatePlayer(clubId, id),
 }))
 
 vi.mock('../../api/sectionApi', () => ({
@@ -52,6 +62,7 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
     ...overrides,
   }
 }
@@ -132,13 +143,90 @@ describe('PlayerDetailPage', () => {
     expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/players/player-1/edit')
   })
 
-  it('renders an Inactive badge chip in the header for a deactivated player', async () => {
-    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', active: false })])
+  it('shows the status badge in the header: Verified, and Suspended for a deactivated player', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+    const { unmount } = renderPage('/manage/players/player-1', 'test-club-id')
 
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    expect(screen.getByTestId('player-status-badge')).toHaveTextContent('Verified')
+    unmount()
+
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', active: false })])
     renderPage('/manage/players/player-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getByTestId('player-status-badge')).toHaveTextContent('Suspended')
+  })
+
+  // docs/specs/088-players-polls-alignment.md
+  describe('player status', () => {
+    it('shows no banner for a verified player, and the Status button offers only Suspend', async () => {
+      listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+
+      renderPage('/manage/players/player-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      expect(screen.queryByTestId('player-status-banner')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Suspend'])
+    })
+
+    it('shows an amber banner for an unverified player, with Change status opening the same menu', async () => {
+      listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', verificationStatus: 'UNVERIFIED' })])
+
+      renderPage('/manage/players/player-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      const banner = screen.getByTestId('player-status-banner')
+      expect(banner).toHaveAttribute('data-tone', 'warning')
+      expect(banner).toHaveTextContent('waiting for you')
+      expect(screen.getByTestId('player-status-badge')).toHaveTextContent('Unverified')
+
+      await userEvent.click(within(banner).getByRole('button', { name: 'Change status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
+    })
+
+    it('verifies from the menu at once, and rejects only after confirming', async () => {
+      listPlayers.mockResolvedValue([makePlayer({ id: 'player-1', verificationStatus: 'UNVERIFIED' })])
+      verifyPlayer.mockResolvedValue({})
+      rejectPlayer.mockResolvedValue({})
+
+      renderPage('/manage/players/player-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify' }))
+      await waitFor(() => expect(verifyPlayer).toHaveBeenCalledWith('test-club-id', 'player-1'))
+
+      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
+      expect(rejectPlayer).not.toHaveBeenCalled()
+      await userEvent.click(screen.getByRole('button', { name: 'Reject player' }))
+      await waitFor(() => expect(rejectPlayer).toHaveBeenCalledWith('test-club-id', 'player-1'))
+    })
+
+    it('shows the closed-tone banner for a rejected player, where the menu offers Verify', async () => {
+      listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', verificationStatus: 'REJECTED' })])
+
+      renderPage('/manage/players/player-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      expect(screen.getByTestId('player-status-banner')).toHaveAttribute('data-tone', 'closed')
+      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify'])
+    })
+
+    it('offers Reactivate for a suspended player and shows no banner', async () => {
+      listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', active: false })])
+
+      renderPage('/manage/players/player-1', 'test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      expect(screen.queryByTestId('player-status-banner')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Reactivate'])
+    })
   })
 
   it('renders Medical Aid provider and member number in Contact Info when set', async () => {
