@@ -6,16 +6,22 @@ import { groupPollResponsesPath, squadPollResponsesPath } from '../../../utils/p
 // docs/specs/068-player-availability-grid.md: the pure, unit-tested logic behind the grid -
 // header grouping, footer totals, search/hide filtering, the next game and every label string.
 
-export interface SlotGroup {
+// Generic over the column type so the Team selection Players grid (docs/specs/093) groups its matches the same way.
+export interface DatedColumn {
+  matchDate: string
   dayPart: DayPart
-  games: GameColumn[]
 }
 
-export interface DateGroup {
+export interface SlotGroup<T extends DatedColumn = GameColumn> {
+  dayPart: DayPart
+  games: T[]
+}
+
+export interface DateGroup<T extends DatedColumn = GameColumn> {
   dateKey: string
   // Local midnight of the game day.
   date: Date
-  slots: SlotGroup[]
+  slots: SlotGroup<T>[]
   gameCount: number
 }
 
@@ -35,8 +41,8 @@ function dateKeyOf(date: Date): string {
 
 // Dates then Morning/Afternoon then games, keeping the server's order (date, then kickoff). A slot
 // with no games is never created, so empty slots are omitted by construction.
-export function groupGames(games: GameColumn[]): DateGroup[] {
-  const groups: DateGroup[] = []
+export function groupGames<T extends DatedColumn = GameColumn>(games: T[]): DateGroup<T>[] {
+  const groups: DateGroup<T>[] = []
   for (const game of games) {
     const gameDate = startOfDay(new Date(game.matchDate))
     const key = dateKeyOf(gameDate)
@@ -60,7 +66,7 @@ export function groupGames(games: GameColumn[]): DateGroup[] {
 }
 
 // The games in the same left-to-right order the grouped header lays them out.
-export function orderedGames(groups: DateGroup[]): GameColumn[] {
+export function orderedGames<T extends DatedColumn = GameColumn>(groups: DateGroup<T>[]): T[] {
   return groups.flatMap((group) => group.slots.flatMap((slot) => slot.games))
 }
 
@@ -135,7 +141,7 @@ export function slotLabel(dayPart: DayPart, short = false): string {
 
 // Marks the next game day only: 'Today' / 'Tomorrow' when it is, else 'Next game day'. Every
 // other date, and every date once the games are all in the past, gets none.
-export function nextGameDayMarker(groups: DateGroup[], now: Date): { dateKey: string; text: string } | null {
+export function nextGameDayMarker(groups: DateGroup<DatedColumn>[], now: Date): { dateKey: string; text: string } | null {
   const today = startOfDay(now)
   const next = groups.find((group) => group.date.getTime() >= today.getTime())
   if (!next) return null

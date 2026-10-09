@@ -48,6 +48,7 @@ import MatchDetailPage from './pages/manage/MatchDetailPage'
 import TeamSelectionHubLayout from './pages/manage/teamSelection/TeamSelectionHubLayout'
 import SelectTeamPage from './pages/manage/teamSelection/SelectTeamPage'
 import MatchesView from './pages/manage/teamSelection/MatchesView'
+import PlayersView from './pages/manage/teamSelection/PlayersView'
 import { PlaceholderView } from './pages/manage/teamSelection/PlaceholderView'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import NewPollPage from './pages/manage/NewPollPage'
@@ -238,7 +239,7 @@ function App() {
               <Route path="team-selection" element={<TeamSelectionHubLayout />}>
                 <Route index element={<Navigate to="matches" replace />} />
                 <Route path="matches" element={<MatchesView />} />
-                <Route path="players" element={<PlaceholderView title="Players" />} />
+                <Route path="players" element={<PlayersView />} />
                 <Route path="slots" element={<PlaceholderView title="Time slots" />} />
                 <Route path="batting" element={<PlaceholderView title="Batting order" />} />
               </Route>

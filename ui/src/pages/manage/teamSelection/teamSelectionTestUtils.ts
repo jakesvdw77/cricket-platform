@@ -1,4 +1,11 @@
-import type { TeamSelectionMatch, TeamSelectionOverview, TeamSelectionSide, TeamSelectionStatus } from '../../../api/teamSelectionApi'
+import type {
+  TeamSelectionCell,
+  TeamSelectionMatch,
+  TeamSelectionOverview,
+  TeamSelectionPlayer,
+  TeamSelectionSide,
+  TeamSelectionStatus,
+} from '../../../api/teamSelectionApi'
 
 // Shared fixtures for the Team selection hub tests and stories (not production code).
 export function makeSide(overrides: Partial<TeamSelectionSide> = {}): TeamSelectionSide {
@@ -87,4 +94,12 @@ export function sampleMatches(): TeamSelectionMatch[] {
       'ANNOUNCED',
     ),
   ]
+}
+
+export function makeCell(overrides: Partial<TeamSelectionCell> = {}): TeamSelectionCell {
+  return { matchId: 'match-1', teamId: 'team-1', sideId: 'side-1', picked: false, pickable: true, reasonCode: null, ...overrides }
+}
+
+export function makePlayer(playerId: string, firstName: string, lastName: string, cells: TeamSelectionCell[]): TeamSelectionPlayer {
+  return { playerId, firstName, lastName, pickedCount: cells.filter((cell) => cell.picked).length, cells }
 }

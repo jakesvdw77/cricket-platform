@@ -1,9 +1,6 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
-import { alpha, darken, lighten } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
-import type { SystemStyleObject } from '@mui/system'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
@@ -12,6 +9,20 @@ import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
 import type { ChangeAnswerHandlers } from './useChangeAnswer'
 import { GridEmptyState } from './GridEmptyState'
 import { Legend } from './Legend'
+import {
+  COUNT_COL_WIDTH,
+  DATE_ROW_HEIGHT,
+  GAME_COL_WIDTH,
+  SCROLL_BOX_MIN_HEIGHT,
+  SLOT_ROW_HEIGHT,
+  clampTwoLinesSx,
+  headCellSx,
+  hoverTint,
+  numberSx,
+  pinnedHeightSx,
+  stickyFirstColSx,
+  useFirstColWidth,
+} from './gridStyles'
 import {
   cellFor,
   cellLabel,
@@ -34,62 +45,11 @@ import {
 // sideways. Header rows are sticky at fixed heights so each row can offset the one above it.
 // docs/specs/085 (D1): its height is measured (useFillViewportHeight) so the box ends at the bottom of the window and
 // the page itself does not scroll; below SCROLL_BOX_MIN_HEIGHT the page scrolls instead.
-export const SCROLL_BOX_MIN_HEIGHT = 150
-export const DATE_ROW_HEIGHT = 34
-export const SLOT_ROW_HEIGHT = 26
-// The player column sizes to its content between these bounds; the real width is measured at runtime
-// (see firstColWidth) so the sticky date headers and scrollToGame offsets clear it exactly.
-const FIRST_COL_MIN_WIDTH = { xs: 150, sm: 180 }
-const FIRST_COL_MAX_WIDTH = 320
-const GAME_COL_WIDTH = { xs: 104, sm: 128 }
-const COUNT_COL_WIDTH = 64
+export { DATE_ROW_HEIGHT, SCROLL_BOX_MIN_HEIGHT, SLOT_ROW_HEIGHT }
 
 export interface AvailabilityGridHandle {
   // Scrolls the grid sideways so the given game's column sits next to the sticky player column.
   scrollToGame: (matchId: string) => void
-}
-
-const stickyFirstColSx: SystemStyleObject<Theme> = {
-  position: 'sticky',
-  left: 0,
-  bgcolor: 'background.paper',
-  width: 'max-content',
-  minWidth: FIRST_COL_MIN_WIDTH,
-  maxWidth: FIRST_COL_MAX_WIDTH,
-  // The right-hand edge reads as a divider with a soft shadow, so scrolled columns visibly pass under it.
-  boxShadow: (theme: Theme) => `inset -1px 0 0 ${theme.palette.divider}, 2px 0 4px ${alpha(theme.palette.text.primary, 0.06)}`,
-}
-
-const headCellSx: SystemStyleObject<Theme> = {
-  position: 'sticky',
-  bgcolor: 'background.paper',
-  fontWeight: 600,
-  p: 0.5,
-  whiteSpace: 'nowrap',
-  textAlign: 'center',
-}
-
-// Opaque tints (never alpha) so the sticky player cell never lets scrolled content show through.
-const hoverTint = (theme: Theme) =>
-  theme.palette.mode === 'dark' ? darken(theme.palette.primary.main, 0.6) : lighten(theme.palette.primary.main, 0.86)
-
-const numberSx = { fontVariantNumeric: 'tabular-nums' }
-
-// A sticky header row whose height cannot grow: the cell's border-box height is pinned to the
-// constant (TableRow height is only a minimum) and its content clipped, so the next sticky row's
-// `top` (the exact sum of the pinned heights above it) never overlaps or leaves a gap.
-function pinnedHeightSx(height: number): SystemStyleObject<Theme> {
-  return { height, maxHeight: height, boxSizing: 'border-box', py: 0, lineHeight: `${height}px`, overflow: 'clip' }
-}
-
-const clampTwoLinesSx = {
-  fontWeight: 600,
-  lineHeight: 1.25,
-  display: '-webkit-box',
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
-  overflow: 'hidden',
-  wordBreak: 'break-word',
 }
 
 function GameHeader({
@@ -178,29 +138,13 @@ export const AvailabilityGrid = forwardRef<
 >(function AvailabilityGrid({ games, players, now, changeAnswer }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
-  const firstColRef = useRef<HTMLTableCellElement>(null)
-  const [firstColWidth, setFirstColWidth] = useState<number>(FIRST_COL_MIN_WIDTH.sm)
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
 
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now ?? new Date()), [groups, now])
 
-  // The player column is content-sized, so measure it: the sticky date labels and the scroll margin
-  // need its real width to sit just right of it.
-  useLayoutEffect(() => {
-    const element = firstColRef.current
-    if (!element) return undefined
-    const measure = () => {
-      const width = Math.round(element.getBoundingClientRect().width)
-      if (width > 0) setFirstColWidth(width)
-    }
-    measure()
-    if (typeof ResizeObserver === 'undefined') return undefined
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [players, games])
+  const { ref: firstColRef, width: firstColWidth } = useFirstColWidth([players, games])
 
   useImperativeHandle(ref, () => ({
     scrollToGame: (matchId: string) => {
