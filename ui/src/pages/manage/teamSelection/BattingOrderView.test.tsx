@@ -259,12 +259,54 @@ describe('BattingOrderView', () => {
       expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(6)
     })
 
-    it('offers no arrows on an announced side', async () => {
+    describe('on an announced side', () => {
+      const move = 'Move Eve Smith down, Vets A v Vets B, Vets B'
+      const announcedSide = () => {
+        const data = makeOverview([
+          makeMatch({
+            matchId: 'x-1',
+            label: 'Vets A v Oakfield',
+            sides: [makeSide({ announced: true, picks: [makePick('ann', 1), makePick('bob', 2)], pickedCount: 2 })],
+          }),
+        ])
+        get.mockResolvedValue({ data })
+      }
+
+      it('shows the arrows', async () => {
+        renderView()
+        await screen.findByTestId('batting-cell-m-3-team-b-1')
+        expect(within(cellAt('m-3', 'team-b', 1)).getAllByRole('button')).toHaveLength(2)
+        expect(screen.getByRole('button', { name: move })).toBeInTheDocument()
+      })
+
+      it('asks first, and does nothing on cancel', async () => {
+        announcedSide()
+        renderView()
+        await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByText('Change an announced team?')).toBeInTheDocument()
+        expect(reorderMatchSidePlayers).not.toHaveBeenCalled()
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(reorderMatchSidePlayers).not.toHaveBeenCalled()
+      })
+
+      it('sends the reorder on confirm', async () => {
+        announcedSide()
+        renderView()
+        await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
+        await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Move and un-announce' }))
+        await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
+        expect(reorderMatchSidePlayers).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', ['bob', 'ann'])
+      })
+    })
+
+    it('moves a non-announced side immediately, with no dialog', async () => {
+      threeBatters()
       renderView()
-      await screen.findByTestId('batting-cell-m-3-team-b-1')
-      expect(cellAt('m-3', 'team-b', 1)).toHaveTextContent('Eve Smith')
-      expect(within(cellAt('m-3', 'team-b', 1)).queryByRole('button')).not.toBeInTheDocument()
-      expect(within(cellAt('m-1', 'team-1', 1)).getAllByRole('button')).toHaveLength(2)
+      await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
     })
   })
 })

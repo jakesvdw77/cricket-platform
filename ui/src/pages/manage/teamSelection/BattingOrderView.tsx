@@ -4,6 +4,7 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
+import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { SelectionGauge } from '../../../components/SelectionGauge'
 import type { TeamSelectionMatch, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
@@ -187,7 +188,7 @@ function BattingMatrix({
                     {pick && (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.25 }}>
                         <PickedName pick={pick} />
-                        {!side.announced && side.sideId !== null && (
+                        {side.sideId !== null && (
                           <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
                             <IconButton
                               size="small"
@@ -329,6 +330,12 @@ export default function BattingOrderView() {
   const picker = usePlayerPick(clubId as string)
   const announce = useAnnounceSide(clubId as string)
   const [adding, setAdding] = useState<AddTarget | null>(null)
+  const [pendingMove, setPendingMove] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide; playerId: string; direction: -1 | 1 } | null>(null)
+  // The server un-announces a side on any edit, so a move on an announced side is confirmed first.
+  const requestMove = (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => {
+    if (side.announced) setPendingMove({ match, side, playerId, direction })
+    else picker.move(match, side, playerId, direction)
+  }
 
   return (
     <MatchesFrame
@@ -358,7 +365,7 @@ export default function BattingOrderView() {
               matches={matches}
               busy={picker.busy}
               onAdd={setAdding}
-              onMove={picker.move}
+              onMove={requestMove}
               announcingSideId={announce.announcingSideId}
               onAnnounce={announce.request}
             />
@@ -379,6 +386,17 @@ export default function BattingOrderView() {
               ))}
             </Menu>
             {announce.dialog}
+            <ConfirmDialog
+              open={pendingMove !== null}
+              title="Change an announced team?"
+              description="Moving a batter un-announces this team. It will need to be announced again."
+              confirmLabel="Move and un-announce"
+              onConfirm={() => {
+                if (pendingMove) picker.move(pendingMove.match, pendingMove.side, pendingMove.playerId, pendingMove.direction)
+                setPendingMove(null)
+              }}
+              onClose={() => setPendingMove(null)}
+            />
           </>
         )
       }}
