@@ -167,3 +167,49 @@ List views for Matches and Polls (own specs and mockups, roadmap item exists), s
 - Results: backend 1,827 tests green (full run in a scratch copy, including new tests for the two games queries, the list counts and a list statement-count guard); frontend suite green with `--maxWorkers=2`; Storybook stories for `PlayerCard`, `PlayerTable` and `ListViewToggle` green.
 - Not checked in a browser: the chips' equal width, the list view at desktop and phone widths, the sticky header inside the real page, and the remembered view across a reload. The running backend must be restarted for the new numbers.
 
+---
+
+# Plan: spec 088 section G — the Player page redesign (frontend only)
+
+## Context
+
+Spec 088 section **G** (mockup boards 9 and 10, approved by the user 2026-10-09: "looks amazing") redesigns the Player page, which the user found dull. The Edit button is already the filled primary button. Remaining: a bigger header, a strip of four key figures (**Games this season**, **Games overall**, **Jersey number**, **Age**), icon-tile card headings with labels over bold values, **Call** and **Email** buttons, the cricket details as chips, and a **Stats** card with the real games counts. No backend change; same data, same Status button, menu and banner. All work stays on `feat/087-slice-1-shared-pieces`.
+
+## Findings that shape the plan
+
+- `PlayerDetailPage` has no single-player GET: it calls `listPlayers(clubId)` and selects by id. The games counts come only from the list, and "this season" needs `seasonId`, so the page must send the default season (as `PlayerList` does) and wait for the seasons query; otherwise `gamesThisSeason` would show 0.
+- The page's query key is the bare `['managed-club', clubId, 'players']`, which `usePlayerStatusActions` invalidates by prefix; adding the season to the key keeps that working.
+- `formatDateOfBirth` exists privately in `PlayerCard`; the page needs the same formatting plus an age, so both move to one shared helper.
+- `DetailFieldRow` (icon + label + value) is used by other detail pages; this page stops using it and gets its own label-over-value grid, so nothing else changes.
+- Cards are page-specific, not reusable, so they live under `pages/manage/playerDetail/` (no four-file anatomy needed); `Card`, `PageHeaderBand`, `badgeSx`, `avatarSx`, `playerStatusBadge`, `PlayerStatusMenu` and `usePlayerStatusActions` are reused as they are.
+
+## Decisions to confirm (the spec fixes the design; these are my readings)
+
+1. **Age is the calendar age today** from the date of birth (completed years); with no date of birth the tile shows "–" with the caption "No date of birth". The tile caption is the birth date ("Age · born 1 Jan 1980").
+2. **Call and Email** are `tel:` and `mailto:` links, rendered only when the phone number or email exists, on the Contact card (full-width 44 px halves on a phone). The Alternative contact phone gets no button.
+3. **Stats card:** Games this season and Games overall (real) plus Runs and Wickets as "–" under a "More coming soon" note. The old Matches and Average placeholders go (the mockup drops them); their `Coming soon` chip becomes the note.
+4. **Cricket chips** always show all three (Bats, Bowls, Wicketkeeper); one that is not on file or "No" is a dashed muted chip, so the card keeps its shape.
+5. **Header buttons on a phone** become two full-width halves under the header (Status, Edit), as the mockup.
+6. The detail page keeps fetching the whole list (no new endpoint), now with the season.
+
+## Changes — `frontend-builder` (all under `ui/src/`)
+
+1. **`utils/playerFormat.ts`** (new): `formatDateOfBirth(value: string | null)` (moved from `PlayerCard`, same `en-GB` "4 Mar 1991" output and "–" when none) and `ageFromDateOfBirth(value: string | null, now = new Date())` (completed years, `null` for none or invalid). `components/PlayerCard/PlayerCard.tsx` imports the shared formatter. Test.
+2. **`pages/manage/playerDetail/PlayerKeyFigures.tsx`** (new): the four tiles (each a tinted 44 px icon tile, the large figure, the label; two across on a phone; plain, not buttons): Games this season, Games overall, Jersey number (`#9`, "–" when none), Age with the birth-date caption. Icons: `EventAvailableOutlined`, `HistoryOutlined`, `TagOutlined`, `CakeOutlined`.
+3. **`pages/manage/playerDetail/PlayerInfoCard.tsx`** (new): a card with a solid-green 32 px icon tile and an uppercase heading (optional right-hand note), a two-column grid of label-over-value fields ("–" in the secondary colour when empty), optional chips and optional action buttons; equal-height cards in the 2x2 grid.
+4. **`pages/manage/PlayerDetailPage.tsx`** (edit): `useAvailabilitySeason` and a list query that waits for seasons and sends `seasonId` (key includes it); header with the 80 px avatar (72 px on a phone) and soft ring, the name at `h1` 1.75 rem (`1.4 rem` on a phone), the status badge and section path under it, Status and Edit buttons (halves under the header on a phone); the key-figure strip; the four cards via `PlayerInfoCard` (Basic info with "1 Jan 1980 · 46 yrs"; Contact info with Call and Email; Cricket info as chips; Stats as above); the banner, menu and dialogs unchanged.
+5. **Tests** (`test-writer`): `playerFormat.test.ts` (format, age on birthdays and the day before, invalid and null); `PlayerKeyFigures.test.tsx` (the four figures and captions, "–" cases); `PlayerInfoCard.test.tsx` (heading, fields, "–", chips, actions, note); `PlayerDetailPage.test.tsx` updated for the new structure (the list request carries `seasonId` and waits for seasons, the key figures show the real games counts, Call and Email only when present with the right hrefs, cricket chips including the dashed ones, the Stats card with real games and "More coming soon", existing status, banner and Edit tests kept, the Medical aid and no-sections tests adjusted to the new markup).
+6. **Docs:** a short "Player page" paragraph in `docs/standards/design-system.md` (key-figure strip, icon-tile card headings, chips for cricket details), spec status line, and this plan appended to `docs/plans/088-players-polls-alignment.md`.
+
+## Order and commits
+
+1. `playerFormat` + `PlayerCard` import (commit). 2. `PlayerKeyFigures`, `PlayerInfoCard` and their tests (commit). 3. `PlayerDetailPage` + its tests (commit). 4. Docs (commit). Conventional commits tagged `(088)`.
+
+## Verification
+
+- `nvm use 22.12.0` in `ui/`: `npx tsc -b`, `npm run lint`, `npx vitest run --project=unit --maxWorkers=2` (full run; it takes several minutes), the `PlayerCard` stories still pass (`--project=storybook src/components/PlayerCard`).
+- Manual (needs the user at their PC): the page at desktop and phone widths against boards 9 and 10; the games tiles match the player's card chips; Call and Email open the dialer and mail client; an unverified player still shows the banner; the Status and Edit buttons.
+
+## Not in this plan
+
+Backend work, a single-player endpoint, real runs/wickets/average statistics, the other detail pages' Edit colour (offered to the user, not asked for).
