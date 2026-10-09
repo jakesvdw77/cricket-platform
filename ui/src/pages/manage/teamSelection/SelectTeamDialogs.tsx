@@ -1,11 +1,10 @@
 import { Box, Tab, Tabs } from '@mui/material'
-import { BrandIcon } from '../../../components/BrandIcon'
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { CreateAndLinkRecordDialog } from '../../../components/CreateAndLinkRecordDialog'
 import { PlayerForm, PLAYER_FORM_ID } from '../../../components/PlayerForm'
 import { SelectPlayersDialog } from '../../../components/SelectPlayersDialog'
 import type { PlayerPayload } from '../../../api/playerApi'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
+import { AnnounceTeamDialog } from './AnnounceTeamDialog'
 import type { MatchSidePanel } from './useMatchSidePanel'
 
 // The dialogs of the Select team page (docs/specs/076, moved from the Edit Match XI tabs by docs/specs/093): the announce
@@ -17,16 +16,17 @@ export function SelectTeamDialogs({ panel, teamName, matchDate }: { panel: Match
   }
   return (
     <>
-      <ConfirmDialog
+      <AnnounceTeamDialog
         open={panel.confirmAnnounce}
-        title="Announce this team?"
-        icon={<BrandIcon name="actions/announce-team" size={40} />}
-        description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
-        confirmLabel="Announce team"
-        pendingLabel="Announcing…"
+        candidates={side.players
+          .filter((player) => player.playerProfileId !== side.twelfthManPlayerId)
+          .map((player) => ({ playerId: player.playerProfileId, name: panel.nameOf(player.playerProfileId) }))}
+        captainMissing={!side.captainPlayerId}
+        keeperMissing={!side.wicketKeeperPlayerId}
         pending={panel.announcePending}
+        errorMessage={panel.announceError}
         onConfirm={panel.announce}
-        onClose={() => panel.setConfirmAnnounce(false)}
+        onClose={panel.closeAnnounce}
       />
 
       {dialog.open && (

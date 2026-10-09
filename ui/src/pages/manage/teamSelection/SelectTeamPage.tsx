@@ -36,6 +36,7 @@ import type { MatchSquadCoverage, PollDestination } from '../matches/matchCardHe
 import { TeamLogo } from '../matches/TeamLogo'
 import { logoFor } from '../matches/teamLogoHelpers'
 import { useAvailabilityNavigation } from '../matches/useAvailabilityNavigation'
+import { RolePickerTile } from './RolePickerTile'
 import { SelectTeamDialogs } from './SelectTeamDialogs'
 import { sideDisplayName, sideStatus } from './matchSideHelpers'
 import { STATUS_LABELS } from './selectionStatus'
@@ -221,6 +222,10 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
   const nameOfCaptain = side?.captainPlayerId ? panel.nameOf(side.captainPlayerId) : null
   const nameOfKeeper = side?.wicketKeeperPlayerId ? panel.nameOf(side.wicketKeeperPlayerId) : null
   const limits = side?.limits
+  // A role can go to any picked player except the 12th man.
+  const rolePlayers = (side?.players ?? [])
+    .filter((player) => player.playerProfileId !== side?.twelfthManPlayerId)
+    .map((player) => ({ playerId: player.playerProfileId, name: panel.nameOf(player.playerProfileId) }))
   const blockedReasonId = side ? `announce-blocked-${side.id}` : undefined
   const subtitle = [formatMatchDateTime(match.matchDate), leagueName].filter(Boolean).join(' · ')
 
@@ -381,8 +386,26 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
           value={limits ? `${panel.selectedCount} of ${limits.maxSelected}` : '–'}
           label="Selected"
         />
-        <KeyFigureTile testId="select-captain" icon={<StarBorderOutlinedIcon fontSize="small" />} value={nameOfCaptain ?? '–'} label="Captain" textValue />
-        <KeyFigureTile testId="select-keeper" icon={<PanToolOutlinedIcon fontSize="small" />} value={nameOfKeeper ?? '–'} label="Wicketkeeper" textValue />
+        <RolePickerTile
+          testId="select-captain"
+          icon={<StarBorderOutlinedIcon fontSize="small" />}
+          label="Captain"
+          currentId={side?.captainPlayerId ?? null}
+          currentName={nameOfCaptain}
+          players={rolePlayers}
+          disabled={!side || panel.writing}
+          onChange={panel.onSetCaptain}
+        />
+        <RolePickerTile
+          testId="select-keeper"
+          icon={<PanToolOutlinedIcon fontSize="small" />}
+          label="Wicketkeeper"
+          currentId={side?.wicketKeeperPlayerId ?? null}
+          currentName={nameOfKeeper}
+          players={rolePlayers}
+          disabled={!side || panel.writing}
+          onChange={panel.onSetWicketKeeper}
+        />
         <KeyFigureTile
           testId="select-status"
           icon={<TaskAltOutlinedIcon fontSize="small" />}

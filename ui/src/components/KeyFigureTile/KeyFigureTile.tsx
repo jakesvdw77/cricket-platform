@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 
 export interface KeyFigureTileProps {
   // A 20 px MUI outlined icon, drawn on the tinted tile.
@@ -12,17 +13,41 @@ export interface KeyFigureTileProps {
   // A long text value (a league name) at a smaller size than a number.
   textValue?: boolean
   testId?: string
+  // Makes the tile a picker: it renders as a button with a small dropdown arrow and calls this on click (the caller owns
+  // the menu it opens). `ariaLabel` is its accessible name, `expanded` its open state.
+  onClick?: (event: MouseEvent<HTMLElement>) => void
+  ariaLabel?: string
+  expanded?: boolean
+  disabled?: boolean
 }
 
 // docs/specs/088 (Player page) and docs/specs/089 (match page): one non-clickable tile of a key-figure strip - a tinted
 // icon tile, a large value and a caption. The strip itself (a 4-up / 2-up grid) belongs to the page.
-export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId }: KeyFigureTileProps) {
+export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false }: KeyFigureTileProps) {
   const warn = tone === 'warning'
   return (
     <Box
+      component={onClick ? 'button' : 'div'}
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      disabled={onClick ? disabled : undefined}
+      aria-label={onClick ? ariaLabel : undefined}
+      aria-haspopup={onClick ? 'menu' : undefined}
+      aria-expanded={onClick ? Boolean(expanded) : undefined}
       data-testid={testId}
       data-tone={warn ? 'warning' : 'neutral'}
       sx={{
+        ...(onClick && {
+          border: 0,
+          font: 'inherit',
+          color: 'inherit',
+          textAlign: 'left',
+          width: '100%',
+          cursor: 'pointer',
+          '&:hover:not(:disabled)': { bgcolor: 'action.hover' },
+          '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+          '&:disabled': { cursor: 'default', opacity: 0.6 },
+        }),
         display: 'flex',
         alignItems: 'center',
         gap: { xs: 1.25, md: 1.75 },
@@ -35,6 +60,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
       }}
     >
       <Box
+        component="span"
         aria-hidden
         sx={(theme) => ({
           width: { xs: 36, md: 44 },
@@ -50,7 +76,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
       >
         {icon}
       </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <Box component="span" sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
         <Typography
           component="b"
           data-testid={testId ? `${testId}-value` : undefined}
@@ -68,6 +94,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
           {label}
         </Typography>
       </Box>
+      {onClick && <ArrowDropDownIcon aria-hidden sx={{ flex: 'none', color: 'text.secondary' }} />}
     </Box>
   )
 }

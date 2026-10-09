@@ -26,6 +26,7 @@ vi.mock('../../../api/matchSideApi', () => ({
   createMatchSide: (...args: unknown[]) => createMatchSide(...args),
   removeMatchSidePlayer: (...args: unknown[]) => removeMatchSidePlayer(...args),
   announceMatchSide: (...args: unknown[]) => announceMatchSide(...args),
+  updateMatchSide: vi.fn(),
   reorderMatchSidePlayers: (...args: unknown[]) => reorderMatchSidePlayers(...args),
 }))
 
@@ -159,7 +160,7 @@ describe('BattingOrderView', () => {
     renderView()
     await userEvent.click(await screen.findByRole('button', { name: 'Announce team, Vets A v Vets B, Vets A' }))
     expect(announceMatchSide).not.toHaveBeenCalled()
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce team' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce anyway' }))
     await waitFor(() => expect(announceMatchSide).toHaveBeenCalledWith('club-1', 'm-3', 's-a'))
   })
 

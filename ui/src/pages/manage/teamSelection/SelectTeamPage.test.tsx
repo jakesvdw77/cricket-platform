@@ -422,7 +422,7 @@ describe('SelectTeamPage', () => {
       const spy = vi.spyOn(queryClient, 'invalidateQueries')
 
       await user.click(await screen.findByRole('button', { name: 'Announce team' }))
-      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce team' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce anyway' }))
 
       await waitFor(() => expect(announceMatchSide).toHaveBeenCalled())
       await waitFor(() =>
@@ -782,6 +782,70 @@ describe('SelectTeamPage', () => {
       ])
     })
 
+    describe('Captain and Wicketkeeper pickers', () => {
+      const TWELFTH = {
+        players: [...FULL_PLAYERS, { playerProfileId: 'player-3', battingOrder: null, role: 'BATSMAN' as const }],
+        twelfthManPlayerId: 'player-3',
+      }
+      const POOL3 = () =>
+        makePool([
+          makeEntry('player-1', 'Jane', 'Smith', { selected: true }),
+          makeEntry('player-2', 'Bob', 'Jones', { selected: true }),
+          makeEntry('player-3', 'Tom', 'Twelfth', { selected: true }),
+        ], 'SQUAD')
+
+      it('the Captain tile lists the picked players without the 12th man, ticks the current one and offers None', async () => {
+        const user = await openHomeXi({ ...TWELFTH, captainPlayerId: 'player-2' }, POOL3())
+        await user.click(screen.getByRole('button', { name: 'Captain: Bob Jones, change' }))
+        const items = within(await screen.findByRole('menu', { name: 'Captain' })).getAllByRole('menuitemradio')
+        expect(items.map((item) => item.textContent)).toEqual(['None', 'Jane Smith', 'Bob Jones'])
+        expect(items.map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true'])
+      })
+
+      it('choosing a captain sends the full payload keeping the keeper and 12th man', async () => {
+        const user = await openHomeXi({ ...TWELFTH, wicketKeeperPlayerId: 'player-2' }, POOL3())
+        updateMatchSide.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Captain: none, change' }))
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Jane Smith' }))
+        await waitFor(() =>
+          expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+            captainPlayerId: 'player-1',
+            wicketKeeperPlayerId: 'player-2',
+            twelfthManPlayerId: 'player-3',
+          }),
+        )
+      })
+
+      it('None on the Wicketkeeper tile clears the keeper and keeps the captain', async () => {
+        const user = await openHomeXi({ captainPlayerId: 'player-1', wicketKeeperPlayerId: 'player-2' })
+        updateMatchSide.mockResolvedValue(makeSide())
+        await user.click(screen.getByRole('button', { name: 'Wicketkeeper: Bob Jones, change' }))
+        await user.click(await screen.findByRole('menuitemradio', { name: 'None' }))
+        await waitFor(() =>
+          expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+            captainPlayerId: 'player-1',
+            wicketKeeperPlayerId: null,
+            twelfthManPlayerId: null,
+          }),
+        )
+      })
+
+      it('choosing the ticked player changes nothing', async () => {
+        const user = await openHomeXi({ captainPlayerId: 'player-1' })
+        await user.click(screen.getByRole('button', { name: 'Captain: Jane Smith, change' }))
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Jane Smith' }))
+        expect(updateMatchSide).not.toHaveBeenCalled()
+      })
+
+      it('the tiles are disabled while a write is in flight', async () => {
+        const user = await openHomeXi({ wicketKeeperPlayerId: 'player-2' })
+        updateMatchSide.mockReturnValue(new Promise(() => {}))
+        await user.click(screen.getByRole('button', { name: 'Captain: none, change' }))
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Jane Smith' }))
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Wicketkeeper: Bob Jones, change' })).toBeDisabled())
+      })
+    })
+
     describe('Share team', () => {
       it('is disabled, with a tooltip, until the side is announced', async () => {
         const user = await openHomeXi()
@@ -841,9 +905,84 @@ describe('SelectTeamPage', () => {
         expect(dialog.querySelector('img')).not.toBeNull()
         expect(announceMatchSide).not.toHaveBeenCalled()
 
-        await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+        await user.click(within(dialog).getByRole('button', { name: 'Announce anyway' }))
         await waitFor(() => expect(announceMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1'))
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      })
+
+      it('shows no warnings and reads Announce team when both roles are set', async () => {
+        const user = await openHomeXi({ captainPlayerId: 'player-1', wicketKeeperPlayerId: 'player-2' })
+        announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
+        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).queryByText('No captain selected.')).not.toBeInTheDocument()
+        expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
+        await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+        await waitFor(() => expect(announceMatchSide).toHaveBeenCalledTimes(1))
+        expect(updateMatchSide).not.toHaveBeenCalled()
+      })
+
+      it('warns about a missing captain and keeper, offers the picked players but not the 12th man, and announces anyway', async () => {
+        const user = await openHomeXi({
+          players: [...FULL_PLAYERS, { playerProfileId: 'player-3', battingOrder: null, role: 'BATSMAN' }],
+          twelfthManPlayerId: 'player-3',
+        }, makePool([
+          makeEntry('player-1', 'Jane', 'Smith', { selected: true }),
+          makeEntry('player-2', 'Bob', 'Jones', { selected: true }),
+          makeEntry('player-3', 'Tom', 'Twelfth', { selected: true }),
+        ], 'SQUAD'))
+        announceMatchSide.mockResolvedValue(makeSide({ announced: true }))
+        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByText('No captain selected.')).toBeInTheDocument()
+        expect(within(dialog).getByText('No wicketkeeper selected.')).toBeInTheDocument()
+        await user.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
+        const options = within(await screen.findByRole('listbox')).getAllByRole('option').map((option) => option.textContent)
+        expect(options).toEqual(['None', 'Jane Smith', 'Bob Jones'])
+        await user.keyboard('{Escape}')
+        await user.click(within(dialog).getByRole('button', { name: 'Announce anyway' }))
+        await waitFor(() => expect(announceMatchSide).toHaveBeenCalledTimes(1))
+        expect(updateMatchSide).not.toHaveBeenCalled()
+      })
+
+      it('saves a chosen captain (keeping the keeper and 12th man) before announcing', async () => {
+        const user = await openHomeXi({ wicketKeeperPlayerId: 'player-2', twelfthManPlayerId: null })
+        const order: string[] = []
+        updateMatchSide.mockImplementation(async () => {
+          order.push('update')
+          return makeSide()
+        })
+        announceMatchSide.mockImplementation(async () => {
+          order.push('announce')
+          return makeSide({ announced: true })
+        })
+        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
+        await user.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
+        await user.click(await screen.findByRole('option', { name: 'Jane Smith' }))
+        await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+        await waitFor(() => expect(announceMatchSide).toHaveBeenCalledTimes(1))
+        expect(updateMatchSide).toHaveBeenCalledWith('test-club-id', 'match-1', 'side-1', {
+          captainPlayerId: 'player-1',
+          wicketKeeperPlayerId: 'player-2',
+          twelfthManPlayerId: null,
+        })
+        expect(order).toEqual(['update', 'announce'])
+      })
+
+      it('does not announce, and shows the error, when saving the chosen role fails', async () => {
+        const user = await openHomeXi({ wicketKeeperPlayerId: 'player-2' })
+        updateMatchSide.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { detail: 'Role save refused' } } })
+        await user.click(screen.getByRole('button', { name: 'Announce team' }))
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
+        await user.click(await screen.findByRole('option', { name: 'Jane Smith' }))
+        await user.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+        await waitFor(() => expect(updateMatchSide).toHaveBeenCalledTimes(1))
+        expect(await within(dialog).findByText('Role save refused')).toBeInTheDocument()
+        expect(announceMatchSide).not.toHaveBeenCalled()
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
 
       it('Cancel on the confirmation announces nothing', async () => {

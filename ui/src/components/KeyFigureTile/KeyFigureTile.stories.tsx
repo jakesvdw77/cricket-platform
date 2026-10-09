@@ -22,3 +22,8 @@ export const Text: Story = {
 export const Warning: Story = {
   args: { icon: <EventAvailableOutlinedIcon />, value: 'Thu 15 Oct', label: 'Starts 07:15 · in 5 hours', tone: 'warning' },
 }
+
+// A picker: the tile opens a menu owned by the page (Select team page Captain and Wicketkeeper).
+export const Picker: Story = {
+  args: { icon: <EventAvailableOutlinedIcon />, value: 'Michiel Boshoff', label: 'Captain', textValue: true, onClick: () => {}, ariaLabel: 'Captain: Michiel Boshoff, change' },
+}

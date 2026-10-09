@@ -5,7 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamSelectionHubLayout from './TeamSelectionHubLayout'
 import MatchesView from './MatchesView'
-import { makeMatch, makeOverview, sampleMatches } from './teamSelectionTestUtils'
+import { makeMatch, makeOverview, makePick, sampleMatches } from './teamSelectionTestUtils'
 
 vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
 vi.mock('../../../api/sectionApi', () => ({ listSections: () => Promise.resolve([]) }))
@@ -25,7 +25,11 @@ const getTeamSelection = {
 const lastParams = () => get.mock.lastCall?.[1].params
 vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await import('./teamSelectionShareMock')).useFakeTeamSheetShare }))
 const announceMatchSide = vi.fn()
-vi.mock('../../../api/matchSideApi', () => ({ announceMatchSide: (...args: unknown[]) => announceMatchSide(...args) }))
+const updateMatchSide = vi.fn()
+vi.mock('../../../api/matchSideApi', () => ({
+  announceMatchSide: (...args: unknown[]) => announceMatchSide(...args),
+  updateMatchSide: (...args: unknown[]) => updateMatchSide(...args),
+}))
 
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -51,6 +55,7 @@ beforeEach(() => {
   getTeamSelection.mockReset()
   getTeamSelection.mockResolvedValue(makeOverview(sampleMatches()))
   announceMatchSide.mockReset()
+  updateMatchSide.mockReset()
 })
 
 describe('MatchesView', () => {
@@ -124,8 +129,36 @@ describe('MatchesView', () => {
     renderView()
     await screen.findAllByTestId('selection-row')
     await userEvent.click(screen.getByRole('button', { name: 'Announce' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Announce team' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('No captain selected.')).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Announce anyway' }))
     await waitFor(() => expect(announceMatchSide).toHaveBeenCalledWith('club-1', 'm-3', 'side-3'))
+    expect(updateMatchSide).not.toHaveBeenCalled()
+  })
+
+  it('saves a captain chosen in the dialog from the row picks, keeping the keeper, before announcing', async () => {
+    const matches = sampleMatches()
+    matches[2].sides[0] = {
+      ...matches[2].sides[0],
+      wicketKeeperPlayerId: 'bob',
+      twelfthManPlayerId: 'cy',
+      picks: [makePick('ann', 1), makePick('bob', 2, { wicketKeeper: true }), makePick('cy', null, { twelfthMan: true })],
+    }
+    getTeamSelection.mockResolvedValue(makeOverview(matches))
+    updateMatchSide.mockResolvedValue({})
+    announceMatchSide.mockResolvedValue({})
+    renderView()
+    await screen.findAllByTestId('selection-row')
+    await userEvent.click(screen.getByRole('button', { name: 'Announce' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('No wicketkeeper selected.')).not.toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'Captain' }))
+    expect(within(await screen.findByRole('listbox')).getAllByRole('option').map((option) => option.textContent)).toEqual(['None', 'Ann Smith', 'Bob Smith'])
+    await userEvent.click(screen.getByRole('option', { name: 'Ann Smith' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Announce team' }))
+    await waitFor(() => expect(announceMatchSide).toHaveBeenCalledWith('club-1', 'm-3', 'side-3'))
+    expect(updateMatchSide).toHaveBeenCalledWith('club-1', 'm-3', 'side-3', { captainPlayerId: 'ann', wicketKeeperPlayerId: 'bob', twelfthManPlayerId: 'cy' })
+    expect(updateMatchSide.mock.invocationCallOrder[0]).toBeLessThan(announceMatchSide.mock.invocationCallOrder[0])
   })
 
   it('shows an error state when the overview fails', async () => {

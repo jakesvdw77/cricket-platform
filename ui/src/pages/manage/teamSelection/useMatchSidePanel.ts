@@ -10,7 +10,6 @@ import { addToSquad } from '../../../api/teamSquadApi'
 import { createPlayer } from '../../../api/playerApi'
 import type { PlayerPayload } from '../../../api/playerApi'
 import {
-  announceMatchSide,
   createMatchSide,
   listMatchSides,
   removeMatchSidePlayer,
@@ -28,6 +27,8 @@ import { setRoundPlayerStatus } from '../../../api/sectionAvailabilityApi'
 import { getMatchSquad } from '../../../api/matchSquadApi'
 import { invalidateAvailabilityCounters } from '../../../api/availabilitySummaryApi'
 import { invalidateTeamSelection } from '../../../api/teamSelectionApi'
+import { announceWithRoles } from './announceWithRoles'
+import type { AnnounceRoleChoices } from './announceWithRoles'
 import { errorDetail } from '../../../utils/errorDetail'
 import {
   announceBlockedReason,
@@ -205,8 +206,22 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
 
   // docs/specs/040-announce-team.md
   const announceMutation = useMutation({
-    mutationFn: () => announceMatchSide(clubId, matchId, sideId as string),
-    onSuccess: invalidateSelection,
+    mutationFn: (choices?: AnnounceRoleChoices) =>
+      announceWithRoles(
+        clubId,
+        matchId,
+        sideId as string,
+        {
+          captainPlayerId: side?.captainPlayerId ?? null,
+          wicketKeeperPlayerId: side?.wicketKeeperPlayerId ?? null,
+          twelfthManPlayerId: side?.twelfthManPlayerId ?? null,
+        },
+        choices,
+      ),
+    onSuccess: () => {
+      invalidateSelection()
+      setConfirmAnnounce(false)
+    },
   })
   const unannounceMutation = useMutation({
     mutationFn: () => unannounceMatchSide(clubId, matchId, sideId as string),
@@ -431,6 +446,10 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
     waitingCount,
     blockedReason,
     announcing,
+    // Any write in flight: the strip's pickers wait for it.
+    writing:
+      announcing ||
+      [reorderMutation, updateSideMutation, removeMutation, roleMutation].some((mutation) => mutation.isPending),
     announceError,
     announcePending: announceMutation.isPending,
     unannouncePending: unannounceMutation.isPending,
@@ -438,7 +457,11 @@ export function useMatchSidePanel({ clubId, match, teamId, teamName, teamsById }
     // Announce / Un-announce
     confirmAnnounce,
     setConfirmAnnounce,
-    announce: () => announceMutation.mutate(undefined, { onSettled: () => setConfirmAnnounce(false) }),
+    announce: (choices?: AnnounceRoleChoices) => announceMutation.mutate(choices),
+    closeAnnounce: () => {
+      announceMutation.reset()
+      setConfirmAnnounce(false)
+    },
     unannounce: () => unannounceMutation.mutate(),
     // The list's callbacks (each sends the side's own current values for the fields it does not change)
     onReorder: (ids: string[]) => reorderMutation.mutate(ids),

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Alert } from '@mui/material'
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
-import { announceMatchSide } from '../../../api/matchSideApi'
 import { invalidateTeamSelection } from '../../../api/teamSelectionApi'
 import type { TeamSelectionMatch, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import { errorDetail } from '../../../utils/errorDetail'
+import { AnnounceTeamDialog } from './AnnounceTeamDialog'
+import { announceWithRoles } from './announceWithRoles'
+import type { AnnounceRoleChoices } from './announceWithRoles'
 
 export interface AnnounceTarget {
   match: TeamSelectionMatch
@@ -19,28 +19,43 @@ export function useAnnounceSide(clubId: string) {
   const [pending, setPending] = useState<AnnounceTarget | null>(null)
 
   const mutation = useMutation({
-    mutationFn: (target: AnnounceTarget) => announceMatchSide(clubId, target.match.matchId, target.side.sideId as string),
-    onSuccess: () => invalidateTeamSelection(queryClient, clubId),
-    onSettled: () => setPending(null),
+    mutationFn: ({ target, choices }: { target: AnnounceTarget; choices: AnnounceRoleChoices }) =>
+      announceWithRoles(clubId, target.match.matchId, target.side.sideId as string, target.side, choices),
+    onSuccess: () => {
+      invalidateTeamSelection(queryClient, clubId)
+      setPending(null)
+    },
   })
 
+  const close = () => {
+    mutation.reset()
+    setPending(null)
+  }
+  const side = pending?.side
+  // A role can go to any picked player except the 12th man.
+  const candidates = (side?.picks ?? [])
+    .filter((pick) => pick.playerId !== side?.twelfthManPlayerId && !pick.twelfthMan)
+    .map((pick) => ({ playerId: pick.playerId, name: `${pick.firstName} ${pick.lastName}`.trim() }))
+
   return {
-    request: (match: TeamSelectionMatch, side: TeamSelectionSide) => setPending({ match, side }),
+    request: (match: TeamSelectionMatch, side: TeamSelectionSide) => {
+      mutation.reset()
+      setPending({ match, side })
+    },
     // The side being announced right now.
     announcingSideId: mutation.isPending ? (pending?.side.sideId ?? null) : null,
-    errorAlert: mutation.isError ? (
-      <Alert severity="error">{errorDetail(mutation.error, "Couldn't announce this team. Please try again.")}</Alert>
-    ) : null,
+    // A failure shows inside the dialog, which stays open.
+    errorAlert: null,
     dialog: (
-      <ConfirmDialog
+      <AnnounceTeamDialog
         open={pending !== null}
-        title="Announce this team?"
-        description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
-        confirmLabel="Announce team"
-        pendingLabel="Announcing…"
+        candidates={candidates}
+        captainMissing={!side?.captainPlayerId && !side?.picks.some((pick) => pick.captain)}
+        keeperMissing={!side?.wicketKeeperPlayerId && !side?.picks.some((pick) => pick.wicketKeeper)}
         pending={mutation.isPending}
-        onConfirm={() => pending && mutation.mutate(pending)}
-        onClose={() => setPending(null)}
+        errorMessage={mutation.isError ? errorDetail(mutation.error, "Couldn't announce this team. Please try again.") : null}
+        onConfirm={(choices) => pending && mutation.mutate({ target: pending, choices })}
+        onClose={close}
       />
     ),
   }
