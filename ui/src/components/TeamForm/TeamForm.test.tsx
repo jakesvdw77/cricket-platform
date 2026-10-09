@@ -28,13 +28,10 @@ function makeSection(overrides: Partial<Section> = {}): Section {
 // wiring so the form's submit behaviour can still be exercised in isolation, same pattern as
 // ClubContactForm.test.tsx.
 //
-// `activeSection` defaults to 'details' since it's now a required prop that TeamFormPage's own
-// outer Tabs controls — tests that need Branding/Social Media content pass it explicitly rather
-// than clicking an in-component tab (there's no longer one to click).
-function renderTeamForm(props: Omit<TeamFormProps, 'activeSection'> & { activeSection?: TeamFormProps['activeSection'] }, submitLabel = 'Submit') {
+function renderTeamForm(props: TeamFormProps, submitLabel = 'Submit') {
   return render(
     <>
-      <TeamForm activeSection="details" {...props} />
+      <TeamForm {...props} />
       <button type="submit" form={TEAM_FORM_ID}>
         {submitLabel}
       </button>
@@ -97,8 +94,8 @@ describe('TeamForm', () => {
     renderTeamForm({ onSubmit })
 
     await user.type(screen.getByLabelText('Name'), '1st XI')
-    await user.type(screen.getByLabelText('Abbreviation'), 'ICL')
-    await user.type(screen.getByLabelText('Ground'), 'Irene Country Club')
+    await user.type(screen.getByLabelText('Abbreviation (optional)'), 'ICL')
+    await user.type(screen.getByLabelText('Ground (optional)'), 'Irene Country Club')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -153,38 +150,42 @@ describe('TeamForm', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Existing Team')
   })
 
-  it('prefills abbreviation/ground from initialValues on the details section, and renders SocialLinksFields on the social section', () => {
+  it('renders the Basic info and Branding and social section headings, without helper text', () => {
+    renderTeamForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByRole('heading', { name: 'Basic info' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Branding and social' })).toBeInTheDocument()
+    expect(screen.queryByText(/e\.g\./)).not.toBeInTheDocument()
+    expect(screen.queryByText(/purely descriptive/i)).not.toBeInTheDocument()
+  })
+
+  it('prefills abbreviation/ground from initialValues, and renders SocialLinksFields in the same form', () => {
     renderTeamForm({
       onSubmit: vi.fn(),
       initialValues: { name: 'Existing Team', abbreviation: 'ICL', groundName: 'Irene Country Club' },
     })
 
-    expect(screen.getByLabelText('Abbreviation')).toHaveValue('ICL')
-    expect(screen.getByLabelText('Ground')).toHaveValue('Irene Country Club')
+    expect(screen.getByLabelText('Abbreviation (optional)')).toHaveValue('ICL')
+    expect(screen.getByLabelText('Ground (optional)')).toHaveValue('Irene Country Club')
 
-    renderTeamForm({ onSubmit: vi.fn(), activeSection: 'social' })
     expect(screen.getByText('No social links added yet.')).toBeInTheDocument()
   })
 
-  // docs/specs/057-team-extended-profile.md added these Branding/Social Media field-groups.
-  // Real-user feedback afterward found TeamForm's own nested inner Tabs confusing on top of
-  // TeamFormPage's own outer tabs — TeamFormPage now drives which group is visible via the
-  // `activeSection` prop instead of an in-component tab bar (there's no longer one to click).
-  describe('logo field (activeSection="branding")', () => {
+  // docs/specs/092: Branding and social is the second section of the one form, not a separate tab.
+  describe('logo field', () => {
     it('renders the logo upload control in both create and edit modes', () => {
-      renderTeamForm({ onSubmit: vi.fn(), activeSection: 'branding' })
-      expect(screen.getByText('Logo')).toBeInTheDocument()
+      renderTeamForm({ onSubmit: vi.fn() })
+      expect(screen.getByText('Logo (optional)')).toBeInTheDocument()
 
       renderTeamForm({
         onSubmit: vi.fn(),
-        initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
-        activeSection: 'branding',
+        initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' }
       })
-      expect(screen.getAllByText('Logo').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Logo (optional)').length).toBeGreaterThan(0)
     })
 
     it('shows the club-logo fallback caption when the team has no logo of its own and clubLogoUrl is supplied', () => {
-      renderTeamForm({ onSubmit: vi.fn(), clubLogoUrl: 'https://cdn.example.com/club.png', activeSection: 'branding' })
+      renderTeamForm({ onSubmit: vi.fn(), clubLogoUrl: 'https://cdn.example.com/club.png' })
 
       expect(screen.getByText(/using your club's logo/i)).toBeInTheDocument()
     })
@@ -193,8 +194,7 @@ describe('TeamForm', () => {
       renderTeamForm({
         onSubmit: vi.fn(),
         initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
-        clubLogoUrl: 'https://cdn.example.com/club.png',
-        activeSection: 'branding',
+        clubLogoUrl: 'https://cdn.example.com/club.png'
       })
 
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
@@ -202,7 +202,7 @@ describe('TeamForm', () => {
     })
 
     it('does not show the fallback caption or reset action when neither a team nor a club logo exists', () => {
-      renderTeamForm({ onSubmit: vi.fn(), activeSection: 'branding' })
+      renderTeamForm({ onSubmit: vi.fn() })
 
       expect(screen.queryByText(/using your club's logo/i)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Reset to club logo' })).not.toBeInTheDocument()
@@ -214,8 +214,7 @@ describe('TeamForm', () => {
       renderTeamForm({
         onSubmit,
         initialValues: { name: 'Existing Team', logoUrl: 'https://cdn.example.com/team.png' },
-        clubLogoUrl: 'https://cdn.example.com/club.png',
-        activeSection: 'branding',
+        clubLogoUrl: 'https://cdn.example.com/club.png'
       })
 
       await user.click(screen.getByRole('button', { name: 'Reset to club logo' }))
@@ -278,14 +277,14 @@ describe('TeamForm', () => {
 
       rerender(
         <>
-          <TeamForm onSubmit={vi.fn()} activeSection="details" hidden={false} />
+          <TeamForm onSubmit={vi.fn()} hidden={false} />
           <button type="submit" form={TEAM_FORM_ID}>
             Submit
           </button>
         </>,
       )
 
-      expect(screen.getByLabelText('Name').closest('form')).toHaveStyle({ display: 'grid' })
+      expect(screen.getByLabelText('Name').closest('form')).toHaveStyle({ display: 'flex' })
     })
   })
 })
