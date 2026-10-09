@@ -165,6 +165,12 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk CSV import** of league teams.
 - **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
 
+## Deferred by `092` — Teams gold standard
+
+- **A `teams/summary` endpoint** instead of the client-side counters, if the team list is ever paginated or the counters get expensive.
+- **Matches list reading `?teamId=`**, so the card's Matches footer can link to a filtered list (today it goes to the team page).
+- **Inactive team styling**: a muted card for an inactive team was not designed; the Inactive badge is all there is.
+
 ## Deferred by `071` — League card
 
 `071-league-card-redesign.md` rebuilt the Leagues list card on the Match card's bones and added the current season's match counts, first/last/next match dates and team list to the leagues list response. Still deferred:

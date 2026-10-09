@@ -179,7 +179,7 @@ describe('useTeamCardData', () => {
 
     const { result } = renderHook(() => useTeamCardData('club-1', [team], 'season-1'), { wrapper })
 
-    await waitFor(() => expect(result.current['team-1']?.playerCount).toBe(2))
+    await waitFor(() => expect(result.current['team-1']?.loaded).toBe(true))
 
     expect(result.current['team-1']).toEqual({
       captainName: 'Jane Smith',
@@ -187,6 +187,8 @@ describe('useTeamCardData', () => {
       coachName: 'Alex Lee',
       playerCount: 2,
       matchCount: 1,
+      matchesThisWeek: 0,
+      loaded: true,
       sponsors: [makeSponsor()],
     })
   })
@@ -196,7 +198,7 @@ describe('useTeamCardData', () => {
 
     const { result } = renderHook(() => useTeamCardData('club-1', [team], 'season-1'), { wrapper })
 
-    await waitFor(() => expect(result.current['team-1']).toBeDefined())
+    await waitFor(() => expect(result.current['team-1']?.loaded).toBe(true))
 
     expect(result.current['team-1']).toEqual({
       captainName: null,
@@ -204,7 +206,39 @@ describe('useTeamCardData', () => {
       coachName: null,
       playerCount: 0,
       matchCount: 0,
+      matchesThisWeek: 0,
+      loaded: true,
       sponsors: [],
     })
+  })
+
+  // docs/specs/092: matchesThisWeek counts the team's matches from today to today + 7 days of the loaded list.
+  it('counts only the team\'s own matches from today to today + 7 days as matchesThisWeek', async () => {
+    const team = makeTeam({ id: 'team-1' })
+    const inDays = (days: number) => {
+      const at = new Date()
+      at.setDate(at.getDate() + days)
+      at.setHours(12, 0, 0, 0)
+      return at.toISOString()
+    }
+    const base = { clubId: 'club-1', homeTeamName: null, awayTeamName: null, leagueId: null, seasonId: 'season-1', venue: null, active: true, homeSideAnnounced: false, awaySideAnnounced: false, homePickedCount: null, awayPickedCount: null, playingXiSize: null, polls: [], homeTeamLogoUrl: null, awayTeamLogoUrl: null, createdAt: '', updatedAt: '', updatedBy: null }
+    listMatches.mockResolvedValue({
+      content: [
+        { ...base, id: 'today', homeTeamId: 'team-1', awayTeamId: 'x', matchDate: inDays(0) },
+        { ...base, id: 'day7', homeTeamId: 'x', awayTeamId: 'team-1', matchDate: inDays(7) },
+        { ...base, id: 'day9', homeTeamId: 'team-1', awayTeamId: 'x', matchDate: inDays(9) },
+        { ...base, id: 'past', homeTeamId: 'team-1', awayTeamId: 'x', matchDate: inDays(-2) },
+        { ...base, id: 'other', homeTeamId: 'y', awayTeamId: 'x', matchDate: inDays(1) },
+      ],
+      totalElements: 5,
+      totalPages: 1,
+      number: 0,
+      size: 200,
+    } as Page<Match>)
+
+    const { result } = renderHook(() => useTeamCardData('club-1', [team], 'season-1'), { wrapper })
+
+    await waitFor(() => expect(result.current['team-1']?.matchCount).toBe(4))
+    expect(result.current['team-1']?.matchesThisWeek).toBe(2)
   })
 })

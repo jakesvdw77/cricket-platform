@@ -23,6 +23,8 @@ export interface InfoCardProps {
   chips?: InfoCardChip[]
   // a small grey note on the right of the heading
   note?: string
+  // free content (tiles, a grid) drawn between the fields/chips and the actions
+  children?: ReactNode
   actions?: ReactNode
   testId?: string
 }
@@ -30,7 +32,7 @@ export interface InfoCardProps {
 // docs/specs/088 section G (the Player page) and docs/specs/091 (the league Conditions tab): one section card. A solid-green icon tile and an uppercase heading, then
 // label-over-bold-value fields, optional chips, optional action buttons pinned to the bottom so the cards in a row
 // stay the same height.
-export function InfoCard({ title, icon, fields = [], chips, note, actions, testId }: InfoCardProps) {
+export function InfoCard({ title, icon, fields = [], chips, note, children, actions, testId }: InfoCardProps) {
   return (
     <Card sx={{ height: '100%' }} contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
@@ -108,6 +110,8 @@ export function InfoCard({ title, icon, fields = [], chips, note, actions, testI
           ))}
         </Box>
       )}
+
+      {children}
 
       {actions && <Box sx={{ mt: 'auto' }}>{actions}</Box>}
     </Card>

@@ -56,7 +56,6 @@ type Story = StoryObj<typeof TeamForm>
 export const WithoutSectionPicker: Story = {
   args: {
     onSubmit: () => undefined,
-    activeSection: 'details',
   },
 }
 
@@ -64,7 +63,6 @@ export const EditExistingTeam: Story = {
   args: {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI' },
-    activeSection: 'details',
   },
 }
 
@@ -78,7 +76,6 @@ export const WithProfileFields: Story = {
       groundName: 'Irene Country Club',
       socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/irene1stxi' }],
     },
-    activeSection: 'details',
   },
 }
 
@@ -89,7 +86,6 @@ export const FallsBackToClubLogo: Story = {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI' },
     clubLogoUrl: 'https://placehold.co/120x120?text=Club',
-    activeSection: 'branding',
   },
 }
 
@@ -100,7 +96,6 @@ export const WithLogoOverride: Story = {
     onSubmit: () => undefined,
     initialValues: { name: '1st XI', logoUrl: 'https://placehold.co/120x120?text=Team' },
     clubLogoUrl: 'https://placehold.co/120x120?text=Club',
-    activeSection: 'branding',
   },
 }
 
@@ -109,7 +104,6 @@ export const WithSectionPicker: Story = {
   args: {
     onSubmit: () => undefined,
     sections: SECTIONS,
-    activeSection: 'details',
   },
 }
 

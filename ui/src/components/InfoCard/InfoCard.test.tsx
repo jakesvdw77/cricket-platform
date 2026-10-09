@@ -44,4 +44,13 @@ describe('InfoCard', () => {
     expect(screen.getByText('More coming soon')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Call' })).toBeInTheDocument()
   })
+
+  it('renders free children', () => {
+    render(
+      <InfoCard title="Squad" icon={<span />}>
+        <p>Tile grid</p>
+      </InfoCard>,
+    )
+    expect(screen.getByText('Tile grid')).toBeInTheDocument()
+  })
 })

@@ -1,9 +1,7 @@
-import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
-import { useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link as RouterLink, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, MenuItem, Stack, Typography } from '@mui/material'
+import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -14,13 +12,17 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
-import { Card } from '../../components/Card'
+import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
+import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import { EmptyState } from '../../components/EmptyState'
-import { Input } from '../../components/Input'
+import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
+import { InfoCard } from '../../components/InfoCard'
+import { KeyFigureTile } from '../../components/KeyFigureTile'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
 import { SponsorQuickViewDialog } from '../../components/SponsorQuickViewDialog'
+import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { avatarSx, badgeSx } from '../../components/RecordCard'
 import { playerAvatarSrc } from '../../components/BrandIcon'
 import { listTeamsForClub } from '../../api/teamApi'
@@ -37,20 +39,7 @@ import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { badgeFor } from './TeamDirectory'
 
-// The small "section label + optional action" header row every card on this page uses — mirrors
-// ClubOverviewPage.tsx's own identical convention (docs/specs/056-club-profile-overview.md) of
-// building this row by hand inside Card's children rather than Card's own `title` prop, since that
-// prop has no room for a trailing action button.
-function CardHeaderRow({ title, action }: { title: string; action?: ReactNode }) {
-  return (
-    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mb: 2 }}>
-      <Typography variant="subtitle1" fontWeight={600}>
-        {title}
-      </Typography>
-      {action}
-    </Stack>
-  )
-}
+const NOT_ON_FILE = '–'
 
 // One player tile in the full-width Squad grid — avatar, name, jersey number, the captain's tile
 // visually distinguished with a highlighted border/background plus a small "Captain" label
@@ -114,26 +103,20 @@ function SquadPlayerTile({ member }: { member: SquadMember }) {
   )
 }
 
-// docs/specs/057-team-extended-profile.md: full restructure to the approved "Squad-Focused" bento
-// layout, mirroring 056's ClubOverviewPage posture directly — header chips under the name (no
-// separate "Details" section), Contacts/Sponsors as tap-to-view icon grids side by side, a
-// full-width Squad grid with the captain visually distinguished. Same data-fetch shape as
-// TeamDirectory.tsx (listTeamsForClub + find-by-id; route always carries sectionId per
-// docs/specs/035-section-scoped-access.md).
+// docs/specs/092 (C): the team page on the Leagues / Player / Poll standard. Header: Back, the Season pill (no "All") and
+// the filled Edit team on the top row; logo, name and section + status chips; the ground and social links on one line.
+// A key-figure strip follows, then Contacts and Sponsors cards of equal height and the Squad card. The Season pill (from
+// ?seasonId=, else the default season) drives the squad, the player count, the captain and the match count.
 //
-// Back-navigation fix: reads the `from` query param (set by TeamList.tsx's own viewTo/editTo links,
-// see that file) — `?from=section` present routes Back to the section-scoped Teams list (genuinely
-// reached via Club Structure); absent (the default — the club-wide directory, a bookmark, or a
-// typed URL) routes Back to the club-wide Teams directory instead of always routing through the
-// section-scoped list regardless of origin (the bug this spec fixes).
+// Back-navigation: `?from=section` (set by the section-scoped Teams list) routes Back to that list; absent (the
+// club-wide directory, a bookmark, a typed URL) routes Back to the club-wide Teams directory.
 export default function TeamDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { sectionId, teamId } = useParams<{ sectionId?: string; teamId?: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const fromSection = searchParams.get('from') === 'section'
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
-  const [selectedSquadSeasonId, setSelectedSquadSeasonId] = useState('')
 
   const {
     data: team,
@@ -181,28 +164,42 @@ export default function TeamDetailPage() {
     enabled: Boolean(clubId) && Boolean(teamId),
   })
 
-  useEffect(() => {
-    if (!selectedSquadSeasonId && seasonsQuery.data && seasonsQuery.data.length > 0) {
-      const defaultId = pickDefaultSeasonId(seasonsQuery.data)
-      if (defaultId) {
-        setSelectedSquadSeasonId(defaultId)
-      }
+  const seasons = useMemo(() => seasonsQuery.data ?? [], [seasonsQuery.data])
+
+  // The effective season: ?seasonId= when it is one of the club's seasons, else the default season. The default is
+  // never written to the URL; an invalid or stale id silently falls back to it.
+  const seasonParam = searchParams.get('seasonId')
+  const selectedSeasonId =
+    seasonParam && seasons.some((season) => season.id === seasonParam)
+      ? seasonParam
+      : (pickDefaultSeasonId(seasons) ?? '')
+
+  const handleSeasonChange = (seasonId: string | null) => {
+    if (!seasonId) {
+      return
     }
-  }, [seasonsQuery.data, selectedSquadSeasonId])
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.set('seasonId', seasonId)
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   const squadQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSquadSeasonId, 'squad'],
-    queryFn: () => listSquad(clubId as string, teamId as string, selectedSquadSeasonId),
-    enabled: Boolean(clubId) && Boolean(teamId) && Boolean(selectedSquadSeasonId),
+    queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', selectedSeasonId, 'squad'],
+    queryFn: () => listSquad(clubId as string, teamId as string, selectedSeasonId),
+    enabled: Boolean(clubId) && Boolean(teamId) && Boolean(selectedSeasonId),
   })
 
-  // docs/specs/057-team-extended-profile.md's Non-goals: no new "matches" backend field — computed
-  // client-side from the club's own selected-season matches, filtered to this team's home/away id,
-  // same posture useTeamCardData.ts uses for the redesigned card.
+  // docs/specs/057-team-extended-profile.md's Non-goals: no new "matches" backend field - computed client-side from the
+  // club's matches of the chosen season, filtered to this team's home/away id, same posture useTeamCardData.ts uses.
   const matchesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', 'team-detail-season', selectedSquadSeasonId],
-    queryFn: () => listMatches(clubId as string, { page: 0, size: 200, seasonId: selectedSquadSeasonId }),
-    enabled: Boolean(clubId) && Boolean(selectedSquadSeasonId),
+    queryKey: ['managed-club', clubId, 'matches', 'team-detail-season', selectedSeasonId],
+    queryFn: () => listMatches(clubId as string, { page: 0, size: 200, seasonId: selectedSeasonId }),
+    enabled: Boolean(clubId) && Boolean(selectedSeasonId),
   })
 
   if (!clubId) {
@@ -230,9 +227,7 @@ export default function TeamDetailPage() {
   const backLabel = 'Back to Teams'
   const editTo = `/manage/sections/${sectionId}/teams/${team.id}/edit`
 
-  // Sorted by name regardless of the server's own row order — same fix TeamFormPage's Squad tab
-  // applies, per direct user feedback that an unordered fetch visibly reshuffling the grid read as
-  // a bug.
+  // Sorted by name regardless of the server's own row order, so the grid does not visibly reshuffle.
   const squad = [...(squadQuery.data ?? [])].sort((a, b) =>
     `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
   )
@@ -244,70 +239,131 @@ export default function TeamDetailPage() {
 
   const contacts = teamContactsQuery.data ?? []
   const sponsors = teamSponsorsQuery.data ?? []
-  const seasons = seasonsQuery.data ?? []
 
   const selectedContact = contacts.find((teamContact) => teamContact.id === openContactId) ?? null
   const selectedSponsor = sponsors.find((sponsor) => sponsor.id === openSponsorId) ?? null
+  const status = badgeFor(team) ?? { label: 'Active', tone: 'positive' as const }
+  const hasSocial = team.socialLinks.length > 0
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
       <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to={backTo}
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
-        >
-          {backLabel}
-        </MuiButton>
+        <Stack spacing={2}>
+          {/* Top row: Back on the left; the Season pill and the filled primary Edit team on the right. */}
+          <Box
+            data-testid="team-header-top-row"
+            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
+          >
+            <MuiButton
+              component={RouterLink}
+              to={backTo}
+              variant="text"
+              color="inherit"
+              size="small"
+              startIcon={<ArrowBackIcon fontSize="small" />}
+              sx={{ ml: -1, color: 'text.secondary' }}
+            >
+              {backLabel}
+            </MuiButton>
 
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar src={team.logoUrl ?? undefined} variant="rounded" sx={avatarSx(56)}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, flex: 'none' }}>
+              {seasons.length > 0 && (
+                <HeaderSeasonSelect
+                  seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
+                  value={selectedSeasonId || null}
+                  onChange={handleSeasonChange}
+                  showAll={false}
+                />
+              )}
+              <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>
+                Edit team
+              </MuiButton>
+            </Box>
+          </Box>
+
+          {/* Title row: logo tile and name (wraps), then the section and status chips under it. */}
+          <Box data-testid="team-header-title-row" sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
+            <Avatar
+              src={team.logoUrl ?? undefined}
+              variant="rounded"
+              sx={{ ...avatarSx(64), width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 }, borderRadius: 1.5 }}
+            >
               {initialsFromName(team.name)}
             </Avatar>
-            <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
+            <Stack spacing={1} sx={{ minWidth: 0 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
+              >
                 {team.name}
               </Typography>
-              {/* The "badges under the name" chip row replacing the old "Details" section entirely
-                  — docs/specs/057-team-extended-profile.md's UI Requirements, same posture 056's
-                  ClubOverviewPage established for Club Details. */}
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap aria-label="Team badges">
                 <Chip size="small" icon={<AccountTreeOutlinedIcon />} variant="outlined" label={sectionBreadcrumb} />
-                {team.groundName && <Chip size="small" icon={<PlaceOutlinedIcon />} variant="outlined" label={team.groundName} />}
-                {captainName && (
-                  <Chip size="small" icon={<MilitaryTechOutlinedIcon />} variant="outlined" label={`Captain: ${captainName}`} />
-                )}
-                <Chip size="small" icon={<GroupsOutlinedIcon />} variant="outlined" label={`${playerCount} players`} />
-                <Chip size="small" icon={<EventOutlinedIcon />} variant="outlined" label={`${matchCount} matches`} />
-                {badgeFor(team) && (
-                  <Chip size="small" label={badgeFor(team)?.label} sx={badgeSx(badgeFor(team)?.tone ?? 'muted')} />
-                )}
+                <Chip size="small" label={status.label} sx={badgeSx(status.tone)} />
               </Stack>
             </Stack>
-          </Stack>
+          </Box>
 
-          <MuiButton
-            component={RouterLink}
-            to={editTo}
-            variant="contained"
-            startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{ flex: 'none' }}
-          >
-            Edit team
-          </MuiButton>
+          {(team.groundName || hasSocial) && (
+            <Box
+              data-testid="team-header-info-line"
+              sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 1 }}
+            >
+              {team.groundName && (
+                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                  <PlaceOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary', overflowWrap: 'anywhere' }}>{team.groundName}</Typography>
+                </Box>
+              )}
+              {hasSocial && (
+                <Box data-testid="team-header-social" sx={{ flex: 'none', ml: { sm: 'auto' } }}>
+                  <SocialLinksRow links={team.socialLinks} size="small" />
+                </Box>
+              )}
+            </Box>
+          )}
         </Stack>
       </PageHeaderBand>
 
-      {/* Contacts + Sponsors — two-column grid, stacking to one column at xs (docs/specs/
-          057-team-extended-profile.md's Mobile-first note). */}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
-        <Card>
-          <CardHeaderRow title="Contacts" />
+      <Box
+        data-testid="team-key-figures"
+        sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
+      >
+        <KeyFigureTile
+          testId="team-figure-players"
+          icon={<GroupsOutlinedIcon />}
+          value={String(playerCount)}
+          label="Players in squad"
+        />
+        <KeyFigureTile
+          testId="team-figure-matches"
+          icon={<EventOutlinedIcon />}
+          value={String(matchCount)}
+          label="Matches this season"
+        />
+        <KeyFigureTile
+          testId="team-figure-captain"
+          icon={<MilitaryTechOutlinedIcon />}
+          value={captainName ?? NOT_ON_FILE}
+          label="Captain"
+          textValue
+        />
+        <KeyFigureTile
+          testId="team-figure-ground"
+          icon={<PlaceOutlinedIcon />}
+          value={team.groundName || NOT_ON_FILE}
+          label="Ground"
+          textValue
+        />
+      </Box>
+
+      {/* Contacts + Sponsors: equal-height cards (InfoCard fills its grid cell), one column on a phone. */}
+      <Box
+        data-testid="team-contacts-sponsors-row"
+        sx={{ display: 'grid', alignItems: 'stretch', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}
+      >
+        <InfoCard testId="team-contacts-card" title="Contacts" icon={<ContactsOutlinedIcon />}>
           {contacts.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No contacts linked to this team yet.
@@ -330,10 +386,9 @@ export default function TeamDetailPage() {
               })}
             </Stack>
           )}
-        </Card>
+        </InfoCard>
 
-        <Card>
-          <CardHeaderRow title="Sponsors" />
+        <InfoCard testId="team-sponsors-card" title="Sponsors" icon={<HandshakeOutlinedIcon />}>
           {sponsors.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No sponsors linked to this team yet.
@@ -353,38 +408,21 @@ export default function TeamDetailPage() {
               ))}
             </Stack>
           )}
-        </Card>
+        </InfoCard>
       </Box>
 
-      {/* Full-width Squad card — a grid of richer player tiles, the captain's tile visually
-          distinguished. Season picker in the card header, same pickDefaultSeasonId-driven default
-          the previous Squad section already used. "Add player" navigates to the edit screen's own
-          Squad tab, the one place squad membership is actually mutated (view-first posture,
-          docs/specs/036-view-first-record-detail-screens.md). */}
-      <Card>
-        <CardHeaderRow
-          title="Squad"
-          action={
-            seasons.length > 0 ? (
-              <Input
-                select
-                label="Season"
-                value={selectedSquadSeasonId}
-                onChange={(event) => setSelectedSquadSeasonId(event.target.value)}
-                sx={{ minWidth: 200 }}
-                size="small"
-                fullWidth={false}
-              >
-                {seasons.map((season) => (
-                  <MenuItem key={season.id} value={season.id}>
-                    {season.label}
-                  </MenuItem>
-                ))}
-              </Input>
-            ) : undefined
-          }
-        />
-
+      {/* Full-width Squad card for the pill's season. "Add player" goes to the edit screen's Squad tab, the one place
+          squad membership is mutated (docs/specs/036-view-first-record-detail-screens.md). */}
+      <InfoCard
+        testId="team-squad-card"
+        title="Squad"
+        icon={<GroupsOutlinedIcon />}
+        actions={
+          <MuiButton component={RouterLink} to={editTo} variant="outlined" size="small">
+            Add player
+          </MuiButton>
+        }
+      >
         {seasons.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No seasons yet — a squad is always built for a specific season.
@@ -400,13 +438,7 @@ export default function TeamDetailPage() {
             ))}
           </Box>
         )}
-
-        <Box sx={{ mt: 2 }}>
-          <MuiButton component={RouterLink} to={editTo} variant="outlined" size="small">
-            Add player
-          </MuiButton>
-        </Box>
-      </Card>
+      </InfoCard>
 
       <RecordQuickViewDialog
         open={Boolean(selectedContact)}

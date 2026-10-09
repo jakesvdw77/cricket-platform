@@ -189,11 +189,17 @@ describe('TeamDirectory', () => {
     expect(screen.queryByText('Juniors › Boys › O/15')).not.toBeInTheDocument()
   })
 
-  it('renders a muted Inactive badge for a deactivated team', async () => {
+  it('hides a deactivated team until Show inactive is on, then shows it with a grey Inactive chip', async () => {
+    const user = userEvent.setup()
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ active: false })])
     listSections.mockResolvedValueOnce([makeSection()])
 
     renderDirectory('test-club-id')
+
+    expect(await screen.findByText('No matching teams')).toBeInTheDocument()
+    expect(screen.queryByText('1st XI')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
 
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
@@ -233,6 +239,7 @@ describe('TeamDirectory', () => {
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the list card at all — active or inactive — it moved to TeamFormPage's own actions bar.
   it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    const user = userEvent.setup()
     listTeamsForClub.mockResolvedValueOnce([
       makeTeam({ id: 'team-1', name: '1st XI', active: true, sectionId: 'section-1' }),
       makeTeam({ id: 'team-2', name: '2nd XI', active: false, sectionId: 'section-1' }),
@@ -242,7 +249,8 @@ describe('TeamDirectory', () => {
     renderDirectory('test-club-id')
 
     await screen.findByText('1st XI')
-    expect(screen.getByText('2nd XI')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
@@ -324,10 +332,10 @@ describe('TeamDirectory', () => {
     await screen.findByText('Alpha XI')
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
 
-    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+    await user.click(screen.getByRole('button', { name: /name, a to z/i }))
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
-    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /name, z to a/i })).toBeInTheDocument()
   })
 
   // docs/specs/043-list-toolbar-gold-standard.md: Section selection persists per club across
@@ -337,7 +345,7 @@ describe('TeamDirectory', () => {
     const user = userEvent.setup()
     listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', sectionId: 'section-1' })])
     listSections.mockResolvedValue([makeSection({ id: 'section-1', name: 'Men' })])
-    localStorage.setItem('teamDirectory:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
+    localStorage.setItem('teamList:filters:test-club-id', JSON.stringify({ sectionId: 'section-1' }))
 
     renderDirectory('test-club-id')
 
@@ -346,14 +354,14 @@ describe('TeamDirectory', () => {
 
     await user.type(screen.getByLabelText('Search'), '1st')
 
-    const persisted = JSON.parse(localStorage.getItem('teamDirectory:filters:test-club-id') as string)
+    const persisted = JSON.parse(localStorage.getItem('teamList:filters:test-club-id') as string)
     expect(persisted).toEqual({ sectionId: 'section-1' })
     expect(persisted).not.toHaveProperty('search')
   })
 
-  // docs/specs/057-team-extended-profile.md: the redesigned card's ground/captain/manager/coach
-  // rows and player/match-count pills, resolved client-side.
-  it('resolves and renders ground/captain/manager/coach/player-count/match-count on the card', async () => {
+  // docs/specs/057-team-extended-profile.md / 092: the card's captain/manager/coach rows and Players / Matches
+  // figure tiles, resolved client-side.
+  it('resolves and renders captain/manager/coach/player-count/match-count on the card', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', sectionId: 'section-1', groundName: 'Irene Country Club' })])
     listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
     listSeasons.mockResolvedValueOnce([
@@ -414,9 +422,9 @@ describe('TeamDirectory', () => {
     renderDirectory('test-club-id')
 
     await screen.findByText('1st XI')
-    expect(await screen.findByText(/Irene Country Club/)).toBeInTheDocument()
-    expect(await screen.findByText(/Jane Smith/)).toBeInTheDocument()
-    expect(await screen.findByText(/Bob Jones/)).toBeInTheDocument()
-    expect(await screen.findByText('1 players')).toBeInTheDocument()
+    const rows = () => screen.getAllByTestId('team-detail-row').map((row) => row.textContent)
+    await waitFor(() => expect(rows()).toEqual(['CaptainJane Smith', 'ManagerBob Jones', 'Coach–']))
+    expect(await screen.findByTestId('team-players-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('team-matches-value')).toHaveTextContent('0')
   })
 })

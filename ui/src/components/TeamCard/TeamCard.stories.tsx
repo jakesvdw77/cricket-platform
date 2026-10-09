@@ -67,12 +67,10 @@ export default meta
 
 type Story = StoryObj<typeof TeamCard>
 
-// docs/specs/057-team-extended-profile.md's approved "Detailed" density — every icon row/pill
-// populated.
-export const Detailed: Story = {
+// docs/specs/092 (B), board 2b: every part filled.
+export const Full: Story = {
   args: {
     team: makeTeam({
-      abbreviation: 'ICL',
       groundName: 'Irene Country Club',
       socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/irene1stxi' }],
     }),
@@ -88,8 +86,18 @@ export const Detailed: Story = {
   },
 }
 
-// Every optional field cleanly omitted — no error, no empty icon (the spec's Acceptance Criteria).
-export const Minimal: Story = {
+// No captain and no coach: the rows keep their place and show a muted dash; no sponsors.
+export const MissingCaptainAndCoach: Story = {
+  args: {
+    ...Full.args,
+    captainName: null,
+    coachName: null,
+    sponsors: [],
+  },
+}
+
+// An empty squad and nothing else on file: the card keeps the same parts and height.
+export const EmptySquad: Story = {
   args: {
     team: makeTeam(),
     sectionName: 'Men',
@@ -102,22 +110,22 @@ export const Minimal: Story = {
 
 export const Inactive: Story = {
   args: {
-    ...Detailed.args,
-    badge: { label: 'Inactive', tone: 'muted' },
+    ...Full.args,
+    team: makeTeam({ active: false }),
   },
 }
 
 export const MobileViewport: Story = {
-  args: Detailed.args,
+  args: Full.args,
   parameters: { viewport: { defaultViewport: 'mobile' } },
 }
 
 export const TabletViewport: Story = {
-  args: Detailed.args,
+  args: Full.args,
   parameters: { viewport: { defaultViewport: 'tablet' } },
 }
 
 export const DesktopViewport: Story = {
-  args: Detailed.args,
+  args: Full.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
 }

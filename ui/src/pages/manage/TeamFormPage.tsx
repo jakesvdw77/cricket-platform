@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Breadcrumbs, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Button as MuiButton, Chip, Divider, MenuItem, Stack, Tab, Tabs, Typography } from '@mui/material'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined'
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
-import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { TeamForm, TEAM_FORM_ID } from '../../components/TeamForm'
 import type { TeamFormValues } from '../../components/TeamForm'
@@ -303,17 +303,9 @@ export default function TeamFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  // Which tab is showing. Fixed 6-tab scheme, always in this order: 0 = Details, 1 = Branding,
-  // 2 = Social Media, 3 = Contacts, 4 = Sponsors, 5 = Squad. Details/Branding/Social Media always
-  // exist (both create and edit mode) and together drive the one always-mounted TeamForm instance
-  // below (its own `activeSection`/`hidden` props, not separate mounts, so unsaved edits survive
-  // switching tabs); Contacts/Sponsors/Squad only exist once showContactsAndSponsors is true (edit
-  // mode), so this stays 0-2 for the lifetime of a create-mode page. Real-user feedback on the
-  // first version of this page (which stacked Details/Contacts/Sponsors vertically in one long
-  // scroll) asked for tabs at all — matches SponsorForm's own existing Tabs pattern
-  // (docs/specs/023-sponsors.md). Real-user feedback afterward found TeamForm's OWN nested inner
-  // Tabs (Basic Info/Branding/Social Media) on top of these outer ones confusing, hence Branding
-  // and Social Media now living here as flat top-level tabs instead.
+  // Which tab is showing: 0 = Details (one always-mounted TeamForm, hidden rather than unmounted on the
+  // other tabs so unsaved edits survive), 1 = Contacts, 2 = Sponsors, 3 = Squad. Contacts/Sponsors/Squad
+  // only exist in edit mode (docs/specs/092), so create mode stays on 0 with no tab bar.
   const [activeTab, setActiveTab] = useState(0)
   const [contactLinkOpen, setContactLinkOpen] = useState(false)
   const [contactCreateOpen, setContactCreateOpen] = useState(false)
@@ -632,13 +624,18 @@ export default function TeamFormPage() {
         backLabel="Back to Teams"
         actions={
           <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-            {activeTab <= 2 && (
+            {activeTab === 0 && (
               <>
                 {saveMutation.isError && (
                   <Typography variant="body2" color="error.main">
                     {errorDetail(saveMutation.error, 'Something went wrong saving this team. Please try again.')}
                   </Typography>
                 )}
+
+                {/* docs/specs/092: Cancel goes back to the list without saving. */}
+                <MuiButton component={RouterLink} to={backTo} variant="outlined">
+                  Cancel
+                </MuiButton>
 
                 <Button type="submit" form={TEAM_FORM_ID} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create team'}
@@ -672,6 +669,7 @@ export default function TeamFormPage() {
         {/* Always renders — Details/Branding/Social Media apply in both create and edit mode.
             Contacts/Sponsors/Squad only exist once showContactsAndSponsors is true (edit mode) —
             a brand-new team (create mode, either route) has no id yet to attach them to. */}
+        {showContactsAndSponsors && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Tabs
             value={activeTab}
@@ -679,16 +677,15 @@ export default function TeamFormPage() {
             variant="scrollable"
             scrollButtons="auto"
             allowScrollButtonsMobile
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
           >
             <Tab label="Details" />
-            <Tab label="Branding" />
-            <Tab label="Social Media" />
             {showContactsAndSponsors && <Tab label="Contacts" />}
             {showContactsAndSponsors && <Tab label="Sponsors" />}
             {showContactsAndSponsors && <Tab label="Squad" />}
           </Tabs>
         </Box>
+        )}
 
         <TeamForm
           initialValues={
@@ -706,11 +703,10 @@ export default function TeamFormPage() {
           clubLogoUrl={clubProfile?.logoUrl ?? null}
           onSubmit={(payload) => saveMutation.mutate(payload)}
           onInvalid={() => setActiveTab(0)}
-          activeSection={activeTab === 1 ? 'branding' : activeTab === 2 ? 'social' : 'details'}
-          hidden={activeTab > 2}
+          hidden={activeTab > 0}
         />
 
-        {showContactsAndSponsors && activeTab === 3 && (
+        {showContactsAndSponsors && activeTab === 1 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             {(teamContactsQuery.data ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -751,7 +747,7 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {showContactsAndSponsors && activeTab === 4 && (
+        {showContactsAndSponsors && activeTab === 2 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
               This team's sponsors
@@ -820,7 +816,7 @@ export default function TeamFormPage() {
           </Box>
         )}
 
-        {showContactsAndSponsors && activeTab === 5 && (
+        {showContactsAndSponsors && activeTab === 3 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             {(seasonsQuery.data ?? []).length === 0 ? (
               <Typography variant="body2" color="text.secondary">

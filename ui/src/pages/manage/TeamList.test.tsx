@@ -173,7 +173,8 @@ describe('TeamList', () => {
     expect(await screen.findByText('Teams — Juniors › Boys › O/15')).toBeInTheDocument()
   })
 
-  it('renders a card per team with a muted Inactive badge for a deactivated team', async () => {
+  it('hides a deactivated team until Show inactive is on, then shows it with a grey Inactive chip', async () => {
+    const user = userEvent.setup()
     listTeamsForSection.mockResolvedValueOnce([
       makeTeam({ id: 'team-1', name: '1st XI' }),
       makeTeam({ id: 'team-2', name: '2nd XI', active: false }),
@@ -182,7 +183,11 @@ describe('TeamList', () => {
     renderList('test-club-id')
 
     expect(await screen.findByText('1st XI')).toBeInTheDocument()
-    expect(screen.getByText('2nd XI')).toBeInTheDocument()
+    expect(screen.queryByText('2nd XI')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+
+    expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
   })
 
@@ -215,6 +220,7 @@ describe('TeamList', () => {
   // docs/specs/038-move-deactivate-to-edit-screen.md: Deactivate/Reactivate no longer renders on
   // the list card at all — active or inactive — it moved to TeamFormPage's own actions bar.
   it('never renders a Deactivate/Reactivate button on the card, active or inactive', async () => {
+    const user = userEvent.setup()
     listTeamsForSection.mockResolvedValueOnce([
       makeTeam({ id: 'team-1', name: '1st XI', active: true }),
       makeTeam({ id: 'team-2', name: '2nd XI', active: false }),
@@ -223,7 +229,8 @@ describe('TeamList', () => {
     renderList('test-club-id')
 
     await screen.findByText('1st XI')
-    expect(screen.getByText('2nd XI')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
+    expect(await screen.findByText('2nd XI')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
   })
@@ -244,10 +251,10 @@ describe('TeamList', () => {
     await screen.findByText('Alpha XI')
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Alpha XI', 'Zeta XI'])
 
-    await user.click(screen.getByRole('button', { name: 'Name, Z to A' }))
+    await user.click(screen.getByRole('button', { name: /name, a to z/i }))
 
     expect(screen.getAllByRole('heading', { level: 3 }).map((el) => el.textContent)).toEqual(['Zeta XI', 'Alpha XI'])
-    expect(screen.getByRole('button', { name: 'Name, A to Z' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /name, z to a/i })).toBeInTheDocument()
   })
 
   // docs/specs/049-record-list-edit-action-rollout.md: mirrors MatchList.test.tsx's own
