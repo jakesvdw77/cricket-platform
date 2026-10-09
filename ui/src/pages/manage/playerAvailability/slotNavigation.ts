@@ -64,10 +64,16 @@ export function slotNavState(starts: number[], scrollLeft: number, maxScrollLeft
       index = candidate
     }
   })
+  // Previous and next go to the nearest group start that is actually somewhere else: short groups at the end all clamp to
+  // the same furthest position, and stepping to a neighbour that clamps to where the box already is would do nothing.
+  const here = Math.min(reachable[index], scrollLeft)
+  const there = Math.max(reachable[index], scrollLeft)
+  const before = reachable.slice(0, index).filter((start) => start < here - 1)
+  const after = reachable.slice(index + 1).filter((start) => start > there + 1)
   return {
     index,
-    previousLeft: index > 0 ? reachable[index - 1] : null,
-    nextLeft: index < reachable.length - 1 ? reachable[index + 1] : null,
+    previousLeft: before.length > 0 ? Math.max(...before) : null,
+    nextLeft: after.length > 0 ? Math.min(...after) : null,
   }
 }
 

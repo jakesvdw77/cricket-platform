@@ -18,6 +18,13 @@ describe('slotNavState', () => {
     expect(slotNavState(starts, 900, 1300).nextLeft).toBe(1300)
   })
 
+  it('still moves Previous when several short groups at the end clamp to the furthest scroll', () => {
+    // Furthest scroll is 1000, so the last three groups all sit at 1000 and stepping to the neighbour would not move.
+    const clamped = [0, 400, 900, 1500, 1700]
+    expect(slotNavState(clamped, 1000, 1000)).toEqual({ index: 4, previousLeft: 900, nextLeft: null })
+    expect(slotNavState(clamped, 900, 1000)).toEqual({ index: 2, previousLeft: 400, nextLeft: 1000 })
+  })
+
   it('has nothing to navigate without groups', () => {
     expect(slotNavState([], 0, 0)).toEqual({ index: -1, previousLeft: null, nextLeft: null })
   })
