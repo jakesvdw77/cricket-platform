@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PageCounters } from './PageCounters'
+import { PageCounters, counterColumns } from './PageCounters'
 import type { PageCounterItem } from './PageCounters'
 import { baseTheme } from '../../theme'
 import { hoverTintColor } from './keyFigureStyle'
@@ -293,3 +293,20 @@ describe('PageCounters short labels', () => {
   })
 })
 
+
+// docs/specs/091: a row of five or six counters stays on one line on a large screen.
+describe('counterColumns', () => {
+  it('keeps four across for up to four counters', () => {
+    expect(counterColumns(4)).toEqual({ xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)', lg: 'repeat(4, 1fr)' })
+    expect(counterColumns(2).lg).toBe('repeat(4, 1fr)')
+  })
+
+  it('puts five or six counters on one row from lg, and three across on a medium screen', () => {
+    expect(counterColumns(5)).toEqual({ xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' })
+    expect(counterColumns(6)).toEqual({ xs: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' })
+  })
+
+  it('never goes beyond six columns', () => {
+    expect(counterColumns(9).lg).toBe('repeat(6, 1fr)')
+  })
+})

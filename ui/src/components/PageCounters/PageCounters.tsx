@@ -32,12 +32,19 @@ export interface PageCountersProps {
 
 const SKELETON_COUNT = 4
 
-const gridSx = {
-  display: 'grid',
-  gap: 1.5,
-  gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+// docs/specs/091: the columns follow the number of counters, so a row of five or six does not wrap onto a second line on a
+// large screen: up to four stay four across from md; more than four are three across on a medium screen and one row (up
+// to six) from lg. Two across on a phone as before.
+export function counterColumns(count: number): { xs: string; md: string; lg: string } {
+  const large = Math.min(Math.max(count, 4), 6)
+  return { xs: 'repeat(2, 1fr)', md: count > 4 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)', lg: `repeat(${large}, 1fr)` }
 }
-const compactGridSx = { ...gridSx, gap: 0.75 }
+
+const gridSxFor = (count: number, gap: number) => ({
+  display: 'grid',
+  gap,
+  gridTemplateColumns: counterColumns(count),
+})
 
 // Screen-reader-only text (the visible cue is the corner marker).
 const visuallyHidden = {
@@ -125,7 +132,7 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
   const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) ? { pr: item.kind === 'drill' ? 4 : 6.5 } : {})
   if (loading) {
     return (
-      <Box sx={compact ? compactGridSx : gridSx} aria-busy="true" data-testid="page-counters-loading">
+      <Box sx={gridSxFor(SKELETON_COUNT, compact ? 0.75 : 1.5)} aria-busy="true" data-testid="page-counters-loading">
         {Array.from({ length: SKELETON_COUNT }, (_, index) => (
           <MuiCard key={index} sx={cardSx}>
             <Skeleton variant="rounded" width={compact ? 24 : '40%'} height={compact ? 20 : 28} />
@@ -137,7 +144,7 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
   }
 
   return (
-    <Box sx={compact ? compactGridSx : gridSx}>
+    <Box sx={gridSxFor(items.length, compact ? 0.75 : 1.5)}>
       {items.map((item) =>
         isInteractive(item) ? (
           <ButtonBase
