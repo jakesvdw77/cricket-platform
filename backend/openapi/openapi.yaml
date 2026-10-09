@@ -4715,6 +4715,55 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerAvailabilityDto"
+  /api/v1/manage/clubs/{clubId}/team-selection:
+    get:
+      tags:
+      - team-selection-controller
+      operationId: overview
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: includePast
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TeamSelectionOverviewDto"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad:
     get:
       tags:
@@ -8464,6 +8513,196 @@ components:
           - NOT_IN_POLL
         picked:
           type: boolean
+    TeamSelectionOverviewDto:
+      type: object
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSelectionMatchDto"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSelectionPlayerDto"
+        counts:
+          $ref: "#/components/schemas/TeamSelectionCountsDto"
+        truncated:
+          type: boolean
+    TeamSelectionCountsDto:
+      type: object
+      properties:
+        upcoming:
+          type: integer
+          format: int32
+        notStarted:
+          type: integer
+          format: int32
+        inProgress:
+          type: integer
+          format: int32
+        readyToAnnounce:
+          type: integer
+          format: int32
+        announced:
+          type: integer
+          format: int32
+    TeamSelectionMatchDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        dayPart:
+          type: string
+          enum:
+          - MORNING
+          - AFTERNOON
+        label:
+          type: string
+        venue:
+          type: string
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        leagueName:
+          type: string
+        upcoming:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/TeamSelectionStatus"
+        sides:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSelectionSideDto"
+    TeamSelectionStatus:
+      type: string
+      enum:
+      - NOT_STARTED
+      - IN_PROGRESS
+      - READY_TO_ANNOUNCE
+      - ANNOUNCED
+    TeamSelectionSideDto:
+      type: object
+      properties:
+        sideId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        sectionId:
+          type: string
+          format: uuid
+        home:
+          type: boolean
+        opponentName:
+          type: string
+        announced:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/TeamSelectionStatus"
+        limits:
+          $ref: "#/components/schemas/SelectionLimitsDto"
+        pickedCount:
+          type: integer
+          format: int32
+        placesFilled:
+          type: boolean
+        captainPlayerId:
+          type: string
+          format: uuid
+        wicketKeeperPlayerId:
+          type: string
+          format: uuid
+        twelfthManPlayerId:
+          type: string
+          format: uuid
+        picks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSelectionPickDto"
+    TeamSelectionPickDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        battingOrder:
+          type:
+          - integer
+          - "null"
+          format: int32
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+        captain:
+          type: boolean
+        wicketKeeper:
+          type: boolean
+        twelfthMan:
+          type: boolean
+    TeamSelectionPlayerDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        pickedCount:
+          type: integer
+          format: int32
+        cells:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSelectionCellDto"
+    TeamSelectionCellDto:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sideId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        picked:
+          type: boolean
+        pickable:
+          type: boolean
+        reasonCode:
+          type: string
+          enum:
+          - AGE_INELIGIBLE
+          - SAID_UNAVAILABLE
+          - NOT_CONFIRMED
+          - TAKEN_FOR_SLOT
+          - NOT_IN_POOL
+          - TEAM_FULL
+          - POSITION_INVALID
     GameColumnDto:
       type: object
       properties:

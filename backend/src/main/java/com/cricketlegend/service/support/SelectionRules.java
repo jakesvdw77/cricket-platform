@@ -112,36 +112,55 @@ public class SelectionRules {
 
         Map<UUID, SelectionRejection> rejections = new HashMap<>();
         for (UUID playerId : ids) {
-            String name = nameOf(players, playerId);
-            SelectionRejection rejection = null;
-            if (outside.contains(playerId)) {
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_IN_POOL,
-                        name + " is not on this team's roster or in its section", null);
-            } else if (ageProblems.containsKey(playerId)) {
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.AGE_INELIGIBLE,
-                        ageProblems.get(playerId), null);
-            } else if (availability.get(playerId) == SelectionAvailability.UNAVAILABLE) {
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.SAID_UNAVAILABLE,
-                        name + " said he is unavailable for this match.", null);
-            } else if (availability.get(playerId) == SelectionAvailability.UNSURE) {
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
-                        name + " is unsure for this match. Set his answer to Available first.", null);
-            } else if (availability.get(playerId) == SelectionAvailability.NO_RESPONSE) {
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
-                        name + " hasn't confirmed he is available for this match. Set his answer to Available first.",
-                        null);
-            } else if (taken.containsKey(playerId)) {
-                TakenBy holder = taken.get(playerId);
-                rejection = new SelectionRejection(playerId, name, SelectionRejectionReason.TAKEN_FOR_SLOT,
-                        name + " is already in " + holder.teamName() + "'s selection for " + holder.slotText()
-                                + ". Release him there first.",
-                        holder);
-            }
+            SelectionRejection rejection = rejectionOf(
+                    playerId, nameOf(players, playerId), outside.contains(playerId), ageProblems.get(playerId),
+                    availability.get(playerId), taken.get(playerId));
             if (rejection != null) {
                 rejections.put(playerId, rejection);
             }
         }
         return new SelectionEvaluation(coverage, players, availability, taken, rejections);
+    }
+
+    /**
+     * The one rejection a player gets, by the precedence of the class comment, from facts the caller
+     * already resolved ({@code ageProblem} and {@code taken} null when there is none); null when he
+     * may be selected. Shared by {@link #evaluate} and the batch overview so they cannot disagree.
+     */
+    public SelectionRejection rejectionOf(
+            UUID playerId,
+            String name,
+            boolean outsidePool,
+            String ageProblem,
+            SelectionAvailability availability,
+            TakenBy taken) {
+        if (outsidePool) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_IN_POOL,
+                    name + " is not on this team's roster or in its section", null);
+        }
+        if (ageProblem != null) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.AGE_INELIGIBLE, ageProblem, null);
+        }
+        if (availability == SelectionAvailability.UNAVAILABLE) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.SAID_UNAVAILABLE,
+                    name + " said he is unavailable for this match.", null);
+        }
+        if (availability == SelectionAvailability.UNSURE) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
+                    name + " is unsure for this match. Set his answer to Available first.", null);
+        }
+        if (availability == SelectionAvailability.NO_RESPONSE) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.NOT_CONFIRMED,
+                    name + " hasn't confirmed he is available for this match. Set his answer to Available first.",
+                    null);
+        }
+        if (taken != null) {
+            return new SelectionRejection(playerId, name, SelectionRejectionReason.TAKEN_FOR_SLOT,
+                    name + " is already in " + taken.teamName() + "'s selection for " + taken.slotText()
+                            + ". Release him there first.",
+                    taken);
+        }
+        return null;
     }
 
     /** The single-player write paths: throws the named exception for the player's rejection, if any. */

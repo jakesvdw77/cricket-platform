@@ -113,7 +113,8 @@ public class SelectionAvailabilityResolver {
         return result;
     }
 
-    private SelectionAvailability statusOf(boolean polled, AvailabilityStatus answer, boolean inAudience) {
+    /** The status from already resolved facts; shared with the batch overview so the rule is written once. */
+    public SelectionAvailability statusOf(boolean polled, AvailabilityStatus answer, boolean inAudience) {
         if (!polled) {
             return SelectionAvailability.NOT_POLLED;
         }
