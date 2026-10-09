@@ -5,6 +5,7 @@ import { alpha, darken, lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
+import { zebraTint } from '../../../utils/zebraTint'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
 import { CellMark } from './CellMark'
 import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
@@ -69,7 +70,6 @@ const headCellSx: SystemStyleObject<Theme> = {
 }
 
 // Opaque tints (never alpha) so the sticky player cell never lets scrolled content show through.
-const zebraTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.95)
 const hoverTint = (theme: Theme) =>
   theme.palette.mode === 'dark' ? darken(theme.palette.primary.main, 0.6) : lighten(theme.palette.primary.main, 0.86)
 
