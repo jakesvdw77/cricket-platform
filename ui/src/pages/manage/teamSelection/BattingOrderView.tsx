@@ -239,14 +239,14 @@ function BattingMatrix({
 
         <TableFooter>
           <TableRow>
-            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bottom: 0, zIndex: 5, px: 1, py: 0.75, fontWeight: 600, borderTop: 1, borderTopColor: 'divider' }}>
+            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bottom: 0, zIndex: 5, px: 1, py: 0.75, fontWeight: 600, verticalAlign: 'top', borderTop: 1, borderTopColor: 'divider' }}>
               Actions
             </TableCell>
             {columns.map((column) => {
               const { match, side } = column
               const canAnnounce = side.status === 'READY_TO_ANNOUNCE' && side.sideId !== null
               return (
-                <TableCell key={`${match.matchId}:${side.teamId}`} sx={footCellSx}>
+                <TableCell key={`${match.matchId}:${side.teamId}`} sx={{ ...footCellSx, verticalAlign: 'top' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
                     <MuiButton
                       size="small"
