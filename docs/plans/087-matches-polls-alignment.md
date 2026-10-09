@@ -85,3 +85,20 @@ Matches toolbar, `ContentControlsLine` on Matches, the match card rebuild and it
 ## Verification
 `tsc -b` clean; lint warnings only (pre-existing `only-export-components`); `MatchList` (31), `FilterBar`, `SquadPicker`, availability and Players tests pass; Storybook `FilterBar` stories pass (8). Not checked in a browser: the compact Autocomplete search field height (36 px) and the phone sheet.
 
+---
+
+# Slice 3 — Match card and zebra rows (frontend only)
+
+*Built while the user was away, on the same branch as slices 1 and 2; contract fixed by the spec's Match card (C) and Zebra rows (D) sections.*
+
+## Changes
+- **New shared component `ui/src/components/CardTimeStrip`** (four-file anatomy): the tinted strip (icon, label, bold value, optional `action`, right-aligned `trailing`; `neutral` / `warning` tone), extracted from `PollCard` rather than copied, per the reuse rule. `PollCard` now renders it with the same `data-testid="poll-closes-row"` / `data-tone`, so its existing tests are the regression check.
+- `ui/src/pages/manage/matches/MatchCard.tsx`: `BrandIcon name="nav/upcoming-matches"` avatar; `badgesBelow` (slice 1) instead of `badgesAbove`; `titleLines={3}`; `League · Season` as the `description`; `CardTimeStrip` "Starts" with `Countdown phrase="to go"` (amber within 24 h via `useCountdown`; "Played", neutral and no countdown once the start has passed); the `When` and `League` detail lines removed, `Venue` kept. Footer, header links, disabled states and the Selection block are unchanged.
+- `ui/src/pages/manage/matches/SelectionBlock.tsx`: the team rows alternate with `zebraTint` (first row tinted), 8 px padding with a matching negative margin so the text stays aligned.
+- Tests: `CardTimeStrip.test.tsx`; `MatchCard.test.tsx` (badges row, brand tile, subtitle and Venue, three strip states); `SelectionBlock.test.tsx` (zebra, single row). Stories: `CardTimeStrip.stories.tsx`, new `matches/MatchCard.stories.tsx` (seven variants).
+- Docs: `design-system.md` row for `CardTimeStrip`; the roadmap's "Match card countdown" item is struck through.
+
+## Notes
+- "Played" is shown as soon as the start time passes, so a match in progress (or a multi-day match) reads "Played"; the spec says "Played", so this follows it. Worth a look if long-format matches matter.
+- Not checked in a browser: the card's visual rhythm (strip, venue line, zebra padding) at phone, 2- and 3-column widths.
+
