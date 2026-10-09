@@ -1,7 +1,7 @@
 # 088 — Players Aligned With Polls, and Player Verification
 
 **Depends on:** 028 (players), 060 and 061 (player detail and `PlayerCard`), 076 (team selection), 077 (date of birth and the Missing date of birth filter), 081 (page counters), 083–085 (`FilterBar`, `ContentControlsLine`, compact density, clickable counters), 087 (the Matches version of this same work: `PageCounters` short labels, `CardTimeStrip`, shared zebra tint, the summary endpoint pattern)
-**Status:** draft — written 2026-10-09 from the user's request ("Start on the Players counters"), revised the same day. Decided by the user: four counters (**Active players**, **In a squad this season**, **Players selected this season**, **Unverified players**), their figures from a **backend summary endpoint**, a new **verification status** on the player, **one Status button on every card** that changes it (Verify, Reject, Suspend, Reactivate; a deactivated player is **Suspended**), **Reject marks the player Rejected and hides them**, **every card shows the same rows** ("–" when something is not on file) so all cards have the same height, and the scope **counters, toolbar and card** (the Matches treatment). Mockup (https://claude.ai/artifact/MjjqtGkP7iAbvz1aP7xVRH: desktop page, card before and after and per status, counter states, status menu and confirmations, phone page and Filters sheet) **approved by the user on 2026-10-09** after two rounds (one Status button, Suspended, fixed card rows); the spec text has not been reviewed line by line. Built on branch `feat/087-slice-1-shared-pieces` (plan: `docs/plans/088-players-polls-alignment.md`); awaiting the user's browser check, which needs the backend restarted (migration 040). Final API as outlined: `GET /players/summary`, the list's `includeInactive`, `focus` and `seasonId`, and `POST /players/{id}/verify` and `/reject`; "selected" counts active matches only.
+**Status:** draft — written 2026-10-09 from the user's request ("Start on the Players counters"), revised the same day. Decided by the user: four counters (**Active players**, **In a squad this season**, **Players selected this season**, **Unverified players**), their figures from a **backend summary endpoint**, a new **verification status** on the player, **one Status button on every card** that changes it (Verify, Reject, Suspend, Reactivate; a deactivated player is **Suspended**), **Reject marks the player Rejected and hides them**, **every card shows the same rows** ("–" when something is not on file) so all cards have the same height, and the scope **counters, toolbar and card** (the Matches treatment). Mockup (https://claude.ai/artifact/MjjqtGkP7iAbvz1aP7xVRH: desktop page, card before and after and per status, counter states, status menu and confirmations, phone page and Filters sheet) **approved by the user on 2026-10-09** after two rounds (one Status button, Suspended, fixed card rows); the spec text has not been reviewed line by line. Built on branch `feat/087-slice-1-shared-pieces` (plan: `docs/plans/088-players-polls-alignment.md`); awaiting the user's browser check, which needs the backend restarted (migration 040). Final API as outlined: `GET /players/summary`, the list's `includeInactive`, `focus` and `seasonId`, and `POST /players/{id}/verify` and `/reject`; "selected" counts active matches only. **Added 2026-10-09 after the card was approved, at the user's request, to the same spec:** a "games played" badge (this season and overall) in the card's top-right corner (E), and a Cards | List view toggle with a compact list view (F). Their mockups are pending approval; the rest of the mockup stays approved.
 
 ## Problem & Goals
 
@@ -13,11 +13,15 @@ Goals:
 - **A. Counters:** four clickable counters under the header, in the Polls and Matches style.
 - **B. Toolbar:** `FilterBar` and `ContentControlsLine` on Players, as on Matches.
 - **C. Player card:** the poll card's layout (badges under the header, subtitle, zebra detail rows), keeping the player's photo avatar.
+- **E. Games played:** two small stats in the card's top-right corner, games played this season and overall.
+- **F. List view:** a Cards | List switch; the list is a compact zebra table that shows many more players per screen.
 - **D. Player status:** a `verificationStatus` on the player, a clickable amber "Unverified players" counter, and one Status button on the card and the player page to verify, reject, suspend or reactivate.
 
 ## Non-goals
 
 - **No self-registration flow** (parents or players creating a profile), no notification to whoever requested the profile, and no rule yet that keeps unverified players out of squads, selections or polls. All of that arrives with registration; here the status is only set, shown, filtered and changed by a manager.
+- **No sortable list columns and no column picker** in the list view (name order only, with the existing sort link); both can follow.
+- **No career statistics.** "Games played" counts selections recorded in this platform, nothing before the club started using it.
 - **No audit history** beyond the player's existing `updatedAt` / `updatedBy`.
 - **No "Joined recently" or "Missing date of birth" counter.** Missing date of birth stays a switch (077's filter, moved to the content line).
 - **No pagination.** The roster is a small bounded list (028); it stays fetched in full and searched by name in the browser. The quick filter and the Show inactive switch are backend parameters like Section and Missing date of birth, so the counters and the list share one definition.
@@ -33,12 +37,14 @@ Goals:
 - As a manager, I reject a request by mistake and can still find that player and verify them.
 - As a manager, I click "In a squad this season" or "Players selected this season" and the list narrows to those players; I click it again or "Active players" to go back.
 - As a manager, suspended and rejected players are out of the way by default, and a switch brings them back.
+- As a manager, I see on each card how many games the player has played this season and overall.
+- As a manager, I switch to a list view to see many more players at once, and back to cards, and the app remembers my choice.
 - As a manager, the Players toolbar, chips and phone Filters sheet behave exactly like Matches and Polls.
 - As a section manager, the counters and the actions only cover players in my sections.
 
 ## Data Model Changes
 
-`PlayerProfile` gains `verificationStatus`, a new enum `PlayerVerificationStatus { VERIFIED, UNVERIFIED, REJECTED }`, `NOT NULL`, **default `VERIFIED`** (every existing player, and every player a manager creates, is verified). Migration `backend/src/main/resources/db/changelog/v1/040-player-verification-status.sql` adds the column with that default and a `CHECK` on the three values. No other table changes.
+`PlayerProfile` gains `verificationStatus`, a new enum `PlayerVerificationStatus { VERIFIED, UNVERIFIED, REJECTED }`, `NOT NULL`, **default `VERIFIED`** (every existing player, and every player a manager creates, is verified). Migration `backend/src/main/resources/db/changelog/v1/040-player-verification-status.sql` adds the column with that default and a `CHECK` on the three values. No other table changes. Games played needs no new storage: it is counted from the existing team selections (`MatchSidePlayer`).
 
 Allowed transitions (anything else is a 409, `InvalidStatusTransitionException`): `UNVERIFIED → VERIFIED`, `UNVERIFIED → REJECTED`, `REJECTED → VERIFIED` (undo a mistaken reject). A verified player is never rejected (they are deactivated instead).
 
@@ -49,6 +55,8 @@ Allowed transitions (anything else is a 409, `InvalidStatusTransitionException`)
 3. **Both season figures use the default season** (the season containing today, else the most recently created, `pickDefaultSeasonId`), chosen by the page and sent as `seasonId`; there is no season control. If the club has no season the two counters show 0 and are plain cards.
 4. **"Active players" includes unverified players** (they are active, waiting) and excludes suspended and rejected ones.
 5. A counter at zero is a plain card (the `PageCounters` rule), so "Unverified players" is a plain card until registration exists.
+6. **"Games played" means selected for an active match that has started** (past or in progress), counted from the platform's own selections. The two numbers are "this season" (the default season, as the counters) and "overall" (every season). Nothing recorded before the club used the platform is counted, so "overall" reads "since you started using the platform", not career.
+7. **Cards stay the default view**; the list is the alternative, and the choice is remembered per browser (the user did not say which should be the default).
 
 ## Counters (A)
 
@@ -104,6 +112,16 @@ Status badge tones: Verified (green tint), Unverified (amber, the warning tone),
 - Rejected players leave the default list and every counter; "Show suspended and rejected players" brings them back with a "Rejected" badge, where the Status menu offers Verify.
 - Nothing else changes for an unverified player yet (non-goals).
 
+## Games played (E)
+
+Two small stat chips in the card's top-right corner, stacked: **"12 this season"** over **"48 overall"** (each an outlined chip of the shared badge size). They are always present, "0" when the player has not played, so a card never changes height; they sit to the right of the title in the header row, and a long name wraps to two lines beside them. On the list view they are two columns. Counted as in Decisions to confirm, 6; the stat chips are plain text, not buttons, and carry an accessible name ("12 games this season").
+
+## List view (F)
+
+A **Cards | List** switch sits on the content line, left of the sort link on desktop and as the first control in the Filters sheet on a phone (a small segmented control, the same style as the Availability view switch). The choice is saved per browser (`playerList:view`), not per club, and never affects the counters, filters or the Status actions.
+
+The list is one bordered panel of rows, the Players grid's language: a sticky header row, the shared zebra tint on alternate rows, 44 px minimum row height, the whole row opening the player. Columns on desktop: **Player** (small avatar and name), **Status** (the same badge), **Section** (first plus `+N`, or "No section"), **No.**, **Phone**, **Bat**, **Bowl**, **This season**, **Overall**, and a **Status** kebab button at the end opening the same `PlayerStatusMenu`. A value that is not on file shows "–". From `sm` down the list keeps **Player** (avatar, name, status badge under it), the two games columns and the kebab; the other columns drop. Loading, empty and error states are the page's own; rows are equal height.
+
 ## API Contract (outline, finalised in planning)
 
 | Endpoint | Access | Purpose |
@@ -114,22 +132,22 @@ Status badge tones: Verified (green tint), Unverified (amber, the warning tone),
 | `POST /api/v1/manage/clubs/{clubId}/players/{playerId}/reject` | same | `PlayerDto` with status `REJECTED`; 409 unless currently `UNVERIFIED` |
 | `POST …/players/{playerId}/deactivate` and `…/reactivate` | existing, unchanged | The Status menu's Suspend and Reactivate |
 
-- `PlayerDto` gains `verificationStatus`. `CreatePlayerRequest` and `UpdatePlayerRequest` do **not** (a manager never sets it by hand; the future registration flow creates profiles as `UNVERIFIED` through its own path).
+- `PlayerDto` gains `verificationStatus`, `gamesThisSeason` and `gamesOverall`. The two counts come from one grouped query each over the loaded roster (`MatchSidePlayer` through `MatchSide` to an active `Match` that has started: `count(distinct match)` per player), the first only when `seasonId` is given (else `gamesThisSeason` is 0); a fixed statement count, never a lookup per player. The list sends `seasonId` on every request now, so the existing parameter does double duty. `CreatePlayerRequest` and `UpdatePlayerRequest` do **not** (a manager never sets it by hand; the future registration flow creates profiles as `UNVERIFIED` through its own path).
 - `playersShown` equals the list's size and `inSquad` / `selected` / `unverified` equal its size with that `focus` (and `seasonId`), for the same filters; all come from one shared definition in `PlayerServiceImpl`. Squad membership is `TeamSquadMember` rows for the season; selection is `MatchSidePlayer` rows (through `MatchSide`) of matches in that season.
 - Section scoping, the lookups batched once (never per player), a fixed statement count, `openapi.yaml` additions only.
 
 ## UI Requirements
 
 - Composed from existing components: `PageCounters` (four items, short labels), `FilterBar`, `ContentControlsLine`, `CompactSwitch`, `SortLink`, `DetailLine`, `ConfirmDialog`, `badgeSx`, the shared zebra tint, `ManageScreenHeader`. New code is the Players wiring, `PlayerCard`'s new layout and Status button and menu, the banner and Status button on the detail page, and the summary and verify/reject clients.
-- Mobile first: counters two by two, the toolbar behind Filters (badge, chips, sheet), the card footer never clips at 375 px (three equal columns on every card).
-- Storybook: `PlayerCard` stories updated (long name, several sections, nothing on file, suspended, unverified, rejected, verified), all rendering at the same height.
+- Mobile first: counters two by two, the list view with its reduced columns, the toolbar behind Filters (badge, chips, sheet), the card footer never clips at 375 px (three equal columns on every card).
+- Storybook: a `PlayerList` row/table story set (all statuses, nothing on file, narrow); `PlayerCard` stories updated (long name, several sections, nothing on file, suspended, unverified, rejected, verified), all rendering at the same height.
 - A mockup in the app's real tokens (desktop page, card before and after and per status, counter states, the status menu and its confirmations, phone, sheet) is reviewed and approved by the user before any slice starts.
 
 ## Test Plan
 
 Per `docs/standards/testing.md`:
-- **Frontend:** `PlayerList` (counters from the summary and their filters, each quick filter sends `focus` and `seasonId`, chip, badge, scope text, reset and toggle, zero rule, amber Unverified, failed summary hides the row, switch default off sending `includeInactive`, Missing date of birth switch persisted, Clear all, phone sheet), `PlayerCard` (status badge always first, the five fixed rows with "–" for absent values, the same footer for every status, equal height, the Status menu per status and its calls, Reject and Suspend confirm dialogs, Verify and Reactivate act at once), the detail-page banner, `PageCounters` four items.
-- **Backend:** summary (definitions incl. inactive, rejected and unverified players, a player in two squads or two selections counted once, a squad or match of another season, a selected player who is in no squad, section-manager scoping, another club 403, statement count); list `includeInactive` and `focus`; verify and reject (transitions and the 409s, section scoping, cross-club 404); the migration defaults existing rows to `VERIFIED`; counters equal list totals (parity).
+- **Frontend:** `PlayerList` (counters from the summary and their filters, each quick filter sends `focus` and `seasonId`, chip, badge, scope text, reset and toggle, zero rule, amber Unverified, failed summary hides the row, switch default off sending `includeInactive`, Missing date of birth switch persisted, Clear all, phone sheet), `PlayerCard` (the two games chips always present, "0" when none; status badge always first, the five fixed rows with "–" for absent values, the same footer for every status, equal height, the Status menu per status and its calls, Reject and Suspend confirm dialogs, Verify and Reactivate act at once), the detail-page banner, `PageCounters` four items; the list view (columns, the same Status menu per row, reduced columns on a phone, the switch remembered in `playerList:view`, the same filters and counters in both views).
+- **Backend:** summary (definitions incl. inactive, rejected and unverified players, a player in two squads or two selections counted once, a squad or match of another season, a selected player who is in no squad, games played (a past match counted, an upcoming or deactivated match not, a player in two matches of two seasons, "overall" across seasons, 0 without a season), section-manager scoping, another club 403, statement count); list `includeInactive` and `focus`; verify and reject (transitions and the 409s, section scoping, cross-club 404); the migration defaults existing rows to `VERIFIED`; counters equal list totals (parity).
 - **Contract:** `openapi.yaml` additions only.
 
 ## Acceptance Criteria
@@ -141,15 +159,18 @@ Per `docs/standards/testing.md`:
 - Existing players and manager-created players are `VERIFIED`; the Players endpoints other than the new ones behave as before for every existing caller.
 - The toolbar, chips and phone sheet match Matches; Missing date of birth is a switch and a chip.
 - Every player card has the same height and the same parts: status badge and section, five zebra rows ("–" when absent) and the Status, Edit, View footer; no button appears or disappears with the status.
+- Each card shows "N this season" and "N overall" in its top-right corner, always present, and the numbers match the player's selections in past, active matches.
+- A Cards | List switch changes the layout only; the list view shows the columns above, the same Status menu per row and the same filters and counters, and the choice is remembered.
 - Section managers only see and act on their sections' players, in list, counters and actions; a failed summary hides the counters and the list still works.
 
 ## Open Questions
 
 - The default for inactive players (Decisions to confirm, 1) and the meaning of "selected" (2).
 - Whether "View" is wanted as a footer button when the whole card already opens the player.
+- Whether the list view should become the default on desktop, and whether its games columns should be sortable later.
 - Whether a verified player should also be rejectable (today only deactivated, i.e. suspended).
 - When registration lands: whether an unverified player should be blocked from squads, selections and polls, and whether the requester is told of the outcome (both out of scope here).
 
 ## Rollout Notes
 
-Slices, one branch, each reviewable on its own: (1) the mockup for review; (2) `PageCounters` (four items), the toolbar and the card without verification (frontend only); (3) the backend: migration 040, `verificationStatus`, verify and reject, the summary endpoint, `includeInactive` and `focus` / `seasonId`; (4) the counters, the Unverified counter, the Status button and menu on the card and the Player page. Add a pointer in `docs/roadmap.md` ("Counters on other pages", and a new "Player self-registration" item) when this is approved.
+Slices, one branch, each reviewable on its own: (1) the mockup for review; (2) `PageCounters` (four items), the toolbar and the card without verification (frontend only); (3) the backend: migration 040, the games-played counts, `verificationStatus`, verify and reject, the summary endpoint, `includeInactive` and `focus` / `seasonId`; (4) the counters, the Unverified counter, the Status button and menu on the card and the Player page, the games-played chips and the list view. Add a pointer in `docs/roadmap.md` ("Counters on other pages", and a new "Player self-registration" item) when this is approved.
