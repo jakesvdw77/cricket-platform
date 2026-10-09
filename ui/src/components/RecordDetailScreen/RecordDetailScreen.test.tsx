@@ -45,6 +45,8 @@ describe('RecordDetailScreen', () => {
     expect(screen.getByText('Contact Info content')).toBeInTheDocument()
 
     expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/players/p-1/edit')
+    // docs/specs/091 (E): Edit is always the filled primary button.
+    expect(screen.getByRole('link', { name: /edit/i }).className).toContain('MuiButton-contained')
   })
 
   it('omits the section heading entirely for a single, un-headed section', () => {

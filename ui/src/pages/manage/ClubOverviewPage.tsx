@@ -225,18 +225,9 @@ export default function ClubOverviewPage() {
           <MuiButton
             component={RouterLink}
             to="/manage/club-profile/edit"
-            variant="outlined"
+            variant="contained"
             startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{
-              flex: 'none',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-              color: 'primary.dark',
-              borderColor: 'transparent',
-              '&:hover': {
-                borderColor: 'transparent',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-              },
-            }}
+            sx={{ flex: 'none' }}
           >
             Edit profile
           </MuiButton>

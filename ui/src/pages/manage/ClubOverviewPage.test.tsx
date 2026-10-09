@@ -206,6 +206,8 @@ describe('ClubOverviewPage', () => {
       expect(await screen.findByRole('heading', { name: 'Riverside Cricket Club' })).toBeInTheDocument()
       expect(screen.getByText('Academy')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /edit profile/i })).toHaveAttribute('href', '/manage/club-profile/edit')
+      // docs/specs/091 (E): Edit is always the filled primary button.
+      expect(screen.getByRole('link', { name: /edit profile/i }).className).toContain('MuiButton-contained')
     })
 
     it('falls back to initials in the avatar when logoUrl is unset', async () => {

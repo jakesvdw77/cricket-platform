@@ -431,5 +431,7 @@ describe('TeamDetailPage', () => {
       'href',
       '/manage/sections/section-1/teams/team-1/edit',
     )
+    // docs/specs/091 (E): Edit is always the filled primary button.
+    expect(screen.getByRole('link', { name: /Edit team/ }).className).toContain('MuiButton-contained')
   })
 })

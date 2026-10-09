@@ -138,25 +138,14 @@ export function RecordDetailScreen({
               </MuiButton>
             ))}
 
-            {/* The one mutating affordance on the whole screen — matches the mockup's `.edit-btn`
-                treatment (a tinted-primary outlined button, not RecordCard's plain text Edit link,
-                since this is the page's single, deliberate action rather than a grid-tile footer
-                action among several). */}
+            {/* The one mutating affordance on the whole screen: the filled primary button, like Add
+                (docs/specs/091, E: Edit is always filled). */}
             <MuiButton
               component={RouterLink}
               to={editTo}
-              variant="outlined"
+              variant="contained"
               startIcon={<EditOutlinedIcon fontSize="small" />}
-              sx={{
-                flex: 'none',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-                color: 'primary.dark',
-                borderColor: 'transparent',
-                '&:hover': {
-                  borderColor: 'transparent',
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-                },
-              }}
+              sx={{ flex: 'none' }}
             >
               {editLabel}
             </MuiButton>
