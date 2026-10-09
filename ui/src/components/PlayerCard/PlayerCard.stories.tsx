@@ -31,6 +31,8 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
     verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     ...overrides,
   }
 }
@@ -53,6 +55,8 @@ const meta: Meta<typeof PlayerCard> = {
       battingStance: 'LEFT_HANDED',
       bowlingArm: 'RIGHT_ARM',
       bowlingType: 'MEDIUM',
+      gamesThisSeason: 12,
+      gamesOverall: 48,
     }),
     sectionNames: ['Vets'],
     viewTo: '/manage/players/player-1',
@@ -89,3 +93,8 @@ export const LongNameAndManySections: Story = {
 }
 
 export const Mobile: Story = { parameters: { viewport: { defaultViewport: 'mobile' } } }
+
+// docs/specs/088: the two games chips are one width whatever the numbers, and present even at 0.
+export const GamesPlayedLargeNumbers: Story = { args: { player: makePlayer({ jerseyNumber: 7, phone: '083 555 0177', gamesThisSeason: 14, gamesOverall: 1203 }) } }
+
+export const NeverPlayed: Story = { args: { player: makePlayer({ gamesThisSeason: 0, gamesOverall: 0 }) } }

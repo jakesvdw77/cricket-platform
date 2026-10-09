@@ -93,7 +93,8 @@ const footerCaptionSx = { fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.
 // docs/specs/088-players-polls-alignment.md: the Player card on the poll card's layout, with one rule on top - every card
 // has the same parts and the same height whatever is on file or what the player's status is: the avatar and a title
 // clamped to two lines; one badge row (the status first, then the first section and a +N, or a dashed "No section");
-// five zebra rows (Number, Born, Phone, Bat, Bowl) that show "–" when empty; and the same three footer columns, Status,
+// two games-played chips in the header's corner; five zebra rows (Number, Born, Phone, Bat, Bowl) that show "–" when
+// empty; and the same three footer columns, Status,
 // Edit and View. Nothing appears or disappears with the status; the Status button's menu offers only the valid changes.
 export function PlayerCard({ player, sectionNames, viewTo, editTo, onStatusAction }: PlayerCardProps) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
@@ -148,6 +149,37 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, onStatusActio
               {name}
             </MuiLink>
           </Typography>
+          {/* docs/specs/088: games played, top-right of the header. Always present ("0" when none) so the card never
+              changes height; the column stretches its two chips to one width, and the minimum width keeps them
+              lining up from card to card. Plain text, not buttons. */}
+          <Stack
+            data-testid="player-games-chips"
+            spacing={0.5}
+            sx={{ flex: 'none', minWidth: 104, alignItems: 'stretch', position: 'relative' }}
+          >
+            <Chip
+              size="small"
+              variant="outlined"
+              aria-label={`${player.gamesThisSeason} games this season`}
+              label={
+                <>
+                  <b>{player.gamesThisSeason}</b> this season
+                </>
+              }
+              sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 1 } }}
+            />
+            <Chip
+              size="small"
+              variant="outlined"
+              aria-label={`${player.gamesOverall} games overall`}
+              label={
+                <>
+                  <b>{player.gamesOverall}</b> overall
+                </>
+              }
+              sx={{ height: 22, fontSize: '0.75rem', '& .MuiChip-label': { px: 1 } }}
+            />
+          </Stack>
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ minHeight: 24 }}>

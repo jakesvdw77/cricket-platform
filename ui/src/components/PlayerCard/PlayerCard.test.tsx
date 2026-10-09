@@ -36,6 +36,8 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
     verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     ...overrides,
   }
 }
@@ -210,4 +212,40 @@ describe('PlayerCard', () => {
       expect(onStatusAction).toHaveBeenCalledWith('verify')
     })
   })
+
+  // docs/specs/088 (E): games played in the header's top-right corner
+  describe('games played chips', () => {
+    it('shows this season and overall, with accessible names', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 12, gamesOverall: 48 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(within(chips).getByLabelText('12 games this season')).toHaveTextContent('12 this season')
+      expect(within(chips).getByLabelText('48 games overall')).toHaveTextContent('48 overall')
+    })
+
+    it('is always present, with 0 for a player who has not played, so every card keeps one height', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 0, gamesOverall: 0 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(within(chips).getByLabelText('0 games this season')).toBeInTheDocument()
+      expect(within(chips).getByLabelText('0 games overall')).toBeInTheDocument()
+    })
+
+    it('stretches the two chips to one width inside a column with a shared minimum width', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 3, gamesOverall: 1204 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(chips).toHaveStyle({ minWidth: '104px' })
+      expect(getComputedStyle(chips).alignItems).toBe('stretch')
+      expect(chips.children).toHaveLength(2)
+    })
+
+    it('keeps the title beside the chips, clamped, for a long name', () => {
+      renderCard({ player: makePlayer({ firstName: 'Christopher Alexander', lastName: 'Montgomery-Hendricks the Third', gamesOverall: 203 }) })
+
+      expect(screen.getByRole('heading', { name: /Christopher Alexander/ })).toBeInTheDocument()
+      expect(screen.getByLabelText('203 games overall')).toBeInTheDocument()
+    })
+  })
 })
+
