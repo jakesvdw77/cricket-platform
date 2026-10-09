@@ -12,13 +12,13 @@ import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { segmentedSwitchSx } from '../../../utils/segmentedSwitch'
 import { useTeamSelectionHubState } from './hubContext'
 
-type HubView = 'matches' | 'players' | 'slots' | 'batting'
+type HubView = 'matches' | 'slots' | 'players' | 'batting'
 
 // docs/specs/093-team-selection-hub.md: the four views of the hub, each its own route under /manage/team-selection.
 const VIEWS: { value: HubView; label: string; to: string; icon: ReactNode }[] = [
   { value: 'matches', label: 'Matches', to: '/manage/team-selection/matches', icon: <EventNoteOutlinedIcon fontSize="small" /> },
-  { value: 'players', label: 'Players', to: '/manage/team-selection/players', icon: <GridOnOutlinedIcon fontSize="small" /> },
   { value: 'slots', label: 'Time slots', to: '/manage/team-selection/slots', icon: <ScheduleOutlinedIcon fontSize="small" /> },
+  { value: 'players', label: 'Players', to: '/manage/team-selection/players', icon: <GridOnOutlinedIcon fontSize="small" /> },
   { value: 'batting', label: 'Batting order', to: '/manage/team-selection/batting', icon: <FormatListNumberedOutlinedIcon fontSize="small" /> },
 ]
 

@@ -73,7 +73,7 @@ describe('TeamSelectionHubLayout', () => {
     renderHub()
     expect(screen.getByRole('heading', { name: 'Team selection' })).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Team selection views' })
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Matches', 'Players', 'Time slots', 'Batting order'])
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Matches', 'Time slots', 'Players', 'Batting order'])
     expect(within(nav).getByRole('link', { name: 'Matches' })).toHaveAttribute('aria-current', 'page')
     expect(await screen.findByRole('table', { name: 'Team selection by match' })).toBeInTheDocument()
   })
