@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ContentControlsLine, SortLink } from './ContentControlsLine'
+import { ContentControlsLine, SortLink, SortMenu } from './ContentControlsLine'
 
 function setPhone(phone: boolean) {
   window.matchMedia = ((query: string) => ({
@@ -60,3 +60,38 @@ describe('ContentControlsLine (docs/specs/083)', () => {
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })
+
+// docs/specs/088
+describe('SortMenu', () => {
+  const options = [
+    { value: 'name-asc', label: 'Name, A to Z', linkLabel: 'A to Z' },
+    { value: 'name-desc', label: 'Name, Z to A', linkLabel: 'Z to A' },
+    { value: 'season-desc', label: 'Games this season, most first', linkLabel: 'most games' },
+    { value: 'season-asc', label: 'Games this season, fewest first', linkLabel: 'fewest games' },
+  ]
+
+  it('reads like the sort link, with the current order in words', () => {
+    render(<SortMenu value="season-desc" options={options} onChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /most games/ })).toHaveAttribute('aria-haspopup', 'menu')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('opens a menu of every order with the current one selected, and reports the chosen one', async () => {
+    const onChange = vi.fn()
+    render(<SortMenu value="name-asc" options={options} onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /A to Z/ }))
+
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(options.map((option) => option.label))
+    expect(items[0]).toHaveClass('Mui-selected')
+    expect(items[2]).not.toHaveClass('Mui-selected')
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
+
+    expect(onChange).toHaveBeenCalledWith('season-desc')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})
+

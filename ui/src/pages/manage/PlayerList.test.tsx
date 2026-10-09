@@ -285,22 +285,55 @@ describe('PlayerList', () => {
     await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: undefined })))
   })
 
-  it('the sort link reverses the card order', async () => {
+  it('sorts by name by default, and the sort menu offers Z to A and games this season, most or fewest first', async () => {
     const user = userEvent.setup()
     listPlayers.mockResolvedValue([
-      makePlayer({ id: 'player-1', firstName: 'Amy', lastName: 'Ansell' }),
-      makePlayer({ id: 'player-2', firstName: 'Zed', lastName: 'Zulu' }),
+      makePlayer({ id: 'player-1', firstName: 'Amy', lastName: 'Ansell', gamesThisSeason: 3 }),
+      makePlayer({ id: 'player-2', firstName: 'Zed', lastName: 'Zulu', gamesThisSeason: 11 }),
+      makePlayer({ id: 'player-3', firstName: 'Bea', lastName: 'Bell', gamesThisSeason: 3 }),
     ])
+    const names = () => screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
 
     renderList('test-club-id')
 
     await screen.findByRole('heading', { name: 'Amy Ansell' })
-    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['Amy Ansell', 'Zed Zulu'])
+    expect(names()).toEqual(['Amy Ansell', 'Bea Bell', 'Zed Zulu'])
 
     await user.click(screen.getByRole('button', { name: /a to z/i }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Name, A to Z', 'Name, Z to A', 'Games this season, most first', 'Games this season, fewest first',
+    ])
+    await user.click(screen.getByRole('menuitem', { name: 'Name, Z to A' }))
+    expect(names()).toEqual(['Zed Zulu', 'Bea Bell', 'Amy Ansell'])
 
-    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
-    expect(screen.getByRole('button', { name: /z to a/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /z to a/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
+    // Zed has 11; Amy and Bea tie on 3 and keep name order
+    expect(names()).toEqual(['Zed Zulu', 'Amy Ansell', 'Bea Bell'])
+    expect(screen.getByRole('button', { name: /most games/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /most games/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Games this season, fewest first' }))
+    expect(names()).toEqual(['Amy Ansell', 'Bea Bell', 'Zed Zulu'])
+    // sorting is client-side: it never refetches
+    expect(listPlayers).toHaveBeenCalledTimes(1)
+  })
+
+  it('the same sort order applies to the list view', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('playerList:view', 'list')
+    listPlayers.mockResolvedValue([
+      makePlayer({ id: 'player-1', firstName: 'Amy', lastName: 'Ansell', gamesThisSeason: 1 }),
+      makePlayer({ id: 'player-2', firstName: 'Zed', lastName: 'Zulu', gamesThisSeason: 9 }),
+    ])
+
+    renderList('test-club-id')
+
+    await screen.findByRole('table', { name: 'Players' })
+    await user.click(screen.getByRole('button', { name: /a to z/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Games this season, most first' }))
+
+    expect(screen.getAllByTestId('player-row').map((row) => within(row).getByRole('link').textContent)).toEqual(['Zed Zulu', 'Amy Ansell'])
   })
 
   it('reapplies a persisted section filter on mount, and never persists the search text, the switch or the quick filter', async () => {

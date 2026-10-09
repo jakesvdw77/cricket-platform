@@ -1,2 +1,2 @@
-export { ContentControlsLine, SortLink } from './ContentControlsLine'
-export type { ContentControlsLineProps, SortLinkProps } from './ContentControlsLine'
+export { ContentControlsLine, SortLink, SortMenu } from './ContentControlsLine'
+export type { ContentControlsLineProps, SortLinkProps, SortMenuOption, SortMenuProps } from './ContentControlsLine'

@@ -7,7 +7,8 @@ import { PlayerTable } from '../../components/PlayerTable'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
-import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
+import { ContentControlsLine, SortMenu } from '../../components/ContentControlsLine'
+import type { SortMenuOption } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
@@ -38,6 +39,31 @@ const FOCUS_LABELS: Record<PlayerListFocus, string> = {
   unverified: 'Unverified players',
 }
 
+// docs/specs/088: the orders the sort menu offers. Name is the default; "games this season" puts the busiest (or the
+// idlest) players first, with the name as the tie-break so equal counts keep a stable order.
+type PlayerSort = 'name-asc' | 'name-desc' | 'season-desc' | 'season-asc'
+
+const SORT_OPTIONS: (SortMenuOption & { value: PlayerSort })[] = [
+  { value: 'name-asc', label: 'Name, A to Z', linkLabel: 'A to Z' },
+  { value: 'name-desc', label: 'Name, Z to A', linkLabel: 'Z to A' },
+  { value: 'season-desc', label: 'Games this season, most first', linkLabel: 'most games' },
+  { value: 'season-asc', label: 'Games this season, fewest first', linkLabel: 'fewest games' },
+]
+
+function comparePlayers(sort: PlayerSort): (a: Player, b: Player) => number {
+  const byName = (a: Player, b: Player) => fullName(a).localeCompare(fullName(b))
+  switch (sort) {
+    case 'name-desc':
+      return (a, b) => byName(b, a)
+    case 'season-desc':
+      return (a, b) => b.gamesThisSeason - a.gamesThisSeason || byName(a, b)
+    case 'season-asc':
+      return (a, b) => a.gamesThisSeason - b.gamesThisSeason || byName(a, b)
+    default:
+      return byName
+  }
+}
+
 // Reads clubId from ManagerHome's Outlet context (docs/specs/020-club-manager-access.md), same guard pattern as every
 // other /manage list. Deliberately no pagination state - a club's players are a small, bounded list (docs/specs/028-
 // players.md's API Contract), fetched in full and searched by name client-side, unlike MatchList's backend pagination.
@@ -47,7 +73,7 @@ export default function PlayerList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sortAscending, setSortAscending] = useState(true)
+  const [sort, setSort] = useState<PlayerSort>('name-asc')
   // docs/specs/035-section-scoped-access.md: an optional, further-narrowing filter on top of whatever the caller's own
   // access already resolves server-side. docs/specs/043: persisted across visits; Search stays a separate, non-persisted
   // useState above. docs/specs/077: show only the players still missing a date of birth, to fix them.
@@ -125,9 +151,8 @@ export default function PlayerList() {
     }
     const term = search.trim().toLowerCase()
     const filtered = term ? players.filter((player) => fullName(player).toLowerCase().includes(term)) : players
-    const sorted = [...filtered].sort((a, b) => fullName(a).localeCompare(fullName(b)))
-    return sortAscending ? sorted : sorted.reverse()
-  }, [players, search, sortAscending])
+    return [...filtered].sort(comparePlayers(sort))
+  }, [players, search, sort])
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -208,7 +233,7 @@ export default function PlayerList() {
     />
   )
   const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show suspended and rejected players" />
-  const sortLink = <SortLink label={sortAscending ? 'A to Z' : 'Z to A'} onToggle={() => setSortAscending((current) => !current)} />
+  const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={(value) => setSort(value as PlayerSort)} />
 
   const chips = [
     ...(focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []),
