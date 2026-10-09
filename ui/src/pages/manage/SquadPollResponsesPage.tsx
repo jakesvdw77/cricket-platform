@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import { Button } from '../../components/Button'
@@ -19,6 +20,7 @@ import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { errorDetail } from '../../utils/errorDetail'
 import { usePollClose } from '../../hooks/usePollClose'
+import { usePollDelete } from '../../hooks/usePollDelete'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import {
   closesRowText,
@@ -44,6 +46,7 @@ export default function SquadPollResponsesPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId, pollId } = useParams<{ matchId?: string; pollId?: string }>()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
@@ -104,6 +107,19 @@ export default function SquadPollResponsesPage() {
   const match = matchQuery.data
   const teams = teamsQuery.data
   const teamsById = useMemo(() => new Map<string, Team>((teams ?? []).map((team) => [team.id, team])), [teams])
+  // docs/specs/090: Delete poll from this page. It leaves for the list first (so this page never refetches the deleted
+  // poll), then refreshes the lists, the counters and the match's own poll data.
+  const pollDelete = usePollDelete({
+    clubId: clubId as string,
+    target: { kind: 'SQUAD', matchId: matchId as string, pollId: pollId as string },
+    title: poll && match ? squadPollTitle(match, teamsById) : '',
+    onDeleted: () => {
+      navigate(BACK_TO)
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+      invalidateAvailabilityCounters(queryClient, clubId)
+    },
+  })
   const model = useMemo(
     () => (responses && poll && match ? toSquadResponsesModel({ responses, poll, match, teamsById }) : null),
     [responses, poll, match, teamsById],
@@ -190,6 +206,16 @@ export default function SquadPollResponsesPage() {
               Close poll
             </Button>
           )}
+          <MuiButton
+            variant="outlined"
+            color="error"
+            size="small"
+            startIcon={<DeleteOutlineIcon fontSize="small" />}
+            disabled={pollDelete.deleting}
+            onClick={pollDelete.requestDelete}
+          >
+            Delete poll
+          </MuiButton>
           <span title={closed ? SHARE_CLOSED_REASON : undefined}>
             <Button
                       variant="secondary"
@@ -245,11 +271,12 @@ export default function SquadPollResponsesPage() {
       matches={model.matches}
       override={override}
       overrideError={
-        pollClose.closeError ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.') : overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null
+        pollClose.closeError ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.') : pollDelete.deleteError ? errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.') : overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null
       }
       emptyText="No players in this squad yet."
     >
       {pollClose.confirmDialog}
+      {pollDelete.dialogs}
 
       <EditCloseTimeDialog
         open={closeTimeOpen}

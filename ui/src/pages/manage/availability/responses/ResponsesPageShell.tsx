@@ -34,6 +34,8 @@ export interface ResponsesPageShellProps {
   backLabel: string
   // The header's top-right action(s), e.g. Share invite.
   headerAction?: ReactNode
+  // docs/specs/090: a small control after the title (the group poll's Edit description pencil).
+  titleAdornment?: ReactNode
   // A row of poll details under the header, supplied by each page so its own header DOM is kept.
   meta?: ReactNode
   open: boolean
@@ -54,6 +56,7 @@ export function ResponsesPageShell({
   backTo,
   backLabel,
   headerAction,
+  titleAdornment,
   meta,
   open,
   responses,
@@ -90,6 +93,7 @@ export function ResponsesPageShell({
         backTo={returnTo ?? backTo}
         backLabel={returnTo ? 'Back to team selection' : backLabel}
         action={headerAction}
+        titleAdornment={titleAdornment}
       />
 
       {(meta || single) && (

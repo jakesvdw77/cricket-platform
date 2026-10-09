@@ -16,6 +16,7 @@ const setPlayerStatus = vi.fn()
 const updatePollCloseTime = vi.fn()
 const openPoll = vi.fn()
 const closePoll = vi.fn()
+const deletePoll = vi.fn()
 const getMatch = vi.fn()
 const listTeamsForClub = vi.fn()
 
@@ -31,6 +32,7 @@ vi.mock('../../api/matchAvailabilityApi', async () => {
       updatePollCloseTime(clubId, matchId, pollId, payload),
     openPoll: (clubId: string, matchId: string, pollId: string) => openPoll(clubId, matchId, pollId),
     closePoll: (clubId: string, matchId: string, pollId: string) => closePoll(clubId, matchId, pollId),
+    deletePoll: (clubId: string, matchId: string, pollId: string) => deletePoll(clubId, matchId, pollId),
   }
 })
 
@@ -394,6 +396,35 @@ describe('SquadPollResponsesPage', () => {
     await waitFor(() =>
       expect(updatePollCloseTime).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1', { autoClose: false, scheduledCloseAt: null }),
     )
+  })
+
+  // docs/specs/090 (B, extended): Delete poll in the header; a squad poll has no description pencil.
+  describe('delete from the page', () => {
+    it('deletes after confirming and goes back to the polls list', async () => {
+      const user = userEvent.setup()
+      deletePoll.mockResolvedValue(undefined)
+      renderPage()
+      await loaded()
+
+      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      expect(await screen.findByRole('dialog', { name: 'Delete this squad poll?' })).toBeInTheDocument()
+      expect(deletePoll).not.toHaveBeenCalled()
+
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete poll' }))
+      await waitFor(() => expect(deletePoll).toHaveBeenCalledWith('test-club-id', 'match-1', 'poll-1'))
+      expect(await screen.findByText('Polls List')).toBeInTheDocument()
+    })
+
+    it('does nothing when the confirmation is cancelled, and offers no description pencil', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await loaded()
+
+      await user.click(screen.getByRole('button', { name: 'Delete poll' }))
+      await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+      expect(deletePoll).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
+    })
   })
 
   // docs/specs/090: Close poll / Reopen poll in the header.

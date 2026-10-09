@@ -33,6 +33,13 @@ describe('ResponsesPageShell', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('renders a title adornment next to the heading when given (090)', () => {
+    renderShell({ titleAdornment: <button type="button">Edit description</button> })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'A poll' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit description' })).toBeInTheDocument()
+  })
+
   it('shows the closed note and the override error when given', () => {
     renderShell({ open: false, overrideError: 'Could not save.' })
 

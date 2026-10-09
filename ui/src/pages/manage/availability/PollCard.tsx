@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconButton, Stack } from '@mui/material'
-import { isAxiosError } from 'axios'
-import { useMutation } from '@tanstack/react-query'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -16,17 +14,15 @@ import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { SlotSummary } from '../../../components/SlotSummary'
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { PollShareDialog } from '../../../components/PollShareDialog'
 import { SectionAvailabilityShareDialog } from '../../../components/SectionAvailabilityShareDialog'
-import { deletePoll } from '../../../api/matchAvailabilityApi'
-import { deleteRound, updateRoundDescription } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 import { dayPartForDate, formatBracketLabel } from '../../../utils/dayPart'
 import { errorDetail } from '../../../utils/errorDetail'
 import { usePollClose } from '../../../hooks/usePollClose'
+import { usePollDelete } from '../../../hooks/usePollDelete'
+import { usePollDescription } from './usePollDescription'
 import { EditCloseTimeDialog } from './EditCloseTimeDialog'
-import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
 import {
   REOPEN_PAST_REASON,
@@ -104,32 +100,24 @@ export function PollCard({
 }) {
   const navigate = useNavigate()
   const isOpen = item.kind === 'GROUP' ? item.round.open : open
-  const [deleteOpen, setDeleteOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [matchesOpen, setMatchesOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [descriptionOpen, setDescriptionOpen] = useState(false)
-  // The server's own 409 message when picked match squad members block a group delete.
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null)
 
   const autoClose = item.kind === 'GROUP' ? item.round.autoClose : item.poll.autoClose
   const scheduledCloseAt = item.kind === 'GROUP' ? item.round.scheduledCloseAt : item.poll.scheduledCloseAt
   const kickoff = item.kind === 'GROUP' ? item.round.firstMatchKickoff : item.poll.matchDate
   const title = item.kind === 'GROUP' ? item.round.description : squadPollTitle(item.poll, teamsById)
 
-  const deleteMutation = useMutation({
-    mutationFn: () =>
-      item.kind === 'GROUP' ? deleteRound(clubId, item.round.id) : deletePoll(clubId, item.poll.matchId, item.poll.pollId),
-    onSuccess: () => {
-      setDeleteOpen(false)
-      onChanged()
-    },
-    onError: (error) => {
-      setDeleteOpen(false)
-      if (item.kind === 'GROUP' && isAxiosError(error) && error.response?.status === 409) {
-        setBlockedMessage(errorDetail(error, "This group poll can't be deleted right now."))
-      }
-    },
+  // Delete, Close and the group description are the shared hooks (docs/specs/090), also used by both poll pages.
+  const pollDelete = usePollDelete({
+    clubId,
+    target:
+      item.kind === 'GROUP'
+        ? { kind: 'GROUP', roundId: item.round.id }
+        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
+    title,
+    onDeleted: onChanged,
   })
 
   // Closing is the shared hook (docs/specs/090); reopening goes through EditCloseTimeDialog (a new close time is saved
@@ -144,18 +132,11 @@ export function PollCard({
     onClosed: onChanged,
   })
 
-  const groupRoundId = item.kind === 'GROUP' ? item.round.id : null
-  const descriptionMutation = useMutation({
-    mutationFn: async (description: string) => {
-      if (!groupRoundId) {
-        throw new Error('Only a group poll has an editable description.')
-      }
-      await updateRoundDescription(clubId, groupRoundId, description)
-    },
-    onSuccess: () => {
-      setDescriptionOpen(false)
-      onChanged()
-    },
+  const pollDescription = usePollDescription({
+    clubId,
+    roundId: item.kind === 'GROUP' ? item.round.id : '',
+    description: item.kind === 'GROUP' ? item.round.description : '',
+    onSaved: onChanged,
   })
 
   const subtitle =
@@ -193,12 +174,12 @@ export function PollCard({
         titleLines={3}
         // A pencil after a group poll's title edits its description (matches can't be changed after
         // creation, docs/specs/064 Non-goals); a squad poll's title is derived from its match.
-        titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: () => setDescriptionOpen(true) } : undefined}
+        titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: pollDescription.openEditor } : undefined}
         cornerAction={{
           label: 'Delete',
           pendingLabel: 'Deleting…',
-          pending: deleteMutation.isPending,
-          onClick: () => setDeleteOpen(true),
+          pending: pollDelete.deleting,
+          onClick: pollDelete.requestDelete,
           icon: <DeleteOutlineIcon fontSize="small" />,
         }}
         footerButtons={[
@@ -232,8 +213,8 @@ export function PollCard({
         feedback={
           pollClose.closeError
             ? { message: errorDetail(pollClose.closeError, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
-            : deleteMutation.isError && !blockedMessage
-              ? { message: errorDetail(deleteMutation.error, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
+            : pollDelete.deleteError
+              ? { message: errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
               : null
         }
       >
@@ -271,20 +252,7 @@ export function PollCard({
         </Stack>
       </RecordCard>
 
-      {item.kind === 'GROUP' && (
-        <EditDescriptionDialog
-          open={descriptionOpen}
-          onClose={() => setDescriptionOpen(false)}
-          description={item.round.description}
-          pending={descriptionMutation.isPending}
-          errorMessage={
-            descriptionMutation.isError
-              ? errorDetail(descriptionMutation.error, 'Something went wrong saving this description. Please try again.')
-              : null
-          }
-          onSave={(description) => descriptionMutation.mutate(description)}
-        />
-      )}
+      {item.kind === 'GROUP' && pollDescription.dialog}
 
       <EditCloseTimeDialog
         open={closeTimeOpen}
@@ -325,28 +293,7 @@ export function PollCard({
       )}
 
       {pollClose.confirmDialog}
-      <ConfirmDialog
-        open={deleteOpen}
-        title={item.kind === 'GROUP' ? 'Delete this group poll?' : 'Delete this squad poll?'}
-        description={
-          item.kind === 'GROUP'
-            ? `"${title}" and every response to it will be removed. Its fixtures can be polled again afterwards.`
-            : `The poll for ${title} and every response to it will be removed. This match can be polled again afterwards.`
-        }
-        confirmLabel="Delete poll"
-        pendingLabel="Deleting…"
-        destructive
-        pending={deleteMutation.isPending}
-        onConfirm={() => deleteMutation.mutate()}
-        onClose={() => setDeleteOpen(false)}
-      />
-      <ConfirmDialog
-        open={blockedMessage !== null}
-        title="Can't delete this poll"
-        description={blockedMessage}
-        acknowledgeOnly
-        onClose={() => setBlockedMessage(null)}
-      />
+      {pollDelete.dialogs}
     </>
   )
 }
