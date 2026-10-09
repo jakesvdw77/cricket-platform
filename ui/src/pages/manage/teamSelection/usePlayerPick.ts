@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { isAxiosError } from 'axios'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createMatchSide, removeMatchSidePlayer } from '../../../api/matchSideApi'
+import { createMatchSide, removeMatchSidePlayer, reorderMatchSidePlayers } from '../../../api/matchSideApi'
 import { applySelection } from '../../../api/matchSelectionApi'
 import type { SelectionEntryRequest, SelectionRejectedBody } from '../../../api/matchSelectionApi'
 import { invalidateTeamSelection } from '../../../api/teamSelectionApi'
@@ -64,10 +64,35 @@ export function usePlayerPick(clubId: string) {
     onError: (err) => setError(errorDetail(err, "Couldn't remove this player. Please try again.")),
   })
 
+  // Batting order view: move one batter a place up or down. The same full-order reorder call and list the Select team
+  // page's Move up / Move down sends (the positioned players in batting order, the moved one swapped with its neighbour).
+  const reorderMutation = useMutation({
+    mutationFn: ({ match, side, orderedIds }: { match: TeamSelectionMatch; side: TeamSelectionSide; orderedIds: string[] }) =>
+      reorderMatchSidePlayers(clubId, match.matchId, side.sideId as string, orderedIds),
+    onMutate: () => setError(null),
+    onSuccess: refresh,
+    onError: (err) => setError(errorDetail(err, "Couldn't move this player. Please try again.")),
+  })
+
+  const busy = pickMutation.isPending || unpickMutation.isPending || reorderMutation.isPending
+
   return {
     pick: (target: PickTarget) => pickMutation.mutate(target),
+    move: (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => {
+      if (busy || !side.sideId) return
+      const ids = side.picks
+        .filter((pick) => pick.battingOrder != null && !pick.twelfthMan)
+        .sort((a, b) => (a.battingOrder as number) - (b.battingOrder as number))
+        .map((pick) => pick.playerId)
+      const index = ids.indexOf(playerId)
+      const target = index + direction
+      if (index === -1 || target < 0 || target >= ids.length) return
+      ids.splice(index, 1)
+      ids.splice(target, 0, playerId)
+      reorderMutation.mutate({ match, side, orderedIds: ids })
+    },
     unpick: (target: PickTarget) => unpickMutation.mutate(target),
-    busy: pickMutation.isPending || unpickMutation.isPending,
+    busy,
     error,
     clearError: () => setError(null),
   }

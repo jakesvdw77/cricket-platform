@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Alert, Box, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
+import ArrowDownward from '@mui/icons-material/ArrowDownward'
+import ArrowUpward from '@mui/icons-material/ArrowUpward'
+import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { SelectionGauge } from '../../../components/SelectionGauge'
@@ -53,12 +55,14 @@ function BattingMatrix({
   matches,
   busy,
   onAdd,
+  onMove,
   announcingSideId,
   onAnnounce,
 }: {
   matches: TeamSelectionMatch[]
   busy: boolean
   onAdd: (target: AddTarget) => void
+  onMove: (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => void
   announcingSideId: string | null
   onAnnounce: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
 }) {
@@ -81,6 +85,9 @@ function BattingMatrix({
   const bodyCellSx = { px: 0.75, py: 0.5, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
   const footCellSx = { position: 'sticky', bottom: 0, zIndex: 3, bgcolor: 'background.paper', borderTop: 1, borderTopColor: 'divider', px: 0.75, py: 0.75 } as const
 
+  const arrowSx = { p: 0.25, fontSize: 16 } as const
+  const lastFilled = ({ side }: Column) =>
+    Math.max(0, ...side.picks.filter((pick) => !pick.twelfthMan).map((pick) => pick.battingOrder ?? 0))
   const pickAt = ({ side }: Column, position: number) => side.picks.find((pick) => pick.battingOrder === position)
 
   return (
@@ -171,7 +178,35 @@ function BattingMatrix({
                 const open = !pick && position <= side.limits.battingPlaces
                 return (
                   <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-cell-${match.matchId}-${side.teamId}-${position}`}>
-                    {pick && <PickedName pick={pick} />}
+                    {pick && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.25 }}>
+                        <PickedName pick={pick} />
+                        {!side.announced && side.sideId !== null && (
+                          <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
+                            <IconButton
+                              size="small"
+                              disabled={busy || position === 1}
+                              data-testid={`move-up-${match.matchId}-${side.teamId}-${position}`}
+                              aria-label={`Move ${nameOf(pick)} up, ${columnLabel(column)}`}
+                              onClick={() => onMove(match, side, pick.playerId, -1)}
+                              sx={arrowSx}
+                            >
+                              <ArrowUpward fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              disabled={busy || position === lastFilled(column)}
+                              data-testid={`move-down-${match.matchId}-${side.teamId}-${position}`}
+                              aria-label={`Move ${nameOf(pick)} down, ${columnLabel(column)}`}
+                              onClick={() => onMove(match, side, pick.playerId, 1)}
+                              sx={arrowSx}
+                            >
+                              <ArrowDownward fontSize="inherit" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                     {open && (
                       <MuiButton
                         size="small"
@@ -317,6 +352,7 @@ export default function BattingOrderView() {
               matches={matches}
               busy={picker.busy}
               onAdd={setAdding}
+              onMove={picker.move}
               announcingSideId={announce.announcingSideId}
               onAnnounce={announce.request}
             />
