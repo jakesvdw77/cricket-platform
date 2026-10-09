@@ -164,21 +164,13 @@ export default function PlayerDetailPage() {
             >
               Status
             </MuiButton>
+            {/* The primary page action: the same filled dark green as Add Player (the shared primary button) */}
             <MuiButton
               component={RouterLink}
               to={`/manage/players/${player.id}/edit`}
-              variant="outlined"
+              variant="contained"
               startIcon={<EditOutlinedIcon fontSize="small" />}
-              sx={{
-                flex: 'none',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-                color: 'primary.dark',
-                borderColor: 'transparent',
-                '&:hover': {
-                  borderColor: 'transparent',
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-                },
-              }}
+              sx={{ flex: 'none' }}
             >
               Edit
             </MuiButton>
