@@ -3,6 +3,8 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Chip, IconButton, Stack, Typography } from '@mui/material'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
@@ -13,6 +15,7 @@ import { getRoundMatches, getRoundResponses, listRounds, setRoundPlayerStatus } 
 import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailabilityApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
+import { usePollClose } from '../../hooks/usePollClose'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import { REOPEN_PAST_REASON, SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
@@ -65,6 +68,16 @@ export default function GroupPollResponsesPage() {
   })
 
   const responses = responsesQuery.data
+  // docs/specs/090: Close poll from this page (the hook is called before the loading returns below).
+  const pollClose = usePollClose({
+    clubId: clubId as string,
+    target: { kind: 'GROUP', roundId: roundId as string },
+    autoClose: roundQuery.data?.autoClose ?? true,
+    onClosed: () => {
+      queryClient.invalidateQueries({ queryKey: roundsKey })
+      invalidateAvailabilityCounters(queryClient, clubId)
+    },
+  })
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -106,19 +119,44 @@ export default function GroupPollResponsesPage() {
       backTo="/manage/availability"
       backLabel="Back to Availability Polls"
       headerAction={
-        <span title={closed ? SHARE_CLOSED_REASON : undefined}>
-          <Button
-                    variant="secondary"
-                    size="sm"
-                    startIcon={<ShareOutlinedIcon fontSize="small" />}
-                    disabled={closed}
-                    aria-label={closed ? SHARE_CLOSED_REASON : undefined}
-                    title={closed ? SHARE_CLOSED_REASON : undefined}
-                    onClick={() => setShareOpen(true)}
-                  >
-            Share invite
-          </Button>
-        </span>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <span title={closed ? SHARE_CLOSED_REASON : undefined}>
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<ShareOutlinedIcon fontSize="small" />}
+              disabled={closed}
+              aria-label={closed ? SHARE_CLOSED_REASON : undefined}
+              title={closed ? SHARE_CLOSED_REASON : undefined}
+              onClick={() => setShareOpen(true)}
+            >
+              Share invite
+            </Button>
+          </span>
+          {closed ? (
+            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
+              <Button
+                variant="secondary"
+                size="sm"
+                startIcon={<LockOpenOutlinedIcon fontSize="small" />}
+                disabled={reopenBlocked}
+                onClick={() => setCloseTimeOpen(true)}
+              >
+                Reopen poll
+              </Button>
+            </span>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<LockOutlinedIcon fontSize="small" />}
+              disabled={pollClose.closing}
+              onClick={pollClose.requestClose}
+            >
+              Close poll
+            </Button>
+          )}
+        </Stack>
       }
       meta={
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -152,10 +190,16 @@ export default function GroupPollResponsesPage() {
       matches={matchesQuery.data ?? []}
       override={override}
       overrideError={
-        overrideMutation.isError ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.") : null
+        pollClose.closeError
+          ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.')
+          : overrideMutation.isError
+            ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.")
+            : null
       }
       emptyText="No eligible players for this section yet."
     >
+      {pollClose.confirmDialog}
+
       <EditCloseTimeDialog
         open={closeTimeOpen}
         onClose={() => setCloseTimeOpen(false)}

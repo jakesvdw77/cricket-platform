@@ -3,6 +3,8 @@ import { Link as RouterLink, useOutletContext, useParams } from 'react-router-do
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import { Button } from '../../components/Button'
@@ -16,6 +18,7 @@ import { getMatch } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { errorDetail } from '../../utils/errorDetail'
+import { usePollClose } from '../../hooks/usePollClose'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import {
   closesRowText,
@@ -86,6 +89,18 @@ export default function SquadPollResponsesPage() {
 
   const responses = responsesQuery.data
   const poll = pollQuery.data
+  // docs/specs/090: Close poll from this page (the hook is called before the loading returns below).
+  const pollClose = usePollClose({
+    clubId: clubId as string,
+    target: { kind: 'SQUAD', matchId: matchId as string, pollId: pollId as string },
+    autoClose: poll?.autoClose ?? true,
+    onClosed: () => {
+      // The match key covers this poll, its responses and the match; the dashboard cards, the counters follow.
+      queryClient.invalidateQueries({ queryKey: matchKey })
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'availability-polls'] })
+      invalidateAvailabilityCounters(queryClient, clubId)
+    },
+  })
   const match = matchQuery.data
   const teams = teamsQuery.data
   const teamsById = useMemo(() => new Map<string, Team>((teams ?? []).map((team) => [team.id, team])), [teams])
@@ -152,6 +167,29 @@ export default function SquadPollResponsesPage() {
           >
             Open match
           </MuiButton>
+          {closed ? (
+            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
+              <Button
+                variant="secondary"
+                size="sm"
+                startIcon={<LockOpenOutlinedIcon fontSize="small" />}
+                disabled={reopenBlocked}
+                onClick={() => setCloseTimeOpen(true)}
+              >
+                Reopen poll
+              </Button>
+            </span>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<LockOutlinedIcon fontSize="small" />}
+              disabled={pollClose.closing}
+              onClick={pollClose.requestClose}
+            >
+              Close poll
+            </Button>
+          )}
           <span title={closed ? SHARE_CLOSED_REASON : undefined}>
             <Button
                       variant="secondary"
@@ -207,10 +245,12 @@ export default function SquadPollResponsesPage() {
       matches={model.matches}
       override={override}
       overrideError={
-        overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null
+        pollClose.closeError ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.') : overrideMutation.isError ? errorDetail(overrideMutation.error, 'Something went wrong saving that answer. Please try again.') : null
       }
       emptyText="No players in this squad yet."
     >
+      {pollClose.confirmDialog}
+
       <EditCloseTimeDialog
         open={closeTimeOpen}
         onClose={() => setCloseTimeOpen(false)}

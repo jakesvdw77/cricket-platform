@@ -19,12 +19,12 @@ import { SlotSummary } from '../../../components/SlotSummary'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { PollShareDialog } from '../../../components/PollShareDialog'
 import { SectionAvailabilityShareDialog } from '../../../components/SectionAvailabilityShareDialog'
-import { closePoll, deletePoll } from '../../../api/matchAvailabilityApi'
-import { closeRound, deleteRound, updateRoundDescription } from '../../../api/sectionAvailabilityApi'
+import { deletePoll } from '../../../api/matchAvailabilityApi'
+import { deleteRound, updateRoundDescription } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 import { dayPartForDate, formatBracketLabel } from '../../../utils/dayPart'
 import { errorDetail } from '../../../utils/errorDetail'
-import { closePollDescription, closePollTitle } from '../../../utils/pollClose'
+import { usePollClose } from '../../../hooks/usePollClose'
 import { EditCloseTimeDialog } from './EditCloseTimeDialog'
 import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
@@ -105,7 +105,6 @@ export function PollCard({
   const navigate = useNavigate()
   const isOpen = item.kind === 'GROUP' ? item.round.open : open
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [closeOpen, setCloseOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [matchesOpen, setMatchesOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -133,21 +132,16 @@ export function PollCard({
     },
   })
 
-  // Only closing is a plain mutation; reopening goes through EditCloseTimeDialog (a new close time
-  // is saved first, since the server refuses a reopen once an automatic close time has passed).
-  const closeMutation = useMutation({
-    mutationFn: async () => {
-      if (item.kind === 'GROUP') {
-        await closeRound(clubId, item.round.id)
-      } else {
-        await closePoll(clubId, item.poll.matchId, item.poll.pollId)
-      }
-    },
-    onSuccess: () => {
-      setCloseOpen(false)
-      onChanged()
-    },
-    onError: () => setCloseOpen(false),
+  // Closing is the shared hook (docs/specs/090); reopening goes through EditCloseTimeDialog (a new close time is saved
+  // first, since the server refuses a reopen once an automatic close time has passed).
+  const pollClose = usePollClose({
+    clubId,
+    target:
+      item.kind === 'GROUP'
+        ? { kind: 'GROUP', roundId: item.round.id }
+        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
+    autoClose,
+    onClosed: onChanged,
   })
 
   const groupRoundId = item.kind === 'GROUP' ? item.round.id : null
@@ -209,7 +203,7 @@ export function PollCard({
         }}
         footerButtons={[
           isOpen
-            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: () => setCloseOpen(true), disabled: closeMutation.isPending }
+            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: pollClose.requestClose, disabled: pollClose.closing }
             : {
                 label: 'Reopen poll',
                 // Same disabled + reason pattern as Share on a closed poll (docs/specs/082).
@@ -236,8 +230,8 @@ export function PollCard({
           },
         ]}
         feedback={
-          closeMutation.isError
-            ? { message: errorDetail(closeMutation.error, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
+          pollClose.closeError
+            ? { message: errorDetail(pollClose.closeError, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
             : deleteMutation.isError && !blockedMessage
               ? { message: errorDetail(deleteMutation.error, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
               : null
@@ -330,16 +324,7 @@ export function PollCard({
         />
       )}
 
-      <ConfirmDialog
-        open={closeOpen}
-        title={closePollTitle()}
-        description={closePollDescription(autoClose)}
-        confirmLabel="Close poll"
-        pendingLabel="Closing…"
-        pending={closeMutation.isPending}
-        onConfirm={() => closeMutation.mutate()}
-        onClose={() => setCloseOpen(false)}
-      />
+      {pollClose.confirmDialog}
       <ConfirmDialog
         open={deleteOpen}
         title={item.kind === 'GROUP' ? 'Delete this group poll?' : 'Delete this squad poll?'}

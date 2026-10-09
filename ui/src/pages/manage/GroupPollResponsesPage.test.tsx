@@ -17,6 +17,7 @@ const getRoundMatches = vi.fn()
 const setRoundPlayerStatus = vi.fn()
 const updateRoundCloseTime = vi.fn()
 const openRound = vi.fn()
+const closeRound = vi.fn()
 
 vi.mock('../../api/sectionAvailabilityApi', async () => {
   const actual = await vi.importActual<typeof import('../../api/sectionAvailabilityApi')>('../../api/sectionAvailabilityApi')
@@ -27,6 +28,7 @@ vi.mock('../../api/sectionAvailabilityApi', async () => {
     getRoundMatches: (clubId: string, roundId: string) => getRoundMatches(clubId, roundId),
     updateRoundCloseTime: (clubId: string, roundId: string, payload: unknown) => updateRoundCloseTime(clubId, roundId, payload),
     openRound: (clubId: string, roundId: string) => openRound(clubId, roundId),
+    closeRound: (clubId: string, roundId: string) => closeRound(clubId, roundId),
     setRoundPlayerStatus: (clubId: string, roundId: string, playerProfileId: string, windowId: string, status: string) =>
       setRoundPlayerStatus(clubId, roundId, playerProfileId, windowId, status),
   }
@@ -627,6 +629,51 @@ describe('GroupPollResponsesPage', () => {
     expect(await screen.findByRole('heading', { name: 'Reopen this poll' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reopen poll' }))
     await waitFor(() => expect(openRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
+  })
+
+  // docs/specs/090: Close poll / Reopen poll in the header.
+  describe('close and reopen from the page', () => {
+    it('closes an open poll after confirming, then shows it closed with Reopen poll', async () => {
+      const user = userEvent.setup()
+      closeRound.mockResolvedValue({})
+      renderPage()
+      await loaded()
+
+      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      expect(await screen.findByRole('dialog', { name: 'Close this poll?' })).toBeInTheDocument()
+      expect(closeRound).not.toHaveBeenCalled()
+
+      listRounds.mockResolvedValue([makeRound({ open: false })])
+      getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close poll' }))
+
+      await waitFor(() => expect(closeRound).toHaveBeenCalledWith('test-club-id', 'round-1'))
+      expect(await screen.findByRole('button', { name: 'Reopen poll' })).toBeEnabled()
+      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
+    })
+
+    it('does nothing when the confirmation is cancelled', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await loaded()
+
+      await user.click(screen.getByRole('button', { name: 'Close poll' }))
+      await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+      expect(closeRound).not.toHaveBeenCalled()
+    })
+
+    it('offers Reopen poll on a closed poll, disabled with the reason when it cannot be reopened', async () => {
+      listRounds.mockResolvedValue([makeRound({ open: false, canReopen: false })])
+      getRoundResponses.mockResolvedValue(makeResponses({ open: false }))
+      renderPage()
+      await loaded()
+
+      expect(screen.queryByRole('button', { name: 'Close poll' })).not.toBeInTheDocument()
+      const reopen = screen.getByRole('button', { name: 'Reopen poll' })
+      expect(reopen).toBeDisabled()
+      expect(reopen.closest('span')).toHaveAttribute('title', 'The matches in this poll are in the past')
+    })
   })
 
   it('disables the reopen pencil with the reason on a closed poll that cannot be reopened', async () => {
