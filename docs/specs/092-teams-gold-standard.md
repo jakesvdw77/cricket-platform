@@ -1,7 +1,7 @@
 # 092 — Teams Gold Standard: Page, Card, List View, Team Page, Edit Form
 
 **Depends on:** 004 (teams), 017/037 (squads), 088–091 (the Players, Polls and Leagues gold standards: `FilterBar`, `ContentControlsLine`, `PageCounters`, `ListViewToggle`, `useListViewPreference`, `HeaderSeasonSelect`, `KeyFigureTile`, `InfoCard`, `FormSectionHeading`, table pattern, the "Record detail page" and "Compact forms" paragraphs in `docs/standards/design-system.md`)
-**Status:** draft — written 2026-10-09 from the user's request ("the gold standard for teams: cards, toolbars, dashboard, view, edit pages"). Mockup canvas (https://claude.ai/artifact/8rpBhNZBwJDwDoxxo5DoV3: Teams page desktop and phone, list view, team page desktop and phone, Edit team Details) **awaiting the user's review**; this text has not been reviewed.
+**Status:** draft — written 2026-10-09 from the user's request ("the gold standard for teams: cards, toolbars, dashboard, view, edit pages"). Mockup canvas (https://claude.ai/artifact/8rpBhNZBwJDwDoxxo5DoV3: Teams page desktop and phone, list view, team page desktop and phone, Edit team Details) **approved by the user on 2026-10-09** (including the separate card board 2b); the spec text has not been reviewed line by line. Open questions resolved by default: counters computed client-side, Season pill drives card and team page figures.
 
 ## Problem & Goals
 
