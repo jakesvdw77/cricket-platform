@@ -73,6 +73,12 @@ class TeamSquadMemberRepositoryTest {
                 .startDate(LocalDate.of(2026, 1, 1)).endDate(LocalDate.of(2026, 12, 31)).active(true).build());
     }
 
+    @Autowired
+    private com.cricketlegend.repository.LeagueRepository leagueRepository;
+
+    @Autowired
+    private com.cricketlegend.repository.LeagueAffiliationRepository leagueAffiliationRepository;
+
     private PlayerProfile savedPlayer(UUID clubId) {
         Person person = personRepository.save(Person.builder().firstName("Joe").lastName("Bloggs").build());
         return playerProfileRepository.save(
@@ -262,5 +268,43 @@ class TeamSquadMemberRepositoryTest {
         assertThat(nonCaptain.getId()).isNotNull();
         assertThat(teamSquadMemberRepository.findByTeamIdAndSeasonId(team.getId(), season.getId()))
                 .hasSize(2);
+    }
+
+    // --- 091: countDistinctPlayersInLeagues ---
+
+    @Test
+    void countDistinctPlayersInLeaguesCountsEachPlayerOnceAcrossTheAffiliatedTeamsOfOneSeason() {
+        Club club = savedClub("riverside-cc");
+        Team first = savedTeam(club.getId());
+        Team second = savedTeam(club.getId());
+        Team notEntered = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        Season otherSeason = savedSeason(club.getId());
+        com.cricketlegend.domain.League league = leagueRepository.save(com.cricketlegend.domain.League.builder()
+                .clubId(club.getId()).name("Premier").source(com.cricketlegend.domain.LeagueSource.INTERNAL)
+                .maxPlayingXiSize(11).active(true).build());
+        for (Team team : new Team[] {first, second}) {
+            leagueAffiliationRepository.save(com.cricketlegend.domain.LeagueAffiliation.builder()
+                    .leagueId(league.getId()).teamId(team.getId()).seasonId(season.getId()).build());
+        }
+        PlayerProfile shared = savedPlayer(club.getId());
+        PlayerProfile onlyFirst = savedPlayer(club.getId());
+        PlayerProfile elsewhere = savedPlayer(club.getId());
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(first.getId()).seasonId(season.getId()).playerProfileId(shared.getId()).build());
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(second.getId()).seasonId(season.getId()).playerProfileId(shared.getId()).build());
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(first.getId()).seasonId(season.getId()).playerProfileId(onlyFirst.getId()).build());
+        // a team that is not entered in the league, and another season's squad, are not counted
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(notEntered.getId()).seasonId(season.getId()).playerProfileId(elsewhere.getId()).build());
+        teamSquadMemberRepository.save(TeamSquadMember.builder()
+                .teamId(first.getId()).seasonId(otherSeason.getId()).playerProfileId(elsewhere.getId()).build());
+
+        assertThat(teamSquadMemberRepository.countDistinctPlayersInLeagues(season.getId(), java.util.List.of(league.getId())))
+                .isEqualTo(2);
+        assertThat(teamSquadMemberRepository.countDistinctPlayersInLeagues(otherSeason.getId(), java.util.List.of(league.getId())))
+                .isZero();
     }
 }

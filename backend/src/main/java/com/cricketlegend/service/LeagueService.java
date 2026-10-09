@@ -1,7 +1,9 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import java.util.List;
 import java.util.UUID;
@@ -11,8 +13,18 @@ import java.util.UUID;
  */
 public interface LeagueService {
 
-    /** Every league for {@code clubId} (active and inactive). */
+    /** Every league for {@code clubId} (active and inactive) for the current season. */
     List<LeagueDto> list(UUID clubId);
+
+    /**
+     * docs/specs/091-leagues-gold-standard.md: the leagues for one season ({@code seasonId} must be one of the club's,
+     * else a 404; null means the current season), without the inactive ones when {@code includeInactive} is false,
+     * narrowed by {@code focus} (null for none). {@link #summary} counts exactly these sets.
+     */
+    List<LeagueDto> list(UUID clubId, UUID seasonId, boolean includeInactive, LeagueListFocus focus);
+
+    /** The Leagues page counters for the same season and inactive filter the list uses. */
+    LeaguesSummaryDto summary(UUID clubId, UUID seasonId, boolean includeInactive);
 
     /** Creates a league for {@code clubId}. Validates {@code minAge <= maxAge} when both are set. */
     LeagueDto create(UUID clubId, CreateLeagueRequest request);

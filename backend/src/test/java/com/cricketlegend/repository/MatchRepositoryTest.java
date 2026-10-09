@@ -667,4 +667,33 @@ class MatchRepositoryTest {
         assertThat(found).extracting(Match::getId).containsExactlyInAnyOrder(derby.getId(), secondAway.getId());
         assertThat(narrowed).extracting(Match::getId).containsExactly(secondAway.getId());
     }
+
+    // --- 091: countMatchesInWindowByLeague ---
+
+    @Test
+    void countMatchesInWindowByLeagueCountsOnlyActiveMatchesOfThatSeasonInsideTheHalfOpenWindow() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Season otherSeason = savedSeason(club.getId());
+        League league = savedLeague(club.getId(), "Premier");
+        League quiet = savedLeague(club.getId(), "Cup");
+        Instant start = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant end = start.plus(7, ChronoUnit.DAYS);
+        leagueMatch(club.getId(), season.getId(), league.getId(), start, true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), start.plus(3, ChronoUnit.DAYS), true);
+        // on the end boundary, before the start, inactive, another season, no league: none counted
+        leagueMatch(club.getId(), season.getId(), league.getId(), end, true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), start.minus(1, ChronoUnit.SECONDS), true);
+        leagueMatch(club.getId(), season.getId(), league.getId(), start.plus(1, ChronoUnit.DAYS), false);
+        leagueMatch(club.getId(), otherSeason.getId(), league.getId(), start.plus(1, ChronoUnit.DAYS), true);
+        leagueMatch(club.getId(), season.getId(), null, start.plus(1, ChronoUnit.DAYS), true);
+
+        List<MatchRepository.LeagueWeekMatchCount> rows =
+                matchRepository.countMatchesInWindowByLeague(club.getId(), season.getId(), start, end);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getLeagueId()).isEqualTo(league.getId());
+        assertThat(rows.get(0).getMatchCount()).isEqualTo(2);
+        assertThat(rows).noneMatch(row -> row.getLeagueId().equals(quiet.getId()));
+    }
 }

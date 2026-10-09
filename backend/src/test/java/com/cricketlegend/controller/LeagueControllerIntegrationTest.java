@@ -819,4 +819,94 @@ class LeagueControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", clubX.getId()).with(adminY))
                 .andExpect(status().isForbidden());
     }
+
+    /** docs/specs/091-leagues-gold-standard.md: seasonId, includeInactive and focus on the list, and the summary. */
+    @Test
+    void listAndSummaryHonourSeasonIncludeInactiveAndFocusAndTheCountersEqualTheirLists() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        LocalDate today = LocalDate.now();
+        Season season = seasonRepository.save(Season.builder().clubId(club.getId()).label("Current")
+                .startDate(today.minusMonths(1)).endDate(today.plusMonths(1)).active(true).build());
+        Season older = seasonRepository.save(Season.builder().clubId(club.getId()).label("Older")
+                .startDate(today.minusYears(1).minusMonths(1)).endDate(today.minusYears(1).plusMonths(1)).active(true).build());
+        League playing = leagueRepository.save(League.builder().clubId(club.getId()).name("Playing")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        League bare = leagueRepository.save(League.builder().clubId(club.getId()).name("Bare")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(true).build());
+        leagueRepository.save(League.builder().clubId(club.getId()).name("Retired")
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).active(false).build());
+        Section section = sectionRepository.save(newSection(club.getId(), "Men"));
+        Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "Riverside 1st XI"));
+        leagueAffiliationRepository.save(LeagueAffiliation.builder()
+                .leagueId(playing.getId()).teamId(team.getId()).seasonId(season.getId()).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Home").awayTeamName("Away")
+                .leagueId(playing.getId()).seasonId(season.getId())
+                .matchDate(Instant.now().plus(2, ChronoUnit.DAYS)).active(true).build());
+        String base = "/api/v1/manage/clubs/{clubId}/leagues";
+
+        // every league by default; inactive ones drop with includeInactive=false
+        mockMvc.perform(get(base, club.getId()).with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
+        mockMvc.perform(get(base, club.getId()).param("includeInactive", "false").with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+
+        // a requested season changes the season fields; an older one has no teams or matches
+        mockMvc.perform(get(base, club.getId()).param("seasonId", older.getId().toString())
+                        .param("includeInactive", "false").with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Playing')].currentSeasonLabel", contains("Older")))
+                .andExpect(jsonPath("$[?(@.name == 'Playing')].matchCount", contains(0)));
+
+        // each focus, and its counter equals its list (this-week: matches, not leagues)
+        mockMvc.perform(get(base, club.getId()).param("focus", "active").with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+        mockMvc.perform(get(base, club.getId()).param("focus", "this-week").with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Playing"));
+        mockMvc.perform(get(base, club.getId()).param("focus", "attention").with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Bare"));
+        mockMvc.perform(get(base + "/summary", club.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.leaguesShown").value(3))
+                .andExpect(jsonPath("$.active").value(2))
+                .andExpect(jsonPath("$.needAttention").value(1))
+                .andExpect(jsonPath("$.teamsEntered").value(1))
+                .andExpect(jsonPath("$.players").value(0))
+                .andExpect(jsonPath("$.seasons").value(2))
+                .andExpect(jsonPath("$.matchesThisWeek").value(1));
+        mockMvc.perform(get(base + "/summary", club.getId()).param("includeInactive", "false").with(admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.leaguesShown").value(2));
+        // bare is only used for the attention focus above
+        org.assertj.core.api.Assertions.assertThat(bare.getId()).isNotNull();
+    }
+
+    @Test
+    void listAndSummaryReturn400ForAnUnknownFocusAnd404ForASeasonThatIsNotTheClubs() throws Exception {
+        Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club other = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", club.getId());
+        seasonRepository.save(newSeason(club.getId(), "Current"));
+        Season foreign = seasonRepository.save(newSeason(other.getId(), "Foreign"));
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId()).param("focus", "bogus").with(admin))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues", club.getId())
+                        .param("seasonId", foreign.getId().toString()).with(admin))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues/summary", club.getId())
+                        .param("seasonId", foreign.getId().toString()).with(admin))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void anotherClubsAdminCannotReadTheLeaguesSummary() throws Exception {
+        Club clubX = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
+        Club clubY = clubRepository.save(newClub("Lakeside CC", "lakeside-cc"));
+        JwtRequestPostProcessor adminY = grantClubAdmin("club-admin-y", clubY.getId());
+
+        mockMvc.perform(get("/api/v1/manage/clubs/{clubId}/leagues/summary", clubX.getId()).with(adminY))
+                .andExpect(status().isForbidden());
+    }
 }

@@ -34,6 +34,10 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.LeagueTeamRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchRepository.LeagueMatchSummary;
+import com.cricketlegend.repository.MatchRepository.LeagueWeekMatchCount;
+import com.cricketlegend.repository.TeamSquadMemberRepository;
+import com.cricketlegend.domain.LeagueListFocus;
+import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.impl.LeagueServiceImpl;
 import java.time.Instant;
@@ -83,6 +87,9 @@ class LeagueServiceImplTest {
     private LeagueTeamRepository leagueTeamRepository;
 
     @Mock
+    private TeamSquadMemberRepository teamSquadMemberRepository;
+
+    @Mock
     private LeagueMapper leagueMapper;
 
     private LeagueServiceImpl leagueService;
@@ -91,7 +98,8 @@ class LeagueServiceImplTest {
     void setUp() {
         leagueService = new LeagueServiceImpl(
                 leagueRepository, seasonRepository, leagueAffiliationRepository,
-                leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, leagueMapper);
+                leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, teamSquadMemberRepository,
+                leagueMapper);
     }
 
     private LeagueDto dummyDto() {
@@ -658,6 +666,136 @@ class LeagueServiceImplTest {
                 return teamCount;
             }
         };
+    }
+
+    // --- 091: season, includeInactive, focus and the summary ---
+
+    private static LeagueWeekMatchCount weekCount(UUID leagueId, long count) {
+        return new LeagueWeekMatchCount() {
+            @Override
+            public UUID getLeagueId() {
+                return leagueId;
+            }
+
+            @Override
+            public long getMatchCount() {
+                return count;
+            }
+        };
+    }
+
+    /** Three leagues for one club in one current season: A (2 teams, 10 matches, 3 this week), B (inactive, 1 team, no
+     * matches) and C (active, no teams, no matches). */
+    private record Fixture(UUID clubId, Season season, League a, League b, League c) {}
+
+    private Fixture arrangeThreeLeagues() {
+        UUID clubId = UUID.randomUUID();
+        League a = existingLeague(UUID.randomUUID(), clubId, true);
+        League b = existingLeague(UUID.randomUUID(), clubId, false);
+        League c = existingLeague(UUID.randomUUID(), clubId, true);
+        LocalDate today = LocalDate.now();
+        Season current = season(UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(a, b, c));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(current));
+        when(matchRepository.summariseByLeagueForSeason(eq(clubId), eq(current.getId()), any(Instant.class)))
+                .thenReturn(List.of(matchSummary(a.getId(), 10, 4, null, null, null)));
+        // only the this-week focus and the summary read it
+        org.mockito.Mockito.lenient()
+                .when(matchRepository.countMatchesInWindowByLeague(eq(clubId), eq(current.getId()), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(weekCount(a.getId(), 3)));
+        when(leagueAffiliationRepository.findTeamSummariesBySeasonId(current.getId()))
+                .thenReturn(List.of(
+                        teamSummary(a.getId(), "Alpha XI", null, null),
+                        teamSummary(b.getId(), "Bravo XI", null, null)));
+        when(leagueTeamRepository.findActiveBySeasonId(current.getId()))
+                .thenReturn(List.of(leagueTeam(a.getId(), current.getId(), "Aardvarks", null, null)));
+        for (League league : List.of(a, b, c)) {
+            when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+        }
+        return new Fixture(clubId, current, a, b, c);
+    }
+
+    @Test
+    void listUsesTheRequestedSeasonAndRejectsOneThatIsNotTheClubs() {
+        UUID clubId = UUID.randomUUID();
+        LocalDate today = LocalDate.now();
+        Season current = season(UUID.randomUUID(), clubId, "2026/2027", today.minusMonths(1), today.plusMonths(1), Instant.now());
+        Season older = season(UUID.randomUUID(), clubId, "2025/2026", today.minusYears(1).minusMonths(1), today.minusYears(1).plusMonths(1),
+                Instant.now().minusSeconds(100_000));
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(current, older));
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        LeagueDto dto = leagueService.list(clubId, older.getId(), true, null).get(0);
+
+        assertThat(dto.currentSeasonLabel()).isEqualTo("2025/2026");
+        verify(leagueAffiliationRepository).countDistinctTeamsBySeasonId(older.getId());
+        verify(leagueAffiliationRepository, never()).countDistinctTeamsBySeasonId(current.getId());
+        assertThatThrownBy(() -> leagueService.list(clubId, UUID.randomUUID(), true, null))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void listWithIncludeInactiveFalseHidesInactiveLeaguesAndTheDefaultKeepsThem() {
+        Fixture f = arrangeThreeLeagues();
+
+        assertThat(leagueService.list(f.clubId(), null, false, null)).extracting(LeagueDto::id)
+                .containsExactly(f.a().getId(), f.c().getId());
+        assertThat(leagueService.list(f.clubId(), null, true, null)).hasSize(3);
+        assertThat(leagueService.list(f.clubId())).hasSize(3);
+    }
+
+    @Test
+    void listNarrowsByEachFocusAndTheWeekQueryOnlyRunsForThisWeek() {
+        Fixture f = arrangeThreeLeagues();
+
+        assertThat(leagueService.list(f.clubId(), null, true, LeagueListFocus.ACTIVE)).extracting(LeagueDto::id)
+                .containsExactly(f.a().getId(), f.c().getId());
+        verify(matchRepository, never()).countMatchesInWindowByLeague(any(), any(), any(), any());
+
+        assertThat(leagueService.list(f.clubId(), null, true, LeagueListFocus.THIS_WEEK)).extracting(LeagueDto::id)
+                .containsExactly(f.a().getId());
+        // an active league with no teams or no matches needs attention; the inactive one never does
+        assertThat(leagueService.list(f.clubId(), null, true, LeagueListFocus.ATTENTION)).extracting(LeagueDto::id)
+                .containsExactly(f.c().getId());
+    }
+
+    @Test
+    void summaryCountsExactlyTheListsItFilters() {
+        Fixture f = arrangeThreeLeagues();
+        when(teamSquadMemberRepository.countDistinctPlayersInLeagues(eq(f.season().getId()), any()))
+                .thenReturn(17L);
+
+        LeaguesSummaryDto all = leagueService.summary(f.clubId(), null, true);
+
+        assertThat(all.leaguesShown()).isEqualTo(3);
+        assertThat(all.active()).isEqualTo(leagueService.list(f.clubId(), null, true, LeagueListFocus.ACTIVE).size());
+        assertThat(all.needAttention())
+                .isEqualTo(leagueService.list(f.clubId(), null, true, LeagueListFocus.ATTENTION).size());
+        assertThat(all.teamsEntered()).isEqualTo(3);
+        assertThat(all.players()).isEqualTo(17);
+        assertThat(all.seasons()).isEqualTo(1);
+        // a match count, not a league count
+        assertThat(all.matchesThisWeek()).isEqualTo(3);
+
+        LeaguesSummaryDto withoutInactive = leagueService.summary(f.clubId(), null, false);
+        assertThat(withoutInactive.leaguesShown()).isEqualTo(2);
+        assertThat(withoutInactive.teamsEntered()).isEqualTo(2);
+    }
+
+    @Test
+    void summaryWithNoSeasonIsAllZerosExceptTheLeagueFigures() {
+        UUID clubId = UUID.randomUUID();
+        League league = existingLeague(UUID.randomUUID(), clubId, true);
+        when(leagueRepository.findByClubId(clubId)).thenReturn(List.of(league));
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(leagueMapper.toDto(league)).thenReturn(baseDtoFor(league));
+
+        LeaguesSummaryDto summary = leagueService.summary(clubId, null, true);
+
+        assertThat(summary).isEqualTo(new LeaguesSummaryDto(1, 1, 0, 0, 0, 0, 1));
+        verify(teamSquadMemberRepository, never()).countDistinctPlayersInLeagues(any(), any());
     }
 
     private static LeagueMatchSummary matchSummary(
