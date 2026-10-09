@@ -165,6 +165,14 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk CSV import** of league teams.
 - **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
 
+## Deferred by `093`: Team selection hub
+
+- **Actual batting order and rotation (needs a Results module first).** The planned order (the announced team) stays fixed once announced. On the day any batter can be promoted or dropped, and in age groups such as under 9 a rotation rule applies (for example a batter may not open twice in a row), so coaches need a record of where each player actually batted. Decision (2026-10-09): there is no Results module yet and it will be its own module; when it exists, the recorded result sets the batting order for a completed match, the announced plan is kept as a snapshot ("planned 3, batted 1"), players who did not bat stay listed without a position, and a correction to a result re-derives the order. Rotation checks (for example "opened in the last N matches", a setting per league or section, shown as a warning not a block) read from those result-driven orders. Until then the planned order is all there is. Needs its own spec.
+- **Select team page: confirm before reordering an announced team.** The Batting order view asks "Change an announced team?" before a move; the Select team page sends the reorder with no warning and relies on the server un-announcing.
+- **Bulk announce**, **phone variants of the Players grid and Batting order matrix** (today they scroll sideways), **keep or drop the Time slots view** if unused, and **a menu icon for Team selection** (it still uses the old `nav/squads` icon).
+- **Players grid: confirm before unpicking from an announced team** (it un-announces silently, as spec 076 does).
+- **Set the 12th man and "click a name to change player or position" from the Batting order view** (12th man is display only there; set it on the Select team page).
+
 ## Deferred by `092` — Teams gold standard
 
 - **A `teams/summary` endpoint** instead of the client-side counters, if the team list is ever paginated or the counters get expensive.
