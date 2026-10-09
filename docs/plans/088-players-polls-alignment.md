@@ -77,3 +77,12 @@ Nothing else in the spec is reinterpreted.
 ## Not in this plan
 
 Self-registration, notifying the requester, keeping unverified or rejected players out of squads, selections and polls, a rejectable verified player, and a drill-down panel.
+
+## Built differently from the plan
+- `service/support/PlayerRoster` (a small public record) holds the visible roster shared by the list and the summary, and the focus uses plain conditionals: ArchUnit forbids nested types and the synthetic class an enum `switch` creates inside `service.impl`.
+- The Status-actions hook is `hooks/usePlayerStatusActions.tsx` and, besides `requestAction` and `dialog`, returns `pending`.
+- The default season reuses the existing `hooks/useAvailabilitySeason` rather than a new `listSeasons` + `pickDefaultSeasonId` pair.
+- Tests ended up as `PlayersSummaryIntegrationTest`, `PlayersSummaryQueryCountIntegrationTest`, `PlayerCounterQueriesIntegrationTest` (the two new queries against Postgres), `PlayerListFocusTest` and additions to `PlayerServiceImplTest`; frontend `PlayerStatusMenu`, `usePlayerStatusActions`, `playerStatus` tests plus rewritten `PlayerCard`, `PlayerList` and `PlayerDetailPage` tests. Every existing `Player` fixture gained `verificationStatus: 'VERIFIED'`.
+- Results: backend 1,822 tests green (full run in a scratch copy); frontend 2,449 unit tests green (`--maxWorkers=2`), Storybook stories for `PlayerCard` and `PlayerStatusMenu` green.
+- Not checked in a browser: the card at phone, 2- and 3-column widths, the Status menu and confirmations, the Player page banner. The running backend must be restarted first (migration 040), and an unverified player has to be set by hand in the dev database since no registration flow exists yet.
+

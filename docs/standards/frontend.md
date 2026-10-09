@@ -42,6 +42,8 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 
 **The Matches list follows the same pattern** (`docs/specs/087-matches-polls-alignment.md`, the first non-Availability page on it): `FilterBar` (League, Season, Section, Team, search with team-name suggestions via `searchOptions`) in compact density, `PageCounters` above it, and a `ContentControlsLine` with the "Showing N matches" scope, the sort link and the Show past matches switch (in the sheet on a phone). League, Season and Section are still saved per club (`matchList:filters:<clubId>`); Team and the counters' quick filter (`focus`) are per visit. Every filter is a backend parameter (`teamId`, `focus`), never a client-side slice of the page, and the counters come from `GET /matches/summary` for the same filters.
 
+**The Players list follows it too** (`docs/specs/088-players-polls-alignment.md`): four `PageCounters` (Active players, In a squad this season, Players selected this season, Unverified players) from `GET /players/summary`, a `FilterBar` with Section and name search (search is client-side, so the counters ignore it), and a `ContentControlsLine` with the "A to Z" sort link and the "Show suspended and rejected players" and "Missing date of birth" switches. Section and Missing date of birth are saved per club (`playerList:filters:<clubId>`); the switch and the quick filter are per visit. The roster stays an unpaginated, bounded list, so `includeInactive`, `focus` and `seasonId` are backend parameters of the list but the list is still fetched whole.
+
 ## Folder structure
 
 ```

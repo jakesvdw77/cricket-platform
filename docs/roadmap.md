@@ -11,7 +11,7 @@ Specs 083 and 084 are merged. Spec [`specs/085-availability-polish.md`](specs/08
 Other open items, in no order:
 - **Clickable counters (spec 084, merged):** Players responded / Still to answer open a per-player panel; the same pattern for the Overview, Players and Matches counters is later (see "Counters on other pages"); reminders are not decided. Spec 085 (G) changes "Open polls" and "Close in 48 hours" to open poll lists too.
 - **Before the public availability form (077) goes live in production:** set `PUBLIC_AVAILABILITY_TOKEN_SECRET` to a long random value; decide forwarded-address handling if the site is behind a proxy (the per-address limit uses the connection address); fix players with no date of birth using the Players "Missing date of birth" filter.
-- **Counters on other pages (081 slices 3 and 4):** Matches is built (spec 087). Players is specified and its mockup approved (spec 088: active, in a squad, selected and unverified counters, a Status button, the Matches treatment); not built yet.
+- **Counters on other pages (081 slices 3 and 4):** Matches (spec 087) and Players (spec 088) are built. Still to do: any further page, after its counters are agreed.
 - ~~**Match card countdown:** "Starts in ..." using the shared `Countdown` component (082)~~ — built as the "Starts" strip on the match card in spec 087 slice 3.
 - **Notifications:** a bell in the header for every user (receiving), and the manager "send notifications" section behind the Notifications menu entry; needs its own spec and mockups. No menu count badges (decided).
 - **Contract drift guard (optional):** the standards say CI fails on OpenAPI drift but no step does; a permanent test with a short baseline is about half a day (design in the contract-check discussion).
