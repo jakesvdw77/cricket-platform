@@ -110,7 +110,9 @@ export interface RecordCardFooterButton {
   ariaLabel?: string
   icon: ReactNode
   // docs/specs/075-match-view-and-edit.md: receives the click event so a button can anchor a menu to it.
-  onClick: (event: MouseEvent<HTMLElement>) => void
+  onClick?: (event: MouseEvent<HTMLElement>) => void
+  // docs/specs/092: a router link instead of a click handler (a real anchor, so it can open in a new tab). Teams' footer.
+  to?: string
   disabled?: boolean
   // Tooltip text, defaulting to `ariaLabel ?? label`. When set on a `disabled` button it also
   // explains why: the button is wrapped in a span carrying the tooltip, because a disabled
@@ -589,6 +591,7 @@ export function RecordCard({
               title={tooltip}
               disabled={button.disabled}
               onClick={button.onClick}
+              {...(button.to ? { component: RouterLink, to: button.to } : {})}
               sx={{
                 display: 'flex',
                 flexDirection: 'column',

@@ -770,6 +770,15 @@ describe('RecordCard', () => {
       expect(anchor).toBe(screen.getByRole('button', { name: 'Availability' }))
     })
 
+    it('renders a footer button with `to` as a real link to that route (docs/specs/092)', () => {
+      render(
+        <MemoryRouter>
+          <RecordCard title="Team" footerButtons={[{ label: 'Edit', icon: <span>e</span>, to: '/manage/teams/1/edit' }]} />
+        </MemoryRouter>,
+      )
+      expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/teams/1/edit')
+    })
+
     it('is a full-height flex column with the footer pinned below the growing body', () => {
       render(<RecordCard title="Poll" footerButtons={buttons()} />)
       const card = screen.getByRole('heading', { name: 'Poll' }).closest('.MuiCard-root') as HTMLElement

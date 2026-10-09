@@ -13,7 +13,21 @@ export interface TeamCardData {
   coachName: string | null
   playerCount: number
   matchCount: number
+  // docs/specs/092: matches of the chosen season from today to today + 7 days (same rule as the Matches counter), from
+  // the same loaded list as matchCount, so the Teams counters need no extra request.
+  matchesThisWeek: number
+  // False while this team's squad or the shared matches list is still loading, so a counter built from them can show
+  // its loading state instead of a wrong zero. A query that is not enabled (no season yet) counts as loaded.
+  loaded: boolean
   sponsors: Sponsor[]
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Start of today to the end of the day seven days on (exclusive upper bound = start of today + 8 days).
+function weekWindow(now: Date): { from: number; to: number } {
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  return { from, to: from + 8 * DAY_MS }
 }
 
 // The first team-contact whose role case-insensitively equals `role` — a display convenience over
@@ -70,6 +84,7 @@ export function useTeamCardData(
   })
 
   const matches = matchesQuery.data?.content ?? []
+  const week = weekWindow(new Date())
 
   const result: Record<string, TeamCardData> = {}
   teams.forEach((team, index) => {
@@ -78,12 +93,19 @@ export function useTeamCardData(
     const squad = squadQueries[index]?.data ?? []
     const captain = squad.find((member) => member.isCaptain)
 
+    const involvesTeam = (match: (typeof matches)[number]) => match.homeTeamId === team.id || match.awayTeamId === team.id
     result[team.id] = {
       captainName: captain ? `${captain.firstName} ${captain.lastName}` : null,
       managerName: contactNameByRole(contacts, 'Manager'),
       coachName: contactNameByRole(contacts, 'Coach'),
       playerCount: squad.length,
-      matchCount: matches.filter((match) => match.homeTeamId === team.id || match.awayTeamId === team.id).length,
+      matchCount: matches.filter(involvesTeam).length,
+      matchesThisWeek: matches.filter((match) => {
+        if (!involvesTeam(match)) return false
+        const at = new Date(match.matchDate).getTime()
+        return at >= week.from && at < week.to
+      }).length,
+      loaded: !squadQueries[index]?.isLoading && !matchesQuery.isLoading,
       sponsors,
     }
   })

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -75,52 +75,47 @@ describe('TeamCard', () => {
     listSponsorContacts.mockResolvedValue([])
   })
 
-  it('renders the team name, section chip, and player/match count pills', () => {
+  it('renders the team name, the section and Active chips and the Players and Matches figure tiles', () => {
     renderCard({ playerCount: 5, matchCount: 3 })
 
     expect(screen.getByRole('heading', { name: '1st XI' })).toBeInTheDocument()
     expect(screen.getByText('Men')).toBeInTheDocument()
-    expect(screen.getByText('5 players')).toBeInTheDocument()
-    expect(screen.getByText('3 matches')).toBeInTheDocument()
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByTestId('team-players-value')).toHaveTextContent('5')
+    expect(screen.getByText('Players')).toBeInTheDocument()
+    expect(screen.getByTestId('team-matches-value')).toHaveTextContent('3')
+    expect(within(screen.getByTestId('team-matches')).getByText('Matches')).toBeInTheDocument()
   })
 
-  it('renders an abbreviation chip only when set', () => {
+  it('shows no abbreviation chip, whether or not the team has one', () => {
     renderCard({ team: makeTeam({ abbreviation: 'ICL' }) })
-    expect(screen.getByText('ICL')).toBeInTheDocument()
-  })
-
-  it('renders no abbreviation chip when abbreviation is not set', () => {
-    renderCard({ team: makeTeam() })
     expect(screen.queryByText('ICL')).not.toBeInTheDocument()
   })
 
-  it('omits Ground/Captain/Manager/Coach rows entirely when their data is absent', () => {
+  it('always renders the Captain, Manager and Coach rows, with a muted dash when the data is absent', () => {
     renderCard()
 
-    expect(screen.queryByText(/Ground:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Captain:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Manager:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Coach:/)).not.toBeInTheDocument()
+    const rows = screen.getAllByTestId('team-detail-row')
+    expect(rows.map((row) => row.textContent)).toEqual(['Captain–', 'Manager–', 'Coach–'])
   })
 
-  it('renders Ground/Captain/Manager/Coach rows when their data is present', () => {
-    renderCard({
-      team: makeTeam({ groundName: 'Irene Country Club' }),
-      captainName: 'Jane Smith',
-      managerName: 'Bob Jones',
-      coachName: 'Alex Lee',
-    })
+  it('renders the Captain, Manager and Coach names when present', () => {
+    renderCard({ captainName: 'Jane Smith', managerName: 'Bob Jones', coachName: 'Alex Lee' })
 
-    expect(screen.getByText(/Irene Country Club/)).toBeInTheDocument()
-    expect(screen.getByText(/Jane Smith/)).toBeInTheDocument()
-    expect(screen.getByText(/Bob Jones/)).toBeInTheDocument()
-    expect(screen.getByText(/Alex Lee/)).toBeInTheDocument()
+    const rows = screen.getAllByTestId('team-detail-row')
+    expect(rows.map((row) => row.textContent)).toEqual(['CaptainJane Smith', 'ManagerBob Jones', 'CoachAlex Lee'])
   })
 
-  it('renders a badge when supplied', () => {
-    renderCard({ badge: { label: 'Inactive', tone: 'muted' } })
+  it('renders a grey Inactive chip instead of Active for a deactivated team', () => {
+    renderCard({ team: makeTeam({ active: false }) })
 
     expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.queryByText('Active')).not.toBeInTheDocument()
+  })
+
+  it('shows "No sponsors" when the team has none', () => {
+    renderCard()
+    expect(screen.getByText('No sponsors')).toBeInTheDocument()
   })
 
   it('renders sponsor icons only when sponsors are supplied', () => {
@@ -159,18 +154,27 @@ describe('TeamCard', () => {
     expect(screen.getByLabelText('Facebook')).toBeInTheDocument()
   })
 
-  it('renders the title as a link to viewTo and Edit as a link to editTo, with no separate View link', () => {
+  it('renders the title as a link to viewTo and the footer Squad, Matches and Edit links, with no separate View link', () => {
     renderCard({
       viewTo: '/manage/sections/section-1/teams/team-1',
       editTo: '/manage/sections/section-1/teams/team-1/edit',
     })
 
     expect(screen.getByRole('link', { name: '1st XI' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+    expect(screen.getByRole('link', { name: 'Squad' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
+    expect(screen.getByRole('link', { name: 'Matches' })).toHaveAttribute('href', '/manage/sections/section-1/teams/team-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1/edit',
     )
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+  })
+
+  it('points Squad and Matches at squadTo and matchesTo when given', () => {
+    renderCard({ squadTo: '/squad', matchesTo: '/matches' })
+
+    expect(screen.getByRole('link', { name: 'Squad' })).toHaveAttribute('href', '/squad')
+    expect(screen.getByRole('link', { name: 'Matches' })).toHaveAttribute('href', '/matches')
   })
 
   // docs/specs/059-record-card-click-to-view.md: the stretched-link overlay sits above every
@@ -182,6 +186,6 @@ describe('TeamCard', () => {
 
     const facebookLink = screen.getByLabelText('Facebook')
     expect(facebookLink.closest('.MuiCard-root')).toHaveStyle({ position: 'relative' })
-    expect(facebookLink.parentElement?.parentElement).toHaveStyle({ position: 'relative' })
+    expect(screen.getByTestId('team-social-links')).toHaveStyle({ position: 'relative' })
   })
 })
