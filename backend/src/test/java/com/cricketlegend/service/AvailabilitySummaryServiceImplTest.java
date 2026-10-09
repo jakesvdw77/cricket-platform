@@ -103,14 +103,14 @@ class AvailabilitySummaryServiceImplTest {
 
     private void unrestrictedWith(OpenPoll... polls) {
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, false))
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), AvailabilityPollFilter.OPEN_ONLY))
                 .thenReturn(List.of(polls));
     }
 
     private AvailabilitySummaryDto summary() {
-        return service.summary(caller, CLUB_ID, null, null, null, null, false);
+        return service.summary(caller, CLUB_ID, null, null, null, null, null, false);
     }
 
     @Test
@@ -194,11 +194,11 @@ class AvailabilitySummaryServiceImplTest {
         AvailabilityPollFilter filter =
                 new AvailabilityPollFilter(null, null, null, AvailabilityPollTypeFilter.ALL, true);
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, true)).thenReturn(filter);
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, null, true, null)).thenReturn(filter);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter))
                 .thenReturn(List.of(closedPoll, squad(NOW.plus(Duration.ofHours(6)), none, none)));
 
-        AvailabilitySummaryDto result = service.summary(caller, CLUB_ID, null, null, null, null, true);
+        AvailabilitySummaryDto result = service.summary(caller, CLUB_ID, null, null, null, null, null, true);
 
         assertThat(result.openPolls()).isEqualTo(2);
         assertThat(result.closingSoon()).isEqualTo(1);
@@ -215,25 +215,49 @@ class AvailabilitySummaryServiceImplTest {
         UUID a = UUID.randomUUID();
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
         when(pollFilters.resolve(
-                        caller, CLUB_ID, Optional.empty(), league, section, team, AvailabilityPollTypeFilter.SQUAD, false))
+                        caller, CLUB_ID, Optional.empty(), league, section, team, AvailabilityPollTypeFilter.SQUAD, false, null))
                 .thenReturn(filter);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter))
                 .thenReturn(List.of(squad(null, Set.of(a), Set.of())));
 
         AvailabilitySummaryDto result = service.summary(
-                caller, CLUB_ID, league, section, team, AvailabilityPollTypeFilter.SQUAD, false);
+                caller, CLUB_ID, league, section, team, null, AvailabilityPollTypeFilter.SQUAD, false);
 
         assertThat(result).isEqualTo(new AvailabilitySummaryDto(1, 0, 1, 1, 0));
+    }
+
+    @Test
+    void theSeasonIsPassedToTheSharedFilterAndNarrowsBothTheSummaryAndThePlayersList() {
+        UUID season = UUID.randomUUID();
+        UUID a = UUID.randomUUID();
+        AvailabilityPollFilter filter = new AvailabilityPollFilter(
+                null, null, null, AvailabilityPollTypeFilter.ALL, false, season);
+        when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.empty(), null, null, null, AvailabilityPollTypeFilter.ALL,
+                        false, season))
+                .thenReturn(filter);
+        when(overviewPolls.pollsWithPlayers(CLUB_ID, Optional.empty(), filter))
+                .thenReturn(List.of(squad(null, Set.of(a), Set.of())));
+        when(playerProfileRepository.findAllById(any())).thenReturn(List.of());
+
+        AvailabilitySummaryDto result = service.summary(
+                caller, CLUB_ID, null, null, null, season, AvailabilityPollTypeFilter.ALL, false);
+        Page<AvailabilitySummaryPlayerDto> players = service.players(caller, CLUB_ID,
+                AvailabilitySummaryPlayerKind.AWAITING, null, null, null, season, AvailabilityPollTypeFilter.ALL, false, false, null, FIRST);
+
+        assertThat(result).isEqualTo(new AvailabilitySummaryDto(1, 0, 1, 1, 0));
+        assertThat(players.getTotalElements()).isEqualTo(1);
+        verify(overviewPolls, org.mockito.Mockito.times(2)).pollsWithPlayers(CLUB_ID, Optional.empty(), filter);
     }
 
     @Test
     void anInvalidFilterIdPropagatesAndNothingIsLoaded() {
         UUID league = UUID.randomUUID();
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean()))
+        when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
                 .thenThrow(new NotFoundException("League not found: " + league));
 
-        assertThatThrownBy(() -> service.summary(caller, CLUB_ID, league, null, null, null, false))
+        assertThatThrownBy(() -> service.summary(caller, CLUB_ID, league, null, null, null, null, false))
                 .isInstanceOf(NotFoundException.class);
         verifyNoInteractions(overviewPolls);
     }
@@ -273,7 +297,7 @@ class AvailabilitySummaryServiceImplTest {
         Optional<Set<UUID>> scope = Optional.of(Set.of(section));
         UUID a = UUID.randomUUID();
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(scope);
-        when(pollFilters.resolve(caller, CLUB_ID, scope, null, null, null, null, false))
+        when(pollFilters.resolve(caller, CLUB_ID, scope, null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
         when(overviewPolls.pollsWithPlayers(CLUB_ID, scope, AvailabilityPollFilter.OPEN_ONLY))
                 .thenReturn(List.of(squad(null, Set.of(a), Set.of(a))));
@@ -285,7 +309,7 @@ class AvailabilitySummaryServiceImplTest {
     @Test
     void aCallerWithNoAccessibleSectionsGetsZerosWithoutLoadingPolls() {
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
-        when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false))
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
 
         assertThat(summary()).isEqualTo(new AvailabilitySummaryDto(0, 0, 0, 0, 0));
@@ -321,7 +345,7 @@ class AvailabilitySummaryServiceImplTest {
             AvailabilitySummaryPlayerKind kind, boolean closingSoon, String search, Pageable pageable, OpenPoll... polls) {
         unrestrictedWith(polls);
         stubNames();
-        return service.players(caller, CLUB_ID, kind, null, null, null, null, false, closingSoon, search, pageable);
+        return service.players(caller, CLUB_ID, kind, null, null, null, null, null, false, closingSoon, search, pageable);
     }
 
     private static final Pageable FIRST = PageRequest.of(0, 25);
@@ -353,9 +377,9 @@ class AvailabilitySummaryServiceImplTest {
         stubNames();
 
         Page<AvailabilitySummaryPlayerDto> responded = service.players(
-                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, false, false, null, FIRST);
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, null, false, false, null, FIRST);
         Page<AvailabilitySummaryPlayerDto> awaiting = service.players(
-                caller, CLUB_ID, AvailabilitySummaryPlayerKind.AWAITING, null, null, null, null, false, false, null, FIRST);
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.AWAITING, null, null, null, null, null, false, false, null, FIRST);
         AvailabilitySummaryDto counters = summary();
 
         assertThat(responded.getContent()).extracting(AvailabilitySummaryPlayerDto::playerProfileId).containsExactly(a);
@@ -457,11 +481,11 @@ class AvailabilitySummaryServiceImplTest {
     @Test
     void aCallerWithNoAccessibleSectionsGetsAnEmptyPageWithoutLoadingPolls() {
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.of(Set.of()));
-        when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false))
+        when(pollFilters.resolve(caller, CLUB_ID, Optional.of(Set.of()), null, null, null, null, false, null))
                 .thenReturn(AvailabilityPollFilter.OPEN_ONLY);
 
         Page<AvailabilitySummaryPlayerDto> result = service.players(
-                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, false, false, null, FIRST);
+                caller, CLUB_ID, AvailabilitySummaryPlayerKind.RESPONDED, null, null, null, null, null, false, false, null, FIRST);
 
         assertThat(result.getContent()).isEmpty();
         verifyNoInteractions(overviewPolls);
@@ -470,11 +494,11 @@ class AvailabilitySummaryServiceImplTest {
     @Test
     void anInvalidFilterIdPropagatesFromThePlayersListToo() {
         when(accessService.accessibleSectionIds(caller, CLUB_ID)).thenReturn(Optional.empty());
-        when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean()))
+        when(pollFilters.resolve(any(), any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
                 .thenThrow(new NotFoundException("League not found"));
 
         assertThatThrownBy(() -> service.players(caller, CLUB_ID, AvailabilitySummaryPlayerKind.AWAITING,
-                        UUID.randomUUID(), null, null, null, false, false, null, FIRST))
+                        UUID.randomUUID(), null, null, null, null, false, false, null, FIRST))
                 .isInstanceOf(NotFoundException.class);
     }
 

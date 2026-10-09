@@ -35,10 +35,11 @@ public class AvailabilitySummaryController {
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
             @RequestParam(defaultValue = "ALL") AvailabilityPollTypeFilter type,
             @RequestParam(defaultValue = "false") boolean includeClosed) {
         return ResponseEntity.ok(availabilitySummaryService.summary(
-                authentication, clubId, leagueId, sectionId, teamId, type, includeClosed));
+                authentication, clubId, leagueId, sectionId, teamId, seasonId, type, includeClosed));
     }
 
     /**
@@ -55,6 +56,7 @@ public class AvailabilitySummaryController {
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
             @RequestParam(defaultValue = "ALL") AvailabilityPollTypeFilter type,
             @RequestParam(defaultValue = "false") boolean includeClosed,
             @RequestParam(defaultValue = "false") boolean closingSoon,
@@ -67,6 +69,7 @@ public class AvailabilitySummaryController {
                 leagueId,
                 sectionId,
                 teamId,
+                seasonId,
                 type,
                 includeClosed,
                 closingSoon,

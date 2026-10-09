@@ -106,7 +106,7 @@ class AvailabilitySummaryQueryCountIntegrationTest {
         Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         assertThat(statistics.isStatisticsEnabled()).isTrue();
         statistics.clear();
-        AvailabilitySummaryDto result = summaryService.summary(caller, clubId, leagueId, sectionId, teamId, type, includeClosed);
+        AvailabilitySummaryDto result = summaryService.summary(caller, clubId, leagueId, sectionId, teamId, null, type, includeClosed);
         assertThat(result.openPolls()).isPositive();
         return statistics.getPrepareStatementCount();
     }
@@ -121,7 +121,7 @@ class AvailabilitySummaryQueryCountIntegrationTest {
         long largeCount = statementsFor(platformAdmin, large.club().getId());
 
         assertThat(largeCount).isEqualTo(smallCount);
-        assertThat(summaryService.summary(platformAdmin, large.club().getId(), null, null, null, null, false).openPolls()).isEqualTo(14 + 7);
+        assertThat(summaryService.summary(platformAdmin, large.club().getId(), null, null, null, null, null, false).openPolls()).isEqualTo(14 + 7);
     }
 
     @Test
@@ -176,7 +176,7 @@ class AvailabilitySummaryQueryCountIntegrationTest {
             UUID sectionId, UUID teamId, boolean includeClosed, boolean closingSoon, String search, int pageSize) {
         Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
-        var page = summaryService.players(caller, clubId, kind, leagueId, sectionId, teamId, null, includeClosed,
+        var page = summaryService.players(caller, clubId, kind, leagueId, sectionId, teamId, null, null, includeClosed,
                 closingSoon, search, PageRequest.of(0, pageSize));
         assertThat(page.getTotalElements()).isPositive();
         return statistics.getPrepareStatementCount();

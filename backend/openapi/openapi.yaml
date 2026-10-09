@@ -4850,6 +4850,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       - name: type
         in: query
         required: false
@@ -4907,6 +4913,12 @@ paths:
           type: string
           format: uuid
       - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
         in: query
         required: false
         schema:

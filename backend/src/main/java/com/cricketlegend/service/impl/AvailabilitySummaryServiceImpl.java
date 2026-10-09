@@ -80,12 +80,13 @@ public class AvailabilitySummaryServiceImpl implements AvailabilitySummaryServic
             UUID leagueId,
             UUID sectionId,
             UUID teamId,
+            UUID seasonId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed) {
         Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
         // Validate the filter ids first so a bad id is a 404/403 even for a caller with no sections.
         AvailabilityPollFilter filter = pollFilters.resolve(
-                authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed);
+                authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed, seasonId);
         if (accessible.isPresent() && accessible.get().isEmpty()) {
             return new AvailabilitySummaryDto(0, 0, 0, 0, 0);
         }
@@ -117,6 +118,7 @@ public class AvailabilitySummaryServiceImpl implements AvailabilitySummaryServic
             UUID leagueId,
             UUID sectionId,
             UUID teamId,
+            UUID seasonId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed,
             boolean closingSoon,
@@ -125,7 +127,7 @@ public class AvailabilitySummaryServiceImpl implements AvailabilitySummaryServic
         Pageable page = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), MAX_PAGE_SIZE));
         Optional<Set<UUID>> accessible = accessService.accessibleSectionIds(authentication, clubId);
         AvailabilityPollFilter filter = pollFilters.resolve(
-                authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed);
+                authentication, clubId, accessible, leagueId, sectionId, teamId, type, includeClosed, seasonId);
         if (accessible.isPresent() && accessible.get().isEmpty()) {
             return new PageImpl<>(List.of(), page, 0);
         }
