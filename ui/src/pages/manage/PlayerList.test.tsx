@@ -192,7 +192,7 @@ describe('PlayerList', () => {
     await screen.findByText('Sipho Ndlovu')
     expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: false }))
 
-    await user.click(screen.getByRole('checkbox', { name: /show suspended and rejected players/i }))
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
 
     await waitFor(() =>
       expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includeInactive: true })),
@@ -347,7 +347,7 @@ describe('PlayerList', () => {
     await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sectionId: 'section-1' })))
     expect(await screen.findByLabelText('Section')).toHaveValue('U15')
     await user.type(screen.getByLabelText('Search'), 'Sip')
-    await user.click(screen.getByRole('checkbox', { name: /show suspended and rejected players/i }))
+    await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
     await user.click(await screen.findByTestId('page-counter-unverified'))
 
     const persisted = JSON.parse(localStorage.getItem('playerList:filters:test-club-id') as string)
@@ -537,7 +537,7 @@ describe('PlayerList', () => {
 
         await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
         expect(await screen.findByText(/Quick filter:/)).toBeInTheDocument()
-        expect(screen.getByRole('checkbox', { name: /show suspended and rejected players/i })).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: /show inactive/i })).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Clear all' }))
         await waitFor(() => expect(listPlayers.mock.calls.at(-1)?.[1].focus).toBeUndefined())

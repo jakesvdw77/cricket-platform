@@ -232,7 +232,7 @@ export default function PlayerList() {
       label="Missing date of birth"
     />
   )
-  const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show suspended and rejected players" />
+  const inactiveToggle = <CompactSwitch checked={showInactive} onChange={setShowInactive} label="Show inactive" />
   const sortLink = <SortMenu value={sort} options={SORT_OPTIONS} onChange={(value) => setSort(value as PlayerSort)} />
 
   const chips = [

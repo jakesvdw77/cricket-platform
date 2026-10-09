@@ -74,7 +74,7 @@ export const Verified: Story = {}
 // Waiting for the manager: amber badge, the Status menu offers Verify and Reject.
 export const Unverified: Story = { args: { player: makePlayer({ verificationStatus: 'UNVERIFIED', jerseyNumber: 12, phone: '082 555 0142' }) } }
 
-// Hidden from the default list; shown with "Show suspended and rejected players", and can be verified again.
+// Hidden from the default list; shown with "Show inactive", and can be verified again.
 export const Rejected: Story = { args: { player: makePlayer({ verificationStatus: 'REJECTED', phone: '072 555 0188' }) } }
 
 // A deactivated player; the Status menu offers Reactivate.

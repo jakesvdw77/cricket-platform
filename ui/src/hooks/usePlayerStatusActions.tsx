@@ -19,7 +19,7 @@ const CONFIRM_COPY = {
   reject: {
     title: 'Reject this player request?',
     description: (name: string) =>
-      `${name} will be hidden from the player list. You can still find them with "Show suspended and rejected players" and verify them later.`,
+      `${name} will be hidden from the player list. You can still find them with "Show inactive" and verify them later.`,
     confirmLabel: 'Reject player',
     pendingLabel: 'Rejecting…',
   },
