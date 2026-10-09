@@ -7,6 +7,7 @@ import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
+import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PageCounters } from '../../components/PageCounters'
 import type { PageCounterItem } from '../../components/PageCounters'
@@ -20,6 +21,8 @@ import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
 import { listSections } from '../../api/sectionApi'
 import { MatchCard } from './matches/MatchCard'
+import { MatchTable } from './matches/MatchTable'
+import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { cardGridSx } from '../../utils/cardGrid'
 import { scopeFilterText } from '../../utils/availabilityScope'
 import { announcedBadges, badgeFor, sideName } from './matches/matchCardHelpers'
@@ -96,6 +99,8 @@ export default function MatchList({
   // is saved with Section/League/Season below. At most one quick filter is active at a time.
   const [teamId, setTeamId] = useState<string | null>(null)
   const [focus, setFocus] = useState<MatchListFocus | null>(null)
+  // docs/specs/089 (C): Cards | List, remembered for this page.
+  const [view, setView] = useListViewPreference('matchList:view')
   // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only. The
   // "Show past matches" switch in the toolbar flips this, so a match saved with a wrong date (and
   // therefore hidden from the default view) can still be found and corrected.
@@ -425,6 +430,9 @@ export default function MatchList({
         extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
         viewControls={
           <>
+            <Box sx={{ width: '100%' }}>
+              <ListViewToggle value={view} onChange={setView} fullWidth />
+            </Box>
             {focus && (
               <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 36 }}>
                 <Typography variant="body2" color="text.secondary">
@@ -451,10 +459,25 @@ export default function MatchList({
       <ContentControlsLine
         scope={`Showing ${data.totalElements} ${upcomingOnly ? 'upcoming ' : ''}${data.totalElements === 1 ? 'match' : 'matches'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
         sortAction={sortLink}
-        controls={pastToggle}
+        controls={
+          <>
+            <ListViewToggle value={view} onChange={setView} />
+            {pastToggle}
+          </>
+        }
       />
 
-      {hasMatches && (
+      {hasMatches && view === 'list' && (
+        <MatchTable
+          matches={data.content}
+          teamsById={teamsById}
+          leaguesById={leaguesById}
+          seasonsById={seasonsById}
+          viewTo={viewTo ? (match) => viewTo(match.id) : undefined}
+        />
+      )}
+
+      {hasMatches && view === 'cards' && (
         <Box sx={cardGridSx}>
           {data.content.map((match) => (
             <MatchCard

@@ -152,6 +152,50 @@ describe('MatchList', () => {
     })
   })
 
+  // docs/specs/089 (C): the Cards | List switch and its remembered preference.
+  describe('list view', () => {
+    it('shows cards by default, switches to the table and back, and keeps the other controls', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      const user = userEvent.setup()
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Show past matches')).toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
+      await waitFor(() => expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument())
+    })
+
+    it('remembers the chosen view for next time', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      const user = userEvent.setup()
+      const { unmount } = renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      await screen.findByRole('table', { name: 'Matches' })
+      expect(localStorage.getItem('matchList:view')).toBe('list')
+      unmount()
+
+      renderPage('test-club-id')
+      expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
+    })
+
+    it('opens the match when a row is clicked', async () => {
+      localStorage.setItem('matchList:view', 'list')
+      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-9' })]))
+      const user = userEvent.setup()
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('link', { name: '1st XI vs Riverside Occasionals' }))
+      expect(await screen.findByText('Match Detail Page')).toBeInTheDocument()
+    })
+  })
+
   // docs/specs/079-manager-shell-and-overview.md: no default back link any more.
   it('renders no back link by default', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
