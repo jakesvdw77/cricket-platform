@@ -4,9 +4,10 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
+import { CompactSwitch } from '../../../components/CompactSwitch'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { SelectionGauge } from '../../../components/SelectionGauge'
-import type { TeamSelectionMatch, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
+import type { TeamSelectionMatch, TeamSelectionPick, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
 import {
@@ -14,7 +15,6 @@ import {
   GAME_COL_WIDTH,
   SCROLL_BOX_MIN_HEIGHT,
   SLOT_ROW_HEIGHT,
-  clampTwoLinesSx,
   headCellSx,
   hoverTint,
   numberSx,
@@ -47,7 +47,34 @@ const POSITION_COL = { width: 84, minWidth: 84, maxWidth: 84 } as const
 
 const footActionSx = { whiteSpace: 'nowrap', minHeight: 24, py: 0.125, px: 1, fontSize: '0.6875rem', lineHeight: 1.5 } as const
 
-const columnWidth = { xs: GAME_COL_WIDTH.xs + 16, sm: GAME_COL_WIDTH.sm + 24 }
+const fullColumnWidth = { xs: GAME_COL_WIDTH.xs + 16, sm: GAME_COL_WIDTH.sm + 24 }
+// Short names are short enough for a narrower match column.
+const narrowColumnWidth = { xs: GAME_COL_WIDTH.xs + 16, sm: 140 }
+// The match header cell: label, kickoff and the gauge line, every column the same height. Nothing sticky sits below it,
+// so DATE_ROW_HEIGHT and SLOT_ROW_HEIGHT (the rows above it) still give its sticky `top` exactly.
+const MATCH_HEAD_HEIGHT = 58
+
+const SHORT_NAMES_KEY = 'teamSelection:battingShortNames'
+function readShortNames(): boolean {
+  try {
+    return localStorage.getItem(SHORT_NAMES_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+function writeShortNames(value: boolean) {
+  try {
+    localStorage.setItem(SHORT_NAMES_KEY, String(value))
+  } catch {
+    // storage unavailable: the choice just lasts for this visit
+  }
+}
+
+// "J van der Westhuizen": the first initial, then everything after the first name token.
+function shortName(player: Pick<TeamSelectionPlayer, 'firstName' | 'lastName'>): string {
+  const [first = '', ...rest] = `${player.firstName} ${player.lastName}`.trim().split(/\s+/)
+  return rest.length === 0 ? first : `${first.charAt(0)} ${rest.join(' ')}`
+}
 const nameOf = (player: Pick<TeamSelectionPlayer, 'firstName' | 'lastName'>) => `${player.firstName} ${player.lastName}`.trim()
 const columnLabel = ({ match, side }: Column) => `${match.label}${match.sides.length > 1 ? `, ${side.teamName}` : ''}`
 
@@ -65,6 +92,8 @@ function BattingMatrix({
   onMove,
   announcingSideId,
   onAnnounce,
+  reorder,
+  shortNames,
 }: {
   matches: TeamSelectionMatch[]
   busy: boolean
@@ -72,6 +101,8 @@ function BattingMatrix({
   onMove: (match: TeamSelectionMatch, side: TeamSelectionSide, playerId: string, direction: -1 | 1) => void
   announcingSideId: string | null
   onAnnounce: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
+  reorder: boolean
+  shortNames: boolean
 }) {
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
   const first = useFirstColWidth([matches])
@@ -82,6 +113,14 @@ function BattingMatrix({
   const positions = Array.from({ length: rows }, (_, index) => index + 1)
   const showUnpositioned = columns.some(({ side }) => side.picks.some((pick) => pick.battingOrder == null && !pick.twelfthMan))
   const slotColumnCount = (slotGames: TeamSelectionMatch[]) => slotGames.reduce((total, match) => total + match.sides.length, 0)
+
+  const columnWidth = shortNames ? narrowColumnWidth : fullColumnWidth
+  // The short form of a pick, unless another pick in the same column would look the same (then the full name).
+  const labelOf = ({ side }: Column, pick: TeamSelectionPick): string | undefined => {
+    if (!shortNames) return undefined
+    const short = shortName(pick)
+    return side.picks.filter((other) => shortName(other) === short).length > 1 ? undefined : short
+  }
 
   const rowSx = {
     '& > th, & > td': { bgcolor: 'background.paper' },
@@ -149,16 +188,17 @@ function BattingMatrix({
                   key={`${match.matchId}:${side.teamId}`}
                   component="th"
                   scope="col"
-                  sx={{ ...headCellSx, top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px` }}
+                  sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px` }}
                 >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Typography variant="caption" title={columnLabel(column)} sx={clampTwoLinesSx}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                    <Typography variant="caption" noWrap title={columnLabel(column)} sx={{ fontWeight: 600, lineHeight: 1.25, display: 'block' }}>
                       {columnLabel(column)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={numberSx}>
+                    <Typography variant="caption" color="text.secondary" noWrap sx={{ ...numberSx, lineHeight: 1.25, display: 'block' }}>
                       {kickoffText(match.matchDate)}
                     </Typography>
                     <SelectionGauge
+                      compact
                       picked={side.pickedCount}
                       size={max}
                       ariaLabel={`${side.teamName} selection, ${side.pickedCount} of ${max} picked`}
@@ -187,8 +227,8 @@ function BattingMatrix({
                   <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-cell-${match.matchId}-${side.teamId}-${position}`}>
                     {pick && (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.25 }}>
-                        <PickedName pick={pick} />
-                        {side.sideId !== null && (
+                        <PickedName pick={pick} displayName={labelOf(column, pick)} />
+                        {reorder && side.sideId !== null && (
                           <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
                             <IconButton
                               size="small"
@@ -247,7 +287,7 @@ function BattingMatrix({
               return (
                 <TableCell key={`${match.matchId}:${side.teamId}`} sx={bodyCellSx} data-testid={`batting-twelfth-${match.matchId}-${side.teamId}`}>
                   {twelfth ? (
-                    <PickedName pick={twelfth} />
+                    <PickedName pick={twelfth} displayName={labelOf({ match, side }, twelfth)} />
                   ) : (
                     <Typography variant="body2" color="text.disabled" aria-hidden>
                       -
@@ -270,7 +310,7 @@ function BattingMatrix({
                     .filter((pick) => pick.battingOrder == null && !pick.twelfthMan)
                     .map((pick) => (
                       <Box key={pick.playerId}>
-                        <PickedName pick={pick} />
+                        <PickedName pick={pick} displayName={labelOf({ match, side }, pick)} />
                       </Box>
                     ))}
                 </TableCell>
@@ -329,6 +369,8 @@ export default function BattingOrderView() {
   const { clubId } = useTeamSelectionHub()
   const picker = usePlayerPick(clubId as string)
   const announce = useAnnounceSide(clubId as string)
+  const [reorder, setReorder] = useState(false)
+  const [shortNames, setShortNames] = useState(readShortNames)
   const [adding, setAdding] = useState<AddTarget | null>(null)
   const [pendingMove, setPendingMove] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide; playerId: string; direction: -1 | 1 } | null>(null)
   // The server un-announces a side on any edit, so a move on an announced side is confirmed first.
@@ -339,6 +381,19 @@ export default function BattingOrderView() {
 
   return (
     <MatchesFrame
+      controls={
+        <>
+          <CompactSwitch checked={reorder} onChange={setReorder} label="Reorder" />
+          <CompactSwitch
+            checked={shortNames}
+            onChange={(value) => {
+              setShortNames(value)
+              writeShortNames(value)
+            }}
+            label="Short names"
+          />
+        </>
+      }
       notices={
         <>
           {announce.errorAlert}
@@ -368,6 +423,8 @@ export default function BattingOrderView() {
               onMove={requestMove}
               announcingSideId={announce.announcingSideId}
               onAnnounce={announce.request}
+              reorder={reorder}
+              shortNames={shortNames}
             />
             <Menu
               open={adding !== null}

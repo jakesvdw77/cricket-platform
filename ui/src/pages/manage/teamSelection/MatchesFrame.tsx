@@ -12,18 +12,25 @@ import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
 export interface MatchesFrameProps {
   // Alerts or notices the view adds under the shared ones (write errors).
   notices?: ReactNode
+  // The view's own switches, shown beside Show past matches (and in the Filters sheet on a phone).
+  controls?: ReactNode
   children: (matches: TeamSelectionMatch[], data: TeamSelectionOverview) => ReactNode
 }
 
 // docs/specs/093-team-selection-hub.md: what the Time slots and Batting order views share around their content - the
 // hub filter bar, Show past, the loading / error / truncated / empty states, and the search applied to the matches.
-export function MatchesFrame({ notices, children }: MatchesFrameProps) {
+export function MatchesFrame({ notices, controls, children }: MatchesFrameProps) {
   const { overview, showPast, setShowPast, search } = useTeamSelectionHub()
   const data = overview.data
   const term = search.trim().toLowerCase()
   const visible = useMemo(() => (data?.matches ?? []).filter((match) => matchesSearch(match, term)), [data, term])
 
-  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="Show past matches" />
+  const pastToggle = (
+    <>
+      <CompactSwitch checked={showPast} onChange={setShowPast} label="Show past matches" />
+      {controls}
+    </>
+  )
   const scope = data ? `Showing ${visible.length} ${showPast ? '' : 'upcoming '}${visible.length === 1 ? 'match' : 'matches'}` : ''
 
   return (

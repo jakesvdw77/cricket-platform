@@ -59,6 +59,7 @@ beforeEach(() => {
   reorderMatchSidePlayers.mockReset().mockResolvedValue({})
 })
 
+const turnReorderOn = async () => userEvent.click(await screen.findByRole('checkbox', { name: 'Reorder' }))
 const cellAt = (match: string, team: string, position: number) => screen.getByTestId(`batting-cell-${match}-${team}-${position}`)
 
 describe('BattingOrderView', () => {
@@ -206,9 +207,21 @@ describe('BattingOrderView', () => {
       get.mockResolvedValue({ data })
     }
 
+    it('shows no arrows until Reorder is turned on, and hides them again when it is turned off', async () => {
+      threeBatters()
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
+      await turnReorderOn()
+      expect(screen.getAllByRole('button', { name: /^Move/ })).toHaveLength(6)
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Reorder' }))
+      expect(screen.queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
+    })
+
     it('swaps a batter with the one above, sending the full batting order to the reorder call', async () => {
       threeBatters()
       renderView()
+      await turnReorderOn()
       const reads = get.mock.calls.length
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
@@ -219,6 +232,7 @@ describe('BattingOrderView', () => {
     it('swaps a batter with the one below', async () => {
       threeBatters()
       renderView()
+      await turnReorderOn()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledWith('club-1', 'x-1', 'side-1', ['bob', 'ann', 'cal']))
     })
@@ -226,6 +240,7 @@ describe('BattingOrderView', () => {
     it('disables up at position 1 and down at the last filled position', async () => {
       threeBatters()
       renderView()
+      await turnReorderOn()
       expect(await screen.findByRole('button', { name: 'Move Ann Smith up, Vets A v Oakfield' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'Move Cal Smith down, Vets A v Oakfield' })).toBeDisabled()
@@ -236,6 +251,7 @@ describe('BattingOrderView', () => {
       threeBatters()
       reorderMatchSidePlayers.mockReturnValue(new Promise(() => {}))
       renderView()
+      await turnReorderOn()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Move Bob Smith up, Vets A v Oakfield' })).toBeDisabled())
       fireEvent.click(screen.getByRole('button', { name: 'Move Bob Smith up, Vets A v Oakfield' }))
@@ -246,6 +262,7 @@ describe('BattingOrderView', () => {
       threeBatters()
       reorderMatchSidePlayers.mockRejectedValue({ isAxiosError: true, response: { status: 409, data: { detail: 'Order not allowed.' } } })
       renderView()
+      await turnReorderOn()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('Order not allowed.')
     })
@@ -253,6 +270,7 @@ describe('BattingOrderView', () => {
     it('offers no arrows on the 12th man, an empty position, the no position row or an announced side', async () => {
       threeBatters()
       renderView()
+      await turnReorderOn()
       await screen.findByTestId('batting-cell-x-1-team-1-1')
       expect(screen.queryByRole('button', { name: /Move Cy Smith/ })).not.toBeInTheDocument()
       expect(within(cellAt('x-1', 'team-1', 4)).queryByRole('button', { name: /^Move/ })).not.toBeInTheDocument()
@@ -274,6 +292,7 @@ describe('BattingOrderView', () => {
 
       it('shows the arrows', async () => {
         renderView()
+      await turnReorderOn()
         await screen.findByTestId('batting-cell-m-3-team-b-1')
         expect(within(cellAt('m-3', 'team-b', 1)).getAllByRole('button')).toHaveLength(2)
         expect(screen.getByRole('button', { name: move })).toBeInTheDocument()
@@ -282,6 +301,7 @@ describe('BattingOrderView', () => {
       it('asks first, and does nothing on cancel', async () => {
         announcedSide()
         renderView()
+      await turnReorderOn()
         await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
         const dialog = await screen.findByRole('dialog')
         expect(within(dialog).getByText('Change an announced team?')).toBeInTheDocument()
@@ -294,6 +314,7 @@ describe('BattingOrderView', () => {
       it('sends the reorder on confirm', async () => {
         announcedSide()
         renderView()
+      await turnReorderOn()
         await userEvent.click(await screen.findByRole('button', { name: 'Move Ann Smith down, Vets A v Oakfield' }))
         await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Move and un-announce' }))
         await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
@@ -304,9 +325,62 @@ describe('BattingOrderView', () => {
     it('moves a non-announced side immediately, with no dialog', async () => {
       threeBatters()
       renderView()
+      await turnReorderOn()
       await userEvent.click(await screen.findByRole('button', { name: 'Move Cal Smith up, Vets A v Oakfield' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       await waitFor(() => expect(reorderMatchSidePlayers).toHaveBeenCalledTimes(1))
     })
+  })
+
+  describe('short names', () => {
+    const named = (picks: ReturnType<typeof makePick>[]) => {
+      get.mockResolvedValue({ data: makeOverview([makeMatch({ matchId: 'x-1', sides: [makeSide({ picks, pickedCount: picks.length })] })]) })
+    }
+
+    it('shows full names by default and the initial plus surname when on, keeping the full name in the tooltip and aria-label', async () => {
+      named([makePick('ann', 1, { firstName: 'Johan', lastName: 'van der Westhuizen' }), makePick('bob', 2)])
+      renderView()
+      await screen.findByTestId('batting-cell-x-1-team-1-1')
+      expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('Johan van der Westhuizen')
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Short names' }))
+      expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('J van der Westhuizen')
+      const name = within(cellAt('x-1', 'team-1', 1)).getByText('J van der Westhuizen')
+      expect(name).toHaveAttribute('title', 'Johan van der Westhuizen')
+      expect(name).toHaveAttribute('aria-label', 'Johan van der Westhuizen')
+      expect(cellAt('x-1', 'team-1', 2)).toHaveTextContent('B Smith')
+    })
+
+    it('keeps the first name for two players in the same column who would look the same', async () => {
+      named([makePick('ann', 1, { firstName: 'John', lastName: 'Smith' }), makePick('bob', 2, { firstName: 'Jane', lastName: 'Smith' }), makePick('cy', 3, { firstName: 'Cy', lastName: 'Jones' })])
+      renderView()
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Short names' }))
+      expect(cellAt('x-1', 'team-1', 1)).toHaveTextContent('John Smith')
+      expect(cellAt('x-1', 'team-1', 2)).toHaveTextContent('Jane Smith')
+      expect(cellAt('x-1', 'team-1', 3)).toHaveTextContent('C Jones')
+    })
+
+    it('is remembered per browser', async () => {
+      renderView()
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Short names' }))
+      expect(localStorage.getItem('teamSelection:battingShortNames')).toBe('true')
+    })
+
+    it('starts on when it was saved on, and Reorder always starts off', async () => {
+      localStorage.setItem('teamSelection:battingShortNames', 'true')
+      renderView()
+      await screen.findByTestId('batting-cell-m-1-team-1-1')
+      expect(screen.getByRole('checkbox', { name: 'Short names' })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Reorder' })).not.toBeChecked()
+      expect(cellAt('m-1', 'team-1', 1)).toHaveTextContent('A Smith')
+    })
+  })
+
+  it('shows one "picked / size" figure per column header and a complete marker only on a full squad', async () => {
+    renderView()
+    await screen.findByTestId('batting-cell-m-3-team-a-1')
+    expect(screen.getByTestId('batting-gauge-m-3-team-a-figure')).toHaveTextContent('12 / 12')
+    expect(screen.getByTestId('batting-gauge-m-3-team-a-complete')).toBeInTheDocument()
+    expect(screen.getByTestId('batting-gauge-m-3-team-b-figure')).toHaveTextContent('1 / 12')
+    expect(screen.queryByTestId('batting-gauge-m-3-team-b-complete')).not.toBeInTheDocument()
   })
 })

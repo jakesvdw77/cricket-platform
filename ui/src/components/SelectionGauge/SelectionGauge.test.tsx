@@ -40,4 +40,15 @@ describe('SelectionGauge', () => {
     render(<SelectionGauge picked={56} size={56} ariaLabel="x" completeLabel="Season complete" />)
     expect(screen.getByTestId('selection-complete')).toHaveTextContent('Season complete')
   })
+
+  it('compact shows one "picked / size" figure beside the bar and a tick only once full', () => {
+    const { rerender } = render(<SelectionGauge picked={11} size={12} ariaLabel="x" compact />)
+    expect(screen.getByTestId('selection-figure')).toHaveTextContent('11 / 12')
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '11')
+    expect(screen.queryByTestId('selection-complete')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('selection-togo')).not.toBeInTheDocument()
+    rerender(<SelectionGauge picked={12} size={12} ariaLabel="x" compact />)
+    expect(screen.getByTestId('selection-figure')).toHaveTextContent('12 / 12')
+    expect(screen.getByTestId('selection-complete')).toBeInTheDocument()
+  })
 })
