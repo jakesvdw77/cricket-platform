@@ -152,6 +152,27 @@ describe('MatchList', () => {
     })
   })
 
+  // docs/specs/089 (D): Season moved out of the toolbar into a pill beside the title.
+  it('shows Season as a pill in the header, with All seasons by default and not as a toolbar field', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch()]))
+    listSeasons.mockResolvedValue([
+      { id: 'season-1', clubId: 'test-club-id', label: '2026/27', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: ['season-1'], teamIds: ['team-1'] })
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    const pill = screen.getByRole('button', { name: 'Season' })
+    expect(pill).toHaveTextContent('All seasons')
+    expect(screen.getAllByLabelText('Season')).toHaveLength(1)
+
+    await user.click(pill)
+    await user.click(await screen.findByRole('option', { name: '2026/27' }))
+    expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2026/27')
+  })
+
   // docs/specs/089 (C): the Cards | List switch and its remembered preference.
   describe('list view', () => {
     it('shows cards by default, switches to the table and back, and keeps the other controls', async () => {

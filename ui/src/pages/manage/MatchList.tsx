@@ -7,6 +7,7 @@ import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
+import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
 import { PageCounters } from '../../components/PageCounters'
@@ -398,13 +399,21 @@ export default function MatchList({
         backLabel={backLabel}
         // docs/specs/087: the scope of the list under the title when a filter is set, as on Availability.
         subtitle={scope ? `Showing: ${scope}` : undefined}
+        // docs/specs/089: Season is a small pill beside the title, not a toolbar field - it rarely changes.
+        titleAdornment={
+          <HeaderSeasonSelect
+            seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
+            value={seasonId}
+            onChange={setSeasonId}
+          />
+        }
         action={
           <Button onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
         }
       />
 
       {/* docs/specs/087-matches-polls-alignment.md (B): the Polls toolbar - the shared FilterBar (League,
-          Season, Section and search; Team arrives with its backend param in the counters slice) and a content
+          Section, Team and search; Season is the pill in the header, 089; Team arrives with its backend param in the counters slice) and a content
           line with the scope text, the sort link and the Show past matches switch. On a phone the switch and
           the sort link move into the FilterBar sheet. */}
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
@@ -412,15 +421,12 @@ export default function MatchList({
       <FilterBar
         density="compact"
         leagues={filterableLeagues}
-        seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
         sections={filterableSections}
         teams={filterableTeams}
         leagueId={leagueId}
-        seasonId={seasonId}
         sectionId={sectionId}
         teamId={teamId}
         onLeagueChange={setLeagueId}
-        onSeasonChange={setSeasonId}
         onSectionChange={setSectionId}
         onTeamChange={setTeamId}
         searchValue={search}
@@ -449,7 +455,6 @@ export default function MatchList({
         }
         onClearAll={() => {
           setLeagueId(null)
-          setSeasonId(null)
           setSectionId(null)
           setTeamId(null)
           setFocus(null)
