@@ -26,10 +26,10 @@ export interface PlayerTableProps {
 
 const NOT_ON_FILE = '–'
 
-// Desktop: Player, Status, Section, No., Phone, Bat, Bowl, This season, Overall, Status button. A phone keeps Player (the
-// status badge moves under the name), the two games columns and the button.
+// Desktop: Player, Status, Section, No., Phone, Bat, Bowl, Season, Overall, Status button. A phone keeps Player (the
+// status badge moves under the name), Season, Phone and the button, in that order (see `phoneOrder`).
 const COLUMNS = {
-  xs: 'minmax(0, 1fr) 54px 54px 44px',
+  xs: 'minmax(0, 1fr) 54px 104px 44px',
   sm: 'minmax(200px, 2.2fr) 110px minmax(110px, 1.2fr) 52px 130px 110px 150px 80px 80px 44px',
 }
 
@@ -43,6 +43,12 @@ const gridSx = {
 
 // The columns a phone drops.
 const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
+// Marks those cells for assistive tooling and tests (jsdom does not evaluate responsive CSS).
+const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
+
+// On a phone the visible cells are Player, Season, Phone, button; in the DOM Phone comes before Season (desktop order), so
+// `order` puts Season first on a phone. From `sm` up every cell is back in DOM order.
+const phoneOrder = (position: number) => ({ order: { xs: position, sm: 0 } })
 
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
@@ -54,14 +60,15 @@ function bowlingText(player: Player): string {
   return parts.length > 0 ? parts.join(', ') : NOT_ON_FILE
 }
 
-function Cell({ children, value, sx }: { children?: ReactNode; value?: string; sx?: object }) {
+function Cell({ children, value, sx, hiddenOnPhone = false }: { children?: ReactNode; value?: string; sx?: object; hiddenOnPhone?: boolean }) {
   const missing = value === NOT_ON_FILE
   return (
     <Typography
       component="div"
       role="cell"
       variant="body2"
-      sx={{ minWidth: 0, color: missing ? 'text.secondary' : 'text.primary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...sx }}
+      {...(hiddenOnPhone ? DESKTOP_ONLY : {})}
+      sx={{ minWidth: 0, color: missing ? 'text.secondary' : 'text.primary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(hiddenOnPhone ? desktopOnly : {}), ...sx }}
     >
       {children ?? value}
     </Typography>
@@ -126,22 +133,24 @@ function PlayerRow({
           </Box>
         </Box>
       </Box>
-      <Box role="cell" sx={desktopOnly}>
+      <Box role="cell" sx={desktopOnly} {...DESKTOP_ONLY}>
         <Chip size="small" label={badge.label} sx={{ ...badgeSx(badge.tone), height: 22, fontSize: '0.75rem' }} data-testid="player-status-badge-desktop" />
       </Box>
       <Cell
+        hiddenOnPhone
         value={sections.length > 0 ? sections[0] : 'No section'}
-        sx={{ ...desktopOnly, color: sections.length > 0 ? 'text.primary' : 'text.secondary' }}
+        sx={{ color: sections.length > 0 ? 'text.primary' : 'text.secondary' }}
       >
         {sections.length > 0 ? `${sections[0]}${sections.length > 1 ? ` +${sections.length - 1}` : ''}` : 'No section'}
       </Cell>
-      <Cell value={player.jerseyNumber != null ? `#${player.jerseyNumber}` : NOT_ON_FILE} sx={desktopOnly} />
-      <Cell value={player.phone || NOT_ON_FILE} sx={desktopOnly} />
-      <Cell value={player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : NOT_ON_FILE} sx={desktopOnly} />
-      <Cell value={bowlingText(player)} sx={desktopOnly} />
-      <Cell sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesThisSeason}</Cell>
-      <Cell sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesOverall}</Cell>
-      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
+      <Cell hiddenOnPhone value={player.jerseyNumber != null ? `#${player.jerseyNumber}` : NOT_ON_FILE} />
+      <Cell value={player.phone || NOT_ON_FILE} sx={{ ...phoneOrder(2), fontSize: { xs: '0.8125rem', sm: '0.875rem' } }} />
+      <Cell hiddenOnPhone value={player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : NOT_ON_FILE} />
+      <Cell hiddenOnPhone value={bowlingText(player)} />
+      <Cell sx={{ ...phoneOrder(1), textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesThisSeason}</Cell>
+      {/* Overall is a desktop column; a phone shows the phone number instead */}
+      <Cell hiddenOnPhone sx={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{player.gamesOverall}</Cell>
+      <Box role="cell" sx={{ display: 'flex', justifyContent: 'center', ...phoneOrder(3) }}>
         <IconButton
           aria-label="Change status"
           aria-haspopup="menu"
@@ -162,7 +171,7 @@ function PlayerRow({
 // docs/specs/088-players-polls-alignment.md (F): the list view of the Players page, the standard for the other lists. One
 // bordered panel with a header row that sticks to the top of the scrolling page and zebra rows of equal height; the whole
 // row opens the player, and each row has the same Status button and menu as the card. A value that is not on file
-// shows "-"; a phone keeps only Player, the two games columns and the Status button.
+// shows "-"; a phone keeps only Player, Season, Phone and the Status button.
 export function PlayerTable({ players, sectionNamesFor, viewTo, onStatusAction }: PlayerTableProps) {
   return (
     <Box
@@ -197,18 +206,15 @@ export function PlayerTable({ players, sectionNamesFor, viewTo, onStatusAction }
         }}
       >
         <Box role="columnheader">Player</Box>
-        <Box role="columnheader" sx={desktopOnly}>Status</Box>
-        <Box role="columnheader" sx={desktopOnly}>Section</Box>
-        <Box role="columnheader" sx={desktopOnly}>No.</Box>
-        <Box role="columnheader" sx={desktopOnly}>Phone</Box>
-        <Box role="columnheader" sx={desktopOnly}>Bat</Box>
-        <Box role="columnheader" sx={desktopOnly}>Bowl</Box>
-        <Box role="columnheader" sx={{ textAlign: 'right' }}>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>This season</Box>
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Season</Box>
-        </Box>
-        <Box role="columnheader" sx={{ textAlign: 'right' }}>Overall</Box>
-        <Box role="columnheader" aria-label="Status actions" />
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Status</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Section</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>No.</Box>
+        <Box role="columnheader" sx={phoneOrder(2)}>Phone</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bat</Box>
+        <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Bowl</Box>
+        <Box role="columnheader" sx={{ ...phoneOrder(1), textAlign: 'right' }}>Season</Box>
+        <Box role="columnheader" sx={{ ...desktopOnly, textAlign: 'right' }} {...DESKTOP_ONLY}>Overall</Box>
+        <Box role="columnheader" aria-label="Status actions" sx={phoneOrder(3)} />
       </Box>
       <Box role="rowgroup">
         {players.map((player) => (
