@@ -85,6 +85,8 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
     verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     playerProfileId: 'player-1',
     squadJerseyNumber: null,
     isCaptain: false,

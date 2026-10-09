@@ -97,6 +97,8 @@ function makeSquadMember(
     updatedAt: '',
     updatedBy: null,
     verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
   }
 }
 

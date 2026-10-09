@@ -53,6 +53,10 @@ export interface Player {
   // the future self-registration flow; REJECTED players are hidden from the default list. A suspended player is
   // `active: false`, not a status here.
   verificationStatus: PlayerVerificationStatus
+  // docs/specs/088: games the player was selected for in started, active matches - this season (the list's seasonId;
+  // 0 without one) and overall. Populated by the players list only; 0 in every other response.
+  gamesThisSeason: number
+  gamesOverall: number
 }
 
 export type PlayerVerificationStatus = 'VERIFIED' | 'UNVERIFIED' | 'REJECTED'
