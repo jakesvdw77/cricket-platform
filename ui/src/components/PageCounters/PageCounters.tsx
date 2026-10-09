@@ -1,4 +1,5 @@
-import { alpha, Box, ButtonBase, Card as MuiCard, Skeleton, Typography } from '@mui/material'
+import { alpha, Box, ButtonBase, Card as MuiCard, Skeleton, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import type { Theme } from '@mui/material'
 import { compactCardSx, compactValueSx, keyFigureCardSx, keyFigureValueSx, selectableCardSx } from './keyFigureStyle'
 
@@ -6,6 +7,9 @@ export interface PageCounterItem {
   id: string
   value: string | number
   label: string
+  // docs/specs/087: a shorter label for a phone (below sm), where four cards share two columns. The full label stays
+  // the accessible name of a selectable card. Omitted, the label is shown at every width.
+  shortLabel?: string
   tone?: 'default' | 'warning'
   // Small call to action shown on a selectable counter, e.g. "Tap to filter".
   hint?: string
@@ -69,8 +73,9 @@ const markerSx = {
   lineHeight: 1,
 }
 
-function CounterBody({ item, interactive, compact }: { item: PageCounterItem; interactive: boolean; compact: boolean }) {
+function CounterBody({ item, interactive, compact, phone }: { item: PageCounterItem; interactive: boolean; compact: boolean; phone: boolean }) {
   const kind = item.kind ?? 'filter'
+  const label = phone && item.shortLabel ? item.shortLabel : item.label
   return (
     <>
       {interactive && (
@@ -96,9 +101,9 @@ function CounterBody({ item, interactive, compact }: { item: PageCounterItem; in
         variant="caption"
         color="text.secondary"
         sx={compact ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : undefined}
-        title={compact ? item.label : undefined}
+        title={compact || label !== item.label ? item.label : undefined}
       >
-        {item.label}
+        {label}
       </Typography>
       {interactive && item.hint && (
         <Typography variant="caption" sx={visuallyHidden}>
@@ -113,6 +118,8 @@ function CounterBody({ item, interactive, compact }: { item: PageCounterItem; in
 // from md, two by two below. A counter with onSelect is a real toggle button; others are plain cards.
 export function PageCounters({ items, loading = false, density = 'comfortable' }: PageCountersProps) {
   const compact = density === 'compact'
+  const theme = useTheme()
+  const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const cardSx = compact ? compactCardSx : keyFigureCardSx
   // Room for the corner marker on a selectable compact card, so it never overlaps the text.
   const markerPr = (item: PageCounterItem) => (compact && isInteractive(item) ? { pr: item.kind === 'drill' ? 4 : 6.5 } : {})
@@ -136,6 +143,8 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
           <ButtonBase
             key={item.id}
             onClick={item.onSelect}
+            // A shortened label must not shorten the accessible name: value and full label.
+            aria-label={item.shortLabel ? `${item.value} ${item.label}` : undefined}
             aria-pressed={(item.kind ?? 'filter') !== 'drill' ? Boolean(item.active) : undefined}
             data-testid={`page-counter-${item.id}`}
             data-active={item.active ? 'true' : undefined}
@@ -152,7 +161,7 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
                 '&.Mui-focusVisible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
               })}
           >
-            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} />
+            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} phone={phone} />
           </ButtonBase>
         ) : (
           <MuiCard
@@ -161,7 +170,7 @@ export function PageCounters({ items, loading = false, density = 'comfortable' }
             data-active={item.active ? 'true' : undefined}
             sx={(theme) => ({ ...cardSx, outline: item.active ? activeOutline(theme) : '2px solid transparent' })}
           >
-            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} />
+            <CounterBody item={item} interactive={isInteractive(item)} compact={compact} phone={phone} />
           </MuiCard>
         ),
       )}
