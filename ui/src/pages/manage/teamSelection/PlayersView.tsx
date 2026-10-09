@@ -1,31 +1,17 @@
 import { useMemo } from 'react'
-import { Alert, Box, CircularProgress, Typography } from '@mui/material'
+import { Alert, Box, CircularProgress } from '@mui/material'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { ContentControlsLine } from '../../../components/ContentControlsLine'
 import { EmptyState } from '../../../components/EmptyState'
 import { useTeamSelectionHub } from './hubContext'
-import { PickMark } from './PickMark'
+import { Legend } from '../playerAvailability/Legend'
 import { PlayersGrid } from './PlayersGrid'
 import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
 import { usePlayerPick } from './usePlayerPick'
 
-function PickLegend() {
-  return (
-    <Box component="ul" aria-label="Legend" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.75, rowGap: 0.5, m: 0, p: 0 }}>
-      {[true, false].map((picked) => (
-        <Box key={String(picked)} component="li" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, listStyle: 'none' }}>
-          <PickMark picked={picked} />
-          <Typography variant="caption" color="text.secondary">
-            {picked ? 'Picked' : 'Not picked'}
-          </Typography>
-        </Box>
-      ))}
-    </Box>
-  )
-}
-
 // docs/specs/093-team-selection-hub.md: the Players view. A grid of players by match where a click picks or unpicks
-// under the spec 076 rules, and a muted cell says why the player cannot be picked. No availability states.
+// under the spec 076 rules, each cell shows the player's availability answer with the picked state on top, and a muted
+// cell says why the player cannot be picked.
 export default function PlayersView() {
   const { clubId, overview, showPast, setShowPast, search } = useTeamSelectionHub()
   const picker = usePlayerPick(clubId as string)
@@ -80,7 +66,7 @@ export default function PlayersView() {
 
       {data && matches.length > 0 && (
         <>
-          <PickLegend />
+          <Legend />
           <PlayersGrid
             matches={matches}
             players={players}

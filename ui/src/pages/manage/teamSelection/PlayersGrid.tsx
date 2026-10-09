@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { Box, ButtonBase, Chip, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Tooltip, Typography } from '@mui/material'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
-import type { TeamSelectionCell, TeamSelectionMatch, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
+import type { CellStatus } from '../../../api/playerAvailabilityApi'
+import type { TeamSelectionAvailability, TeamSelectionCell, TeamSelectionMatch, TeamSelectionPlayer, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import {
   COUNT_COL_WIDTH,
   DATE_ROW_HEIGHT,
@@ -18,7 +19,7 @@ import {
   useFirstColWidth,
 } from '../playerAvailability/gridStyles'
 import { dateHeading, groupGames, kickoffText, nextGameDayMarker, orderedGames, slotLabel } from '../playerAvailability/gridHelpers'
-import { PickMark } from './PickMark'
+import { CellMark } from '../playerAvailability/CellMark'
 import { reasonText } from './pickReasons'
 import type { PickTarget } from './usePlayerPick'
 
@@ -30,6 +31,21 @@ const pickedText = (side: TeamSelectionSide) => `${side.pickedCount} / ${side.li
 
 // A derby has two sides in one match, so its cell holds two marks and its column is wider.
 const columnWidth = (match: TeamSelectionMatch) => ({ xs: GAME_COL_WIDTH.xs * Math.max(1, match.sides.length), sm: GAME_COL_WIDTH.sm * Math.max(1, match.sides.length) })
+
+const AVAILABILITY_STATUS: Record<TeamSelectionAvailability, CellStatus> = {
+  AVAILABLE: 'AVAILABLE',
+  UNSURE: 'UNSURE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NO_RESPONSE: 'NO_RESPONSE',
+  NOT_POLLED: 'NOT_IN_POLL',
+}
+const AVAILABILITY_TEXT: Record<TeamSelectionAvailability, string> = {
+  AVAILABLE: 'Available',
+  UNSURE: 'Unsure',
+  UNAVAILABLE: 'Unavailable',
+  NO_RESPONSE: 'No response',
+  NOT_POLLED: 'Not in poll',
+}
 
 function cellOf(player: TeamSelectionPlayer, match: TeamSelectionMatch, side: TeamSelectionSide): TeamSelectionCell | undefined {
   return player.cells.find((cell) => cell.matchId === match.matchId && cell.teamId === side.teamId)
@@ -53,9 +69,10 @@ function PickCell({
   const muted = !cell.picked && !cell.pickable
   const reason = muted ? reasonText(cell.reasonCode) : null
   const who = `${playerName(player)}, ${dayLabel(match)}, ${match.label}${match.sides.length > 1 ? `, ${side.teamName}` : ''}`
-  const state = cell.picked ? 'Picked, click to remove' : muted ? `Not picked, ${reason}` : 'Not picked, click to pick'
+  const pickState = cell.picked ? 'picked, click to remove' : muted ? `not picked: ${reason}` : 'not picked, click to pick'
+  const state = `${AVAILABILITY_TEXT[cell.availability]}, ${pickState}`
   return (
-    <Tooltip title={reason ?? ''} disableHoverListener={!reason} describeChild arrow>
+    <Tooltip title={state} describeChild arrow>
       <ButtonBase
         data-testid={`cell-${player.playerId}-${match.matchId}-${side.teamId}`}
         aria-label={`${who}: ${state}`}
@@ -66,9 +83,9 @@ function PickCell({
           if (muted || busy) return
           onToggle(cell.picked, { match, side, cell, playerId: player.playerId })
         }}
-        sx={{ borderRadius: '50%', p: 0.25, opacity: muted ? 0.35 : 1, cursor: muted ? 'not-allowed' : busy ? 'progress' : 'pointer' }}
+        sx={{ borderRadius: '50%', p: 0.5, opacity: muted ? 0.5 : 1, cursor: muted ? 'not-allowed' : busy ? 'progress' : 'pointer' }}
       >
-        <PickMark picked={cell.picked} />
+        <CellMark status={AVAILABILITY_STATUS[cell.availability]} picked={cell.picked} pickedRing />
       </ButtonBase>
     </Tooltip>
   )

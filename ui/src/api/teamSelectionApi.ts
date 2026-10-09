@@ -60,12 +60,16 @@ export interface TeamSelectionMatch {
   sides: TeamSelectionSide[]
 }
 
+export type TeamSelectionAvailability = 'AVAILABLE' | 'UNSURE' | 'UNAVAILABLE' | 'NO_RESPONSE' | 'NOT_POLLED'
+
 export interface TeamSelectionCell {
   matchId: string
   teamId: string
   sideId: string | null
   picked: boolean
   pickable: boolean
+  // The player's poll answer for this match, always present (also on picked cells).
+  availability: TeamSelectionAvailability
   reasonCode: TeamSelectionReasonCode | null
 }
 

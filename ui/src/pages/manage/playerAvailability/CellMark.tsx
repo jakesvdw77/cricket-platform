@@ -26,8 +26,9 @@ const circleSx: SystemStyleObject<Theme> = {
 
 // docs/specs/068: one grid cell. The glyph carries the meaning (tick, question mark, cross, hollow
 // dashed circle, dash), the tint only reinforces it, so no state is colour alone. `label` is the
-// accessible name and tooltip; the Legend passes none and renders the same mark decoratively.
-export function CellMark({ status, picked = false, label }: { status: CellStatus; picked?: boolean; label?: string }) {
+// accessible name and tooltip; `pickedRing` (opt-in, the Team selection grid) adds a primary ring round a picked mark so
+// the picked state reads at a glance on top of the answer; the Legend passes none and renders the same mark decoratively.
+export function CellMark({ status, picked = false, label, pickedRing = false }: { status: CellStatus; picked?: boolean; label?: string; pickedRing?: boolean }) {
   const answered = status === 'AVAILABLE' || status === 'UNSURE' || status === 'UNAVAILABLE'
 
   return (
@@ -38,7 +39,14 @@ export function CellMark({ status, picked = false, label }: { status: CellStatus
       title={label}
       data-status={status}
       data-picked={picked ? 'true' : undefined}
-      sx={{ position: 'relative', display: 'inline-flex', width: CELL_MARK_SIZE, height: CELL_MARK_SIZE, verticalAlign: 'middle' }}
+      sx={{
+        position: 'relative',
+        display: 'inline-flex',
+        width: CELL_MARK_SIZE,
+        height: CELL_MARK_SIZE,
+        verticalAlign: 'middle',
+        ...(picked && pickedRing ? { borderRadius: '50%', boxShadow: (theme: Theme) => `0 0 0 2px ${theme.palette.primary.main}` } : {}),
+      }}
     >
       {answered && (
         <Box component="span" aria-hidden sx={{ ...circleSx, ...statusTintSx(status) }}>

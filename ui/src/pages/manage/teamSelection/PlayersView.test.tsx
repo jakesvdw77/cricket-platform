@@ -74,14 +74,11 @@ beforeEach(() => {
 })
 
 describe('PlayersView', () => {
-  it('shows picked and not picked marks, the legend and the Picked n / max header and footer', async () => {
+  it('shows the picked dot on picked cells and the Picked n / max header and footer', async () => {
     renderView()
     await screen.findByTestId('cell-ann-m-1-team-1')
-    expect(within(cell('ann', 'm-1')).getByTestId('pick-mark')).toHaveAttribute('data-picked', 'true')
-    expect(within(cell('bob', 'm-1')).getByTestId('pick-mark')).toHaveAttribute('data-picked', 'false')
-    const legend = screen.getByRole('list', { name: 'Legend' })
-    expect(legend).toHaveTextContent('Picked')
-    expect(legend).toHaveTextContent('Not picked')
+    expect(within(cell('ann', 'm-1')).getByTestId('picked-dot')).toBeInTheDocument()
+    expect(within(cell('bob', 'm-1')).queryByTestId('picked-dot')).not.toBeInTheDocument()
     expect(screen.getByText('Picked 1 / 12')).toBeInTheDocument()
     expect(screen.getAllByText('1 / 12')).toHaveLength(1)
     expect(screen.getAllByText('0 / 12')).toHaveLength(1)
@@ -97,6 +94,20 @@ describe('PlayersView', () => {
       players: [{ playerProfileId: 'ann' }, { playerProfileId: 'bob', battingOrder: 2 }],
     })
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(reads))
+  })
+
+  it('shows each answer with the pick state in the cell name, and a legend with a Picked entry', async () => {
+    const data = overview()
+    data.players[0].cells[0] = makeCell({ matchId: 'm-1', picked: true, availability: 'UNSURE' })
+    data.players[1].cells[1] = makeCell({ matchId: 'm-2', sideId: null, pickable: false, availability: 'UNAVAILABLE', reasonCode: 'SAID_UNAVAILABLE' })
+    data.players[1].cells[0] = makeCell({ matchId: 'm-1', availability: 'NOT_POLLED' })
+    get.mockResolvedValue({ data })
+    renderView()
+    expect(await screen.findByTestId('cell-ann-m-1-team-1')).toHaveAccessibleName(/Ann Archer, .*: Unsure, picked, click to remove/)
+    expect(cell('bob', 'm-2')).toHaveAccessibleName(/Bob Baker, .*: Unavailable, not picked: Said they are unavailable/)
+    expect(within(cell('bob', 'm-1')).getByText('–')).toBeInTheDocument()
+    expect(within(cell('ann', 'm-1')).getByText('?')).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Legend' })).getByText('Picked for the match')).toBeInTheDocument()
   })
 
   it('creates the side first when the match has none', async () => {
@@ -194,7 +205,8 @@ describe('PlayersView', () => {
     renderView()
     await screen.findByTestId('cell-ann-d-1-team-a')
     expect(screen.getAllByRole('columnheader', { name: /Vets A v Vets B/ })).toHaveLength(1)
-    expect(within(cell('ann', 'd-1', 'team-a')).getByTestId('pick-mark')).toHaveAttribute('data-picked', 'true')
+    expect(within(cell('ann', 'd-1', 'team-a')).getByTestId('picked-dot')).toBeInTheDocument()
+    expect(within(cell('ann', 'd-1', 'team-b')).queryByTestId('picked-dot')).not.toBeInTheDocument()
     expect(cell('ann', 'd-1', 'team-b')).toHaveAttribute('data-muted', 'true')
     expect(screen.getByText('Vets A: Picked 1 / 12')).toBeInTheDocument()
     expect(screen.getByText('Vets B: Picked 0 / 12')).toBeInTheDocument()

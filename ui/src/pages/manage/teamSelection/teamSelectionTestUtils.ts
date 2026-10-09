@@ -98,7 +98,7 @@ export function sampleMatches(): TeamSelectionMatch[] {
 }
 
 export function makeCell(overrides: Partial<TeamSelectionCell> = {}): TeamSelectionCell {
-  return { matchId: 'match-1', teamId: 'team-1', sideId: 'side-1', picked: false, pickable: true, reasonCode: null, ...overrides }
+  return { matchId: 'match-1', teamId: 'team-1', sideId: 'side-1', picked: false, pickable: true, availability: 'AVAILABLE', reasonCode: null, ...overrides }
 }
 
 export function makePlayer(playerId: string, firstName: string, lastName: string, cells: TeamSelectionCell[]): TeamSelectionPlayer {
