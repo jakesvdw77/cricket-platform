@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
@@ -8,6 +8,8 @@ import { CELL_MARK_SIZE, CellMark } from './CellMark'
 import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
 import type { ChangeAnswerHandlers } from './useChangeAnswer'
 import { GridEmptyState } from './GridEmptyState'
+import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from './slotNavigation'
+import type { SlotAttrs } from './slotNavigation'
 import { Legend } from './Legend'
 import {
   COUNT_COL_WIDTH,
@@ -56,10 +58,13 @@ function GameHeader({
   game,
   headerRef,
   firstColWidth,
+  slotAttrs,
 }: {
   game: GameColumn
   headerRef: (element: HTMLElement | null) => void
   firstColWidth: number
+  // Set on the first column of a day-and-slot group: what the Previous / Next slot arrows look for.
+  slotAttrs?: SlotAttrs
 }) {
   const path = pollPath(game)
   return (
@@ -67,6 +72,7 @@ function GameHeader({
       component="th"
       scope="col"
       ref={headerRef}
+      {...slotAttrs}
       sx={{
           ...headCellSx,
           top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT,
@@ -79,6 +85,7 @@ function GameHeader({
           px: 0.75,
           // So scrollIntoView lands the column just right of the sticky player column.
           scrollMarginLeft: `${firstColWidth}px`,
+          ...(slotAttrs ? slotSnapTargetSx : {}),
         }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, alignItems: 'center' }}>
@@ -134,15 +141,24 @@ function GameHeader({
 // the keyboard-reachable link.
 export const AvailabilityGrid = forwardRef<
   AvailabilityGridHandle,
-  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers }
->(function AvailabilityGrid({ games, players, now, changeAnswer }, ref) {
+  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers; onScrollBox?: (element: HTMLDivElement | null) => void }
+>(function AvailabilityGrid({ games, players, now, changeAnswer, onScrollBox }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
+  const fillRef = fill.ref
+  const boxRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      fillRef(element)
+      onScrollBox?.(element)
+    },
+    [fillRef, onScrollBox],
+  )
 
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now ?? new Date()), [groups, now])
+  const slotStarts = useMemo(() => slotStartAttrs(groups, (game) => game.matchId), [groups])
 
   const { ref: firstColRef, width: firstColWidth } = useFirstColWidth([players, games])
 
@@ -162,7 +178,7 @@ export const AvailabilityGrid = forwardRef<
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Legend />
       <Box
-        ref={fill.ref}
+        ref={boxRef}
         role="region"
         aria-label="Player availability grid, scrolls sideways"
         tabIndex={0}
@@ -175,6 +191,7 @@ export const AvailabilityGrid = forwardRef<
           borderRadius: 1,
           bgcolor: 'background.paper',
           overscrollBehavior: 'contain',
+          ...slotSnapBoxSx,
         }}
       >
         <Table
@@ -189,6 +206,7 @@ export const AvailabilityGrid = forwardRef<
                 scope="col"
                 rowSpan={3}
                 ref={firstColRef}
+                {...{ [FIRST_COL_ATTR]: '' }}
                 sx={{ ...stickyFirstColSx, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}
               >
                 Player
@@ -256,6 +274,7 @@ export const AvailabilityGrid = forwardRef<
                   key={game.matchId}
                   game={game}
                   firstColWidth={firstColWidth}
+                  slotAttrs={slotStarts.get(game.matchId)}
                   headerRef={(element) => {
                     if (element) headerRefs.current.set(game.matchId, element)
                     else headerRefs.current.delete(game.matchId)

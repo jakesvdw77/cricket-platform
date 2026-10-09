@@ -14,12 +14,14 @@ export interface MatchesFrameProps {
   notices?: ReactNode
   // The view's own switches, shown beside Show past matches (and in the Filters sheet on a phone).
   controls?: ReactNode
+  // Controls kept on every screen size, beside the scope text (the Previous / Next slot arrows).
+  pinned?: ReactNode
   children: (matches: TeamSelectionMatch[], data: TeamSelectionOverview) => ReactNode
 }
 
 // docs/specs/093-team-selection-hub.md: what the Time slots and Batting order views share around their content - the
 // hub filter bar, Show past, the loading / error / truncated / empty states, and the search applied to the matches.
-export function MatchesFrame({ notices, controls, children }: MatchesFrameProps) {
+export function MatchesFrame({ notices, controls, pinned, children }: MatchesFrameProps) {
   const { overview, showPast, setShowPast, search } = useTeamSelectionHub()
   const data = overview.data
   const term = search.trim().toLowerCase()
@@ -36,7 +38,7 @@ export function MatchesFrame({ notices, controls, children }: MatchesFrameProps)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <TeamSelectionFilterBar viewControls={pastToggle} />
-      <ContentControlsLine scope={scope} controls={pastToggle} />
+      <ContentControlsLine scope={scope} controls={pastToggle} pinned={pinned} />
 
       {overview.isPending && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

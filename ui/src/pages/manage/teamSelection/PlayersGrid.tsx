@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Box, ButtonBase, Chip, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Tooltip, Typography } from '@mui/material'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
@@ -20,6 +20,8 @@ import {
 } from '../playerAvailability/gridStyles'
 import { dateHeading, groupGames, kickoffText, nextGameDayMarker, orderedGames, slotLabel } from '../playerAvailability/gridHelpers'
 import { CellMark } from '../playerAvailability/CellMark'
+import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from '../playerAvailability/slotNavigation'
+import type { SlotAttrs } from '../playerAvailability/slotNavigation'
 import { reasonText } from './pickReasons'
 import type { PickTarget } from './usePlayerPick'
 
@@ -91,12 +93,13 @@ function PickCell({
   )
 }
 
-function MatchHeader({ match, firstColWidth }: { match: TeamSelectionMatch; firstColWidth: number }) {
+function MatchHeader({ match, firstColWidth, slotAttrs }: { match: TeamSelectionMatch; firstColWidth: number; slotAttrs?: SlotAttrs }) {
   const derby = match.sides.length > 1
   return (
     <TableCell
       component="th"
       scope="col"
+      {...slotAttrs}
       sx={{
         ...headCellSx,
         top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT,
@@ -108,6 +111,7 @@ function MatchHeader({ match, firstColWidth }: { match: TeamSelectionMatch; firs
         fontWeight: 400,
         px: 0.75,
         scrollMarginLeft: `${firstColWidth}px`,
+        ...(slotAttrs ? slotSnapTargetSx : {}),
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, alignItems: 'center' }}>
@@ -133,17 +137,28 @@ export interface PlayersGridProps {
   busy: boolean
   onToggle: (picked: boolean, target: PickTarget) => void
   now?: Date
+  // Hands the grid's scroll box to the Previous / Next slot arrows.
+  onScrollBox?: (element: HTMLDivElement | null) => void
 }
 
 // docs/specs/093-team-selection-hub.md (Players view): players by match, columns grouped by day and slot. The grid is
 // its own scroll box with a sticky player column and sticky headers (the Availability grid's look), which is also the
 // phone layout: it scrolls sideways inside the box, never the page.
-export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGridProps) {
+export function PlayersGrid({ matches, players, busy, onToggle, now, onScrollBox }: PlayersGridProps) {
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
+  const fillRef = fill.ref
+  const boxRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      fillRef(element)
+      onScrollBox?.(element)
+    },
+    [fillRef, onScrollBox],
+  )
   const first = useFirstColWidth([players, matches])
   const groups = useMemo(() => groupGames(matches), [matches])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now ?? new Date()), [groups, now])
+  const slotStarts = useMemo(() => slotStartAttrs(groups, (match) => match.matchId), [groups])
 
   const footerCellSx = {
     position: 'sticky',
@@ -161,7 +176,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
 
   return (
     <Box
-      ref={fill.ref}
+      ref={boxRef}
       role="region"
       aria-label="Team selection players grid, scrolls sideways"
       tabIndex={0}
@@ -174,12 +189,13 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
         borderRadius: 1,
         bgcolor: 'background.paper',
         overscrollBehavior: 'contain',
+        ...slotSnapBoxSx,
       }}
     >
       <Table size="small" aria-label="Players picked by match" sx={{ borderCollapse: 'separate', borderSpacing: 0, width: 'max-content', minWidth: '100%', ...numberSx }}>
         <TableHead>
           <TableRow>
-            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} sx={{ ...stickyFirstColSx, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
+            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} {...{ [FIRST_COL_ATTR]: '' }} sx={{ ...stickyFirstColSx, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
               Player
             </TableCell>
             {groups.map((group) => (
@@ -225,7 +241,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
           </TableRow>
           <TableRow>
             {columns.map((match) => (
-              <MatchHeader key={match.matchId} match={match} firstColWidth={first.width} />
+              <MatchHeader key={match.matchId} match={match} firstColWidth={first.width} slotAttrs={slotStarts.get(match.matchId)} />
             ))}
           </TableRow>
         </TableHead>

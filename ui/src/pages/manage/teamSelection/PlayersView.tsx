@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, Box, CircularProgress } from '@mui/material'
 import { CompactSwitch } from '../../../components/CompactSwitch'
 import { ContentControlsLine } from '../../../components/ContentControlsLine'
 import { EmptyState } from '../../../components/EmptyState'
 import { useTeamSelectionHub } from './hubContext'
 import { Legend } from '../playerAvailability/Legend'
+import { SlotNavigator } from '../playerAvailability/SlotNavigator'
 import { PlayersGrid } from './PlayersGrid'
 import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
 import { usePlayerPick } from './usePlayerPick'
@@ -15,6 +16,7 @@ import { usePlayerPick } from './usePlayerPick'
 export default function PlayersView() {
   const { clubId, overview, showPast, setShowPast, search } = useTeamSelectionHub()
   const picker = usePlayerPick(clubId as string)
+  const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
 
   const data = overview.data
   const term = search.trim().toLowerCase()
@@ -33,7 +35,7 @@ export default function PlayersView() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <TeamSelectionFilterBar searchPlaceholder="Search players" viewControls={pastToggle} />
 
-      <ContentControlsLine scope={scope} controls={pastToggle} />
+      <ContentControlsLine scope={scope} controls={pastToggle} pinned={<SlotNavigator scrollBox={scrollBox} />} />
 
       {overview.isPending && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -71,6 +73,7 @@ export default function PlayersView() {
             matches={matches}
             players={players}
             busy={picker.busy}
+            onScrollBox={setScrollBox}
             onToggle={(picked, target) => (picked ? picker.unpick(target) : picker.pick(target))}
           />
         </>

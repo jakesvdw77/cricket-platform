@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
@@ -23,6 +23,8 @@ import {
   useFirstColWidth,
 } from '../playerAvailability/gridStyles'
 import { dateHeading, groupGames, kickoffText, orderedGames, slotLabel } from '../playerAvailability/gridHelpers'
+import { SlotNavigator } from '../playerAvailability/SlotNavigator'
+import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from '../playerAvailability/slotNavigation'
 import { useTeamSelectionHub } from './hubContext'
 import { MatchesFrame } from './MatchesFrame'
 import { PickedName } from './PickedName'
@@ -94,6 +96,7 @@ function BattingMatrix({
   onAnnounce,
   reorder,
   shortNames,
+  onScrollBox,
 }: {
   matches: TeamSelectionMatch[]
   busy: boolean
@@ -103,11 +106,21 @@ function BattingMatrix({
   onAnnounce: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   reorder: boolean
   shortNames: boolean
+  onScrollBox: (element: HTMLDivElement | null) => void
 }) {
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
+  const fillRef = fill.ref
+  const boxRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      fillRef(element)
+      onScrollBox(element)
+    },
+    [fillRef, onScrollBox],
+  )
   const first = useFirstColWidth([matches])
   const groups = useMemo(() => groupGames(matches), [matches])
   const games = useMemo(() => orderedGames(groups), [groups])
+  const slotStarts = useMemo(() => slotStartAttrs(groups, (match) => match.matchId), [groups])
   const columns: Column[] = useMemo(() => games.flatMap((match) => match.sides.map((side) => ({ match, side }))), [games])
   const rows = Math.max(1, ...columns.map(({ side }) => side.limits.battingPlaces))
   const positions = Array.from({ length: rows }, (_, index) => index + 1)
@@ -138,16 +151,16 @@ function BattingMatrix({
 
   return (
     <Box
-      ref={fill.ref}
+      ref={boxRef}
       role="region"
       aria-label="Batting order matrix, scrolls sideways"
       tabIndex={0}
-      sx={{ overflow: 'auto', height: fill.height, minHeight: SCROLL_BOX_MIN_HEIGHT, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', overscrollBehavior: 'contain' }}
+      sx={{ overflow: 'auto', height: fill.height, minHeight: SCROLL_BOX_MIN_HEIGHT, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', overscrollBehavior: 'contain', ...slotSnapBoxSx }}
     >
       <Table size="small" aria-label="Batting order by match" sx={{ borderCollapse: 'separate', borderSpacing: 0, width: 'max-content', minWidth: '100%', ...numberSx }}>
         <TableHead>
           <TableRow>
-            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} sx={{ ...stickyFirstColSx, ...POSITION_COL, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
+            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} {...{ [FIRST_COL_ATTR]: '' }} sx={{ ...stickyFirstColSx, ...POSITION_COL, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
               Position
             </TableCell>
             {groups.map((group) => (
@@ -183,12 +196,15 @@ function BattingMatrix({
             {columns.map((column) => {
               const { match, side } = column
               const max = side.limits.maxSelected
+              // Only a match's first side column can start a group.
+              const slotAttrs = side === match.sides[0] ? slotStarts.get(match.matchId) : undefined
               return (
                 <TableCell
                   key={`${match.matchId}:${side.teamId}`}
                   component="th"
                   scope="col"
-                  sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px` }}
+                  {...slotAttrs}
+                  sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px`, ...(slotAttrs ? slotSnapTargetSx : {}) }}
                 >
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                     <Typography variant="caption" noWrap title={columnLabel(column)} sx={{ fontWeight: 600, lineHeight: 1.25, display: 'block' }}>
@@ -371,6 +387,7 @@ export default function BattingOrderView() {
   const announce = useAnnounceSide(clubId as string)
   const [reorder, setReorder] = useState(false)
   const [shortNames, setShortNames] = useState(readShortNames)
+  const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
   const [adding, setAdding] = useState<AddTarget | null>(null)
   const [pendingMove, setPendingMove] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide; playerId: string; direction: -1 | 1 } | null>(null)
   // The server un-announces a side on any edit, so a move on an announced side is confirmed first.
@@ -394,6 +411,7 @@ export default function BattingOrderView() {
           />
         </>
       }
+      pinned={<SlotNavigator scrollBox={scrollBox} />}
       notices={
         <>
           {announce.errorAlert}
@@ -425,6 +443,7 @@ export default function BattingOrderView() {
               onAnnounce={announce.request}
               reorder={reorder}
               shortNames={shortNames}
+              onScrollBox={setScrollBox}
             />
             <Menu
               open={adding !== null}
