@@ -4,6 +4,8 @@ import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.PlayerDto;
 import com.cricketlegend.dto.SectionDto;
 import com.cricketlegend.dto.UpdatePlayerRequest;
+import com.cricketlegend.domain.PlayerListFocus;
+import com.cricketlegend.dto.PlayersSummaryDto;
 import com.cricketlegend.service.PlayerSectionService;
 import com.cricketlegend.service.PlayerService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -58,8 +60,44 @@ public class PlayerController {
             Authentication authentication,
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID sectionId,
-            @RequestParam(defaultValue = "false") boolean missingDateOfBirth) {
-        return ResponseEntity.ok(playerService.list(authentication, clubId, sectionId, missingDateOfBirth));
+            @RequestParam(defaultValue = "false") boolean missingDateOfBirth,
+            // docs/specs/088: false also hides suspended and rejected players; the default keeps every caller as before
+            @RequestParam(defaultValue = "true") boolean includeInactive,
+            @RequestParam(required = false) String focus, // in-squad | selected | unverified
+            @RequestParam(required = false) UUID seasonId) {
+        return ResponseEntity.ok(playerService.list(
+                authentication, clubId, sectionId, missingDateOfBirth, includeInactive,
+                PlayerListFocus.parse(focus), seasonId));
+    }
+
+    /** docs/specs/088-players-polls-alignment.md: the Players page counters for the same filters the list uses. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/players/summary")
+    public ResponseEntity<PlayersSummaryDto> summary(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(defaultValue = "false") boolean missingDateOfBirth,
+            @RequestParam(defaultValue = "true") boolean includeInactive,
+            @RequestParam(required = false) UUID seasonId) {
+        return ResponseEntity.ok(playerService.summary(
+                authentication, clubId, sectionId, missingDateOfBirth, includeInactive, seasonId));
+    }
+
+    /** docs/specs/088: accept a player request (or undo a reject). */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/verify")
+    public ResponseEntity<PlayerDto> verify(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
+        return ResponseEntity.ok(playerService.verify(authentication, clubId, playerId));
+    }
+
+    /** docs/specs/088: reject an unverified player request; the player is kept but hidden. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/reject")
+    public ResponseEntity<PlayerDto> reject(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
+        return ResponseEntity.ok(playerService.reject(authentication, clubId, playerId));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

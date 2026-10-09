@@ -97,6 +97,13 @@ public class PlayerProfile {
     @Column(nullable = false)
     private boolean active;
 
+    // docs/specs/088-players-polls-alignment.md: VERIFIED for every manager-created player and every row that existed
+    // before migration 040; UNVERIFIED will be set by the future self-registration flow.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", nullable = false)
+    @Builder.Default
+    private PlayerVerificationStatus verificationStatus = PlayerVerificationStatus.VERIFIED;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

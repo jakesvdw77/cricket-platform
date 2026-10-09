@@ -4,6 +4,7 @@ import com.cricketlegend.domain.BattingStance;
 import com.cricketlegend.domain.BowlingArm;
 import com.cricketlegend.domain.BowlingType;
 import com.cricketlegend.domain.Gender;
+import com.cricketlegend.domain.PlayerVerificationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,5 +45,6 @@ public record PlayerDto(
         Integer jerseyNumber,
         Instant createdAt,
         Instant updatedAt,
-        UUID updatedBy) {
+        UUID updatedBy,
+        PlayerVerificationStatus verificationStatus) {
 }

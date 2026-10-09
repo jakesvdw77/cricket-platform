@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Season-scoped squad membership, per this spec's own pre-build amendment (see
@@ -41,4 +43,11 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
      * (team, season) pairs they need, in memory.
      */
     List<TeamSquadMember> findByTeamIdInAndSeasonIdIn(Collection<UUID> teamIds, Collection<UUID> seasonIds);
+
+    /**
+     * Players who are in at least one team squad for {@code seasonId} (docs/specs/088-players-polls-alignment.md): the
+     * Players page "In a squad this season" counter and quick filter. One statement; the season belongs to one club.
+     */
+    @Query("select distinct m.playerProfileId from TeamSquadMember m where m.seasonId = :seasonId")
+    List<UUID> findDistinctPlayerProfileIdsBySeasonId(@Param("seasonId") UUID seasonId);
 }

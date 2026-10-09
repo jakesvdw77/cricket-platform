@@ -53,7 +53,8 @@ public class PlayerMapper {
                 profile.getJerseyNumber(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt(),
-                profile.getUpdatedBy());
+                profile.getUpdatedBy(),
+                profile.getVerificationStatus());
     }
 
     public TeamSquadMemberDto toSquadMemberDto(
