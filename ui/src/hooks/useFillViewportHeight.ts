@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 
 export interface FillViewportHeightOptions {
   // Below this the box stops shrinking and the page scrolls instead.
@@ -17,38 +17,24 @@ export interface FillViewportHeightOptions {
 export function useFillViewportHeight<T extends HTMLElement>({ minHeight = 150, bottomPadding = 24 }: FillViewportHeightOptions = {}) {
   const [element, setElement] = useState<T | null>(null)
   const [height, setHeight] = useState<number | undefined>(undefined)
-  // What the formula below could not see (space the page keeps below the box that it does not account for), learned
-  // from the settled layout and added to every later measurement.
-  const correction = useRef(0)
 
   useLayoutEffect(() => {
     if (!element) return undefined
     const measure = () => {
       const top = element.getBoundingClientRect().top + window.scrollY
       const footer = document.querySelector('footer')
-      const footerHeight = footer ? footer.getBoundingClientRect().height : 0
-      const next = Math.max(minHeight, Math.floor(window.innerHeight - top - bottomPadding - footerHeight + correction.current))
+      let footerHeight = footer ? footer.getBoundingClientRect().height : 0
+      // A column beside <main> (the manager side menu) can be taller than the window on its own: the page then scrolls
+      // whatever the box does and the footer sits below the fold, so reserving room for it only leaves a gap.
+      const main = element.closest('main')
+      if (main && footerHeight > 0) {
+        const naturalBottom = Array.from(main.parentElement?.children ?? [])
+          .filter((column) => column !== main)
+          .map((column) => (column.lastElementChild ?? column).getBoundingClientRect().bottom + window.scrollY)
+        if (Math.max(0, ...naturalBottom) + footerHeight > window.innerHeight) footerHeight = 0
+      }
+      const next = Math.max(minHeight, Math.floor(window.innerHeight - top - bottomPadding - footerHeight))
       setHeight((current) => (current === next ? current : next))
-      settle()
-    }
-    // After the height is applied: if the page still leaves room below the box (main stretched past its content) or
-    // overflows the window, move the box by exactly that much. Bounded, and a no-op in jsdom (no <main>).
-    let frame = 0
-    const settle = () => {
-      window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(() => {
-        const main = element.closest('main')
-        const last = main?.lastElementChild
-        if (!main || !last) return
-        const mainRect = main.getBoundingClientRect()
-        const padBottom = parseFloat(window.getComputedStyle(main).paddingBottom) || 0
-        const slack = Math.floor(mainRect.bottom - (last.getBoundingClientRect().bottom + padBottom))
-        const overflow = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
-        const delta = slack - overflow
-        if (Math.abs(delta) <= 1) return
-        correction.current += delta
-        setHeight(Math.max(minHeight, Math.floor(element.getBoundingClientRect().height + delta)))
-      })
     }
     measure()
     window.addEventListener('resize', measure)
@@ -72,7 +58,6 @@ export function useFillViewportHeight<T extends HTMLElement>({ minHeight = 150, 
       }
     }
     return () => {
-      window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', measure)
       window.removeEventListener('orientationchange', measure)
       observer?.disconnect()
