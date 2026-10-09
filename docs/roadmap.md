@@ -174,8 +174,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk announce**, **phone variants of the Players grid and Batting order matrix** (today they scroll sideways), **keep or drop the Time slots view** if unused, and **a menu icon for Team selection** (it still uses the old `nav/squads` icon).
 - **Players grid: confirm before unpicking from an announced team** (it un-announces silently, as spec 076 does).
 - **Set the 12th man and "click a name to change player or position" from the Batting order view** (12th man is display only there; set it on the Select team page).
-- **Share announced teams.** Team selection pages have no share action yet. Proposed: a Share team button on the Select team page's action group, enabled once the team is announced, then the same share on an announced Matches row and on a Time slots card. It reuses `useTeamSheetShare` and `TeamSheetCommunicationDialog`. Bulk share per day is deferred.
-- **Show closed polls is not season-scoped** (latest 50): decide on a label or a season filter. The Matches list "Show past matches" switch still uses the old label, not "View entire season".
+- **Share announced teams: built** on the Select team page, announced Matches rows and Time slots cards (reusing `useTeamSheetShare` and `TeamSheetCommunicationDialog`). **Bulk share per day** is still deferred.
 - **Season carry-over** for any future rotation rule (for example who opened last season).
 - **"Past" means by date only:** same-day matches stay upcoming until midnight. A kickoff-time option is possible.
 - **Planned versus actual batting order:** see the Results module item above; 093 shows the announced plan only.

@@ -48,7 +48,7 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 
 **`hooks/useFillViewportHeight`** sizes a grid or matrix to the space left in the window so the page does not scroll with it. It watches the earlier siblings of every ancestor (a header that resizes re-measures it) and ignores the footer when a taller side column pushes the footer below the fold.
 
-**A "past" switch is labelled "View entire season" only where it is season-scoped** (the selection views and the Availability pages). A switch that is not scoped by season keeps its own wording (Show closed polls, Show past matches) until it is.
+**A "past" switch is labelled "View entire season" only where it is season-scoped** (the selection views and the Availability pages). A switch that is not scoped by season keeps its own wording. The Matches list and League schedule past switches are season-scoped and read "View entire season" (Matches reads "View all seasons" when All seasons is chosen). Availability polls and the hub counters are season-scoped too: both send the hub's season, so counters equal lists.
 
 ## Folder structure
 
