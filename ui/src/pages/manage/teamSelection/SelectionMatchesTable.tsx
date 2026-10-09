@@ -23,6 +23,9 @@ export interface SelectionMatchesTableProps {
 // docs/specs/093-team-selection-hub.md: the zebra table of the Matches view - one row per club side (a derby has
 // two). Desktop: When, Match, Team, Selection, Status, action, chevron. A phone keeps Match (the time under it), Picked and
 // the chevron, like the Matches list.
+// Compact row action: the theme's small button is too tall for a dense table row.
+const rowActionSx = { whiteSpace: 'nowrap', minHeight: 28, py: 0.25, px: 1.5, fontSize: '0.75rem', lineHeight: 1.5 } as const
+
 const COLUMNS = {
   xs: 'minmax(0, 1fr) 54px 32px',
   sm: '150px minmax(200px, 2fr) minmax(110px, 1fr) 170px 150px 150px 32px',
@@ -124,7 +127,7 @@ function SideRow({
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, position: 'relative', zIndex: 1 }} {...DESKTOP_ONLY} data-testid="selection-row-action">
         {canAnnounce ? (
-          <Button size="sm" onClick={() => onAnnounce?.(match, side)} disabled={announcing} sx={{ whiteSpace: 'nowrap' }}>
+          <Button size="sm" onClick={() => onAnnounce?.(match, side)} disabled={announcing} sx={rowActionSx}>
             {announcing ? 'Announcing…' : 'Announce'}
           </Button>
         ) : (
@@ -133,7 +136,7 @@ function SideRow({
             variant={side.status === 'ANNOUNCED' ? 'outlined' : 'contained'}
             component={RouterLink}
             to={to}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={rowActionSx}
           >
             Select players
           </MuiButton>
