@@ -4,7 +4,7 @@ import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, T
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
-import { CellMark } from './CellMark'
+import { CELL_MARK_SIZE, CellMark } from './CellMark'
 import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
 import type { ChangeAnswerHandlers } from './useChangeAnswer'
 import { GridEmptyState } from './GridEmptyState'
@@ -286,7 +286,7 @@ export const AvailabilityGrid = forwardRef<
                   '&:hover > th, &:hover > td': { bgcolor: hoverTint },
                 }}
               >
-                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 }}>
+                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
                     {playerFullName(player)}
                   </Typography>
@@ -302,10 +302,10 @@ export const AvailabilityGrid = forwardRef<
                       // docs/specs/085 (F): with the change handlers a cell that has a poll is a button opening the answer menu;
                       // without them (older callers) a click still opens the poll.
                       onClick={path && !changeAnswer ? () => navigate(path) : undefined}
-                      sx={{ px: 0.5, py: 0.75, cursor: path && !changeAnswer ? 'pointer' : 'default' }}
+                      sx={{ px: 0.5, py: { xs: 0.25, sm: 0.5 }, cursor: path && !changeAnswer ? 'pointer' : 'default' }}
                     >
                       {cell && changeAnswer && canChangeAnswer(game, cell) ? (
-                        <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer}>
+                        <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer} sx={{ minHeight: { xs: 32, sm: CELL_MARK_SIZE }, minWidth: { xs: 32, sm: CELL_MARK_SIZE }, justifyContent: 'center' }}>
                           <CellMark status={cell.status} picked={cell.picked} />
                         </ChangeAnswerMenu>
                       ) : (
@@ -314,10 +314,10 @@ export const AvailabilityGrid = forwardRef<
                     </TableCell>
                   )
                 })}
-                <TableCell align="center" sx={{ ...numberSx, borderLeft: 1, borderLeftColor: 'divider' }}>
+                <TableCell align="center" sx={{ ...numberSx, py: 0.25, borderLeft: 1, borderLeftColor: 'divider' }}>
                   {player.answeredCount}
                 </TableCell>
-                <TableCell align="center" sx={numberSx}>
+                <TableCell align="center" sx={{ ...numberSx, py: 0.25 }}>
                   {player.pickedCount}
                 </TableCell>
               </TableRow>
@@ -334,7 +334,7 @@ export const AvailabilityGrid = forwardRef<
                   bottom: 0,
                   zIndex: 5,
                   px: 1,
-                  py: 0.75,
+                  py: 0.25,
                   fontWeight: 600,
                   fontSize: 11,
                   lineHeight: 1.2,
@@ -357,7 +357,7 @@ export const AvailabilityGrid = forwardRef<
                       zIndex: 3,
                       bgcolor: 'background.paper',
                       px: 0.5,
-                      py: 0.75,
+                      py: 0.25,
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
                       borderTop: 1,

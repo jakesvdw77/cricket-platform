@@ -6,8 +6,8 @@ import type { SystemStyleObject } from '@mui/system'
 // The look shared by the Availability players grid and the Team selection Players grid (docs/specs/093): a scroll box
 // with a sticky first column and sticky, fixed-height header rows. Extracted from AvailabilityGrid, unchanged.
 export const SCROLL_BOX_MIN_HEIGHT = 150
-export const DATE_ROW_HEIGHT = 34
-export const SLOT_ROW_HEIGHT = 26
+export const DATE_ROW_HEIGHT = 30
+export const SLOT_ROW_HEIGHT = 24
 // The player column sizes to its content between these bounds; the real width is measured at runtime
 // (see useFirstColWidth) so the sticky date headers and scrollToGame offsets clear it exactly.
 export const FIRST_COL_MIN_WIDTH = { xs: 150, sm: 180 }

@@ -4,7 +4,7 @@ import type { SystemStyleObject } from '@mui/system'
 import type { CellStatus } from '../../../api/playerAvailabilityApi'
 import { statusTintSx } from '../../../utils/availabilityStatus'
 
-export const CELL_MARK_SIZE = 26
+export const CELL_MARK_SIZE = 24
 
 const GLYPH: Partial<Record<CellStatus, string>> = {
   AVAILABLE: '✓',
@@ -19,7 +19,7 @@ const circleSx: SystemStyleObject<Theme> = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: 14,
+  fontSize: 13,
   lineHeight: 1,
   boxSizing: 'border-box',
 }
@@ -72,13 +72,13 @@ export function CellMark({ status, picked = false, label, pickedRing = false }: 
           aria-hidden
           sx={{
             position: 'absolute',
-            top: -2,
-            right: -2,
-            width: 10,
-            height: 10,
+            top: -3,
+            right: -3,
+            width: 9,
+            height: 9,
             borderRadius: '50%',
             bgcolor: 'primary.main',
-            border: 2,
+            border: 1.5,
             borderColor: 'background.paper',
             boxSizing: 'border-box',
           }}

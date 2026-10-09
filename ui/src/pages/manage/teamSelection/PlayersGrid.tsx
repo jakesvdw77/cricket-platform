@@ -83,7 +83,7 @@ function PickCell({
           if (muted || busy) return
           onToggle(cell.picked, { match, side, cell, playerId: player.playerId })
         }}
-        sx={{ borderRadius: '50%', p: 0.5, opacity: muted ? 0.5 : 1, cursor: muted ? 'not-allowed' : busy ? 'progress' : 'pointer' }}
+        sx={{ borderRadius: '50%', p: { xs: 0.75, sm: 0.25 }, opacity: muted ? 0.5 : 1, cursor: muted ? 'not-allowed' : busy ? 'progress' : 'pointer' }}
       >
         <CellMark status={AVAILABILITY_STATUS[cell.availability]} picked={cell.picked} pickedRing />
       </ButtonBase>
@@ -151,7 +151,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
     zIndex: 3,
     bgcolor: 'background.paper',
     px: 0.5,
-    py: 0.75,
+    py: 0.25,
     fontWeight: 600,
     whiteSpace: 'nowrap',
     borderTop: 1,
@@ -249,13 +249,13 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
                 '&:hover > th, &:hover > td': { bgcolor: hoverTint },
               }}
             >
-              <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 }}>
+              <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 }}>
                 <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
                   {playerName(player)}
                 </Typography>
               </TableCell>
               {columns.map((match) => (
-                <TableCell key={match.matchId} align="center" sx={{ px: 0.5, py: 0.75 }}>
+                <TableCell key={match.matchId} align="center" sx={{ px: 0.5, py: 0.25 }}>
                   <Box sx={{ display: 'inline-flex', gap: 1 }}>
                     {match.sides.map((side) => {
                       const cell = cellOf(player, match, side)
@@ -264,7 +264,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
                   </Box>
                 </TableCell>
               ))}
-              <TableCell align="center" sx={{ ...numberSx, borderLeft: 1, borderLeftColor: 'divider' }}>
+              <TableCell align="center" sx={{ ...numberSx, py: 0.25, borderLeft: 1, borderLeftColor: 'divider' }}>
                 {player.pickedCount}
               </TableCell>
             </TableRow>
@@ -273,7 +273,7 @@ export function PlayersGrid({ matches, players, busy, onToggle, now }: PlayersGr
 
         <TableFooter>
           <TableRow>
-            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bottom: 0, zIndex: 5, px: 1, py: 0.75, fontWeight: 600, fontSize: 11, lineHeight: 1.2, borderTop: 1, borderTopColor: 'divider' }}>
+            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bottom: 0, zIndex: 5, px: 1, py: 0.25, fontWeight: 600, fontSize: 11, lineHeight: 1.2, borderTop: 1, borderTopColor: 'divider' }}>
               Picked / max
             </TableCell>
             {columns.map((match) => (

@@ -87,11 +87,11 @@ function BattingMatrix({
     '&:nth-of-type(odd) > th, &:nth-of-type(odd) > td': { bgcolor: zebraTint },
     '&:hover > th, &:hover > td': { bgcolor: hoverTint },
   } as const
-  const rowHeadSx = { ...stickyFirstColSx, ...POSITION_COL, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 } as const
-  const bodyCellSx = { px: 0.75, py: 0.25, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
+  const rowHeadSx = { ...stickyFirstColSx, ...POSITION_COL, bgcolor: undefined, zIndex: 2, px: 1, py: 0.375 } as const
+  const bodyCellSx = { px: 0.75, py: 0.375, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
   const footCellSx = { position: 'sticky', bottom: 0, zIndex: 3, bgcolor: 'background.paper', borderTop: 1, borderTopColor: 'divider', px: 0.75, py: 0.75 } as const
 
-  const arrowSx = { p: 0.125, fontSize: 16 } as const
+  const arrowSx = { p: 0.25, fontSize: 18 } as const
   const lastFilled = ({ side }: Column) =>
     Math.max(0, ...side.picks.filter((pick) => !pick.twelfthMan).map((pick) => pick.battingOrder ?? 0))
   const pickAt = ({ side }: Column, position: number) => side.picks.find((pick) => pick.battingOrder === position)
@@ -220,7 +220,7 @@ function BattingMatrix({
                         data-testid={`add-${match.matchId}-${side.teamId}-${position}`}
                         aria-label={`Add a player at position ${position}, ${columnLabel(column)}`}
                         onClick={(event) => onAdd({ ...column, position, anchor: event.currentTarget })}
-                        sx={{ minWidth: 0, minHeight: 24, py: 0, px: 0.75, fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'nowrap' }}
+                        sx={{ minWidth: 0, minHeight: 26, py: 0, px: 0.75, fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'nowrap' }}
                       >
                         + Add
                       </MuiButton>
