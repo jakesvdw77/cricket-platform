@@ -2,6 +2,7 @@ package com.cricketlegend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,6 +71,12 @@ class PlayerServiceImplTest {
     private PlayerSectionRepository playerSectionRepository;
 
     @Mock
+    private com.cricketlegend.repository.TeamSquadMemberRepository teamSquadMemberRepository;
+
+    @Mock
+    private com.cricketlegend.repository.MatchSidePlayerRepository matchSidePlayerRepository;
+
+    @Mock
     private AccessService accessService;
 
     private final PlayerMapper playerMapper = new PlayerMapper();
@@ -86,6 +93,8 @@ class PlayerServiceImplTest {
                 clubMembershipRepository,
                 playerProfileRepository,
                 playerSectionRepository,
+                teamSquadMemberRepository,
+                matchSidePlayerRepository,
                 playerMapper,
                 accessService);
     }
@@ -519,7 +528,7 @@ class PlayerServiceImplTest {
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
         when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
 
-        var result = playerService.list(authentication, clubId, null, false);
+        var result = playerService.list(authentication, clubId, null, false, true, null, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).clubId()).isEqualTo(clubId);
@@ -540,7 +549,7 @@ class PlayerServiceImplTest {
         when(accessService.accessibleSectionIds(authentication, clubId))
                 .thenReturn(Optional.of(Set.of(accessibleSectionId)));
 
-        var result = playerService.list(authentication, clubId, null, false);
+        var result = playerService.list(authentication, clubId, null, false, true, null, null);
 
         assertThat(result).isEmpty();
     }
@@ -556,10 +565,197 @@ class PlayerServiceImplTest {
         when(playerSectionRepository.findByPlayerProfileIdIn(List.of(playerId))).thenReturn(List.of());
         when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
 
-        var result = playerService.list(authentication, clubId, null, true);
+        var result = playerService.list(authentication, clubId, null, true, true, null, null);
 
         assertThat(result).hasSize(1);
         verify(playerProfileRepository, never()).findByClubId(clubId);
+    }
+
+    // --- docs/specs/088-players-polls-alignment.md: includeInactive, focus, summary, verify and reject ---
+
+    private PlayerProfile withStatus(PlayerProfile profile, com.cricketlegend.domain.PlayerVerificationStatus status) {
+        profile.setVerificationStatus(status);
+        return profile;
+    }
+
+    private void stubClubRoster(UUID clubId, PlayerProfile... profiles) {
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(profiles));
+        when(playerSectionRepository.findByPlayerProfileIdIn(any())).thenReturn(List.of());
+        when(accessService.accessibleSectionIds(authentication, clubId)).thenReturn(Optional.empty());
+    }
+
+    @Test
+    void listWithoutInactiveHidesSuspendedAndRejectedPlayersButKeepsUnverifiedOnes() {
+        UUID clubId = UUID.randomUUID();
+        PlayerProfile verified = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        PlayerProfile unverified = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        PlayerProfile rejected = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.REJECTED);
+        PlayerProfile suspended = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, false);
+        stubClubRoster(clubId, verified, unverified, rejected, suspended);
+        when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
+                .stream().map(id -> person(id, id)).toList());
+
+        var hidden = playerService.list(authentication, clubId, null, false, false, null, null);
+        var everyone = playerService.list(authentication, clubId, null, false, true, null, null);
+
+        assertThat(hidden).extracting(com.cricketlegend.dto.PlayerDto::id).containsExactlyInAnyOrder(verified.getId(), unverified.getId());
+        assertThat(everyone).hasSize(4);
+    }
+
+    @Test
+    void aSeasonFocusWithoutASeasonIsAValidationError() {
+        UUID clubId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> playerService.list(
+                        authentication, clubId, null, false, false, com.cricketlegend.domain.PlayerListFocus.IN_SQUAD, null))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> playerService.list(
+                        authentication, clubId, null, false, false, com.cricketlegend.domain.PlayerListFocus.SELECTED, null))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void theFocusesNarrowTheListToSquadSelectedAndUnverifiedPlayers() {
+        UUID clubId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        PlayerProfile inSquad = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        PlayerProfile picked = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        PlayerProfile waiting = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        stubClubRoster(clubId, inSquad, picked, waiting);
+        when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
+                .stream().map(id -> person(id, id)).toList());
+        when(teamSquadMemberRepository.findDistinctPlayerProfileIdsBySeasonId(seasonId)).thenReturn(List.of(inSquad.getId()));
+        when(matchSidePlayerRepository.findDistinctSelectedPlayerProfileIds(clubId, seasonId)).thenReturn(List.of(picked.getId()));
+
+        var squad = playerService.list(authentication, clubId, null, false, true, com.cricketlegend.domain.PlayerListFocus.IN_SQUAD, seasonId);
+        var selected = playerService.list(authentication, clubId, null, false, true, com.cricketlegend.domain.PlayerListFocus.SELECTED, seasonId);
+        var unverified = playerService.list(authentication, clubId, null, false, true, com.cricketlegend.domain.PlayerListFocus.UNVERIFIED, null);
+
+        assertThat(squad).extracting(com.cricketlegend.dto.PlayerDto::id).containsExactly(inSquad.getId());
+        assertThat(selected).extracting(com.cricketlegend.dto.PlayerDto::id).containsExactly(picked.getId());
+        assertThat(unverified).extracting(com.cricketlegend.dto.PlayerDto::id).containsExactly(waiting.getId());
+    }
+
+    @Test
+    void summaryCountsTheSameSetsTheListReturnsAndSkipsThePersonLookup() {
+        UUID clubId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        PlayerProfile a = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        PlayerProfile b = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        PlayerProfile rejected = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.REJECTED);
+        stubClubRoster(clubId, a, b, rejected);
+        when(teamSquadMemberRepository.findDistinctPlayerProfileIdsBySeasonId(seasonId))
+                .thenReturn(List.of(a.getId(), b.getId(), rejected.getId()));
+        when(matchSidePlayerRepository.findDistinctSelectedPlayerProfileIds(clubId, seasonId)).thenReturn(List.of(a.getId()));
+
+        var counters = playerService.summary(authentication, clubId, null, false, false, seasonId);
+
+        // the rejected player is out of the list, so out of every figure
+        assertThat(counters).isEqualTo(new com.cricketlegend.dto.PlayersSummaryDto(2, 2, 1, 1));
+        verify(personRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void summaryWithoutASeasonReportsZeroForTheTwoSeasonFiguresAndQueriesNeitherSource() {
+        UUID clubId = UUID.randomUUID();
+        stubClubRoster(clubId, profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true));
+
+        var counters = playerService.summary(authentication, clubId, null, false, false, null);
+
+        assertThat(counters).isEqualTo(new com.cricketlegend.dto.PlayersSummaryDto(1, 0, 0, 0));
+        verify(teamSquadMemberRepository, never()).findDistinctPlayerProfileIdsBySeasonId(any());
+        verify(matchSidePlayerRepository, never()).findDistinctSelectedPlayerProfileIds(any(), any());
+    }
+
+    private void stubSingleProfile(PlayerProfile profile) {
+        when(playerProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
+        // the conflict paths never reach save or the person lookup
+        org.mockito.Mockito.lenient().when(playerSectionRepository.findByPlayerProfileId(profile.getId())).thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(playerProfileRepository.save(any(PlayerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.lenient().when(personRepository.findById(profile.getPersonId()))
+                .thenReturn(Optional.of(person(profile.getPersonId(), profile.getPersonId())));
+    }
+
+    @Test
+    void verifyAcceptsAnUnverifiedAndUndoesARejectedPlayer() {
+        UUID clubId = UUID.randomUUID();
+        PlayerProfile unverified = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        stubSingleProfile(unverified);
+
+        var result = playerService.verify(authentication, clubId, unverified.getId());
+
+        assertThat(result.verificationStatus()).isEqualTo(com.cricketlegend.domain.PlayerVerificationStatus.VERIFIED);
+
+        PlayerProfile rejected = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.REJECTED);
+        stubSingleProfile(rejected);
+
+        assertThat(playerService.verify(authentication, clubId, rejected.getId()).verificationStatus())
+                .isEqualTo(com.cricketlegend.domain.PlayerVerificationStatus.VERIFIED);
+    }
+
+    @Test
+    void verifyingAVerifiedPlayerIsAConflict() {
+        UUID clubId = UUID.randomUUID();
+        PlayerProfile verified = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        stubSingleProfile(verified);
+
+        assertThatThrownBy(() -> playerService.verify(authentication, clubId, verified.getId()))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+        verify(playerProfileRepository, never()).save(any(PlayerProfile.class));
+    }
+
+    @Test
+    void rejectOnlyWorksForAnUnverifiedPlayer() {
+        UUID clubId = UUID.randomUUID();
+        PlayerProfile unverified = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        stubSingleProfile(unverified);
+
+        assertThat(playerService.reject(authentication, clubId, unverified.getId()).verificationStatus())
+                .isEqualTo(com.cricketlegend.domain.PlayerVerificationStatus.REJECTED);
+
+        for (var status : new com.cricketlegend.domain.PlayerVerificationStatus[] {
+            com.cricketlegend.domain.PlayerVerificationStatus.VERIFIED,
+            com.cricketlegend.domain.PlayerVerificationStatus.REJECTED}) {
+            PlayerProfile other = withStatus(profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true), status);
+            stubSingleProfile(other);
+            assertThatThrownBy(() -> playerService.reject(authentication, clubId, other.getId()))
+                    .isInstanceOf(InvalidStatusTransitionException.class);
+        }
+    }
+
+    @Test
+    void verifyAndRejectAreScopedToTheClubAndTheCallersSections() {
+        UUID clubId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        when(playerProfileRepository.findById(playerId))
+                .thenReturn(Optional.of(profile(playerId, UUID.randomUUID(), UUID.randomUUID(), true)));
+
+        assertThatThrownBy(() -> playerService.verify(authentication, clubId, playerId)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> playerService.reject(authentication, clubId, playerId)).isInstanceOf(NotFoundException.class);
+
+        PlayerProfile own = withStatus(
+                profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true),
+                com.cricketlegend.domain.PlayerVerificationStatus.UNVERIFIED);
+        stubSingleProfile(own);
+        verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+        playerService.reject(authentication, clubId, own.getId());
+        verify(accessService).assertCanAdministerAnySection(any(), any(), any());
     }
 
     // --- date of birth rule (077) ---
