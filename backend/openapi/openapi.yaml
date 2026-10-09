@@ -2936,6 +2936,19 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Only matches that have this team as their home or away side (docs/specs/087)."
+        schema:
+          type: string
+          format: uuid
+      - name: focus
+        in: query
+        required: false
+        description: "A Matches quick filter (docs/specs/087), case-insensitive: this-week, not-announced or no-poll. Each covers active, upcoming matches only and is the definition the summary counters count. Anything else is a 400."
+        schema:
+          type: string
       - name: pageable
         in: query
         required: true
@@ -4820,6 +4833,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: teamId
+        in: query
+        required: false
+        description: "Narrows sectionIds, leagueIds and seasonIds like the other picks; teamIds ignores it (docs/specs/087)."
+        schema:
+          type: string
+          format: uuid
       - name: search
         in: query
         required: false
@@ -4838,6 +4858,61 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/matches/summary:
+    get:
+      tags:
+      - match-controller
+      operationId: summary_1
+      description: "The Matches page counters (docs/specs/087) for the same filters the list uses, section-scoped like the list. includePast is the inverse of the list's upcomingOnly."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includePast
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchesSummaryDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -8457,6 +8532,22 @@ components:
           items:
             type: string
             format: uuid
+    MatchesSummaryDto:
+      type: object
+      description: "The Matches page counters for the list's filters. matchesShown is the list's own total; thisWeek, teamsNotAnnounced and withoutPoll are the active, upcoming matches behind each focus and equal the list's totalElements for that focus."
+      properties:
+        matchesShown:
+          type: integer
+          format: int64
+        thisWeek:
+          type: integer
+          format: int64
+        teamsNotAnnounced:
+          type: integer
+          format: int64
+        withoutPoll:
+          type: integer
+          format: int64
     AvailabilityRespondentDto:
       type: object
       properties:
