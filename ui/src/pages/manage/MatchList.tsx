@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Stack, Typography } from '@mui/material'
+import { Box, Link, Stack, Typography } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { FilterBar } from '../../components/FilterBar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { listMatches, listMatchFilterOptions } from '../../api/matchApi'
+import { PageCounters } from '../../components/PageCounters'
+import type { PageCounterItem } from '../../components/PageCounters'
+import { getMatchesSummary, listMatches, listMatchFilterOptions, matchesSummaryKey } from '../../api/matchApi'
+import type { MatchesSummaryFilters, MatchListFocus } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listLeagues } from '../../api/leagueApi'
@@ -33,6 +36,14 @@ const SORT_OPTIONS = [
 ]
 
 const SEARCH_DEBOUNCE_MS = 300
+
+// docs/specs/087-matches-polls-alignment.md: the Matches quick filters behind the counters, named as the chip, the
+// scope text and the phone sheet's Quick filter row show them.
+const FOCUS_LABELS: Record<MatchListFocus, string> = {
+  'this-week': 'This week',
+  'not-announced': 'Teams not announced',
+  'no-poll': 'Without a poll',
+}
 
 // Re-exported for MatchDetailPage.tsx (docs/specs/036) and the tests: the helpers moved to
 // matches/matchCardHelpers.ts with the card (docs/specs/069-match-card-redesign.md).
@@ -81,6 +92,10 @@ export default function MatchList({
   // shape as sectionId above — combinable with it and with search/upcomingOnly in any combination.
   const [leagueId, setLeagueId] = useState<string | null>(null)
   const [seasonId, setSeasonId] = useState<string | null>(null)
+  // docs/specs/087: Team and the counters' quick filter. Both are backend params too, and per visit only: neither
+  // is saved with Section/League/Season below. At most one quick filter is active at a time.
+  const [teamId, setTeamId] = useState<string | null>(null)
+  const [focus, setFocus] = useState<MatchListFocus | null>(null)
   // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only. The
   // "Show past matches" switch in the toolbar flips this, so a match saved with a wrong date (and
   // therefore hidden from the default view) can still be found and corrected.
@@ -107,7 +122,7 @@ export default function MatchList({
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, sort, sectionId, leagueId, seasonId, upcomingOnly])
+  }, [debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly])
 
   // docs/specs/042-match-list-filters-and-search.md: Section/League/Season selections (never
   // search) persist per club across visits — the first localStorage call site in this codebase,
@@ -146,7 +161,7 @@ export default function MatchList({
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, leagueId, seasonId, upcomingOnly],
+    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly],
     queryFn: () =>
       listMatches(clubId as string, {
         page,
@@ -155,9 +170,14 @@ export default function MatchList({
         ...(sectionId ? { sectionId } : {}),
         ...(leagueId ? { leagueId } : {}),
         ...(seasonId ? { seasonId } : {}),
+        ...(teamId ? { teamId } : {}),
+        ...(focus ? { focus } : {}),
         upcomingOnly,
       }),
     enabled: Boolean(clubId),
+    // Keep the previous page on screen while a filter or counter change loads, so the toolbar and counters stay
+    // mounted (and the search field keeps its focus) instead of the whole screen blanking each time.
+    placeholderData: keepPreviousData,
   })
 
   const { data: teams } = useQuery({
@@ -188,16 +208,35 @@ export default function MatchList({
   // section/league/season ids are actually reachable — narrows each of the three pickers' own
   // option lists below so an admin never picks a combination with nothing in it.
   const filterOptionsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', 'filter-options', sectionId, leagueId, seasonId, debouncedSearch, upcomingOnly],
+    queryKey: ['managed-club', clubId, 'matches', 'filter-options', sectionId, leagueId, seasonId, teamId, debouncedSearch, upcomingOnly],
     queryFn: () =>
       listMatchFilterOptions(clubId as string, {
         sectionId: sectionId ?? undefined,
         leagueId: leagueId ?? undefined,
         seasonId: seasonId ?? undefined,
+        teamId: teamId ?? undefined,
         search: debouncedSearch || undefined,
         upcomingOnly,
       }),
     enabled: Boolean(clubId),
+  })
+
+  // docs/specs/087: the counters, for exactly the filters the list sends (the quick filter itself does not narrow
+  // them, so the first card stays a meaningful way back). A failed request hides the row; the list still works.
+  const summaryFilters: MatchesSummaryFilters = {
+    sectionId: sectionId ?? undefined,
+    leagueId: leagueId ?? undefined,
+    seasonId: seasonId ?? undefined,
+    teamId: teamId ?? undefined,
+    search: debouncedSearch || undefined,
+    includePast: !upcomingOnly,
+  }
+  const summaryQuery = useQuery({
+    queryKey: matchesSummaryKey(clubId ?? '', summaryFilters),
+    queryFn: () => getMatchesSummary(clubId as string, summaryFilters),
+    enabled: Boolean(clubId),
+    retry: false,
+    placeholderData: keepPreviousData,
   })
 
   const teamsById = useMemo(() => {
@@ -237,6 +276,16 @@ export default function MatchList({
     [seasons, filterOptionsQuery.data],
   )
 
+  // docs/specs/087: the Team picker offers the club's teams that filter-options reports as reachable (its teamIds
+  // ignores the Team pick itself, so choosing a team never empties its own list).
+  const filterableTeams = useMemo(
+    () =>
+      Array.from(teamsById.values())
+        .filter((team) => !filterOptionsQuery.data || filterOptionsQuery.data.teamIds.includes(team.id))
+        .map((team) => ({ id: team.id, name: team.name })),
+    [teamsById, filterOptionsQuery.data],
+  )
+
   // docs/specs/042-match-list-filters-and-search.md: client-side suggestions drawn from the club's
   // own already-loaded Team names — narrowed to teams filterOptionsQuery reports as reachable
   // given the currently active Section/League/Season filters first (a team outside the current
@@ -273,9 +322,61 @@ export default function MatchList({
   const hasMatches = data.content.length > 0
   const isSearching = debouncedSearch.length > 0
   const seasonLabel = seasonId ? seasonsById.get(seasonId)?.label : undefined
-  const scope = [scopeFilterText({ sections: sections ?? [], sectionId, leagues: leagues ?? [], leagueId }), seasonLabel]
+  const scope = [
+    scopeFilterText({ sections: sections ?? [], sectionId, leagues: leagues ?? [], leagueId, teams: filterableTeams, teamId }),
+    seasonLabel,
+  ]
     .filter(Boolean)
     .join(' · ')
+  // Choosing the active counter again turns its filter off; choosing another replaces it.
+  const toggleFocus = (next: MatchListFocus) => setFocus((current) => (current === next ? null : next))
+  const summary = summaryQuery.data
+  const counters: PageCounterItem[] = summary
+    ? [
+        {
+          id: 'shown',
+          value: summary.matchesShown,
+          label: upcomingOnly ? 'Upcoming matches' : 'Matches shown',
+          shortLabel: upcomingOnly ? 'Upcoming' : 'Shown',
+          kind: 'filter',
+          active: focus === null,
+          hint: 'Show all',
+          onSelect: () => setFocus(null),
+        },
+        {
+          id: 'this-week',
+          value: summary.thisWeek,
+          label: FOCUS_LABELS['this-week'],
+          kind: 'filter',
+          active: focus === 'this-week',
+          hint: 'Tap to filter',
+          onSelect: () => toggleFocus('this-week'),
+        },
+        {
+          id: 'not-announced',
+          value: summary.teamsNotAnnounced,
+          label: FOCUS_LABELS['not-announced'],
+          shortLabel: 'Not announced',
+          tone: summary.teamsNotAnnounced > 0 ? 'warning' : 'default',
+          kind: 'filter',
+          active: focus === 'not-announced',
+          hint: 'Tap to filter',
+          onSelect: () => toggleFocus('not-announced'),
+        },
+        {
+          id: 'no-poll',
+          value: summary.withoutPoll,
+          label: FOCUS_LABELS['no-poll'],
+          shortLabel: 'No poll',
+          tone: summary.withoutPoll > 0 ? 'warning' : 'default',
+          kind: 'filter',
+          active: focus === 'no-poll',
+          hint: 'Tap to filter',
+          onSelect: () => toggleFocus('no-poll'),
+        },
+      ]
+    : []
+  const showCounters = !summaryQuery.isError && (summaryQuery.isPending || Boolean(summary))
   const pastToggle = <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label="Show past matches" />
   const sortLink = (
     <SortLink
@@ -301,23 +402,39 @@ export default function MatchList({
           Season, Section and search; Team arrives with its backend param in the counters slice) and a content
           line with the scope text, the sort link and the Show past matches switch. On a phone the switch and
           the sort link move into the FilterBar sheet. */}
+      {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
+
       <FilterBar
         density="compact"
         leagues={filterableLeagues}
         seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
         sections={filterableSections}
+        teams={filterableTeams}
         leagueId={leagueId}
         seasonId={seasonId}
         sectionId={sectionId}
+        teamId={teamId}
         onLeagueChange={setLeagueId}
         onSeasonChange={setSeasonId}
         onSectionChange={setSectionId}
+        onTeamChange={setTeamId}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by opponent or team name"
         searchOptions={searchSuggestions}
+        extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
         viewControls={
           <>
+            {focus && (
+              <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 36 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Quick filter: <b>{FOCUS_LABELS[focus]}</b>
+                </Typography>
+                <Link component="button" type="button" underline="hover" onClick={() => setFocus(null)} sx={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                  Clear
+                </Link>
+              </Box>
+            )}
             {pastToggle}
             {sortLink}
           </>
@@ -326,11 +443,13 @@ export default function MatchList({
           setLeagueId(null)
           setSeasonId(null)
           setSectionId(null)
+          setTeamId(null)
+          setFocus(null)
         }}
       />
 
       <ContentControlsLine
-        scope={`Showing ${data.totalElements} ${upcomingOnly ? 'upcoming ' : ''}${data.totalElements === 1 ? 'match' : 'matches'}`}
+        scope={`Showing ${data.totalElements} ${upcomingOnly ? 'upcoming ' : ''}${data.totalElements === 1 ? 'match' : 'matches'}${focus ? ` · ${FOCUS_LABELS[focus]}` : ''}`}
         sortAction={sortLink}
         controls={pastToggle}
       />
