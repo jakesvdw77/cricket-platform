@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, IconButton, Stack, Typography, alpha } from '@mui/material'
-import type { Theme } from '@mui/material'
+import { IconButton, Stack } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useMutation } from '@tanstack/react-query'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -14,6 +13,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { BrandIcon } from '../../../components/BrandIcon'
+import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { SlotSummary } from '../../../components/SlotSummary'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
@@ -244,54 +244,31 @@ export function PollCard({
         }
       >
         {/* docs/specs/082: the close time is read first - a tinted strip above the response indicator,
-            amber within 24 hours of closing, neutral otherwise (and once closed). */}
-        <Box
-          data-testid="poll-closes-row"
-          data-tone={closingSoon ? 'warning' : 'neutral'}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            columnGap: 1,
-            rowGap: 0.5,
-            px: 1.5,
-            py: 1,
-            borderRadius: 1,
-            border: 1,
-            bgcolor: (theme: Theme) =>
-              closingSoon ? alpha(theme.palette.warning.main, 0.14) : alpha(theme.palette.primary.main, 0.08),
-            borderColor: (theme: Theme) => (closingSoon ? alpha(theme.palette.warning.main, 0.5) : theme.palette.divider),
-            color: closingSoon ? 'warning.dark' : 'text.primary',
-          }}
-        >
-          <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'inherit' }}>
-            <EventBusyOutlinedIcon fontSize="small" />
-          </Box>
-          <Typography variant="body2" component="span" sx={{ color: closingSoon ? 'warning.dark' : 'text.secondary', fontWeight: 600 }}>
-            {closes.label}
-          </Typography>
-          <Typography variant="subtitle1" component="span" fontWeight={700} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            {closes.value}
-          </Typography>
-          {/* Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
-              position: relative keeps it above the card's stretched link. */}
-          {isOpen && (
-            <IconButton
-              size="small"
-              aria-label="Edit close time"
-              title="Edit close time"
-              onClick={() => setCloseTimeOpen(true)}
-              sx={{ position: 'relative', p: '2px', color: 'inherit' }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          )}
-          {countdownTarget && (
-            <Box sx={{ ml: { sm: 'auto' } }}>
-              <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" />
-            </Box>
-          )}
-        </Box>
+            amber within 24 hours of closing, neutral otherwise (and once closed). docs/specs/087: the strip
+            is the shared CardTimeStrip, which the match card uses too. */}
+        <CardTimeStrip
+          testId="poll-closes-row"
+          tone={closingSoon ? 'warning' : 'neutral'}
+          icon={<EventBusyOutlinedIcon fontSize="small" />}
+          label={closes.label}
+          value={closes.value}
+          // Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
+          // position: relative keeps it above the card's stretched link.
+          action={
+            isOpen ? (
+              <IconButton
+                size="small"
+                aria-label="Edit close time"
+                title="Edit close time"
+                onClick={() => setCloseTimeOpen(true)}
+                sx={{ position: 'relative', p: '2px', color: 'inherit' }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            ) : undefined
+          }
+          trailing={countdownTarget ? <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" /> : undefined}
+        />
         {/* The summary area grows (flex: 1) so the footer below lines up across the cards of a row. */}
         <Stack spacing={1.5} sx={{ flex: 1 }}>
           {slotsFor(item).map((slot) => (
