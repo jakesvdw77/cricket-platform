@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
-import MenuItem from '@mui/material/MenuItem'
+import { Box, Stack, Typography } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ListToolbar } from '../../components/ListToolbar'
 import { Button } from '../../components/Button'
-import { Input } from '../../components/Input'
+import { CompactSwitch } from '../../components/CompactSwitch'
+import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
+import { FilterBar } from '../../components/FilterBar'
 import { ManageScreenHeader } from '../../components/ManageScreenHeader'
-import { SectionTreeSelect } from '../../components/SectionTreeSelect'
 import { listMatches, listMatchFilterOptions } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -19,12 +18,12 @@ import type { Season } from '../../api/seasonApi'
 import { listSections } from '../../api/sectionApi'
 import { MatchCard } from './matches/MatchCard'
 import { cardGridSx } from '../../utils/cardGrid'
+import { scopeFilterText } from '../../utils/availabilityScope'
 import { announcedBadges, badgeFor, sideName } from './matches/matchCardHelpers'
 
 // docs/specs/042-match-list-filters-and-search.md: sort defaults to soonest-upcoming-first — index
-// 0 (the default) is now ascending. Both entries stay in this array for the underlying
-// value/label pairing ListToolbar's sortToggle switches between; the icon toggle itself replaces
-// the old Select rendering (see the ListToolbar sortToggle prop below).
+// 0 (the default) is ascending. docs/specs/087: the order is switched by the quiet SortLink on the
+// content line (in the Filters sheet on a phone), as on the Polls page.
 // In-memory only (resets on a full page reload) — see the upcomingOnly state in MatchList below.
 let restoreShowPastOnReturn = false
 
@@ -273,6 +272,17 @@ export default function MatchList({
 
   const hasMatches = data.content.length > 0
   const isSearching = debouncedSearch.length > 0
+  const seasonLabel = seasonId ? seasonsById.get(seasonId)?.label : undefined
+  const scope = [scopeFilterText({ sections: sections ?? [], sectionId, leagues: leagues ?? [], leagueId }), seasonLabel]
+    .filter(Boolean)
+    .join(' · ')
+  const pastToggle = <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label="Show past matches" />
+  const sortLink = (
+    <SortLink
+      label={sort === 'matchDate,asc' ? 'soonest first' : 'latest first'}
+      onToggle={() => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc')}
+    />
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -280,60 +290,49 @@ export default function MatchList({
         title={title}
         backTo={backTo}
         backLabel={backLabel}
+        // docs/specs/087: the scope of the list under the title when a filter is set, as on Availability.
+        subtitle={scope ? `Showing: ${scope}` : undefined}
         action={
           <Button onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
         }
       />
 
-      {/* docs/specs/043-list-toolbar-gold-standard.md: the bordered, shadowed background.paper
-          surface this toolbar sits in (originally MatchList's own wrapping Box, per
-          docs/specs/037-match-improvements.md items 3/4) now lives inside ListToolbar itself —
-          every caller gets it automatically, nothing to wrap here anymore. The Section filter
-          itself sits inline in ListToolbar's own filters slot rather than a second row below. */}
-      <ListToolbar
+      {/* docs/specs/087-matches-polls-alignment.md (B): the Polls toolbar - the shared FilterBar (League,
+          Season, Section and search; Team arrives with its backend param in the counters slice) and a content
+          line with the scope text, the sort link and the Show past matches switch. On a phone the switch and
+          the sort link move into the FilterBar sheet. */}
+      <FilterBar
+        density="compact"
+        leagues={filterableLeagues}
+        seasons={filterableSeasons.map((season) => ({ id: season.id, name: season.label }))}
+        sections={filterableSections}
+        leagueId={leagueId}
+        seasonId={seasonId}
+        sectionId={sectionId}
+        onLeagueChange={setLeagueId}
+        onSeasonChange={setSeasonId}
+        onSectionChange={setSectionId}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by opponent or team name"
         searchOptions={searchSuggestions}
-        sortToggle={{
-          value: sort === 'matchDate,asc' ? 'asc' : 'desc',
-          ascLabel: 'Match date, soonest first',
-          descLabel: 'Match date, latest first',
-          onToggle: () => setSort(sort === 'matchDate,asc' ? 'matchDate,desc' : 'matchDate,asc'),
-        }}
-        filters={
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <SectionTreeSelect
-              label="Section"
-              sections={filterableSections}
-              value={sectionId}
-              onChange={setSectionId}
-              allowClear
-            />
-            <Input select label="League" value={leagueId ?? ''} onChange={(event) => setLeagueId(event.target.value || null)}>
-              <MenuItem value="">All leagues</MenuItem>
-              {filterableLeagues.map((league) => (
-                <MenuItem key={league.id} value={league.id}>
-                  {league.name}
-                </MenuItem>
-              ))}
-            </Input>
-            <Input select label="Season" value={seasonId ?? ''} onChange={(event) => setSeasonId(event.target.value || null)}>
-              <MenuItem value="">All seasons</MenuItem>
-              {filterableSeasons.map((season) => (
-                <MenuItem key={season.id} value={season.id}>
-                  {season.label}
-                </MenuItem>
-              ))}
-            </Input>
-            <FormControlLabel
-              control={<Switch checked={!upcomingOnly} onChange={(event) => setUpcomingOnly(!event.target.checked)} />}
-              label="Show past matches"
-              sx={{ whiteSpace: 'nowrap', mr: 0 }}
-            />
-          </Stack>
+        viewControls={
+          <>
+            {pastToggle}
+            {sortLink}
+          </>
         }
-        filtersMinWidth={180}
+        onClearAll={() => {
+          setLeagueId(null)
+          setSeasonId(null)
+          setSectionId(null)
+        }}
+      />
+
+      <ContentControlsLine
+        scope={`Showing ${data.totalElements} ${upcomingOnly ? 'upcoming ' : ''}${data.totalElements === 1 ? 'match' : 'matches'}`}
+        sortAction={sortLink}
+        controls={pastToggle}
       />
 
       {hasMatches && (

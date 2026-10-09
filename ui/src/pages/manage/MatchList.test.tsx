@@ -229,9 +229,87 @@ describe('MatchList', () => {
 
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,asc' }))
-    // The icon toggle's aria-label describes the target state a click would move TO — starting
-    // ascending, clicking would move to latest-first.
-    expect(screen.getByRole('button', { name: 'Match date, latest first' })).toBeInTheDocument()
+    // docs/specs/087: the quiet sort link reads the CURRENT order and reverses it on click.
+    expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
+  })
+
+  // docs/specs/087-matches-polls-alignment.md (B)
+  describe('Polls-style toolbar (087)', () => {
+    it('shows the scope text on the content line, and the sort link reverses the order via the backend sort param', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch(), makeMatch({ id: 'match-2' })]))
+
+      renderPage('test-club-id')
+
+      await screen.findAllByText('1st XI vs Riverside Occasionals')
+      expect(screen.getByText(/Showing 2 upcoming matches/)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /soonest first/i }))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,desc' })))
+      expect(await screen.findByRole('button', { name: /latest first/i })).toBeInTheDocument()
+    })
+
+    it('reads "Showing N matches" once past matches are included, and singular for one', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText(/Showing 1 upcoming match/)).toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+      expect(await screen.findByText(/^Showing 1 match(?!es)/)).toBeInTheDocument()
+    })
+
+    it('on a phone shows search and a Filters button, with Show past matches and the sort link inside the sheet', async () => {
+      const user = userEvent.setup()
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+      try {
+        listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+        renderPage('test-club-id')
+
+        await screen.findByText('1st XI vs Riverside Occasionals')
+        expect(screen.getByText(/Showing 1 upcoming match/)).toBeInTheDocument()
+        expect(screen.queryByRole('checkbox', { name: /show past matches/i })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /soonest first/i })).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Filters' }))
+        expect(await screen.findByRole('checkbox', { name: /show past matches/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
+    })
+
+    it('names the chosen section and season under the title', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      listSeasons.mockResolvedValue([
+        { id: 'season-1', clubId: 'test-club-id', label: '2026/27', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      ])
+      listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: ['season-1'], teamIds: ['team-1'] })
+
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(screen.queryByText(/^Showing: /)).not.toBeInTheDocument()
+
+      await user.click(screen.getByLabelText('Section'))
+      await user.click(within(screen.getByRole('treeitem', { name: 'Men' })).getByText('Men'))
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2026/27' }))
+
+      expect(await screen.findByText('Showing: Men · 2026/27')).toBeInTheDocument()
+    })
   })
 
   // docs/specs/037-match-improvements.md item 2
