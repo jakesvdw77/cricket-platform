@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { useOutletContext, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Chip, IconButton, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
@@ -13,6 +16,9 @@ import { getRoundMatches, getRoundResponses, listRounds, setRoundPlayerStatus } 
 import type { SectionAvailabilityRoundResponses } from '../../api/sectionAvailabilityApi'
 import type { AvailabilityStatus } from '../../api/matchAvailabilityApi'
 import { errorDetail } from '../../utils/errorDetail'
+import { usePollClose } from '../../hooks/usePollClose'
+import { usePollDelete } from '../../hooks/usePollDelete'
+import { usePollDescription } from './availability/usePollDescription'
 import { EditCloseTimeDialog } from './availability/EditCloseTimeDialog'
 import { REOPEN_PAST_REASON, SHARE_CLOSED_REASON, closesRowText } from './availability/pollHelpers'
 import type { OverrideProps, ResponseRow } from './availability/responses/responseHelpers'
@@ -27,6 +33,7 @@ export default function GroupPollResponsesPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { roundId } = useParams<{ roundId?: string }>()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
@@ -65,6 +72,34 @@ export default function GroupPollResponsesPage() {
   })
 
   const responses = responsesQuery.data
+  // docs/specs/090: Delete poll and Edit description from this page (hooks are called before the loading returns below).
+  // Delete leaves for the list first, so this page never refetches the deleted poll.
+  const pollDelete = usePollDelete({
+    clubId: clubId as string,
+    target: { kind: 'GROUP', roundId: roundId as string },
+    title: roundQuery.data?.description ?? '',
+    onDeleted: () => {
+      navigate('/manage/availability')
+      queryClient.invalidateQueries({ queryKey: roundsKey })
+      invalidateAvailabilityCounters(queryClient, clubId)
+    },
+  })
+  const pollDescription = usePollDescription({
+    clubId: clubId as string,
+    roundId: roundId as string,
+    description: roundQuery.data?.description ?? '',
+    onSaved: () => queryClient.invalidateQueries({ queryKey: roundsKey }),
+  })
+  // docs/specs/090: Close poll from this page (the hook is called before the loading returns below).
+  const pollClose = usePollClose({
+    clubId: clubId as string,
+    target: { kind: 'GROUP', roundId: roundId as string },
+    autoClose: roundQuery.data?.autoClose ?? true,
+    onClosed: () => {
+      queryClient.invalidateQueries({ queryKey: roundsKey })
+      invalidateAvailabilityCounters(queryClient, clubId)
+    },
+  })
 
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
@@ -105,20 +140,60 @@ export default function GroupPollResponsesPage() {
       title={responses.description}
       backTo="/manage/availability"
       backLabel="Back to Availability Polls"
+      titleAdornment={
+        <IconButton size="small" aria-label="Edit description" title="Edit description" onClick={pollDescription.openEditor}>
+          <EditOutlinedIcon fontSize="small" />
+        </IconButton>
+      }
       headerAction={
-        <span title={closed ? SHARE_CLOSED_REASON : undefined}>
-          <Button
-                    variant="secondary"
-                    size="sm"
-                    startIcon={<ShareOutlinedIcon fontSize="small" />}
-                    disabled={closed}
-                    aria-label={closed ? SHARE_CLOSED_REASON : undefined}
-                    title={closed ? SHARE_CLOSED_REASON : undefined}
-                    onClick={() => setShareOpen(true)}
-                  >
-            Share invite
-          </Button>
-        </span>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <span title={closed ? SHARE_CLOSED_REASON : undefined}>
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<ShareOutlinedIcon fontSize="small" />}
+              disabled={closed}
+              aria-label={closed ? SHARE_CLOSED_REASON : undefined}
+              title={closed ? SHARE_CLOSED_REASON : undefined}
+              onClick={() => setShareOpen(true)}
+            >
+              Share invite
+            </Button>
+          </span>
+          {closed ? (
+            <span title={reopenBlocked ? REOPEN_PAST_REASON : undefined}>
+              <Button
+                variant="secondary"
+                size="sm"
+                startIcon={<LockOpenOutlinedIcon fontSize="small" />}
+                disabled={reopenBlocked}
+                onClick={() => setCloseTimeOpen(true)}
+              >
+                Reopen poll
+              </Button>
+            </span>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<LockOutlinedIcon fontSize="small" />}
+              disabled={pollClose.closing}
+              onClick={pollClose.requestClose}
+            >
+              Close poll
+            </Button>
+          )}
+          <MuiButton
+            variant="outlined"
+            color="error"
+            size="small"
+            startIcon={<DeleteOutlineIcon fontSize="small" />}
+            disabled={pollDelete.deleting}
+            onClick={pollDelete.requestDelete}
+          >
+            Delete poll
+          </MuiButton>
+        </Stack>
       }
       meta={
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -152,10 +227,20 @@ export default function GroupPollResponsesPage() {
       matches={matchesQuery.data ?? []}
       override={override}
       overrideError={
-        overrideMutation.isError ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.") : null
+        pollClose.closeError
+          ? errorDetail(pollClose.closeError, 'Something went wrong closing this poll. Please try again.')
+          : pollDelete.deleteError
+            ? errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.')
+            : overrideMutation.isError
+            ? errorDetail(overrideMutation.error, "Something went wrong saving that answer. Please try again.")
+            : null
       }
       emptyText="No eligible players for this section yet."
     >
+      {pollClose.confirmDialog}
+      {pollDelete.dialogs}
+      {pollDescription.dialog}
+
       <EditCloseTimeDialog
         open={closeTimeOpen}
         onClose={() => setCloseTimeOpen(false)}

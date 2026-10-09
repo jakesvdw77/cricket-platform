@@ -127,6 +127,9 @@ function makeSquadMember(overrides: Partial<SquadMember> = {}): SquadMember {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     playerProfileId: 'player-1',
     squadJerseyNumber: null,
     isCaptain: false,
@@ -240,36 +243,42 @@ describe('MatchDetailPage', () => {
   })
 
   describe('header rows', () => {
-    it('lays out Back, badges, title row, divider, details and actions in DOM order', async () => {
+    it('lays out the Back row with the page actions, the title row with the workflow buttons, the key figures and the team cards in DOM order', async () => {
       await renderLoaded()
 
       const back = screen.getByRole('link', { name: /back to matches/i })
       const topRow = screen.getByTestId('match-header-top-row')
       const titleRow = screen.getByTestId('match-header-title-row')
-      const details = screen.getByTestId('match-header-details')
       const actions = screen.getByTestId('match-header-actions')
-      const divider = titleRow.nextElementSibling as HTMLElement
+      const figures = screen.getByTestId('match-key-figures')
+      const cards = screen.getByTestId('match-team-cards')
 
       expect(back).toHaveAttribute('href', '/manage/fixtures/matches')
       expect(topRow).toContainElement(back)
-      expect(topRow).toContainElement(screen.getByLabelText('Match badges'))
-      expect(divider.tagName).toBe('HR')
+      expect(titleRow).toContainElement(actions)
+      expect(topRow).not.toContainElement(actions)
       const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
       expect(follows(topRow, titleRow)).toBe(true)
-      expect(follows(titleRow, divider)).toBe(true)
-      expect(follows(divider, details)).toBe(true)
-      expect(follows(details, actions)).toBe(true)
+      expect(follows(titleRow, figures)).toBe(true)
+      expect(follows(figures, cards)).toBe(true)
     })
 
-    it('puts Edit on the title row, linking to the edit route, in a no-wrap row', async () => {
+    it('puts the filled primary Edit on the Back row, linking to the edit route', async () => {
       await renderLoaded()
 
-      const titleRow = screen.getByTestId('match-header-title-row')
-      const edit = screen.getByRole('link', { name: /^edit$/i })
+      const topRow = screen.getByTestId('match-header-top-row')
+      const edit = within(topRow).getByRole('link', { name: /^edit$/i })
       expect(edit).toHaveAttribute('href', '/manage/fixtures/matches/match-1/edit')
-      expect(titleRow).toContainElement(edit)
-      expect(titleRow).toHaveStyle({ flexWrap: 'nowrap', justifyContent: 'space-between' })
-      expect(edit).toHaveStyle({ flex: 'none' })
+      expect(edit.className).toContain('MuiButton-contained')
+    })
+
+    it('has no announced or poll badges in the header', async () => {
+      listPolls.mockResolvedValue([makePoll({ open: true })])
+      await renderLoaded()
+
+      await screen.findByTestId('match-figure-poll-value')
+      expect(screen.queryByLabelText('Match badges')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('match-header-title-row')).queryByText(/Announced|Poll open|No poll/)).not.toBeInTheDocument()
     })
 
     it('keeps the heading accessible name as the plain "Home vs Away"', async () => {
@@ -278,63 +287,68 @@ describe('MatchDetailPage', () => {
     })
   })
 
-  describe('badges', () => {
-    it('shows an unprefixed Announced / Not announced badge per own team from the sides query, not getMatch', async () => {
+  describe('announced, inactive and poll state', () => {
+    it('shows the Announced chip on each own team card from the sides query, not getMatch', async () => {
       getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside', homeSideAnnounced: false }))
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-1', announced: true })])
 
       renderPage(PATH, 'test-club-id')
 
-      const badges = await screen.findByLabelText('Match badges')
-      expect(await within(badges).findByText('Announced')).toBeInTheDocument()
-      expect(within(badges).queryByText('Not announced')).not.toBeInTheDocument()
+      const card = await screen.findByTestId('match-team-card-home')
+      expect(await within(card).findByText('Announced')).toBeInTheDocument()
+      expect(within(card).queryByText('Not announced')).not.toBeInTheDocument()
     })
 
-    it('prefixes each own team with its name when both sides are own', async () => {
+    it('shows each own team its own chip when both sides are own', async () => {
       getMatch.mockResolvedValueOnce(makeMatch())
       listMatchSides.mockResolvedValue([makeSide({ teamId: 'team-2', announced: true })])
 
       renderPage(PATH, 'test-club-id')
 
-      const badges = await screen.findByLabelText('Match badges')
-      expect(await within(badges).findByText('2nd XI: Announced')).toBeInTheDocument()
-      expect(within(badges).getByText('1st XI: Not announced')).toBeInTheDocument()
+      const away = await screen.findByTestId('match-team-card-away')
+      expect(await within(away).findByText('Announced')).toBeInTheDocument()
+      expect(within(screen.getByTestId('match-team-card-home')).getByText('Not announced')).toBeInTheDocument()
     })
 
-    it('shows an Inactive badge for an inactive match', async () => {
+    it('shows an Inactive badge in the title for an inactive match', async () => {
       await renderLoaded(makeMatch({ active: false }))
-      expect(await screen.findByText('Inactive')).toBeInTheDocument()
+      expect(await screen.findByTestId('match-inactive-badge')).toHaveTextContent('Inactive')
     })
 
-    it('shows No poll once settled with no poll, and no poll badge while still loading', async () => {
+    it('shows no Inactive badge for an active match', async () => {
+      await renderLoaded()
+      expect(screen.queryByTestId('match-inactive-badge')).not.toBeInTheDocument()
+    })
+
+    it('shows the poll as None once settled with no poll, and a dash while still loading', async () => {
       let resolvePolls: (value: unknown[]) => void = () => {}
       listPolls.mockReturnValue(new Promise((resolve) => { resolvePolls = resolve }))
       await renderLoaded()
 
-      expect(screen.queryByText(/^(No poll|Poll open|Poll closed)$/)).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
       expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
 
       resolvePolls([])
-      expect(await screen.findByText('No poll')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None'))
     })
 
-    it('shows Poll open for an open squad poll', async () => {
+    it('shows the poll as Open for an open squad poll', async () => {
       listPolls.mockResolvedValue([makePoll({ open: true })])
       await renderLoaded()
-      expect(await screen.findByText('Poll open')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
     })
 
-    it('shows Poll closed for a closed squad poll', async () => {
+    it('shows the poll as Closed for a closed squad poll', async () => {
       listPolls.mockResolvedValue([makePoll({ open: false })])
       await renderLoaded()
-      expect(await screen.findByText('Poll closed')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Closed'))
     })
 
     it('counts a group poll once when it covers both own sides', async () => {
       getMatchSquad.mockResolvedValue(COVERED)
       await renderLoaded()
 
-      expect(await screen.findByText('Poll open')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
       const button = await availabilityButton()
       const user = userEvent.setup()
       await user.click(button)
@@ -342,10 +356,10 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText('At: /manage/availability/group/round-1')).toBeInTheDocument()
     })
 
-    it('shows Poll open for a derby with two polls where either is open', async () => {
+    it('shows the poll as Open for a derby with two polls where either is open', async () => {
       listPolls.mockResolvedValue([makePoll({ id: 'p1', teamId: 'team-1', open: false }), makePoll({ id: 'p2', teamId: 'team-2', open: true })])
       await renderLoaded()
-      expect(await screen.findByText('Poll open')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('Open'))
     })
   })
 
@@ -368,13 +382,13 @@ describe('MatchDetailPage', () => {
       expect(screen.getByText('0 of 11 picked')).toBeInTheDocument()
     })
 
-    it('treats a failed polls query as not ready: no poll badge, Availability disabled', async () => {
+    it('treats a failed polls query as not ready: no poll state, Availability disabled', async () => {
       listPolls.mockRejectedValue(new Error('boom'))
       await renderLoaded()
 
       await waitFor(() => expect(listPolls).toHaveBeenCalled())
       expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
-      expect(screen.queryByText(/^(No poll|Poll open|Poll closed)$/)).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
     })
 
     it('treats a failed match-squad coverage query as not ready', async () => {
@@ -383,12 +397,12 @@ describe('MatchDetailPage', () => {
 
       await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
       expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
-      expect(screen.queryByText('No poll')).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
     })
   })
 
   describe('logos', () => {
-    it('shows a real team logo from teamsById and initials from the abbreviation or name', async () => {
+    it('shows a real team logo from teamsById beside its name, and no tile for a team with none', async () => {
       listTeamsForClub.mockResolvedValue([
         makeTeam('team-1', 'Villagers One', { logoUrl: 'https://img.example/v1.png' }),
         makeTeam('team-2', 'CBC One', { abbreviation: 'CBC' }),
@@ -397,11 +411,11 @@ describe('MatchDetailPage', () => {
 
       const home = await screen.findByTestId('match-logo-home')
       expect(home.querySelector('img')).toHaveAttribute('src', 'https://img.example/v1.png')
-      expect(screen.getByTestId('match-logo-away')).toHaveTextContent('CBC')
-      expect(screen.queryByTestId('match-header-avatar')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('match-logo-away')).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1 })).toContainElement(home)
     })
 
-    it('shows a free-text opponent logo from the side logo url, and name initials for the other side', async () => {
+    it('shows a free-text opponent logo from the side logo url, and no tile for the other side', async () => {
       getMatch.mockResolvedValueOnce(
         makeMatch({ awayTeamId: null, awayTeamName: 'Riverside Occasionals', awayTeamLogoUrl: 'https://img.example/r.png' }),
       )
@@ -409,38 +423,42 @@ describe('MatchDetailPage', () => {
 
       const away = await screen.findByTestId('match-logo-away')
       expect(away.querySelector('img')).toHaveAttribute('src', 'https://img.example/r.png')
-      // team-1 has no logo/abbreviation yet the other side does: both sides keep a box, with initials.
-      expect(screen.getByTestId('match-logo-home')).toHaveTextContent('1X')
+      expect(screen.queryByTestId('match-logo-home')).not.toBeInTheDocument()
     })
 
-    it('draws the cricket avatar and no logo boxes when neither side has a logo', async () => {
+    it('draws no logo tiles at all when neither side has a logo, and keeps a single "vs"', async () => {
       await renderLoaded()
 
-      expect(await screen.findByTestId('match-header-avatar')).toBeInTheDocument()
+      await screen.findByRole('heading', { level: 1, name: '1st XI vs 2nd XI' })
       expect(screen.queryByTestId('match-logo-home')).not.toBeInTheDocument()
       expect(screen.queryByTestId('match-logo-away')).not.toBeInTheDocument()
+      expect(screen.getAllByText('vs')).toHaveLength(1)
     })
   })
 
   describe('details and links', () => {
-    it('shows When always, and Venue and League/Season only when present', async () => {
+    it('shows Starts, Venue and League with its season in the key figures', async () => {
       listLeagues.mockResolvedValue([LEAGUE])
       listSeasons.mockResolvedValue([{ id: 'season-1', label: '2026/27' }])
       await renderLoaded(makeMatch({ leagueId: 'league-1' }))
 
-      expect(await screen.findByText('Premier League · 2026/27')).toBeInTheDocument()
-      expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'When' })).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'Venue' })).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: 'League' })).toBeInTheDocument()
+      expect(await screen.findByText('Premier League')).toBeInTheDocument()
+      expect(screen.getByText('League · 2026/27')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+      expect(screen.getByTestId('match-figure-starts-value')).toBeInTheDocument()
     })
 
-    it('omits Venue and League when empty', async () => {
+    it('shows TBC for no venue and Friendly for a match with no league', async () => {
       await renderLoaded(makeMatch({ venue: null }))
 
-      expect(screen.getByRole('group', { name: 'When' })).toBeInTheDocument()
-      expect(screen.queryByRole('group', { name: 'Venue' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('group', { name: 'League' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('TBC')
+      expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('Friendly')
+    })
+
+    it('shows the poll state in the key figures: None with no poll, Open with an open one', async () => {
+      await renderLoaded()
+      expect(await screen.findByText('No poll yet')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None')
     })
 
     it('shows Scoring and Watch live only when set, in a new tab with noopener', async () => {
@@ -632,7 +650,8 @@ describe('MatchDetailPage', () => {
 
       expect(await screen.findByText('2 of 11 picked')).toBeInTheDocument()
       expect(screen.getByRole('progressbar', { name: '1st XI selection' })).toHaveAttribute('aria-valuenow', '2')
-      expect(screen.getByText('2 picked · 9 to go')).toBeInTheDocument()
+      expect(screen.getByTestId('selection-picked')).toHaveTextContent('2 Picked')
+      expect(screen.getByTestId('selection-togo')).toHaveTextContent('9 To go')
       expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
     })
 
@@ -670,7 +689,7 @@ describe('MatchDetailPage', () => {
       ])
       renderPage(PATH, 'test-club-id')
 
-      expect(await screen.findByText('squad complete')).toBeInTheDocument()
+      expect(await screen.findByTestId('selection-complete')).toHaveTextContent('Squad complete')
     })
 
     it('shows "N picked" and no bar when the match has no league', async () => {

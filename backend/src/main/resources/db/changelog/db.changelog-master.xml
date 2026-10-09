@@ -44,5 +44,6 @@
     <include file="db/changelog/v1/037-add-match-scoring-streaming-urls.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/038-team-selection.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/039-public-availability.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/040-player-verification-status.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

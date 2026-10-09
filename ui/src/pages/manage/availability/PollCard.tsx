@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, IconButton, Stack, Typography, alpha } from '@mui/material'
-import type { Theme } from '@mui/material'
-import { isAxiosError } from 'axios'
-import { useMutation } from '@tanstack/react-query'
+import { IconButton, Stack } from '@mui/material'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -14,19 +11,18 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined'
 import { RecordCard } from '../../../components/RecordCard'
 import { BrandIcon } from '../../../components/BrandIcon'
+import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { SlotSummary } from '../../../components/SlotSummary'
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { PollShareDialog } from '../../../components/PollShareDialog'
 import { SectionAvailabilityShareDialog } from '../../../components/SectionAvailabilityShareDialog'
-import { closePoll, deletePoll } from '../../../api/matchAvailabilityApi'
-import { closeRound, deleteRound, updateRoundDescription } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 import { dayPartForDate, formatBracketLabel } from '../../../utils/dayPart'
 import { errorDetail } from '../../../utils/errorDetail'
-import { closePollDescription, closePollTitle } from '../../../utils/pollClose'
+import { usePollClose } from '../../../hooks/usePollClose'
+import { usePollDelete } from '../../../hooks/usePollDelete'
+import { usePollDescription } from './usePollDescription'
 import { EditCloseTimeDialog } from './EditCloseTimeDialog'
-import { EditDescriptionDialog } from './EditDescriptionDialog'
 import { PollMatchesDialog } from './PollMatchesDialog'
 import {
   REOPEN_PAST_REASON,
@@ -104,64 +100,43 @@ export function PollCard({
 }) {
   const navigate = useNavigate()
   const isOpen = item.kind === 'GROUP' ? item.round.open : open
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [closeOpen, setCloseOpen] = useState(false)
   const [closeTimeOpen, setCloseTimeOpen] = useState(false)
   const [matchesOpen, setMatchesOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [descriptionOpen, setDescriptionOpen] = useState(false)
-  // The server's own 409 message when picked match squad members block a group delete.
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null)
 
   const autoClose = item.kind === 'GROUP' ? item.round.autoClose : item.poll.autoClose
   const scheduledCloseAt = item.kind === 'GROUP' ? item.round.scheduledCloseAt : item.poll.scheduledCloseAt
   const kickoff = item.kind === 'GROUP' ? item.round.firstMatchKickoff : item.poll.matchDate
   const title = item.kind === 'GROUP' ? item.round.description : squadPollTitle(item.poll, teamsById)
 
-  const deleteMutation = useMutation({
-    mutationFn: () =>
-      item.kind === 'GROUP' ? deleteRound(clubId, item.round.id) : deletePoll(clubId, item.poll.matchId, item.poll.pollId),
-    onSuccess: () => {
-      setDeleteOpen(false)
-      onChanged()
-    },
-    onError: (error) => {
-      setDeleteOpen(false)
-      if (item.kind === 'GROUP' && isAxiosError(error) && error.response?.status === 409) {
-        setBlockedMessage(errorDetail(error, "This group poll can't be deleted right now."))
-      }
-    },
+  // Delete, Close and the group description are the shared hooks (docs/specs/090), also used by both poll pages.
+  const pollDelete = usePollDelete({
+    clubId,
+    target:
+      item.kind === 'GROUP'
+        ? { kind: 'GROUP', roundId: item.round.id }
+        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
+    title,
+    onDeleted: onChanged,
   })
 
-  // Only closing is a plain mutation; reopening goes through EditCloseTimeDialog (a new close time
-  // is saved first, since the server refuses a reopen once an automatic close time has passed).
-  const closeMutation = useMutation({
-    mutationFn: async () => {
-      if (item.kind === 'GROUP') {
-        await closeRound(clubId, item.round.id)
-      } else {
-        await closePoll(clubId, item.poll.matchId, item.poll.pollId)
-      }
-    },
-    onSuccess: () => {
-      setCloseOpen(false)
-      onChanged()
-    },
-    onError: () => setCloseOpen(false),
+  // Closing is the shared hook (docs/specs/090); reopening goes through EditCloseTimeDialog (a new close time is saved
+  // first, since the server refuses a reopen once an automatic close time has passed).
+  const pollClose = usePollClose({
+    clubId,
+    target:
+      item.kind === 'GROUP'
+        ? { kind: 'GROUP', roundId: item.round.id }
+        : { kind: 'SQUAD', matchId: item.poll.matchId, pollId: item.poll.pollId },
+    autoClose,
+    onClosed: onChanged,
   })
 
-  const groupRoundId = item.kind === 'GROUP' ? item.round.id : null
-  const descriptionMutation = useMutation({
-    mutationFn: async (description: string) => {
-      if (!groupRoundId) {
-        throw new Error('Only a group poll has an editable description.')
-      }
-      await updateRoundDescription(clubId, groupRoundId, description)
-    },
-    onSuccess: () => {
-      setDescriptionOpen(false)
-      onChanged()
-    },
+  const pollDescription = usePollDescription({
+    clubId,
+    roundId: item.kind === 'GROUP' ? item.round.id : '',
+    description: item.kind === 'GROUP' ? item.round.description : '',
+    onSaved: onChanged,
   })
 
   const subtitle =
@@ -199,17 +174,17 @@ export function PollCard({
         titleLines={3}
         // A pencil after a group poll's title edits its description (matches can't be changed after
         // creation, docs/specs/064 Non-goals); a squad poll's title is derived from its match.
-        titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: () => setDescriptionOpen(true) } : undefined}
+        titleEdit={item.kind === 'GROUP' ? { label: 'Edit description', onClick: pollDescription.openEditor } : undefined}
         cornerAction={{
           label: 'Delete',
           pendingLabel: 'Deleting…',
-          pending: deleteMutation.isPending,
-          onClick: () => setDeleteOpen(true),
+          pending: pollDelete.deleting,
+          onClick: pollDelete.requestDelete,
           icon: <DeleteOutlineIcon fontSize="small" />,
         }}
         footerButtons={[
           isOpen
-            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: () => setCloseOpen(true), disabled: closeMutation.isPending }
+            ? { label: 'Close poll', icon: <LockOutlinedIcon fontSize="small" />, onClick: pollClose.requestClose, disabled: pollClose.closing }
             : {
                 label: 'Reopen poll',
                 // Same disabled + reason pattern as Share on a closed poll (docs/specs/082).
@@ -236,62 +211,39 @@ export function PollCard({
           },
         ]}
         feedback={
-          closeMutation.isError
-            ? { message: errorDetail(closeMutation.error, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
-            : deleteMutation.isError && !blockedMessage
-              ? { message: errorDetail(deleteMutation.error, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
+          pollClose.closeError
+            ? { message: errorDetail(pollClose.closeError, 'Something went wrong updating this poll. Please try again.'), tone: 'error' }
+            : pollDelete.deleteError
+              ? { message: errorDetail(pollDelete.deleteError, 'Something went wrong deleting this poll. Please try again.'), tone: 'error' }
               : null
         }
       >
         {/* docs/specs/082: the close time is read first - a tinted strip above the response indicator,
-            amber within 24 hours of closing, neutral otherwise (and once closed). */}
-        <Box
-          data-testid="poll-closes-row"
-          data-tone={closingSoon ? 'warning' : 'neutral'}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            columnGap: 1,
-            rowGap: 0.5,
-            px: 1.5,
-            py: 1,
-            borderRadius: 1,
-            border: 1,
-            bgcolor: (theme: Theme) =>
-              closingSoon ? alpha(theme.palette.warning.main, 0.14) : alpha(theme.palette.primary.main, 0.08),
-            borderColor: (theme: Theme) => (closingSoon ? alpha(theme.palette.warning.main, 0.5) : theme.palette.divider),
-            color: closingSoon ? 'warning.dark' : 'text.primary',
-          }}
-        >
-          <Box component="span" aria-hidden sx={{ display: 'inline-flex', color: 'inherit' }}>
-            <EventBusyOutlinedIcon fontSize="small" />
-          </Box>
-          <Typography variant="body2" component="span" sx={{ color: closingSoon ? 'warning.dark' : 'text.secondary', fontWeight: 600 }}>
-            {closes.label}
-          </Typography>
-          <Typography variant="subtitle1" component="span" fontWeight={700} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            {closes.value}
-          </Typography>
-          {/* Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
-              position: relative keeps it above the card's stretched link. */}
-          {isOpen && (
-            <IconButton
-              size="small"
-              aria-label="Edit close time"
-              title="Edit close time"
-              onClick={() => setCloseTimeOpen(true)}
-              sx={{ position: 'relative', p: '2px', color: 'inherit' }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          )}
-          {countdownTarget && (
-            <Box sx={{ ml: { sm: 'auto' } }}>
-              <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" />
-            </Box>
-          )}
-        </Box>
+            amber within 24 hours of closing, neutral otherwise (and once closed). docs/specs/087: the strip
+            is the shared CardTimeStrip, which the match card uses too. */}
+        <CardTimeStrip
+          testId="poll-closes-row"
+          tone={closingSoon ? 'warning' : 'neutral'}
+          icon={<EventBusyOutlinedIcon fontSize="small" />}
+          label={closes.label}
+          value={closes.value}
+          // Only while open (Reopen poll in the footer opens the same dialog once closed). Its own
+          // position: relative keeps it above the card's stretched link.
+          action={
+            isOpen ? (
+              <IconButton
+                size="small"
+                aria-label="Edit close time"
+                title="Edit close time"
+                onClick={() => setCloseTimeOpen(true)}
+                sx={{ position: 'relative', p: '2px', color: 'inherit' }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            ) : undefined
+          }
+          trailing={countdownTarget ? <Countdown target={countdownTarget} phrase="left" ariaPrefix="Closes in" /> : undefined}
+        />
         {/* The summary area grows (flex: 1) so the footer below lines up across the cards of a row. */}
         <Stack spacing={1.5} sx={{ flex: 1 }}>
           {slotsFor(item).map((slot) => (
@@ -300,20 +252,7 @@ export function PollCard({
         </Stack>
       </RecordCard>
 
-      {item.kind === 'GROUP' && (
-        <EditDescriptionDialog
-          open={descriptionOpen}
-          onClose={() => setDescriptionOpen(false)}
-          description={item.round.description}
-          pending={descriptionMutation.isPending}
-          errorMessage={
-            descriptionMutation.isError
-              ? errorDetail(descriptionMutation.error, 'Something went wrong saving this description. Please try again.')
-              : null
-          }
-          onSave={(description) => descriptionMutation.mutate(description)}
-        />
-      )}
+      {item.kind === 'GROUP' && pollDescription.dialog}
 
       <EditCloseTimeDialog
         open={closeTimeOpen}
@@ -353,38 +292,8 @@ export function PollCard({
         />
       )}
 
-      <ConfirmDialog
-        open={closeOpen}
-        title={closePollTitle()}
-        description={closePollDescription(autoClose)}
-        confirmLabel="Close poll"
-        pendingLabel="Closing…"
-        pending={closeMutation.isPending}
-        onConfirm={() => closeMutation.mutate()}
-        onClose={() => setCloseOpen(false)}
-      />
-      <ConfirmDialog
-        open={deleteOpen}
-        title={item.kind === 'GROUP' ? 'Delete this group poll?' : 'Delete this squad poll?'}
-        description={
-          item.kind === 'GROUP'
-            ? `"${title}" and every response to it will be removed. Its fixtures can be polled again afterwards.`
-            : `The poll for ${title} and every response to it will be removed. This match can be polled again afterwards.`
-        }
-        confirmLabel="Delete poll"
-        pendingLabel="Deleting…"
-        destructive
-        pending={deleteMutation.isPending}
-        onConfirm={() => deleteMutation.mutate()}
-        onClose={() => setDeleteOpen(false)}
-      />
-      <ConfirmDialog
-        open={blockedMessage !== null}
-        title="Can't delete this poll"
-        description={blockedMessage}
-        acknowledgeOnly
-        onClose={() => setBlockedMessage(null)}
-      />
+      {pollClose.confirmDialog}
+      {pollDelete.dialogs}
     </>
   )
 }

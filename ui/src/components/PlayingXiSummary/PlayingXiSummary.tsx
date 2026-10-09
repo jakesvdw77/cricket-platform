@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Chip, Stack, Typography } from '@mui/material'
 import { EmptyState } from '../EmptyState'
+import { zebraTint } from '../../utils/zebraTint'
 import { squadDisplayName } from '../../utils/squadDisplayName'
 import type { SquadMember } from '../../api/teamSquadApi'
 import type { MatchSidePlayer, PlayingRole } from '../../api/matchSideApi'
@@ -26,6 +27,8 @@ export interface PlayingXiSummaryProps {
   captainPlayerId: string | null
   wicketKeeperPlayerId: string | null
   twelfthManPlayerId: string | null
+  // docs/specs/089: compact 44 px rows with a zebra tint instead of a bordered box per player (the match page).
+  zebra?: boolean
 }
 
 // docs/specs/036-view-first-record-detail-screens.md's genuinely new, read-only component: an
@@ -38,6 +41,7 @@ export function PlayingXiSummary({
   captainPlayerId,
   wicketKeeperPlayerId,
   twelfthManPlayerId,
+  zebra = false,
 }: PlayingXiSummaryProps) {
   const squadById = useMemo(() => {
     const map = new Map<string, SquadMember>()
@@ -70,8 +74,8 @@ export function PlayingXiSummary({
   }
 
   return (
-    <Stack spacing={1.5}>
-      {orderedXi.map((entry) => {
+    <Stack spacing={zebra ? 0.25 : 1.5} data-zebra={zebra ? 'true' : undefined}>
+      {orderedXi.map((entry, index) => {
         const member = squadById.get(entry.playerProfileId)
         const name = member ? squadDisplayName(member) : sideOwnName(entry)
         const isCaptain = captainPlayerId === entry.playerProfileId
@@ -84,7 +88,11 @@ export function PlayingXiSummary({
             flexWrap="wrap"
             alignItems="center"
             spacing={1.5}
-            sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}
+            sx={
+              zebra
+                ? { px: 1.5, minHeight: 44, borderRadius: 0.75, ...(index % 2 === 0 ? { bgcolor: zebraTint } : {}) }
+                : { p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }
+            }
           >
             <Typography variant="body2" fontWeight={600} sx={{ width: 24, flex: 'none' }}>
               {entry.battingOrder ?? '–'}

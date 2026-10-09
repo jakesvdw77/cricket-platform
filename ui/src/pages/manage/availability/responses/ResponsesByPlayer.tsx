@@ -5,6 +5,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { Input } from '../../../../components/Input'
 import { compactFieldsSx } from '../../../../utils/filterPanel'
+import { zebraTint } from '../../../../utils/zebraTint'
 import { CompactSwitch } from '../../../../components/CompactSwitch'
 import { STATUS_LABEL, statusTintSx } from '../../../../utils/availabilityStatus'
 import { StatusOverrideMenu } from './StatusOverrideMenu'
@@ -188,7 +189,7 @@ export function ResponsesByPlayer({
               <TableRow
                 key={row.playerProfileId}
                 // Alternate rows: an opaque theme tint (as the Players grid uses), so a name can be followed across.
-                sx={(theme) => ({ '&:nth-of-type(odd)': { bgcolor: lighten(theme.palette.primary.main, 0.95) } })}
+                sx={{ '&:nth-of-type(odd)': { bgcolor: zebraTint } }}
               >
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{playerName(row)}</TableCell>
                 {brackets.map((bracket) => {

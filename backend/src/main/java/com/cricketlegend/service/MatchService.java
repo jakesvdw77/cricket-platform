@@ -1,8 +1,10 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
+import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +40,10 @@ public interface MatchService {
      * are further optional filters, combinable with {@code sectionId}/{@code upcomingOnly} in any
      * combination — composed as one {@code Specification<Match>} rather than a branch per
      * combination.
+     *
+     * <p>Per docs/specs/087-matches-polls-alignment.md: {@code teamId} (the match has that team as its home or away
+     * side) and {@code focus} (one of the Matches quick filters, {@code null} for none) narrow the list further;
+     * {@code focus} brings its own active/upcoming bounds and is the same definition {@link #summary} counts.
      */
     Page<MatchDto> list(
             Authentication authentication,
@@ -47,6 +53,8 @@ public interface MatchService {
             String search,
             UUID leagueId,
             UUID seasonId,
+            UUID teamId,
+            MatchListFocus focus,
             Pageable pageable);
 
     /**
@@ -56,7 +64,9 @@ public interface MatchService {
      * {@code search}/{@code upcomingOnly}) are currently active — each returned array is computed
      * ignoring its OWN corresponding filter argument (so, e.g., a caller's own {@code leagueId}
      * selection never narrows the returned {@code leagueIds} down to just itself). Same
-     * authorization/section-scoping as {@link #list}.
+     * authorization/section-scoping as {@link #list}. Per docs/specs/087: {@code teamId} narrows the section, league
+     * and season arrays like the other picks; {@code teamIds} ignores it (its own dimension), so the same array feeds
+     * the Team dropdown and the search suggestions.
      */
     MatchFilterOptionsDto filterOptions(
             Authentication authentication,
@@ -64,8 +74,25 @@ public interface MatchService {
             UUID sectionId,
             UUID leagueId,
             UUID seasonId,
+            UUID teamId,
             String search,
             boolean upcomingOnly);
+
+    /**
+     * Per docs/specs/087-matches-polls-alignment.md: the Matches page counters for exactly the filters the list uses
+     * (same authorization and section scoping as {@link #list}; {@code includePast} is the inverse of the list's
+     * {@code upcomingOnly}). {@code matchesShown} is the list's own total; each quick-filter figure equals the
+     * list's {@code totalElements} for the same filters with that {@code focus}. A fixed number of count queries.
+     */
+    MatchesSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            String search,
+            boolean includePast);
 
     MatchDto get(Authentication authentication, UUID clubId, UUID matchId);
 

@@ -139,4 +139,23 @@ describe('ManageScreenHeader', () => {
     )
     expect(screen.queryByTestId('header-subtitle')).not.toBeInTheDocument()
   })
+
+  // docs/specs/089: a control beside the title, with or without a subtitle.
+  it('renders a title adornment next to the heading, with and without a subtitle', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ManageScreenHeader title="Matches" titleAdornment={<button type="button">Season</button>} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Matches' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Season' })).toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter>
+        <ManageScreenHeader title="Matches" subtitle="Showing: all" titleAdornment={<button type="button">Season</button>} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: 'Season' })).toBeInTheDocument()
+    expect(screen.getByTestId('header-subtitle')).toHaveTextContent('Showing: all')
+  })
 })

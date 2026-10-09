@@ -1,5 +1,6 @@
 import { Divider, Stack, Typography } from '@mui/material'
 import { CardProgressBar } from '../../../components/CardProgressBar'
+import { zebraTint } from '../../../utils/zebraTint'
 import { pickedLegend } from './matchCardHelpers'
 import type { SelectionRow } from './matchCardHelpers'
 
@@ -22,17 +23,25 @@ export function SelectionBlock({ rows }: SelectionBlockProps) {
           Neither side is one of your teams, so there is nobody to pick.
         </Typography>
       ) : (
-        rows.map((row, index) => <SelectionRowView key={`${index}-${row.teamName}`} row={row} />)
+        // docs/specs/087: the team rows alternate with the shared zebra tint (the first row tinted); the 8 px padding
+        // plus the matching negative margin keep the text aligned with the rest of the card body.
+        <Stack sx={{ mx: -1 }}>
+          {rows.map((row, index) => (
+            <SelectionRowView key={`${index}-${row.teamName}`} row={row} />
+          ))}
+        </Stack>
       )}
     </Stack>
   )
 }
 
+const zebraRowSx = { p: 1, borderRadius: 0.75, '&:nth-of-type(odd)': { bgcolor: zebraTint } }
+
 function SelectionRowView({ row }: { row: SelectionRow }) {
   const { teamName, picked, playingXiSize } = row
   if (playingXiSize === null) {
     return (
-      <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
+      <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1} sx={zebraRowSx}>
         <Typography variant="body2" fontWeight={600} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
           {teamName}
         </Typography>
@@ -44,7 +53,7 @@ function SelectionRowView({ row }: { row: SelectionRow }) {
   }
 
   return (
-    <Stack spacing={0.75}>
+    <Stack spacing={0.75} sx={zebraRowSx}>
       <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
         <Typography variant="body2" fontWeight={600} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
           {teamName}

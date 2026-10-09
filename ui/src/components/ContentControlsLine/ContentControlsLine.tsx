@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { Box, Link, Typography, useMediaQuery } from '@mui/material'
+import { useState } from 'react'
+import { Box, Link, ListItemIcon, Menu, MenuItem, Typography, useMediaQuery } from '@mui/material'
+import CheckIcon from '@mui/icons-material/Check'
 import { useTheme } from '@mui/material/styles'
 
 export interface ContentControlsLineProps {
@@ -49,3 +51,57 @@ export function SortLink({ label, onToggle }: SortLinkProps) {
     </Link>
   )
 }
+
+export interface SortMenuOption {
+  value: string
+  // The menu item, e.g. "Games this season, most first".
+  label: string
+  // The short wording on the link itself, e.g. "most games".
+  linkLabel: string
+}
+
+export interface SortMenuProps {
+  value: string
+  options: SortMenuOption[]
+  onChange: (value: string) => void
+}
+
+// docs/specs/088-players-polls-alignment.md: the quiet sort link for a list that sorts by more than one thing. Reads like
+// SortLink ("A to Z ↕") but opens a small menu of every order, the current one ticked, instead of just reversing.
+export function SortMenu({ value, options, onChange }: SortMenuProps) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const current = options.find((option) => option.value === value) ?? options[0]
+  return (
+    <>
+      <Link
+        component="button"
+        type="button"
+        underline="hover"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(anchor)}
+        title="Change the sort order"
+        onClick={(event) => setAnchor(event.currentTarget)}
+        sx={{ fontWeight: 700, fontSize: 'inherit', verticalAlign: 'baseline' }}
+      >
+        {current.linkLabel} <span aria-hidden>↕</span>
+      </Link>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} MenuListProps={{ 'aria-label': 'Sort order' }}>
+        {options.map((option) => (
+          <MenuItem
+            key={option.value}
+            selected={option.value === current.value}
+            onClick={() => {
+              setAnchor(null)
+              onChange(option.value)
+            }}
+            sx={{ minHeight: 44 }}
+          >
+            <ListItemIcon sx={{ minWidth: 28 }}>{option.value === current.value ? <CheckIcon fontSize="small" /> : null}</ListItemIcon>
+            {option.label}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  )
+}
+

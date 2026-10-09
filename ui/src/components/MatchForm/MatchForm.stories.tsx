@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
-import { MemoryRouter } from 'react-router-dom'
 import { MatchForm } from './MatchForm'
 import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
@@ -126,13 +125,11 @@ const meta: Meta<typeof MatchForm> = {
   component: MatchForm,
   parameters: { layout: 'padded' },
   decorators: [
-    // MemoryRouter: MatchSideFields renders a RouterLink in the empty league-team state.
+    // The global decorator already provides the router MatchSideFields' RouterLink needs.
     (Story) => (
-      <MemoryRouter>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-          <Story />
-        </Box>
-      </MemoryRouter>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+        <Story />
+      </Box>
     ),
   ],
 }

@@ -163,7 +163,11 @@ export interface RecordCardProps {
   // width instead of being squeezed by a right-hand badge cluster. The header's right-hand badges
   // are then not rendered. Purely additive: omitted, nothing changes.
   badgesAbove?: boolean
-  // Small actions (icon buttons) drawn at the right end of the title row when badgesAbove is set; positioned
+  // docs/specs/087-matches-polls-alignment.md: render the badges in a left-aligned wrapping row directly
+  // BELOW the header (the poll card's layout) while `headerActions` stay top-right, without needing a
+  // `cornerAction`. Ignored when `badgesAbove` is set. Purely additive: omitted, nothing changes.
+  badgesBelow?: boolean
+  // Small actions (icon buttons) drawn at the right end of the title row when badgesAbove or badgesBelow is set; positioned
   // above the stretched view link so they stay clickable.
   headerActions?: ReactNode
   // docs/specs/064-unified-availability-polls.md: a compact icon-only action (e.g. Delete) in the
@@ -303,6 +307,7 @@ export function RecordCard({
   titleWrap,
   titleLines = 2,
   badgesAbove,
+  badgesBelow,
   headerActions,
   cornerAction,
   secondaryAction,
@@ -477,7 +482,7 @@ export function RecordCard({
                 {cornerAction.icon}
               </IconButton>
             </Stack>
-          ) : badgesAbove ? (
+          ) : badgesAbove || badgesBelow ? (
             headerActions ? (
               <Box sx={{ position: 'relative', display: 'flex', flexShrink: 0, alignItems: 'flex-start', mt: -0.5, mr: -0.5 }}>
                 {headerActions}
@@ -490,7 +495,7 @@ export function RecordCard({
           )}
         </Stack>
 
-        {cornerAction && !badgesAbove && (badge || (badges && badges.length > 0)) && (
+        {(cornerAction || badgesBelow) && !badgesAbove && (badge || (badges && badges.length > 0)) && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {badgeChips}
           </Stack>

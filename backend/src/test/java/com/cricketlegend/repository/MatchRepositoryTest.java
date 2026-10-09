@@ -9,6 +9,7 @@ import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -450,7 +452,7 @@ class MatchRepositoryTest {
                 .matchDate(Instant.now()).active(true).build());
 
         MatchFilterOptionsDto result = matchService.filterOptions(
-                PLATFORM_ADMIN, club.getId(), null, null, null, "Alpha", false);
+                PLATFORM_ADMIN, club.getId(), null, null, null, null, "Alpha", false);
 
         assertThat(result.sectionIds()).containsExactly(sectionA.getId());
         assertThat(result.leagueIds()).containsExactly(leagueA.getId());
@@ -619,5 +621,50 @@ class MatchRepositoryTest {
         List<Match> found = matchRepository.findActiveInWindow(club.getId(), from, to);
 
         assertThat(found).extracting(Match::getId).containsExactlyInAnyOrder(atFrom.getId(), inside.getId());
+    }
+    // ---- docs/specs/087-matches-polls-alignment.md: the Matches quick filters ----
+
+    @Test
+    void thisWeekFocusIncludesTheStartInstantExcludesTheEndInstantAndSkipsInactiveMatches() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Instant start = Instant.parse("2031-03-03T00:00:00Z");
+        Instant end = start.plus(7, ChronoUnit.DAYS);
+        Match atStart = matchRepository.save(match(club.getId(), season.getId(), start));
+        Match lastMoment = matchRepository.save(match(club.getId(), season.getId(), end.minusSeconds(1)));
+        matchRepository.save(match(club.getId(), season.getId(), end)); // the half-open end
+        matchRepository.save(match(club.getId(), season.getId(), start.minusSeconds(1))); // yesterday
+        Match inactive = match(club.getId(), season.getId(), start.plus(1, ChronoUnit.DAYS));
+        inactive.setActive(false);
+        matchRepository.save(inactive);
+
+        List<Match> found = matchRepository.findAll(
+                MatchSpecifications.focus(MatchListFocus.THIS_WEEK, club.getId(), Optional.empty(), start, end));
+
+        assertThat(found).extracting(Match::getId).containsExactlyInAnyOrder(atStart.getId(), lastMoment.getId());
+    }
+
+    @Test
+    void teamIdOnForListMatchesTheTeamOnEitherSideAndComposesWithTheOtherFilters() {
+        Club club = savedClub("riverside-cc");
+        Season season = savedSeason(club.getId());
+        Section section = sectionRepository.save(Section.builder().clubId(club.getId()).name("Open").active(true).build());
+        Team first = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(section.getId()).name("1st XI").active(true).build());
+        Team second = teamRepository.save(Team.builder().clubId(club.getId()).sectionId(section.getId()).name("2nd XI").active(true).build());
+        Instant now = Instant.now();
+        Match derby = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(first.getId())
+                .awayTeamId(second.getId()).seasonId(season.getId()).matchDate(now).active(true).build());
+        Match secondAway = matchRepository.save(Match.builder().clubId(club.getId()).homeTeamName("Away Occasionals")
+                .awayTeamId(second.getId()).seasonId(season.getId()).matchDate(now).active(true).build());
+        matchRepository.save(Match.builder().clubId(club.getId()).homeTeamId(first.getId())
+                .awayTeamName("Home Occasionals").seasonId(season.getId()).matchDate(now).active(true).build());
+
+        List<Match> found = matchRepository.findAll(
+                MatchSpecifications.forList(club.getId(), Optional.empty(), null, null, null, second.getId(), null));
+        List<Match> narrowed = matchRepository.findAll(
+                MatchSpecifications.forList(club.getId(), Optional.empty(), null, null, null, second.getId(), "away"));
+
+        assertThat(found).extracting(Match::getId).containsExactlyInAnyOrder(derby.getId(), secondAway.getId());
+        assertThat(narrowed).extracting(Match::getId).containsExactly(secondAway.getId());
     }
 }

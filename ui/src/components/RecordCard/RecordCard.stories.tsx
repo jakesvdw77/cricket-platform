@@ -127,6 +127,27 @@ export const BadgesAbove: Story = {
   },
 }
 
+// docs/specs/087: badges in a left-aligned row below the header (the poll card layout) while the header
+// keeps its right-hand actions - the match card's new layout.
+export const BadgesBelowWithHeaderActions: Story = {
+  args: {
+    title: 'Irene Village Cricket Club First XI vs Riverside Occasionals',
+    titleWrap: true,
+    badgesBelow: true,
+    headerActions: (
+      <button type="button" aria-label="Scoring">
+        Scoring
+      </button>
+    ),
+    badges: [
+      { label: 'Announced', tone: 'positive' },
+      { label: 'Poll open', tone: 'open' },
+    ],
+    editLabel: 'Edit',
+    onEdit: () => undefined,
+  },
+}
+
 // A long description-style title (the poll card) clamped to three lines beside its pencil.
 export const LongTitleThreeLines: Story = {
   args: {

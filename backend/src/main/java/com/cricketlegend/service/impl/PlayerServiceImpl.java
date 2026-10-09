@@ -4,10 +4,13 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.ClubMembership;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PersonStatus;
+import com.cricketlegend.domain.PlayerListFocus;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
+import com.cricketlegend.domain.PlayerVerificationStatus;
 import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.PlayerDto;
+import com.cricketlegend.dto.PlayersSummaryDto;
 import com.cricketlegend.dto.UpdatePlayerRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -15,13 +18,19 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.PlayerMapper;
 import com.cricketlegend.repository.ClubMembershipRepository;
 import com.cricketlegend.repository.ClubRepository;
+import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.PlayerGamesView;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
+import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.PlayerService;
+import com.cricketlegend.service.support.PlayerRoster;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,6 +67,8 @@ public class PlayerServiceImpl implements PlayerService {
     private final ClubMembershipRepository clubMembershipRepository;
     private final PlayerProfileRepository playerProfileRepository;
     private final PlayerSectionRepository playerSectionRepository;
+    private final TeamSquadMemberRepository teamSquadMemberRepository;
+    private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final PlayerMapper playerMapper;
     private final AccessService accessService;
 
@@ -67,6 +78,8 @@ public class PlayerServiceImpl implements PlayerService {
             ClubMembershipRepository clubMembershipRepository,
             PlayerProfileRepository playerProfileRepository,
             PlayerSectionRepository playerSectionRepository,
+            TeamSquadMemberRepository teamSquadMemberRepository,
+            MatchSidePlayerRepository matchSidePlayerRepository,
             PlayerMapper playerMapper,
             AccessService accessService) {
         this.clubRepository = clubRepository;
@@ -74,6 +87,8 @@ public class PlayerServiceImpl implements PlayerService {
         this.clubMembershipRepository = clubMembershipRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.playerSectionRepository = playerSectionRepository;
+        this.teamSquadMemberRepository = teamSquadMemberRepository;
+        this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.playerMapper = playerMapper;
         this.accessService = accessService;
     }
@@ -81,7 +96,87 @@ public class PlayerServiceImpl implements PlayerService {
     @Override
     @Transactional(readOnly = true)
     public List<PlayerDto> list(
-            Authentication authentication, UUID clubId, UUID sectionId, boolean missingDateOfBirth) {
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean missingDateOfBirth,
+            boolean includeInactive,
+            PlayerListFocus focus,
+            UUID seasonId) {
+        if (focus != null && focus.needsSeason() && seasonId == null) {
+            throw new ValidationException("seasonId is required for focus '" + focus.value() + "'");
+        }
+        PlayerRoster roster = visibleRoster(authentication, clubId, sectionId, missingDateOfBirth, includeInactive);
+        List<PlayerProfile> visible = applyFocus(roster.profiles(), clubId, focus, seasonId);
+        if (visible.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Person> personsById = new HashMap<>();
+        personRepository
+                .findAllById(visible.stream().map(PlayerProfile::getPersonId).toList())
+                .forEach(person -> personsById.put(person.getId(), person));
+
+        // docs/specs/088: games played, in two grouped statements for the whole list (the second only when a season is
+        // given), never one per player. A player who has played none is simply absent from the maps.
+        Instant now = Instant.now();
+        Map<UUID, Long> gamesOverall = gamesByPlayer(matchSidePlayerRepository.findGamesPlayed(clubId, now));
+        Map<UUID, Long> gamesThisSeason = seasonId == null
+                ? Map.of()
+                : gamesByPlayer(matchSidePlayerRepository.findGamesPlayedInSeason(clubId, seasonId, now));
+
+        return visible.stream()
+                .map(profile -> {
+                    Person person = personsById.get(profile.getPersonId());
+                    if (person == null) {
+                        throw new NotFoundException("Person not found: " + profile.getPersonId());
+                    }
+                    return playerMapper.toDto(
+                            person,
+                            profile,
+                            roster.sectionsByProfile().getOrDefault(profile.getId(), List.of()),
+                            gamesThisSeason.getOrDefault(profile.getId(), 0L).intValue(),
+                            gamesOverall.getOrDefault(profile.getId(), 0L).intValue());
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlayersSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean missingDateOfBirth,
+            boolean includeInactive,
+            UUID seasonId) {
+        List<PlayerProfile> players =
+                visibleRoster(authentication, clubId, sectionId, missingDateOfBirth, includeInactive).profiles();
+        long unverified = players.stream()
+                .filter(profile -> profile.getVerificationStatus() == PlayerVerificationStatus.UNVERIFIED)
+                .count();
+        long inSquad = 0;
+        long selected = 0;
+        if (seasonId != null && !players.isEmpty()) {
+            inSquad = countIn(players, squadPlayerIds(seasonId));
+            selected = countIn(players, selectedPlayerIds(clubId, seasonId));
+        }
+        return new PlayersSummaryDto(players.size(), inSquad, selected, unverified);
+    }
+
+    /**
+     * The one place that decides which players the Players page lists and counts (docs/specs/088): the caller's section
+     * scope (an explicit {@code sectionId} narrows to its own closure), the Missing date of birth filter, and {@code
+     * includeInactive}. With {@code includeInactive = false} suspended ({@code active = false}) and rejected players are
+     * left out; unverified players are always included, so a request is never hidden from the manager. Shared by {@link
+     * #list} and {@link #summary} so a counter and its list cannot disagree.
+     */
+    private PlayerRoster visibleRoster(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean missingDateOfBirth,
+            boolean includeInactive) {
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         Set<UUID> narrowTo = null;
         if (sectionId != null) {
@@ -94,10 +189,10 @@ public class PlayerServiceImpl implements PlayerService {
                 ? playerProfileRepository.findByClubIdWithoutDateOfBirth(clubId)
                 : playerProfileRepository.findByClubId(clubId);
         if (profiles.isEmpty()) {
-            return List.of();
+            return PlayerRoster.empty();
         }
 
-        // Batch both lookups once, never per player.
+        // Batch the section lookup once, never per player.
         Map<UUID, List<UUID>> sectionsByProfile = new HashMap<>();
         playerSectionRepository
                 .findByPlayerProfileIdIn(profiles.stream().map(PlayerProfile::getId).toList())
@@ -106,6 +201,9 @@ public class PlayerServiceImpl implements PlayerService {
                         .add(link.getSectionId()));
 
         List<PlayerProfile> visible = profiles.stream()
+                .filter(profile -> includeInactive
+                        || (profile.isActive()
+                                && profile.getVerificationStatus() != PlayerVerificationStatus.REJECTED))
                 .filter(profile -> {
                     List<UUID> tagged = sectionsByProfile.getOrDefault(profile.getId(), List.of());
                     if (accessibleSectionIds.isPresent()
@@ -115,22 +213,84 @@ public class PlayerServiceImpl implements PlayerService {
                     return narrowToFinal == null || tagged.stream().anyMatch(narrowToFinal::contains);
                 })
                 .toList();
+        return new PlayerRoster(visible, sectionsByProfile);
+    }
 
-        Map<UUID, Person> personsById = new HashMap<>();
-        personRepository
-                .findAllById(visible.stream().map(PlayerProfile::getPersonId).toList())
-                .forEach(person -> personsById.put(person.getId(), person));
+    private List<PlayerProfile> applyFocus(
+            List<PlayerProfile> players, UUID clubId, PlayerListFocus focus, UUID seasonId) {
+        if (focus == null || players.isEmpty()) {
+            return players;
+        }
+        if (focus == PlayerListFocus.UNVERIFIED) {
+            return players.stream()
+                    .filter(profile -> profile.getVerificationStatus() == PlayerVerificationStatus.UNVERIFIED)
+                    .toList();
+        }
+        // a plain conditional, not a switch: a switch over an enum compiles to a synthetic nested class, which the
+        // architecture rule for service.impl does not allow
+        return focus == PlayerListFocus.IN_SQUAD
+                ? keepIn(players, squadPlayerIds(seasonId))
+                : keepIn(players, selectedPlayerIds(clubId, seasonId));
+    }
 
-        return visible.stream()
-                .map(profile -> {
-                    Person person = personsById.get(profile.getPersonId());
-                    if (person == null) {
-                        throw new NotFoundException("Person not found: " + profile.getPersonId());
-                    }
-                    return playerMapper.toDto(
-                            person, profile, sectionsByProfile.getOrDefault(profile.getId(), List.of()));
-                })
-                .toList();
+    private static Map<UUID, Long> gamesByPlayer(List<PlayerGamesView> views) {
+        Map<UUID, Long> games = new HashMap<>();
+        views.forEach(view -> games.put(view.getPlayerProfileId(), view.getGames()));
+        return games;
+    }
+
+    private Set<UUID> squadPlayerIds(UUID seasonId) {
+        return new HashSet<>(teamSquadMemberRepository.findDistinctPlayerProfileIdsBySeasonId(seasonId));
+    }
+
+    private Set<UUID> selectedPlayerIds(UUID clubId, UUID seasonId) {
+        return new HashSet<>(matchSidePlayerRepository.findDistinctSelectedPlayerProfileIds(clubId, seasonId));
+    }
+
+    private static List<PlayerProfile> keepIn(List<PlayerProfile> players, Set<UUID> ids) {
+        return players.stream().filter(profile -> ids.contains(profile.getId())).toList();
+    }
+
+    private static long countIn(List<PlayerProfile> players, Set<UUID> ids) {
+        return players.stream().filter(profile -> ids.contains(profile.getId())).count();
+    }
+
+    @Override
+    @Transactional
+    public PlayerDto verify(Authentication authentication, UUID clubId, UUID playerId) {
+        return changeVerificationStatus(authentication, clubId, playerId, PlayerVerificationStatus.VERIFIED);
+    }
+
+    @Override
+    @Transactional
+    public PlayerDto reject(Authentication authentication, UUID clubId, UUID playerId) {
+        return changeVerificationStatus(authentication, clubId, playerId, PlayerVerificationStatus.REJECTED);
+    }
+
+    /**
+     * docs/specs/088: the allowed changes are {@code UNVERIFIED -> VERIFIED}, {@code UNVERIFIED -> REJECTED} and {@code
+     * REJECTED -> VERIFIED} (undo a mistaken reject); anything else is a 409. A verified player is never rejected (a
+     * manager suspends them instead).
+     */
+    private PlayerDto changeVerificationStatus(
+            Authentication authentication, UUID clubId, UUID playerId, PlayerVerificationStatus target) {
+        PlayerProfile profile = findOrThrowForClub(clubId, playerId);
+        accessService.assertCanAdministerAnySection(authentication, clubId, sectionIds(profile.getId()));
+        PlayerVerificationStatus current = profile.getVerificationStatus();
+        boolean allowed = target == PlayerVerificationStatus.VERIFIED
+                ? current != PlayerVerificationStatus.VERIFIED
+                : current == PlayerVerificationStatus.UNVERIFIED;
+        if (!allowed) {
+            throw new InvalidStatusTransitionException(
+                    target == PlayerVerificationStatus.VERIFIED
+                            ? "Player is already verified: " + playerId
+                            : "Only an unverified player can be rejected: " + playerId);
+        }
+        profile.setVerificationStatus(target);
+        profile = playerProfileRepository.save(profile);
+
+        Person person = findPersonOrThrow(profile.getPersonId());
+        return playerMapper.toDto(person, profile, sectionIds(profile.getId()));
     }
 
     @Override

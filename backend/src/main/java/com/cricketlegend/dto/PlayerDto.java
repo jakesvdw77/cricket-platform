@@ -4,6 +4,7 @@ import com.cricketlegend.domain.BattingStance;
 import com.cricketlegend.domain.BowlingArm;
 import com.cricketlegend.domain.BowlingType;
 import com.cricketlegend.domain.Gender;
+import com.cricketlegend.domain.PlayerVerificationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,5 +45,10 @@ public record PlayerDto(
         Integer jerseyNumber,
         Instant createdAt,
         Instant updatedAt,
-        UUID updatedBy) {
+        UUID updatedBy,
+        PlayerVerificationStatus verificationStatus,
+        // docs/specs/088: games the player was selected for in started, active matches - this season (the list's
+        // seasonId; 0 without one) and overall. Populated by the players list only; 0 in every other response.
+        int gamesThisSeason,
+        int gamesOverall) {
 }

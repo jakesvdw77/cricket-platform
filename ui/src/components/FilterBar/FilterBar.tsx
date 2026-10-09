@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Badge, Box, Button as MuiButton, Chip, InputAdornment, MenuItem, useMediaQuery } from '@mui/material'
+import { Autocomplete, Badge, Box, Button as MuiButton, Chip, InputAdornment, MenuItem, useMediaQuery } from '@mui/material'
 import { alpha, useTheme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import FilterListIcon from '@mui/icons-material/FilterList'
@@ -33,21 +33,31 @@ export interface FilterBarChip {
 }
 
 export interface FilterBarProps {
-  // A shared filter shows when its options are passed, always in the order League, Section, Team.
+  // A shared filter shows when its options are passed, always in the order League, Season, Section, Team.
   leagues?: FilterBarOption[]
+  // docs/specs/087: optional Season (Matches keeps it; the Availability pages never pass it). Map a Season's
+  // `label` to `name`.
+  seasons?: FilterBarOption[]
   sections?: Section[]
   teams?: FilterBarOption[]
   leagueId?: string | null
+  seasonId?: string | null
   sectionId?: string | null
   teamId?: string | null
   onLeagueChange?: (leagueId: string | null) => void
+  onSeasonChange?: (seasonId: string | null) => void
   onSectionChange?: (sectionId: string | null) => void
   onTeamChange?: (teamId: string | null) => void
+  seasonAllLabel?: string
   teamAllLabel?: string
   // Search shows when onSearchChange is passed.
   searchValue?: string
   onSearchChange?: (value: string) => void
   searchPlaceholder?: string
+  // docs/specs/087: when passed, the Search input is an MUI `Autocomplete freeSolo` over this already-loaded,
+  // caller-filtered suggestion list (Matches: the club's team names), same as ListToolbar's `searchOptions`.
+  // Typing and picking a suggestion both flow through `onSearchChange`. Omitted, a plain input as before.
+  searchOptions?: string[]
   // The view's own controls (toggles, sort link): rendered inside the Filters sheet on a phone. On
   // desktop the page shows them on the line above its content (ContentControlsLine), not here.
   viewControls?: ReactNode
@@ -65,18 +75,23 @@ export interface FilterBarProps {
 // every filter and the view's own controls; active choices also show as removable chips under the card.
 export function FilterBar({
   leagues,
+  seasons,
   sections,
   teams,
   leagueId = null,
+  seasonId = null,
   sectionId = null,
   teamId = null,
   onLeagueChange,
+  onSeasonChange,
   onSectionChange,
   onTeamChange,
+  seasonAllLabel = 'All seasons',
   teamAllLabel = 'All teams',
   searchValue = '',
   onSearchChange,
   searchPlaceholder,
+  searchOptions,
   viewControls,
   extraChips = [],
   onClearAll,
@@ -92,6 +107,13 @@ export function FilterBar({
       key: 'league',
       label: leagues?.find((league) => league.id === leagueId)?.name ?? 'League',
       onRemove: () => onLeagueChange(null),
+    })
+  }
+  if (seasonId && onSeasonChange) {
+    chips.push({
+      key: 'season',
+      label: seasons?.find((season) => season.id === seasonId)?.name ?? 'Season',
+      onRemove: () => onSeasonChange(null),
     })
   }
   if (sectionId && onSectionChange) {
@@ -129,6 +151,18 @@ export function FilterBar({
           </Input>
         </Box>
       )}
+      {seasons && onSeasonChange && (
+        <Box sx={fieldSx}>
+          <Input select label="Season" {...allValueSelectProps} value={seasonId ?? ''} onChange={(event) => onSeasonChange(event.target.value || null)}>
+            <MenuItem value="">{seasonAllLabel}</MenuItem>
+            {seasons.map((season) => (
+              <MenuItem key={season.id} value={season.id}>
+                {season.name}
+              </MenuItem>
+            ))}
+          </Input>
+        </Box>
+      )}
       {sections && onSectionChange && (
         <Box sx={fieldSx}>
           <SectionTreeSelect label="Section" sections={sections} value={sectionId} onChange={onSectionChange} allowClear />
@@ -150,21 +184,39 @@ export function FilterBar({
     )
   }
 
-  const search = onSearchChange && (
-    <Input
-      label="Search"
-      placeholder={searchPlaceholder}
-      value={searchValue}
-      onChange={(event) => onSearchChange(event.target.value)}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon fontSize="small" color="action" />
-          </InputAdornment>
-        ),
-      }}
-    />
+  const searchAdornment = (
+    <InputAdornment position="start">
+      <SearchIcon fontSize="small" color="action" />
+    </InputAdornment>
   )
+  const search =
+    onSearchChange &&
+    (searchOptions ? (
+      <Autocomplete
+        freeSolo
+        options={searchOptions}
+        inputValue={searchValue}
+        onInputChange={(_event, value) => onSearchChange(value)}
+        // The compact 36 px fields: the Autocomplete input root and input carry their own padding.
+        sx={density === 'compact' ? { '& .MuiOutlinedInput-root': { py: 0 }, '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0 } } : undefined}
+        renderInput={(params) => (
+          <Input
+            {...params}
+            label="Search"
+            placeholder={searchPlaceholder}
+            InputProps={{ ...params.InputProps, startAdornment: searchAdornment }}
+          />
+        )}
+      />
+    ) : (
+      <Input
+        label="Search"
+        placeholder={searchPlaceholder}
+        value={searchValue}
+        onChange={(event) => onSearchChange(event.target.value)}
+        InputProps={{ startAdornment: searchAdornment }}
+      />
+    ))
 
   if (!isPhone) {
     return (

@@ -107,3 +107,17 @@ export const CompactActive: Story = {
 export const CompactWarning: Story = { args: { density: 'compact', items: Warning.args?.items ?? [] } }
 
 export const CompactLoading: Story = { args: { density: 'compact', items: [], loading: true } }
+
+// docs/specs/087: the Matches counters - filter counters with a short label for a phone, the reset card active.
+export const WithShortLabels: Story = {
+  args: {
+    density: 'compact',
+    items: [
+      { id: 'shown', value: 12, label: 'Upcoming matches', shortLabel: 'Upcoming', kind: 'filter', active: true, onSelect: () => undefined },
+      { id: 'week', value: 3, label: 'This week', kind: 'filter', onSelect: () => undefined },
+      { id: 'announce', value: 4, label: 'Teams not announced', shortLabel: 'Not announced', tone: 'warning', kind: 'filter', onSelect: () => undefined },
+      { id: 'poll', value: 2, label: 'Without a poll', shortLabel: 'No poll', tone: 'warning', kind: 'filter', onSelect: () => undefined },
+    ],
+  },
+}
+

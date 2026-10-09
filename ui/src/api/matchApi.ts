@@ -116,6 +116,10 @@ export interface ListMatchesParams {
   // with sectionId/search/upcomingOnly in any combination.
   leagueId?: string
   seasonId?: string
+  // docs/specs/087-matches-polls-alignment.md: a team on either side of the match, and one of the Matches quick
+  // filters (the same definitions the summary counters count). Both are real backend params.
+  teamId?: string
+  focus?: MatchListFocus
   // docs/specs/037-match-improvements.md: restricts results to matches dated today or later
   // (server/database local date). Omitted or false preserves today's exact unfiltered behaviour —
   // purely additive. MatchList.tsx sends `true` by default (no UI toggle yet); a future "Show past
@@ -132,7 +136,7 @@ function matchesPath(clubId: string): string {
 // pagination rule.
 export async function listMatches(
   clubId: string,
-  { page, size = 20, sort, search, sectionId, leagueId, seasonId, upcomingOnly }: ListMatchesParams,
+  { page, size = 20, sort, search, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly }: ListMatchesParams,
 ): Promise<Page<Match>> {
   const { data } = await api.get<Page<Match>>(matchesPath(clubId), {
     params: {
@@ -143,6 +147,8 @@ export async function listMatches(
       ...(sectionId ? { sectionId } : {}),
       ...(leagueId ? { leagueId } : {}),
       ...(seasonId ? { seasonId } : {}),
+      ...(teamId ? { teamId } : {}),
+      ...(focus ? { focus } : {}),
       ...(upcomingOnly ? { upcomingOnly } : {}),
     },
   })
@@ -197,11 +203,12 @@ export interface MatchFilterOptions {
 
 export async function listMatchFilterOptions(
   clubId: string,
-  { search, sectionId, leagueId, seasonId, upcomingOnly }: {
+  { search, sectionId, leagueId, seasonId, teamId, upcomingOnly }: {
     search?: string
     sectionId?: string
     leagueId?: string
     seasonId?: string
+    teamId?: string
     upcomingOnly?: boolean
   },
 ): Promise<MatchFilterOptions> {
@@ -211,9 +218,49 @@ export async function listMatchFilterOptions(
       ...(sectionId ? { sectionId } : {}),
       ...(leagueId ? { leagueId } : {}),
       ...(seasonId ? { seasonId } : {}),
+      ...(teamId ? { teamId } : {}),
       ...(upcomingOnly ? { upcomingOnly } : {}),
     },
   })
+  return data
+}
+
+// docs/specs/087-matches-polls-alignment.md: the Matches page counters for exactly the filters the list uses. The
+// three quick filters are active, upcoming matches only and equal the list's total for the same `focus`.
+export type MatchListFocus = 'this-week' | 'not-announced' | 'no-poll'
+
+export interface MatchesSummary {
+  matchesShown: number
+  thisWeek: number
+  teamsNotAnnounced: number
+  withoutPoll: number
+}
+
+export interface MatchesSummaryFilters {
+  sectionId?: string
+  leagueId?: string
+  seasonId?: string
+  teamId?: string
+  search?: string
+  // The inverse of the list's upcomingOnly: past matches are counted in matchesShown.
+  includePast?: boolean
+}
+
+// Under the list's own ['managed-club', clubId, 'matches'] prefix, so every invalidation that refreshes the list
+// (poll changes, match edits) refreshes the counters too.
+export const matchesSummaryKey = (clubId: string, filters: MatchesSummaryFilters = {}) =>
+  ['managed-club', clubId, 'matches', 'summary', filters] as const
+
+// Only the filters that are set are sent; the server default is includePast false.
+export async function getMatchesSummary(clubId: string, filters: MatchesSummaryFilters = {}): Promise<MatchesSummary> {
+  const params: Record<string, string | boolean> = {}
+  if (filters.sectionId) params.sectionId = filters.sectionId
+  if (filters.leagueId) params.leagueId = filters.leagueId
+  if (filters.seasonId) params.seasonId = filters.seasonId
+  if (filters.teamId) params.teamId = filters.teamId
+  if (filters.search) params.search = filters.search
+  if (filters.includePast) params.includePast = true
+  const { data } = await api.get<MatchesSummary>(`${matchesPath(clubId)}/summary`, { params })
   return data
 }
 

@@ -1,7 +1,9 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.PlayerListFocus;
 import com.cricketlegend.dto.CreatePlayerRequest;
 import com.cricketlegend.dto.PlayerDto;
+import com.cricketlegend.dto.PlayersSummaryDto;
 import com.cricketlegend.dto.UpdatePlayerRequest;
 import java.util.List;
 import java.util.UUID;
@@ -31,8 +33,46 @@ public interface PlayerService {
      * com.cricketlegend.config.AccessService#assertCanAdministerSection} first. When {@code
      * missingDateOfBirth} is true, only players whose Person has no date of birth are returned
      * (docs/specs/077-public-availability-form-verification.md), within the same scoping.
+     *
+     * <p>Per docs/specs/088-players-polls-alignment.md: {@code includeInactive = false} also leaves out suspended
+     * ({@code active = false}) and rejected players (unverified players always stay); {@code focus} narrows to players in
+     * a team squad for {@code seasonId}, players selected for an active match of that season, or unverified players
+     * ({@code seasonId} is required, else a 400, for the first two). {@link #summary} counts exactly these sets.
      */
-    List<PlayerDto> list(Authentication authentication, UUID clubId, UUID sectionId, boolean missingDateOfBirth);
+    List<PlayerDto> list(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean missingDateOfBirth,
+            boolean includeInactive,
+            PlayerListFocus focus,
+            UUID seasonId);
+
+    /**
+     * Per docs/specs/088: the Players page counters for the list's filters ({@code sectionId}, {@code
+     * missingDateOfBirth}, {@code includeInactive}): the list's size, and the sizes with each {@code focus}. The two season
+     * figures use {@code seasonId} and are 0 without it. Same authorization and scoping as {@link #list}; a fixed number
+     * of statements, no per-player lookups.
+     */
+    PlayersSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean missingDateOfBirth,
+            boolean includeInactive,
+            UUID seasonId);
+
+    /**
+     * Per docs/specs/088: {@code UNVERIFIED} or {@code REJECTED} to {@code VERIFIED}; 409 if already verified. Same
+     * section-scoped guard as {@link #update}.
+     */
+    PlayerDto verify(Authentication authentication, UUID clubId, UUID playerId);
+
+    /**
+     * Per docs/specs/088: {@code UNVERIFIED} to {@code REJECTED}; 409 for any other status (a verified player is
+     * suspended, not rejected). Same section-scoped guard as {@link #update}.
+     */
+    PlayerDto reject(Authentication authentication, UUID clubId, UUID playerId);
 
     /**
      * Creates a brand-new {@link com.cricketlegend.domain.Person} ({@code status = ACTIVE},

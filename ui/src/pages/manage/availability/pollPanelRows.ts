@@ -2,7 +2,7 @@ import type { OpenAvailabilityPoll } from '../../../api/matchAvailabilityApi'
 import type { SectionAvailabilityRound } from '../../../api/sectionAvailabilityApi'
 import type { Team } from '../../../api/teamApi'
 import { groupPollResponsesPath, squadPollResponsesPath } from '../../../utils/pollRoutes'
-import { squadPollTitle } from './pollHelpers'
+import { squadPollSideLabel, squadPollTitle } from './pollHelpers'
 
 // docs/specs/085 (G): one poll as the polls panel shows it. The Polls page builds these from the lists it already
 // loads (so the panel and the list always agree) and hands them to the hub layout through the hub context.
@@ -19,6 +19,8 @@ export interface PollPanelRow {
   total: number
   bestSlot?: boolean
   path: string
+  // docs/specs/090: the line under the title in the list view ("Squad poll · Home · Thu 15 Oct", "Group poll · Vets"); the panel ignores it.
+  subtitle?: string
 }
 
 export function squadPollRow(poll: OpenAvailabilityPoll, open: boolean, teamsById: Map<string, Team>): PollPanelRow {
@@ -33,6 +35,7 @@ export function squadPollRow(poll: OpenAvailabilityPoll, open: boolean, teamsByI
     answered: total - poll.noResponseCount,
     total,
     path: squadPollResponsesPath(poll.matchId, poll.pollId),
+    subtitle: `Squad poll · ${squadPollSideLabel(poll)} · ${new Date(poll.matchDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`,
   }
 }
 
@@ -55,6 +58,7 @@ export function groupPollRow(round: SectionAvailabilityRound): PollPanelRow {
     total,
     bestSlot: round.brackets.length > 1,
     path: groupPollResponsesPath(round.id),
+    subtitle: `Group poll · ${round.sectionName}`,
   }
 }
 

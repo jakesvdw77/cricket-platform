@@ -10,6 +10,7 @@ import type { Page } from '../../api/productApi'
 
 const listMatches = vi.fn()
 const listMatchFilterOptions = vi.fn()
+const getMatchesSummary = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagues = vi.fn()
 const listSeasons = vi.fn()
@@ -18,6 +19,8 @@ const listSections = vi.fn()
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
   listMatchFilterOptions: (clubId: string, params: unknown) => listMatchFilterOptions(clubId, params),
+  getMatchesSummary: (clubId: string, filters: unknown) => getMatchesSummary(clubId, filters),
+  matchesSummaryKey: (clubId: string, filters: unknown) => ['managed-club', clubId, 'matches', 'summary', filters],
   deactivateMatch: vi.fn(),
   reactivateMatch: vi.fn(),
 }))
@@ -95,6 +98,7 @@ beforeEach(() => {
   // being *undefined* (still loading) would also leave the full list unfiltered, but resolving it
   // here exercises the real narrowing path instead of only the loading fallback.
   listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: [], teamIds: ['team-1'] })
+  getMatchesSummary.mockResolvedValue({ matchesShown: 12, thisWeek: 3, teamsNotAnnounced: 4, withoutPoll: 2 })
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -145,6 +149,71 @@ describe('MatchList', () => {
       display: 'grid',
       gridTemplateColumns: CARD_GRID_TEMPLATE_COLUMNS,
       alignItems: 'stretch',
+    })
+  })
+
+  // docs/specs/089 (D): Season moved out of the toolbar into a pill beside the title.
+  it('shows Season as a pill in the header, with All seasons by default and not as a toolbar field', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch()]))
+    listSeasons.mockResolvedValue([
+      { id: 'season-1', clubId: 'test-club-id', label: '2026/27', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: ['season-1'], teamIds: ['team-1'] })
+
+    renderPage('test-club-id')
+
+    await screen.findByText('1st XI vs Riverside Occasionals')
+    const pill = screen.getByRole('button', { name: 'Season' })
+    expect(pill).toHaveTextContent('All seasons')
+    expect(screen.getAllByLabelText('Season')).toHaveLength(1)
+
+    await user.click(pill)
+    await user.click(await screen.findByRole('option', { name: '2026/27' }))
+    expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2026/27')
+  })
+
+  // docs/specs/089 (C): the Cards | List switch and its remembered preference.
+  describe('list view', () => {
+    it('shows cards by default, switches to the table and back, and keeps the other controls', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      const user = userEvent.setup()
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Show past matches')).toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
+      await waitFor(() => expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument())
+    })
+
+    it('remembers the chosen view for next time', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      const user = userEvent.setup()
+      const { unmount } = renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+      await screen.findByRole('table', { name: 'Matches' })
+      expect(localStorage.getItem('matchList:view')).toBe('list')
+      unmount()
+
+      renderPage('test-club-id')
+      expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
+    })
+
+    it('opens the match when a row is clicked', async () => {
+      localStorage.setItem('matchList:view', 'list')
+      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-9' })]))
+      const user = userEvent.setup()
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('link', { name: '1st XI vs Riverside Occasionals' }))
+      expect(await screen.findByText('Match Detail Page')).toBeInTheDocument()
     })
   })
 
@@ -229,9 +298,87 @@ describe('MatchList', () => {
 
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,asc' }))
-    // The icon toggle's aria-label describes the target state a click would move TO — starting
-    // ascending, clicking would move to latest-first.
-    expect(screen.getByRole('button', { name: 'Match date, latest first' })).toBeInTheDocument()
+    // docs/specs/087: the quiet sort link reads the CURRENT order and reverses it on click.
+    expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
+  })
+
+  // docs/specs/087-matches-polls-alignment.md (B)
+  describe('Polls-style toolbar (087)', () => {
+    it('shows the scope text on the content line, and the sort link reverses the order via the backend sort param', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch(), makeMatch({ id: 'match-2' })]))
+
+      renderPage('test-club-id')
+
+      await screen.findAllByText('1st XI vs Riverside Occasionals')
+      expect(screen.getByText(/Showing 2 upcoming matches/)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /soonest first/i }))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ sort: 'matchDate,desc' })))
+      expect(await screen.findByRole('button', { name: /latest first/i })).toBeInTheDocument()
+    })
+
+    it('reads "Showing N matches" once past matches are included, and singular for one', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText(/Showing 1 upcoming match/)).toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+      expect(await screen.findByText(/^Showing 1 match(?!es)/)).toBeInTheDocument()
+    })
+
+    it('on a phone shows search and a Filters button, with Show past matches and the sort link inside the sheet', async () => {
+      const user = userEvent.setup()
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+      try {
+        listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+        renderPage('test-club-id')
+
+        await screen.findByText('1st XI vs Riverside Occasionals')
+        expect(screen.getByText(/Showing 1 upcoming match/)).toBeInTheDocument()
+        expect(screen.queryByRole('checkbox', { name: /show past matches/i })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /soonest first/i })).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Filters' }))
+        expect(await screen.findByRole('checkbox', { name: /show past matches/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
+    })
+
+    it('names the chosen section and season under the title', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      listSeasons.mockResolvedValue([
+        { id: 'season-1', clubId: 'test-club-id', label: '2026/27', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      ])
+      listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: ['season-1'], teamIds: ['team-1'] })
+
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(screen.queryByText(/^Showing: /)).not.toBeInTheDocument()
+
+      await user.click(screen.getByLabelText('Section'))
+      await user.click(within(screen.getByRole('treeitem', { name: 'Men' })).getByText('Men'))
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2026/27' }))
+
+      expect(await screen.findByText('Showing: Men · 2026/27')).toBeInTheDocument()
+    })
   })
 
   // docs/specs/037-match-improvements.md item 2
@@ -723,4 +870,189 @@ describe('MatchList', () => {
     const persisted = JSON.parse(localStorage.getItem('matchList:filters:test-club-id') as string)
     expect(persisted).toEqual({ sectionId: 'section-1', leagueId: 'league-1', seasonId: 'season-1' })
   })
+
+  // docs/specs/087-matches-polls-alignment.md (A): the counters and the Team filter
+  describe('counters and quick filters (087)', () => {
+    const counter = (id: string) => screen.getByTestId(`page-counter-${id}`)
+
+    it('shows the four counters from the summary, with amber on the two that need attention', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await screen.findByTestId('page-counter-shown')
+      expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
+      expect(within(counter('shown')).getByText('Upcoming matches')).toBeInTheDocument()
+      expect(within(counter('this-week')).getByText('3')).toBeInTheDocument()
+      expect(within(counter('not-announced')).getByText('Teams not announced')).toBeInTheDocument()
+      expect(within(counter('no-poll')).getByText('Without a poll')).toBeInTheDocument()
+      const valueColour = (id: string) => getComputedStyle(within(counter(id)).getByTestId('page-counter-value')).color
+      expect(valueColour('not-announced')).not.toBe(valueColour('this-week'))
+      expect(valueColour('no-poll')).toBe(valueColour('not-announced'))
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+      expect(counter('this-week')).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('asks the summary for exactly the list filters, with includePast the inverse of Show past matches', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('page-counter-shown')
+      expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: false }))
+      expect(within(counter('shown')).getByText('Upcoming matches')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+
+      await waitFor(() =>
+        expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
+      )
+      expect(await within(counter('shown')).findByText('Matches shown')).toBeInTheDocument()
+    })
+
+    it('choosing a counter sends the backend focus, names it in a chip and the scope text, and marks the counter pressed', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('page-counter-not-announced')
+      await user.click(counter('not-announced'))
+
+      await waitFor(() =>
+        expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'not-announced' })),
+      )
+      expect(counter('not-announced')).toHaveAttribute('aria-pressed', 'true')
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByText(/Showing 1 upcoming match · Teams not announced/)).toBeInTheDocument()
+      // the counters keep describing the list's filters, not the quick filter
+      expect(getMatchesSummary).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focus: expect.anything() }))
+    })
+
+    it('choosing another counter replaces the first, and choosing the active one or the first card clears it', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('page-counter-this-week')
+      await user.click(counter('this-week'))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'this-week' })))
+
+      await user.click(counter('no-poll'))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'no-poll' })))
+      expect(counter('this-week')).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(counter('no-poll'))
+      await waitFor(() => expect(listMatches.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+      expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(counter('this-week'))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'this-week' })))
+      await user.click(counter('shown'))
+      await waitFor(() => expect(listMatches.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+    })
+
+    it('a counter at zero is a plain card, not a button', async () => {
+      getMatchesSummary.mockResolvedValue({ matchesShown: 5, thisWeek: 0, teamsNotAnnounced: 0, withoutPoll: 1 })
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('page-counter-this-week')
+      expect(counter('this-week').tagName).not.toBe('BUTTON')
+      expect(counter('not-announced').tagName).not.toBe('BUTTON')
+      expect(counter('no-poll').tagName).toBe('BUTTON')
+    })
+
+    it('hides the counters when the summary fails, and the list still works', async () => {
+      getMatchesSummary.mockRejectedValue(new Error('boom'))
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByText('1st XI vs Riverside Occasionals')).toBeInTheDocument()
+      await waitFor(() => expect(getMatchesSummary).toHaveBeenCalled())
+      expect(screen.queryByTestId('page-counter-shown')).not.toBeInTheDocument()
+    })
+
+    it('the Team field narrows the list and the counters through the backend teamId, and names the team under the title', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      listTeamsForClub.mockResolvedValue([
+        { id: 'team-1', name: '1st XI' },
+        { id: 'team-2', name: '2nd XI' },
+      ])
+      listMatchFilterOptions.mockResolvedValue({ sectionIds: ['section-1'], leagueIds: [], seasonIds: [], teamIds: ['team-1'] })
+
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      await user.click(screen.getByLabelText('Team'))
+      // only teams that filter-options reports as reachable are offered
+      expect(screen.queryByRole('option', { name: '2nd XI' })).not.toBeInTheDocument()
+      await user.click(await screen.findByRole('option', { name: '1st XI' }))
+
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' })))
+      expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' }))
+      expect(listMatchFilterOptions).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1' }))
+      expect(await screen.findByText('Showing: 1st XI')).toBeInTheDocument()
+    })
+
+    it('never saves the team or the quick filter with the persisted Section, League and Season filters', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('page-counter-no-poll')
+      await user.click(counter('no-poll'))
+      await user.click(screen.getByLabelText('Team'))
+      await user.click(await screen.findByRole('option', { name: '1st XI' }))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ teamId: 'team-1', focus: 'no-poll' })))
+
+      const persisted = JSON.parse(localStorage.getItem('matchList:filters:test-club-id') as string)
+      expect(persisted).not.toHaveProperty('focus')
+      expect(persisted).not.toHaveProperty('teamId')
+    })
+
+    it('on a phone the quick filter is a chip, counts in the Filters badge, shows a Quick filter row in the sheet, and Clear all clears it with the team', async () => {
+      const user = userEvent.setup()
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+      try {
+        listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+        renderPage('test-club-id')
+
+        await screen.findByTestId('page-counter-not-announced')
+        // the phone shows the short label; the full name stays accessible
+        expect(within(counter('not-announced')).getByText('Not announced')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: '4 Teams not announced' }))
+
+        expect(await screen.findByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Remove filter Teams not announced' })).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
+        expect(await screen.findByText(/Quick filter:/)).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Clear all' }))
+        await waitFor(() => expect(listMatches.mock.calls.at(-1)?.[1].focus).toBeUndefined())
+        expect(counter('shown')).toHaveAttribute('aria-pressed', 'true')
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
+    })
+  })
 })
+

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageCounters } from './PageCounters'
 import type { PageCounterItem } from './PageCounters'
 import { baseTheme } from '../../theme'
@@ -245,3 +245,51 @@ describe('PageCounters', () => {
     })
   })
 })
+
+// docs/specs/087
+describe('PageCounters short labels', () => {
+  function setPhone(phone: boolean) {
+    window.matchMedia = ((query: string) => ({
+      matches: phone && query.includes('max-width'),
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+  }
+
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia
+  })
+
+  const shortItems: PageCounterItem[] = [
+    { id: 'a', value: 12, label: 'Upcoming matches', shortLabel: 'Upcoming', onSelect: vi.fn(), active: true },
+    { id: 'b', value: 4, label: 'Teams not announced', shortLabel: 'Not announced', onSelect: vi.fn() },
+    { id: 'c', value: 3, label: 'This week' },
+  ]
+
+  it('shows the full label on a wide screen', () => {
+    setPhone(false)
+    renderCounters(shortItems, false, 'compact')
+
+    expect(screen.getByText('Teams not announced')).toBeInTheDocument()
+    expect(screen.queryByText('Not announced')).not.toBeInTheDocument()
+    expect(screen.getByText('This week')).toBeInTheDocument()
+  })
+
+  it('shows the short label on a phone but keeps the full label and value as the accessible name', () => {
+    setPhone(true)
+    renderCounters(shortItems, false, 'compact')
+
+    expect(screen.getByText('Not announced')).toBeInTheDocument()
+    expect(screen.queryByText('Teams not announced')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '4 Teams not announced' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '12 Upcoming matches' })).toHaveAttribute('aria-pressed', 'true')
+    // an item without a short label keeps its label
+    expect(screen.getByText('This week')).toBeInTheDocument()
+  })
+})
+

@@ -49,7 +49,17 @@ export interface Player {
   createdAt: string
   updatedAt: string
   updatedBy: string | null
+  // docs/specs/088-players-polls-alignment.md: VERIFIED for every manager-created player; UNVERIFIED will come from
+  // the future self-registration flow; REJECTED players are hidden from the default list. A suspended player is
+  // `active: false`, not a status here.
+  verificationStatus: PlayerVerificationStatus
+  // docs/specs/088: games the player was selected for in started, active matches - this season (the list's seasonId;
+  // 0 without one) and overall. Populated by the players list only; 0 in every other response.
+  gamesThisSeason: number
+  gamesOverall: number
 }
+
+export type PlayerVerificationStatus = 'VERIFIED' | 'UNVERIFIED' | 'REJECTED'
 
 // Same shape for create and update (the backend's UpdatePlayerRequest is byte-for-byte
 // CreatePlayerRequest, per the spec's API Contract — "Same body shape as create"). sectionIds is
@@ -88,7 +98,15 @@ export interface ListPlayersParams {
   sectionId?: string
   // docs/specs/077: only players with no date of birth (combines with sectionId).
   missingDateOfBirth?: boolean
+  // docs/specs/088: false also leaves out suspended (inactive) and rejected players; unverified players always stay.
+  // Omitted, the server default (everyone) applies, so the pickers that call listPlayers are unchanged.
+  includeInactive?: boolean
+  // A Players quick filter (the same definitions the summary counters count). The two season focuses need seasonId.
+  focus?: PlayerListFocus
+  seasonId?: string
 }
+
+export type PlayerListFocus = 'in-squad' | 'selected' | 'unverified'
 
 // Plain array response, not Page<T> — a club's players are a small, bounded, unpaginated list,
 // matching Section/Team/Sponsor's own posture.
@@ -97,8 +115,53 @@ export async function listPlayers(clubId: string, params: ListPlayersParams = {}
     params: {
       ...(params.sectionId ? { sectionId: params.sectionId } : {}),
       ...(params.missingDateOfBirth ? { missingDateOfBirth: true } : {}),
+      ...(params.includeInactive === false ? { includeInactive: false } : {}),
+      ...(params.focus ? { focus: params.focus } : {}),
+      ...(params.seasonId ? { seasonId: params.seasonId } : {}),
     },
   })
+  return data
+}
+
+// docs/specs/088: the Players page counters for exactly the filters the list uses. playersShown is the list's size;
+// the other three equal its size with that focus. The two season figures are 0 without a seasonId.
+export interface PlayersSummary {
+  playersShown: number
+  inSquad: number
+  selected: number
+  unverified: number
+}
+
+export interface PlayersSummaryFilters {
+  sectionId?: string
+  missingDateOfBirth?: boolean
+  includeInactive?: boolean
+  seasonId?: string
+}
+
+// Under the list's own ['managed-club', clubId, 'players'] prefix, so every invalidation that refreshes the list (a
+// status change, an edit) refreshes the counters too.
+export const playersSummaryKey = (clubId: string, filters: PlayersSummaryFilters = {}) =>
+  ['managed-club', clubId, 'players', 'summary', filters] as const
+
+export async function getPlayersSummary(clubId: string, filters: PlayersSummaryFilters = {}): Promise<PlayersSummary> {
+  const params: Record<string, string | boolean> = {}
+  if (filters.sectionId) params.sectionId = filters.sectionId
+  if (filters.missingDateOfBirth) params.missingDateOfBirth = true
+  if (filters.includeInactive === false) params.includeInactive = false
+  if (filters.seasonId) params.seasonId = filters.seasonId
+  const { data } = await api.get<PlayersSummary>(`${playersPath(clubId)}/summary`, { params })
+  return data
+}
+
+// docs/specs/088: accept a player request (or undo a reject), and reject an unverified one (kept but hidden).
+export async function verifyPlayer(clubId: string, playerId: string): Promise<Player> {
+  const { data } = await api.post<Player>(`${playersPath(clubId)}/${playerId}/verify`)
+  return data
+}
+
+export async function rejectPlayer(clubId: string, playerId: string): Promise<Player> {
+  const { data } = await api.post<Player>(`${playersPath(clubId)}/${playerId}/reject`)
   return data
 }
 

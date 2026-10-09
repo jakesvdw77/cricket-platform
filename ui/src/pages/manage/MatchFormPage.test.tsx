@@ -348,6 +348,13 @@ describe('MatchFormPage', () => {
     expect(await screen.findByText('Match List Page')).toBeInTheDocument()
   })
 
+  it('create mode: Cancel links back to the matches list', async () => {
+    renderPage('/manage/fixtures/matches/new', 'test-club-id')
+
+    expect(await screen.findByText('Add Match')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/matches')
+  })
+
   // docs/specs/050-league-schedule-and-fixtures.md item 31/32: LeagueFormPage's Schedule tab's own
   // "Add Match" shortcut pre-fills League/Season via query params on this same create route.
   describe('League/Season query-param prefill', () => {
@@ -383,7 +390,7 @@ describe('MatchFormPage', () => {
       renderPage('/manage/fixtures/matches/new?leagueId=league-1&seasonId=season-1', 'test-club-id')
 
       expect(await screen.findByText('Add Match')).toBeInTheDocument()
-      expect(await screen.findByLabelText('League')).toHaveTextContent('Premier League')
+      expect(await screen.findByLabelText('League (optional)')).toHaveTextContent('Premier League')
       expect(screen.getByLabelText('Season')).toHaveTextContent('2026')
     })
 
@@ -776,6 +783,19 @@ describe('MatchFormPage', () => {
       expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
     })
 
+    // docs/specs/089 (B): Cancel sits beside Save on Details only and goes back without saving.
+    it('shows Cancel on Details only, linking back to the match', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValueOnce(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit Match')
+      expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
+      await user.click(screen.getByRole('tab', { name: 'Away XI' }))
+      expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
+    })
+
     it('shows Save only on Details', async () => {
       const user = userEvent.setup()
       getMatch.mockResolvedValueOnce(makeMatch())
@@ -793,14 +813,14 @@ describe('MatchFormPage', () => {
       const { unmount } = renderPage('/manage/fixtures/matches/match-1/edit?tab=availability', 'test-club-id')
       await screen.findByText('Edit Match')
       expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByLabelText('Venue')).toBeInTheDocument()
+      expect(screen.getByLabelText('Venue (optional)')).toBeInTheDocument()
       unmount()
 
       getMatch.mockResolvedValueOnce(makeMatch())
       renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=away', 'test-club-id')
       await screen.findByText('Edit Match')
       expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByLabelText('Venue')).toBeInTheDocument()
+      expect(screen.getByLabelText('Venue (optional)')).toBeInTheDocument()
     })
 
     it('?tab=playing-xi selects Home XI, or Away XI when only the away side is a team', async () => {
@@ -849,8 +869,8 @@ describe('MatchFormPage', () => {
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Match')
-      expect(screen.getByLabelText('Scoring link')).toHaveValue('https://cricclubs.com/matches/1')
-      expect(screen.getByLabelText('Streaming link')).toHaveValue('https://pitchvision.example/live')
+      expect(screen.getByLabelText('Scoring link (optional)')).toHaveValue('https://cricclubs.com/matches/1')
+      expect(screen.getByLabelText('Streaming link (optional)')).toHaveValue('https://pitchvision.example/live')
       await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
       await waitFor(() =>

@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
@@ -1141,6 +1141,11 @@ export default function MatchFormPage() {
                 </Typography>
               )}
 
+              {/* docs/specs/089 (B): Cancel goes back to the match (edit) or the list (add), without saving. */}
+              <MuiButton component={RouterLink} to={isEdit && match ? `/manage/fixtures/matches/${match.id}` : '/manage/fixtures/matches'} variant="outlined">
+                Cancel
+              </MuiButton>
+
               <Button type="submit" form={MATCH_FORM_ID} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create match'}
               </Button>
@@ -1161,7 +1166,7 @@ export default function MatchFormPage() {
             variant="scrollable"
             scrollButtons="auto"
             allowScrollButtonsMobile
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
           >
             <Tab label="Details" value="details" />
             {hasHomeXiTab && <Tab label="Home XI" value="home-xi" />}

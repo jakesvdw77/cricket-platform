@@ -23,6 +23,9 @@ export interface ManageScreenHeaderProps {
   // hub's "Showing: ..." scope). One line with an ellipsis from sm up, may wrap on a phone. Omitted, the markup is
   // unchanged.
   subtitle?: ReactNode
+  // docs/specs/089: a small control right after the title on the same row (a list page's season pill). Omitted, the markup
+  // is unchanged.
+  titleAdornment?: ReactNode
 }
 
 // The page-title header (and optional back link) every bare /manage screen needs — RecordFormScreen's
@@ -32,7 +35,21 @@ export interface ManageScreenHeaderProps {
 // by drift) while ClubStructure.tsx hand-rolled both — see docs/standards/frontend.md's
 // >70%-duplication rule and the "every /manage screen has a page title" rule this component now
 // exists to make structurally true rather than just documented.
-export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle, subtitle }: ManageScreenHeaderProps) {
+export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, middle, subtitle, titleAdornment }: ManageScreenHeaderProps) {
+  const titleNode = (
+    <Typography variant="h5" component="h1" fontWeight={700}>
+      {title}
+    </Typography>
+  )
+  // The adornment (a season pill) sits on the title's row; without one the heading is the bare title as before.
+  const heading = titleAdornment ? (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minWidth: 0 }}>
+      {titleNode}
+      {titleAdornment}
+    </Box>
+  ) : (
+    titleNode
+  )
   return (
     <PageHeaderBand>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
@@ -62,9 +79,7 @@ export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, 
         >
           {subtitle ? (
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h5" component="h1" fontWeight={700}>
-                {title}
-              </Typography>
+              {heading}
               <Typography
                 variant="caption"
                 color="text.secondary"
@@ -76,9 +91,7 @@ export function ManageScreenHeader({ title, backTo, backLabel = 'Back', action, 
               </Typography>
             </Box>
           ) : (
-            <Typography variant="h5" component="h1" fontWeight={700}>
-              {title}
-            </Typography>
+            heading
           )}
           {middle}
           {action}

@@ -91,6 +91,9 @@ function makeSquadMember(playerProfileId: string, firstName: string, lastName: s
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
   }
 }
 

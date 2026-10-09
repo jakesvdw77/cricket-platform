@@ -1,9 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { ThemeProvider } from '@mui/material'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { PlayerCard } from './PlayerCard'
 import type { Player } from '../../api/playerApi'
-import { BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
+import { baseTheme } from '../../theme'
+import { zebraTint } from '../../utils/zebraTint'
 
 function makePlayer(overrides: Partial<Player> = {}): Player {
   return {
@@ -32,171 +35,217 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     ...overrides,
   }
 }
 
 function renderCard(props: Partial<Parameters<typeof PlayerCard>[0]> = {}) {
-  return render(
-    <MemoryRouter>
-      <PlayerCard
-        player={makePlayer()}
-        sectionNames={[]}
-        viewTo="/manage/players/player-1"
-        editTo="/manage/players/player-1/edit"
-        {...props}
-      />
-    </MemoryRouter>,
+  const onStatusAction = vi.fn()
+  render(
+    <ThemeProvider theme={baseTheme}>
+      <MemoryRouter>
+        <PlayerCard
+          player={makePlayer()}
+          sectionNames={[]}
+          viewTo="/manage/players/player-1"
+          editTo="/manage/players/player-1/edit"
+          onStatusAction={onStatusAction}
+          {...props}
+        />
+      </MemoryRouter>
+    </ThemeProvider>,
   )
+  return { onStatusAction }
 }
 
+const ROWS = ['Number', 'Born', 'Phone', 'Bat', 'Bowl']
+
+// docs/specs/088-players-polls-alignment.md
 describe('PlayerCard', () => {
-  it('renders the title as a link to viewTo and Edit as a link to editTo, with no separate View link', () => {
-    renderCard({
-      player: makePlayer({ firstName: 'Sipho', lastName: 'Ndlovu' }),
-      viewTo: '/manage/players/player-1',
-      editTo: '/manage/players/player-1/edit',
-    })
+  it('renders the title as a heading linking to viewTo, with Edit and View as footer links', () => {
+    renderCard({ player: makePlayer({ firstName: 'Sipho', lastName: 'Ndlovu' }) })
 
     expect(screen.getByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sipho Ndlovu' })).toHaveAttribute('href', '/manage/players/player-1')
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/players/player-1/edit')
-    expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/manage/players/player-1')
   })
 
-  it('shows a "No date of birth" marker only when missingDateOfBirth is set', () => {
-    const { unmount } = renderCard({ missingDateOfBirth: true })
-    expect(screen.getByText('No date of birth')).toBeInTheDocument()
-    unmount()
+  it('clamps a long title to two lines so it always fits beside the avatar', () => {
+    renderCard({ player: makePlayer({ firstName: 'Christopher Alexander', lastName: 'Montgomery-Hendricks the Third' }) })
 
-    renderCard()
-    expect(screen.queryByText('No date of birth')).not.toBeInTheDocument()
+    const heading = screen.getByRole('heading', { name: /Christopher Alexander/ })
+    expect(getComputedStyle(heading).webkitLineClamp || heading.style.webkitLineClamp || getComputedStyle(heading).getPropertyValue('-webkit-line-clamp')).toBeTruthy()
   })
 
-  it('renders a jersey-number chip when jerseyNumber is set', () => {
-    renderCard({ player: makePlayer({ jerseyNumber: 7 }) })
-    expect(screen.getByText('#7')).toBeInTheDocument()
-  })
+  describe('status badge and sections', () => {
+    it.each([
+      [{ verificationStatus: 'VERIFIED' as const, active: true }, 'Verified'],
+      [{ verificationStatus: 'UNVERIFIED' as const, active: true }, 'Unverified'],
+      [{ verificationStatus: 'REJECTED' as const, active: true }, 'Rejected'],
+      [{ verificationStatus: 'VERIFIED' as const, active: false }, 'Suspended'],
+    ])('shows %j as the first badge, labelled %s', (overrides, label) => {
+      renderCard({ player: makePlayer(overrides), sectionNames: ['Vets'] })
 
-  it('renders no jersey-number chip when jerseyNumber is null', () => {
-    renderCard({ player: makePlayer({ jerseyNumber: null }) })
-    expect(screen.queryByText(/^#/)).not.toBeInTheDocument()
-  })
-
-  it('renders the first tagged section name only, with no overflow chip, when tagged to one section', () => {
-    renderCard({ sectionNames: ['Colts A'] })
-
-    expect(screen.getByText('Colts A')).toBeInTheDocument()
-    expect(screen.queryByText(/^\+/)).not.toBeInTheDocument()
-  })
-
-  it('renders the first section name plus a +N overflow chip when tagged to more than one section', () => {
-    renderCard({ sectionNames: ['Colts A', 'Colts B'] })
-
-    expect(screen.getByText('Colts A')).toBeInTheDocument()
-    expect(screen.getByText('+1')).toBeInTheDocument()
-    expect(screen.queryByText('Colts B')).not.toBeInTheDocument()
-  })
-
-  it('renders no section chip and no overflow chip when the player has no tagged sections', () => {
-    renderCard({ sectionNames: [] })
-
-    expect(screen.queryByText(/^\+/)).not.toBeInTheDocument()
-  })
-
-  it('renders the badge alongside a section chip when both are passed', () => {
-    renderCard({ sectionNames: ['Colts A'], badge: { label: 'Inactive', tone: 'muted' } })
-
-    expect(screen.getByText('Colts A')).toBeInTheDocument()
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
-  })
-
-  it('renders just the badge, with no section chip, when there are no tagged sections', () => {
-    renderCard({ sectionNames: [], badge: { label: 'Inactive', tone: 'muted' } })
-
-    expect(screen.getByText('Inactive')).toBeInTheDocument()
-  })
-
-  it('renders a phone row only when the player has a phone number', () => {
-    renderCard({ player: makePlayer({ phone: '082 555 1234' }) })
-    expect(screen.getByText('082 555 1234')).toBeInTheDocument()
-  })
-
-  it('renders no phone row when the player has no phone number', () => {
-    renderCard({ player: makePlayer({ phone: null }) })
-    expect(screen.queryByText('082 555 1234')).not.toBeInTheDocument()
-  })
-
-  it('renders the batting row with the correct label only when battingStance is set', () => {
-    renderCard({ player: makePlayer({ battingStance: 'RIGHT_HANDED' }) })
-    expect(screen.getByText(`Bat: ${BATTING_STANCE_LABEL.RIGHT_HANDED}`)).toBeInTheDocument()
-  })
-
-  it('renders no batting row when battingStance is not set', () => {
-    renderCard({ player: makePlayer({ battingStance: null }) })
-    expect(screen.queryByText(/^Bat:/)).not.toBeInTheDocument()
-  })
-
-  it('renders a partial bowling row (arm only) when only bowlingArm is set', () => {
-    renderCard({ player: makePlayer({ bowlingArm: 'RIGHT_ARM', bowlingType: null }) })
-    expect(screen.getByText(`Bowl: ${BOWLING_ARM_LABEL.RIGHT_ARM}`)).toBeInTheDocument()
-  })
-
-  it('renders a partial bowling row (type only) when only bowlingType is set', () => {
-    renderCard({ player: makePlayer({ bowlingArm: null, bowlingType: 'OFF_BREAK' }) })
-    expect(screen.getByText(`Bowl: ${BOWLING_TYPE_LABEL.OFF_BREAK}`)).toBeInTheDocument()
-  })
-
-  it('renders a comma-joined bowling row when both bowlingArm and bowlingType are set', () => {
-    renderCard({ player: makePlayer({ bowlingArm: 'RIGHT_ARM', bowlingType: 'OFF_BREAK' }) })
-    expect(
-      screen.getByText(`Bowl: ${BOWLING_ARM_LABEL.RIGHT_ARM}, ${BOWLING_TYPE_LABEL.OFF_BREAK}`),
-    ).toBeInTheDocument()
-  })
-
-  it('renders no bowling row when neither bowlingArm nor bowlingType is set', () => {
-    renderCard({ player: makePlayer({ bowlingArm: null, bowlingType: null }) })
-    expect(screen.queryByText(/^Bowl:/)).not.toBeInTheDocument()
-  })
-
-  it('renders a clean card with just the name, avatar, and Edit link for a sparse player', () => {
-    renderCard({
-      player: makePlayer({
-        jerseyNumber: null,
-        phone: null,
-        battingStance: null,
-        bowlingArm: null,
-        bowlingType: null,
-      }),
-      sectionNames: [],
-      badge: undefined,
+      const badges = screen.getByTestId('player-status-badge').parentElement as HTMLElement
+      expect(badges.firstElementChild).toHaveTextContent(label)
+      expect(within(badges).getByText('Vets')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Edit' })).toBeInTheDocument()
-    expect(screen.queryByText(/^#/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Bat:/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Bowl:/)).not.toBeInTheDocument()
-    expect(screen.queryByText('Inactive')).not.toBeInTheDocument()
+    it('a suspended player shows Suspended whatever their verification status is', () => {
+      renderCard({ player: makePlayer({ active: false, verificationStatus: 'UNVERIFIED' }) })
+
+      expect(screen.getByTestId('player-status-badge')).toHaveTextContent('Suspended')
+    })
+
+    it('shows the first section plus a +N overflow chip, or a dashed "No section"', () => {
+      const { unmount } = render(
+        <ThemeProvider theme={baseTheme}>
+          <MemoryRouter>
+            <PlayerCard
+              player={makePlayer()}
+              sectionNames={['Vets', 'Over 40', 'Social']}
+              viewTo="/p"
+              editTo="/p/edit"
+              onStatusAction={vi.fn()}
+            />
+          </MemoryRouter>
+        </ThemeProvider>,
+      )
+      expect(screen.getByText('Vets')).toBeInTheDocument()
+      expect(screen.getByText('+2')).toBeInTheDocument()
+      expect(screen.queryByText('Over 40')).not.toBeInTheDocument()
+      unmount()
+
+      renderCard({ sectionNames: [] })
+      expect(screen.getByText('No section')).toBeInTheDocument()
+    })
   })
 
-  describe('avatar', () => {
-    const avatarImg = (container: HTMLElement) => container.querySelector('img.MuiAvatar-img')
+  describe('the five fixed rows', () => {
+    it('shows Number, Born, Phone, Bat and Bowl with their values', () => {
+      renderCard({
+        player: makePlayer({
+          jerseyNumber: 7,
+          dateOfBirth: '1978-08-19',
+          phone: '083 555 0177',
+          battingStance: 'LEFT_HANDED',
+          bowlingArm: 'RIGHT_ARM',
+          bowlingType: 'MEDIUM',
+        }),
+      })
 
-    it('uses the photo when there is one', () => {
-      const { container } = renderCard({ player: makePlayer({ photoUrl: '/media/p.png', gender: 'MALE' }) })
-      expect(avatarImg(container)).toHaveAttribute('src', '/media/p.png')
+      const rows = screen.getAllByTestId('player-detail-row')
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'Number#7',
+        'Born19 Aug 1978',
+        'Phone083 555 0177',
+        'BatLeft-handed',
+        'BowlRight-arm, Medium',
+      ])
     })
 
-    it('falls back to the gender icon when there is no photo', () => {
-      const { container } = renderCard({ player: makePlayer({ photoUrl: null, gender: 'FEMALE' }) })
-      expect(avatarImg(container)).toHaveAttribute('src', expect.stringContaining('avatar-female'))
+    it('shows "–" for everything that is not on file, so the card keeps the same rows', () => {
+      renderCard({ player: makePlayer({ dateOfBirth: null }) })
+
+      const rows = screen.getAllByTestId('player-detail-row')
+      expect(rows.map((row) => row.textContent)).toEqual(ROWS.map((label) => `${label}–`))
     })
 
-    it('falls back to initials when there is neither photo nor gender', () => {
-      const { container } = renderCard({ player: makePlayer({ photoUrl: null, gender: null }) })
-      expect(avatarImg(container)).toBeNull()
-      expect(screen.getByText('SN')).toBeInTheDocument()
+    it('has exactly the same rows whether or not anything is on file', () => {
+      renderCard({ player: makePlayer({ phone: '082', jerseyNumber: 1, battingStance: 'RIGHT_HANDED' }) })
+      const full = screen.getAllByTestId('player-detail-row').length
+      document.body.innerHTML = ''
+      renderCard({ player: makePlayer({ dateOfBirth: null }) })
+
+      expect(screen.getAllByTestId('player-detail-row')).toHaveLength(full)
+      expect(full).toBe(5)
+    })
+
+    it('tints the first, third and fifth rows with the shared zebra tint and leaves the others plain', () => {
+      renderCard()
+
+      const tint = zebraTint(baseTheme)
+      const rows = screen.getAllByTestId('player-detail-row')
+      expect(rows[0]).toHaveStyle({ backgroundColor: tint })
+      expect(rows[2]).toHaveStyle({ backgroundColor: tint })
+      expect(rows[4]).toHaveStyle({ backgroundColor: tint })
+      expect(rows[1]).not.toHaveStyle({ backgroundColor: tint })
+    })
+  })
+
+  describe('footer and the Status menu', () => {
+    it.each([
+      [{ verificationStatus: 'VERIFIED' as const, active: true }],
+      [{ verificationStatus: 'UNVERIFIED' as const, active: true }],
+      [{ verificationStatus: 'REJECTED' as const, active: true }],
+      [{ verificationStatus: 'VERIFIED' as const, active: false }],
+    ])('has the same three footer buttons, Status, Edit and View, for %j', (overrides) => {
+      renderCard({ player: makePlayer(overrides) })
+
+      const names = [screen.getByRole('button', { name: 'Change status' }), screen.getByRole('link', { name: 'Edit' }), screen.getByRole('link', { name: 'View' })]
+      expect(names.map((node) => node.textContent)).toEqual(['Status', 'Edit', 'View'])
+    })
+
+    it.each([
+      [{ verificationStatus: 'UNVERIFIED' as const, active: true }, ['Verify', 'Reject']],
+      [{ verificationStatus: 'VERIFIED' as const, active: true }, ['Suspend']],
+      [{ verificationStatus: 'REJECTED' as const, active: true }, ['Verify']],
+      [{ verificationStatus: 'VERIFIED' as const, active: false }, ['Reactivate']],
+    ])('the Status button of %j offers %j', async (overrides, labels) => {
+      renderCard({ player: makePlayer(overrides) })
+
+      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
+
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(labels)
+    })
+
+    it('reports the chosen change to the caller and closes the menu', async () => {
+      const { onStatusAction } = renderCard({ player: makePlayer({ verificationStatus: 'UNVERIFIED' }) })
+
+      await userEvent.click(screen.getByRole('button', { name: 'Change status' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Verify' }))
+
+      expect(onStatusAction).toHaveBeenCalledWith('verify')
+    })
+  })
+
+  // docs/specs/088 (E): games played in the header's top-right corner
+  describe('games played chips', () => {
+    it('shows this season and overall, with accessible names', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 12, gamesOverall: 48 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(within(chips).getByLabelText('12 games this season')).toHaveTextContent('12 this season')
+      expect(within(chips).getByLabelText('48 games overall')).toHaveTextContent('48 overall')
+    })
+
+    it('is always present, with 0 for a player who has not played, so every card keeps one height', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 0, gamesOverall: 0 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(within(chips).getByLabelText('0 games this season')).toBeInTheDocument()
+      expect(within(chips).getByLabelText('0 games overall')).toBeInTheDocument()
+    })
+
+    it('stretches the two chips to one width inside a column with a shared minimum width', () => {
+      renderCard({ player: makePlayer({ gamesThisSeason: 3, gamesOverall: 1204 }) })
+
+      const chips = screen.getByTestId('player-games-chips')
+      expect(chips).toHaveStyle({ minWidth: '104px' })
+      expect(getComputedStyle(chips).alignItems).toBe('stretch')
+      expect(chips.children).toHaveLength(2)
+    })
+
+    it('keeps the title beside the chips, clamped, for a long name', () => {
+      renderCard({ player: makePlayer({ firstName: 'Christopher Alexander', lastName: 'Montgomery-Hendricks the Third', gamesOverall: 203 }) })
+
+      expect(screen.getByRole('heading', { name: /Christopher Alexander/ })).toBeInTheDocument()
+      expect(screen.getByLabelText('203 games overall')).toBeInTheDocument()
     })
   })
 })
+
