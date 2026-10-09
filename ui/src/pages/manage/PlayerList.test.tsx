@@ -36,6 +36,9 @@ vi.mock('../../api/seasonApi', () => ({
 }))
 
 beforeEach(() => {
+  // mockReset (not just clear): a leftover mockReturnValueOnce from one test must not leak into the next now that the list
+  // query waits for the seasons query before it first calls listPlayers
+  for (const fn of [listPlayers, getPlayersSummary, listSections, listSeasons]) fn.mockReset()
   vi.clearAllMocks()
   listSections.mockResolvedValue([])
   // The default season is the one containing today.
@@ -77,6 +80,8 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
     verificationStatus: 'VERIFIED',
+    gamesThisSeason: 0,
+    gamesOverall: 0,
     ...overrides,
   }
 }
@@ -412,7 +417,7 @@ describe('PlayerList', () => {
       expect(getPlayersSummary).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focus: expect.anything() }))
     })
 
-    it('Unverified sends focus=unverified with no season; choosing another replaces it; the active one or the first card clears it', async () => {
+    it('Unverified sends focus=unverified (the season rides on every request); choosing another replaces it; the active one or the first card clears it', async () => {
       const user = userEvent.setup()
       listPlayers.mockResolvedValue([makePlayer()])
 
@@ -420,7 +425,7 @@ describe('PlayerList', () => {
 
       await screen.findByTestId('page-counter-unverified')
       await user.click(counter('unverified'))
-      await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'unverified', seasonId: undefined })))
+      await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'unverified', seasonId: 'season-1' })))
 
       await user.click(counter('selected'))
       await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'selected', seasonId: 'season-1' })))
@@ -509,4 +514,129 @@ describe('PlayerList', () => {
       }
     })
   })
+
+  // docs/specs/088-players-polls-alignment.md (E) and (F): games played and the Cards | List view
+  describe('Cards | List view', () => {
+    it('sends the default season on the very first list request, so the cards show "this season" at once', async () => {
+      listPlayers.mockResolvedValue([makePlayer({ gamesThisSeason: 12, gamesOverall: 48 })])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      expect(listPlayers.mock.calls[0][1]).toMatchObject({ seasonId: 'season-1' })
+      expect(listPlayers).toHaveBeenCalledTimes(1)
+      expect(screen.getByLabelText('12 games this season')).toBeInTheDocument()
+      expect(screen.getByLabelText('48 games overall')).toBeInTheDocument()
+    })
+
+    it('shows cards by default, and the switch swaps them for the list of the same players', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([
+        makePlayer({ id: 'p1', firstName: 'Amy', lastName: 'Ansell' }),
+        makePlayer({ id: 'p2', firstName: 'Zed', lastName: 'Zulu' }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('heading', { name: 'Amy Ansell' })
+      expect(screen.queryByRole('table', { name: 'Players' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cards' })).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(screen.getByRole('button', { name: 'List' }))
+
+      expect(await screen.findByRole('table', { name: 'Players' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Amy Ansell' })).not.toBeInTheDocument()
+      expect(screen.getAllByTestId('player-row')).toHaveLength(2)
+      expect(screen.getByRole('link', { name: 'Amy Ansell' })).toHaveAttribute('href', '/manage/players/p1')
+      // the same list request: switching the view does not refetch or change any filter
+      expect(listPlayers).toHaveBeenCalledTimes(1)
+    })
+
+    it('remembers the chosen view per page: saved at once, and a fresh mount comes back in it', async () => {
+      const user = userEvent.setup()
+      listPlayers.mockResolvedValue([makePlayer()])
+
+      const { unmount } = renderList('test-club-id')
+      await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+      await user.click(screen.getByRole('button', { name: 'List' }))
+      expect(localStorage.getItem('playerList:view')).toBe('list')
+      unmount()
+
+      renderList('test-club-id')
+      expect(await screen.findByRole('table', { name: 'Players' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Cards' }))
+      expect(localStorage.getItem('playerList:view')).toBe('cards')
+    })
+
+    it('keeps the counters, filters and search working in the list view', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('playerList:view', 'list')
+      listPlayers.mockResolvedValue([
+        makePlayer({ id: 'p1', firstName: 'Amy', lastName: 'Ansell' }),
+        makePlayer({ id: 'p2', firstName: 'Zed', lastName: 'Zulu' }),
+      ])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('table', { name: 'Players' })
+      expect(within(counter('shown')).getByText('12')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Search'), 'zul')
+      expect(screen.getAllByTestId('player-row')).toHaveLength(1)
+      await user.click(counter('in-squad'))
+      await waitFor(() => expect(listPlayers).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ focus: 'in-squad' })))
+      expect(screen.getByText(/Showing 2 players · In a squad this season/)).toBeInTheDocument()
+    })
+
+    it('a list row has the same Status menu as a card, and Reject still asks first', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('playerList:view', 'list')
+      listPlayers.mockResolvedValue([makePlayer({ id: 'p9', verificationStatus: 'UNVERIFIED' })])
+
+      renderList('test-club-id')
+
+      await screen.findByRole('table', { name: 'Players' })
+      await user.click(screen.getByRole('button', { name: 'Change status' }))
+      expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Verify', 'Reject'])
+      await user.click(screen.getByRole('menuitem', { name: 'Reject' }))
+      expect(await screen.findByRole('dialog', { name: 'Reject this player request?' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Reject player' }))
+      await waitFor(() => expect(rejectPlayer).toHaveBeenCalledWith('test-club-id', 'p9'))
+    })
+
+    it('on a phone the switch is the first control in the Filters sheet, full width, and it swaps the view', async () => {
+      const user = userEvent.setup()
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia
+      try {
+        listPlayers.mockResolvedValue([makePlayer()])
+
+        renderList('test-club-id')
+
+        await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+        // not on the content line on a phone
+        expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Filters' }))
+        const sheetToggle = await screen.findByRole('group', { name: 'View' })
+        const controls = sheetToggle.closest('[data-testid="filter-sheet-fields"]')?.lastElementChild as HTMLElement
+        expect(controls.firstElementChild).toContainElement(sheetToggle)
+
+        await user.click(within(sheetToggle).getByRole('button', { name: 'List' }))
+        expect(localStorage.getItem('playerList:view')).toBe('list')
+        // the open sheet hides the page behind it from the accessibility tree
+        expect(screen.getByRole('table', { name: 'Players', hidden: true })).toBeInTheDocument()
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
+    })
+  })
 })
+

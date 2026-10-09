@@ -3,6 +3,8 @@ import { Box, Link, Typography } from '@mui/material'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { PlayerCard } from '../../components/PlayerCard'
+import { PlayerTable } from '../../components/PlayerTable'
+import { ListViewToggle } from '../../components/ListViewToggle'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine, SortLink } from '../../components/ContentControlsLine'
@@ -17,6 +19,7 @@ import { listSections } from '../../api/sectionApi'
 import type { Section } from '../../api/sectionApi'
 import { usePersistedListFilters } from '../../hooks/usePersistedListFilters'
 import { useAvailabilitySeason } from '../../hooks/useAvailabilitySeason'
+import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { usePlayerStatusActions } from '../../hooks/usePlayerStatusActions'
 import { scopeFilterText } from '../../utils/availabilityScope'
 import { cardGridSx } from '../../utils/cardGrid'
@@ -56,10 +59,13 @@ export default function PlayerList() {
   const [showInactive, setShowInactive] = useState(false)
   const [focus, setFocus] = useState<PlayerListFocus | null>(null)
   // The two season counters look at the default season (the one containing today, else the latest); there is no control.
-  const { seasonId } = useAvailabilitySeason(clubId)
+  const { seasonId, seasonsLoading } = useAvailabilitySeason(clubId)
+  // docs/specs/088 (F): Cards or List, remembered per page in the browser (`playerList:view`, default Cards). It changes
+  // only how the same players are shown: the filters, counters and Status actions are identical in both views.
+  const [view, setView] = useListViewPreference('playerList:view')
   const statusActions = usePlayerStatusActions(clubId)
 
-  const { data: players, isLoading, isError } = useQuery({
+  const { data: players, isPending, isError } = useQuery({
     queryKey: ['managed-club', clubId, 'players', sectionId, missingDateOfBirth, showInactive, focus, seasonId],
     queryFn: () =>
       listPlayers(clubId as string, {
@@ -67,9 +73,12 @@ export default function PlayerList() {
         missingDateOfBirth: missingDateOfBirth || undefined,
         includeInactive: showInactive,
         focus: focus ?? undefined,
-        seasonId: focus === 'in-squad' || focus === 'selected' ? seasonId : undefined,
+        // docs/specs/088 (E): every request carries the default season, so each card's "this season" is right on first paint
+        seasonId: seasonId ?? undefined,
       }),
-    enabled: Boolean(clubId) && (focus !== 'in-squad' && focus !== 'selected' ? true : Boolean(seasonId)),
+    // wait for the seasons query (otherwise the first fetch has no season and a second one follows); a season focus also
+    // needs a season to exist
+    enabled: Boolean(clubId) && !seasonsLoading && (focus !== 'in-squad' && focus !== 'selected' ? true : Boolean(seasonId)),
     // Keep the previous list on screen while a filter or counter change loads, so the toolbar and counters stay mounted.
     placeholderData: keepPreviousData,
   })
@@ -124,7 +133,8 @@ export default function PlayerList() {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
 
-  if (isLoading) {
+  // isPending (not isLoading): the list query also waits for the seasons query, and that wait is still loading
+  if (isPending) {
     return null
   }
 
@@ -229,6 +239,9 @@ export default function PlayerList() {
         extraChips={chips}
         viewControls={
           <>
+            <Box sx={{ width: '100%' }}>
+              <ListViewToggle value={view} onChange={setView} fullWidth />
+            </Box>
             {focus && (
               <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 1, minHeight: 36 }}>
                 <Typography variant="body2" color="text.secondary">
@@ -255,13 +268,23 @@ export default function PlayerList() {
         sortAction={sortLink}
         controls={
           <>
+            <ListViewToggle value={view} onChange={setView} />
             {missingToggle}
             {inactiveToggle}
           </>
         }
       />
 
-      {visiblePlayers.length > 0 && (
+      {visiblePlayers.length > 0 && view === 'list' && (
+        <PlayerTable
+          players={visiblePlayers}
+          sectionNamesFor={sectionNamesFor}
+          viewTo={(player) => `/manage/players/${player.id}`}
+          onStatusAction={(player, action) => statusActions.requestAction(player, action)}
+        />
+      )}
+
+      {visiblePlayers.length > 0 && view === 'cards' && (
         <Box sx={cardGridSx}>
           {visiblePlayers.map((player) => (
             <PlayerCard
