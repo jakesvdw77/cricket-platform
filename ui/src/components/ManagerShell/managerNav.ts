@@ -87,7 +87,7 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/players',
         icon: 'nav/cricket-players',
       },
-      { id: 'squads', label: 'Squads', description: 'Pick squads per match', to: '/manage/squads', icon: 'nav/squads' },
+      { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads' },
       {
         id: 'communication',
         label: 'Communication',

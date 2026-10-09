@@ -67,16 +67,16 @@ describe('managerNav', () => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
 
-  it('groups People as Teams, Players, Squads, Communication and Availability as Polls, Player availability, Match-day cover', () => {
+  it('groups People as Teams, Players, Team selection, Communication and Availability as Polls, Player availability, Match-day cover', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
-    expect(labels('People')).toEqual(['Teams', 'Players', 'Squads', 'Communication'])
+    expect(labels('People')).toEqual(['Teams', 'Players', 'Team selection', 'Communication'])
     expect(labels('Availability')).toEqual(['Polls', 'Player availability', 'Match-day cover'])
   })
 
   it('lights exactly one item on every real path', () => {
     const paths = [
       '/manage', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/results', '/manage/teams',
-      '/manage/sections/s/teams', '/manage/players', '/manage/squads', '/manage/communication',
+      '/manage/sections/s/teams', '/manage/players', '/manage/team-selection', '/manage/team-selection/batting', '/manage/communication',
       '/manage/availability', '/manage/availability/new', '/manage/availability/group/r1',
       '/manage/availability/squad/m/p', '/manage/availability/players', '/manage/availability/coverage',
       '/manage/player-availability', '/manage/section-availability', '/manage/club-profile', '/manage/gallery',

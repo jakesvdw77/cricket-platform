@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { baseTheme } from './theme'
 import UpcomingMatches from './pages/view/UpcomingMatches'
 import LandingPage from './pages/view/LandingPage'
@@ -45,7 +45,9 @@ import SeasonDetailPage from './pages/manage/SeasonDetailPage'
 import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
-import SquadPicker from './pages/manage/SquadPicker'
+import TeamSelectionHubLayout from './pages/manage/teamSelection/TeamSelectionHubLayout'
+import MatchesView from './pages/manage/teamSelection/MatchesView'
+import { PlaceholderView } from './pages/manage/teamSelection/PlaceholderView'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import NewPollPage from './pages/manage/NewPollPage'
 import GroupPollResponsesPage from './pages/manage/GroupPollResponsesPage'
@@ -229,7 +231,16 @@ function App() {
                   "Coming soon" EmptyState precedent as results/permissions above. */}
               <Route path="gallery" element={<EmptyState title="Gallery" description="Coming soon." />} />
               <Route path="notifications" element={<EmptyState title="Notifications" description="Coming soon." />} />
-              <Route path="squads" element={<SquadPicker />} />
+              {/* docs/specs/093-team-selection-hub.md: Squads became Team selection - one layout route (header +
+                  Matches | Players | Time slots | Batting order switch); the old URL redirects. */}
+              <Route path="squads" element={<Navigate to="/manage/team-selection" replace />} />
+              <Route path="team-selection" element={<TeamSelectionHubLayout />}>
+                <Route index element={<Navigate to="matches" replace />} />
+                <Route path="matches" element={<MatchesView />} />
+                <Route path="players" element={<PlaceholderView title="Players" />} />
+                <Route path="slots" element={<PlaceholderView title="Time slots" />} />
+                <Route path="batting" element={<PlaceholderView title="Batting order" />} />
+              </Route>
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
               {/* docs/specs/034-availability-polls-dashboard.md: a real, club-wide list of every
                   currently-open availability poll, replacing the earlier "go find the match
