@@ -49,7 +49,8 @@ import TeamSelectionHubLayout from './pages/manage/teamSelection/TeamSelectionHu
 import SelectTeamPage from './pages/manage/teamSelection/SelectTeamPage'
 import MatchesView from './pages/manage/teamSelection/MatchesView'
 import PlayersView from './pages/manage/teamSelection/PlayersView'
-import { PlaceholderView } from './pages/manage/teamSelection/PlaceholderView'
+import SlotsView from './pages/manage/teamSelection/SlotsView'
+import BattingOrderView from './pages/manage/teamSelection/BattingOrderView'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
 import NewPollPage from './pages/manage/NewPollPage'
 import GroupPollResponsesPage from './pages/manage/GroupPollResponsesPage'
@@ -240,8 +241,8 @@ function App() {
                 <Route index element={<Navigate to="matches" replace />} />
                 <Route path="matches" element={<MatchesView />} />
                 <Route path="players" element={<PlayersView />} />
-                <Route path="slots" element={<PlaceholderView title="Time slots" />} />
-                <Route path="batting" element={<PlaceholderView title="Batting order" />} />
+                <Route path="slots" element={<SlotsView />} />
+                <Route path="batting" element={<BattingOrderView />} />
               </Route>
               {/* docs/specs/093: the Select team page of one side of a match, outside the hub layout (it has its own
                   header). The old Edit Match ?tab=playing-xi links redirect here from MatchFormPage. */}

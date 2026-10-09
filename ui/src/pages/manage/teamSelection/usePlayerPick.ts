@@ -13,6 +13,8 @@ export interface PickTarget {
   side: TeamSelectionSide
   cell: TeamSelectionCell
   playerId: string
+  // Batting order view: the open position the player goes to. Absent, the next position after the highest taken.
+  position?: number
 }
 
 // The 409 of a refused pick: the rule's own message for this player, else the response detail.
@@ -35,7 +37,7 @@ export function usePlayerPick(clubId: string) {
   const refresh = () => invalidateTeamSelection(queryClient, clubId)
 
   const pickMutation = useMutation({
-    mutationFn: async ({ match, side, cell, playerId }: PickTarget) => {
+    mutationFn: async ({ match, side, cell, playerId, position }: PickTarget) => {
       let sideId = cell.sideId ?? side.sideId
       if (!sideId) {
         // A side created here exists even if the pick below is refused, so the overview must be refreshed either way.
@@ -44,7 +46,7 @@ export function usePlayerPick(clubId: string) {
       }
       const kept: SelectionEntryRequest[] = side.picks.map((pick) => ({ playerProfileId: pick.playerId }))
       const highest = Math.max(0, ...side.picks.map((pick) => pick.battingOrder ?? 0))
-      const next = highest + 1
+      const next = position ?? highest + 1
       const added: SelectionEntryRequest =
         next <= side.limits.battingPlaces ? { playerProfileId: playerId, battingOrder: next } : { playerProfileId: playerId }
       return applySelection(clubId, match.matchId, sideId, { players: [...kept, added] })

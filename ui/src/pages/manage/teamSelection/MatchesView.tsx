@@ -1,19 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Alert, Box } from '@mui/material'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CompactSwitch } from '../../../components/CompactSwitch'
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { ContentControlsLine } from '../../../components/ContentControlsLine'
 import { EmptyState } from '../../../components/EmptyState'
 import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
-import { announceMatchSide } from '../../../api/matchSideApi'
-import { invalidateTeamSelection } from '../../../api/teamSelectionApi'
-import type { TeamSelectionMatch, TeamSelectionSide, TeamSelectionStatus } from '../../../api/teamSelectionApi'
-import { errorDetail } from '../../../utils/errorDetail'
+import type { TeamSelectionStatus } from '../../../api/teamSelectionApi'
 import { useTeamSelectionHub } from './hubContext'
+import { matchesSearch } from './matchSearch'
 import { SelectionMatchesTable } from './SelectionMatchesTable'
 import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
+import { useAnnounceSide } from './useAnnounceSide'
 import { STATUS_LABELS } from './selectionStatus'
 
 // docs/specs/093-team-selection-hub.md: the quick filter behind the counters. null shows every match; each counter
@@ -22,25 +19,11 @@ type Focus = TeamSelectionStatus
 
 const FOCUS_ORDER: Focus[] = ['NOT_STARTED', 'IN_PROGRESS', 'READY_TO_ANNOUNCE', 'ANNOUNCED']
 
-function matchesSearch(match: TeamSelectionMatch, term: string): boolean {
-  if (!term) return true
-  const haystack = [match.label, match.leagueName, ...match.sides.flatMap((side) => [side.teamName, side.opponentName])]
-  return haystack.some((text) => text?.toLowerCase().includes(term))
-}
-
 // The Matches view: counters (quick filters), the shared filter bar, the content line and the zebra table.
 export default function MatchesView() {
   const { clubId, overview, showPast, setShowPast, search } = useTeamSelectionHub()
-  const queryClient = useQueryClient()
   const [focus, setFocus] = useState<Focus | null>(null)
-  const [pending, setPending] = useState<{ match: TeamSelectionMatch; side: TeamSelectionSide } | null>(null)
-
-  const announceMutation = useMutation({
-    mutationFn: (target: { match: TeamSelectionMatch; side: TeamSelectionSide }) =>
-      announceMatchSide(clubId as string, target.match.matchId, target.side.sideId as string),
-    onSuccess: () => invalidateTeamSelection(queryClient, clubId as string),
-    onSettled: () => setPending(null),
-  })
+  const announce = useAnnounceSide(clubId as string)
 
   const data = overview.data
   const term = search.trim().toLowerCase()
@@ -100,9 +83,7 @@ export default function MatchesView() {
 
       <ContentControlsLine scope={scope} controls={pastToggle} />
 
-      {announceMutation.isError && (
-        <Alert severity="error">{errorDetail(announceMutation.error, "Couldn't announce this team. Please try again.")}</Alert>
-      )}
+      {announce.errorAlert}
 
       {data?.truncated && (
         <Alert severity="info">Only the first matches are shown. Narrow the filters to see the rest.</Alert>
@@ -111,8 +92,8 @@ export default function MatchesView() {
       {data && total > 0 && (
         <SelectionMatchesTable
           matches={visible}
-          onAnnounce={(match, side) => setPending({ match, side })}
-          announcingSideId={announceMutation.isPending ? (pending?.side.sideId ?? null) : null}
+          onAnnounce={announce.request}
+          announcingSideId={announce.announcingSideId}
         />
       )}
 
@@ -127,16 +108,7 @@ export default function MatchesView() {
         />
       )}
 
-      <ConfirmDialog
-        open={pending !== null}
-        title="Announce this team?"
-        description="Announcing marks this team as final: it shows as announced on the match and team sheet, and the team sheet can be shared. Nobody is notified automatically. If you change the selection afterwards, you will need to announce it again."
-        confirmLabel="Announce team"
-        pendingLabel="Announcing…"
-        pending={announceMutation.isPending}
-        onConfirm={() => pending && announceMutation.mutate(pending)}
-        onClose={() => setPending(null)}
-      />
+      {announce.dialog}
     </Box>
   )
 }

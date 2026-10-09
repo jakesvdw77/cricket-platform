@@ -2,6 +2,7 @@ import type {
   TeamSelectionCell,
   TeamSelectionMatch,
   TeamSelectionOverview,
+  TeamSelectionPick,
   TeamSelectionPlayer,
   TeamSelectionSide,
   TeamSelectionStatus,
@@ -102,4 +103,63 @@ export function makeCell(overrides: Partial<TeamSelectionCell> = {}): TeamSelect
 
 export function makePlayer(playerId: string, firstName: string, lastName: string, cells: TeamSelectionCell[]): TeamSelectionPlayer {
   return { playerId, firstName, lastName, pickedCount: cells.filter((cell) => cell.picked).length, cells }
+}
+
+export function makePick(
+  id: string,
+  battingOrder: number | null,
+  overrides: Partial<TeamSelectionPick> = {},
+): TeamSelectionPick {
+  return { playerId: id, firstName: id.charAt(0).toUpperCase() + id.slice(1), lastName: 'Smith', battingOrder, role: 'BATSMAN', captain: false, wicketKeeper: false, twelfthMan: false, ...overrides }
+}
+
+// Two matches in one Saturday morning slot plus one on Sunday: m-1 (Ann 1 captain, Bob 2 keeper, Cy 12th man, Dee no
+// position), m-2 (nobody picked, no side yet), m-3 (a derby on Sunday afternoon, ready to announce).
+export function sampleBoard(): TeamSelectionOverview {
+  const m1 = makeMatch(
+    {
+      matchId: 'm-1',
+      label: 'Vets A v Oakfield',
+      sides: [
+        makeSide({
+          pickedCount: 4,
+          picks: [
+            makePick('bob', 2, { wicketKeeper: true }),
+            makePick('ann', 1, { captain: true }),
+            makePick('dee', null),
+            makePick('cy', null, { twelfthMan: true }),
+          ],
+        }),
+      ],
+    },
+    'IN_PROGRESS',
+  )
+  const m2 = makeMatch({ matchId: 'm-2', matchDate: '2026-10-17T11:00:00', label: 'Vets B v Hillside', sides: [makeSide({ sideId: null, teamId: 'team-2', teamName: 'Vets B' })] })
+  const m3 = makeMatch(
+    {
+      matchId: 'm-3',
+      matchDate: '2026-10-18T14:00:00',
+      dayPart: 'AFTERNOON',
+      label: 'Vets A v Vets B',
+      sides: [
+        makeSide({ sideId: 's-a', teamId: 'team-a', teamName: 'Vets A', status: 'READY_TO_ANNOUNCE', pickedCount: 12, placesFilled: true }),
+        makeSide({ sideId: 's-b', teamId: 'team-b', teamName: 'Vets B', home: false, announced: true, status: 'ANNOUNCED', picks: [makePick('eve', 1)], pickedCount: 1 }),
+      ],
+    },
+    'READY_TO_ANNOUNCE',
+  )
+  return {
+    ...makeOverview([m1, m2, m3]),
+    players: [
+      makePlayer('ann', 'Ann', 'Smith', [makeCell({ matchId: 'm-1', picked: true }), makeCell({ matchId: 'm-2', teamId: 'team-2', sideId: null })]),
+      makePlayer('fay', 'Fay', 'Jones', [
+        makeCell({ matchId: 'm-1' }),
+        makeCell({ matchId: 'm-2', teamId: 'team-2', sideId: null }),
+      ]),
+      makePlayer('gus', 'Gus', 'Brown', [
+        makeCell({ matchId: 'm-1', pickable: false, reasonCode: 'SAID_UNAVAILABLE' }),
+        makeCell({ matchId: 'm-2', teamId: 'team-2', sideId: null }),
+      ]),
+    ],
+  }
 }

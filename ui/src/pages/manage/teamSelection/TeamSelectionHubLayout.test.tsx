@@ -5,7 +5,6 @@ import { MemoryRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TeamSelectionHubLayout from './TeamSelectionHubLayout'
 import MatchesView from './MatchesView'
-import { PlaceholderView } from './PlaceholderView'
 import { makeOverview, sampleMatches } from './teamSelectionTestUtils'
 import type { Season } from '../../../api/seasonApi'
 
@@ -16,6 +15,9 @@ vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (...args: unknown[]) 
 const listSeasons = vi.fn()
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (...args: unknown[]) => listSeasons(...args) }))
 // The hook and its fetcher live in one module, so the HTTP client is what the tests replace.
+function PlaceholderView({ title }: { title: string }) {
+  return <p>{`${title} stand-in`}</p>
+}
 const get = vi.fn()
 vi.mock('../../../api/axiosConfig', () => ({ default: { get: (...args: unknown[]) => get(...args) } }))
 const getTeamSelection = {
@@ -76,12 +78,12 @@ describe('TeamSelectionHubLayout', () => {
     expect(await screen.findByRole('table', { name: 'Team selection by match' })).toBeInTheDocument()
   })
 
-  it('switches to the placeholder views and back without losing the filters', async () => {
+  it('switches between the views and back without losing the filters', async () => {
     localStorage.setItem('teamSelection:filters:club-1', JSON.stringify({ seasonId: 's-old', leagueId: 'lg-1', sectionId: null, teamId: null }))
     renderHub('/manage/team-selection/matches')
     await screen.findByRole('table', { name: 'Team selection by match' })
     await userEvent.click(screen.getByRole('link', { name: 'Batting order' }))
-    expect(screen.getByText('This view is coming soon.')).toBeInTheDocument()
+    expect(screen.getByText('Batting order stand-in')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Batting order' })).toHaveAttribute('aria-current', 'page')
     await userEvent.click(screen.getByRole('link', { name: 'Matches' }))
     await screen.findByRole('table', { name: 'Team selection by match' })
