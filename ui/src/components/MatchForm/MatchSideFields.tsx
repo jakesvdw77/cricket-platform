@@ -1,5 +1,6 @@
-import { Avatar, Box, Button as MuiButton, ListSubheader, MenuItem, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Avatar, Box, Button as MuiButton, ListSubheader, MenuItem, Stack, ToggleButton, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { CompactToggleGroup } from '../CompactToggleGroup'
 import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
 import { avatarSx } from '../RecordCard'
@@ -67,8 +68,8 @@ export function MatchSideFields({
   const selectedKnown = pickable.some((team) => team.id === value.leagueTeamId)
   const selectedValue = value.leagueTeamId ? `${LEAGUE_PREFIX}${value.leagueTeamId}` : ''
 
-  const handleModeChange = (next: SideMode | null) => {
-    if (!next || next === value.mode) {
+  const handleModeChange = (next: SideMode) => {
+    if (next === value.mode) {
       return
     }
     onChange({
@@ -93,35 +94,34 @@ export function MatchSideFields({
   }
 
   return (
-    <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Typography variant="subtitle2" fontWeight={600}>
-        {label} side
-      </Typography>
-      <ToggleButtonGroup
-        value={value.mode}
-        exclusive
-        fullWidth
-        onChange={(_event, next: SideMode | null) => handleModeChange(next)}
-      >
-        <ToggleButton value="team">My team</ToggleButton>
-        {showLeagueButton && (
-          <ToggleButton value="leagueTeam" aria-label="League team" disabled={!hasScope && value.mode !== 'leagueTeam'}>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }} aria-hidden>
-              League
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} aria-hidden>
-              League team
-            </Box>
-          </ToggleButton>
-        )}
-        <ToggleButton value="external">Other</ToggleButton>
-      </ToggleButtonGroup>
-
-      {canUseLeagueTeams && !hasScope && (
-        <Typography variant="caption" color="text.secondary">
-          Choose a league and season first to pick a league team.
+    <Box
+      data-testid={`match-side-${label.toLowerCase()}`}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, minWidth: 0 }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="subtitle2" fontWeight={700}>
+          {label} side
         </Typography>
-      )}
+        <CompactToggleGroup<SideMode>
+          value={value.mode}
+          onChange={handleModeChange}
+          ariaLabel={`${label} side`}
+          fullWidthOnPhone
+        >
+          <ToggleButton value="team">My team</ToggleButton>
+          {showLeagueButton && (
+            <ToggleButton value="leagueTeam" aria-label="League team" disabled={!hasScope && value.mode !== 'leagueTeam'}>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }} aria-hidden>
+                League
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }} aria-hidden>
+                League team
+              </Box>
+            </ToggleButton>
+          )}
+          <ToggleButton value="external">Other</ToggleButton>
+        </CompactToggleGroup>
+      </Box>
 
       {value.mode === 'team' && (
         <Input

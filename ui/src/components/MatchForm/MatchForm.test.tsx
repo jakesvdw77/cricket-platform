@@ -136,7 +136,7 @@ describe('MatchForm', () => {
   it('renders a required Season select and an optional League select', () => {
     renderMatchForm()
     expect(screen.getByLabelText('Season')).toBeInTheDocument()
-    expect(screen.getByLabelText('League')).toBeInTheDocument()
+    expect(screen.getByLabelText('League (optional)')).toBeInTheDocument()
   })
 
   it('defaults each side to "My team" and shows a team Select', () => {
@@ -411,7 +411,7 @@ describe('MatchForm league teams', () => {
   it('disables League team with a hint until a league and season are chosen', () => {
     renderWithTeams()
     expect(screen.getAllByRole('button', { name: 'League team' })[0]).toBeDisabled()
-    expect(screen.getAllByText('Choose a league and season first to pick a league team.')).toHaveLength(2)
+    expect(screen.getAllByText('Choose a league and season first to pick a league team.')).toHaveLength(1)
   })
 
   it('groups Our teams and League teams, listing only active league teams', async () => {
@@ -533,16 +533,19 @@ describe('MatchForm links', () => {
     await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
   }
 
-  it('renders the Scoring and Streaming link fields with their helper text', () => {
+  it('renders the optional Scoring and Streaming link fields with example placeholders and no helper text', () => {
     renderMatchForm()
-    expect(screen.getByLabelText('Scoring link')).toBeInTheDocument()
-    expect(screen.getByLabelText('Streaming link')).toBeInTheDocument()
-    expect(
-      screen.getByText("Optional. Link to the match's scoring page, e.g. https://cricclubs.com/matches/34343"),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('Optional. Link to the live stream, e.g. a PitchVision page, starting with https://'),
-    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Scoring link (optional)')).toHaveAttribute('placeholder', 'https://cricclubs.com/matches/34343')
+    expect(screen.getByLabelText('Streaming link (optional)')).toHaveAttribute('placeholder', 'https://')
+    expect(screen.queryByText(/^Optional\./)).not.toBeInTheDocument()
+  })
+
+  it('lays the form out as Match details and Teams sections with a panel per side', () => {
+    renderMatchForm()
+    expect(screen.getByRole('heading', { name: 'Match details' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Teams' })).toBeInTheDocument()
+    expect(screen.getByTestId('match-side-home')).toBeInTheDocument()
+    expect(screen.getByTestId('match-side-away')).toBeInTheDocument()
   })
 
   it('sends null for blank links', async () => {
@@ -550,7 +553,7 @@ describe('MatchForm links', () => {
     const onSubmit = vi.fn()
     renderMatchForm({ onSubmit })
     await fillRequired(user)
-    await user.type(screen.getByLabelText('Scoring link'), '   ')
+    await user.type(screen.getByLabelText('Scoring link (optional)'), '   ')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     const payload = onSubmit.mock.calls[0][0] as MatchPayload
@@ -563,8 +566,8 @@ describe('MatchForm links', () => {
     const onSubmit = vi.fn()
     renderMatchForm({ onSubmit })
     await fillRequired(user)
-    await user.type(screen.getByLabelText('Scoring link'), '  https://cricclubs.com/matches/34343 ')
-    await user.type(screen.getByLabelText('Streaming link'), 'http://pitchvision.example/live')
+    await user.type(screen.getByLabelText('Scoring link (optional)'), '  https://cricclubs.com/matches/34343 ')
+    await user.type(screen.getByLabelText('Streaming link (optional)'), 'http://pitchvision.example/live')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     const payload = onSubmit.mock.calls[0][0] as MatchPayload
@@ -577,7 +580,7 @@ describe('MatchForm links', () => {
     const onSubmit = vi.fn()
     renderMatchForm({ onSubmit })
     await fillRequired(user)
-    await user.type(screen.getByLabelText('Scoring link'), 'cricclubs.com/matches/34343')
+    await user.type(screen.getByLabelText('Scoring link (optional)'), 'cricclubs.com/matches/34343')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(await screen.findByText('Enter a valid link starting with http:// or https://')).toBeInTheDocument()
@@ -589,7 +592,7 @@ describe('MatchForm links', () => {
     const onSubmit = vi.fn()
     renderMatchForm({ onSubmit })
     await fillRequired(user)
-    await user.click(screen.getByLabelText('Streaming link'))
+    await user.click(screen.getByLabelText('Streaming link (optional)'))
     await user.paste(`https://${'a'.repeat(1025 - 8)}`)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -602,20 +605,20 @@ describe('MatchForm links', () => {
     const onSubmit = vi.fn()
     renderMatchForm({ onSubmit })
     await fillRequired(user)
-    await user.type(screen.getByLabelText('Scoring link'), 'https://ok.example/1')
-    await user.type(screen.getByLabelText('Streaming link'), 'ftp://bad.example')
+    await user.type(screen.getByLabelText('Scoring link (optional)'), 'https://ok.example/1')
+    await user.type(screen.getByLabelText('Streaming link (optional)'), 'ftp://bad.example')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(await screen.findAllByText('Enter a valid link starting with http:// or https://')).toHaveLength(1)
-    expect(screen.getByLabelText('Scoring link')).not.toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Streaming link')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Scoring link (optional)')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Streaming link (optional)')).toHaveAttribute('aria-invalid', 'true')
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('prefills the links from initialValues', () => {
     renderMatchForm({ initialValues: { scoringUrl: 'https://s.example/1', streamingUrl: 'https://t.example/2' } })
-    expect(screen.getByLabelText('Scoring link')).toHaveValue('https://s.example/1')
-    expect(screen.getByLabelText('Streaming link')).toHaveValue('https://t.example/2')
+    expect(screen.getByLabelText('Scoring link (optional)')).toHaveValue('https://s.example/1')
+    expect(screen.getByLabelText('Streaming link (optional)')).toHaveValue('https://t.example/2')
   })
 })
 

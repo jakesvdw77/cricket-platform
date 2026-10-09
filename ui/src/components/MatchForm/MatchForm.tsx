@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
-import { Alert, Box, MenuItem } from '@mui/material'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import { Alert, Box, MenuItem, Typography } from '@mui/material'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { Input } from '../Input'
 import { MatchSideFields } from './MatchSideFields'
 import type { SideMode, SideState } from './MatchSideFields'
@@ -288,99 +290,145 @@ export function MatchForm({
 
   return (
     <Box component="form" id={MATCH_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
-      <Input
-        select
-        label="Season"
-        value={values.seasonId}
-        onChange={(event) => changeScope({ seasonId: event.target.value })}
-        error={Boolean(errors.seasonId)}
-        helperText={errors.seasonId}
+      {/* docs/specs/089 (B): one full-width block - "Match details" over a three-column grid, then "Teams" over the two
+          side panels, so a new match fits one desktop screen. Helper text is gone: "(optional)" sits in the label and
+          the URL examples are placeholders; validation errors still show under the field. */}
+      <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <SectionHeading icon={<InfoOutlinedIcon />} title="Match details" />
+        <Box sx={{ display: 'grid', gap: { xs: 2, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+          <Input
+            select
+            label="Season"
+            value={values.seasonId}
+            onChange={(event) => changeScope({ seasonId: event.target.value })}
+            error={Boolean(errors.seasonId)}
+            helperText={errors.seasonId}
+          >
+            {seasons.map((season) => (
+              <MenuItem key={season.id} value={season.id}>
+                {season.label}
+              </MenuItem>
+            ))}
+          </Input>
+
+          <Input
+            select
+            label="League (optional)"
+            value={values.leagueId}
+            onChange={(event) => changeScope({ leagueId: event.target.value })}
+          >
+            <MenuItem value="">None (friendly)</MenuItem>
+            {leagues.map((league) => (
+              <MenuItem key={league.id} value={league.id}>
+                {league.name}
+              </MenuItem>
+            ))}
+          </Input>
+
+          <Input
+            label="Match date & time"
+            type="datetime-local"
+            value={values.matchDate}
+            onChange={(event) => setValues((prev) => ({ ...prev, matchDate: event.target.value }))}
+            error={Boolean(errors.matchDate)}
+            helperText={errors.matchDate}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <Input label="Venue (optional)" value={values.venue} onChange={handleTextChange('venue')} />
+
+          <Input
+            label="Scoring link (optional)"
+            placeholder="https://cricclubs.com/matches/34343"
+            value={values.scoringUrl}
+            onChange={handleTextChange('scoringUrl')}
+            error={Boolean(errors.scoringUrl)}
+            helperText={errors.scoringUrl}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <Input
+            label="Streaming link (optional)"
+            placeholder="https://"
+            value={values.streamingUrl}
+            onChange={handleTextChange('streamingUrl')}
+            error={Boolean(errors.streamingUrl)}
+            helperText={errors.streamingUrl}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Box>
+
+        {leagueTeamsNotice && (
+          <Alert severity="info" onClose={() => setLeagueTeamsNotice(false)}>
+            League or season changed, so the league team was cleared. Choose the team again.
+          </Alert>
+        )}
+
+        <SectionHeading icon={<SportsCricketOutlinedIcon />} title="Teams" />
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
+          <MatchSideFields
+            label="Home"
+            value={values.home}
+            errors={{ team: errors.homeTeamId, name: errors.homeTeamName, leagueTeam: errors.homeLeagueTeamId }}
+            onChange={(patch) => updateSide('home', patch)}
+            teamOptions={homeTeamOptions}
+            narrowedByAffiliation={narrowedByAffiliation}
+            leagueTeams={leagueTeams}
+            canUseLeagueTeams={canUseLeagueTeams}
+            hasScope={hasScope}
+            leagueId={values.leagueId}
+            leagueTeamsLoading={leagueTeamsLoading}
+          />
+
+          <MatchSideFields
+            label="Away"
+            value={values.away}
+            errors={{ team: errors.awayTeamId, name: errors.awayTeamName, leagueTeam: errors.awayLeagueTeamId }}
+            onChange={(patch) => updateSide('away', patch)}
+            teamOptions={awayTeamOptions}
+            narrowedByAffiliation={narrowedByAffiliation}
+            leagueTeams={leagueTeams}
+            canUseLeagueTeams={canUseLeagueTeams}
+            hasScope={hasScope}
+            leagueId={values.leagueId}
+            leagueTeamsLoading={leagueTeamsLoading}
+          />
+        </Box>
+
+        {canUseLeagueTeams && !hasScope && (
+          <Typography variant="caption" color="text.secondary">
+            Choose a league and season first to pick a league team.
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  )
+}
+
+// The icon-tile section heading the Player page cards use (docs/specs/088 G), here over a form section.
+function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+      <Box
+        aria-hidden
+        sx={{
+          width: 32,
+          height: 32,
+          flex: 'none',
+          borderRadius: 1,
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '& svg': { fontSize: 20 },
+        }}
       >
-        {seasons.map((season) => (
-          <MenuItem key={season.id} value={season.id}>
-            {season.label}
-          </MenuItem>
-        ))}
-      </Input>
-
-      <Input
-        select
-        label="League"
-        value={values.leagueId}
-        onChange={(event) => changeScope({ leagueId: event.target.value })}
-        helperText="Optional — leave blank for a standalone friendly"
-      >
-        <MenuItem value="">None</MenuItem>
-        {leagues.map((league) => (
-          <MenuItem key={league.id} value={league.id}>
-            {league.name}
-          </MenuItem>
-        ))}
-      </Input>
-
-      <Input
-        label="Match date & time"
-        type="datetime-local"
-        value={values.matchDate}
-        onChange={(event) => setValues((prev) => ({ ...prev, matchDate: event.target.value }))}
-        error={Boolean(errors.matchDate)}
-        helperText={errors.matchDate}
-        InputLabelProps={{ shrink: true }}
-      />
-
-      <Input label="Venue" value={values.venue} onChange={handleTextChange('venue')} helperText="Optional" />
-
-      <Input
-        label="Scoring link"
-        value={values.scoringUrl}
-        onChange={handleTextChange('scoringUrl')}
-        error={Boolean(errors.scoringUrl)}
-        helperText={errors.scoringUrl ?? "Optional. Link to the match's scoring page, e.g. https://cricclubs.com/matches/34343"}
-      />
-
-      <Input
-        label="Streaming link"
-        value={values.streamingUrl}
-        onChange={handleTextChange('streamingUrl')}
-        error={Boolean(errors.streamingUrl)}
-        helperText={
-          errors.streamingUrl ?? 'Optional. Link to the live stream, e.g. a PitchVision page, starting with https://'
-        }
-      />
-
-      {leagueTeamsNotice && (
-        <Alert severity="info" sx={{ gridColumn: '1 / -1' }} onClose={() => setLeagueTeamsNotice(false)}>
-          League or season changed, so the league team was cleared. Choose the team again.
-        </Alert>
-      )}
-
-      <MatchSideFields
-        label="Home"
-        value={values.home}
-        errors={{ team: errors.homeTeamId, name: errors.homeTeamName, leagueTeam: errors.homeLeagueTeamId }}
-        onChange={(patch) => updateSide('home', patch)}
-        teamOptions={homeTeamOptions}
-        narrowedByAffiliation={narrowedByAffiliation}
-        leagueTeams={leagueTeams}
-        canUseLeagueTeams={canUseLeagueTeams}
-        hasScope={hasScope}
-        leagueId={values.leagueId}
-        leagueTeamsLoading={leagueTeamsLoading}
-      />
-
-      <MatchSideFields
-        label="Away"
-        value={values.away}
-        errors={{ team: errors.awayTeamId, name: errors.awayTeamName, leagueTeam: errors.awayLeagueTeamId }}
-        onChange={(patch) => updateSide('away', patch)}
-        teamOptions={awayTeamOptions}
-        narrowedByAffiliation={narrowedByAffiliation}
-        leagueTeams={leagueTeams}
-        canUseLeagueTeams={canUseLeagueTeams}
-        hasScope={hasScope}
-        leagueId={values.leagueId}
-        leagueTeamsLoading={leagueTeamsLoading}
-      />
+        {icon}
+      </Box>
+      <Typography variant="subtitle2" component="h2" sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, fontSize: '0.9375rem' }}>
+        {title}
+      </Typography>
     </Box>
   )
 }
