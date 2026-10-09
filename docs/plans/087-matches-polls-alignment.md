@@ -65,3 +65,23 @@ Copy this plan verbatim to `docs/plans/087-matches-polls-alignment.md` (same num
 
 ## Not in this slice (stays with slices 2–4)
 Matches toolbar, `ContentControlsLine` on Matches, the match card rebuild and its zebra rows, counters, and all backend work.
+
+---
+
+# Slice 2 — Matches toolbar (frontend only)
+
+*Added when the slice was built (the user was away and asked for the build to go ahead; no new contract, everything is fixed by the spec's Toolbar (B) section).*
+
+## Deviations to note
+- **Team field deferred to slice 4.** The spec lists Team on the Matches toolbar, but the list's `teamId` is backend work in slice 4 and `docs/standards/frontend.md` forbids client-side filtering of a paginated list. The slice ships League, Season, Section and search; the Team field, chip and its `filter-options` input arrive with the counters slice.
+- **`FilterBar` gains `searchOptions`** (a `freeSolo` Autocomplete, same as `ListToolbar`'s) so Matches keeps its team-name search suggestions.
+
+## Changes
+- `ui/src/components/FilterBar/FilterBar.tsx`, `.test.tsx`, `.stories.tsx`: optional `searchOptions`; plain input unchanged without it.
+- `ui/src/pages/manage/MatchList.tsx`: `ListToolbar` replaced by `FilterBar` (`density="compact"`: `leagues`, `seasons` mapped from `label`, `sections`, search with suggestions); `ContentControlsLine` with "Showing N upcoming matches / matches", `SortLink` and a `CompactSwitch` for Show past matches (both in the `FilterBar` sheet on a phone); `ManageScreenHeader` `subtitle` "Showing: <section> · <league> · <season>". Persistence of Section/League/Season, the past-matches round trip, filter-options narrowing and pagination are untouched.
+- `ui/src/pages/manage/MatchList.test.tsx`: sort-link assertion, content-line text, scope subtitle and a phone test; every existing assertion kept.
+- `SquadPicker` reuses `MatchList` and inherits the toolbar unchanged in behaviour.
+
+## Verification
+`tsc -b` clean; lint warnings only (pre-existing `only-export-components`); `MatchList` (31), `FilterBar`, `SquadPicker`, availability and Players tests pass; Storybook `FilterBar` stories pass (8). Not checked in a browser: the compact Autocomplete search field height (36 px) and the phone sheet.
+

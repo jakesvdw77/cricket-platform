@@ -146,7 +146,7 @@ Per `docs/standards/testing.md`:
 
 Slices, each its own PR, in this order so the user can review one visible change at a time:
 1. Mockup review (done, approved), then the shared pieces: zebra helper extraction, `FilterBar` `seasons` slot, and the `RecordCard` badge-row change.
-2. The toolbar (B) on Matches, frontend only.
+2. The toolbar (B) on Matches, frontend only. **Team is not in this slice**: the list's `teamId` parameter is backend work (slice 4) and a paginated list is never filtered client-side, so the Team field and chip arrive with the counters slice. Search suggestions need a small `FilterBar` addition (`searchOptions`).
 3. The match card (C) and zebra rows (D), frontend only.
 4. The summary endpoint, list `focus` / `teamId`, and the counters (A).
 
