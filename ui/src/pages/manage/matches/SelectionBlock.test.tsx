@@ -1,5 +1,8 @@
+import { ThemeProvider } from '@mui/material/styles'
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { baseTheme } from '../../../theme'
+import { zebraTint } from '../../../utils/zebraTint'
 import { SelectionBlock } from './SelectionBlock'
 
 describe('SelectionBlock', () => {
@@ -60,5 +63,44 @@ describe('SelectionBlock', () => {
 
     expect(screen.getByText('Neither side is one of your teams, so there is nobody to pick.')).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
+  // docs/specs/087
+  describe('zebra rows', () => {
+    const rows = [
+      { teamName: 'Vets A', picked: 12, playingXiSize: 12 },
+      { teamName: 'Vets B', picked: 4, playingXiSize: 12 },
+      { teamName: 'Vets C', picked: 0, playingXiSize: null },
+    ]
+
+    function rowOf(name: string) {
+      // The row is the ancestor whose parent (the rows container) is a direct child of the selection block.
+      let element = screen.getByText(name)
+      while (element.parentElement && element.parentElement.parentElement?.getAttribute('data-testid') !== 'selection-block') {
+        element = element.parentElement
+      }
+      return element
+    }
+
+    it('tints the first, third ... team row with the shared zebra tint and leaves the others plain', () => {
+      render(
+        <ThemeProvider theme={baseTheme}>
+          <SelectionBlock rows={rows} />
+        </ThemeProvider>,
+      )
+      const tint = zebraTint(baseTheme)
+      expect(rowOf('Vets A')).toHaveStyle({ backgroundColor: tint })
+      expect(rowOf('Vets C')).toHaveStyle({ backgroundColor: tint })
+      expect(rowOf('Vets B')).not.toHaveStyle({ backgroundColor: tint })
+    })
+
+    it('shows a single row tinted', () => {
+      render(
+        <ThemeProvider theme={baseTheme}>
+          <SelectionBlock rows={[rows[0]]} />
+        </ThemeProvider>,
+      )
+      expect(rowOf('Vets A')).toHaveStyle({ backgroundColor: zebraTint(baseTheme) })
+    })
   })
 })

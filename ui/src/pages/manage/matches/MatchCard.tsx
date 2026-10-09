@@ -1,15 +1,16 @@
-import { Box, IconButton, Stack } from '@mui/material'
+import { Box, IconButton } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
-import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
 import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
+import { BrandIcon } from '../../../components/BrandIcon'
+import { CardTimeStrip } from '../../../components/CardTimeStrip'
+import { Countdown, useCountdown } from '../../../components/Countdown'
 import { DetailLine } from '../../../components/DetailLine'
 import { RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
@@ -50,6 +51,9 @@ export interface MatchCardProps {
 // details and a Selection block. Deactivate/Reactivate lives on the edit screen (038).
 // docs/specs/075: the Poll button is now Availability (a derby's two polls open a small menu), and
 // the scoring/streaming links show as an icon row.
+// docs/specs/087: aligned with the poll card - the brand match icon on its tile, badges in a row under the
+// header, "League · Season" as the subtitle, a "Starts" strip with a live countdown (amber within 24 hours of
+// kickoff; "Played" once it has started), one Venue line, and zebra Selection rows.
 export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, editTo, viewTo }: MatchCardProps) {
   const navigate = useNavigate()
 
@@ -67,6 +71,9 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const disabledProps = hasClubSide ? {} : { disabled: true, title: NO_CLUB_TEAM_REASON }
 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
+  // The strip reads the kickoff: a countdown and the amber tone before it, "Played" (neutral, no countdown) after.
+  const kickoff = useCountdown(match.matchDate)
+  const played = kickoff.stage === 'expired'
 
   const inactive = badgeFor(match)
   const badges: RecordCardBadge[] = [
@@ -80,7 +87,9 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
       <RecordCard
         title={title}
         titleWrap
-        badgesAbove
+        titleLines={3}
+        badgesBelow
+        description={leagueValue || undefined}
         headerActions={
           match.scoringUrl || match.streamingUrl ? (
             <Box data-testid="match-links-row" sx={{ display: 'flex', gap: 0.25 }}>
@@ -115,7 +124,9 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             </Box>
           ) : undefined
         }
-        avatar={{ fallback: <SportsCricketOutlinedIcon fontSize="small" />, shape: 'rounded' }}
+        // docs/specs/087: the brand match icon on its standard tile, like the poll card (48px icon + 4px padding on
+        // each side is the 56px avatar box).
+        avatar={{ element: <BrandIcon name="nav/upcoming-matches" size={48} padding={4} /> }}
         badges={badges}
         viewTo={viewTo}
         footerButtons={[
@@ -144,13 +155,15 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           },
         ]}
       >
-        <Stack spacing={1.25} sx={{ py: 0.5 }}>
-          <DetailLine icon={<EventOutlinedIcon fontSize="small" />} label="When" value={formatMatchDateTime(match.matchDate)} />
-          {match.venue && <DetailLine icon={<PlaceOutlinedIcon fontSize="small" />} label="Venue" value={match.venue} />}
-          {leagueValue && (
-            <DetailLine icon={<EmojiEventsOutlinedIcon fontSize="small" />} label="League" value={leagueValue} />
-          )}
-        </Stack>
+        <CardTimeStrip
+          testId="match-time-strip"
+          tone={!played && kickoff.warn ? 'warning' : 'neutral'}
+          icon={<EventOutlinedIcon fontSize="small" />}
+          label={played ? 'Played' : 'Starts'}
+          value={formatMatchDateTime(match.matchDate)}
+          trailing={played ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
+        />
+        {match.venue && <DetailLine icon={<PlaceOutlinedIcon fontSize="small" />} label="Venue" value={match.venue} />}
         <SelectionBlock rows={selectionRows(match, teamsById)} />
       </RecordCard>
       {menu}

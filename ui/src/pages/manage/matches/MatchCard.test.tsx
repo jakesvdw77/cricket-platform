@@ -81,17 +81,24 @@ describe('MatchCard', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('renders the badges above the heading in DOM order, leaving the title unconstrained', () => {
+  it('renders the badges in a left-aligned row under the header, after the title (docs/specs/087)', () => {
     renderCard(makeMatch({ polls: [squadPoll({ open: false })] }))
 
     const heading = screen.getByRole('heading', { name: '1st XI vs Riverside Occasionals' })
-    const row = screen.getByTestId('badges-above')
-    expect(getComputedStyle(row).justifyContent).toBe('flex-end')
-    expect(within(row).getByText('Not announced')).toBeInTheDocument()
+    expect(screen.queryByTestId('badges-above')).not.toBeInTheDocument()
+    const row = screen.getByText('Not announced').closest('.MuiChip-root')?.parentElement as HTMLElement
     expect(within(row).getByText('Poll closed')).toBeInTheDocument()
-    expect(row.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(getComputedStyle(row).justifyContent).not.toBe('flex-end')
+    expect(heading.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // the header (avatar + title) holds no badge chips
     expect(heading.parentElement?.parentElement?.querySelector('.MuiChip-root')).toBeNull()
+  })
+
+  it('uses the brand match icon on its tile as the avatar (docs/specs/087)', () => {
+    renderCard(makeMatch())
+
+    const tile = screen.getByTestId('brand-icon-tile')
+    expect(tile.querySelector('img')?.getAttribute('src')).toContain('upcoming-matches')
   })
 
   describe('badges', () => {
@@ -150,33 +157,66 @@ describe('MatchCard', () => {
     })
   })
 
-  describe('stacked details', () => {
-    it('shows When, Venue and League with their values', () => {
-      const match = makeMatch({ leagueId: 'league-1' })
-      renderCard(match, { withLeague: true })
+  describe('subtitle and venue (docs/specs/087)', () => {
+    it('shows League · Season as the subtitle and Venue as the one detail line', () => {
+      renderCard(makeMatch({ leagueId: 'league-1' }), { withLeague: true })
 
-      expect(screen.getByText('When')).toBeInTheDocument()
-      expect(screen.getByText(formatMatchDateTime(match.matchDate))).toBeInTheDocument()
+      expect(screen.getByText('Premier League · 2026/27')).toBeInTheDocument()
       expect(screen.getByText('Venue')).toBeInTheDocument()
       expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
-      expect(screen.getByText('League')).toBeInTheDocument()
-      expect(screen.getByText('Premier League · 2026/27')).toBeInTheDocument()
+      // When and League no longer have their own lines: the date is in the strip, the league in the subtitle.
+      expect(screen.queryByText('When')).not.toBeInTheDocument()
+      expect(screen.queryByText('League')).not.toBeInTheDocument()
     })
 
     it('omits Venue when empty', () => {
       renderCard(makeMatch({ venue: null }))
 
       expect(screen.queryByText('Venue')).not.toBeInTheDocument()
-      expect(screen.getByText('When')).toBeInTheDocument()
     })
 
-    it('shows only the season when there is no league, and omits the line when neither resolves', () => {
+    it('shows only the season when there is no league, and no subtitle when neither resolves', () => {
       const { unmount } = renderCard(makeMatch())
       expect(screen.getByText('2026/27')).toBeInTheDocument()
       unmount()
 
       renderCard(makeMatch(), { withSeason: false })
-      expect(screen.queryByText('League')).not.toBeInTheDocument()
+      expect(screen.queryByText('2026/27')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('time strip (docs/specs/087)', () => {
+    const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000 + 30_000).toISOString()
+
+    it('reads Starts with the date and a neutral countdown while kickoff is more than a day away', () => {
+      const match = makeMatch({ matchDate: inHours(72) })
+      renderCard(match)
+
+      const strip = screen.getByTestId('match-time-strip')
+      expect(strip).toHaveAttribute('data-tone', 'neutral')
+      expect(within(strip).getByText('Starts')).toBeInTheDocument()
+      expect(within(strip).getByText(formatMatchDateTime(match.matchDate))).toBeInTheDocument()
+      const timer = within(strip).getByRole('timer')
+      expect(timer).toHaveTextContent(/^3 days.* to go$/)
+      expect(timer).toHaveAttribute('data-warn', 'false')
+    })
+
+    it('is amber with a countdown within 24 hours of kickoff', () => {
+      renderCard(makeMatch({ matchDate: inHours(5) }))
+
+      const strip = screen.getByTestId('match-time-strip')
+      expect(strip).toHaveAttribute('data-tone', 'warning')
+      expect(within(strip).getByRole('timer')).toHaveTextContent(/^5 h \d+ min to go$/)
+    })
+
+    it('reads Played, neutral and with no countdown once the match has started', () => {
+      renderCard(makeMatch({ matchDate: inHours(-48) }))
+
+      const strip = screen.getByTestId('match-time-strip')
+      expect(strip).toHaveAttribute('data-tone', 'neutral')
+      expect(within(strip).getByText('Played')).toBeInTheDocument()
+      expect(within(strip).queryByText('Starts')).not.toBeInTheDocument()
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument()
     })
   })
 
