@@ -1,4 +1,4 @@
-import { configure, screen, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueApi')>()),
-  listLeagues: (clubId: string) => mocks.listLeagues(clubId),
+  listLeagues: (clubId: string, params?: unknown) => mocks.listLeagues(clubId, params),
 }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mocks.listSeasons(clubId) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
@@ -111,7 +111,7 @@ describe('LeagueViewLayout', () => {
     it('redirects the bare league URL to the Schedule', async () => {
       renderLeagueView(LEAGUE_PATH)
 
-      expect(await screen.findByRole('heading', { name: 'Fixtures' })).toBeInTheDocument()
+      expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
       expect(screen.getByTestId('location')).toHaveTextContent(`${LEAGUE_PATH}/schedule`)
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/schedule`)
     })
@@ -121,13 +121,13 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}?seasonId=season-2`)
 
-      expect(await screen.findByRole('heading', { name: 'Fixtures' })).toBeInTheDocument()
+      expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/schedule?seasonId=season-2`)
     })
 
     it('replaces the bare URL in history rather than pushing the redirect', async () => {
       renderLeagueView(['/manage/fixtures/leagues', LEAGUE_PATH])
-      await screen.findByRole('heading', { name: 'Fixtures' })
+      await screen.findByText('No fixtures yet')
 
       await userEvent.setup().click(screen.getByRole('button', { name: 'Go back' }))
 
@@ -137,25 +137,25 @@ describe('LeagueViewLayout', () => {
     it('renders only the Schedule section on /schedule', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await screen.findByRole('heading', { name: 'Fixtures' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: /^Teams in/ })).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Playing conditions' })).not.toBeInTheDocument()
+      expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
+      expect(screen.queryByText(/^Showing \d+ teams/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^Playing conditions for/)).not.toBeInTheDocument()
     })
 
     it('renders only the Teams section on /teams', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams`)
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2026' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Fixtures' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Playing conditions' })).not.toBeInTheDocument()
+      expect(await screen.findByText('Showing 0 teams · 2026')).toBeInTheDocument()
+      expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
+      expect(screen.queryByText(/^Playing conditions for/)).not.toBeInTheDocument()
     })
 
     it('renders only the Conditions section on /conditions', async () => {
       renderLeagueView(`${LEAGUE_PATH}/conditions`)
 
-      expect(await screen.findByRole('heading', { name: 'Playing conditions' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Fixtures' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: /^Teams in/ })).not.toBeInTheDocument()
+      expect(await screen.findByText('Playing conditions for 2026')).toBeInTheDocument()
+      expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
+      expect(screen.queryByText(/^Showing \d+ teams/)).not.toBeInTheDocument()
     })
 
     it('still resolves /:id/edit and /:id/contacts/:contactId/edit to their own pages', async () => {
@@ -175,7 +175,7 @@ describe('LeagueViewLayout', () => {
       mocks.listSeasons.mockResolvedValue([makeSeason()])
     })
 
-    it('lays the rows out in order: Back, badges and Season; logo/name and Edit; divider; people; links', async () => {
+    it('lays the rows out in order: Back with the Season pill, Share schedule and Edit; logo, name and badges; contacts and links; the strip', async () => {
       mocks.listLeagues.mockResolvedValue([
         makeLeague({
           format: 'T20',
@@ -191,38 +191,36 @@ describe('LeagueViewLayout', () => {
       const topRow = screen.getByTestId('league-header-top-row')
       const titleRow = screen.getByTestId('league-header-title-row')
       const back = within(topRow).getByRole('link', { name: 'Back to Leagues' })
-      const badges = within(topRow).getByLabelText('League badges')
-      const season = within(topRow).getByRole('combobox', { name: 'Season' })
-      const edit = within(titleRow).getByRole('link', { name: 'Edit' })
+      const season = within(topRow).getByRole('button', { name: 'Season' })
+      const share = within(topRow).getByRole('button', { name: 'Share schedule' })
+      const edit = within(topRow).getByRole('link', { name: 'Edit' })
       const people = screen.getByTestId('league-header-contact-people')
       const links = screen.getByTestId('league-header-links-row')
+      const strip = screen.getByTestId('league-key-figures')
 
-      expect(following(back, badges)).toBe(true)
-      expect(following(badges, season)).toBe(true)
+      expect(following(back, season)).toBe(true)
+      expect(following(season, share)).toBe(true)
+      expect(following(share, edit)).toBe(true)
       expect(following(topRow, titleRow)).toBe(true)
       expect(within(titleRow).getByRole('heading', { name: 'Internal League' })).toBe(heading)
-      expect(following(heading, edit)).toBe(true)
-      expect(following(titleRow, screen.getByRole('separator'))).toBe(true)
-      expect(following(screen.getByRole('separator'), people)).toBe(true)
+      expect(within(titleRow).getByLabelText('League badges')).toBeInTheDocument()
+      expect(following(titleRow, people)).toBe(true)
       expect(following(people, links)).toBe(true)
+      expect(following(links, strip)).toBe(true)
     })
 
-    it('keeps Edit on the title row (no wrap, not shrinking) and lets the name wrap', async () => {
+    it('shows Edit as the filled primary button on the top row, and lets the name wrap', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       const heading = await screen.findByRole('heading', { name: 'Internal League' })
-      const titleRow = screen.getByTestId('league-header-title-row')
-      const edit = within(titleRow).getByRole('link', { name: 'Edit' })
+      const edit = within(screen.getByTestId('league-header-top-row')).getByRole('link', { name: 'Edit' })
 
-      expect(getComputedStyle(titleRow).flexWrap).toBe('nowrap')
-      expect(getComputedStyle(titleRow).justifyContent).toBe('space-between')
-      expect(getComputedStyle(edit).flex).toMatch(/^(none|0 0 auto)$/)
+      expect(edit.className).toContain('MuiButton-contained')
       expect(getComputedStyle(heading).overflowWrap).toBe('anywhere')
       expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis')
-      expect(getComputedStyle(heading.parentElement as HTMLElement).minWidth).toMatch(/^0(px)?$/)
     })
 
-    it('shares the top row between Back (left) and the badges and Season (right)', async () => {
+    it('shares the top row between Back (left) and the Season pill, Share schedule and Edit (right)', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
@@ -230,9 +228,9 @@ describe('LeagueViewLayout', () => {
 
       expect(getComputedStyle(topRow).justifyContent).toBe('space-between')
       expect(getComputedStyle(topRow).flexWrap).toBe('wrap')
-      expect(within(topRow).getByLabelText('League badges')).toBeInTheDocument()
-      expect(within(topRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument()
-      expect(within(topRow).queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(within(topRow).getByRole('button', { name: 'Season' })).toBeInTheDocument()
+      expect(within(topRow).getByRole('button', { name: 'Share schedule' })).toBeInTheDocument()
+      expect(screen.queryByLabelText('League badges', { selector: '[data-testid="league-header-top-row"] *' })).not.toBeInTheDocument()
     })
 
     it.each(['schedule', 'teams', 'conditions'])(
@@ -253,7 +251,7 @@ describe('LeagueViewLayout', () => {
       expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit`)
     })
 
-    it('renders the format badge only when the league has a format', async () => {
+    it('renders the format badge only when the league has a format, and never a team count or season badge', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ format: 'ONE_DAY' })])
       const { unmount } = renderLeagueView(`${LEAGUE_PATH}/schedule`)
       expect(await within(await screen.findByLabelText('League badges')).findByText('1 Day')).toBeInTheDocument()
@@ -262,10 +260,10 @@ describe('LeagueViewLayout', () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ format: null })])
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
       const badges = await screen.findByLabelText('League badges')
-      expect(within(badges).getAllByText(/./).map((node) => node.textContent)).toEqual(['0 teams', 'Active'])
+      expect(within(badges).getAllByText(/./).map((node) => node.textContent)).toEqual(['Active'])
     })
 
-    it('counts the selected season\'s affiliated teams plus its active league teams, not league.currentSeasonTeamCount', async () => {
+    it("counts the selected season's affiliated teams plus its active league teams in the Teams figure, not league.currentSeasonTeamCount", async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague({ currentSeasonTeamCount: 99 })])
       mocks.listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1' }), makeTeam({ id: 'team-2', name: '2nd XI' })])
       mocks.listLeagueAffiliations.mockResolvedValue([
@@ -277,23 +275,42 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await within(await screen.findByLabelText('League badges')).findByText('3 teams')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId('league-figure-teams-value')).toHaveTextContent('3'))
       expect(screen.queryByText(/99/)).not.toBeInTheDocument()
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
     })
 
-    it('uses the singular for one team and shows Active or Inactive', async () => {
-      mocks.listTeamsForClub.mockResolvedValue([makeTeam()])
-      mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation()])
+    it('shows Active or Inactive', async () => {
       const { unmount } = renderLeagueView(`${LEAGUE_PATH}/schedule`)
-      const badges = await screen.findByLabelText('League badges')
-      expect(await within(badges).findByText('1 team')).toBeInTheDocument()
-      expect(within(badges).getByText('Active')).toBeInTheDocument()
+      expect(within(await screen.findByLabelText('League badges')).getByText('Active')).toBeInTheDocument()
       unmount()
 
       mocks.listLeagues.mockResolvedValue([makeLeague({ active: false })])
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
       expect(within(await screen.findByLabelText('League badges')).getByText('Inactive')).toBeInTheDocument()
+    })
+
+    // docs/specs/091 (C): the league and its figures are requested for the selected season.
+    it('asks for the league with the selected season, and shows the key figures from it', async () => {
+      mocks.listLeagues.mockResolvedValue([
+        makeLeague({ matchCount: 56, playedCount: 12, nextMatchDate: '2999-01-01T09:00:00Z', maxPlayingXiSize: 11, minAge: 40, maxAge: null }),
+      ])
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await waitFor(() => expect(screen.getByTestId('league-figure-played-value')).toHaveTextContent('12 of 56'))
+      expect(mocks.listLeagues).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-1' })
+      expect(screen.getByTestId('league-figure-xi-value')).toHaveTextContent('11')
+      expect(screen.getByText('Playing XI · age 40–any')).toBeInTheDocument()
+    })
+
+    it('opens the Share schedule dialog from the header on any tab', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/conditions`)
+
+      await user.click(await screen.findByRole('button', { name: 'Share schedule' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
     })
 
     it('hides the Season select when the club has no seasons', async () => {
@@ -302,7 +319,7 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
-      expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
     })
   })
 
@@ -330,16 +347,15 @@ describe('LeagueViewLayout', () => {
       expect(website).toHaveAttribute('target', '_blank')
       expect(website).toHaveAttribute('rel', 'noopener')
 
-      const social = within(row).getByTestId('league-header-social')
+      const social = screen.getByTestId('league-header-social')
       expect(within(social).getByRole('link', { name: 'Facebook' })).toHaveAttribute(
         'href',
         'https://facebook.com/riverside-premier',
       )
       expect(following(website, social)).toBe(true)
-      // Links sit left and the social slot right when they share a line; the row wraps so the social
-      // icons drop under the links, left-aligned, when it is too narrow.
-      expect(getComputedStyle(row).justifyContent).toBe('space-between')
-      expect(getComputedStyle(row).flexWrap).toBe('wrap')
+      // The links and the social icons share one wrapping line (docs/specs/091).
+      expect(screen.getByTestId('league-header-contacts-line')).toContainElement(social)
+      expect(getComputedStyle(screen.getByTestId('league-header-contacts-line')).flexWrap).toBe('wrap')
     })
 
     it('omits each row that has nothing to show', async () => {
@@ -354,13 +370,13 @@ describe('LeagueViewLayout', () => {
       expect(screen.queryByTestId('league-header-contact-people')).not.toBeInTheDocument()
     })
 
-    it('omits the whole contact section, divider included, when there is nothing to show', async () => {
+    it('omits the whole contacts line when there is nothing to show', async () => {
       mocks.listLeagues.mockResolvedValue([makeLeague()])
 
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       await screen.findByRole('heading', { name: 'Internal League' })
-      expect(screen.queryByRole('separator')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('league-header-contacts-line')).not.toBeInTheDocument()
       expect(screen.queryByTestId('league-header-contact-people')).not.toBeInTheDocument()
       expect(screen.queryByTestId('league-header-links-row')).not.toBeInTheDocument()
       expect(screen.queryByText('No contacts yet for this league.')).not.toBeInTheDocument()
@@ -423,35 +439,35 @@ describe('LeagueViewLayout', () => {
     it('defaults to the season pickDefaultSeasonId chooses, without writing it to the URL', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams`)
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2021' })).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Season' })).toHaveTextContent('2021')
+      expect(await screen.findByText('Showing 0 teams · 2021')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2021')
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams`)
     })
 
     it('honours a valid ?seasonId=', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=season-1`)
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2020' })).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Season' })).toHaveTextContent('2020')
+      expect(await screen.findByText('Showing 0 teams · 2020')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2020')
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
     })
 
     it('silently falls back to the default for an invalid ?seasonId=', async () => {
       renderLeagueView(`${LEAGUE_PATH}/teams?seasonId=not-a-season`)
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2021' })).toBeInTheDocument()
+      expect(await screen.findByText('Showing 0 teams · 2021')).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=not-a-season`)
     })
 
     it('writes a user change to ?seasonId= with replace and re-scopes the view', async () => {
       const user = userEvent.setup()
       renderLeagueView(['/manage/fixtures/leagues', `${LEAGUE_PATH}/teams`])
-      await screen.findByRole('heading', { name: 'Teams in 2021' })
+      await screen.findByText('Showing 0 teams · 2021')
 
-      await user.click(screen.getByRole('combobox', { name: 'Season' }))
+      await user.click(screen.getByRole('button', { name: 'Season' }))
       await user.click(await screen.findByRole('option', { name: '2020' }))
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2020' })).toBeInTheDocument()
+      expect(await screen.findByText('Showing 0 teams · 2020')).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=season-1`)
       expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
 
@@ -470,7 +486,7 @@ describe('LeagueViewLayout', () => {
     it('links each view and keeps the query string', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-2`)
 
-      await screen.findByRole('heading', { name: 'Fixtures' })
+      await screen.findByText('No fixtures yet')
       expect(screen.getByRole('tab', { name: 'Schedule' })).toHaveAttribute('href', `${LEAGUE_PATH}/schedule?seasonId=season-2`)
       expect(screen.getByRole('tab', { name: 'Teams' })).toHaveAttribute('href', `${LEAGUE_PATH}/teams?seasonId=season-2`)
       expect(screen.getByRole('tab', { name: 'Conditions' })).toHaveAttribute('href', `${LEAGUE_PATH}/conditions?seasonId=season-2`)
@@ -491,11 +507,11 @@ describe('LeagueViewLayout', () => {
     it('switches views without leaving the header, keeping the season', async () => {
       const user = userEvent.setup()
       renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-2`)
-      await screen.findByRole('heading', { name: 'Fixtures' })
+      await screen.findByText('No fixtures yet')
 
       await user.click(screen.getByRole('tab', { name: 'Teams' }))
 
-      expect(await screen.findByRole('heading', { name: 'Teams in 2027' })).toBeInTheDocument()
+      expect(await screen.findByText('Showing 0 teams · 2027')).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Internal League' })).toBeInTheDocument()
       expect(screen.getByTestId('location').textContent).toBe(`${LEAGUE_PATH}/teams?seasonId=season-2`)
     })
@@ -511,7 +527,7 @@ describe('LeagueViewLayout', () => {
     it('scrolls sideways inside its own strip on a phone', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      await screen.findByRole('heading', { name: 'Fixtures' })
+      await screen.findByText('No fixtures yet')
       expect(document.querySelector('.MuiTabs-scroller')).toHaveStyle({ overflowX: 'auto' })
     })
   })

@@ -30,8 +30,8 @@ import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { GENDER_LABEL, BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
 import { fullName } from './PlayerList'
 import { PlayerKeyFigures } from './playerDetail/PlayerKeyFigures'
-import { PlayerInfoCard } from './playerDetail/PlayerInfoCard'
-import type { PlayerInfoChip } from './playerDetail/PlayerInfoCard'
+import { InfoCard } from '../../components/InfoCard'
+import type { InfoCardChip } from '../../components/InfoCard'
 
 // docs/specs/060-player-detail-redesign.md: rebuilds this screen on TeamDetailPage.tsx's own
 // bespoke header + two-column card grid pattern, replacing the generic RecordDetailScreen stacked-
@@ -110,7 +110,7 @@ export default function PlayerDetailPage() {
     player.bowlingType ? BOWLING_TYPE_LABEL[player.bowlingType] : null,
   ].filter((part): part is string => Boolean(part))
   // All three always show, so the card keeps its shape; one with nothing on file is drawn dashed and muted.
-  const cricketChips: PlayerInfoChip[] = [
+  const cricketChips: InfoCardChip[] = [
     {
       label: `Bats: ${player.battingStance ? BATTING_STANCE_LABEL[player.battingStance] : '–'}`,
       on: Boolean(player.battingStance),
@@ -231,7 +231,7 @@ export default function PlayerDetailPage() {
       <PlayerKeyFigures player={player} />
 
       <Box sx={{ display: 'grid', gap: { xs: 1.75, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'stretch' }}>
-        <PlayerInfoCard
+        <InfoCard
           title="Basic info"
           icon={<InfoOutlinedIcon />}
           fields={[
@@ -242,7 +242,7 @@ export default function PlayerDetailPage() {
           ]}
         />
 
-        <PlayerInfoCard
+        <InfoCard
           title="Contact info"
           icon={<AlternateEmailIcon />}
           fields={[
@@ -271,11 +271,11 @@ export default function PlayerDetailPage() {
           }
         />
 
-        <PlayerInfoCard title="Cricket info" icon={<SportsCricketOutlinedIcon />} chips={cricketChips} />
+        <InfoCard title="Cricket info" icon={<SportsCricketOutlinedIcon />} chips={cricketChips} />
 
         {/* Games are real (the platform's own selections); runs and wickets have no data source yet, so they stay "–"
             and are never invented (docs/specs/060 non-goals). */}
-        <PlayerInfoCard
+        <InfoCard
           title="Stats"
           icon={<EqualizerOutlinedIcon />}
           note="More coming soon"

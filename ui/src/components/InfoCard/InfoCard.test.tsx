@@ -1,11 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { PlayerInfoCard } from './PlayerInfoCard'
+import { InfoCard } from './InfoCard'
 
-describe('PlayerInfoCard', () => {
+describe('InfoCard', () => {
   it('renders the heading and label-over-value fields, with a dash for empty values', () => {
     render(
-      <PlayerInfoCard
+      <InfoCard
         title="Basic info"
         icon={<span />}
         fields={[
@@ -24,7 +24,7 @@ describe('PlayerInfoCard', () => {
 
   it('renders chips marking those not on file', () => {
     render(
-      <PlayerInfoCard
+      <InfoCard
         title="Cricket info"
         icon={<span />}
         chips={[
@@ -39,7 +39,7 @@ describe('PlayerInfoCard', () => {
 
   it('renders the note and the actions', () => {
     render(
-      <PlayerInfoCard title="Stats" icon={<span />} note="More coming soon" actions={<a href="tel:1">Call</a>} />,
+      <InfoCard title="Stats" icon={<span />} note="More coming soon" actions={<a href="tel:1">Call</a>} />,
     )
     expect(screen.getByText('More coming soon')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Call' })).toBeInTheDocument()

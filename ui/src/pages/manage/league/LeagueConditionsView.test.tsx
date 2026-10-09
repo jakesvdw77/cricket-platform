@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptyPage, makeLeague, makePlayingConditions, makeSeason, renderLeagueView } from './leagueViewTestUtils'
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueApi')>()),
-  listLeagues: (clubId: string) => mocks.listLeagues(clubId),
+  listLeagues: (clubId: string, params?: unknown) => mocks.listLeagues(clubId, params),
 }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mocks.listSeasons(clubId) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
@@ -139,12 +139,49 @@ describe('LeagueConditionsView', () => {
 
     renderLeagueView(CONDITIONS_PATH)
 
-    await screen.findByRole('heading', { name: 'Playing conditions' })
+    await screen.findByText('Playing conditions for 2026')
     expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
 
     expect(await screen.findByText('Share Playing Conditions')).toBeInTheDocument()
     expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+  })
+
+  // docs/specs/091 (C): icon-tile section cards, the two top ones the same height.
+  it('groups the rows into Innings and Points cards that fill their grid row, with Fielding and Additional notes cards below', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(
+      makePlayingConditions({ fieldingRestrictionsNotes: 'Two fielders back.', additionalNotes: 'Reserve day.' }),
+    )
+
+    renderLeagueView(CONDITIONS_PATH)
+
+    const innings = await screen.findByTestId('conditions-innings')
+    const points = screen.getByTestId('conditions-points')
+    expect(within(innings).getByRole('heading', { name: 'Innings' })).toBeInTheDocument()
+    expect(within(innings).getByText('Max overs per innings')).toBeInTheDocument()
+    expect(within(points).getByRole('heading', { name: 'Points' })).toBeInTheDocument()
+    expect(within(points).getByText('Forfeit win')).toBeInTheDocument()
+    expect(getComputedStyle(innings.parentElement as HTMLElement).alignItems).toBe('stretch')
+    expect(getComputedStyle(innings).height).toBe('100%')
+    expect(getComputedStyle(points).height).toBe('100%')
+    expect(within(screen.getByTestId('conditions-fielding')).getByText('Two fielders back.')).toBeInTheDocument()
+    expect(within(screen.getByTestId('conditions-notes')).getByText('Reserve day.')).toBeInTheDocument()
+  })
+
+  it('omits the notes cards when there are no notes', async () => {
+    mocks.getPlayingConditions.mockResolvedValue(makePlayingConditions())
+
+    renderLeagueView(CONDITIONS_PATH)
+
+    await screen.findByTestId('conditions-innings')
+    expect(screen.queryByTestId('conditions-fielding')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('conditions-notes')).not.toBeInTheDocument()
+  })
+
+  it('names the season on the tab line', async () => {
+    renderLeagueView(CONDITIONS_PATH)
+
+    expect(await screen.findByText('Playing conditions for 2026')).toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ import {
   emptyPage,
   makeAffiliation,
   makeLeague,
+  makeLeagueTeam,
   makeMatch,
   makeSeason,
   makeTeam,
@@ -26,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueApi')>()),
-  listLeagues: (clubId: string) => mocks.listLeagues(clubId),
+  listLeagues: (clubId: string, params?: unknown) => mocks.listLeagues(clubId, params),
 }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mocks.listSeasons(clubId) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
@@ -73,30 +74,55 @@ describe('LeagueScheduleView', () => {
     mocks.listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
   })
 
-  it('renders the matching league\'s matches via LeagueFixtures for the selected season', async () => {
+  const future = (day: number) => `2099-06-${String(day).padStart(2, '0')}T14:30:00Z`
+
+  it("renders the season's matches in the fixtures table for the selected season", async () => {
     mocks.listMatches.mockResolvedValue({
       ...emptyPage(),
-      content: [makeMatch({ homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
+      content: [makeMatch({ matchDate: future(1), homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
       totalPages: 1,
     })
 
     renderLeagueView(SCHEDULE_PATH)
 
-    expect(await screen.findByText('1st XI')).toBeInTheDocument()
-    expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
+    const table = await screen.findByRole('table', { name: 'Fixtures' })
+    expect(within(table).getByText('1st XI vs Riverside Occasionals')).toBeInTheDocument()
+    expect(within(table).getByTestId('fixture-row-venue')).toHaveTextContent('Riverside Oval')
+    expect(screen.getByText(/^Showing 1 upcoming match · 2026$/)).toBeInTheDocument()
     expect(mocks.listMatches).toHaveBeenCalledWith(
       'test-club-id',
       expect.objectContaining({ leagueId: 'league-1', seasonId: 'season-1', sort: 'matchDate,asc', size: 200 }),
     )
   })
 
-  it('renders the LeagueFixtures empty state when the season has no matches', async () => {
+  it('opens our matches from the row and shows an "Our match" chip, while a league-only match is a plain row', async () => {
+    mocks.listMatches.mockResolvedValue({
+      ...emptyPage(),
+      content: [
+        makeMatch({ id: 'ours', matchDate: future(1), homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' }),
+        makeMatch({ id: 'theirs', matchDate: future(2), homeTeamId: null, homeTeamName: 'Hawks', awayTeamName: 'Eagles' }),
+      ],
+      totalPages: 1,
+    })
+
+    renderLeagueView(SCHEDULE_PATH)
+
+    const [ours, theirs] = await screen.findAllByTestId('fixture-row')
+    expect(ours).toHaveAttribute('data-ours', 'true')
+    expect(within(ours).getByTestId('fixture-row-ours')).toHaveTextContent('Our match')
+    expect(within(ours).getByRole('link', { name: '1st XI vs Riverside Occasionals' })).toHaveAttribute('href', '/manage/fixtures/matches/ours')
+    expect(theirs).toHaveAttribute('data-ours', 'false')
+    expect(within(theirs).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(theirs).getByTestId('fixture-row-ours')).toBeEmptyDOMElement()
+  })
+
+  it('renders the empty state when the season has no matches', async () => {
     renderLeagueView(SCHEDULE_PATH)
 
     expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
   })
 
-  it('disables Share schedule and shows no empty state or countdown while matches are loading', async () => {
+  it('shows no empty state while matches are loading', async () => {
     mocks.listMatches.mockReturnValue(new Promise(() => undefined))
 
     renderLeagueView(SCHEDULE_PATH)
@@ -104,7 +130,6 @@ describe('LeagueScheduleView', () => {
     expect(await screen.findByLabelText('Loading fixtures')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Share schedule' })).toBeDisabled()
     expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
-    expect(screen.queryByText('Next match')).not.toBeInTheDocument()
   })
 
   it('renders the no-seasons copy when the club has no seasons', async () => {
@@ -118,17 +143,13 @@ describe('LeagueScheduleView', () => {
     expect(mocks.listMatches).not.toHaveBeenCalled()
   })
 
-  // The truncation regression (docs/specs/072-league-view-pages.md): 45 matches over three pages, the
-  // next upcoming match only on the last one. The old single-page call showed the first 20 and a wrong
-  // (or no) countdown.
-  it('shows every match of a 45-match season across three pages and finds the next match on a later page', async () => {
+  // The truncation regression (docs/specs/072-league-view-pages.md): 45 matches over three pages. The old single-page call
+  // showed the first 20.
+  it('shows every match of a 45-match season across three pages', async () => {
     mocks.listMatches.mockImplementation(async (_clubId: string, params: { page: number }) => ({
       content: Array.from({ length: 15 }, (_, index) => {
         const n = params.page * 15 + index
-        // The last page holds the only future-dated fixtures.
-        const matchDate =
-          params.page === 2 ? `2099-0${(index % 9) + 1}-10T10:00:00Z` : `2020-0${(index % 9) + 1}-${10 + params.page}T10:00:00Z`
-        return makeMatch({ id: `match-${n}`, homeTeamId: 'team-1', awayTeamName: `Opponent ${n}`, matchDate })
+        return makeMatch({ id: `match-${n}`, homeTeamId: 'team-1', awayTeamName: `Opponent ${n}`, matchDate: `2099-0${(index % 9) + 1}-${10 + params.page}T10:00:00Z` })
       }),
       totalElements: 45,
       totalPages: 3,
@@ -138,57 +159,77 @@ describe('LeagueScheduleView', () => {
 
     renderLeagueView(SCHEDULE_PATH)
 
-    expect(await screen.findByText('Next match')).toBeInTheDocument()
+    expect(await screen.findByText(/^Showing 45 upcoming matches/)).toBeInTheDocument()
     expect(mocks.listMatches).toHaveBeenCalledTimes(3)
     expect(mocks.listMatches.mock.calls.map(([, params]) => (params as { page: number }).page)).toEqual([0, 1, 2])
-    // The countdown repeats its own match, so count distinct opponents instead of text nodes.
-    const names = new Set(screen.getAllByText(/^Opponent \d+$/).map((node) => node.textContent))
-    expect(names.size).toBe(45)
-    expect(names.has('Opponent 0')).toBe(true)
-    expect(names.has('Opponent 44')).toBe(true)
+    expect(screen.getAllByTestId('fixture-row')).toHaveLength(45)
   })
 
-  it('renders NextMatchCountdown above LeagueFixtures when an upcoming match exists', async () => {
-    mocks.listMatches.mockResolvedValue({
-      ...emptyPage(),
-      content: [makeMatch({ id: 'future', homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals', matchDate: '2099-06-01T14:30:00Z' })],
-      totalPages: 1,
+  describe('filters (091)', () => {
+    beforeEach(() => {
+      mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
+      mocks.listLeagueTeams.mockResolvedValue([makeLeagueTeam({ id: 'lt-hawks', name: 'Hawks' })])
+      mocks.listMatches.mockResolvedValue({
+        ...emptyPage(),
+        content: [
+          makeMatch({ id: 'played', matchDate: '2020-06-01T14:30:00Z', homeTeamId: 'team-1', awayTeamName: 'Old Boys' }),
+          makeMatch({ id: 'ours', matchDate: future(1), homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' }),
+          makeMatch({ id: 'theirs', matchDate: future(2), homeTeamId: null, homeTeamName: 'Hawks', homeLeagueTeamId: 'lt-hawks', awayTeamName: 'Eagles', venue: 'Eagle Park' }),
+        ],
+        totalPages: 1,
+      })
     })
 
-    renderLeagueView(SCHEDULE_PATH)
+    it('hides played matches by default and Show played brings them back', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(SCHEDULE_PATH)
 
-    const countdownLabel = await screen.findByText('Next match')
-    const fixturesHeading = screen.getByRole('heading', { name: 'Fixtures' })
-    expect(fixturesHeading.compareDocumentPosition(countdownLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    const fixtureTeams = screen.getAllByText('1st XI')
-    expect(countdownLabel.compareDocumentPosition(fixtureTeams[fixtureTeams.length - 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  })
+      expect(await screen.findAllByTestId('fixture-row')).toHaveLength(2)
+      expect(screen.queryByText('1st XI vs Old Boys')).not.toBeInTheDocument()
 
-  it('renders no countdown when the season has no upcoming match', async () => {
-    mocks.listMatches.mockResolvedValue({
-      ...emptyPage(),
-      content: [makeMatch({ id: 'past', homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals', matchDate: '2020-06-01T14:30:00Z' })],
-      totalPages: 1,
+      await user.click(screen.getByRole('checkbox', { name: /show played/i }))
+      expect(await screen.findAllByTestId('fixture-row')).toHaveLength(3)
+      expect(screen.getByText('1st XI vs Old Boys')).toBeInTheDocument()
+      expect(screen.getByText(/^Showing 3 matches/)).toBeInTheDocument()
     })
 
-    renderLeagueView(SCHEDULE_PATH)
+    it('Only our matches keeps the club-team matches', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(SCHEDULE_PATH)
+      await screen.findAllByTestId('fixture-row')
 
-    await screen.findByText('Riverside Occasionals')
-    expect(screen.queryByText('Next match')).not.toBeInTheDocument()
-  })
+      await user.click(screen.getByRole('checkbox', { name: /only our matches/i }))
 
-  it('opens ShareScheduleDialog from the "Share schedule" button', async () => {
-    const user = userEvent.setup()
-    mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
+      expect(screen.getAllByTestId('fixture-row')).toHaveLength(1)
+      expect(screen.getByText('1st XI vs Riverside Occasionals')).toBeInTheDocument()
+    })
 
-    renderLeagueView(SCHEDULE_PATH)
+    it('the Team select narrows to a club team or a league team, and All teams clears it', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(SCHEDULE_PATH)
+      await screen.findAllByTestId('fixture-row')
 
-    await screen.findByRole('heading', { name: 'Fixtures' })
-    expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
+      await user.click(screen.getByLabelText('Team'))
+      await user.click(await screen.findByRole('option', { name: 'Hawks' }))
+      expect(screen.getAllByTestId('fixture-row')).toHaveLength(1)
+      expect(screen.getByText('Hawks vs Eagles')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Share schedule' }))
+      await user.click(screen.getByLabelText('Team'))
+      await user.click(await screen.findByRole('option', { name: 'All teams' }))
+      expect(screen.getAllByTestId('fixture-row')).toHaveLength(2)
+    })
 
-    expect(await screen.findByText('Share Schedule')).toBeInTheDocument()
-    expect(within(screen.getByRole('dialog')).getByText('Share Schedule')).toBeInTheDocument()
+    it('searches the team names and the venue, and says so when nothing matches', async () => {
+      const user = userEvent.setup()
+      renderLeagueView(SCHEDULE_PATH)
+      await screen.findAllByTestId('fixture-row')
+
+      await user.type(screen.getByLabelText('Search'), 'eagle park')
+      expect(screen.getAllByTestId('fixture-row')).toHaveLength(1)
+
+      await user.clear(screen.getByLabelText('Search'))
+      await user.type(screen.getByLabelText('Search'), 'zzz')
+      expect(await screen.findByText('No matching fixtures')).toBeInTheDocument()
+    })
   })
 })
