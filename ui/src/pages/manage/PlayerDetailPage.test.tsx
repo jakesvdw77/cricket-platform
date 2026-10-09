@@ -17,7 +17,7 @@ const deactivatePlayer = vi.fn()
 const reactivatePlayer = vi.fn()
 
 vi.mock('../../api/playerApi', () => ({
-  listPlayers: (clubId: string) => listPlayers(clubId),
+  listPlayers: (clubId: string, params?: unknown) => (params === undefined ? listPlayers(clubId) : listPlayers(clubId, params)),
   listPlayerSections: (clubId: string, playerId: string) => listPlayerSections(clubId, playerId),
   verifyPlayer: (clubId: string, id: string) => verifyPlayer(clubId, id),
   rejectPlayer: (clubId: string, id: string) => rejectPlayer(clubId, id),
@@ -29,8 +29,18 @@ vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
 
+const listSeasons = vi.fn()
+vi.mock('../../api/seasonApi', () => ({
+  listSeasons: (clubId: string) => listSeasons(clubId),
+}))
+
 beforeEach(() => {
+  // mockReset: a leftover mockResolvedValueOnce must not leak, now the list waits for the seasons query
+  for (const fn of [listPlayers, listPlayerSections, listSections, listSeasons]) fn.mockReset()
   vi.clearAllMocks()
+  listSeasons.mockResolvedValue([
+    { id: 'season-1', clubId: 'test-club-id', label: '2026', startDate: '2000-01-01', endDate: '2999-12-31', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', updatedBy: null },
+  ])
   listSections.mockResolvedValue([])
   listPlayerSections.mockResolvedValue([])
 })
@@ -123,23 +133,22 @@ describe('PlayerDetailPage', () => {
     renderPage('/manage/players/player-1', 'test-club-id')
 
     expect(await screen.findByRole('heading', { name: 'Sipho Ndlovu' })).toBeInTheDocument()
-    expect(listPlayers).toHaveBeenCalledWith('test-club-id')
+    expect(listPlayers).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-1' })
 
-    expect(screen.getByText('Basic Info')).toBeInTheDocument()
-    expect(screen.getByText('Contact Info')).toBeInTheDocument()
-    expect(screen.getByText('Cricket Info')).toBeInTheDocument()
-    expect(screen.getByText('Stats')).toBeInTheDocument()
+    for (const name of ['Basic info', 'Contact info', 'Cricket info', 'Stats']) {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+    }
 
     // Section chip now lives in the header, not under a "Sections" heading (removed entirely).
     expect(await screen.findByText('U15')).toBeInTheDocument()
     expect(screen.queryByText('Sections')).not.toBeInTheDocument()
 
-    expect(screen.getByText('2010-04-12')).toBeInTheDocument()
+    expect(screen.getByText(/^12 Apr 2010 · \d+ yrs$/)).toBeInTheDocument()
     expect(screen.getByText('Male')).toBeInTheDocument()
     expect(screen.getByText('+27 82 555 0100')).toBeInTheDocument()
-    expect(screen.getByText('Right-handed')).toBeInTheDocument()
-    expect(screen.getByText('Right-arm')).toBeInTheDocument()
-    expect(screen.getByText('Fast-medium')).toBeInTheDocument()
+    expect(screen.getByText('Bats: Right-handed')).toBeInTheDocument()
+    expect(screen.getByText('Bowls: Right-arm, Fast-medium')).toBeInTheDocument()
+    expect(screen.getByText('Wicketkeeper: Yes')).toBeInTheDocument()
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /edit/i })).toHaveAttribute('href', '/manage/players/player-1/edit')
@@ -245,34 +254,68 @@ describe('PlayerDetailPage', () => {
     expect(screen.getByText('DH330211')).toBeInTheDocument()
   })
 
-  it('falls back to — for Medical Aid provider and member number when both are unset', async () => {
+  it('shows a dash for Medical Aid provider and member number when both are unset', async () => {
     listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
 
     renderPage('/manage/players/player-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
 
-    const providerLabel = screen.getByText('Medical aid provider')
-    expect(within(providerLabel.parentElement as HTMLElement).getByText('—')).toBeInTheDocument()
-
-    const numberLabel = screen.getByText('Medical aid number')
-    expect(within(numberLabel.parentElement as HTMLElement).getByText('—')).toBeInTheDocument()
+    for (const label of ['Medical aid provider', 'Medical aid number']) {
+      const field = screen.getByText(label).parentElement as HTMLElement
+      expect(within(field).getByText('–')).toBeInTheDocument()
+    }
   })
 
-  it('always renders the Stats placeholder card with a "Coming soon" chip and — for every field', async () => {
-    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1' })])
+  it('shows the real games counts in the key figures and the Stats card, with runs and wickets as dashes', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', gamesThisSeason: 12, gamesOverall: 48, jerseyNumber: 9 })])
 
     renderPage('/manage/players/player-1', 'test-club-id')
 
     await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
 
-    expect(screen.getByText('Stats')).toBeInTheDocument()
-    expect(screen.getByText('Coming soon')).toBeInTheDocument()
+    expect(screen.getByTestId('key-figure-season-value')).toHaveTextContent('12')
+    expect(screen.getByTestId('key-figure-overall-value')).toHaveTextContent('48')
+    expect(screen.getByTestId('key-figure-jersey-value')).toHaveTextContent('#9')
 
-    for (const label of ['Matches', 'Runs', 'Wickets', 'Average']) {
-      const labelNode = screen.getByText(label)
-      expect(within(labelNode.parentElement as HTMLElement).getByText('—')).toBeInTheDocument()
-    }
+    expect(screen.getByText('More coming soon')).toBeInTheDocument()
+    const statsFields = within(screen.getByRole('heading', { name: 'Stats' }).closest('.MuiCard-root') as HTMLElement)
+      .getAllByTestId('player-info-field')
+    const byLabel = (label: string) => statsFields.find((field) => field.textContent?.startsWith(label)) as HTMLElement
+    expect(byLabel('Games this season')).toHaveTextContent('12')
+    expect(byLabel('Games overall')).toHaveTextContent('48')
+    expect(byLabel('Runs')).toHaveTextContent('–')
+    expect(byLabel('Wickets')).toHaveTextContent('–')
+  })
+
+  it('offers Call and Email links for a phone number and an email, and omits them when there are none', async () => {
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', phone: '083 555 0177', email: 'sipho@example.com' })])
+    const { unmount } = renderPage('/manage/players/player-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    expect(screen.getByRole('link', { name: 'Call' })).toHaveAttribute('href', 'tel:083 555 0177')
+    expect(screen.getByRole('link', { name: 'Email' })).toHaveAttribute('href', 'mailto:sipho@example.com')
+    unmount()
+
+    listPlayers.mockResolvedValueOnce([makePlayer({ id: 'player-1', phone: null, email: null })])
+    renderPage('/manage/players/player-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    expect(screen.queryByRole('link', { name: 'Call' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Email' })).not.toBeInTheDocument()
+  })
+
+  it('draws cricket info that is not on file as dashed chips, so the card keeps its three chips', async () => {
+    listPlayers.mockResolvedValueOnce([
+      makePlayer({ id: 'player-1', battingStance: null, bowlingArm: null, bowlingType: null, isWicketKeeper: false }),
+    ])
+
+    renderPage('/manage/players/player-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: 'Sipho Ndlovu' })
+    const chips = screen.getAllByTestId('player-info-chip')
+    expect(chips.map((chip) => chip.textContent)).toEqual(['Bats: –', 'Bowls: –', 'Wicketkeeper: No'])
+    expect(chips.map((chip) => chip.getAttribute('data-on'))).toEqual(['false', 'false', 'false'])
   })
 
   it('renders the full page with no error and no section chip when the player has no tagged sections', async () => {
