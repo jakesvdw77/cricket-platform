@@ -27,6 +27,7 @@ import { PlayerStatusMenu } from '../PlayerStatusMenu'
 import { playerAvatarSrc } from '../BrandIcon'
 import { initialsFromName } from '../../utils/initials'
 import { BATTING_STANCE_LABEL, BOWLING_ARM_LABEL, BOWLING_TYPE_LABEL } from '../../utils/playerLabels'
+import { formatDateOfBirth, NOT_ON_FILE } from '../../utils/playerFormat'
 import { playerStatusBadge, playerStatusOf } from '../../utils/playerStatus'
 import type { PlayerStatusAction } from '../../utils/playerStatus'
 import { zebraTint } from '../../utils/zebraTint'
@@ -42,16 +43,6 @@ export interface PlayerCardProps {
   // docs/specs/088: called when the manager picks a change in the Status menu; the caller does the work and the
   // confirmations (usePlayerStatusActions).
   onStatusAction: (action: PlayerStatusAction) => void
-}
-
-// The "–" a row shows when nothing is on file, so every card has the same rows and the same height.
-const NOT_ON_FILE = '–'
-
-function formatDateOfBirth(value: string | null): string {
-  if (!value) return NOT_ON_FILE
-  const parsed = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function bowlingText(player: Player): string {
