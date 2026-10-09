@@ -243,6 +243,23 @@ function renderPage(initialPath: string, clubId?: string) {
 }
 
 describe('LeagueFormPage', () => {
+  // docs/specs/091 (D): Cancel beside Save, on the Details tab only.
+  it('shows Cancel on the Details tab only, linking back to the league (edit) or the list (add)', async () => {
+    const user = userEvent.setup()
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+
+    const { unmount } = renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+    await screen.findByText('Edit League')
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/schedule')
+    await user.click(screen.getByRole('tab', { name: 'Teams' }))
+    expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
+    unmount()
+
+    renderPage('/manage/fixtures/leagues/new', 'test-club-id')
+    await screen.findByText('Add League')
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/leagues')
+  })
+
   it('create mode: does not render tabs or the Teams tab content', async () => {
     renderPage('/manage/fixtures/leagues/new', 'test-club-id')
 
@@ -276,8 +293,7 @@ describe('LeagueFormPage', () => {
   // through to the form on the edit path — LeagueForm.test.tsx's own "prefills the Basic Info tab
   // from initialValues" test already proves LeagueForm renders these correctly given the right
   // props; this proves LeagueFormPage actually passes them.
-  it('edit mode: prefills the Basic Info tab with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
-    const user = userEvent.setup()
+  it('edit mode: prefills the form with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
     listLeagues.mockResolvedValue([
       makeLeague({
         id: 'league-1',
@@ -296,14 +312,10 @@ describe('LeagueFormPage', () => {
     await screen.findByText('Edit League')
     expect(screen.getByLabelText('Playing XI size')).toHaveValue(12)
     expect(screen.getByLabelText('Format')).toHaveTextContent('T20')
-    expect(screen.getByLabelText('Phone')).toHaveValue('+27 21 555 0177')
-    expect(screen.getByLabelText('Website')).toHaveValue('https://riverside.example.com')
-    expect(screen.getByLabelText('Email')).toHaveValue('league@riverside.example.com')
-
-    await user.click(screen.getByRole('tab', { name: 'Branding' }))
+    expect(screen.getByLabelText('Phone (optional)')).toHaveValue('+27 21 555 0177')
+    expect(screen.getByLabelText('Website (optional)')).toHaveValue('https://riverside.example.com')
+    expect(screen.getByLabelText('Email (optional)')).toHaveValue('league@riverside.example.com')
     expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('tab', { name: 'Social Media' }))
     expect(screen.getByDisplayValue('https://facebook.com/riverside-league')).toBeInTheDocument()
   })
 

@@ -1,36 +1,36 @@
 import type { ReactNode } from 'react'
 import { Box, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { Card } from '../../../components/Card'
-import { NOT_ON_FILE } from '../../../utils/playerFormat'
+import { Card } from '../Card'
+import { NOT_ON_FILE } from '../../utils/playerFormat'
 
-export interface PlayerInfoField {
+export interface InfoCardField {
   label: string
   // empty or null shows the muted dash
   value: string | null | undefined
 }
 
-export interface PlayerInfoChip {
+export interface InfoCardChip {
   label: string
   // false = nothing on file / "No": drawn as a dashed muted chip
   on: boolean
 }
 
-interface PlayerInfoCardProps {
+export interface InfoCardProps {
   title: string
   icon: ReactNode
-  fields?: PlayerInfoField[]
-  chips?: PlayerInfoChip[]
+  fields?: InfoCardField[]
+  chips?: InfoCardChip[]
   // a small grey note on the right of the heading
   note?: string
   actions?: ReactNode
   testId?: string
 }
 
-// docs/specs/088 section G: one card of the Player page. A solid-green icon tile and an uppercase heading, then
+// docs/specs/088 section G (the Player page) and docs/specs/091 (the league Conditions tab): one section card. A solid-green icon tile and an uppercase heading, then
 // label-over-bold-value fields, optional chips, optional action buttons pinned to the bottom so the cards in a row
 // stay the same height.
-export function PlayerInfoCard({ title, icon, fields = [], chips, note, actions, testId }: PlayerInfoCardProps) {
+export function InfoCard({ title, icon, fields = [], chips, note, actions, testId }: InfoCardProps) {
   return (
     <Card sx={{ height: '100%' }} contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>

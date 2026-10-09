@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, MenuItem, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Button as MuiButton, MenuItem, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import AddIcon from '@mui/icons-material/Add'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -337,6 +337,11 @@ export default function LeagueFormPage() {
                   </Typography>
                 )}
 
+                {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
+                <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined">
+                  Cancel
+                </MuiButton>
+
                 <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
                 </Button>
@@ -357,7 +362,7 @@ export default function LeagueFormPage() {
               variant="scrollable"
               scrollButtons="auto"
               allowScrollButtonsMobile
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
             >
               <Tab label="Details" />
               <Tab label="Teams" />

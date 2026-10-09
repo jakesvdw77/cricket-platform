@@ -35,4 +35,11 @@ describe('HeaderSeasonSelect', () => {
     await userEvent.click(screen.getByRole('option', { name: 'All seasons' }))
     expect(onChange).toHaveBeenLastCalledWith(null)
   })
+
+  // docs/specs/091: the Leagues page has no "All seasons".
+  it('can drop the All seasons row', async () => {
+    render(<HeaderSeasonSelect seasons={seasons} value="s1" onChange={vi.fn()} showAll={false} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Season' }))
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['2026/2027', '2025/2026'])
+  })
 })

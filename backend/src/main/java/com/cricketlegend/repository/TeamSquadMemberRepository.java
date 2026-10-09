@@ -50,4 +50,14 @@ public interface TeamSquadMemberRepository extends JpaRepository<TeamSquadMember
      */
     @Query("select distinct m.playerProfileId from TeamSquadMember m where m.seasonId = :seasonId")
     List<UUID> findDistinctPlayerProfileIdsBySeasonId(@Param("seasonId") UUID seasonId);
+
+    /**
+     * docs/specs/091-leagues-gold-standard.md: the distinct players in the squads, for one season, of the club's own
+     * teams affiliated to any of {@code leagueIds} in that season - the Leagues page's "Players" figure.
+     */
+    @Query("select count(distinct m.playerProfileId) from TeamSquadMember m where m.seasonId = :seasonId "
+            + "and m.teamId in (select a.teamId from LeagueAffiliation a where a.seasonId = :seasonId "
+            + "and a.leagueId in :leagueIds)")
+    long countDistinctPlayersInLeagues(
+            @Param("seasonId") UUID seasonId, @Param("leagueIds") Collection<UUID> leagueIds);
 }

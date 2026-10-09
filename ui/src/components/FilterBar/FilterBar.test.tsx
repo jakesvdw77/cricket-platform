@@ -311,3 +311,48 @@ describe('FilterBar density (085 I)', () => {
     expect(screen.queryByTestId('filter-bar-fields')).not.toBeInTheDocument()
   })
 })
+
+describe('FilterBar extra selects (docs/specs/091)', () => {
+  const FORMAT = (value: string, onChange = vi.fn()) => ({
+    key: 'format',
+    label: 'Format',
+    allLabel: 'All formats',
+    options: [
+      { value: 'T20', label: 'T20' },
+      { value: 'ONE_DAY', label: '1 Day' },
+    ],
+    value,
+    onChange,
+  })
+
+  it('shows a page-owned select with the All value, and reports a choice and clearing', async () => {
+    setPhone(false)
+    const onChange = vi.fn()
+    render(<FilterBar {...props({ extraSelects: [FORMAT('', onChange)] })} />)
+
+    expect(screen.getByLabelText('Format')).toHaveTextContent('All formats')
+    await userEvent.click(screen.getByLabelText('Format'))
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'All formats',
+      'T20',
+      '1 Day',
+    ])
+    await userEvent.click(screen.getByRole('option', { name: '1 Day' }))
+    expect(onChange).toHaveBeenLastCalledWith('ONE_DAY')
+  })
+
+  it('counts a chosen value in the phone badge with a removable chip, but never the All value, and puts the field in the sheet', async () => {
+    setPhone(true)
+    const onChange = vi.fn()
+    const { unmount } = render(<FilterBar {...props({ extraSelects: [FORMAT('', onChange)] })} />)
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
+    unmount()
+
+    render(<FilterBar {...props({ extraSelects: [FORMAT('ONE_DAY', onChange)] })} />)
+    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove filter 1 Day' }))
+    expect(onChange).toHaveBeenCalledWith('')
+    await userEvent.click(screen.getByRole('button', { name: 'Filters, 1 active' }))
+    expect(await screen.findByRole('combobox', { name: 'Format' })).toBeInTheDocument()
+  })
+})

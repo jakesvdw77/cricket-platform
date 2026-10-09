@@ -13,11 +13,13 @@ export interface WebsiteInputProps {
   value: string
   onChange: (value: string) => void
   error?: string
+  // docs/specs/091: false drops the "e.g. https://example.com" hint (the compact forms show only errors).
+  showHint?: boolean
 }
 
 const PROTOCOL_PATTERN = /^https?:\/\//i
 
-export function WebsiteInput({ label = 'Website', value, onChange, error }: WebsiteInputProps) {
+export function WebsiteInput({ label = 'Website', value, onChange, error, showHint = true }: WebsiteInputProps) {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -35,7 +37,7 @@ export function WebsiteInput({ label = 'Website', value, onChange, error }: Webs
       onChange={handleChange}
       onBlur={handleBlur}
       error={Boolean(error)}
-      helperText={error ?? 'e.g. https://example.com'}
+      helperText={error ?? (showHint ? 'e.g. https://example.com' : undefined)}
     />
   )
 }

@@ -1,0 +1,71 @@
+# Plan: spec 091 — Leagues gold standard (page, card, list view, league page and its tabs, edit form, filled Edit everywhere)
+
+## Context
+
+Spec 091 (`docs/specs/091-leagues-gold-standard.md`, mockups approved by the user 2026-10-09) brings the last big area, Leagues, to the Matches / Players / Polls standard: **A** the Leagues page (Season pill, six counters, `FilterBar`, content line, Cards | List), **B** the new league card, **C** the league page (poll-style header, key-figure strip, Schedule / Teams / Conditions tabs), **D** the add / edit form as sections, **E** Edit is the filled primary button on every detail page. Unlike 087–090 this needs **backend work** (season, inactive and quick-filter parameters on the leagues list, plus a summary endpoint). New branch `feat/091-leagues-gold-standard` (already created, spec committed `e6d5e2c`); five slices, a commit group each, one PR at the end (only when the user says so).
+
+## Findings that shape the plan
+
+- **Backend list is already per-season.** `LeagueServiceImpl.list(clubId)` resolves `currentSeasonId` (private `resolveCurrentSeasonId`, mirrored from `ui/src/utils/defaultSeason.ts`) and batches five queries (team counts, document urls, `MatchRepository.summariseByLeagueForSeason`, `LeagueAffiliationRepository.findTeamSummariesBySeasonId`, `LeagueTeamRepository.findActiveBySeasonId`) into `LeagueDto` (`currentSeason*`, `matchCount`, `playedCount`, `first/last/nextMatchDate`, `teams`). So `seasonId` is a one-line change: use the given season (validated to belong to the club, else 404 like other season lookups) instead of the resolved one. The list has **no repository specs**: it is an in-memory list, so `includeInactive` and `focus` are filters over the built DTOs and the summary can be computed from the same list (parity by construction), never a second definition.
+- **Summary figures:** `leaguesShown`, `active` (league `active`), `teamsEntered` (sum of each shown league's `teams` list: own affiliated + active league teams), `seasons` (`seasonRepository.findByClubId` size, already loaded), `needAttention` (active leagues with no teams or no matches in the season), and the two new aggregates: **`players`** (one new query, `TeamSquadMemberRepository`: `count(distinct playerProfileId)` where season matches and `teamId in (select a.teamId from LeagueAffiliation a where a.seasonId = :seasonId and a.leagueId in :leagueIds)`) and **`matchesThisWeek`** (extend the `LeagueMatchSummary` projection with `weekMatchCount = sum(case when matchDate >= :now and matchDate < :weekEnd then 1 else 0 end)` and pass `weekEnd = now + 7 days`; `ServerClock.now()` as today). `focus=this-week` keeps leagues with `weekMatchCount > 0`. A statement-count guard already exists (`LeagueListQueryCountIntegrationTest`); the summary adds exactly one query for players.
+- **Controller / layering:** `LeagueController` (`@PreAuthorize canAdministerClub`) gets `?seasonId&includeInactive&focus` on `list` and a new `GET .../leagues/summary`. A `LeagueListFocus` enum (parse: `active`, `this-week`, `attention`, else 400) in the style of `PlayerListFocus` / `MatchListFocus`. No nested types or enum-switch classes in `service.impl` (ArchUnit): do the focus filter with plain `if`s and put any record in `service/support`. DTO `LeaguesSummaryDto` (record). `openapi.yaml`: additions only, by hand.
+- **Frontend callers of `listLeagues`:** the unfiltered `['managed-club', clubId, 'leagues']` key is used by `LeagueViewLayout`, forms, `MatchList`, `MatchDetailPage`, filters, etc. (select by id / dropdowns). They keep that call and key. The Leagues page uses a new key `['managed-club', clubId, 'leagues', 'list', {seasonId, includeInactive, focus}]` and `['managed-club', clubId, 'leagues', 'summary', {...}]` (prefix invalidation keeps working). `LeagueViewLayout` takes the league for the **selected season** from `listLeagues(clubId, {seasonId})` (key `[... 'list', {seasonId}]`) so the key figures follow the season pill.
+- **Reused pieces (all built in 087–090):** `HeaderSeasonSelect` (needs a `showAll` prop; the Leagues pill has no "All seasons"), `PageCounters`, `FilterBar`, `ContentControlsLine` / `SortLink`, `CompactSwitch`, `ListViewToggle` + `useListViewPreference('leagueList:view')`, `usePersistedListFilters`, `KeyFigureTile`, `SelectionGauge`, `CompactToggleGroup`, `CardTimeStrip` + `useCountdown`, `RecordCard`, `PlayerInfoCard` pattern for section cards, `SocialLinksRow`, `zebraTint`, and the `MatchTable` / `PollTable` table skeleton (sticky clipped header, stretched link, `data-desktop-only`). `LeagueTeamAvatars` already shows every team (no "+N"): kept, with short names under the avatars as today.
+- **League card today** (`pages/manage/leagues/LeagueCard.tsx`) is a stack of `DetailLine`s plus `CardProgressBar`; it becomes: header badges (format, Active), social icon buttons in the corner (`headerActions`, like the match card's links), `CardTimeStrip` next match, played gauge, Teams block, same footer. `leagueBadges` loses the team-count and season-label chips (the view header also uses it: format + Active).
+- **Edit button:** tinted Edit lives in `LeagueViewLayout`, `TeamDetailPage`, `ClubOverviewPage` and the shared `RecordDetailScreen` (Season, Sponsor, contact pages use it); Player and Match pages already comply.
+- **Form:** `LeagueForm` has inner tabs (Basic Info, Branding, Social Media); `LeagueFormPage` has outer tabs (Details, Teams, Schedule, Playing Conditions, Contacts). D replaces the inner tabs with three sections in one card; outer tabs only get tighter spacing. `LeagueForm.test.tsx` / `LeagueFormPage.test.tsx` use the inner tab names, so they are updated for the sections.
+
+## Decisions to confirm (readings; the spec fixes the behaviour)
+
+1. **Need attention** counts **active** leagues with no teams entered **or** no matches scheduled in the season.
+2. **Matches this week** is a rolling next-7-days count from the server clock; its filter keeps leagues with at least one (the spec's stated exception to "counter equals list size").
+3. **Players** = distinct squad members of the club's own teams affiliated to the shown leagues in the season (the spec's Open Question; league teams of other clubs have no known players).
+4. **Seasons** = the club's seasons, regardless of league filters.
+5. The Leagues page always sends a `seasonId` (the pill has no "All seasons"); with no seasons at all it sends none and the backend returns the league rows with empty season figures, as today.
+6. The list link carries `?seasonId=` into the league page; **Schedule tab filters are client-side**: "Only our matches" = a side with a real club team id, "Show played" = matches before now, default upcoming only.
+
+## Slice 1 — Edit is always filled (E) (`frontend-builder`, `test-writer`)
+
+`RecordDetailScreen.tsx`, `TeamDetailPage.tsx`, `ClubOverviewPage.tsx`: replace the tinted outlined Edit with `variant="contained"`; (the league page does it in slice 4). Tests: a filled-Edit assertion per page (`className` contains `MuiButton-contained`), existing tests unchanged otherwise; `RecordDetailScreen` story check. Commit.
+
+## Slice 2 — backend (`backend-builder`, `test-writer`)
+
+- `LeagueListFocus` enum, `LeaguesSummaryDto`, `LeagueService.list(clubId, seasonId, includeInactive, focus)` and `summary(clubId, seasonId, includeInactive)`; the existing one-arg `list` stays as a default-delegating overload so other callers compile.
+- `LeagueServiceImpl`: season resolution (given, validated, else current), a private builder of the per-season DTO list reused by `list` and `summary`, plain-`if` filters, the players query, the week count (`LeagueMatchSummary.getWeekMatchCount`, `MatchRepository` query + param), no per-league lookups.
+- `TeamSquadMemberRepository`: the distinct-players count query. `LeagueController`: params and summary endpoint. `backend/openapi/openapi.yaml`: additions.
+- Tests: `LeagueServiceImplTest` (season default and explicit, invalid season, inactive hidden, each focus, summary figures, need-attention rule, week count), `LeagueControllerIntegrationTest` (params, 400 on a bad focus, 404/400 for another club's season, access), a new `LeaguesSummaryIntegrationTest` (parity of each quick filter with the list for several combinations, `matchesThisWeek` exception), `LeagueListQueryCountIntegrationTest` (fixed statement count with the new params and summary), ArchUnit. Backend tests run in a scratch copy (`rsync` to the scratchpad `be-run`), never in `backend/`; the user restarts the backend afterwards. Commit.
+
+## Slice 3 — Leagues page, card, list view (`frontend-builder`, `test-writer`)
+
+- `api/leagueApi.ts`: `listLeagues(clubId, params?)` (`seasonId`, `includeInactive`, `focus`), `getLeaguesSummary`, `leaguesSummaryKey`, `LeaguesSummary` type, `LeagueListFocus`; fixtures gain nothing (DTO unchanged).
+- `components/HeaderSeasonSelect`: `showAll?: boolean` (default true); test and story.
+- `pages/manage/LeagueList.tsx`: `ManageScreenHeader` with `titleAdornment` pill, Add league; `PageCounters` (Active, Need attention, Matches this week = quick filters, mutually exclusive; Teams entered, Players, Seasons = figures, `kind` plain); `FilterBar` (Format via a new `formats` slot? — see below) and search; `ContentControlsLine` (sort, Show inactive, `ListViewToggle`); persisted filters (`format`, `seasonId`) per club via `usePersistedListFilters`, `focus` and `showInactive` per visit; empty states kept.
+- `FilterBar` has League / Season / Section / Team slots but no Format: add a small generic `extraSelects` slot (label, options, value, onChange; counted as a chip and in the sheet) rather than a bespoke toolbar; extend `FilterBar` tests and a story.
+- `pages/manage/leagues/LeagueCard.tsx` rebuilt as in the spec (uses `CardTimeStrip`, a `SelectionGauge`-style played gauge via a small `PlayedGauge` over `SelectionGauge` props, `LeagueTeamAvatars`, social/website icon buttons); `leagueBadges.ts` trimmed (format + Active/Inactive; the league page passes no team count either); `LeagueTable.tsx` (+ story, test) in `pages/manage/leagues/`; the card and table link to `.../schedule?seasonId=` for the chosen season.
+- Tests: `LeagueList.test.tsx` (pill, counters as filters, show inactive, toolbar, switch + remembered preference, season changes the request, empty states, `mockReset` in `beforeEach`), `LeagueCard.test.tsx`, `leagueBadges.test.ts`, `LeagueTable.test.tsx`, `FilterBar` and `HeaderSeasonSelect` tests/stories. Commit.
+
+## Slice 4 — league page (`frontend-builder`, `test-writer`)
+
+- `league/LeagueViewLayout.tsx`: header per the spec (Back + `HeaderSeasonSelect` (no All) + Share schedule + filled Edit on the top row; logo and title; format and Active badges; contacts and links line incl. `SocialLinksRow`; `KeyFigureTile` strip: Teams, Matches played "x of y", Next match with countdown and amber, Playing XI with age caption); league and season figures from `listLeagues(clubId, {seasonId})`; tabs kept as link navigation with the search carried.
+- `LeagueScheduleView.tsx`: `FilterBar` (Team = the season's affiliated teams, search), `ContentControlsLine` with **Only our matches** and **Show played** switches, new `LeagueFixturesTable` (When, Match with logos, Venue, "Our match" chip, chevron to the match for our matches); the next-match countdown moves to the strip; Share schedule moves to the header (keeping `ShareScheduleDialog` wiring, now lifted to the layout via context or an action registered by the view); `LeagueFixtures` (used by the edit form's Schedule tab) is untouched.
+- `LeagueTeamsView.tsx`: `CompactToggleGroup` All | Our teams | League teams plus search, two **equal-height** section cards (`PlayerInfoCard`-style icon-tile headings), two-across tiles with the full name.
+- `LeagueConditionsView.tsx`: icon-tile section cards Innings / Points / Fielding restrictions (top two equal height), tab line with Conditions PDF and Share, empty note kept.
+- Tests: update `LeagueViewLayout.test.tsx`, `LeagueScheduleView.test.tsx`, `LeagueTeamsView.test.tsx`, `LeagueConditionsView.test.tsx` and the shared `leagueViewTestUtils` (adds the season-scoped list mock) to the new markup, adding the new behaviours (filters, switches, equal-height cards via `data-testid`, key figures, Edit filled); stories for the new table and section cards. Commit.
+
+## Slice 5 — add / edit form (`frontend-builder`, `test-writer`)
+
+`components/LeagueForm/LeagueForm.tsx`: replace the inner tabs with Basic info / Contact / Branding and social sections in the compact three-column layout (reusing the `SectionHeading` of `MatchForm`, extracted to a shared `components/FormSectionHeading` since this is its second use), "(optional)" labels, no helper text; `LeagueFormPage.tsx`: Cancel, tighter outer-tab spacing. Same payload and validation. Update `LeagueForm.test.tsx`, `LeagueFormPage.test.tsx`, stories. Commit.
+
+## Docs (last commit)
+
+`docs/standards/design-system.md` (league page and the extra select slot), `docs/standards/frontend.md` (`leagueList:view`), `docs/roadmap.md`, spec 091 status line (built, awaiting the user's browser check, with the readings above), this plan to `docs/plans/091-leagues-gold-standard.md`.
+
+## Verification
+
+- Backend in a scratch copy: `rsync` `backend/` to the scratchpad `be-run`, then `./mvnw -q -o test` for the League tests and then the full suite; Docker is needed for Testcontainers (restart nothing else; run alone).
+- Frontend (`source ~/.nvm/nvm.sh; nvm use 22.12.0` in `ui/`): `npx tsc -b`, `npm run lint` (no errors), changed unit files first, then **one** full `npx vitest run --project=unit --maxWorkers=2` with nothing else running, `--project=storybook` for the new stories.
+- Manual (the user, after restarting the backend): the Leagues page against boards 1–3 (pill changes every card, counters filter, Show inactive, list view and reload), the league page and each tab against boards 4–7, the Edit league form (board 8), the filled Edit on a team, the club overview and a season / sponsor page.
+
+## Not in this plan
+
+New league fields or migrations, results or scores, the Teams / Schedule / Playing conditions / Contacts tabs of the edit form beyond spacing, share-output (PDF, poster, calendar) changes, and a PR (only on the user's say-so).

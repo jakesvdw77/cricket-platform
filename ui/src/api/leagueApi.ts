@@ -94,8 +94,52 @@ function leaguesPath(clubId: string): string {
 
 // Plain array response, not Page<T> — a club's own leagues are a small, bounded list, matching
 // Section/Team/Sponsor's own posture.
-export async function listLeagues(clubId: string): Promise<League[]> {
-  const { data } = await api.get<League[]>(leaguesPath(clubId))
+// docs/specs/091: the quick filter behind a Leagues counter.
+export type LeagueListFocus = 'active' | 'this-week' | 'attention'
+
+export interface ListLeaguesParams {
+  // The season the computed fields describe; omitted = the club's current season.
+  seasonId?: string
+  // Default true (every league); the Leagues page sends false.
+  includeInactive?: boolean
+  focus?: LeagueListFocus
+}
+
+export async function listLeagues(clubId: string, params: ListLeaguesParams = {}): Promise<League[]> {
+  const { data } = await api.get<League[]>(leaguesPath(clubId), {
+    params: {
+      ...(params.seasonId ? { seasonId: params.seasonId } : {}),
+      ...(params.includeInactive === false ? { includeInactive: false } : {}),
+      ...(params.focus ? { focus: params.focus } : {}),
+    },
+  })
+  return data
+}
+
+// docs/specs/091: the Leagues page counters for the list's season and inactive filter. activeLeagues and needAttention
+// equal the list's size with that focus; matchesThisWeek is a match count (its filter keeps leagues that have one).
+export interface LeaguesSummary {
+  leaguesShown: number
+  active: number
+  teamsEntered: number
+  players: number
+  seasons: number
+  matchesThisWeek: number
+  needAttention: number
+}
+
+export type LeaguesSummaryFilters = Pick<ListLeaguesParams, 'seasonId' | 'includeInactive'>
+
+// Under the list's own ['managed-club', clubId, 'leagues'] prefix, so every invalidation that refreshes the leagues
+// refreshes the counters too.
+export const leaguesSummaryKey = (clubId: string, filters: LeaguesSummaryFilters = {}) =>
+  ['managed-club', clubId, 'leagues', 'summary', filters] as const
+
+export async function getLeaguesSummary(clubId: string, filters: LeaguesSummaryFilters = {}): Promise<LeaguesSummary> {
+  const params: Record<string, string | boolean> = {}
+  if (filters.seasonId) params.seasonId = filters.seasonId
+  if (filters.includeInactive === false) params.includeInactive = false
+  const { data } = await api.get<LeaguesSummary>(`${leaguesPath(clubId)}/summary`, { params })
   return data
 }
 

@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   emptyPage,
@@ -25,7 +26,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueApi')>()),
-  listLeagues: (clubId: string) => mocks.listLeagues(clubId),
+  listLeagues: (clubId: string, params?: unknown) => mocks.listLeagues(clubId, params),
 }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mocks.listSeasons(clubId) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
@@ -85,8 +86,7 @@ describe('LeagueTeamsView', () => {
 
     renderLeagueView(TEAMS_PATH)
 
-    expect(await screen.findByRole('heading', { name: 'Teams in 2026' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Our teams' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Our teams · 1' })).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: '1st XI' })).toHaveAttribute(
       'href',
       '/manage/sections/section-1/teams/team-1',
@@ -96,36 +96,74 @@ describe('LeagueTeamsView', () => {
   it('lists active league teams under "League teams" with no link, and never an inactive one', async () => {
     renderLeagueView(TEAMS_PATH)
 
-    expect(await screen.findByRole('heading', { name: 'League teams' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'League teams · 1' })).toBeInTheDocument()
     expect(await screen.findByText('Riverside Occasionals')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Riverside Occasionals' })).not.toBeInTheDocument()
     expect(screen.queryByText('Dormant CC')).not.toBeInTheDocument()
     expect(mocks.listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', { activeOnly: true })
   })
 
-  it('renders both groups, own teams first, and only the group that has entries', async () => {
+  it('renders both cards, own teams first and equal height, with a note in the one that has no entries', async () => {
     mocks.listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
     mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
 
     const { unmount } = renderLeagueView(TEAMS_PATH)
-    const own = await screen.findByRole('heading', { name: 'Our teams' })
-    const league = await screen.findByRole('heading', { name: 'League teams' })
+    const own = await screen.findByTestId('league-teams-own')
+    const league = await screen.findByTestId('league-teams-league')
     expect(own.compareDocumentPosition(league) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The two cards fill their grid row, so they are the same height.
+    expect(getComputedStyle(own.parentElement as HTMLElement).alignItems).toBe('stretch')
+    expect(getComputedStyle(own).height).toBe('100%')
+    expect(getComputedStyle(league).height).toBe('100%')
     unmount()
 
-    // Only league teams: no "Our teams" group.
+    // Only league teams: the own card says so.
     mocks.listLeagueAffiliations.mockResolvedValue([])
     const second = renderLeagueView(TEAMS_PATH)
-    await screen.findByRole('heading', { name: 'League teams' })
-    expect(screen.queryByRole('heading', { name: 'Our teams' })).not.toBeInTheDocument()
+    expect(await within(await screen.findByTestId('league-teams-own')).findByText('None of your teams are entered this season.')).toBeInTheDocument()
     second.unmount()
 
-    // Only own teams: no "League teams" group.
+    // Only own teams: the league card says so.
     mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
     mocks.listLeagueTeams.mockResolvedValue([])
     renderLeagueView(TEAMS_PATH)
-    await screen.findByRole('heading', { name: 'Our teams' })
-    expect(screen.queryByRole('heading', { name: 'League teams' })).not.toBeInTheDocument()
+    expect(await within(await screen.findByTestId('league-teams-league')).findByText('No league teams registered this season.')).toBeInTheDocument()
+  })
+
+  it('the All | Our teams | League teams switch shows one card or both, and the line counts what is shown', async () => {
+    const user = userEvent.setup()
+    mocks.listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+    mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
+
+    renderLeagueView(TEAMS_PATH)
+    await screen.findByTestId('league-teams-own')
+    expect(screen.getByText('Showing 2 teams · 2026')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Our teams' }))
+    expect(screen.getByTestId('league-teams-own')).toBeInTheDocument()
+    expect(screen.queryByTestId('league-teams-league')).not.toBeInTheDocument()
+    expect(screen.getByText('Showing 1 team · 2026')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'League teams' }))
+    expect(screen.queryByTestId('league-teams-own')).not.toBeInTheDocument()
+    expect(screen.getByTestId('league-teams-league')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'All' }))
+    expect(screen.getByTestId('league-teams-own')).toBeInTheDocument()
+  })
+
+  it('searches team names in both cards', async () => {
+    const user = userEvent.setup()
+    mocks.listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+    mocks.listLeagueAffiliations.mockResolvedValue([makeAffiliation({ teamId: 'team-1' })])
+
+    renderLeagueView(TEAMS_PATH)
+    await screen.findByRole('link', { name: '1st XI' })
+
+    await user.type(screen.getByLabelText('Search'), 'occasionals')
+    expect(screen.queryByRole('link', { name: '1st XI' })).not.toBeInTheDocument()
+    expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
+    expect(screen.getByText('No teams match your search.')).toBeInTheDocument()
   })
 
   it('uses a logo-less avatar with the abbreviation, falling back to initials from the name', async () => {
@@ -145,8 +183,8 @@ describe('LeagueTeamsView', () => {
     renderLeagueView(TEAMS_PATH)
 
     expect(await screen.findByText('No teams registered for this season yet.')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Our teams' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'League teams' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('league-teams-own')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('league-teams-league')).not.toBeInTheDocument()
   })
 
   it('does not show the empty copy while the teams are still loading', async () => {
@@ -179,6 +217,6 @@ describe('LeagueTeamsView', () => {
     expect(screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))).toEqual([
       '/manage/fixtures/leagues/league-1/edit',
     ])
-    expect(within(screen.getByRole('heading', { name: 'Teams in 2026' }).closest('.MuiCard-root') as HTMLElement).queryByText('Edit')).not.toBeInTheDocument()
+    expect(within(screen.getAllByTestId('league-team-tile')[0]).queryByText('Edit')).not.toBeInTheDocument()
   })
 })

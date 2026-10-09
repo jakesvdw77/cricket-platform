@@ -1,23 +1,17 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Box, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
-import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
 import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import { DetailFieldRow, DetailFieldGrid } from '../../../components/RecordDetailScreen'
-import { Button } from '../../../components/Button'
-import { Card } from '../../../components/Card'
+import { InfoCard } from '../../../components/InfoCard'
 import { PlayingConditionsShareDialog } from '../../../components/PlayingConditionsShareDialog'
 import { getPlayingConditions, PLAYING_CONDITIONS_PDF_NAME } from '../../../api/leaguePlayingConditionsApi'
 import { generatePlayingConditionsSummaryPdf } from '../../../utils/playingConditionsSummaryPdf'
 import { resolveEffectiveMaxOversPerBowler, resolvePlayingConditionsPayload } from '../../../utils/playingConditions'
-import { CardHeaderRow } from './leagueViewParts'
 import { useLeagueView } from './leagueViewContext'
 
 // docs/specs/072-league-view-pages.md section 5: the Conditions view - the selected season's playing
@@ -46,101 +40,88 @@ export default function LeagueConditionsView() {
     window.open(url, '_blank', 'noopener')
   }
 
-  return (
-    <>
-      <Card>
-        <CardHeaderRow
-          title="Playing conditions"
-          action={
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {documentUrl && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  startIcon={<DescriptionOutlinedIcon fontSize="small" />}
-                  onClick={() => window.open(documentUrl, '_blank', 'noopener')}
-                >
-                  {PLAYING_CONDITIONS_PDF_NAME}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                startIcon={<ShareOutlinedIcon fontSize="small" />}
-                onClick={() => setShareOpen(true)}
-              >
-                Share
-              </Button>
-            </Stack>
-          }
-        />
+  const maxOversPerBowler =
+    payload && payload.maxOversPerBowler != null
+      ? String(payload.maxOversPerBowler)
+      : payload
+        ? `${resolveEffectiveMaxOversPerBowler(payload.maxOversPerInnings, null)} (auto)`
+        : null
 
-        {!payload ? (
-          <Typography variant="body2" color="text.secondary">
-            No Playing Conditions set for this season yet.
-          </Typography>
-        ) : (
-          <DetailFieldGrid>
-            <DetailFieldRow icon={<SportsCricketOutlinedIcon />} label="Max overs per innings" value={payload.maxOversPerInnings} />
-            <DetailFieldRow icon={<BoltOutlinedIcon />} label="Powerplay overs" value={payload.powerplayOvers} />
-            <DetailFieldRow
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* The tab's own line: which season these conditions are for, and the PDF and Share actions. */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap flexWrap="wrap">
+        <Typography variant="body2" color="text.secondary">
+          {seasonLabel ? `Playing conditions for ${seasonLabel}` : 'Playing conditions'}
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {documentUrl && (
+            <MuiButton variant="outlined" startIcon={<DescriptionOutlinedIcon fontSize="small" />} onClick={() => window.open(documentUrl, '_blank', 'noopener')}>
+              {PLAYING_CONDITIONS_PDF_NAME}
+            </MuiButton>
+          )}
+          <MuiButton variant="outlined" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+            Share
+          </MuiButton>
+        </Stack>
+      </Stack>
+
+      {!payload ? (
+        <Typography variant="body2" color="text.secondary">
+          No Playing Conditions set for this season yet.
+        </Typography>
+      ) : (
+        <>
+          {/* The two top cards stretch to the same height (docs/specs/091). */}
+          <Box sx={{ display: 'grid', gap: 2, alignItems: 'stretch', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
+            <InfoCard
+              testId="conditions-innings"
+              title="Innings"
               icon={<TimerOutlinedIcon />}
-              label="Max overs per bowler"
-              value={
-                payload.maxOversPerBowler != null
-                  ? payload.maxOversPerBowler
-                  : `${resolveEffectiveMaxOversPerBowler(payload.maxOversPerInnings, null)} (auto)`
-              }
+              fields={[
+                { label: 'Max overs per innings', value: String(payload.maxOversPerInnings) },
+                { label: 'Powerplay overs', value: String(payload.powerplayOvers) },
+                { label: 'Max overs per bowler', value: maxOversPerBowler },
+                { label: 'Substitutions allowed', value: payload.allowSubstitutions ? 'Yes' : 'No' },
+              ]}
             />
-            {payload.fieldingRestrictionsNotes && (
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <DetailFieldRow
-                  icon={<NotesOutlinedIcon />}
-                  label="Fielding restrictions notes"
-                  value={payload.fieldingRestrictionsNotes}
-                />
-              </Box>
-            )}
-            <DetailFieldRow
-              icon={<SwapHorizOutlinedIcon />}
-              label="Substitutions allowed"
-              value={payload.allowSubstitutions ? 'Yes' : 'No'}
-            />
-            <DetailFieldRow icon={<EmojiEventsOutlinedIcon />} label="Points for win" value={payload.pointsForWin} />
-            <DetailFieldRow icon={<EmojiEventsOutlinedIcon />} label="Points for loss" value={payload.pointsForLoss} />
-            <DetailFieldRow icon={<EmojiEventsOutlinedIcon />} label="Points for draw" value={payload.pointsForDraw} />
-            <DetailFieldRow
+            <InfoCard
+              testId="conditions-points"
+              title="Points"
               icon={<EmojiEventsOutlinedIcon />}
-              label="Points for no result"
-              value={payload.pointsForNoResult}
+              fields={[
+                { label: 'Win', value: String(payload.pointsForWin) },
+                { label: 'Loss', value: String(payload.pointsForLoss) },
+                { label: 'Draw', value: String(payload.pointsForDraw) },
+                { label: 'No result', value: String(payload.pointsForNoResult) },
+                { label: 'Forfeit win', value: String(payload.pointsForForfeitWin) },
+                ...(payload.bonusPointsEnabled
+                  ? [
+                      { label: 'Bonus — early chase', value: `Before over ${payload.bonusBattingOversThreshold}` },
+                      { label: 'Bonus — bowling restriction', value: `${payload.bonusBowlingRestrictionPercentage}% of target` },
+                    ]
+                  : []),
+              ]}
             />
-            <DetailFieldRow
-              icon={<EmojiEventsOutlinedIcon />}
-              label="Points for forfeit win"
-              value={payload.pointsForForfeitWin}
+          </Box>
+          {payload.fieldingRestrictionsNotes && (
+            <InfoCard
+              testId="conditions-fielding"
+              title="Fielding restrictions"
+              icon={<NotesOutlinedIcon />}
+              fields={[{ label: 'Notes', value: payload.fieldingRestrictionsNotes }]}
             />
-            {payload.bonusPointsEnabled && (
-              <>
-                <DetailFieldRow
-                  icon={<StarOutlineOutlinedIcon />}
-                  label="Bonus — early chase"
-                  value={`Before over ${payload.bonusBattingOversThreshold}`}
-                />
-                <DetailFieldRow
-                  icon={<StarOutlineOutlinedIcon />}
-                  label="Bonus — bowling restriction"
-                  value={`${payload.bonusBowlingRestrictionPercentage}% of target`}
-                />
-              </>
-            )}
-            {payload.additionalNotes && (
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <DetailFieldRow icon={<NotesOutlinedIcon />} label="Additional notes" value={payload.additionalNotes} />
-              </Box>
-            )}
-          </DetailFieldGrid>
-        )}
-      </Card>
+          )}
+          {payload.additionalNotes && (
+            <InfoCard
+              testId="conditions-notes"
+              title="Additional notes"
+              icon={<StarOutlineOutlinedIcon />}
+              fields={[{ label: 'Notes', value: payload.additionalNotes }]}
+            />
+          )}
+        </>
+      )}
 
       <PlayingConditionsShareDialog
         open={shareOpen}
@@ -151,6 +132,6 @@ export default function LeagueConditionsView() {
         conditions={payload}
         onSharePdf={handleSharePdf}
       />
-    </>
+    </Box>
   )
 }

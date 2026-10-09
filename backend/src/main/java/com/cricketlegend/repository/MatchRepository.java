@@ -174,6 +174,28 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
     List<LeagueMatchSummary> summariseByLeagueForSeason(
             @Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId, @Param("now") Instant now);
 
+    /**
+     * docs/specs/091-leagues-gold-standard.md: the number of active matches of each league in one season that fall
+     * within {@code [weekStart, weekEnd)} - the Leagues page's "this week" figure (the same window the Matches counter
+     * uses). One round trip for every league.
+     */
+    @Query("select m.leagueId as leagueId, count(m) as matchCount "
+            + "from Match m where m.clubId = :clubId and m.seasonId = :seasonId and m.active = true "
+            + "and m.leagueId is not null and m.matchDate >= :weekStart and m.matchDate < :weekEnd "
+            + "group by m.leagueId")
+    List<LeagueWeekMatchCount> countMatchesInWindowByLeague(
+            @Param("clubId") UUID clubId,
+            @Param("seasonId") UUID seasonId,
+            @Param("weekStart") Instant weekStart,
+            @Param("weekEnd") Instant weekEnd);
+
+    /** Projection backing {@link #countMatchesInWindowByLeague}. */
+    interface LeagueWeekMatchCount {
+        UUID getLeagueId();
+
+        long getMatchCount();
+    }
+
     /** Projection backing {@link #summariseByLeagueForSeason}. */
     interface LeagueMatchSummary {
         UUID getLeagueId();

@@ -3539,11 +3539,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
-  /api/v1/manage/clubs/{clubId}/leagues:
+  /api/v1/manage/clubs/{clubId}/leagues/summary:
     get:
       tags:
       - league-controller
-      operationId: list_12
+      operationId: summary_3
+      description: "The Leagues page counters (docs/specs/091) for the same season and inactive filter the list uses. active and needAttention equal the list's size with that focus; matchesThisWeek is a match count."
       parameters:
       - name: clubId
         in: path
@@ -3551,6 +3552,55 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: includeInactive
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaguesSummaryDto"
+  /api/v1/manage/clubs/{clubId}/leagues:
+    get:
+      tags:
+      - league-controller
+      operationId: list_12
+      description: "The leagues for one season (docs/specs/091): seasonId (one of the club's, else 404; default the current season), includeInactive (default true) and focus (active, this-week or attention; anything else 400)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: includeInactive
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: focus
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -6379,6 +6429,31 @@ components:
           type: integer
           format: int64
         unverified:
+          type: integer
+          format: int64
+    LeaguesSummaryDto:
+      type: object
+      description: "The Leagues page counters for the list's season and inactive filter. leaguesShown is the list's size; active and needAttention equal its size with that focus; teamsEntered, players, seasons and matchesThisWeek are figures."
+      properties:
+        leaguesShown:
+          type: integer
+          format: int64
+        active:
+          type: integer
+          format: int64
+        teamsEntered:
+          type: integer
+          format: int64
+        players:
+          type: integer
+          format: int64
+        seasons:
+          type: integer
+          format: int64
+        matchesThisWeek:
+          type: integer
+          format: int64
+        needAttention:
           type: integer
           format: int64
     UpdateMatchRequest:

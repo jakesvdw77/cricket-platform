@@ -153,4 +153,28 @@ class LeagueListQueryCountIntegrationTest {
                     assertThat(dto.teams()).hasSize(2);
                 });
     }
+
+    private long statementsForSummary(UUID clubId) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        assertThat(leagueService.summary(clubId, null, true).leaguesShown()).isPositive();
+        return statistics.getPrepareStatementCount();
+    }
+
+    private long statementsForThisWeek(UUID clubId) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        assertThat(leagueService.list(clubId, null, false, com.cricketlegend.domain.LeagueListFocus.THIS_WEEK)).isNotEmpty();
+        return statistics.getPrepareStatementCount();
+    }
+
+    /** docs/specs/091-leagues-gold-standard.md: the summary and the this-week focus add a fixed number of queries too. */
+    @Test
+    void summaryAndTheThisWeekFocusIssueTheSameNumberOfStatementsForOneLeagueAsForTwelve() {
+        Club small = seedClubWithLeagues("n-plus-one-small-091", 1);
+        Club large = seedClubWithLeagues("n-plus-one-large-091", 12);
+
+        assertThat(statementsForSummary(large.getId())).isEqualTo(statementsForSummary(small.getId()));
+        assertThat(statementsForThisWeek(large.getId())).isEqualTo(statementsForThisWeek(small.getId()));
+    }
 }

@@ -294,18 +294,9 @@ export default function TeamDetailPage() {
           <MuiButton
             component={RouterLink}
             to={editTo}
-            variant="outlined"
+            variant="contained"
             startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{
-              flex: 'none',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
-              color: 'primary.dark',
-              borderColor: 'transparent',
-              '&:hover': {
-                borderColor: 'transparent',
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
-              },
-            }}
+            sx={{ flex: 'none' }}
           >
             Edit team
           </MuiButton>

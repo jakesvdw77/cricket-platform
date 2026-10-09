@@ -2,6 +2,7 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeaguePlayingConditions;
+import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
@@ -9,6 +10,7 @@ import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.LeagueSeasonTeamDto;
+import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -23,8 +25,11 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.LeagueTeamRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchRepository.LeagueMatchSummary;
+import com.cricketlegend.repository.MatchRepository.LeagueWeekMatchCount;
+import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import com.cricketlegend.service.support.LeagueListRow;
 import com.cricketlegend.service.support.LeagueSeasonFields;
 import com.cricketlegend.service.support.ServerClock;
 import com.cricketlegend.service.support.SocialLinkValidation;
@@ -70,6 +75,7 @@ public class LeagueServiceImpl implements LeagueService {
     private final LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
     private final MatchRepository matchRepository;
     private final LeagueTeamRepository leagueTeamRepository;
+    private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final LeagueMapper leagueMapper;
 
     public LeagueServiceImpl(
@@ -79,6 +85,7 @@ public class LeagueServiceImpl implements LeagueService {
             LeaguePlayingConditionsRepository leaguePlayingConditionsRepository,
             MatchRepository matchRepository,
             LeagueTeamRepository leagueTeamRepository,
+            TeamSquadMemberRepository teamSquadMemberRepository,
             LeagueMapper leagueMapper) {
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
@@ -86,50 +93,127 @@ public class LeagueServiceImpl implements LeagueService {
         this.leaguePlayingConditionsRepository = leaguePlayingConditionsRepository;
         this.matchRepository = matchRepository;
         this.leagueTeamRepository = leagueTeamRepository;
+        this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.leagueMapper = leagueMapper;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<LeagueDto> list(UUID clubId) {
-        List<League> leagues = leagueRepository.findByClubId(clubId);
-        List<Season> seasons = seasonRepository.findByClubId(clubId);
-        UUID currentSeasonId = resolveCurrentSeasonId(seasons);
+        return list(clubId, null, true, null);
+    }
 
-        if (currentSeasonId == null) {
+    /**
+     * docs/specs/091-leagues-gold-standard.md: the list for one season ({@code seasonId}, else the club's current
+     * season), with inactive leagues dropped when {@code includeInactive} is false and narrowed by {@code focus}. The
+     * rows are built once in memory and filtered, so {@link #summary} (built from the same rows) can never disagree.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<LeagueDto> list(UUID clubId, UUID seasonId, boolean includeInactive, LeagueListFocus focus) {
+        List<Season> seasons = seasonRepository.findByClubId(clubId);
+        UUID resolvedSeasonId = resolveSeasonId(seasons, seasonId);
+        List<LeagueListRow> rows = buildRows(clubId, seasons, resolvedSeasonId, focus == LeagueListFocus.THIS_WEEK);
+        return filter(rows, includeInactive, focus).stream().map(LeagueListRow::dto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LeaguesSummaryDto summary(UUID clubId, UUID seasonId, boolean includeInactive) {
+        List<Season> seasons = seasonRepository.findByClubId(clubId);
+        UUID resolvedSeasonId = resolveSeasonId(seasons, seasonId);
+        List<LeagueListRow> shown = filter(buildRows(clubId, seasons, resolvedSeasonId, true), includeInactive, null);
+
+        long active = shown.stream().filter(row -> row.dto().active()).count();
+        long needAttention = shown.stream().filter(LeagueListRow::needsAttention).count();
+        long matchesThisWeek = shown.stream().mapToLong(LeagueListRow::weekMatchCount).sum();
+        long teamsEntered = shown.stream()
+                .mapToLong(row -> row.dto().teams() == null ? 0 : row.dto().teams().size())
+                .sum();
+        long players = 0;
+        if (resolvedSeasonId != null && !shown.isEmpty()) {
+            List<UUID> leagueIds = shown.stream().map(row -> row.dto().id()).toList();
+            players = teamSquadMemberRepository.countDistinctPlayersInLeagues(resolvedSeasonId, leagueIds);
+        }
+        return new LeaguesSummaryDto(shown.size(), active, teamsEntered, players, seasons.size(), matchesThisWeek, needAttention);
+    }
+
+    /** The requested season (it must be one of the club's), else the club's current season, else null. */
+    private UUID resolveSeasonId(List<Season> seasons, UUID requestedSeasonId) {
+        if (requestedSeasonId == null) {
+            return resolveCurrentSeasonId(seasons);
+        }
+        return seasons.stream()
+                .filter(season -> season.getId().equals(requestedSeasonId))
+                .findFirst()
+                .map(Season::getId)
+                .orElseThrow(() -> new NotFoundException("Season not found: " + requestedSeasonId));
+    }
+
+    private List<LeagueListRow> filter(List<LeagueListRow> rows, boolean includeInactive, LeagueListFocus focus) {
+        return rows.stream()
+                .filter(row -> includeInactive || row.dto().active())
+                .filter(row -> {
+                    if (focus == LeagueListFocus.ACTIVE) {
+                        return row.dto().active();
+                    }
+                    if (focus == LeagueListFocus.THIS_WEEK) {
+                        return row.weekMatchCount() > 0;
+                    }
+                    if (focus == LeagueListFocus.ATTENTION) {
+                        return row.needsAttention();
+                    }
+                    return true;
+                })
+                .toList();
+    }
+
+    /** Every league of the club with its figures for {@code seasonId} (or empty figures when there is no season). */
+    private List<LeagueListRow> buildRows(UUID clubId, List<Season> seasons, UUID seasonId, boolean withWeek) {
+        List<League> leagues = leagueRepository.findByClubId(clubId);
+
+        if (seasonId == null) {
             return leagues.stream()
-                    .map(league -> withCurrentSeasonFields(league, LeagueSeasonFields.none()))
+                    .map(league -> new LeagueListRow(withCurrentSeasonFields(league, LeagueSeasonFields.none()), 0))
                     .toList();
         }
 
         Instant now = ServerClock.now();
         Map<UUID, Long> teamCountByLeagueId = new HashMap<>();
-        for (LeagueTeamCount row : leagueAffiliationRepository.countDistinctTeamsBySeasonId(currentSeasonId)) {
+        for (LeagueTeamCount row : leagueAffiliationRepository.countDistinctTeamsBySeasonId(seasonId)) {
             teamCountByLeagueId.put(row.getLeagueId(), row.getTeamCount());
         }
         Map<UUID, String> documentUrlByLeagueId = new HashMap<>();
-        for (LeaguePlayingConditions playingConditions :
-                leaguePlayingConditionsRepository.findBySeasonId(currentSeasonId)) {
+        for (LeaguePlayingConditions playingConditions : leaguePlayingConditionsRepository.findBySeasonId(seasonId)) {
             documentUrlByLeagueId.put(playingConditions.getLeagueId(), playingConditions.getDocumentUrl());
         }
         Map<UUID, LeagueMatchSummary> matchSummaryByLeagueId = new HashMap<>();
-        for (LeagueMatchSummary row : matchRepository.summariseByLeagueForSeason(clubId, currentSeasonId, now)) {
+        for (LeagueMatchSummary row : matchRepository.summariseByLeagueForSeason(clubId, seasonId, now)) {
             matchSummaryByLeagueId.put(row.getLeagueId(), row);
         }
+        Map<UUID, Long> weekCountByLeagueId = new HashMap<>();
+        if (withWeek) {
+            Instant weekStart = ServerClock.startOfToday();
+            Instant weekEnd = ServerClock.startOfDayFromToday(ManagerOverviewServiceImpl.WEEK_DAYS);
+            for (LeagueWeekMatchCount row :
+                    matchRepository.countMatchesInWindowByLeague(clubId, seasonId, weekStart, weekEnd)) {
+                weekCountByLeagueId.put(row.getLeagueId(), row.getMatchCount());
+            }
+        }
         Map<UUID, List<LeagueSeasonTeamDto>> teamsByLeagueId = new HashMap<>();
-        for (LeagueTeamSummary row : leagueAffiliationRepository.findTeamSummariesBySeasonId(currentSeasonId)) {
+        for (LeagueTeamSummary row : leagueAffiliationRepository.findTeamSummariesBySeasonId(seasonId)) {
             teamsByLeagueId
                     .computeIfAbsent(row.getLeagueId(), key -> new ArrayList<>())
                     .add(new LeagueSeasonTeamDto(row.getName(), row.getAbbreviation(), row.getLogoUrl(), true));
         }
-        for (LeagueTeam leagueTeam : leagueTeamRepository.findActiveBySeasonId(currentSeasonId)) {
+        for (LeagueTeam leagueTeam : leagueTeamRepository.findActiveBySeasonId(seasonId)) {
             teamsByLeagueId
                     .computeIfAbsent(leagueTeam.getLeagueId(), key -> new ArrayList<>())
                     .add(new LeagueSeasonTeamDto(
                             leagueTeam.getName(), leagueTeam.getAbbreviation(), leagueTeam.getLogoUrl(), false));
         }
-        String currentSeasonLabel = seasons.stream()
-                .filter(season -> season.getId().equals(currentSeasonId))
+        String seasonLabel = seasons.stream()
+                .filter(season -> season.getId().equals(seasonId))
                 .findFirst()
                 .map(Season::getLabel)
                 .orElse(null);
@@ -137,11 +221,11 @@ public class LeagueServiceImpl implements LeagueService {
         return leagues.stream()
                 .map(league -> {
                     LeagueMatchSummary summary = matchSummaryByLeagueId.get(league.getId());
-                    return withCurrentSeasonFields(
+                    LeagueDto dto = withCurrentSeasonFields(
                             league,
                             new LeagueSeasonFields(
                                     teamCountByLeagueId.getOrDefault(league.getId(), 0L).intValue(),
-                                    currentSeasonLabel,
+                                    seasonLabel,
                                     documentUrlByLeagueId.get(league.getId()),
                                     summary == null ? 0 : (int) summary.getMatchCount(),
                                     summary == null ? 0 : (int) summary.getPlayedCount(),
@@ -149,6 +233,7 @@ public class LeagueServiceImpl implements LeagueService {
                                     summary == null ? null : summary.getLastMatchDate(),
                                     summary == null ? null : summary.getNextMatchDate(),
                                     teamsByLeagueId.getOrDefault(league.getId(), List.of())));
+                    return new LeagueListRow(dto, weekCountByLeagueId.getOrDefault(league.getId(), 0L).intValue());
                 })
                 .toList();
     }

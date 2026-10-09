@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { Alert, Box, MenuItem, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
+import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
 import { MatchSideFields } from './MatchSideFields'
 import type { SideMode, SideState } from './MatchSideFields'
@@ -294,7 +295,7 @@ export function MatchForm({
           side panels, so a new match fits one desktop screen. Helper text is gone: "(optional)" sits in the label and
           the URL examples are placeholders; validation errors still show under the field. */}
       <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <SectionHeading icon={<InfoOutlinedIcon />} title="Match details" />
+        <FormSectionHeading icon={<InfoOutlinedIcon />} title="Match details" />
         <Box sx={{ display: 'grid', gap: { xs: 2, md: 2 }, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
           <Input
             select
@@ -364,7 +365,7 @@ export function MatchForm({
           </Alert>
         )}
 
-        <SectionHeading icon={<SportsCricketOutlinedIcon />} title="Teams" />
+        <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title="Teams" />
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
           <MatchSideFields
             label="Home"
@@ -401,34 +402,6 @@ export function MatchForm({
           </Typography>
         )}
       </Box>
-    </Box>
-  )
-}
-
-// The icon-tile section heading the Player page cards use (docs/specs/088 G), here over a form section.
-function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-      <Box
-        aria-hidden
-        sx={{
-          width: 32,
-          height: 32,
-          flex: 'none',
-          borderRadius: 1,
-          bgcolor: 'primary.main',
-          color: 'primary.contrastText',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          '& svg': { fontSize: 20 },
-        }}
-      >
-        {icon}
-      </Box>
-      <Typography variant="subtitle2" component="h2" sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, fontSize: '0.9375rem' }}>
-        {title}
-      </Typography>
     </Box>
   )
 }

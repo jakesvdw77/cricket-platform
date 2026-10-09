@@ -47,11 +47,11 @@ function LocationProbe() {
   return <div data-testid="location">{location.pathname}</div>
 }
 
-function renderCard(league: League) {
+function renderCard(league: League, seasonId?: string) {
   return render(
     <MemoryRouter initialEntries={['/list']}>
       <Routes>
-        <Route path="/list" element={<LeagueCard league={league} />} />
+        <Route path="/list" element={<LeagueCard league={league} seasonId={seasonId} />} />
         <Route path="*" element={<div>Elsewhere</div>} />
       </Routes>
       <LocationProbe />
@@ -81,7 +81,7 @@ describe('LeagueCard', () => {
       expect(within(heading).getByRole('link')).toHaveAttribute('href', `${BASE}/schedule`)
     })
 
-    it('orders the badges format, teams, season, Active', () => {
+    it('shows the format then Active, and no team count or season badge', () => {
       renderCard(
         makeLeague({
           format: 'T20',
@@ -90,19 +90,16 @@ describe('LeagueCard', () => {
         }),
       )
 
-      expect(chipLabels()).toEqual(['T20', '3 teams', '2026/2027', 'Active'])
+      expect(chipLabels().filter((label) => ['T20', 'Active', 'Inactive'].includes(label) || /team|20/.test(label))).toEqual(['T20', 'Active'])
+      expect(screen.queryByText('3 teams')).not.toBeInTheDocument()
+      expect(screen.queryByText('2026/2027')).not.toBeInTheDocument()
     })
 
-    it('omits the format and season badges when unset, singularises "1 team" and shows Inactive', () => {
-      renderCard(makeLeague({ active: false, teams: [team('A', { own: true })] }))
+    it('omits the format badge when unset and shows Inactive for an inactive league', () => {
+      renderCard(makeLeague({ active: false }))
 
-      expect(chipLabels()).toEqual(['1 team', 'Inactive'])
-    })
-
-    it('counts the team badge from the teams list, and treats null teams as zero', () => {
-      renderCard(makeLeague({ teams: null, currentSeasonTeamCount: 9 }))
-
-      expect(chipLabels()).toEqual(['0 teams', 'Active'])
+      expect(screen.getByText('Inactive')).toBeInTheDocument()
+      expect(screen.queryByText('T20')).not.toBeInTheDocument()
     })
 
     it('uses the logo in the avatar when set, and the trophy icon otherwise', () => {
@@ -117,103 +114,54 @@ describe('LeagueCard', () => {
     })
   })
 
-  describe('detail lines', () => {
-    it('shows the first and last match dates, and the same date for both when there is a single match', () => {
-      const iso = localIso(10)
-      const expected = new Date(iso).toLocaleDateString(undefined, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-      renderCard(makeLeague({ matchCount: 1, firstMatchDate: iso, lastMatchDate: iso }))
+  describe('next match strip', () => {
+    it('shows the next match date-time with a countdown chip, neutral when it is days away', () => {
+      renderCard(makeLeague({ nextMatchDate: localIso(6, 10), matchCount: 4, playedCount: 1 }))
 
-      expect(screen.getAllByText(expected)).toHaveLength(2)
+      const strip = screen.getByTestId('league-next-match')
+      expect(strip).toHaveTextContent('Next match')
+      expect(strip).toHaveAttribute('data-tone', 'neutral')
+      expect(within(strip).getByRole('timer')).toBeInTheDocument()
     })
 
-    it('shows "Not scheduled yet" (muted) for First and Last match, and "None scheduled" for Next, when there are none', () => {
-      renderCard(makeLeague())
+    it('turns amber within 24 hours of the kickoff', () => {
+      renderCard(makeLeague({ nextMatchDate: new Date(Date.now() + 5 * 3_600_000).toISOString(), matchCount: 4, playedCount: 1 }))
 
-      expect(screen.getAllByText('Not scheduled yet')).toHaveLength(2)
-      expect(screen.getByText('None scheduled')).toBeInTheDocument()
-      expect(screen.getByText('None scheduled')).toHaveStyle({ fontWeight: '400' })
+      expect(screen.getByTestId('league-next-match')).toHaveAttribute('data-tone', 'warning')
     })
 
-    it('lists Last match directly after Next match', () => {
-      renderCard(makeLeague())
-
-      const labels = ['First match', 'Next match', 'Last match', 'Playing XI'].map((text) => screen.getByText(text))
-      for (let i = 0; i < labels.length - 1; i += 1) {
-        expect(labels[i].compareDocumentPosition(labels[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      }
-    })
-
-    it('shows the next match date-time with an "in N days" badge', () => {
-      renderCard(makeLeague({ nextMatchDate: localIso(5) }))
-
-      expect(screen.getByText('in 5 days')).toBeInTheDocument()
-      expect(screen.queryByText('None scheduled')).not.toBeInTheDocument()
-    })
-
-    it('labels a next match tomorrow and today', () => {
-      const { unmount } = renderCard(makeLeague({ nextMatchDate: localIso(1) }))
-      expect(screen.getByText('tomorrow')).toBeInTheDocument()
+    it('says "No matches scheduled yet" with no matches, and "No more matches this season" when all are played', () => {
+      const { unmount } = renderCard(makeLeague())
+      expect(screen.getByTestId('league-next-match')).toHaveTextContent('No matches scheduled yet')
       unmount()
 
-      renderCard(makeLeague({ nextMatchDate: localIso(0, 23) }))
-      expect(screen.getByText('today')).toBeInTheDocument()
-    })
-
-    it('always shows Playing XI as "N players"', () => {
-      renderCard(makeLeague({ maxPlayingXiSize: 9 }))
-
-      expect(screen.getByText('9 players')).toBeInTheDocument()
-    })
-
-    it('omits Age range when neither bound is set', () => {
-      renderCard(makeLeague())
-
-      expect(screen.queryByText('Age range')).not.toBeInTheDocument()
-    })
-
-    it('shows both age bounds, and "Any" for a missing one', () => {
-      const { unmount } = renderCard(makeLeague({ minAge: 12, maxAge: 16 }))
-      expect(screen.getByText('12–16')).toBeInTheDocument()
-      unmount()
-
-      const second = renderCard(makeLeague({ minAge: 18, maxAge: null }))
-      expect(screen.getByText('18–Any')).toBeInTheDocument()
-      second.unmount()
-
-      renderCard(makeLeague({ minAge: null, maxAge: 14 }))
-      expect(screen.getByText('Any–14')).toBeInTheDocument()
+      renderCard(makeLeague({ matchCount: 10, playedCount: 10 }))
+      expect(screen.getByTestId('league-next-match')).toHaveTextContent('No more matches this season')
     })
   })
 
-  describe('progress block', () => {
-    it('shows "N of M", the bar value and "N played · K to go"', () => {
-      renderCard(makeLeague({ matchCount: 12, playedCount: 5 }))
+  describe('matches played gauge', () => {
+    it('shows "N of M" with the Played and To go legend', () => {
+      renderCard(makeLeague({ matchCount: 56, playedCount: 12 }))
 
-      expect(screen.getByText('5 of 12')).toBeInTheDocument()
-      const bar = screen.getByRole('progressbar', { name: 'Matches played' })
-      expect(bar).toHaveAttribute('aria-valuenow', '5')
-      expect(bar).toHaveAttribute('aria-valuemax', '12')
-      expect(screen.getByText('5 played · 7 to go')).toBeInTheDocument()
+      const progress = screen.getByTestId('league-progress')
+      expect(within(progress).getByText('12 of 56')).toBeInTheDocument()
+      expect(within(progress).getByRole('progressbar', { name: 'Matches played' })).toHaveAttribute('aria-valuenow', '12')
+      expect(within(progress).getByTestId('league-gauge-picked')).toHaveTextContent('12 Played')
+      expect(within(progress).getByTestId('league-gauge-togo')).toHaveTextContent('44 To go')
     })
 
-    it('shows "0 of 0", an empty bar and "No matches scheduled yet" when nothing is scheduled', () => {
-      renderCard(makeLeague({ matchCount: 0, playedCount: 0 }))
+    it('says Season complete once every match is played, and hides the gauge with no matches or null counts', () => {
+      const { unmount } = renderCard(makeLeague({ matchCount: 5, playedCount: 5 }))
+      expect(screen.getByTestId('league-gauge-complete')).toHaveTextContent('Season complete')
+      unmount()
 
-      expect(screen.getByText('0 of 0')).toBeInTheDocument()
-      expect(screen.getByTestId('selection-bar-fill')).toHaveStyle({ width: '0%' })
-      expect(screen.getByText('No matches scheduled yet')).toBeInTheDocument()
-    })
+      const second = renderCard(makeLeague())
+      expect(screen.queryByTestId('league-progress')).not.toBeInTheDocument()
+      second.unmount()
 
-    it('treats null counts as zero', () => {
       renderCard(makeLeague({ matchCount: null, playedCount: null }))
-
-      expect(screen.getByText('0 of 0')).toBeInTheDocument()
-      expect(screen.getByText('No matches scheduled yet')).toBeInTheDocument()
+      expect(screen.queryByTestId('league-progress')).not.toBeInTheDocument()
     })
   })
 
@@ -366,6 +314,17 @@ describe('LeagueCard', () => {
       await user.click(screen.getByRole('link', { name: 'Riverside Premier League' }))
 
       expect(screen.getByTestId('location')).toHaveTextContent(`${BASE}/schedule`)
+    })
+  })
+
+  describe('chosen season', () => {
+    it('carries the season into the Schedule, Teams and Conditions links but not Edit', async () => {
+      const user = userEvent.setup()
+      renderCard(makeLeague(), 'season-9')
+
+      expect(within(screen.getByRole('heading', { level: 3 })).getByRole('link')).toHaveAttribute('href', `${BASE}/schedule?seasonId=season-9`)
+      await user.click(screen.getByRole('button', { name: 'Teams' }))
+      expect(screen.getByTestId('location')).toHaveTextContent(`${BASE}/teams`)
     })
   })
 })

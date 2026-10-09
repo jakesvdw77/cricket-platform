@@ -3,7 +3,9 @@ package com.cricketlegend.controller;
 import com.cricketlegend.dto.CreateLeagueAffiliationRequest;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.LeagueAffiliationDto;
+import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.dto.LeagueDto;
+import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
 import com.cricketlegend.service.LeagueAffiliationService;
 import com.cricketlegend.service.LeagueService;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,8 +46,22 @@ public class LeagueController {
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/leagues")
-    public ResponseEntity<List<LeagueDto>> list(@PathVariable UUID clubId) {
-        return ResponseEntity.ok(leagueService.list(clubId));
+    public ResponseEntity<List<LeagueDto>> list(
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(defaultValue = "true") boolean includeInactive,
+            @RequestParam(required = false) String focus) {
+        return ResponseEntity.ok(leagueService.list(clubId, seasonId, includeInactive, LeagueListFocus.parse(focus)));
+    }
+
+    /** docs/specs/091-leagues-gold-standard.md: the Leagues page counters for the same filters the list uses. */
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/leagues/summary")
+    public ResponseEntity<LeaguesSummaryDto> summary(
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(defaultValue = "true") boolean includeInactive) {
+        return ResponseEntity.ok(leagueService.summary(clubId, seasonId, includeInactive));
     }
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
