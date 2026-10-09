@@ -86,3 +86,84 @@ Self-registration, notifying the requester, keeping unverified or rejected playe
 - Results: backend 1,822 tests green (full run in a scratch copy); frontend 2,449 unit tests green (`--maxWorkers=2`), Storybook stories for `PlayerCard` and `PlayerStatusMenu` green.
 - Not checked in a browser: the card at phone, 2- and 3-column widths, the Status menu and confirmations, the Player page banner. The running backend must be restarted first (migration 040), and an unverified player has to be set by hand in the dev database since no registration flow exists yet.
 
+---
+
+# Follow-on: games played on the card, and the Cards | List view
+
+*Approved by the user 2026-10-09 and recorded verbatim; deviations are listed at the end.*
+
+## Context
+
+Spec 088 is built and committed on `feat/087-slice-1-shared-pieces` except for two parts the user added after approving the card (spec sections **E** and **F**, mockup boards 1–8 approved, "per-page remembered view is fine", "Players sets the standard going forward"):
+
+- **E. Games played:** two equal-width stat chips in the card header's top-right corner, "N this season" over "N overall", always present ("0" when none) so cards keep one height. Counted from the platform's own selections.
+- **F. Cards | List view:** a switch on the content line (first control in the Filters sheet on a phone), the choice remembered per page in the browser (`playerList:view`, default Cards), and a compact list: one bordered panel, header row, zebra rows, **whole row opens the player**, a Status kebab above that link opening the same `PlayerStatusMenu`. The switch and the remembered preference are built as **shared** pieces (`ListViewToggle`, `useListViewPreference`) because Matches and Polls will reuse them (roadmap item already written).
+
+Nothing else in 088 changes. All work stays on the same branch.
+
+## Findings that shape the plan
+
+- `PlayerMapper.toDto(person, profile, sectionIds)` is the one compose point (used by list, create, update, verify, reject and the squad DTOs). Games counts are only meaningful on the **list**, so the mapper gets an overload with the two counts and the existing signature delegates with zeros; other endpoints keep returning `0` for both (documented on the DTO and in OpenAPI). Flagged below.
+- `PlayerProfileRepository` already has a projection-view pattern (`PlayerDateOfBirthView`, `findActiveDatesOfBirth`), so a grouped games query returns an interface view the same way; two statements (overall, and this season when `seasonId` is given), never per player.
+- `PlayerList` currently sends `seasonId` only with a season focus and does not wait for seasons; the card now needs `seasonId` on every list request, so the list query must wait for the seasons query to finish (otherwise it would fetch twice). `useAvailabilitySeason` already returns `seasonsLoading`.
+- `utils/segmentedSwitch.ts` (`segmentedSwitchSx`) is the existing segmented-switch style (Availability views); `ListViewToggle` reuses it.
+- `utils/zebraTint`, `PlayerStatusMenu`, `usePlayerStatusActions`, `badgeSx`, `playerStatusBadge` and the stretched-link pattern (`RecordCard`/`PlayerCard`) are all reused as is.
+- Every `Player` test/story fixture needs the two new numeric fields (same mechanical insertion as `verificationStatus` was).
+
+## Decisions to confirm (spec left room; each is my reading)
+
+1. **"Played" = an active match whose `matchDate` is on or before now** (started, past or in progress), counted per player as `count(distinct match)` over their `MatchSidePlayer` selections; a deactivated or upcoming match does not count.
+2. **Games counts are populated by the list endpoint only.** `create`, `update`, `verify`, `reject`, `deactivate`, `reactivate` and the squad DTOs return `0` for both (the frontend always refetches the list after a status change). The alternative, computing them in every response, adds two queries to every write for no use.
+3. **The list query waits for the seasons query**, then sends `seasonId` on every request (so the card's "this season" is right on first paint). With no season in the club, "this season" is `0` and the list still loads.
+4. **Equal-width chips:** a fixed minimum width (104 px) plus stretch, so the two chips match each other and line up from card to card.
+5. **The list header row is sticky** (`position: sticky; top: 0`) within the page's scroll container, as the mockup says; it needs no scroll container of its own.
+6. **Phone list view:** columns Player (avatar, name, status badge under it), Season, Overall and the Status button, 56 px rows, as the mockup.
+
+## Backend — `backend-builder` (all under `backend/src/main/`)
+
+1. `repository/PlayerGamesView` (new interface projection: `getPlayerProfileId()`, `getGames()`), and two JPQL queries on `MatchSidePlayerRepository`: `findGamesPlayed(clubId, now)` (all seasons) and `findGamesPlayedInSeason(clubId, seasonId, now)`, both `MatchSidePlayer → MatchSide → Match` with `m.clubId`, `m.active = true`, `m.matchDate <= :now`, `group by p.playerProfileId`, `count(distinct m.id)`.
+2. `dto/PlayerDto` gains `int gamesThisSeason`, `int gamesOverall` (last components). `mapper/PlayerMapper`: `toDto(person, profile, sectionIds)` delegates to a new `toDto(person, profile, sectionIds, gamesThisSeason, gamesOverall)` with zeros; all other callers untouched.
+3. `service/impl/PlayerServiceImpl.list`: after the focus step, load the two maps once (overall always; season only when `seasonId` is not null) and pass each player's counts to the mapper; `Instant.now()` read once per call. A club with no matches makes both queries return empty and costs nothing extra. No change to the summary.
+4. `backend/openapi/openapi.yaml`: `gamesThisSeason` and `gamesOverall` on `PlayerDto` (additions only), described as "populated by the list; 0 elsewhere".
+
+## Backend tests — `test-writer`
+
+- Repository (`PlayerCounterQueriesIntegrationTest`, extended): a started match counts, an upcoming and a deactivated match do not, a player in two matches counts 2, another season is excluded from the season query but counted overall, another club excluded, a player with no selections is absent (the mapper treats absent as 0).
+- Unit (`PlayerServiceImplTest`): the list maps the two counts from the repository views (including "no seasonId → this season 0, season query not called").
+- Integration (`PlayersSummaryIntegrationTest`, extended): the list JSON carries `gamesThisSeason` and `gamesOverall` for a seeded club (past match in the season, past match in another season, upcoming match); other endpoints return 0. New statement-count guard for the **list** with a season (small vs large club, same count), in `PlayersSummaryQueryCountIntegrationTest`.
+
+## Frontend — `frontend-builder` (all under `ui/src/`)
+
+1. `api/playerApi.ts`: `Player.gamesThisSeason`, `gamesOverall` (numbers); every test/story fixture gains `gamesThisSeason: 0, gamesOverall: 0` (mechanical).
+2. `hooks/useListViewPreference.ts` (new, shared): `useListViewPreference(storageKey, defaultView = 'cards')` returns `[view, setView]`; reads `localStorage` once in the `useState` initialiser, accepts only `'cards' | 'list'` (anything else, or unavailable storage, falls back to the default), writes on every change; every access try/catch-guarded like `usePersistedListFilters`. Test.
+3. `components/ListViewToggle` (new, four-file anatomy, shared): a small segmented control "Cards | List" (MUI `ToggleButtonGroup`, `segmentedSwitchSx`, icons `GridViewOutlined` / `ViewListOutlined`, `aria-label="View"`, each button `aria-pressed`), `value` + `onChange`; a `fullWidth` option for the phone sheet.
+4. `components/PlayerCard`: the two stat chips in the header's right corner, a stretched column with `minWidth: 104`, chips `justifyContent: center`, `aria-label` "N games this season" / "N games overall", always rendered; title keeps its two-line clamp beside them. Tests and stories updated (including "0", large numbers, and a long name).
+5. `components/PlayerTable` (new, four-file anatomy, the list view): props `players`, `sectionNamesFor`, `viewTo(player)`, `onStatusAction(player, action)`. One bordered panel; sticky header row; body rows in a separate container with the zebra tint (first row tinted); CSS-grid columns on `sm` and up (Player, Status, Section, No., Phone, Bat, Bowl, This season, Overall, Status button), reduced to Player / Season / Overall / Status button below `sm`; the player's name is a `RouterLink` whose `::after` stretches over the row (row `position: relative`), hover tint and `:focus-within` ring; the Status `IconButton` is `position: relative` above the link and opens `PlayerStatusMenu` (anchor per row); "–" for absent values; 44 px rows (56 px on a phone). Tests and stories.
+6. `pages/manage/PlayerList.tsx`: `useListViewPreference('playerList:view')`; `ListViewToggle` as the first control on the content line and first in the sheet's `viewControls` (full width); render `PlayerTable` instead of the card grid when the view is list; the list query `enabled` also waits for `!seasonsLoading` and always sends `seasonId`; search, sort, filters, counters, empty states, the Status dialogs and `keepPreviousData` unchanged. Existing `PlayerList` tests adjusted for the always-sent `seasonId` and the waiting query; new tests for the switch.
+7. Docs: `docs/standards/design-system.md` (`ListViewToggle`, `PlayerTable`, `useListViewPreference`, the stat chips), `docs/standards/frontend.md` (**"List views" standard**: a page with a card grid gets the Cards | List switch, the choice is remembered per page via the shared hook, the whole row opens the record, row actions never navigate), spec status, and this plan appended to `docs/plans/088-players-polls-alignment.md`.
+
+## Frontend tests — `test-writer`
+
+`useListViewPreference` (default, restore, invalid value, storage unavailable, writes on change), `ListViewToggle` (pressed states, change, full width), `PlayerCard` (chips always present, "0", equal width via the shared min width and stretch, aria labels), `PlayerTable` (columns and "–", zebra, whole-row link and no navigation from the Status button, the menu per status and its calls, reduced columns on a phone, equal row heights, header present), `PlayerList` (switch changes the layout only, the choice survives a remount, counters and filters identical in both views, the list waits for seasons and sends `seasonId`, the sheet's switch on a phone). Stories: `PlayerTable` (all statuses, nothing on file, narrow), `ListViewToggle`, `PlayerCard` stat variants.
+
+## Order and commits
+
+1. Backend (queries, DTO/mapper, service, openapi) + tests (2 commits). 2. Frontend: api + fixtures + hook + `ListViewToggle` → `PlayerCard` chips → `PlayerTable` → `PlayerList` wiring → tests/stories (4 commits). 3. Docs. Conventional commits tagged `(088)`.
+
+## Verification
+
+- **Backend:** never run Maven under the live app; `rsync` to the session scratchpad and run there: `-Dtest='PlayerServiceImplTest,PlayersSummary*,PlayerCounterQueries*,PlayerController*,LayeringRulesTest'`, then the full backend run once (it takes about 12 minutes); confirm `openapi.yaml` parses and only adds lines. The user must restart the running backend for the new numbers.
+- **Frontend:** `nvm use 22.12.0`; `npx tsc -b`, `npm run lint`, `npx vitest run --project=unit --maxWorkers=2`, Storybook project for `PlayerCard`, `PlayerTable`, `ListViewToggle`.
+- **Manual (needs the user at their PC, backend restarted):** the two chips on each card match the player's past selections; Cards | List switch changes the layout and the choice survives a reload; clicking anywhere on a row opens the player while the Status button only opens its menu; the phone list and the Filters-sheet switch.
+
+## Not in this plan
+
+List views for Matches and Polls (own specs and mockups, roadmap item exists), sortable list columns and a column picker, career statistics, a server-side (cross-device) preference.
+
+## Built differently from the plan
+- `ListViewToggle` has its own compact style (light primary tint when selected), not `segmentedSwitchSx`: the approved mockup uses the quiet tint on the content line, while the Availability switch keeps its solid fill.
+- The page treats the wait for seasons as loading (`isPending`, not `isLoading`), otherwise it flashed "Couldn't load players" while the list query waited for the seasons query; the existing `PlayerList` tests now `mockReset` their mocks in `beforeEach` so a leftover `mockReturnValueOnce` cannot leak across tests.
+- The Unverified quick filter now also sends the season (every request does).
+- Results: backend 1,827 tests green (full run in a scratch copy, including new tests for the two games queries, the list counts and a list statement-count guard); frontend suite green with `--maxWorkers=2`; Storybook stories for `PlayerCard`, `PlayerTable` and `ListViewToggle` green.
+- Not checked in a browser: the chips' equal width, the list view at desktop and phone widths, the sticky header inside the real page, and the remembered view across a reload. The running backend must be restarted for the new numbers.
+
