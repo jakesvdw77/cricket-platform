@@ -46,6 +46,7 @@ import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
 import TeamSelectionHubLayout from './pages/manage/teamSelection/TeamSelectionHubLayout'
+import SelectTeamPage from './pages/manage/teamSelection/SelectTeamPage'
 import MatchesView from './pages/manage/teamSelection/MatchesView'
 import { PlaceholderView } from './pages/manage/teamSelection/PlaceholderView'
 import AvailabilityPollsDashboard from './pages/manage/AvailabilityPollsDashboard'
@@ -241,6 +242,9 @@ function App() {
                 <Route path="slots" element={<PlaceholderView title="Time slots" />} />
                 <Route path="batting" element={<PlaceholderView title="Batting order" />} />
               </Route>
+              {/* docs/specs/093: the Select team page of one side of a match, outside the hub layout (it has its own
+                  header). The old Edit Match ?tab=playing-xi links redirect here from MatchFormPage. */}
+              <Route path="team-selection/matches/:matchId/sides/:sideId" element={<SelectTeamPage />} />
               <Route path="communication" element={<EmptyState title="Communication" description="Coming soon." />} />
               {/* docs/specs/034-availability-polls-dashboard.md: a real, club-wide list of every
                   currently-open availability poll, replacing the earlier "go find the match

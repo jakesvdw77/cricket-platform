@@ -54,7 +54,7 @@ function SideRow({
   onAnnounce?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   announcing: boolean
 }) {
-  const to = selectTeamPath(match.matchId, side.sideId)
+  const to = selectTeamPath(match.matchId, side.sideId, side.home)
   const title = side.home ? `${side.teamName} v ${side.opponentName}` : `${side.opponentName} v ${side.teamName}`
   const when = formatMatchDateTime(match.matchDate)
   const max = side.limits.maxSelected

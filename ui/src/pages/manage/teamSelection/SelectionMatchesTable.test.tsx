@@ -63,7 +63,7 @@ describe('SelectionMatchesTable', () => {
 
   it('links the whole row and Select players to the select page helper', () => {
     renderTable(sampleMatches().slice(0, 1))
-    const expected = '/manage/fixtures/matches/m-1/edit?tab=playing-xi'
+    const expected = '/manage/team-selection/matches/m-1/sides/side-1'
     expect(screen.getByRole('link', { name: 'Riverside Vets A v Oakfield CC' })).toHaveAttribute('href', expected)
     expect(screen.getByRole('link', { name: 'Select players' })).toHaveAttribute('href', expected)
   })

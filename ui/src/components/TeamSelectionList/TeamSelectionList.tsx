@@ -1,16 +1,19 @@
 import { useRef, useState } from 'react'
-import type { DragEvent } from 'react'
-import { ButtonBase, Box, Card, Chip, Divider, Menu, MenuItem, TextField, Typography } from '@mui/material'
+import type { DragEvent, MouseEvent } from 'react'
+import { ButtonBase, Box, Card, Chip, Divider, IconButton, Menu, MenuItem, TextField, Tooltip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import CheckIcon from '@mui/icons-material/Check'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import { BrandIcon } from '../BrandIcon'
-import type { BrandIconName } from '../BrandIcon'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import HighlightOffIcon from '@mui/icons-material/HighlightOff'
+import { zebraTint } from '../../utils/zebraTint'
 import type { PlayingRole, SelectionLimits } from '../../api/matchSideApi'
 import type { SelectionAvailability } from '../../api/matchSelectionApi'
 
@@ -19,13 +22,6 @@ const ROLE_LABEL: Record<PlayingRole, string> = {
   BOWLER: 'Bowler',
   ALL_ROUNDER: 'All-rounder',
 }
-// docs/specs/078-brand-icon-set.md: the badge icons are 28 px on a 3 px-padded tile (docs/specs/080), so the chips get a taller fixed height.
-const ROLE_ICON: Record<PlayingRole, BrandIconName> = {
-  BATSMAN: 'roles/batter',
-  BOWLER: 'roles/bowler',
-  ALL_ROUNDER: 'roles/all-rounder',
-}
-const BADGE_ICON_SX = { height: 40, '& .MuiChip-icon': { ml: 0.5, mr: -0.25 } } as const
 const ROLE_OPTIONS: PlayingRole[] = ['BATSMAN', 'BOWLER', 'ALL_ROUNDER']
 
 type BadgeTone = 'success' | 'warning' | 'error' | 'info' | 'neutral'
@@ -98,6 +94,56 @@ const SECTION_LABEL_SX = {
   textTransform: 'uppercase',
   color: 'text.secondary',
 } as const
+
+// docs/specs/093: the availability of a selected player is one small icon, never a word chip: a green tick for
+// Available, a quiet icon with its meaning as the accessible name for the rest (the notices above the list count them).
+const TICK: Record<SelectionAvailability, { label: string; icon: typeof CheckCircleIcon; color: string }> = {
+  AVAILABLE: { label: 'Available', icon: CheckCircleIcon, color: 'success.main' },
+  UNSURE: { label: 'Unsure', icon: HelpOutlineIcon, color: 'warning.main' },
+  NO_RESPONSE: { label: 'No response', icon: ErrorOutlineIcon, color: 'text.secondary' },
+  NOT_POLLED: { label: 'Not polled', icon: ErrorOutlineIcon, color: 'text.secondary' },
+  UNAVAILABLE: { label: 'Said unavailable', icon: HighlightOffIcon, color: 'error.main' },
+}
+
+function AvailabilityTick({ availability, name }: { availability: SelectionAvailability; name: string }) {
+  const tick = TICK[availability]
+  const Icon = tick.icon
+  return (
+    <Tooltip title={tick.label} describeChild>
+      <Box component="span" role="img" aria-label={`${name}, ${tick.label}`} sx={{ display: 'inline-flex', color: tick.color }}>
+        <Icon sx={{ fontSize: 18 }} />
+      </Box>
+    </Tooltip>
+  )
+}
+
+// The small C / WK marker beside a name; a tap offers Remove.
+function RoleMarker({ label, ariaLabel, onClick }: { label: string; ariaLabel: string; onClick: (event: MouseEvent<HTMLElement>) => void }) {
+  return (
+    <ButtonBase
+      aria-haspopup="menu"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      sx={{
+        flex: 'none',
+        minWidth: 24,
+        height: 20,
+        px: 0.5,
+        borderRadius: 0.75,
+        fontSize: 11,
+        fontWeight: 700,
+        fontFamily: 'inherit',
+        letterSpacing: '0.02em',
+        color: 'primary.dark',
+        bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),
+        border: 1,
+        borderColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.4),
+      }}
+    >
+      {label}
+    </ButtonBase>
+  )
+}
 
 type RowKind = 'positioned' | 'waiting' | 'twelfth'
 
@@ -227,11 +273,6 @@ export function TeamSelectionList({
     const isCaptain = player.playerProfileId === captainPlayerId
     const isKeeper = player.playerProfileId === wicketKeeperPlayerId
     const availability = player.availability
-    const showAvailability =
-      availability === 'UNSURE' ||
-      availability === 'NO_RESPONSE' ||
-      availability === 'NOT_POLLED' ||
-      availability === 'UNAVAILABLE'
     const indicatorTop = kind === 'positioned' && dragId !== null && dropIndex === index
     const indicatorBottom =
       kind === 'positioned' && dragId !== null && dropIndex === positioned.length && index === positioned.length - 1
@@ -271,6 +312,7 @@ export function TeamSelectionList({
           borderBottom: 1,
           borderColor: 'divider',
           '&:last-of-type': { borderBottom: 0 },
+          '&:nth-of-type(even)': { bgcolor: zebraTint },
           opacity: dragId === player.playerProfileId ? 0.5 : 1,
           boxShadow: (theme: Theme) =>
             indicatorTop
@@ -284,7 +326,7 @@ export function TeamSelectionList({
           aria-hidden
           data-testid="drag-handle"
           sx={{
-            width: 44,
+            width: 32,
             height: 44,
             flex: 'none',
             display: 'grid',
@@ -300,12 +342,12 @@ export function TeamSelectionList({
           component="span"
           variant="body2"
           color="text.secondary"
-          sx={{ width: 22, flex: 'none', fontVariantNumeric: 'tabular-nums' }}
+          sx={{ width: 20, flex: 'none', fontVariantNumeric: 'tabular-nums' }}
         >
           {kind === 'twelfth' ? '' : (player.battingOrder ?? '–')}
         </Typography>
 
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.25 }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', columnGap: 0.75, rowGap: 0.25, flexWrap: 'wrap' }}>
           <ButtonBase
             aria-haspopup="menu"
             aria-expanded={menu?.playerId === player.playerProfileId}
@@ -324,54 +366,60 @@ export function TeamSelectionList({
             }}
           >
             {player.name}
-            <ArrowDropDownIcon fontSize="small" aria-hidden />
           </ButtonBase>
-          <Box sx={{ ml: 'auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', columnGap: 0.75, rowGap: 0.25, pr: 0.5 }}>
-            <Chip
-              size="small"
-              variant="outlined"
-              clickable
-              icon={<BrandIcon name={ROLE_ICON[player.role]} size={28} padding={3} />}
-              sx={BADGE_ICON_SX}
-              label={ROLE_LABEL[player.role]}
-              aria-haspopup="menu"
-              aria-label={`${player.name}, role ${ROLE_LABEL[player.role]}, change role`}
-              onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'role' })}
+          {isCaptain && (
+            <RoleMarker
+              label="C"
+              ariaLabel={`${player.name}, captain, open options`}
+              onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'captain' })}
             />
-            {isCaptain && (
-              <Chip
-                size="small"
-                variant="outlined"
-                color="primary"
-                clickable
-                icon={<BrandIcon name="roles/captain" size={28} padding={3} />}
-                sx={BADGE_ICON_SX}
-                label="Captain"
-                aria-haspopup="menu"
-                aria-label={`${player.name}, captain, open options`}
-                onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'captain' })}
-              />
-            )}
-            {isKeeper && (
-              <Chip
-                size="small"
-                variant="outlined"
-                color="primary"
-                clickable
-                icon={<BrandIcon name="roles/wicketkeeper" size={28} padding={3} />}
-                sx={BADGE_ICON_SX}
-                label="Wicketkeeper"
-                aria-haspopup="menu"
-                aria-label={`${player.name}, wicketkeeper, open options`}
-                onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'keeper' })}
-              />
-            )}
-            {showAvailability && availability && <AvailabilityBadge availability={availability} />}
-            {player.alsoIn && (
-              <Chip size="small" variant="outlined" label={`Also in ${player.alsoIn}`} sx={toneSx('info')} />
-            )}
-          </Box>
+          )}
+          {isKeeper && (
+            <RoleMarker
+              label="WK"
+              ariaLabel={`${player.name}, wicketkeeper, open options`}
+              onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'keeper' })}
+            />
+          )}
+          {player.alsoIn && (
+            <Typography component="span" variant="caption" color="info.dark" sx={{ fontWeight: 600 }}>
+              {`Also in ${player.alsoIn}`}
+            </Typography>
+          )}
         </Box>
+
+        {/* The role is plain text (a tap opens the role menu); no icon pill (docs/specs/093). */}
+        <ButtonBase
+          aria-haspopup="menu"
+          aria-label={`${player.name}, role ${ROLE_LABEL[player.role]}, change role`}
+          onClick={(event) => setBadgeMenu({ anchor: event.currentTarget, playerId: player.playerProfileId, kind: 'role' })}
+          sx={{
+            flex: 'none',
+            minHeight: 36,
+            px: 0.5,
+            borderRadius: 1,
+            fontSize: 13,
+            fontFamily: 'inherit',
+            color: 'text.secondary',
+            '&:hover': { bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.08) },
+          }}
+        >
+          {ROLE_LABEL[player.role]}
+        </ButtonBase>
+
+        <Box sx={{ width: 24, flex: 'none', display: 'grid', placeItems: 'center' }}>
+          {availability && <AvailabilityTick availability={availability} name={player.name} />}
+        </Box>
+
+        <IconButton
+          size="small"
+          aria-haspopup="menu"
+          aria-label={`${player.name}, more actions`}
+          onClick={(event) => openMenu(event.currentTarget, player)}
+          sx={{ flex: 'none', color: 'text.secondary' }}
+        >
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
       </Box>
     )
   }
