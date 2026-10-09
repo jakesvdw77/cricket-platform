@@ -41,6 +41,9 @@ interface AddTarget extends Column {
 }
 
 // Compact footer action: small, one line, so Select players and Announce sit side by side.
+// The Position column only holds a number or "12th man", so it is far narrower than the Players grid's name column.
+const POSITION_COL = { width: 84, minWidth: 84, maxWidth: 84 } as const
+
 const footActionSx = { whiteSpace: 'nowrap', minHeight: 24, py: 0.125, px: 1, fontSize: '0.6875rem', lineHeight: 1.5 } as const
 
 const columnWidth = { xs: GAME_COL_WIDTH.xs + 16, sm: GAME_COL_WIDTH.sm + 24 }
@@ -84,7 +87,7 @@ function BattingMatrix({
     '&:nth-of-type(odd) > th, &:nth-of-type(odd) > td': { bgcolor: zebraTint },
     '&:hover > th, &:hover > td': { bgcolor: hoverTint },
   } as const
-  const rowHeadSx = { ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 } as const
+  const rowHeadSx = { ...stickyFirstColSx, ...POSITION_COL, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 } as const
   const bodyCellSx = { px: 0.75, py: 0.5, minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'middle' } as const
   const footCellSx = { position: 'sticky', bottom: 0, zIndex: 3, bgcolor: 'background.paper', borderTop: 1, borderTopColor: 'divider', px: 0.75, py: 0.75 } as const
 
@@ -104,7 +107,7 @@ function BattingMatrix({
       <Table size="small" aria-label="Batting order by match" sx={{ borderCollapse: 'separate', borderSpacing: 0, width: 'max-content', minWidth: '100%', ...numberSx }}>
         <TableHead>
           <TableRow>
-            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} sx={{ ...stickyFirstColSx, minWidth: { xs: 96, sm: 120 }, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
+            <TableCell component="th" scope="col" rowSpan={3} ref={first.ref} sx={{ ...stickyFirstColSx, ...POSITION_COL, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}>
               Position
             </TableCell>
             {groups.map((group) => (
@@ -277,7 +280,7 @@ function BattingMatrix({
 
         <TableFooter>
           <TableRow>
-            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bottom: 0, zIndex: 5, px: 1, py: 0.75, fontWeight: 600, verticalAlign: 'top', borderTop: 1, borderTopColor: 'divider' }}>
+            <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, ...POSITION_COL, bottom: 0, zIndex: 5, px: 1, py: 0.75, fontWeight: 600, verticalAlign: 'top', borderTop: 1, borderTopColor: 'divider' }}>
               Actions
             </TableCell>
             {columns.map((column) => {
