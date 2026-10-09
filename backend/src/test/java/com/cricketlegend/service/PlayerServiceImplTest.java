@@ -3,6 +3,7 @@ package com.cricketlegend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -675,6 +676,58 @@ class PlayerServiceImplTest {
         assertThat(counters).isEqualTo(new com.cricketlegend.dto.PlayersSummaryDto(1, 0, 0, 0));
         verify(teamSquadMemberRepository, never()).findDistinctPlayerProfileIdsBySeasonId(any());
         verify(matchSidePlayerRepository, never()).findDistinctSelectedPlayerProfileIds(any(), any());
+    }
+
+    private com.cricketlegend.repository.PlayerGamesView games(UUID playerId, long games) {
+        return new com.cricketlegend.repository.PlayerGamesView() {
+            @Override
+            public UUID getPlayerProfileId() {
+                return playerId;
+            }
+
+            @Override
+            public long getGames() {
+                return games;
+            }
+        };
+    }
+
+    @Test
+    void listCarriesGamesThisSeasonAndOverallPerPlayerAndZeroForAPlayerWhoHasNotPlayed() {
+        UUID clubId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        PlayerProfile regular = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        PlayerProfile benched = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        stubClubRoster(clubId, regular, benched);
+        when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
+                .stream().map(id -> person(id, id)).toList());
+        when(matchSidePlayerRepository.findGamesPlayed(eq(clubId), any())).thenReturn(List.of(games(regular.getId(), 48)));
+        when(matchSidePlayerRepository.findGamesPlayedInSeason(eq(clubId), eq(seasonId), any()))
+                .thenReturn(List.of(games(regular.getId(), 12)));
+
+        var players = playerService.list(authentication, clubId, null, false, true, null, seasonId);
+
+        var byId = players.stream().collect(java.util.stream.Collectors.toMap(com.cricketlegend.dto.PlayerDto::id, p -> p));
+        assertThat(byId.get(regular.getId()).gamesThisSeason()).isEqualTo(12);
+        assertThat(byId.get(regular.getId()).gamesOverall()).isEqualTo(48);
+        assertThat(byId.get(benched.getId()).gamesThisSeason()).isZero();
+        assertThat(byId.get(benched.getId()).gamesOverall()).isZero();
+    }
+
+    @Test
+    void listWithoutASeasonReportsZeroThisSeasonAndNeverQueriesTheSeasonGames() {
+        UUID clubId = UUID.randomUUID();
+        PlayerProfile regular = profile(UUID.randomUUID(), UUID.randomUUID(), clubId, true);
+        stubClubRoster(clubId, regular);
+        when(personRepository.findAllById(any())).thenAnswer(invocation -> ((java.util.Collection<UUID>) invocation.getArgument(0))
+                .stream().map(id -> person(id, id)).toList());
+        when(matchSidePlayerRepository.findGamesPlayed(eq(clubId), any())).thenReturn(List.of(games(regular.getId(), 7)));
+
+        var players = playerService.list(authentication, clubId, null, false, true, null, null);
+
+        assertThat(players.get(0).gamesThisSeason()).isZero();
+        assertThat(players.get(0).gamesOverall()).isEqualTo(7);
+        verify(matchSidePlayerRepository, never()).findGamesPlayedInSeason(any(), any(), any());
     }
 
     private void stubSingleProfile(PlayerProfile profile) {

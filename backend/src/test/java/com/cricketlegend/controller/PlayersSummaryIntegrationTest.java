@@ -68,7 +68,7 @@ class PlayersSummaryIntegrationTest {
         fixtures.cleanUp();
     }
 
-    private record Seeded(World w, World other, PlayerProfile unverified, PlayerProfile rejected) {
+    private record Seeded(World w, World other, PlayerProfile unverified, PlayerProfile rejected, PlayerProfile p1, PlayerProfile p2) {
     }
 
     private PlayerProfile withStatus(PlayerProfile profile, PlayerVerificationStatus status) {
@@ -104,7 +104,7 @@ class PlayersSummaryIntegrationTest {
         fixtures.side(played, w.seniors1(), true, p1);
         Match off = fixtures.match(w, w.juniorsTeam(), null, now.plus(Duration.ofDays(3)), false, null);
         fixtures.side(off, w.juniorsTeam(), false, p6);
-        return new Seeded(w, other, p3, p4);
+        return new Seeded(w, other, p3, p4, p1, p2);
     }
 
     private MockHttpServletRequestBuilder request(String url, UUID clubId, JwtRequestPostProcessor caller, String... params) {
@@ -291,5 +291,38 @@ class PlayersSummaryIntegrationTest {
         // the original rejected player is among the hidden ones
         String everyone = mockMvc.perform(request(PLAYERS, clubId, admin)).andReturn().getResponse().getContentAsString();
         assertThat(everyone).contains(s.rejected().getId().toString());
+    }
+
+    // docs/specs/088: games played ride on the list, in the season given and overall
+    @Test
+    void theListCarriesGamesPlayedAndEveryOtherResponseReturnsZero() throws Exception {
+        Seeded s = seed(); // P1 was selected for a match three days ago (a game played); P2 never
+        JwtRequestPostProcessor admin = fixtures.clubAdmin(s.w());
+        UUID clubId = s.w().club().getId();
+        Match upcoming = fixtures.match(s.w(), s.w().seniors1(), null, Instant.now().plus(Duration.ofDays(5)));
+        fixtures.side(upcoming, s.w().seniors1(), false, s.p2());
+
+        JsonNode withSeason = objectMapper.readTree(mockMvc.perform(request(PLAYERS, clubId, admin, "seasonId", s.w().season().getId().toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode withoutSeason = objectMapper.readTree(mockMvc.perform(request(PLAYERS, clubId, admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+
+        assertThat(gamesOf(withSeason, s.p1())).containsExactly(1, 1);
+        assertThat(gamesOf(withSeason, s.p2())).containsExactly(0, 0); // an upcoming selection is not a game played
+        assertThat(gamesOf(withoutSeason, s.p1())).containsExactly(0, 1); // no season: this season is 0, overall still counts
+
+        mockMvc.perform(post(PLAYERS + "/{playerId}/reject", clubId, s.unverified().getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gamesThisSeason").value(0))
+                .andExpect(jsonPath("$.gamesOverall").value(0));
+    }
+
+    private static int[] gamesOf(JsonNode players, PlayerProfile player) {
+        for (JsonNode node : players) {
+            if (player.getId().toString().equals(node.path("id").asText())) {
+                return new int[] {node.path("gamesThisSeason").asInt(), node.path("gamesOverall").asInt()};
+            }
+        }
+        throw new AssertionError("player not in the list: " + player.getId());
     }
 }

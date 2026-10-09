@@ -101,4 +101,22 @@ class PlayersSummaryQueryCountIntegrationTest {
 
         assertThat(statementsFor(largeManager, large, null, false)).isEqualTo(statementsFor(smallManager, small, null, false));
     }
+
+    // docs/specs/088: the list (with the games played for every player) is also a fixed number of statements
+    @Test
+    void theListWithGamesPlayedIssuesTheSameNumberOfStatementsForASmallClubAsForALargeOne() {
+        World small = seedClub(3);
+        World large = seedClub(30);
+        Authentication platformAdmin = new TestingAuthenticationToken("ops", "n/a", "ROLE_platform_admin");
+
+        assertThat(listStatements(platformAdmin, large)).isEqualTo(listStatements(platformAdmin, small));
+    }
+
+    private long listStatements(Authentication caller, World w) {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+        var players = playerService.list(caller, w.club().getId(), null, false, true, null, w.season().getId());
+        assertThat(players).isNotEmpty();
+        return statistics.getPrepareStatementCount();
+    }
 }
