@@ -174,6 +174,23 @@ describe('FilterBar Season slot (docs/specs/087)', () => {
   })
 })
 
+describe('FilterBar search suggestions (docs/specs/087)', () => {
+  it('offers the passed suggestions and a picked one flows into onSearchChange', async () => {
+    setPhone(false)
+    const onSearchChange = vi.fn()
+    render(<FilterBar {...props({ onSearchChange, searchOptions: ['Lakeside CC', 'Villagers 1'] })} />)
+    await userEvent.click(screen.getByLabelText('Search'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Lakeside CC' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith('Lakeside CC')
+  })
+
+  it('renders a plain input, not a combobox, when no suggestions are passed', () => {
+    setPhone(false)
+    render(<FilterBar {...props()} />)
+    expect(screen.getByLabelText('Search')).not.toHaveAttribute('role', 'combobox')
+  })
+})
+
 describe('FilterBar on a phone (docs/specs/083)', () => {
   it('shows search and a Filters button, with the fields behind the sheet', () => {
     setPhone(true)

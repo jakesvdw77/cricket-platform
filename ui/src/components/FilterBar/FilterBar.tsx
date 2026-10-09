@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Badge, Box, Button as MuiButton, Chip, InputAdornment, MenuItem, useMediaQuery } from '@mui/material'
+import { Autocomplete, Badge, Box, Button as MuiButton, Chip, InputAdornment, MenuItem, useMediaQuery } from '@mui/material'
 import { alpha, useTheme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import FilterListIcon from '@mui/icons-material/FilterList'
@@ -54,6 +54,10 @@ export interface FilterBarProps {
   searchValue?: string
   onSearchChange?: (value: string) => void
   searchPlaceholder?: string
+  // docs/specs/087: when passed, the Search input is an MUI `Autocomplete freeSolo` over this already-loaded,
+  // caller-filtered suggestion list (Matches: the club's team names), same as ListToolbar's `searchOptions`.
+  // Typing and picking a suggestion both flow through `onSearchChange`. Omitted, a plain input as before.
+  searchOptions?: string[]
   // The view's own controls (toggles, sort link): rendered inside the Filters sheet on a phone. On
   // desktop the page shows them on the line above its content (ContentControlsLine), not here.
   viewControls?: ReactNode
@@ -87,6 +91,7 @@ export function FilterBar({
   searchValue = '',
   onSearchChange,
   searchPlaceholder,
+  searchOptions,
   viewControls,
   extraChips = [],
   onClearAll,
@@ -179,21 +184,39 @@ export function FilterBar({
     )
   }
 
-  const search = onSearchChange && (
-    <Input
-      label="Search"
-      placeholder={searchPlaceholder}
-      value={searchValue}
-      onChange={(event) => onSearchChange(event.target.value)}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon fontSize="small" color="action" />
-          </InputAdornment>
-        ),
-      }}
-    />
+  const searchAdornment = (
+    <InputAdornment position="start">
+      <SearchIcon fontSize="small" color="action" />
+    </InputAdornment>
   )
+  const search =
+    onSearchChange &&
+    (searchOptions ? (
+      <Autocomplete
+        freeSolo
+        options={searchOptions}
+        inputValue={searchValue}
+        onInputChange={(_event, value) => onSearchChange(value)}
+        // The compact 36 px fields: the Autocomplete input root and input carry their own padding.
+        sx={density === 'compact' ? { '& .MuiOutlinedInput-root': { py: 0 }, '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0 } } : undefined}
+        renderInput={(params) => (
+          <Input
+            {...params}
+            label="Search"
+            placeholder={searchPlaceholder}
+            InputProps={{ ...params.InputProps, startAdornment: searchAdornment }}
+          />
+        )}
+      />
+    ) : (
+      <Input
+        label="Search"
+        placeholder={searchPlaceholder}
+        value={searchValue}
+        onChange={(event) => onSearchChange(event.target.value)}
+        InputProps={{ startAdornment: searchAdornment }}
+      />
+    ))
 
   if (!isPhone) {
     return (

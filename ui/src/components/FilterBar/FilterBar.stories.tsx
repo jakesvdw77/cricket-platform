@@ -99,6 +99,12 @@ export const SectionOnly: Story = {
   render: (args) => <Interactive {...args} />,
 }
 
+// docs/specs/087: search suggestions (Matches offers the club's team names) as a freeSolo Autocomplete.
+export const WithSearchSuggestions: Story = {
+  args: { ...base, density: 'compact', searchOptions: ['Irene Villagers 1', 'Irene Villagers 2', 'Riverside Occasionals'] },
+  render: (args) => <Interactive {...args} />,
+}
+
 // docs/specs/087: the optional Season slot (Matches), between League and Section.
 function WithSeasonsDemo(args: FilterBarProps) {
   const [seasonId, setSeasonId] = useState<string | null>('s1')
