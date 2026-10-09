@@ -160,7 +160,7 @@ export default function LeagueViewLayout() {
 
   const contacts = contactsQuery.data ?? []
   const selectedContact = contacts.find((contact) => contact.id === openContactId) ?? null
-  const badges = leagueBadges(league, { teamCount: affiliationsForSeason.length + activeLeagueTeams.length })
+  const badges = leagueBadges(league)
   const hasLinks = Boolean(league.phone || league.email || league.website)
   const hasSocial = league.socialLinks.length > 0
   const hasContactSection = contacts.length > 0 || hasLinks || hasSocial

@@ -32,6 +32,18 @@ export interface FilterBarChip {
   onRemove: () => void
 }
 
+// docs/specs/091: one more select a page owns (Leagues: Format) - shown after the shared filters, with the same always-
+// floated "All ..." value, a chip when set and a field in the phone sheet.
+export interface FilterBarSelect {
+  key: string
+  label: string
+  // The empty value's row, e.g. "All formats".
+  allLabel: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (value: string) => void
+}
+
 export interface FilterBarProps {
   // A shared filter shows when its options are passed, always in the order League, Season, Section, Team.
   leagues?: FilterBarOption[]
@@ -50,6 +62,8 @@ export interface FilterBarProps {
   onTeamChange?: (teamId: string | null) => void
   seasonAllLabel?: string
   teamAllLabel?: string
+  // docs/specs/091: page-owned selects (see FilterBarSelect), in order.
+  extraSelects?: FilterBarSelect[]
   // Search shows when onSearchChange is passed.
   searchValue?: string
   onSearchChange?: (value: string) => void
@@ -88,6 +102,7 @@ export function FilterBar({
   onTeamChange,
   seasonAllLabel = 'All seasons',
   teamAllLabel = 'All teams',
+  extraSelects = [],
   searchValue = '',
   onSearchChange,
   searchPlaceholder,
@@ -130,6 +145,15 @@ export function FilterBar({
       onRemove: () => onTeamChange(null),
     })
   }
+  extraSelects.forEach((select) => {
+    if (select.value) {
+      chips.push({
+        key: select.key,
+        label: select.options.find((option) => option.value === select.value)?.label ?? select.label,
+        onRemove: () => select.onChange(''),
+      })
+    }
+  })
   chips.push(...extraChips)
   const activeCount = chips.length
 
@@ -180,6 +204,24 @@ export function FilterBar({
           </Input>
         </Box>
       )}
+      {extraSelects.map((select) => (
+        <Box key={select.key} sx={fieldSx}>
+          <Input
+            select
+            label={select.label}
+            {...allValueSelectProps}
+            value={select.value}
+            onChange={(event) => select.onChange(event.target.value)}
+          >
+            <MenuItem value="">{select.allLabel}</MenuItem>
+            {select.options.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Input>
+        </Box>
+      ))}
     </>
     )
   }

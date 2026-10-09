@@ -16,11 +16,13 @@ export interface HeaderSeasonSelectProps {
   value: string | null
   onChange: (seasonId: string | null) => void
   allLabel?: string
+  // docs/specs/091: false drops the "All seasons" row (Leagues: a league card is always for one season).
+  showAll?: boolean
 }
 
 // docs/specs/089: the season of a list page, a small pill beside the page title instead of a toolbar field - it rarely
 // changes. Opens a short menu: "All seasons", then each season, the current one ticked.
-export function HeaderSeasonSelect({ seasons, value, onChange, allLabel = 'All seasons' }: HeaderSeasonSelectProps) {
+export function HeaderSeasonSelect({ seasons, value, onChange, allLabel = 'All seasons', showAll = true }: HeaderSeasonSelectProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const menuId = useId()
   const open = Boolean(anchor)
@@ -60,10 +62,12 @@ export function HeaderSeasonSelect({ seasons, value, onChange, allLabel = 'All s
         {label}
       </Button>
       <Menu id={menuId} anchorEl={anchor} open={open} onClose={() => setAnchor(null)} MenuListProps={{ role: 'listbox', dense: true }}>
-        <MenuItem role="option" selected={value === null} aria-selected={value === null} onClick={() => pick(null)} sx={{ minHeight: 40, minWidth: 180, justifyContent: 'space-between' }}>
-          {allLabel}
-          {value === null && <CheckIcon fontSize="small" />}
-        </MenuItem>
+        {showAll && (
+          <MenuItem role="option" selected={value === null} aria-selected={value === null} onClick={() => pick(null)} sx={{ minHeight: 40, minWidth: 180, justifyContent: 'space-between' }}>
+            {allLabel}
+            {value === null && <CheckIcon fontSize="small" />}
+          </MenuItem>
+        )}
         {seasons.map((season) => (
           <MenuItem
             key={season.id}

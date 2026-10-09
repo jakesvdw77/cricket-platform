@@ -28,4 +28,16 @@ describe('SelectionGauge', () => {
     expect(screen.getByTestId('selection-fill')).toHaveStyle({ width: '0%' })
     expect(screen.getByTestId('selection-togo')).toHaveTextContent('12 To go')
   })
+
+  it('takes its wording from props (the League card: Played / To go)', () => {
+    render(<SelectionGauge picked={12} size={56} ariaLabel="Matches played" pickedLabel="Played" toGoLabel="To go" completeLabel="Season complete" />)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '12 of 56 played')
+    expect(screen.getByTestId('selection-picked')).toHaveTextContent('12 Played')
+    expect(screen.getByTestId('selection-togo')).toHaveTextContent('44 To go')
+  })
+
+  it('shows the custom complete wording once full', () => {
+    render(<SelectionGauge picked={56} size={56} ariaLabel="x" completeLabel="Season complete" />)
+    expect(screen.getByTestId('selection-complete')).toHaveTextContent('Season complete')
+  })
 })
