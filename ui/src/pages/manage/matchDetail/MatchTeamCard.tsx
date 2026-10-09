@@ -3,11 +3,11 @@ import { Box, Button as MuiButton, Card as MuiCard, Chip, Stack, Typography } fr
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { badgeSx } from '../../../components/RecordCard'
-import { CardProgressBar } from '../../../components/CardProgressBar'
+import { SelectionGauge } from '../../../components/SelectionGauge'
 import { PlayingXiSummary } from '../../../components/PlayingXiSummary'
 import type { SquadMember } from '../../../api/teamSquadApi'
 import type { MatchSide } from '../../../api/matchSideApi'
-import { announcedBadge, pickedLegend } from '../matches/matchCardHelpers'
+import { announcedBadge } from '../matches/matchCardHelpers'
 
 export interface MatchTeamCardProps {
   testId: string
@@ -76,39 +76,29 @@ export function MatchTeamCard({
             {`${teamName} · ${sideLabel}`}
           </Typography>
         </Box>
-        {announcedReady && (
-          <Chip
-            size="small"
-            label={announcedChip.label}
-            variant={announcedChip.tone === 'neutral' ? 'outlined' : 'filled'}
-            sx={badgeSx(announcedChip.tone)}
-          />
-        )}
       </Box>
 
       {sidesReady && (
-        <Stack spacing={0.75}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
-            <Typography variant="body2" fontWeight={700}>
-              Playing XI
-            </Typography>
+        <Stack spacing={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" fontWeight={700}>
+                Playing XI
+              </Typography>
+              {announcedReady && (
+                <Chip
+                  size="small"
+                  label={announcedChip.label}
+                  variant={announcedChip.tone === 'neutral' ? 'outlined' : 'filled'}
+                  sx={badgeSx(announcedChip.tone)}
+                />
+              )}
+            </Box>
             <Typography variant="caption" color="text.secondary">
               {playingXiSize === null ? `${picked} picked` : `${picked} of ${playingXiSize} picked`}
             </Typography>
           </Box>
-          {playingXiSize !== null && (
-            <>
-              <CardProgressBar
-                value={picked}
-                max={playingXiSize}
-                ariaLabel={`${teamName} selection`}
-                valueText={`${picked} of ${playingXiSize} picked`}
-              />
-              <Typography variant="caption" color="text.secondary">
-                {pickedLegend(picked, playingXiSize)}
-              </Typography>
-            </>
-          )}
+          {playingXiSize !== null && <SelectionGauge picked={picked} size={playingXiSize} ariaLabel={`${teamName} selection`} />}
         </Stack>
       )}
 

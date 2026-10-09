@@ -18,7 +18,6 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { badgeSx } from '../../components/RecordCard'
-import type { RecordCardBadge } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { getMatch } from '../../api/matchApi'
@@ -40,14 +39,12 @@ import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
 import {
-  announcedBadge,
   badgeFor,
   matchPollsFrom,
   NO_CLUB_TEAM_REASON,
   ownSides,
   withPlayingXiTab,
-    pollBadgeFor,
-  pollDestination,
+    pollDestination,
   sideName,
 } from './matches/matchCardHelpers'
 import type { MatchSquadCoverage, OwnSide } from './matches/matchCardHelpers'
@@ -216,19 +213,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const homeName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeName} vs ${awayName}`
-  const bothOwn = own.length === 2
 
-  const badges: RecordCardBadge[] = []
-  if (sidesReady) {
-    own.forEach((entry) => {
-      const name = entry.side === 'home' ? homeName : awayName
-      const announced = entry.side === 'home' ? overlay.homeSideAnnounced : overlay.awaySideAnnounced
-      badges.push(announcedBadge(announced, bothOwn ? `${name}: ` : ''))
-    })
-  }
   const inactive = badgeFor(match)
-  if (inactive) badges.push(inactive)
-  if (pollsReady) badges.push(pollBadgeFor(overlay.polls))
 
   const logos = [
     logoFor(match.homeTeamId, match.homeTeamLogoUrl, homeName, teamsById),
@@ -247,73 +233,57 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const leagueName = match.leagueId ? (leaguesById.get(match.leagueId)?.name ?? null) : null
   const seasonLabel = seasonsById.get(match.seasonId)?.label ?? null
 
-  // docs/specs/089 (A): the Player page treatment. Header (logo tiles, title, badges, links, Edit), the action row, the
-  // key-figure strip, then one team card per own side.
+  // docs/specs/089 (A, revised): the poll page's header. Top row: Back on the left, the page-level actions (Scoring, Watch
+  // live, Edit) on the right. Title row: the title (a logo before each team that has one) and the match workflow buttons
+  // right-aligned. No header badges: each team card shows its own Announced chip and the strip shows the poll; only
+  // Inactive stays. Then the key-figure strip and one team card per own side.
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          <MuiButton
-            component={RouterLink}
-            to={MATCHES_PATH}
-            variant="text"
-            color="inherit"
-            size="small"
-            startIcon={<ArrowBackIcon fontSize="small" />}
-            sx={{ ml: -1, alignSelf: 'flex-start', color: 'text.secondary' }}
-          >
-            Back to Matches
-          </MuiButton>
-
           <Box
-            data-testid="match-header-title-row"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
+            data-testid="match-header-top-row"
+            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0, flex: '1 1 320px' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, md: 1.25 }, flex: 'none' }}>
-                <TeamLogo logo={logos[0]} testId="match-logo-home" />
-                <Typography component="span" variant="body2" color="text.secondary" fontWeight={500}>
-                  vs
-                </Typography>
-                <TeamLogo logo={logos[1]} testId="match-logo-away" />
-              </Box>
-              <Stack spacing={1} sx={{ minWidth: 0 }}>
-                <Typography
-                  variant="h4"
-                  component="h1"
-                  aria-label={title}
-                  sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.4rem', md: '1.75rem' }, overflowWrap: 'anywhere' }}
-                >
-                  {homeName}{' '}
-                  <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                    vs
-                  </Box>{' '}
-                  {awayName}
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap role="group" aria-label="Match badges">
-                  {badges.map((badge) => (
-                    <Chip
-                      key={badge.label}
-                      size="small"
-                      label={badge.label}
-                      variant={badge.tone === 'neutral' || badge.tone === 'noPoll' ? 'outlined' : 'filled'}
-                      sx={badgeSx(badge.tone)}
-                    />
-                  ))}
-                </Stack>
-              </Stack>
-            </Box>
+            <MuiButton
+              component={RouterLink}
+              to={MATCHES_PATH}
+              variant="text"
+              color="inherit"
+              size="small"
+              startIcon={<ArrowBackIcon fontSize="small" />}
+              sx={{ ml: -1, color: 'text.secondary' }}
+            >
+              Back to Matches
+            </MuiButton>
 
-            {/* Scoring and Watch live (only when the match has the link) and the primary Edit button; on a phone Edit
-                sits beside Select team in the action row below instead. */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, flex: 'none' }} data-testid="match-header-links">
+            {/* Scoring and Watch live (only when the match has the link; below the actions on a phone) and the primary Edit. */}
+            <Box sx={{ display: 'flex', gap: 1, flex: 'none' }} data-testid="match-header-links">
               {match.scoringUrl && (
-                <MuiButton component="a" href={match.scoringUrl} target="_blank" rel="noopener noreferrer" variant="outlined" aria-label="Scoring link" startIcon={<ScoreboardOutlinedIcon fontSize="small" />}>
+                <MuiButton
+                  component="a"
+                  href={match.scoringUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  aria-label="Scoring link"
+                  startIcon={<ScoreboardOutlinedIcon fontSize="small" />}
+                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                >
                   Scoring
                 </MuiButton>
               )}
               {match.streamingUrl && (
-                <MuiButton component="a" href={match.streamingUrl} target="_blank" rel="noopener noreferrer" variant="outlined" aria-label="Watch live link" startIcon={<LiveTvOutlinedIcon fontSize="small" />}>
+                <MuiButton
+                  component="a"
+                  href={match.streamingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  aria-label="Watch live link"
+                  startIcon={<LiveTvOutlinedIcon fontSize="small" />}
+                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                >
                   Watch live
                 </MuiButton>
               )}
@@ -323,63 +293,100 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
             </Box>
           </Box>
 
-          {/* Actions: Select team, Edit (phone only), Availability, Share; all disabled with a reason when none of the
-              club's teams plays. A phone shows two full-width halves per row. */}
           <Box
-            data-testid="match-header-actions"
-            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, auto)' }, justifyContent: { md: 'start' } }}
+            data-testid="match-header-title-row"
+            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
           >
-            <ActionSlot disabled={noOwnTeam}>
-              {noOwnTeam ? (
-                <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />} sx={ACTION_SX}>
-                  Select team
-                </MuiButton>
-              ) : (
+            <Typography
+              variant="h4"
+              component="h1"
+              aria-label={title}
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.2,
+                fontSize: { xs: '1.4rem', md: '1.75rem' },
+                overflowWrap: 'anywhere',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                columnGap: { xs: 1, md: 1.5 },
+                rowGap: 0.5,
+                flex: '1 1 320px',
+                minWidth: 0,
+              }}
+            >
+              {logos[0].src && <TeamLogo logo={logos[0]} testId="match-logo-home" />}
+              <span>{homeName}</span>
+              <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.1rem' } }}>
+                vs
+              </Box>
+              {logos[1].src && <TeamLogo logo={logos[1]} testId="match-logo-away" />}
+              <span>{awayName}</span>
+              {inactive && <Chip size="small" label={inactive.label} sx={badgeSx(inactive.tone)} data-testid="match-inactive-badge" />}
+            </Typography>
+
+            {/* The match workflow, right-aligned like the poll page's actions; all disabled with a reason when none of
+                the club's teams plays. A phone shows Select team and Availability as two full-width halves. */}
+            <Box
+              data-testid="match-header-actions"
+              sx={{
+                display: 'grid',
+                gap: 1,
+                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, auto)' },
+                width: { xs: '100%', md: 'auto' },
+                justifyContent: { md: 'end' },
+              }}
+            >
+              <ActionSlot disabled={noOwnTeam}>
+                {noOwnTeam ? (
+                  <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />} sx={ACTION_SX}>
+                    Select team
+                  </MuiButton>
+                ) : (
+                  <MuiButton
+                    component={RouterLink}
+                    to={withPlayingXiTab(editTo)}
+                    variant="outlined"
+                    startIcon={<GroupsOutlinedIcon fontSize="small" />}
+                    sx={ACTION_SX}
+                  >
+                    Select team
+                  </MuiButton>
+                )}
+              </ActionSlot>
+              <ActionSlot disabled={noOwnTeam}>
                 <MuiButton
-                  component={RouterLink}
-                  to={withPlayingXiTab(editTo)}
                   variant="outlined"
-                  startIcon={<GroupsOutlinedIcon fontSize="small" />}
+                  disabled={noOwnTeam || !pollsReady}
+                  onClick={openAvailability}
+                  startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
                   sx={ACTION_SX}
                 >
-                  Select team
+                  Availability
                 </MuiButton>
-              )}
-            </ActionSlot>
-            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-              <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />} sx={ACTION_SX}>
-                Edit
-              </MuiButton>
+              </ActionSlot>
+              <Box sx={{ gridColumn: { xs: '1 / -1', md: 'auto' }, display: 'flex' }}>
+                <ActionSlot disabled={noOwnTeam}>
+                  <MuiButton
+                    variant="outlined"
+                    disabled={noOwnTeam}
+                    onClick={openShare}
+                    aria-label="Share team sheet"
+                    startIcon={<ShareOutlinedIcon fontSize="small" />}
+                    sx={ACTION_SX}
+                  >
+                    <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                      Share
+                    </Box>
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                      Share team sheet
+                    </Box>
+                  </MuiButton>
+                </ActionSlot>
+              </Box>
             </Box>
-            <ActionSlot disabled={noOwnTeam}>
-              <MuiButton
-                variant="outlined"
-                disabled={noOwnTeam || !pollsReady}
-                onClick={openAvailability}
-                startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-                sx={ACTION_SX}
-              >
-                Availability
-              </MuiButton>
-            </ActionSlot>
-            <ActionSlot disabled={noOwnTeam}>
-              <MuiButton
-                variant="outlined"
-                disabled={noOwnTeam}
-                onClick={openShare}
-                aria-label="Share team sheet"
-                startIcon={<ShareOutlinedIcon fontSize="small" />}
-                sx={ACTION_SX}
-              >
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                  Share
-                </Box>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                  Share team sheet
-                </Box>
-              </MuiButton>
-            </ActionSlot>
           </Box>
+
           {/* A phone has no room for the links beside Edit: they follow the actions. */}
           {(match.scoringUrl || match.streamingUrl) && (
             <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: '1fr 1fr', gap: 1 }}>
@@ -495,16 +502,16 @@ function TeamLogo({ logo, testId }: { logo: SideLogo; testId: string }) {
       aria-hidden
       data-testid={testId}
       sx={{
-        width: { xs: 52, md: 64 },
-        height: { xs: 52, md: 64 },
+        width: { xs: 36, md: 44 },
+        height: { xs: 36, md: 44 },
         flex: 'none',
-        fontSize: { xs: '0.8rem', md: '0.95rem' },
+        fontSize: { xs: '0.7rem', md: '0.8rem' },
         fontWeight: 700,
         bgcolor: 'background.paper',
         color: 'primary.main',
         border: 1,
         borderColor: 'divider',
-        borderRadius: 1.5,
+        borderRadius: 1.25,
       }}
     >
       {logo.initials}
