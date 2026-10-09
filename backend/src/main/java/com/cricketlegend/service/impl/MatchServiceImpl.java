@@ -5,6 +5,7 @@ import com.cricketlegend.domain.AvailabilityPollType;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
@@ -14,6 +15,7 @@ import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.SelectionLimitsDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchPollDto;
+import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
@@ -124,12 +126,53 @@ public class MatchServiceImpl implements MatchService {
             String search,
             UUID leagueId,
             UUID seasonId,
+            UUID teamId,
+            MatchListFocus focus,
             Pageable pageable) {
         Optional<Set<UUID>> sectionIds = resolveAuthorizedSectionIds(authentication, clubId, sectionId);
         Pageable sorted = withDefaultSort(pageable);
 
-        Specification<Match> spec = buildMatchSpecification(clubId, sectionIds, upcomingOnly, leagueId, seasonId, search);
+        Specification<Match> spec =
+                buildMatchSpecification(clubId, sectionIds, upcomingOnly, leagueId, seasonId, teamId, search);
+        if (focus != null) {
+            spec = spec.and(focusSpecification(focus, clubId, sectionIds));
+        }
         return enrichList(matchRepository.findAll(spec, sorted).map(matchMapper::toDto));
+    }
+
+    /** docs/specs/087: the quick filter's one definition, shared by {@link #list} and {@link #summary}. */
+    private Specification<Match> focusSpecification(
+            MatchListFocus focus, UUID clubId, Optional<Set<UUID>> sectionIds) {
+        return MatchSpecifications.focus(
+                focus,
+                clubId,
+                sectionIds,
+                ServerClock.startOfToday(),
+                ServerClock.startOfDayFromToday(ManagerOverviewServiceImpl.WEEK_DAYS));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MatchesSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            String search,
+            boolean includePast) {
+        Optional<Set<UUID>> sectionIds = resolveAuthorizedSectionIds(authentication, clubId, sectionId);
+        if (sectionIds.isPresent() && sectionIds.get().isEmpty()) {
+            return new MatchesSummaryDto(0, 0, 0, 0);
+        }
+        Specification<Match> base =
+                buildMatchSpecification(clubId, sectionIds, !includePast, leagueId, seasonId, teamId, search);
+        return new MatchesSummaryDto(
+                matchRepository.count(base),
+                matchRepository.count(base.and(focusSpecification(MatchListFocus.THIS_WEEK, clubId, sectionIds))),
+                matchRepository.count(base.and(focusSpecification(MatchListFocus.NOT_ANNOUNCED, clubId, sectionIds))),
+                matchRepository.count(base.and(focusSpecification(MatchListFocus.NO_POLL, clubId, sectionIds))));
     }
 
     /**
@@ -168,9 +211,10 @@ public class MatchServiceImpl implements MatchService {
             boolean upcomingOnly,
             UUID leagueId,
             UUID seasonId,
+            UUID teamId,
             String search) {
         return MatchSpecifications.forList(
-                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, search);
+                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, teamId, search);
     }
 
     @Override
@@ -181,6 +225,7 @@ public class MatchServiceImpl implements MatchService {
             UUID sectionId,
             UUID leagueId,
             UUID seasonId,
+            UUID teamId,
             String search,
             boolean upcomingOnly) {
         // Authorization PLUS the caller's own explicit sectionId pick (if any) — used when
@@ -196,17 +241,17 @@ public class MatchServiceImpl implements MatchService {
         Optional<Set<UUID>> sectionRestrictionForOwnArray = resolveAuthorizedSectionIds(authentication, clubId, null);
 
         List<Match> matchesForSectionIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionForOwnArray, upcomingOnly, leagueId, seasonId, search));
+                clubId, sectionRestrictionForOwnArray, upcomingOnly, leagueId, seasonId, teamId, search));
         List<Match> matchesForLeagueIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, null, seasonId, search));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, null, seasonId, teamId, search));
         List<Match> matchesForSeasonIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, null, search));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, null, teamId, search));
         // teamIds drives Search's autocomplete suggestions, not a picker's own dropdown — narrowed
         // by every filter the admin has actually picked (section/league/season), matching the
         // match list itself, but deliberately NOT by `search` (see MatchFilterOptionsDto's own
         // Javadoc: suggesting names to help decide what to type would be circular otherwise).
         List<Match> matchesForTeamIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, seasonId, null));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, seasonId, null, null));
 
         List<UUID> leagueIds =
                 matchesForLeagueIds.stream().map(Match::getLeagueId).filter(Objects::nonNull).distinct().toList();

@@ -1,8 +1,10 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
+import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.service.MatchService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -46,9 +48,31 @@ public class MatchController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) String focus, // docs/specs/087: this-week | not-announced | no-poll
             Pageable pageable) {
         return ResponseEntity.ok(matchService.list(
-                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, pageable));
+                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId,
+                MatchListFocus.parse(focus), pageable));
+    }
+
+    /**
+     * Per docs/specs/087-matches-polls-alignment.md: the Matches page counters for the same filters the list uses
+     * ({@code includePast} is the inverse of the list's {@code upcomingOnly}).
+     */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/matches/summary")
+    public ResponseEntity<MatchesSummaryDto> summary(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean includePast) {
+        return ResponseEntity.ok(matchService.summary(
+                authentication, clubId, sectionId, leagueId, seasonId, teamId, search, includePast));
     }
 
     /**
@@ -65,10 +89,11 @@ public class MatchController {
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID seasonId,
+            @RequestParam(required = false) UUID teamId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "false") boolean upcomingOnly) {
         return ResponseEntity.ok(matchService.filterOptions(
-                authentication, clubId, sectionId, leagueId, seasonId, search, upcomingOnly));
+                authentication, clubId, sectionId, leagueId, seasonId, teamId, search, upcomingOnly));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

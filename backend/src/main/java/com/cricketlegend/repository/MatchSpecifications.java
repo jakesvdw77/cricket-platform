@@ -1,7 +1,16 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.Match;
+import com.cricketlegend.domain.MatchAvailabilityPoll;
+import com.cricketlegend.domain.MatchListFocus;
+import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
 import com.cricketlegend.domain.Team;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.util.Collection;
@@ -82,6 +91,18 @@ public final class MatchSpecifications {
             UUID leagueId,
             UUID seasonId,
             String search) {
+        return forList(clubId, sectionIds, upcomingFrom, leagueId, seasonId, null, search);
+    }
+
+    /** As above, plus {@code teamId} (docs/specs/087): the match has that team as its home or away side. */
+    public static Specification<Match> forList(
+            UUID clubId,
+            Optional<Set<UUID>> sectionIds,
+            Instant upcomingFrom,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            String search) {
         Specification<Match> spec = Specification.where(clubId(clubId));
         if (sectionIds.isPresent()) {
             spec = spec.and(sectionIn(sectionIds.get()));
@@ -94,6 +115,9 @@ public final class MatchSpecifications {
         }
         if (seasonId != null) {
             spec = spec.and(seasonIdEquals(seasonId));
+        }
+        if (teamId != null) {
+            spec = spec.and(teamIdEquals(teamId));
         }
         if (search != null && !search.isBlank()) {
             spec = spec.and(searchMatches(search));
@@ -137,5 +161,101 @@ public final class MatchSpecifications {
     /** The match has {@code teamId} as its home or away team (docs/specs/068-player-availability-grid.md). */
     public static Specification<Match> teamIdEquals(UUID teamId) {
         return (root, query, cb) -> cb.or(cb.equal(root.get("homeTeamId"), teamId), cb.equal(root.get("awayTeamId"), teamId));
+    }
+    // ---- docs/specs/087-matches-polls-alignment.md: the Matches counters' quick filters ----
+
+    /**
+     * The one definition of each Matches quick filter, shared by the list ({@code focus} parameter) and the summary
+     * counters so the two cannot drift. All three cover <em>active, upcoming</em> matches only (the Overview's rule:
+     * an inactive or past match is not something to act on): this week is today's start up to (not including) {@code
+     * weekEnd}; the other two are every upcoming match with the stated condition on an own-club side.
+     *
+     * @param sections the caller's section restriction (empty Optional = unrestricted): an own-club side counts only
+     *     when its team's section is one of these, the manager Overview's rule
+     */
+    public static Specification<Match> focus(
+            MatchListFocus focus,
+            UUID clubId,
+            Optional<Set<UUID>> sections,
+            Instant startOfToday,
+            Instant weekEnd) {
+        Specification<Match> upcoming = Specification.where(active()).and(matchDateOnOrAfter(startOfToday));
+        return switch (focus) {
+            case THIS_WEEK -> upcoming.and(matchDateBefore(weekEnd));
+            case NOT_ANNOUNCED -> upcoming.and(hasUnannouncedOwnSide(clubId, sections));
+            case NO_POLL -> upcoming.and(hasOwnSideWithoutPoll(clubId, sections));
+        };
+    }
+
+    /**
+     * At least one own-club side (home or away team of {@code clubId}, within {@code sections} when restricted) that
+     * has no announced {@link MatchSide} for this match.
+     */
+    public static Specification<Match> hasUnannouncedOwnSide(UUID clubId, Optional<Set<UUID>> sections) {
+        return (root, query, cb) ->
+                cb.or(unannouncedOwnSide(root, query, cb, root.get("homeTeamId"), clubId, sections),
+                        unannouncedOwnSide(root, query, cb, root.get("awayTeamId"), clubId, sections));
+    }
+
+    /**
+     * Has an own-club side and no availability poll: no group-poll window link, and no squad poll for the home or
+     * away team (open or closed both count as a poll; this is the match card's "No poll" badge rule).
+     */
+    public static Specification<Match> hasOwnSideWithoutPoll(UUID clubId, Optional<Set<UUID>> sections) {
+        return (root, query, cb) -> {
+            Subquery<UUID> groupLinks = query.subquery(UUID.class);
+            Root<SectionAvailabilityWindowMatch> link = groupLinks.from(SectionAvailabilityWindowMatch.class);
+            groupLinks.select(link.get("id")).where(cb.equal(link.get("matchId"), root.get("id")));
+
+            Subquery<UUID> squadPolls = query.subquery(UUID.class);
+            Root<MatchAvailabilityPoll> poll = squadPolls.from(MatchAvailabilityPoll.class);
+            squadPolls
+                    .select(poll.get("id"))
+                    .where(
+                            cb.equal(poll.get("matchId"), root.get("id")),
+                            cb.or(
+                                    cb.equal(poll.get("teamId"), root.get("homeTeamId")),
+                                    cb.equal(poll.get("teamId"), root.get("awayTeamId"))));
+
+            return cb.and(
+                    cb.or(
+                            ownSide(query, cb, root.get("homeTeamId"), clubId, sections),
+                            ownSide(query, cb, root.get("awayTeamId"), clubId, sections)),
+                    cb.not(cb.exists(groupLinks)),
+                    cb.not(cb.exists(squadPolls)));
+        };
+    }
+
+    /** The side's team is a real team of {@code clubId} (and in {@code sections} when the caller is restricted). */
+    private static Predicate ownSide(
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<UUID> sideTeamId,
+            UUID clubId,
+            Optional<Set<UUID>> sections) {
+        Subquery<UUID> teamIds = query.subquery(UUID.class);
+        Root<Team> team = teamIds.from(Team.class);
+        Predicate inClub = cb.equal(team.get("clubId"), clubId);
+        teamIds.select(team.get("id"))
+                .where(sections.isPresent() ? cb.and(inClub, team.get("sectionId").in(sections.get())) : inClub);
+        return sideTeamId.in(teamIds);
+    }
+
+    private static Predicate unannouncedOwnSide(
+            Root<Match> root,
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Path<UUID> sideTeamId,
+            UUID clubId,
+            Optional<Set<UUID>> sections) {
+        Subquery<UUID> announced = query.subquery(UUID.class);
+        Root<MatchSide> side = announced.from(MatchSide.class);
+        announced
+                .select(side.get("id"))
+                .where(
+                        cb.equal(side.get("matchId"), root.get("id")),
+                        cb.equal(side.get("teamId"), sideTeamId),
+                        cb.isTrue(side.get("announced")));
+        return cb.and(ownSide(query, cb, sideTeamId, clubId, sections), cb.not(cb.exists(announced)));
     }
 }
