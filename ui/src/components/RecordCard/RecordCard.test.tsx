@@ -185,6 +185,39 @@ describe('RecordCard', () => {
     expect(screen.getAllByText('Poll closed')).toHaveLength(1)
   })
 
+  it('badgesBelow renders the badges in a left-aligned row after the heading, with headerActions staying in the header (docs/specs/087)', () => {
+    render(
+      <RecordCard
+        title="Riverside Vets A vs Eastwood CC"
+        badges={[
+          { label: 'Announced', tone: 'positive' },
+          { label: 'Poll open', tone: 'open' },
+        ]}
+        badgesBelow
+        headerActions={<button type="button">Scoring</button>}
+        editLabel="Edit"
+        onEdit={vi.fn()}
+      />,
+    )
+    const heading = screen.getByRole('heading', { name: 'Riverside Vets A vs Eastwood CC' })
+    const announced = screen.getByText('Announced')
+    const action = screen.getByRole('button', { name: 'Scoring' })
+    expect(screen.queryByTestId('badges-above')).not.toBeInTheDocument()
+    expect(heading.compareDocumentPosition(announced) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // the action sits in the header (before the badge row), and the badges render exactly once
+    expect(action.compareDocumentPosition(announced) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByText('Poll open')).toHaveLength(1)
+    const row = announced.closest('.MuiChip-root')?.parentElement as HTMLElement
+    expect(within(row).getByText('Poll open')).toBeInTheDocument()
+    expect(getComputedStyle(row).justifyContent).not.toBe('flex-end')
+  })
+
+  it('badgesAbove wins when badgesBelow is also set', () => {
+    render(<RecordCard title="Both" badges={[{ label: 'Poll open', tone: 'open' }]} badgesAbove badgesBelow editLabel="Edit" onEdit={vi.fn()} />)
+    expect(screen.getByTestId('badges-above')).toBeInTheDocument()
+    expect(screen.getAllByText('Poll open')).toHaveLength(1)
+  })
+
   it('without badgesAbove the badges render beside the title as before', () => {
     render(<RecordCard title="Plain" badge={{ label: 'Active', tone: 'positive' }} editLabel="Edit" onEdit={vi.fn()} />)
     expect(screen.queryByTestId('badges-above')).not.toBeInTheDocument()
