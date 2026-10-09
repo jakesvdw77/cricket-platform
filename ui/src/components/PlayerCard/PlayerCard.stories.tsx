@@ -30,6 +30,7 @@ function makePlayer(overrides: Partial<Player> = {}): Player {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
     ...overrides,
   }
 }
@@ -38,73 +39,53 @@ const meta: Meta<typeof PlayerCard> = {
   title: 'Components/PlayerCard',
   component: PlayerCard,
   parameters: { layout: 'padded' },
-  // No local MemoryRouter decorator here — .storybook/preview.tsx already wraps every story in
-  // one globally, same precedent TeamCard.stories.tsx/RecordCard.stories.tsx establish. PlayerCard
-  // makes no React Query calls of its own, so no QueryClientProvider decorator is needed either.
   decorators: [
-    (Story) => (
-      <Box sx={{ maxWidth: 360 }}>
-        <Story />
+    (StoryComponent) => (
+      <Box sx={{ maxWidth: 380 }}>
+        <StoryComponent />
       </Box>
     ),
   ],
+  args: {
+    player: makePlayer({
+      jerseyNumber: 7,
+      phone: '083 555 0177',
+      battingStance: 'LEFT_HANDED',
+      bowlingArm: 'RIGHT_ARM',
+      bowlingType: 'MEDIUM',
+    }),
+    sectionNames: ['Vets'],
+    viewTo: '/manage/players/player-1',
+    editTo: '/manage/players/player-1/edit',
+    onStatusAction: () => undefined,
+  },
 }
 export default meta
 
 type Story = StoryObj<typeof PlayerCard>
 
-// docs/specs/061-player-card-avatar-redesign.md's approved "Detailed" density — jersey number,
-// phone, full cricket info, and two tagged sections (section + overflow chip) all populated.
-export const Detailed: Story = {
+// docs/specs/088-players-polls-alignment.md: every card has the same five rows, the same footer and the same height.
+export const Verified: Story = {}
+
+// Waiting for the manager: amber badge, the Status menu offers Verify and Reject.
+export const Unverified: Story = { args: { player: makePlayer({ verificationStatus: 'UNVERIFIED', jerseyNumber: 12, phone: '082 555 0142' }) } }
+
+// Hidden from the default list; shown with "Show suspended and rejected players", and can be verified again.
+export const Rejected: Story = { args: { player: makePlayer({ verificationStatus: 'REJECTED', phone: '072 555 0188' }) } }
+
+// A deactivated player; the Status menu offers Reactivate.
+export const Suspended: Story = { args: { player: makePlayer({ active: false, jerseyNumber: 3, phone: '084 555 0121' }) } }
+
+// Nothing on file: the rows stay and show "–", so the card is as tall as a full one.
+export const NothingOnFile: Story = {
+  args: { player: makePlayer({ dateOfBirth: null, jerseyNumber: null }), sectionNames: [] },
+}
+
+export const LongNameAndManySections: Story = {
   args: {
-    player: makePlayer({
-      jerseyNumber: 16,
-      phone: '082 555 1234',
-      battingStance: 'RIGHT_HANDED',
-      bowlingArm: 'RIGHT_ARM',
-      bowlingType: 'OFF_BREAK',
-    }),
-    sectionNames: ['Colts A', 'Colts B'],
-    viewTo: '/manage/players/player-1',
-    editTo: '/manage/players/player-1/edit',
+    player: makePlayer({ firstName: 'Christopher Alexander', lastName: 'Montgomery-Hendricks the Third', jerseyNumber: 99, phone: '082 555 0142' }),
+    sectionNames: ['Vets', 'Over 40', 'Social'],
   },
 }
 
-// Every optional field cleanly omitted — no error, no empty icon (the spec's Acceptance Criteria).
-export const Minimal: Story = {
-  args: {
-    player: makePlayer(),
-    sectionNames: [],
-    viewTo: '/manage/players/player-1',
-    editTo: '/manage/players/player-1/edit',
-  },
-}
-
-export const Inactive: Story = {
-  args: {
-    ...Detailed.args,
-    badge: { label: 'Inactive', tone: 'muted' },
-  },
-}
-
-export const MissingDateOfBirth: Story = {
-  args: {
-    ...Detailed.args,
-    missingDateOfBirth: true,
-  },
-}
-
-export const MobileViewport: Story = {
-  args: Detailed.args,
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-}
-
-export const TabletViewport: Story = {
-  args: Detailed.args,
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-}
-
-export const DesktopViewport: Story = {
-  args: Detailed.args,
-  parameters: { viewport: { defaultViewport: 'desktop' } },
-}
+export const Mobile: Story = { parameters: { viewport: { defaultViewport: 'mobile' } } }
