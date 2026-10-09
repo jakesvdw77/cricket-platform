@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -281,7 +281,7 @@ describe('TeamDetailPage', () => {
     expect(await screen.findByText("Couldn't load this team")).toBeInTheDocument()
   })
 
-  it('renders the header chips: section, ground, captain, player/match counts, and no "Details" heading', async () => {
+  it('renders the header: section and Active chips, ground, no "Details" heading, and the key-figure strip for the default season', async () => {
     listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1', groundName: 'Irene Country Club' })])
     listSections.mockResolvedValueOnce([makeSection({ id: 'section-1', name: 'Men' })])
     listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
@@ -296,12 +296,75 @@ describe('TeamDetailPage', () => {
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
     expect(await screen.findByRole('heading', { name: '1st XI' })).toBeInTheDocument()
-    expect(screen.getByText('Men')).toBeInTheDocument()
-    expect(screen.getByText('Irene Country Club')).toBeInTheDocument()
-    expect(await screen.findByText('Captain: Jane Smith')).toBeInTheDocument()
-    expect(await screen.findByText('2 players')).toBeInTheDocument()
-    expect(await screen.findByText('1 matches')).toBeInTheDocument()
+    const badges = screen.getByLabelText('Team badges')
+    expect(within(badges).getByText('Men')).toBeInTheDocument()
+    expect(within(badges).getByText('Active')).toBeInTheDocument()
+    expect(within(screen.getByTestId('team-header-info-line')).getByText('Irene Country Club')).toBeInTheDocument()
+    expect(await screen.findByTestId('team-figure-players-value')).toHaveTextContent('2')
+    await waitFor(() => expect(screen.getByTestId('team-figure-matches-value')).toHaveTextContent('1'))
+    expect(screen.getByTestId('team-figure-captain-value')).toHaveTextContent('Jane Smith')
+    expect(screen.getByTestId('team-figure-ground-value')).toHaveTextContent('Irene Country Club')
     expect(screen.queryByText('Details')).not.toBeInTheDocument()
+    expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1')
+  })
+
+  it('shows dashes for a missing captain and ground', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    expect(screen.getByTestId('team-figure-captain-value')).toHaveTextContent('–')
+    expect(screen.getByTestId('team-figure-ground-value')).toHaveTextContent('–')
+  })
+
+  it('uses ?seasonId= for the squad request and changing the pill requests that season\'s squad', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValue([
+      makeSeason({ id: 'season-1', label: '2026' }),
+      makeSeason({ id: 'season-2', label: '2025', startDate: '2025-01-01', endDate: '2025-12-31', active: false }),
+    ])
+
+    renderPage('/manage/sections/section-1/teams/team-1?seasonId=season-2', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await waitFor(() => expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-2'))
+    expect(screen.queryByLabelText('Season', { selector: 'input' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Season' }))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+
+    await waitFor(() => expect(listSquad).toHaveBeenCalledWith('test-club-id', 'team-1', 'season-1'))
+  })
+
+  it('offers no "All" option on the Season pill', async () => {
+    const user = userEvent.setup()
+    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1' })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', label: '2026' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    await user.click(await screen.findByRole('button', { name: 'Season' }))
+    expect(await screen.findByRole('option', { name: '2026' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /^All/ })).not.toBeInTheDocument()
+  })
+
+  it('draws the Contacts and Sponsors cards as equal-height cells of one stretched row', async () => {
+    listTeamsForClub.mockResolvedValueOnce([makeTeam({ id: 'team-1' })])
+
+    renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
+
+    await screen.findByRole('heading', { name: '1st XI' })
+    const row = screen.getByTestId('team-contacts-sponsors-row')
+    expect(getComputedStyle(row).alignItems).toBe('stretch')
+    expect(row).toContainElement(screen.getByTestId('team-contacts-card'))
+    expect(row).toContainElement(screen.getByTestId('team-sponsors-card'))
+    // Each card fills its grid cell, so the shorter one is as tall as the taller.
+    expect(getComputedStyle(screen.getByTestId('team-contacts-card')).height).toBe('100%')
+    expect(getComputedStyle(screen.getByTestId('team-sponsors-card')).height).toBe('100%')
   })
 
   it('renders an Inactive badge chip for a deactivated team', async () => {
@@ -388,9 +451,10 @@ describe('TeamDetailPage', () => {
 
     renderPage('/manage/sections/section-1/teams/team-1', 'test-club-id')
 
-    await screen.findByText('Jane Smith')
+    await screen.findByRole('link', { name: 'Jane Smith' })
     expect(screen.getByText('Sam Lee')).toBeInTheDocument()
-    expect(screen.getByText('Captain')).toBeInTheDocument()
+    // The squad tile's own "Captain" label (the key-figure caption has the same text).
+    expect(within(screen.getByTestId('team-squad-card')).getByText('Captain')).toBeInTheDocument()
 
     expect(screen.getByRole('link', { name: 'Jane Smith' })).toHaveAttribute('href', '/manage/players/player-1')
     expect(screen.queryByRole('link', { name: 'View' })).not.toBeInTheDocument()
