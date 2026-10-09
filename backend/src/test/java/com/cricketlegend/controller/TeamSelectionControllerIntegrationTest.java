@@ -278,6 +278,38 @@ class TeamSelectionControllerIntegrationTest {
     }
 
     @Test
+    void cellsReportThePlayersAvailabilityAnswerForEachValue() throws Exception {
+        Seeded s = seed();
+        String body = overview(fixtures.clubAdmin(s.w()), s.w(), "");
+        UUID v1 = s.w().seniors1().getId();
+        UUID v2 = s.w().seniors2().getId();
+
+        assertThat(cell(body, s.ann(), s.a(), v1, "availability")).isEqualTo("AVAILABLE");
+        assertThat(cell(body, s.eve(), s.a(), v1, "availability")).isEqualTo("UNSURE");
+        assertThat(cell(body, s.dan(), s.a(), v1, "availability")).isEqualTo("UNAVAILABLE");
+        assertThat(cell(body, s.cat(), s.a(), v1, "availability")).isEqualTo("NO_RESPONSE");
+        // not on the poll's audience, and a match with no poll at all
+        assertThat(cell(body, s.fay(), s.a(), v1, "availability")).isEqualTo("NOT_POLLED");
+        assertThat(cell(body, s.dan(), s.b(), v2, "availability")).isEqualTo("NOT_POLLED");
+        // the picked cell keeps its answer too
+        assertThat(cell(body, s.ann(), s.a(), v1, "picked")).isEqualTo("true");
+    }
+
+    @Test
+    void aPickedCellStillReportsAnUnavailableAnswer() throws Exception {
+        Seeded s = seed();
+        matchSidePlayerRepository.save(MatchSidePlayer.builder().matchSideId(s.sideA().getId())
+                .playerProfileId(s.dan().getId()).battingOrder(2).role(PlayingRole.BATSMAN).build());
+
+        String body = overview(fixtures.clubAdmin(s.w()), s.w(), "");
+
+        UUID v1 = s.w().seniors1().getId();
+        assertThat(cell(body, s.dan(), s.a(), v1, "picked")).isEqualTo("true");
+        assertThat(cell(body, s.dan(), s.a(), v1, "availability")).isEqualTo("UNAVAILABLE");
+        assertThat(cell(body, s.dan(), s.a(), v1, "reasonCode")).isEqualTo("null");
+    }
+
+    @Test
     void aFullSideRefusesFurtherPicksWithTeamFull() throws Exception {
         World w = fixtures.world();
         List<PlayerProfile> eleven = new ArrayList<>();

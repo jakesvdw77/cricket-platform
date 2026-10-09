@@ -153,7 +153,7 @@ public class TeamSelectionServiceImpl implements TeamSelectionService {
             truncated = true;
             rowOrder = rowOrder.subList(0, MAX_PLAYERS);
         }
-        Map<MatchTeam, Map<UUID, SelectionRejection>> rejections =
+        Map<MatchTeam, Map<UUID, TeamSelectionBatchRules.Verdict>> rejections =
                 batchRules.rejections(clubId, matches, ownTeamsByMatch, pools, rowOrder, players);
 
         Map<UUID, League> leaguesById = leaguesOf(matches);
@@ -349,17 +349,18 @@ public class TeamSelectionServiceImpl implements TeamSelectionService {
             List<Match> matches,
             Map<UUID, TeamSelectionMatchDto> dtoByMatch,
             Map<UUID, SelectionEligibility.PlayerInfo> players,
-            Map<MatchTeam, Map<UUID, SelectionRejection>> rejections) {
+            Map<MatchTeam, Map<UUID, TeamSelectionBatchRules.Verdict>> rejections) {
         List<TeamSelectionCellDto> cells = new ArrayList<>();
         int picked = 0;
         for (Match match : matches) {
             for (TeamSelectionSideDto side : dtoByMatch.get(match.getId()).sides()) {
                 boolean isPicked = side.picks().stream().anyMatch(pick -> pick.playerId().equals(playerId));
-                SelectionRejection rejection =
+                TeamSelectionBatchRules.Verdict verdict =
                         rejections.get(new MatchTeam(match.getId(), side.teamId())).get(playerId);
-                SelectionRejectionReason reason = isPicked ? null : reasonOf(rejection, side);
+                SelectionRejectionReason reason = isPicked ? null : reasonOf(verdict.rejection(), side);
                 cells.add(new TeamSelectionCellDto(
-                        match.getId(), side.teamId(), side.sideId(), isPicked, reason == null, reason));
+                        match.getId(), side.teamId(), side.sideId(), isPicked, reason == null, reason,
+                        verdict.availability()));
                 picked += isPicked ? 1 : 0;
             }
         }

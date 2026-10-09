@@ -49,6 +49,13 @@ public class TeamSelectionBatchRules {
     public record MatchTeam(UUID matchId, UUID teamId) {
     }
 
+    /**
+     * What the rules say of one candidate for one side: the single rejection (null = selectable) and
+     * the availability answer the rules judged with, so the overview shows the very same fact.
+     */
+    public record Verdict(SelectionRejection rejection, SelectionAvailability availability) {
+    }
+
     /** Who may be selected for each side before availability: the whole pool, and its roster part. */
     public record Pools(Map<MatchTeam, Set<UUID>> members, Map<MatchTeam, Set<UUID>> roster) {
     }
@@ -141,11 +148,11 @@ public class TeamSelectionBatchRules {
     }
 
     /**
-     * For every (match, own team) the single rejection of each candidate who may not be selected
-     * (absent = selectable), by {@link SelectionRules#rejectionOf}. {@code players} must hold the
+     * For every (match, own team) and every candidate the {@link Verdict}: the single rejection by
+     * {@link SelectionRules#rejectionOf} (null = selectable) and the availability. {@code players} must hold the
      * candidates' loaded profiles ({@link SelectionEligibility#loadPlayers}).
      */
-    public Map<MatchTeam, Map<UUID, SelectionRejection>> rejections(
+    public Map<MatchTeam, Map<UUID, Verdict>> rejections(
             UUID clubId,
             List<Match> matches,
             Map<UUID, List<Team>> ownTeamsByMatch,
@@ -160,7 +167,7 @@ public class TeamSelectionBatchRules {
         SelectionEligibility eligibility = rules.eligibility();
         SelectionAvailabilityResolver availabilityResolver = rules.availability();
 
-        Map<MatchTeam, Map<UUID, SelectionRejection>> result = new HashMap<>();
+        Map<MatchTeam, Map<UUID, Verdict>> result = new HashMap<>();
         for (Match match : matches) {
             League league = match.getLeagueId() == null ? null : leagues.get(match.getLeagueId());
             Map<UUID, String> ageProblems = league == null
@@ -188,7 +195,7 @@ public class TeamSelectionBatchRules {
                     audience = Set.of();
                 }
                 Map<UUID, TakenBy> taken = MatchSlots.takenFor(held.getOrDefault(match.getId(), List.of()), team.getId());
-                Map<UUID, SelectionRejection> rejections = new HashMap<>();
+                Map<UUID, Verdict> verdicts = new HashMap<>();
                 for (UUID playerId : candidateIds) {
                     SelectionEligibility.PlayerInfo info = players.get(playerId);
                     String name = info == null ? "Player " + playerId : info.fullName();
@@ -201,11 +208,9 @@ public class TeamSelectionBatchRules {
                             ageProblems.get(playerId),
                             availability,
                             taken.get(playerId));
-                    if (rejection != null) {
-                        rejections.put(playerId, rejection);
-                    }
+                    verdicts.put(playerId, new Verdict(rejection, availability));
                 }
-                result.put(key, rejections);
+                result.put(key, verdicts);
             }
         }
         return result;

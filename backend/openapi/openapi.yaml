@@ -8703,6 +8703,14 @@ components:
           - NOT_IN_POOL
           - TEAM_FULL
           - POSITION_INVALID
+        availability:
+          type: string
+          enum:
+          - AVAILABLE
+          - UNSURE
+          - UNAVAILABLE
+          - NO_RESPONSE
+          - NOT_POLLED
     GameColumnDto:
       type: object
       properties:
