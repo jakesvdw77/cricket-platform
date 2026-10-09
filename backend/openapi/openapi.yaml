@@ -2758,6 +2758,26 @@ paths:
         schema:
           type: boolean
           default: false
+      - name: includeInactive
+        in: query
+        required: false
+        description: "False also leaves out suspended (inactive) and rejected players; unverified players always stay (docs/specs/088). The default keeps every caller unchanged."
+        schema:
+          type: boolean
+          default: true
+      - name: focus
+        in: query
+        required: false
+        description: "A Players quick filter (docs/specs/088), case-insensitive: in-squad, selected or unverified. The first two need seasonId. Anything else is a 400."
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        description: "The season that focus in-squad and selected look at (required for those two)."
+        schema:
+          type: string
+          format: uuid
       responses:
         "200":
           description: OK
@@ -2850,6 +2870,102 @@ paths:
       tags:
       - player-controller
       operationId: reactivate_6
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/summary:
+    get:
+      tags:
+      - player-controller
+      operationId: summary_2
+      description: "The Players page counters (docs/specs/088) for the same filters the list uses, section-scoped like the list. The two season figures use seasonId and are 0 without it."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: missingDateOfBirth
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: includeInactive
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayersSummaryDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/verify:
+    post:
+      tags:
+      - player-controller
+      operationId: verify
+      description: "Accept a player request, or undo a reject (docs/specs/088). 409 if the player is already verified."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/reject:
+    post:
+      tags:
+      - player-controller
+      operationId: reject
+      description: "Reject an unverified player request; the player is kept but hidden (docs/specs/088). 409 unless the player is unverified."
       parameters:
       - name: clubId
         in: path
@@ -6234,6 +6350,29 @@ components:
         updatedBy:
           type: string
           format: uuid
+        verificationStatus:
+          type: string
+          description: "VERIFIED for every manager-created player; UNVERIFIED will be set by the future self-registration flow; REJECTED players are hidden from the default list (docs/specs/088)."
+          enum:
+          - VERIFIED
+          - UNVERIFIED
+          - REJECTED
+    PlayersSummaryDto:
+      type: object
+      description: "The Players page counters for the list's filters. playersShown is the list's size; inSquad, selected and unverified equal its size with that focus."
+      properties:
+        playersShown:
+          type: integer
+          format: int64
+        inSquad:
+          type: integer
+          format: int64
+        selected:
+          type: integer
+          format: int64
+        unverified:
+          type: integer
+          format: int64
     UpdateMatchRequest:
       type: object
       properties:
