@@ -79,6 +79,20 @@ describe('SelectionMatchesTable', () => {
     expect(within(rows[3]).getByRole('link', { name: 'Select players' })).toBeInTheDocument()
   })
 
+  it('offers Share beside Select players for an announced side only, and never for the others', async () => {
+    const onShare = vi.fn()
+    const matches = sampleMatches()
+    renderTable(matches, { onAnnounce: vi.fn(), onShare })
+    const rows = screen.getAllByTestId('selection-row')
+    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1)
+    expect(within(rows[3]).getByRole('link', { name: 'Select players' })).toBeInTheDocument()
+    expect(within(rows[0]).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    expect(within(rows[2]).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    expect(within(rows[2]).getByRole('button', { name: 'Announce' })).toBeInTheDocument()
+    await userEvent.click(within(rows[3]).getByRole('button', { name: 'Share' }))
+    expect(onShare).toHaveBeenCalledWith(matches[3], matches[3].sides[0])
+  })
+
   it('does not let the action buttons wrap', () => {
     renderTable(sampleMatches().slice(0, 1))
     expect(screen.getByRole('link', { name: 'Select players' })).toHaveStyle({ whiteSpace: 'nowrap' })

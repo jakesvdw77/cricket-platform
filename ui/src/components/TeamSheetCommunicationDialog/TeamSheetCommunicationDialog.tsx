@@ -50,6 +50,9 @@ export interface TeamSheetCommunicationDialogProps {
   // line the caller (MatchCard) already computes via matchFields() for the PDF path — shared as-is
   // with the WhatsApp text builder rather than recomputed a second, drifting way in here.
   subtitle: string
+  // The scope to start on when that side is printable (a Share launched from one side's page). The admin can still
+  // switch scope; absent, or when that side has no players yet, the default is Both Teams.
+  initialScope?: TeamSheetPrintScope
 }
 
 function isSidePrintable(hasRealTeam: boolean, side: TeamSheetSide | undefined): boolean {
@@ -70,6 +73,7 @@ export function TeamSheetCommunicationDialog({
   sidesLoading,
   onPrint,
   subtitle,
+  initialScope,
 }: TeamSheetCommunicationDialogProps) {
   const [manualScope, setManualScope] = useState<TeamSheetPrintScope | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -98,6 +102,12 @@ export function TeamSheetCommunicationDialog({
   const bothPrintable = homePrintable || awayPrintable
 
   const defaultScope: TeamSheetPrintScope | null = useMemo(() => {
+    if (initialScope === 'home' && homePrintable) {
+      return 'home'
+    }
+    if (initialScope === 'away' && awayPrintable) {
+      return 'away'
+    }
     if (bothPrintable) {
       return 'both'
     }
@@ -108,7 +118,7 @@ export function TeamSheetCommunicationDialog({
       return 'away'
     }
     return null
-  }, [bothPrintable, homePrintable, awayPrintable])
+  }, [initialScope, bothPrintable, homePrintable, awayPrintable])
 
   const selectedScope = manualScope ?? defaultScope
 

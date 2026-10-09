@@ -23,6 +23,7 @@ const getTeamSelection = {
   mockRejectedValue: (error: unknown) => get.mockRejectedValue(error),
 }
 const lastParams = () => get.mock.lastCall?.[1].params
+vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await import('./teamSelectionShareMock')).useFakeTeamSheetShare }))
 const announceMatchSide = vi.fn()
 vi.mock('../../../api/matchSideApi', () => ({ announceMatchSide: (...args: unknown[]) => announceMatchSide(...args) }))
 
@@ -53,6 +54,20 @@ beforeEach(() => {
 })
 
 describe('MatchesView', () => {
+  it('Share on an announced row opens the team sheet dialog for that match and side', async () => {
+    const overview = makeOverview(sampleMatches())
+    get.mockImplementation((url: string) =>
+      Promise.resolve({ data: url.endsWith('/team-selection') ? overview : { id: overview.matches[3].matchId } }),
+    )
+    renderView()
+    await screen.findAllByTestId('selection-row')
+    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1)
+    await userEvent.click(screen.getByRole('button', { name: 'Share' }))
+    const dialog = await screen.findByTestId('share-dialog')
+    expect(dialog).toHaveAttribute('data-match-id', overview.matches[3].matchId)
+    expect(dialog).toHaveAttribute('data-scope', 'home')
+  })
+
   it('shows the counters with the figures of the overview', async () => {
     renderView()
     await screen.findAllByTestId('selection-row')

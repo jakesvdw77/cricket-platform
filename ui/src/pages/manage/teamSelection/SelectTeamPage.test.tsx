@@ -36,6 +36,8 @@ vi.mock('../../../api/matchApi', () => ({
     listPreviousMatches(clubId, teamId, seasonId, params),
 }))
 
+vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await import('./teamSelectionShareMock')).useFakeTeamSheetShare }))
+
 vi.mock('../../../api/playerApi', () => ({
   createPlayer: (clubId: string, payload: unknown) => createPlayer(clubId, payload),
 }))
@@ -348,6 +350,7 @@ describe('SelectTeamPage', () => {
       expect(within(actions).getAllByRole('button').map((button) => button.textContent)).toEqual([
         'Availability',
         'Announce team',
+        'Share team',
         'Select players',
       ])
     })
@@ -774,8 +777,29 @@ describe('SelectTeamPage', () => {
       expect(within(screen.getByTestId('select-actions')).getAllByRole('button').map((button) => button.textContent)).toEqual([
         'Availability',
         'Announce team',
+        'Share team',
         'Select players',
       ])
+    })
+
+    describe('Share team', () => {
+      it('is disabled, with a tooltip, until the side is announced', async () => {
+        const user = await openHomeXi()
+        const share = screen.getByRole('button', { name: 'Share team' })
+        expect(share).toBeDisabled()
+        await user.hover(share.parentElement as HTMLElement)
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Announce the team to share it')
+      })
+
+      it('opens the team sheet dialog for this match, scoped to the side being viewed', async () => {
+        const user = await openHomeXi({ announced: true })
+        const share = screen.getByRole('button', { name: 'Share team' })
+        expect(share).toBeEnabled()
+        await user.click(share)
+        const dialog = await screen.findByTestId('share-dialog')
+        expect(dialog).toHaveAttribute('data-match-id', 'match-1')
+        expect(dialog).toHaveAttribute('data-scope', 'home')
+      })
     })
 
     it('shows Un-announce instead of Announce for an announced side', async () => {

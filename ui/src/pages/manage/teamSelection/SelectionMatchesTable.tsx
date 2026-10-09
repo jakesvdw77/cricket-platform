@@ -18,6 +18,10 @@ export interface SelectionMatchesTableProps {
   onAnnounce?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   // The side being announced right now (its button is disabled).
   announcingSideId?: string | null
+  // Shares an announced side's team sheet (the row action of an announced side); absent, announced rows keep Select players.
+  onShare?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
+  // The match whose Share is loading (its button is disabled).
+  sharingMatchId?: string | null
 }
 
 // docs/specs/093-team-selection-hub.md: the zebra table of the Matches view - one row per club side (a derby has
@@ -28,7 +32,7 @@ const rowActionSx = { whiteSpace: 'nowrap', minHeight: 28, py: 0.25, px: 1.5, fo
 
 const COLUMNS = {
   xs: 'minmax(0, 1fr) 54px 32px',
-  sm: '150px minmax(200px, 2fr) minmax(110px, 1fr) 170px 150px 150px 32px',
+  sm: '150px minmax(200px, 2fr) minmax(110px, 1fr) 170px 150px 190px 32px',
 }
 
 const gridSx = {
@@ -51,17 +55,22 @@ function SideRow({
   side,
   onAnnounce,
   announcing,
+  onShare,
+  sharing,
 }: {
   match: TeamSelectionMatch
   side: TeamSelectionSide
   onAnnounce?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
   announcing: boolean
+  onShare?: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
+  sharing: boolean
 }) {
   const to = selectTeamPath(match.matchId, side.sideId, side.home)
   const title = side.home ? `${side.teamName} v ${side.opponentName}` : `${side.opponentName} v ${side.teamName}`
   const when = formatMatchDateTime(match.matchDate)
   const max = side.limits.maxSelected
   const canAnnounce = side.status === 'READY_TO_ANNOUNCE' && side.sideId !== null && Boolean(onAnnounce)
+  const canShare = side.status === 'ANNOUNCED' && side.announced && Boolean(onShare)
   return (
     <Box
       role="row"
@@ -131,15 +140,22 @@ function SideRow({
             {announcing ? 'Announcing…' : 'Announce'}
           </Button>
         ) : (
-          <MuiButton
-            size="small"
-            variant={side.status === 'ANNOUNCED' ? 'outlined' : 'contained'}
-            component={RouterLink}
-            to={to}
-            sx={rowActionSx}
-          >
-            Select players
-          </MuiButton>
+          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
+            {canShare && (
+              <MuiButton size="small" variant="outlined" onClick={() => onShare?.(match, side)} disabled={sharing} sx={rowActionSx}>
+                Share
+              </MuiButton>
+            )}
+            <MuiButton
+              size="small"
+              variant={side.status === 'ANNOUNCED' ? 'outlined' : 'contained'}
+              component={RouterLink}
+              to={to}
+              sx={rowActionSx}
+            >
+              Select players
+            </MuiButton>
+          </Box>
         )}
       </Box>
       <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
@@ -149,7 +165,7 @@ function SideRow({
   )
 }
 
-export function SelectionMatchesTable({ matches, onAnnounce, announcingSideId = null }: SelectionMatchesTableProps) {
+export function SelectionMatchesTable({ matches, onAnnounce, announcingSideId = null, onShare, sharingMatchId = null }: SelectionMatchesTableProps) {
   return (
     <Box
       role="table"
@@ -202,6 +218,8 @@ export function SelectionMatchesTable({ matches, onAnnounce, announcingSideId = 
               side={side}
               onAnnounce={onAnnounce}
               announcing={side.sideId !== null && side.sideId === announcingSideId}
+              onShare={onShare}
+              sharing={sharingMatchId === match.matchId}
             />
           )),
         )}

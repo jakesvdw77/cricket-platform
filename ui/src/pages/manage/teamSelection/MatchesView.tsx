@@ -11,6 +11,7 @@ import { matchesSearch } from './matchSearch'
 import { SelectionMatchesTable } from './SelectionMatchesTable'
 import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
 import { useAnnounceSide } from './useAnnounceSide'
+import { useShareAnnouncedSide } from './useShareAnnouncedSide'
 import { STATUS_LABELS } from './selectionStatus'
 
 // docs/specs/093-team-selection-hub.md: the quick filter behind the counters. null shows every match; each counter
@@ -24,6 +25,7 @@ export default function MatchesView() {
   const { clubId, overview, showPast, setShowPast, search } = useTeamSelectionHub()
   const [focus, setFocus] = useState<Focus | null>(null)
   const announce = useAnnounceSide(clubId as string)
+  const shareSide = useShareAnnouncedSide(clubId as string)
 
   const data = overview.data
   const term = search.trim().toLowerCase()
@@ -94,6 +96,8 @@ export default function MatchesView() {
           matches={visible}
           onAnnounce={announce.request}
           announcingSideId={announce.announcingSideId}
+          onShare={(match, side) => shareSide.share(match.matchId, side.home)}
+          sharingMatchId={shareSide.loadingMatchId}
         />
       )}
 
@@ -109,6 +113,7 @@ export default function MatchesView() {
       )}
 
       {announce.dialog}
+      {shareSide.dialog}
     </Box>
   )
 }

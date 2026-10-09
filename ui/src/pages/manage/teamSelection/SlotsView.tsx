@@ -6,12 +6,21 @@ import { SelectionGauge } from '../../../components/SelectionGauge'
 import type { TeamSelectionMatch, TeamSelectionSide } from '../../../api/teamSelectionApi'
 import { dateHeading, groupGames, kickoffText, slotLabel } from '../playerAvailability/gridHelpers'
 import { MatchesFrame } from './MatchesFrame'
+import { useTeamSelectionHub } from './hubContext'
 import { PickedName } from './PickedName'
 import { selectTeamPath } from './selectionLinks'
 import { STATUS_LABELS, STATUS_TONES } from './selectionStatus'
 import { sortedPicks } from './sortedPicks'
+import { useShareAnnouncedSide } from './useShareAnnouncedSide'
 
-function SideCard({ match, side }: { match: TeamSelectionMatch; side: TeamSelectionSide }) {
+interface SideCardProps {
+  match: TeamSelectionMatch
+  side: TeamSelectionSide
+  onShare: (match: TeamSelectionMatch, side: TeamSelectionSide) => void
+  sharing: boolean
+}
+
+function SideCard({ match, side, onShare, sharing }: SideCardProps) {
   const title = side.home ? `${side.teamName} v ${side.opponentName}` : `${side.opponentName} v ${side.teamName}`
   const picks = sortedPicks(side.picks)
   const max = side.limits.maxSelected
@@ -66,15 +75,22 @@ function SideCard({ match, side }: { match: TeamSelectionMatch; side: TeamSelect
         </Box>
       )}
 
-      <MuiButton
-        size="small"
-        variant={side.announced ? 'outlined' : 'contained'}
-        component={RouterLink}
-        to={selectTeamPath(match.matchId, side.sideId, side.home)}
-        sx={{ alignSelf: 'flex-start', whiteSpace: 'nowrap' }}
-      >
-        Select players
-      </MuiButton>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <MuiButton
+          size="small"
+          variant={side.announced ? 'outlined' : 'contained'}
+          component={RouterLink}
+          to={selectTeamPath(match.matchId, side.sideId, side.home)}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          Select players
+        </MuiButton>
+        {side.announced && (
+          <MuiButton size="small" variant="outlined" onClick={() => onShare(match, side)} disabled={sharing} sx={{ whiteSpace: 'nowrap' }}>
+            Share
+          </MuiButton>
+        )}
+      </Box>
     </Box>
   )
 }
@@ -90,6 +106,8 @@ export default function SlotsView() {
 }
 
 function SlotBlocks({ matches }: { matches: TeamSelectionMatch[] }) {
+  const { clubId } = useTeamSelectionHub()
+  const shareSide = useShareAnnouncedSide(clubId as string)
   const groups = useMemo(() => groupGames(matches), [matches])
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -100,11 +118,20 @@ function SlotBlocks({ matches }: { matches: TeamSelectionMatch[] }) {
               {dateHeading(group.date)} <Box component="span" sx={{ color: 'text.secondary', fontWeight: 500 }}>{slotLabel(slot.dayPart)}</Box>
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(280px, 1fr))' }, gap: 1.5 }}>
-              {slot.games.flatMap((match) => match.sides.map((side) => <SideCard key={`${match.matchId}:${side.teamId}`} match={match} side={side} />))}
+              {slot.games.flatMap((match) => match.sides.map((side) => (
+                <SideCard
+                  key={`${match.matchId}:${side.teamId}`}
+                  match={match}
+                  side={side}
+                  onShare={(target, targetSide) => shareSide.share(target.matchId, targetSide.home)}
+                  sharing={shareSide.loadingMatchId === match.matchId}
+                />
+              )))}
             </Box>
           </Box>
         )),
       )}
+      {shareSide.dialog}
     </Box>
   )
 }

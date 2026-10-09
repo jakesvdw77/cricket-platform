@@ -8,6 +8,7 @@ import type { Theme } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import IosShareOutlinedIcon from '@mui/icons-material/IosShareOutlined'
 import PanToolOutlinedIcon from '@mui/icons-material/PanToolOutlined'
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
@@ -40,6 +41,7 @@ import { sideDisplayName, sideStatus } from './matchSideHelpers'
 import { STATUS_LABELS } from './selectionStatus'
 import { selectTeamPath } from './selectionLinks'
 import { useMatchSidePanel } from './useMatchSidePanel'
+import { useShareAnnouncedSide } from './useShareAnnouncedSide'
 
 const HUB_PATH = '/manage/team-selection/matches'
 
@@ -183,6 +185,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
 
   const panel = useMatchSidePanel({ clubId, match, teamId, teamName, teamsById })
   const { side } = panel
+  const shareSide = useShareAnnouncedSide(clubId)
 
   // The header Availability button follows the match card's destination rule (docs/specs/075 section 3): getMatch returns
   // no polls, so they are rebuilt from the coverage and polls queries this page already runs.
@@ -271,13 +274,13 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
               </Box>
             </Box>
 
-            {/* The one action group: Availability and Announce team (outlined), Select players (filled). */}
+            {/* The one action group: Availability, Announce team and Share team (outlined), Select players (filled). */}
             <Box
               data-testid="select-actions"
               sx={{
                 display: 'grid',
                 gap: 1,
-                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, auto)' },
+                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, auto)' },
                 width: { xs: '100%', md: 'auto' },
                 justifyContent: { md: 'end' },
               }}
@@ -319,11 +322,24 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
                   </Box>
                 </Tooltip>
               )}
+              <Tooltip title={side?.announced ? '' : 'Announce the team to share it'}>
+                <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
+                  <MuiButton
+                    variant="outlined"
+                    onClick={() => shareSide.share(match.id, sideLabel === 'Home')}
+                    disabled={!side?.announced || shareSide.loadingMatchId === match.id}
+                    startIcon={<IosShareOutlinedIcon fontSize="small" />}
+                    sx={{ justifyContent: 'center', minWidth: 0, flex: 1 }}
+                  >
+                    Share team
+                  </MuiButton>
+                </Box>
+              </Tooltip>
               <Button
                 startIcon={<GroupsOutlinedIcon fontSize="small" />}
                 onClick={panel.dialog.openDialog}
                 disabled={!side}
-                sx={{ gridColumn: { xs: '1 / -1', md: 'auto' }, justifyContent: 'center' }}
+                sx={{ justifyContent: 'center' }}
               >
                 Select players
               </Button>
@@ -445,6 +461,7 @@ function SelectTeamContent({ clubId, match, teamId, sideLabel, sides, teamsById,
         </Stack>
       )}
 
+      {shareSide.dialog}
       <SelectTeamDialogs panel={panel} teamName={teamName} matchDate={match.matchDate} />
     </Box>
   )

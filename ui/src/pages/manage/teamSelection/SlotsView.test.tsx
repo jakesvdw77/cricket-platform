@@ -14,6 +14,7 @@ vi.mock('../../../api/seasonApi', () => ({
   listSeasons: () =>
     Promise.resolve([{ id: 's-now', clubId: 'club-1', label: '2026', startDate: '2026-01-01', endDate: '2026-12-31', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', updatedBy: null }]),
 }))
+vi.mock('../matches/useTeamSheetShare', async () => ({ useTeamSheetShare: (await import('./teamSelectionShareMock')).useFakeTeamSheetShare }))
 const get = vi.fn()
 vi.mock('../../../api/axiosConfig', () => ({ default: { get: (...args: unknown[]) => get(...args) } }))
 
@@ -45,6 +46,25 @@ beforeEach(() => {
 const card = (match: string, team = 'team-1') => screen.getByTestId(`slot-card-${match}-${team}`)
 
 describe('SlotsView', () => {
+  it('offers Share on the cards of announced sides only, and opens the dialog for that match and side', async () => {
+    const board = sampleBoard()
+    const announced = board.matches.flatMap((match) => match.sides.map((side) => ({ match, side }))).filter(({ side }) => side.announced)
+    expect(announced.length).toBeGreaterThan(0)
+    get.mockImplementation((url: string) =>
+      Promise.resolve({ data: url.endsWith('/team-selection') ? board : { id: announced[0].match.matchId } }),
+    )
+    renderView()
+    await screen.findByTestId('slot-card-m-1-team-1')
+    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(announced.length)
+    const { match, side } = announced[0]
+    expect(within(card(match.matchId, side.teamId)).getByRole('button', { name: 'Share' })).toBeInTheDocument()
+    expect(within(card('m-1')).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    await userEvent.click(within(card(match.matchId, side.teamId)).getByRole('button', { name: 'Share' }))
+    const dialog = await screen.findByTestId('share-dialog')
+    expect(dialog).toHaveAttribute('data-match-id', match.matchId)
+    expect(dialog).toHaveAttribute('data-scope', side.home ? 'home' : 'away')
+  })
+
   it('shows a block per day and slot, in date order, with a card per match side', async () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')

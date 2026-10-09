@@ -150,6 +150,24 @@ describe('TeamSheetCommunicationDialog', () => {
     expect(screen.getByRole('button', { name: 'Print Both Teams' })).not.toBeDisabled()
   })
 
+  it('starts on the initial scope when that side is printable, and falls back to Both Teams when it is not', () => {
+    const props = {
+      open: true,
+      onClose: vi.fn(),
+      match,
+      sidesLoading: false,
+      onPrint: vi.fn().mockResolvedValue(undefined),
+      subtitle: '',
+    }
+    const { rerender } = render(
+      <TeamSheetCommunicationDialog {...props} sides={[printableSide(homeTeam), printableSide(awayTeam)]} initialScope="away" />,
+    )
+    expect(screen.getByRole('button', { name: 'Print Coastal CC' })).toBeInTheDocument()
+
+    rerender(<TeamSheetCommunicationDialog {...props} sides={[printableSide(homeTeam), unannouncedSide(awayTeam)]} initialScope="away" />)
+    expect(screen.getByRole('button', { name: 'Print Both Teams' })).toBeInTheDocument()
+  })
+
   it('disables an individual scope for a side with zero players, but keeps Both Teams enabled', () => {
     render(
       <TeamSheetCommunicationDialog
