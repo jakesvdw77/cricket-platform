@@ -36,14 +36,16 @@ export function useFillViewportHeight<T extends HTMLElement>({ minHeight = 150, 
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
     if (observer) {
       observer.observe(document.body)
-      const parent = element.parentElement
-      if (parent) {
-        observer.observe(parent)
-        let sibling = parent.previousElementSibling
+      // Every ancestor's earlier siblings too (a hub header or switch above the page's own container).
+      let ancestor: HTMLElement | null = element.parentElement
+      while (ancestor && ancestor !== document.body) {
+        observer.observe(ancestor)
+        let sibling = ancestor.previousElementSibling
         while (sibling) {
           observer.observe(sibling)
           sibling = sibling.previousElementSibling
         }
+        ancestor = ancestor.parentElement
       }
     }
     return () => {
