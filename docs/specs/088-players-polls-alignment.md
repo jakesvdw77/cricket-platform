@@ -116,4 +116,4 @@ Per `docs/standards/testing.md`:
 
 ## Rollout Notes
 
-Slices, each reviewable on its own, one branch: (1) the mockup for review; (2) `PageCounters` column count, then the toolbar and the card (frontend only); (3) the summary endpoint, `includeInactive`, `squadSeasonId` and the counters. Add a pointer in `docs/roadmap.md` ("Counters on other pages") when this is approved.
+Slices, each reviewable on its own, one branch: (1) the mockup for review; (2) `PageCounters` column count, then the toolbar and the card (frontend only); (3) the summary endpoint, `includeInactive`, `focus` and `seasonId`, and the counters. Add a pointer in `docs/roadmap.md` ("Counters on other pages") when this is approved.
