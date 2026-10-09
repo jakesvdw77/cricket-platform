@@ -30,7 +30,7 @@ describe('filterFixtures', () => {
   const theirs = match({ id: 'theirs', homeLeagueTeamId: 'lt1', awayLeagueTeamId: 'lt2', venue: 'Riverside Oval' })
   const all = [past, earlierToday, ours, theirs]
 
-  it('hides matches before today by default and keeps today\'s, and Show played brings the rest back', () => {
+  it('hides matches before today by default and keeps today\'s, and View entire season brings the rest back', () => {
     expect(filterFixtures(all, base, teamsById).map((m) => m.id)).toEqual(['today', 'ours', 'theirs'])
     expect(filterFixtures(all, { ...base, showPlayed: true }, teamsById).map((m) => m.id)).toEqual(['past', 'today', 'ours', 'theirs'])
   })
