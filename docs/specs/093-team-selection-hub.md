@@ -1,7 +1,7 @@
 # 093 — Team Selection Hub and the Select Team Page
 
 **Depends on:** 040 (announce), 069/074 (availability coverage and the Players grid), 076 (team selection and its rules), 079 (manager shell), 087–092 (the gold standards: `FilterBar`, `ContentControlsLine`, `PageCounters`, `HeaderSeasonSelect`, `KeyFigureTile`, zebra tables, the hub switch of the Availability hub).
-**Status:** draft — written 2026-10-09 from the user's notes on the current match selection screen and the "Squads" menu entry. Mockup canvas (https://claude.ai/artifact/WSvX67AUZdtggCFRNNqJKD: Matches, Players, Time slots, Batting order, and the Select team page) **approved by the user on 2026-10-09 as "a great start"**, to be refined once they have used it; this text has not been reviewed line by line.
+**Status:** built on branch `feat/093-team-selection-hub`, awaiting the user's browser check (not yet merged, no PR). Originally a draft, written 2026-10-09 from the user's notes on the current match selection screen and the "Squads" menu entry. Mockup canvas (https://claude.ai/artifact/WSvX67AUZdtggCFRNNqJKD: Matches, Players, Time slots, Batting order, and the Select team page) **approved by the user on 2026-10-09 as "a great start"**, to be refined once they have used it; this text has not been reviewed line by line.
 
 ## Problem & Goals
 
@@ -63,3 +63,18 @@ Backend (if the endpoint is added): service tests, integration test with parity 
 ## Rollout Notes
 
 Slices: (1) rename, route and the Matches view; (2) the Select team page; (3) Players grid with click-to-pick; (4) Time slots; (5) Batting order. Backend only if planning shows a batched read is needed. Update `docs/roadmap.md` as each lands.
+
+## Built as
+
+What differs from the draft above (the plan is `docs/plans/093-team-selection-hub.md`):
+
+- **Players grid shows availability.** Cells use `CellMark` (Available, Unsure, Unavailable, No response, Not polled) with a picked dot and ring on top, reversing the draft's picked / not picked only. Backed by a new `availability` field on each overview cell (backend commit 492621d).
+- **Batting order:** per-column Reorder (arrows only in edit mode; on an announced side the first move asks "Change an announced team?"), a Short names option (persisted in `teamSelection:battingShortNames`) and a compact header (gauge with "n / max" and a tick).
+- **Previous slot / Next slot arrows** on the Batting order, Players and Availability players grids: they scroll to the nearest group start with a gentle snap.
+- **"View entire season"** replaces "Show past" on the selection and Availability pages, because those switches are season-scoped. Show closed polls is not season-scoped and is still open (see the roadmap).
+- **Density:** grid rows are about 32 px, and the shared `useFillViewportHeight` ignores the footer when a taller side column pushes it below the fold.
+- **Deactivate** (open question) lives on Edit Match Details.
+- **Edit Match** no longer has the Home/Away XI tabs; old `?tab=playing-xi` style links redirect. Edit Match gains a Select team link.
+- **`/manage/squads`** redirects to `/manage/team-selection`.
+- **Time slots view kept** for now.
+- **Not in 093:** the planned (announced) batting order versus the actual order from a future Results module is a roadmap item.

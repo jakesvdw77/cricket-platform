@@ -4,6 +4,8 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
+**Also built:** spec [`093`](specs/093-team-selection-hub.md) (Team selection hub) is built on branch `feat/093-team-selection-hub`, awaiting the user's browser check (no PR yet).
+
 ## Resume here: 085 Availability polish (built, awaiting the browser check; PR #104)
 
 Specs 083 and 084 are merged. Spec [`specs/085-availability-polish.md`](specs/085-availability-polish.md) and plan [`plans/085-availability-polish.md`](plans/085-availability-polish.md) are built in one PR (#104, one commit per item): compact counters, small toggles, browser tab titles, the Responses pages (header gauge, no Summary tab, aligned lists), the Players grid (one scrollbar, Jump to today in the header, legend above), the phone lists (By game / By player), changing an answer from the Players grid (F) and poll lists behind the Open polls and Close in 48 hours counters (G). Still to do: the user's browser check (Storybook and Playwright were never run), then merge. Mockups are linked in the spec.
@@ -172,6 +174,11 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk announce**, **phone variants of the Players grid and Batting order matrix** (today they scroll sideways), **keep or drop the Time slots view** if unused, and **a menu icon for Team selection** (it still uses the old `nav/squads` icon).
 - **Players grid: confirm before unpicking from an announced team** (it un-announces silently, as spec 076 does).
 - **Set the 12th man and "click a name to change player or position" from the Batting order view** (12th man is display only there; set it on the Select team page).
+- **Share announced teams.** Team selection pages have no share action yet. Proposed: a Share team button on the Select team page's action group, enabled once the team is announced, then the same share on an announced Matches row and on a Time slots card. It reuses `useTeamSheetShare` and `TeamSheetCommunicationDialog`. Bulk share per day is deferred.
+- **Show closed polls is not season-scoped** (latest 50): decide on a label or a season filter. The Matches list "Show past matches" switch still uses the old label, not "View entire season".
+- **Season carry-over** for any future rotation rule (for example who opened last season).
+- **"Past" means by date only:** same-day matches stay upcoming until midnight. A kickoff-time option is possible.
+- **Planned versus actual batting order:** see the Results module item above; 093 shows the announced plan only.
 
 ## Deferred by `092` — Teams gold standard
 

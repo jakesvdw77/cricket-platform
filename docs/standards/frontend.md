@@ -44,6 +44,12 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 
 **The Players list follows it too** (`docs/specs/088-players-polls-alignment.md`): four `PageCounters` (Active players, In a squad this season, Players selected this season, Unverified players) from `GET /players/summary`, a `FilterBar` with Section and name search (search is client-side, so the counters ignore it), and a `ContentControlsLine` with the "A to Z" sort link and the "Show suspended and rejected players" and "Missing date of birth" switches. Section and Missing date of birth are saved per club (`playerList:filters:<clubId>`); the switch and the quick filter are per visit. The roster stays an unpaginated, bounded list, so `includeInactive`, `focus` and `seasonId` are backend parameters of the list but the list is still fetched whole.
 
+**Team selection (`docs/specs/093-team-selection-hub.md`).** Routes: `/manage/team-selection` with children `matches`, `players`, `slots` and `batting`, and `/manage/team-selection/matches/:matchId/sides/:sideId` (the Select team page). Redirects: `/manage/squads` to `/manage/team-selection`, and old Edit Match `?tab=playing-xi` style links to the Select team page. Persisted keys: `teamSelection:filters:<clubId>` (League, Section, Team) and `teamSelection:battingShortNames` (the Short names option).
+
+**`hooks/useFillViewportHeight`** sizes a grid or matrix to the space left in the window so the page does not scroll with it. It watches the earlier siblings of every ancestor (a header that resizes re-measures it) and ignores the footer when a taller side column pushes the footer below the fold.
+
+**A "past" switch is labelled "View entire season" only where it is season-scoped** (the selection views and the Availability pages). A switch that is not scoped by season keeps its own wording (Show closed polls, Show past matches) until it is.
+
 ## Folder structure
 
 ```
