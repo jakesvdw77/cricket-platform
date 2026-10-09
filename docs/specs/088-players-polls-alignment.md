@@ -15,18 +15,19 @@ Goals:
 - **C. Player card:** the poll card's layout (badges under the header, subtitle, zebra detail rows), keeping the player's photo avatar.
 - **E. Games played:** two small stats in the card's top-right corner, games played this season and overall.
 - **F. List view:** a Cards | List switch; the list is a compact zebra table that shows many more players per screen.
+- **G. Player page:** the Edit button becomes the primary filled dark green button (as Add Player), and the page gets a lift: a bigger header, a key-figure strip and richer cards.
 - **D. Player status:** a `verificationStatus` on the player, a clickable amber "Unverified players" counter, and one Status button on the card and the player page to verify, reject, suspend or reactivate.
 
 ## Non-goals
 
 - **No self-registration flow** (parents or players creating a profile), no notification to whoever requested the profile, and no rule yet that keeps unverified players out of squads, selections or polls. All of that arrives with registration; here the status is only set, shown, filtered and changed by a manager.
-- **No sortable list columns and no column picker** in the list view (name order only, with the existing sort link); both can follow.
+- **No sortable column headers and no column picker** in the list view; ordering is the one sort menu on the content line, which sorts cards and list alike.
 - **No career statistics.** "Games played" counts selections recorded in this platform, nothing before the club started using it.
 - **No audit history** beyond the player's existing `updatedAt` / `updatedBy`.
 - **No "Joined recently" or "Missing date of birth" counter.** Missing date of birth stays a switch (077's filter, moved to the content line).
 - **No pagination.** The roster is a small bounded list (028); it stays fetched in full and searched by name in the browser. The quick filter and the Show inactive switch are backend parameters like Section and Missing date of birth, so the counters and the list share one definition.
 - **No League, Season or Team filter on Players.** They do not describe a player; the two season figures use the default season behind the scenes (below).
-- **No change to the Player detail page beyond the verification banner and actions, the player form, section tagging, or the public availability form.** No other new player fields.
+- **No change to the player form, section tagging, or the public availability form, and no new data on the Player page beyond the games-played counts and the age worked out from the date of birth** (G, below, redesigns the page itself). No other new player fields.
 - **No server-side search**, so the counters do not follow the search box (the same decision as 083 for Polls).
 
 ## User Stories
@@ -77,8 +78,12 @@ Four `PageCounters` in `density="compact"`, all **filters** (`kind="filter"`, `a
 ## Toolbar (B)
 
 - **`FilterBar`** (`density="compact"`): Section (`SectionTreeSelect`, kept) and search ("Search by name"). Section is saved per club as today (`playerList:filters:<clubId>`), search never is.
-- **`ContentControlsLine`:** scope "Showing N players" (with the quick filter's name when set) on the left; the sort link ("A to Z" / "Z to A") and two `CompactSwitch`es on the right: "Show suspended and rejected players" and "Missing date of birth" (the 077 filter, still saved). On a phone the switches and the sort link move into the Filters sheet; the Missing date of birth choice also shows as a chip and counts in the badge.
+- **`ContentControlsLine`:** scope "Showing N players" (with the quick filter's name when set) on the left; the **sort menu** (below) and two `CompactSwitch`es on the right: "Show suspended and rejected players" and "Missing date of birth" (the 077 filter, still saved). On a phone the switches and the sort link move into the Filters sheet; the Missing date of birth choice also shows as a chip and counts in the badge.
 - Header unchanged: "Players" and "Add Player".
+
+### Sort menu
+
+The quiet sort link on the content line is a small menu (`SortMenu`, a shared sibling of `SortLink`): the link reads the current order in words ("A to Z", "Z to A", "most games", "fewest games" with the ↕), and opens a menu with the current order ticked: **Name, A to Z** (default), **Name, Z to A**, **Games this season, most first**, **Games this season, fewest first**. Games-this-season orders break ties by name, so equal counts keep a stable order. Sorting is in the browser (the roster is fetched whole), applies to cards and list alike, is per visit, and is the same control in the phone Filters sheet.
 
 ## Player card (C)
 
@@ -120,7 +125,17 @@ Two small stat chips in the card's top-right corner, stacked: **"12 this season"
 
 A **Cards | List** switch sits on the content line, left of the sort link on desktop and as the first control in the Filters sheet on a phone (a small segmented control, the same style as the Availability view switch). **The choice is remembered**: it is saved the moment it changes, per browser (`playerList:view`), not per club, and restored on the next visit, so each manager keeps the view they prefer; it never affects the counters, filters or the Status actions. It is built as a shared control and hook (`ListViewToggle` and `useListViewPreference(key, default)`, every `localStorage` access try/catch-guarded like `usePersistedListFilters`), not as Players-only code, because Matches and Polls will get the same switch (see the roadmap).
 
-The list is one bordered panel of rows, the Players grid's language: a sticky header row, the shared zebra tint on alternate rows, 44 px minimum row height, the **whole row opens the player**, exactly like a card (the name is a stretched link over the row, so a click anywhere on the row navigates, and Enter on the focused row does too); the row tints on hover and shows a keyboard focus ring; the Status button at the end sits above that link, so using its menu never navigates. Columns on desktop: **Player** (small avatar and name), **Status** (the same badge), **Section** (first plus `+N`, or "No section"), **No.**, **Phone**, **Bat**, **Bowl**, **This season**, **Overall**, and a **Status** kebab button at the end opening the same `PlayerStatusMenu`. A value that is not on file shows "–". From `sm` down the list keeps **Player** (avatar, name, status badge under it), the two games columns and the kebab; the other columns drop. Loading, empty and error states are the page's own; rows are equal height.
+The list is one bordered panel of rows, the Players grid's language: a sticky header row, the shared zebra tint on alternate rows, 44 px minimum row height, the **whole row opens the player**, exactly like a card (the name is a stretched link over the row, so a click anywhere on the row navigates, and Enter on the focused row does too); the row tints on hover and shows a keyboard focus ring; the Status button at the end sits above that link, so using its menu never navigates. Columns on desktop: **Player** (small avatar and name), **Status** (the same badge), **Section** (first plus `+N`, or "No section"), **No.**, **Phone**, **Bat**, **Bowl**, **Season**, **Overall**, and a **Status** kebab button at the end opening the same `PlayerStatusMenu`. A value that is not on file shows "–". From `sm` down the list keeps **Player** (avatar, name, status badge under it), **Season**, **Phone** (in that order) and the kebab; the other columns drop, **Overall** included (a phone shows the phone number instead). Loading, empty and error states are the page's own; rows are equal height.
+
+## Player page (G)
+
+Added 2026-10-09 at the user's request (\"the Edit button must be dark green like the Add button; the page looks a bit dull\"); the design is in the mockup canvas (boards 9 and 10), **pending the user's approval**. Same data and the same banner and Status button as before, redesigned:
+
+- **Buttons:** **Edit** is the filled dark green primary button (the shared contained button, as Add Player); **Status** stays the outlined button beside it. On a phone both are full-width halves under the header. (Built first, ahead of the rest of G, because it was a one-line request.)
+- **Header:** a bigger avatar (80 px, 72 px on a phone) with a soft ring, the name at the page-title size, and under it the status badge and the section path, then the two buttons on the right.
+- **Key-figure strip:** four non-clickable tiles under the header, each a tinted icon tile with a large figure: **Games this season**, **Games overall** (the numbers from E, so the page needs the list's season-aware count), **Jersey number** and **Age** (worked out from the date of birth, with the birth date as its caption; "–" when none). Two across on a phone.
+- **Cards:** the four existing cards (Basic info, Contact info, Cricket info, Stats), each heading with a small solid-green icon tile; labels over bold values in a tidy two-column grid (a value not on file shows "–" in the secondary colour); **Contact info** gains **Call** and **Email** buttons (`tel:` and `mailto:` links, shown only when the number or address exists); **Cricket info** shows batting, bowling and wicketkeeper as chips instead of three rows of "–"; **Stats** shows the real **Games this season** and **Games overall** plus Runs and Wickets as "–" with a "More coming soon" note (replacing the all-placeholder card).
+- **States:** the unverified and rejected banner and the Status menu are unchanged; the page shows the same loading, error and not-authorised states.
 
 ## API Contract (outline, finalised in planning)
 
@@ -146,7 +161,7 @@ The list is one bordered panel of rows, the Players grid's language: a sticky he
 ## Test Plan
 
 Per `docs/standards/testing.md`:
-- **Frontend:** `PlayerList` (counters from the summary and their filters, each quick filter sends `focus` and `seasonId`, chip, badge, scope text, reset and toggle, zero rule, amber Unverified, failed summary hides the row, switch default off sending `includeInactive`, Missing date of birth switch persisted, Clear all, phone sheet), `PlayerCard` (the two games chips always present, "0" when none; status badge always first, the five fixed rows with "–" for absent values, the same footer for every status, equal height, the Status menu per status and its calls, Reject and Suspend confirm dialogs, Verify and Reactivate act at once), the detail-page banner, `PageCounters` four items; the list view (columns, the same Status menu per row, reduced columns on a phone, the switch remembered in `playerList:view` (changing it saves at once; a reload and a fresh visit restore it), the same filters and counters in both views).
+- **Frontend:** `PlayerList` (the sort menu orders by name and by games this season with a name tie-break, in both views; counters from the summary and their filters, each quick filter sends `focus` and `seasonId`, chip, badge, scope text, reset and toggle, zero rule, amber Unverified, failed summary hides the row, switch default off sending `includeInactive`, Missing date of birth switch persisted, Clear all, phone sheet), `PlayerCard` (the two games chips always present, "0" when none; status badge always first, the five fixed rows with "–" for absent values, the same footer for every status, equal height, the Status menu per status and its calls, Reject and Suspend confirm dialogs, Verify and Reactivate act at once), the detail-page banner, `PageCounters` four items; the list view (columns, the same Status menu per row, reduced columns on a phone, the switch remembered in `playerList:view` (changing it saves at once; a reload and a fresh visit restore it), the same filters and counters in both views).
 - **Backend:** summary (definitions incl. inactive, rejected and unverified players, a player in two squads or two selections counted once, a squad or match of another season, a selected player who is in no squad, games played (a past match counted, an upcoming or deactivated match not, a player in two matches of two seasons, "overall" across seasons, 0 without a season), section-manager scoping, another club 403, statement count); list `includeInactive` and `focus`; verify and reject (transitions and the 409s, section scoping, cross-club 404); the migration defaults existing rows to `VERIFIED`; counters equal list totals (parity).
 - **Contract:** `openapi.yaml` additions only.
 
@@ -158,9 +173,11 @@ Per `docs/standards/testing.md`:
 - Suspended and rejected players are hidden until the switch is on; the first counter then reads "Players shown".
 - Existing players and manager-created players are `VERIFIED`; the Players endpoints other than the new ones behave as before for every existing caller.
 - The toolbar, chips and phone sheet match Matches; Missing date of birth is a switch and a chip.
+- The Player page's Edit button is the filled dark green primary button; the page shows the larger header, the four key figures (games this season and overall, jersey number, age), icon-tile card headings, Call and Email buttons when a number or address exists, the cricket details as chips and a Stats card with the real games counts.
 - Every player card has the same height and the same parts: status badge and section, five zebra rows ("–" when absent) and the Status, Edit, View footer; no button appears or disappears with the status.
 - Each card shows "N this season" and "N overall" in its top-right corner, always present, and the numbers match the player's selections in past, active matches.
 - A row opens the player when clicked anywhere except the Status button, and the Status menu opens without navigating.
+- The sort menu orders by name (either way) or by games this season (most or fewest first, ties by name), in both views, without refetching.
 - A Cards | List switch changes the layout only; the list view shows the columns above, the same Status menu per row and the same filters and counters, and the choice is remembered.
 - Section managers only see and act on their sections' players, in list, counters and actions; a failed summary hides the counters and the list still works.
 
@@ -168,7 +185,7 @@ Per `docs/standards/testing.md`:
 
 - The default for inactive players (Decisions to confirm, 1) and the meaning of "selected" (2).
 - Whether "View" is wanted as a footer button when the whole card already opens the player.
-- Whether the list view should become the default on desktop, and whether its games columns should be sortable later.
+- Whether the list view should become the default on desktop, and whether column headers should become sortable later (the sort menu already offers games this season).
 - Whether a verified player should also be rejectable (today only deactivated, i.e. suspended).
 - When registration lands: whether an unverified player should be blocked from squads, selections and polls, and whether the requester is told of the outcome (both out of scope here).
 
