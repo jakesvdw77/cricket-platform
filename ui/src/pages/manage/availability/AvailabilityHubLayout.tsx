@@ -112,6 +112,7 @@ export default function AvailabilityHubLayout() {
     teamId: hub.validTeamId,
     type: typeFilterFor(hub.showGroup, hub.showSquad),
     includeClosed: hub.showClosed,
+    seasonId: hub.seasonId,
   }
   // The players panel: open/closed and its tab are local state, not in the address.
   const [panel, setPanel] = useState<{ open: boolean; tab: PlayersPanelTab }>({ open: false, tab: 'awaiting' })
@@ -125,7 +126,8 @@ export default function AvailabilityHubLayout() {
   const summaryQuery = useQuery({
     queryKey: availabilitySummaryKey(clubId ?? '', summaryFilters),
     queryFn: () => getAvailabilitySummary(clubId as string, summaryFilters),
-    enabled: Boolean(clubId) && view === 'polls' && !hub.teamsLoading && !hub.teamsError,
+    // Held until the teams and the season resolved, so the counters never go out unscoped first.
+    enabled: Boolean(clubId) && view === 'polls' && !hub.teamsLoading && !hub.teamsError && !hub.seasonsLoading,
     retry: false,
   })
 

@@ -329,7 +329,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
 
     await waitFor(() => expect(values()).toEqual(['3', '12 / 20', '8.5', '0']))
     expect(getAvailabilitySummary).toHaveBeenCalledWith('club-1', {
-      leagueId: null, sectionId: null, teamId: null, type: 'ALL', includeClosed: false,
+      leagueId: null, sectionId: null, teamId: null, type: 'ALL', includeClosed: false, seasonId: 's-now',
     })
     for (const label of ['Open polls', 'Players responded', 'Players still to answer', 'Close in 48 hours']) {
       expect(screen.getByText(label)).toBeInTheDocument()
@@ -443,6 +443,20 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
     await waitFor(() => expect(screen.queryByTestId('page-counters-loading')).not.toBeInTheDocument())
     expect(getAvailabilitySummary).not.toHaveBeenCalled()
     expect(screen.queryByText('Open polls')).not.toBeInTheDocument()
+  })
+
+  it('holds the summary request until the seasons have loaded, then sends the hub season', async () => {
+    let resolveSeasons: (value: Season[]) => void = () => {}
+    listSeasons.mockReturnValue(new Promise<Season[]>((resolve) => { resolveSeasons = resolve }))
+    renderAt('/manage/availability')
+
+    await waitFor(() => expect(listSeasons).toHaveBeenCalled())
+    await waitFor(() => expect(listTeamsForClub).toHaveBeenCalled())
+    expect(getAvailabilitySummary).not.toHaveBeenCalled()
+
+    resolveSeasons(SEASONS)
+    await waitFor(() => expect(getAvailabilitySummary).toHaveBeenCalled())
+    for (const call of getAvailabilitySummary.mock.calls) expect(call[1]).toHaveProperty('seasonId', 's-now')
   })
 
   it('does not load teams for the Coverage view', async () => {
@@ -640,7 +654,7 @@ describe('AvailabilityHubLayout counters (docs/specs/081)', () => {
       await waitFor(() => expect(listAvailabilitySummaryPlayers).toHaveBeenCalled())
       expect(listAvailabilitySummaryPlayers.mock.calls[0][0]).toBe('club-1')
       expect(listAvailabilitySummaryPlayers.mock.calls[0][1]).toEqual({
-        leagueId: 'lg-1', sectionId: null, teamId: 'tm-1', type: 'SQUAD', includeClosed: true,
+        leagueId: 'lg-1', sectionId: null, teamId: 'tm-1', type: 'SQUAD', includeClosed: true, seasonId: 's-now',
         kind: 'awaiting', search: '',
       })
       expect(await screen.findByTestId('players-panel-scope')).toHaveTextContent('Showing: Over 40 League · Lions')

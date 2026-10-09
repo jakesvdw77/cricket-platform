@@ -20,6 +20,8 @@ export interface AvailabilitySummaryFilters {
   teamId?: string | null
   type?: AvailabilityPollTypeFilter
   includeClosed?: boolean
+  // The hub's season: the counters count only the polls and rounds the season-scoped lists show.
+  seasonId?: string | null
 }
 
 // The poll type the two Polls toggles stand for. Both off cannot happen - the UI keeps one toggle on - so that
@@ -45,6 +47,7 @@ export async function getAvailabilitySummary(
   if (filters.teamId) params.teamId = filters.teamId
   if (filters.type && filters.type !== 'ALL') params.type = filters.type
   if (filters.includeClosed) params.includeClosed = true
+  if (filters.seasonId) params.seasonId = filters.seasonId
   const { data } = await api.get<AvailabilitySummary>(`/manage/clubs/${clubId}/availability/summary`, { params })
   return data
 }
@@ -100,6 +103,7 @@ export async function listAvailabilitySummaryPlayers(
   if (filters.teamId) params.teamId = filters.teamId
   if (filters.type && filters.type !== 'ALL') params.type = filters.type
   if (filters.includeClosed) params.includeClosed = true
+  if (filters.seasonId) params.seasonId = filters.seasonId
   if (filters.closingSoon) params.closingSoon = true
   const search = filters.search?.trim()
   if (search) params.search = search
