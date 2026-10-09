@@ -31,6 +31,7 @@ const getRoundResponses = vi.fn()
 const updateRoundDescription = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSections = vi.fn()
+const listSeasons = vi.fn()
 
 vi.mock('../../api/matchAvailabilityApi', () => ({
   listOpenPolls: (clubId: string, params: unknown) => listOpenPolls(clubId, params),
@@ -68,7 +69,7 @@ vi.mock('../../api/teamApi', () => ({
 vi.mock('../../api/leagueApi', () => ({
   listLeagues: () => Promise.resolve([{ id: 'league-1', name: 'Premier League' }]),
 }))
-vi.mock('../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
+vi.mock('../../api/seasonApi', () => ({ listSeasons: (clubId: string) => listSeasons(clubId) }))
 
 vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
@@ -78,6 +79,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   listTeamsForClub.mockResolvedValue([])
   listSections.mockResolvedValue([])
+  listSeasons.mockResolvedValue([])
   listOpenPolls.mockResolvedValue([])
   listClosedPolls.mockResolvedValue([])
   listRounds.mockResolvedValue([])
@@ -540,6 +542,45 @@ describe('AvailabilityPollsDashboard', () => {
       )
       expect(listRounds).toHaveBeenLastCalledWith('test-club-id', {
         leagueId: 'league-1', sectionId: 'section-1', teamId: 'team-home', open: true,
+      })
+    })
+
+    // The hub's season scopes every list request, and the requests wait for it instead of going out unscoped first.
+    describe('season scope', () => {
+      const SEASON = {
+        id: 'season-2026', clubId: 'test-club-id', label: '2026/2027', startDate: '2000-01-01', endDate: '2999-12-31',
+        active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', updatedBy: null,
+      }
+
+      it('sends the hub season on the open poll and round requests, never unscoped first', async () => {
+        listSeasons.mockResolvedValue([SEASON])
+        renderDashboard('test-club-id')
+
+        await waitFor(() => expect(listOpenPolls).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-2026' }))
+        expect(listRounds).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-2026', open: true })
+        for (const call of listOpenPolls.mock.calls) expect(call[1]).toHaveProperty('seasonId', 'season-2026')
+        for (const call of listRounds.mock.calls) expect(call[1]).toHaveProperty('seasonId', 'season-2026')
+      })
+
+      it('sends the hub season on the closed requests when Show closed is on', async () => {
+        listSeasons.mockResolvedValue([SEASON])
+        renderDashboard('test-club-id', '/manage/availability?showClosed=true')
+
+        await waitFor(() => expect(listClosedPolls).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-2026' }))
+        expect(listRounds).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-2026', open: false })
+      })
+
+      it('holds the list requests until the seasons have loaded', async () => {
+        let resolveSeasons: (value: unknown[]) => void = () => {}
+        listSeasons.mockReturnValue(new Promise((resolve) => { resolveSeasons = resolve }))
+        renderDashboard('test-club-id')
+
+        await waitFor(() => expect(listSeasons).toHaveBeenCalled())
+        expect(listOpenPolls).not.toHaveBeenCalled()
+        expect(listRounds).not.toHaveBeenCalled()
+
+        resolveSeasons([SEASON])
+        await waitFor(() => expect(listOpenPolls).toHaveBeenCalledWith('test-club-id', { seasonId: 'season-2026' }))
       })
     })
 

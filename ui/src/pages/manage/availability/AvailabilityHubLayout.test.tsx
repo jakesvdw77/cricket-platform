@@ -259,16 +259,12 @@ describe('AvailabilityHubLayout (docs/specs/073)', () => {
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 
-  // docs/specs/083: no season control on any view; Players and Coverage get the default season.
-  it('has no season control on any view, and hands Players and Coverage the default season', async () => {
+  // docs/specs/083: no season control on any view; every view (Polls included, which scopes its lists by it) gets the default season.
+  it('has no season control on any view, and hands every view the default season', async () => {
     for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage']) {
       const view = renderAt(path)
       expect(screen.queryByRole('button', { name: /season/i })).not.toBeInTheDocument()
-      if (path.endsWith('availability')) {
-        expect(listSeasons).not.toHaveBeenCalled()
-      } else {
-        await waitFor(() => expect(screen.getByTestId('ctx')).toHaveTextContent('season=s-now'))
-      }
+      await waitFor(() => expect(screen.getByTestId('ctx')).toHaveTextContent('season=s-now'))
       view.unmount()
     }
   })

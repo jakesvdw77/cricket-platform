@@ -16,4 +16,9 @@ describe('sectionAvailabilityApi listRounds (docs/specs/083)', () => {
       params: { sectionId: 's-1', open: false, leagueId: 'l-1', teamId: 't-1' },
     })
   })
+
+  it('sends seasonId only when set', async () => {
+    await listRounds('club-1', { open: true, seasonId: 'se-1' })
+    expect(vi.mocked(api.get).mock.lastCall?.[1]).toEqual({ params: { open: true, seasonId: 'se-1' } })
+  })
 })

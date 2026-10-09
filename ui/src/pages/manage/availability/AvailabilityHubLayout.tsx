@@ -102,7 +102,7 @@ export default function AvailabilityHubLayout() {
   const view = activeView(pathname)
   // docs/specs/085 (C8): the browser tab names the view; the visible page title stays "Availability".
   useDocumentTitle(`${VIEWS.find((entry) => entry.value === view)?.label ?? 'Polls'} · Availability`)
-  const hub = useAvailabilityHubState(clubId, view !== 'polls', view !== 'coverage')
+  const hub = useAvailabilityHubState(clubId, true, view !== 'coverage')
 
   // The counters belong to the Polls view only and describe exactly what its list shows: the shared filters,
   // the poll type toggles and Show closed. A failed request hides the row, the page still works.

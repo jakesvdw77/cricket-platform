@@ -172,6 +172,8 @@ export interface ListOpenPollsParams {
   // docs/specs/083: the shared League and Team filters, validated server-side like sectionId.
   leagueId?: string
   teamId?: string
+  // The season whose polls are listed (matches dated in it); absent lists every season's.
+  seasonId?: string
 }
 
 function pollListParams(params: ListOpenPollsParams) {
@@ -179,6 +181,7 @@ function pollListParams(params: ListOpenPollsParams) {
     ...(params.sectionId ? { sectionId: params.sectionId } : {}),
     ...(params.leagueId ? { leagueId: params.leagueId } : {}),
     ...(params.teamId ? { teamId: params.teamId } : {}),
+    ...(params.seasonId ? { seasonId: params.seasonId } : {}),
   }
 }
 
