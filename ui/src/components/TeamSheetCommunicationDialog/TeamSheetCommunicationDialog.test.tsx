@@ -94,6 +94,7 @@ function makeSquadMember(playerProfileId: string, firstName: string, lastName: s
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
   }
 }
 

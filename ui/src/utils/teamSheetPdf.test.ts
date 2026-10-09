@@ -130,6 +130,7 @@ function makeSquadMember(
     createdAt: '',
     updatedAt: '',
     updatedBy: null,
+    verificationStatus: 'VERIFIED',
   }
 }
 
