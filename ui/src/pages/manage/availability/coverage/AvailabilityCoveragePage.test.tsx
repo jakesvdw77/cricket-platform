@@ -226,13 +226,13 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     expect(screen.queryByLabelText('Team')).not.toBeInTheDocument()
   })
 
-  it('Show past slots sends includePast and is not persisted', async () => {
+  it('View entire season sends includePast and is not persisted', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('checkbox', { name: 'Show past slots' })).not.toBeChecked()
-    await user.click(screen.getByRole('checkbox', { name: 'Show past slots' }))
+    expect(screen.getByRole('checkbox', { name: 'View entire season' })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'View entire season' }))
 
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
@@ -313,7 +313,7 @@ describe('AvailabilityCoveragePage (docs/specs/074)', () => {
     listPlayerAvailability.mockResolvedValue(makeResult({ games: [], players: [] }))
     const empty = renderPage()
     expect(await screen.findByText('No games to cover')).toBeInTheDocument()
-    expect(screen.getByText(/Try another section or league, or show past slots/)).toBeInTheDocument()
+    expect(screen.getByText(/Try another section or league, or turn on View entire season/)).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Legend' })).not.toBeInTheDocument()
     empty.unmount()
 

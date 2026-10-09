@@ -87,12 +87,12 @@ describe('MatchesView', () => {
     expect(rows()).toHaveLength(4)
   })
 
-  it('asks for past matches when Show past matches is switched on', async () => {
+  it('asks for past matches when View entire season is switched on', async () => {
     renderView()
     await screen.findAllByTestId('selection-row')
     expect(lastParams()).toEqual(expect.not.objectContaining({ includePast: true }))
     getTeamSelection.mockResolvedValue(makeOverview([...sampleMatches(), makeMatch({ matchId: 'old', upcoming: false, matchDate: '2026-09-01T10:00:00' }, 'ANNOUNCED')]))
-    await userEvent.click(screen.getAllByRole('checkbox', { name: 'Show past matches' })[0])
+    await userEvent.click(screen.getAllByRole('checkbox', { name: 'View entire season' })[0])
     await waitFor(() => expect(lastParams()).toEqual(expect.objectContaining({ includePast: true })))
     await waitFor(() => expect(rows()).toHaveLength(5))
     expect(screen.getByRole('button', { name: /Matches shown/ })).toHaveTextContent('5')

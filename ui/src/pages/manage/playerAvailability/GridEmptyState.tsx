@@ -10,7 +10,7 @@ export function GridEmptyState({ games }: { games: GameColumn[] }) {
     return (
       <EmptyState
         title="No games match these filters"
-        description="Try a different season, league, section or team, or turn on Show past games."
+        description="Try a different season, league, section or team, or turn on View entire season."
       />
     )
   }

@@ -18,7 +18,7 @@ import { useAvailabilityHub } from './availability/hubContext'
 // docs/specs/068-player-availability-grid.md: a season of availability at a glance. docs/specs/083:
 // League, Section and Team are the hub's shared filters (saved per club and mirrored in the address),
 // shown in the shared FilterBar with search; the season is always the default one (no season control), also
-// from the hub. Search, Show past games and Hide players with no answers are a per-visit view choice
+// from the hub. Search, View entire season and Hide players with no answers are a per-visit view choice
 // (not persisted), the two toggles on the line above the grid (in the Filters sheet on a phone). There is
 // no "All seasons" option: the grid is one season's games by design (the spec bounds it to one season
 // and one section), and a multi-season grid would hit the server's hard cap for nothing.
@@ -83,7 +83,7 @@ export default function PlayerAvailabilityPage() {
 
   const toggles = (
     <>
-      <CompactSwitch checked={includePast} onChange={setIncludePast} label="Show past games" />
+      <CompactSwitch checked={includePast} onChange={setIncludePast} label="View entire season" />
       <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players with no answers" />
     </>
   )

@@ -82,7 +82,7 @@ describe('SlotsView', () => {
     renderView()
     await screen.findByTestId('slot-card-m-1-team-1')
     expect(lastParams()).toEqual({ seasonId: 's-now' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /view entire season/i }))
     await waitFor(() => expect(lastParams()).toEqual({ seasonId: 's-now', includePast: true }))
     await userEvent.type(screen.getByPlaceholderText('Search by team or opponent'), 'hillside')
     expect(screen.queryByTestId('slot-card-m-1-team-1')).not.toBeInTheDocument()

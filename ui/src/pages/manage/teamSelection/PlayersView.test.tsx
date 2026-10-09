@@ -166,7 +166,7 @@ describe('PlayersView', () => {
     renderView()
     await screen.findByTestId('cell-ann-m-1-team-1')
     expect(lastParams()).toEqual({ seasonId: 's-now' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /view entire season/i }))
     await waitFor(() => expect(lastParams()).toEqual({ seasonId: 's-now', includePast: true }))
     await userEvent.type(screen.getByPlaceholderText('Search players'), 'bak')
     expect(screen.queryByTestId('cell-ann-m-1-team-1')).not.toBeInTheDocument()

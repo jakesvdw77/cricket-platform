@@ -25,7 +25,7 @@ export default function PlayersView() {
     [data, term],
   )
 
-  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="Show past matches" />
+  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="View entire season" />
   const matches = data?.matches ?? []
   const scope = data
     ? `Showing ${players.length} ${players.length === 1 ? 'player' : 'players'} · ${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`
@@ -62,7 +62,7 @@ export default function PlayersView() {
       {data && matches.length === 0 && (
         <EmptyState
           title={showPast ? 'No matches' : 'No upcoming matches'}
-          description="Nothing to pick a team for. Turn on Show past matches to see earlier fixtures."
+          description="Nothing to pick a team for. Turn on View entire season to see earlier fixtures."
         />
       )}
 

@@ -12,7 +12,7 @@ import { TeamSelectionFilterBar } from './TeamSelectionFilterBar'
 export interface MatchesFrameProps {
   // Alerts or notices the view adds under the shared ones (write errors).
   notices?: ReactNode
-  // The view's own switches, shown beside Show past matches (and in the Filters sheet on a phone).
+  // The view's own switches, shown beside View entire season (and in the Filters sheet on a phone).
   controls?: ReactNode
   // Controls kept on every screen size, beside the scope text (the Previous / Next slot arrows).
   pinned?: ReactNode
@@ -29,7 +29,7 @@ export function MatchesFrame({ notices, controls, pinned, children }: MatchesFra
 
   const pastToggle = (
     <>
-      <CompactSwitch checked={showPast} onChange={setShowPast} label="Show past matches" />
+      <CompactSwitch checked={showPast} onChange={setShowPast} label="View entire season" />
       {controls}
     </>
   )
@@ -57,7 +57,7 @@ export function MatchesFrame({ notices, controls, pinned, children }: MatchesFra
           description={
             term
               ? 'No matches fit this search. Clear it to see more.'
-              : 'Nothing to select a team for. Turn on Show past matches to see earlier fixtures.'
+              : 'Nothing to select a team for. Turn on View entire season to see earlier fixtures.'
           }
         />
       )}

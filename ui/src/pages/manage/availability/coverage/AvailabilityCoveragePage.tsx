@@ -18,7 +18,7 @@ import { computeSlotCoverage } from './slotCoverage'
 // docs/specs/074-availability-coverage.md: the Coverage view of the Availability hub. One card per
 // time slot, computed in the browser from the Players grid response plus the leagues' playing XI
 // sizes. docs/specs/083: League and Section are the hub's shared filters (the same ones the Polls and
-// Players views use, in the shared FilterBar; there is no Team here) and the season is always the default one; Show past slots is a per-visit toggle on the line above the cards, not persisted.
+// Players views use, in the shared FilterBar; there is no Team here) and the season is always the default one; View entire season is a per-visit toggle on the line above the cards, not persisted.
 export default function AvailabilityCoveragePage() {
   const { clubId, filters, seasonId, seasonsLoading, leagues, leaguesLoading, leaguesError, scopeText } = useAvailabilityHub()
   const navigate = useNavigate()
@@ -83,7 +83,7 @@ export default function AvailabilityCoveragePage() {
   const anyPoll = slots.some((slot) => slot.teams.some((team) => team.hasPoll))
 
   const pastToggle = (
-    <CompactSwitch checked={includePast} onChange={setIncludePast} label="Show past slots" />
+    <CompactSwitch checked={includePast} onChange={setIncludePast} label="View entire season" />
   )
   const scopeFilters = scopeText()
 
@@ -119,7 +119,7 @@ export default function AvailabilityCoveragePage() {
       {ready && slots.length === 0 && (
         <EmptyState
           title="No games to cover"
-          description="No games match the current filters. Try another section or league, or show past slots."
+          description="No games match the current filters. Try another section or league, or turn on View entire season."
         />
       )}
 

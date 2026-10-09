@@ -71,7 +71,7 @@ export default function MatchesView() {
       ]
     : []
 
-  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="Show past matches" />
+  const pastToggle = <CompactSwitch checked={showPast} onChange={setShowPast} label="View entire season" />
   const total = visible.length
   const scope = `Showing ${total} ${showPast ? '' : 'upcoming '}${total === 1 ? 'match' : 'matches'}${focus ? ` · ${STATUS_LABELS[focus]}` : ''}`
 
@@ -103,7 +103,7 @@ export default function MatchesView() {
           description={
             focus || term
               ? 'No matches fit these filters. Clear the quick filter or the search to see more.'
-              : 'Nothing to select a team for. Turn on Show past matches to see earlier fixtures.'
+              : 'Nothing to select a team for. Turn on View entire season to see earlier fixtures.'
           }
         />
       )}
