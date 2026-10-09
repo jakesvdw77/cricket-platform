@@ -27,7 +27,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlayerMapper {
 
+    /** Games played are only computed by the players list (docs/specs/088); every other caller gets 0 for both. */
     public PlayerDto toDto(Person person, PlayerProfile profile, List<UUID> sectionIds) {
+        return toDto(person, profile, sectionIds, 0, 0);
+    }
+
+    public PlayerDto toDto(
+            Person person, PlayerProfile profile, List<UUID> sectionIds, int gamesThisSeason, int gamesOverall) {
         return new PlayerDto(
                 profile.getId(),
                 person.getId(),
@@ -54,7 +60,9 @@ public class PlayerMapper {
                 profile.getCreatedAt(),
                 profile.getUpdatedAt(),
                 profile.getUpdatedBy(),
-                profile.getVerificationStatus());
+                profile.getVerificationStatus(),
+                gamesThisSeason,
+                gamesOverall);
     }
 
     public TeamSquadMemberDto toSquadMemberDto(

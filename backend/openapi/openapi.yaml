@@ -6357,6 +6357,14 @@ components:
           - VERIFIED
           - UNVERIFIED
           - REJECTED
+        gamesThisSeason:
+          type: integer
+          format: int32
+          description: "Games the player was selected for in started, active matches of the list's seasonId (docs/specs/088). Populated by the players list only (0 without a seasonId and in every other response)."
+        gamesOverall:
+          type: integer
+          format: int32
+          description: "Games the player was selected for in started, active matches of every season. Populated by the players list only; 0 in every other response."
     PlayersSummaryDto:
       type: object
       description: "The Players page counters for the list's filters. playersShown is the list's size; inSquad, selected and unverified equal its size with that focus."

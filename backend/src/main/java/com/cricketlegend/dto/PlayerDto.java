@@ -46,5 +46,9 @@ public record PlayerDto(
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy,
-        PlayerVerificationStatus verificationStatus) {
+        PlayerVerificationStatus verificationStatus,
+        // docs/specs/088: games the player was selected for in started, active matches - this season (the list's
+        // seasonId; 0 without one) and overall. Populated by the players list only; 0 in every other response.
+        int gamesThisSeason,
+        int gamesOverall) {
 }

@@ -20,11 +20,13 @@ import com.cricketlegend.repository.ClubMembershipRepository;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.PersonRepository;
+import com.cricketlegend.repository.PlayerGamesView;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.PlayerService;
 import com.cricketlegend.service.support.PlayerRoster;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -115,6 +117,14 @@ public class PlayerServiceImpl implements PlayerService {
                 .findAllById(visible.stream().map(PlayerProfile::getPersonId).toList())
                 .forEach(person -> personsById.put(person.getId(), person));
 
+        // docs/specs/088: games played, in two grouped statements for the whole list (the second only when a season is
+        // given), never one per player. A player who has played none is simply absent from the maps.
+        Instant now = Instant.now();
+        Map<UUID, Long> gamesOverall = gamesByPlayer(matchSidePlayerRepository.findGamesPlayed(clubId, now));
+        Map<UUID, Long> gamesThisSeason = seasonId == null
+                ? Map.of()
+                : gamesByPlayer(matchSidePlayerRepository.findGamesPlayedInSeason(clubId, seasonId, now));
+
         return visible.stream()
                 .map(profile -> {
                     Person person = personsById.get(profile.getPersonId());
@@ -122,7 +132,11 @@ public class PlayerServiceImpl implements PlayerService {
                         throw new NotFoundException("Person not found: " + profile.getPersonId());
                     }
                     return playerMapper.toDto(
-                            person, profile, roster.sectionsByProfile().getOrDefault(profile.getId(), List.of()));
+                            person,
+                            profile,
+                            roster.sectionsByProfile().getOrDefault(profile.getId(), List.of()),
+                            gamesThisSeason.getOrDefault(profile.getId(), 0L).intValue(),
+                            gamesOverall.getOrDefault(profile.getId(), 0L).intValue());
                 })
                 .toList();
     }
@@ -217,6 +231,12 @@ public class PlayerServiceImpl implements PlayerService {
         return focus == PlayerListFocus.IN_SQUAD
                 ? keepIn(players, squadPlayerIds(seasonId))
                 : keepIn(players, selectedPlayerIds(clubId, seasonId));
+    }
+
+    private static Map<UUID, Long> gamesByPlayer(List<PlayerGamesView> views) {
+        Map<UUID, Long> games = new HashMap<>();
+        views.forEach(view -> games.put(view.getPlayerProfileId(), view.getGames()));
+        return games;
     }
 
     private Set<UUID> squadPlayerIds(UUID seasonId) {
