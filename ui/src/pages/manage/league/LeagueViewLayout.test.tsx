@@ -248,7 +248,31 @@ describe('LeagueViewLayout', () => {
     it('points Edit at the league edit route, carrying the selected season', async () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?seasonId=season-1`)
+      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute(
+        'href',
+        `${LEAGUE_PATH}/edit?tab=schedule&seasonId=season-1`,
+      )
+    })
+
+    it.each([
+      ['schedule', 'schedule'],
+      ['teams', 'teams'],
+      ['conditions', 'conditions'],
+    ])('opens the %s edit tab from the %s view', async (view, tab) => {
+      renderLeagueView(`${LEAGUE_PATH}/${view}`)
+
+      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute(
+        'href',
+        `${LEAGUE_PATH}/edit?tab=${tab}&seasonId=season-1`,
+      )
+    })
+
+    it('drops seasonId from the Edit link when no season exists, keeping the tab', async () => {
+      mocks.listSeasons.mockResolvedValue([])
+
+      renderLeagueView(`${LEAGUE_PATH}/teams`)
+
+      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?tab=teams`)
     })
 
     it('carries a season chosen with ?seasonId= to the edit route', async () => {
@@ -256,7 +280,7 @@ describe('LeagueViewLayout', () => {
 
       renderLeagueView(`${LEAGUE_PATH}/schedule?seasonId=season-2`)
 
-      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?seasonId=season-2`)
+      expect(await screen.findByRole('link', { name: 'Edit' })).toHaveAttribute('href', `${LEAGUE_PATH}/edit?tab=schedule&seasonId=season-2`)
     })
 
     it('renders the format badge only when the league has a format, and never a team count or season badge', async () => {
