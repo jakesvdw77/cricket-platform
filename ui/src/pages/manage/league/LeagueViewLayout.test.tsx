@@ -434,7 +434,7 @@ describe('LeagueViewLayout', () => {
       expect(screen.queryByText('No contacts yet for this league.')).not.toBeInTheDocument()
     })
 
-    it('renders contact people avatars first, then opens a quick view with Role/Email/Phone and the edit route', async () => {
+    it('renders the full name of the contact with a person icon before the links, then opens a quick view with Role/Email/Phone and the edit route', async () => {
       const user = userEvent.setup()
       mocks.listLeagues.mockResolvedValue([makeLeague({ phone: '+27 21 555 0199' })])
       mocks.listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1' })])
@@ -443,10 +443,13 @@ describe('LeagueViewLayout', () => {
 
       const people = await screen.findByTestId('league-header-contact-people')
       expect(following(people, screen.getByTestId('league-header-links-row'))).toBe(true)
-      expect(within(people).getByText('League contacts')).toBeInTheDocument()
+      expect(within(people).queryByText('League contacts')).not.toBeInTheDocument()
+      expect(within(people).getByText('Jane Smith')).toBeInTheDocument()
+      expect(within(people).queryByText('JS')).not.toBeInTheDocument()
+      expect(people.querySelector('[data-testid="PersonOutlineOutlinedIcon"]')).not.toBeNull()
       expect(mocks.listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
 
-      await user.click(within(people).getByRole('button', { name: 'Jane Smith — League Administrator' }))
+      await user.click(within(people).getByRole('button', { name: 'Jane Smith, League Administrator, open contact' }))
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
@@ -458,13 +461,54 @@ describe('LeagueViewLayout', () => {
       )
     })
 
+    it('shows the primary contact first with +N listing the others, each opening the quick view', async () => {
+      const user = userEvent.setup()
+      mocks.listLeagues.mockResolvedValue([makeLeague()])
+      mocks.listLeagueContacts.mockResolvedValue([
+        makeContact({ id: 'c1', isPrimary: false, role: 'Treasurer', contact: { ...makeContact().contact, firstName: 'Tom', lastName: 'Brown' } }),
+        makeContact({ id: 'c2', isPrimary: true, role: 'Chair', contact: { ...makeContact().contact, firstName: 'Ann', lastName: 'Lee' } }),
+        makeContact({ id: 'c3', isPrimary: false, role: 'Secretary', contact: { ...makeContact().contact, firstName: 'Sam', lastName: 'Fox' } }),
+      ])
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      const people = await screen.findByTestId('league-header-contact-people')
+      expect(await within(people).findByRole('button', { name: 'Ann Lee, Chair, open contact' })).toBeInTheDocument()
+      expect(within(people).queryByText('Tom Brown')).not.toBeInTheDocument()
+
+      await user.click(within(people).getByRole('button', { name: 'Show 2 more league contacts' }))
+      const menu = await screen.findByRole('menu')
+      const items = within(menu).getAllByRole('menuitem')
+      expect(items).toHaveLength(2)
+      expect(items[0]).toHaveTextContent('Tom Brown')
+      expect(items[0]).toHaveTextContent('Treasurer')
+      await user.click(within(menu).getByRole('menuitem', { name: 'Sam Fox, Secretary, open contact' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Sam Fox')).toBeInTheDocument()
+    })
+
+    it('shows no +N for a single contact, and the links row still renders with no contacts', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ phone: '+27 21 555 0199' })])
+      mocks.listLeagueContacts.mockResolvedValue([makeContact()])
+      const { unmount } = renderLeagueView(`${LEAGUE_PATH}/schedule`)
+      await screen.findByRole('button', { name: 'Jane Smith, League Administrator, open contact' })
+      expect(screen.queryByRole('button', { name: /more league contacts/ })).not.toBeInTheDocument()
+      unmount()
+
+      mocks.listLeagueContacts.mockResolvedValue([])
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+      expect(await screen.findByTestId('league-header-links-row')).toBeInTheDocument()
+      expect(screen.queryByTestId('league-header-contact-people')).not.toBeInTheDocument()
+    })
+
     it('shows a Status field for the primary contact and none for a non-primary one', async () => {
       const user = userEvent.setup()
       mocks.listLeagues.mockResolvedValue([makeLeague()])
       mocks.listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1', isPrimary: true })])
 
       const { unmount } = renderLeagueView(`${LEAGUE_PATH}/schedule`)
-      await user.click(await screen.findByRole('button', { name: 'Jane Smith — League Administrator' }))
+      await user.click(await screen.findByRole('button', { name: 'Jane Smith, League Administrator, open contact' }))
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('Status')).toBeInTheDocument()
       expect(screen.getByText('Primary')).toBeInTheDocument()
@@ -472,7 +516,7 @@ describe('LeagueViewLayout', () => {
 
       mocks.listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1', isPrimary: false, active: true })])
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
-      await user.click(await screen.findByRole('button', { name: 'Jane Smith — League Administrator' }))
+      await user.click(await screen.findByRole('button', { name: 'Jane Smith, League Administrator, open contact' }))
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
       expect(screen.queryByText('Status')).not.toBeInTheDocument()
     })

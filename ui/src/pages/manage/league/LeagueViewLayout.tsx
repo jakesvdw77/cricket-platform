@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, ListItemText, Menu, MenuItem, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { VIEW_TABS_PROPS, viewTabSx, viewTabsSx } from '../../../utils/viewTabs'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
@@ -23,7 +25,6 @@ import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { ShareScheduleDialog } from '../../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../../components/ShareScheduleDialog'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
-import { RecordIconButton } from '../../../components/RecordIconButton'
 import { RecordQuickViewDialog } from '../../../components/RecordQuickViewDialog'
 import { SocialLinksRow } from '../../../components/marketing/SocialLinksRow'
 import { listLeagues } from '../../../api/leagueApi'
@@ -70,6 +71,7 @@ export default function LeagueViewLayout() {
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
 
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
@@ -192,6 +194,9 @@ export default function LeagueViewLayout() {
   }
 
   const contacts = contactsQuery.data ?? []
+  // The header shows one contact: the active primary, else the first; the rest sit behind "+N".
+  const primaryContact = contacts.find((contact) => contact.isPrimary && contact.active) ?? contacts[0] ?? null
+  const otherContacts = contacts.filter((contact) => contact !== primaryContact)
   const selectedContact = contacts.find((contact) => contact.id === openContactId) ?? null
   const badges = leagueBadges(league)
   const hasLinks = Boolean(league.phone || league.email || league.website)
@@ -345,22 +350,51 @@ export default function LeagueViewLayout() {
               data-testid="league-header-contacts-line"
               sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2.5, rowGap: 1 }}
             >
-              {contacts.length > 0 && (
-                <Box data-testid="league-header-contact-people" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-                    League contacts
-                  </Typography>
-                  {contacts.map((contact) => (
-                    <RecordIconButton
-                      key={contact.id}
-                      compact
-                      shape="circular"
-                      label={`${contactFullName(contact)} — ${contact.role}`}
-                      name={contactFullName(contact)}
-                      initials={initialsFromName(contactFullName(contact))}
-                      onClick={() => setOpenContactId(contact.id)}
-                    />
-                  ))}
+              {primaryContact && (
+                <Box data-testid="league-header-contact-people" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.75 }}>
+                  <Box sx={linkItemSx}>
+                    <PersonOutlineOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Tooltip title={primaryContact.role}>
+                      <MuiLink
+                        component="button"
+                        type="button"
+                        underline="hover"
+                        aria-label={`${contactFullName(primaryContact)}, ${primaryContact.role}, open contact`}
+                        onClick={() => setOpenContactId(primaryContact.id)}
+                        sx={{ ...linkSx, textAlign: 'left' }}
+                      >
+                        {contactFullName(primaryContact)}
+                      </MuiLink>
+                    </Tooltip>
+                  </Box>
+                  {otherContacts.length > 0 && (
+                    <MuiLink
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      aria-label={`Show ${otherContacts.length} more league contacts`}
+                      aria-haspopup="menu"
+                      onClick={(event: MouseEvent<HTMLElement>) => setMoreAnchor(event.currentTarget)}
+                      sx={linkSx}
+                    >
+                      {`+${otherContacts.length}`}
+                    </MuiLink>
+                  )}
+                  <Menu anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)}>
+                    {otherContacts.map((contact) => (
+                      <MenuItem
+                        key={contact.id}
+                        sx={{ minHeight: 44 }}
+                        aria-label={`${contactFullName(contact)}, ${contact.role}, open contact`}
+                        onClick={() => {
+                          setMoreAnchor(null)
+                          setOpenContactId(contact.id)
+                        }}
+                      >
+                        <ListItemText primary={contactFullName(contact)} secondary={contact.role} />
+                      </MenuItem>
+                    ))}
+                  </Menu>
                 </Box>
               )}
 
