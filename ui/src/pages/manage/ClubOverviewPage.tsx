@@ -428,6 +428,8 @@ export default function ClubOverviewPage() {
         onClose={clearSelection}
         title={selectedSection?.name ?? ''}
         closeLabel="Close section details"
+        // Above the full-screen overlay (a Dialog), so a node clicked there shows its details on top of it.
+        zIndex={theme.zIndex.modal + 1}
       >
         {() => selectedSection && panelFor(selectedSection)}
       </SidePanel>
