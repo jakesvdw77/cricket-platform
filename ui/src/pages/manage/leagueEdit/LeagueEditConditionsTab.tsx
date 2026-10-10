@@ -44,7 +44,7 @@ export function LeagueEditConditionsTab({
     return (
       <Box sx={{ gridColumn: '1 / -1' }}>
         <Typography variant="body2" color="text.secondary">
-          Create a season first, playing conditions are captured for a league and a specific season.
+          Create a season first: playing conditions are captured for a league and a specific season.
         </Typography>
       </Box>
     )

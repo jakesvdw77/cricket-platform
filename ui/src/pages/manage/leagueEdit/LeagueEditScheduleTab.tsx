@@ -39,7 +39,7 @@ export function LeagueEditScheduleTab({
     return (
       <Box sx={{ gridColumn: '1 / -1' }}>
         <Typography variant="body2" color="text.secondary">
-          Create a season first, matches are scheduled for a league and a specific season.
+          Create a season first: matches are scheduled for a league and a specific season.
         </Typography>
       </Box>
     )

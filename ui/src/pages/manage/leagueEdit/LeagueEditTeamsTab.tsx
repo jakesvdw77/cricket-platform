@@ -37,7 +37,7 @@ export function LeagueEditTeamsTab({
     <Box sx={{ gridColumn: '1 / -1' }}>
       {!hasSeasons ? (
         <Typography variant="body2" color="text.secondary">
-          Create a season first — teams are affiliated to a league for a specific season.
+          Create a season first: teams are affiliated to a league for a specific season.
         </Typography>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
