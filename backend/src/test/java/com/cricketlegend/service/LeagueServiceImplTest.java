@@ -7,10 +7,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueContact;
+import com.cricketlegend.domain.Contact;
 import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueSource;
@@ -18,16 +21,20 @@ import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueResponse;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.LeagueSeasonTeamDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
+import com.cricketlegend.exception.DuplicateLeagueNameException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.LeagueMapper;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
+import com.cricketlegend.repository.LeagueContactRepository;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamSummary;
 import com.cricketlegend.repository.LeagueRepository;
@@ -42,6 +49,8 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.impl.LeagueServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,6 +99,9 @@ class LeagueServiceImplTest {
     private TeamSquadMemberRepository teamSquadMemberRepository;
 
     @Mock
+    private LeagueContactRepository leagueContactRepository;
+
+    @Mock
     private LeagueMapper leagueMapper;
 
     private LeagueServiceImpl leagueService;
@@ -99,7 +111,7 @@ class LeagueServiceImplTest {
         leagueService = new LeagueServiceImpl(
                 leagueRepository, seasonRepository, leagueAffiliationRepository,
                 leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, teamSquadMemberRepository,
-                leagueMapper);
+                leagueContactRepository, leagueMapper);
     }
 
     private LeagueDto dummyDto() {
@@ -860,5 +872,317 @@ class LeagueServiceImplTest {
     private static LeagueTeam leagueTeam(UUID leagueId, UUID seasonId, String name, String abbreviation, String logoUrl) {
         return LeagueTeam.builder().id(UUID.randomUUID()).leagueId(leagueId).seasonId(seasonId).name(name)
                 .abbreviation(abbreviation).logoUrl(logoUrl).active(true).build();
+    }
+
+    // ---- docs/specs/096-duplicate-league.md ----
+
+    private static final UUID CLUB_ID = UUID.randomUUID();
+    private static final UUID SOURCE_ID = UUID.randomUUID();
+    private static final UUID NEW_ID = UUID.randomUUID();
+
+    private League richSource(boolean active) {
+        return League.builder().id(SOURCE_ID).clubId(CLUB_ID).name("Division 1").source(LeagueSource.EXTERNAL)
+                .maxPlayingXiSize(9).minAge(12).maxAge(15).ageCutoffDate(LocalDate.of(2031, 9, 1))
+                .format(LeagueFormat.T20).logoUrl("/media/l.png").phone("0123").website("https://l.example")
+                .email("a@l.example")
+                .socialLinks(new ArrayList<>(List.of(SocialLink.builder().platform("facebook").url("https://fb").build())))
+                .active(active).updatedBy(UUID.randomUUID()).build();
+    }
+
+    private Season clubSeason(UUID id) {
+        return season(id, CLUB_ID, "S" + id.toString().substring(0, 4), LocalDate.of(2031, 1, 1),
+                LocalDate.of(2031, 12, 31), Instant.parse("2031-01-01T00:00:00Z"));
+    }
+
+    private LeaguePlayingConditions conditionsRow(UUID seasonId, boolean bonus) {
+        return LeaguePlayingConditions.builder().id(UUID.randomUUID()).leagueId(SOURCE_ID).seasonId(seasonId)
+                .documentUrl("/media/pc.pdf").uploadedAt(Instant.parse("2031-02-01T10:00:00Z"))
+                .uploadedBy(UUID.randomUUID()).maxOversPerInnings(40).allowSubstitutions(true).pointsForWin(4)
+                .bonusPointsEnabled(bonus).bonusBattingOversThreshold(30).bonusBowlingRestrictionPercentage(50).build();
+    }
+
+    private LeagueContact contactRow(String first, boolean primary) {
+        return LeagueContact.builder().id(UUID.randomUUID()).leagueId(SOURCE_ID)
+                .contact(Contact.builder().firstName(first).lastName("L").email(first + "@x.example").build())
+                .role("Secretary").isPrimary(primary).active(true).build();
+    }
+
+    private void stubSourceAndSave(League source) {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(source));
+        when(leagueRepository.existsByClubIdAndNameIgnoreCase(any(), any())).thenReturn(false);
+        when(leagueRepository.save(any(League.class))).thenAnswer(invocation -> {
+            League saved = invocation.getArgument(0);
+            saved.setId(NEW_ID);
+            return saved;
+        });
+    }
+
+    private DuplicateLeagueRequest request(String name, List<UUID> seasonIds, Boolean conditions, Boolean contacts) {
+        return new DuplicateLeagueRequest(name, seasonIds, conditions, contacts);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> savedAll(org.springframework.data.jpa.repository.JpaRepository<?, UUID> repository) {
+        ArgumentCaptor<Iterable<Object>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(((org.springframework.data.jpa.repository.JpaRepository<Object, UUID>) repository)).saveAll(captor.capture());
+        List<Object> rows = new ArrayList<>();
+        captor.getValue().forEach(rows::add);
+        return rows;
+    }
+
+    @Test
+    void duplicateCopiesTheProfileAsANewActiveInternalLeagueWithTheTrimmedNameAndNoUpdatedBy() {
+        stubSourceAndSave(richSource(false));
+
+        DuplicateLeagueResponse response =
+                leagueService.duplicate(CLUB_ID, SOURCE_ID, request("  Division 2  ", null, false, false));
+
+        ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
+        verify(leagueRepository).save(captor.capture());
+        League copy = captor.getValue();
+        assertThat(copy.getName()).isEqualTo("Division 2");
+        assertThat(copy.getName()).isNotEqualTo("Division 1");
+        assertThat(copy.getClubId()).isEqualTo(CLUB_ID);
+        assertThat(copy.isActive()).isTrue();
+        assertThat(copy.getSource()).isEqualTo(LeagueSource.INTERNAL);
+        assertThat(copy.getUpdatedBy()).isNull();
+        assertThat(copy.getMaxPlayingXiSize()).isEqualTo(9);
+        assertThat(copy.getMinAge()).isEqualTo(12);
+        assertThat(copy.getMaxAge()).isEqualTo(15);
+        assertThat(copy.getAgeCutoffDate()).isEqualTo(LocalDate.of(2031, 9, 1));
+        assertThat(copy.getFormat()).isEqualTo(LeagueFormat.T20);
+        assertThat(copy.getLogoUrl()).isEqualTo("/media/l.png");
+        assertThat(copy.getPhone()).isEqualTo("0123");
+        assertThat(copy.getWebsite()).isEqualTo("https://l.example");
+        assertThat(copy.getEmail()).isEqualTo("a@l.example");
+        assertThat(copy.getSocialLinks()).extracting(SocialLink::getPlatform, SocialLink::getUrl)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("facebook", "https://fb"));
+        assertThat(response).isEqualTo(new DuplicateLeagueResponse(NEW_ID, "Division 2", 0, 0, 0));
+    }
+
+    @Test
+    void duplicateWithBothFlagsOffCopiesNothingOfEitherGroupAndNeverReadsThem() {
+        stubSourceAndSave(richSource(true));
+
+        leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(UUID.randomUUID()), false, false));
+
+        verifyNoInteractions(leaguePlayingConditionsRepository, leagueContactRepository, seasonRepository);
+    }
+
+    @Test
+    void duplicateIgnoresSeasonIdsWhenPlayingConditionsAreOffEvenIfEmpty() {
+        stubSourceAndSave(richSource(true));
+        when(leagueContactRepository.findByLeagueIdAndActiveTrue(SOURCE_ID)).thenReturn(List.of());
+
+        DuplicateLeagueResponse response =
+                leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(), false, true));
+
+        assertThat(response.seasonsCopied()).isZero();
+        verifyNoInteractions(leaguePlayingConditionsRepository, seasonRepository);
+    }
+
+    @Test
+    void duplicateFlagsDefaultToTrueWhenNull() {
+        UUID seasonId = UUID.randomUUID();
+        stubSourceAndSave(richSource(true));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(seasonId)));
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), any()))
+                .thenReturn(List.of(conditionsRow(seasonId, true)));
+        when(leagueContactRepository.findByLeagueIdAndActiveTrue(SOURCE_ID)).thenReturn(List.of(contactRow("Sam", true)));
+
+        DuplicateLeagueResponse response =
+                leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(seasonId), null, null));
+
+        assertThat(response).isEqualTo(new DuplicateLeagueResponse(NEW_ID, "Division 2", 1, 1, 1));
+    }
+
+    @Test
+    void duplicateCopiesPlayingConditionsWithThePdfReferenceAndNullsBonusThresholdsWhenBonusIsOff() {
+        UUID withBonus = UUID.randomUUID();
+        UUID withoutBonus = UUID.randomUUID();
+        stubSourceAndSave(richSource(true));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(withBonus), clubSeason(withoutBonus)));
+        LeaguePlayingConditions bonusRow = conditionsRow(withBonus, true);
+        LeaguePlayingConditions noBonusRow = conditionsRow(withoutBonus, false);
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), any()))
+                .thenReturn(List.of(bonusRow, noBonusRow));
+
+        DuplicateLeagueResponse response = leagueService.duplicate(
+                CLUB_ID, SOURCE_ID, request("Division 2", List.of(withBonus, withoutBonus), true, false));
+
+        List<Object> rows = savedAll(leaguePlayingConditionsRepository);
+        assertThat(rows).hasSize(2).allSatisfy(row -> {
+            LeaguePlayingConditions copy = (LeaguePlayingConditions) row;
+            assertThat(copy.getId()).isNull();
+            assertThat(copy.getLeagueId()).isEqualTo(NEW_ID);
+            assertThat(copy.getDocumentUrl()).isEqualTo("/media/pc.pdf");
+            assertThat(copy.getUploadedBy()).isNotNull();
+            assertThat(copy.getMaxOversPerInnings()).isEqualTo(40);
+        });
+        LeaguePlayingConditions copyWithBonus = (LeaguePlayingConditions) rows.get(0);
+        LeaguePlayingConditions copyWithoutBonus = (LeaguePlayingConditions) rows.get(1);
+        assertThat(copyWithBonus.getBonusBattingOversThreshold()).isEqualTo(30);
+        assertThat(copyWithoutBonus.getBonusBattingOversThreshold()).isNull();
+        assertThat(copyWithoutBonus.getBonusBowlingRestrictionPercentage()).isNull();
+        assertThat(response.playingConditionsCopied()).isEqualTo(2);
+        verifyNoInteractions(leagueContactRepository);
+    }
+
+    @Test
+    void duplicateOfAChosenSeasonWithoutASourceRowCopiesNothingForIt() {
+        UUID seasonId = UUID.randomUUID();
+        stubSourceAndSave(richSource(true));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(seasonId)));
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), any())).thenReturn(List.of());
+
+        DuplicateLeagueResponse response =
+                leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(seasonId), true, false));
+
+        assertThat(response.seasonsCopied()).isEqualTo(1);
+        assertThat(response.playingConditionsCopied()).isZero();
+        assertThat(savedAll(leaguePlayingConditionsRepository)).isEmpty();
+    }
+
+    @Test
+    void duplicateDeduplicatesSeasonIdsBeforeQueryingAndCounting() {
+        UUID seasonId = UUID.randomUUID();
+        stubSourceAndSave(richSource(true));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(seasonId)));
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), any()))
+                .thenReturn(List.of(conditionsRow(seasonId, true)));
+
+        DuplicateLeagueResponse response = leagueService.duplicate(
+                CLUB_ID, SOURCE_ID, request("Division 2", List.of(seasonId, seasonId, seasonId), true, false));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<UUID>> ids = ArgumentCaptor.forClass(Collection.class);
+        verify(leaguePlayingConditionsRepository).findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), ids.capture());
+        assertThat(ids.getValue()).containsExactly(seasonId);
+        assertThat(response.seasonsCopied()).isEqualTo(1);
+        assertThat(response.playingConditionsCopied()).isEqualTo(1);
+    }
+
+    @Test
+    void duplicateCopiesOnlyTheActiveContactsKeepingThePrimaryFlag() {
+        stubSourceAndSave(richSource(true));
+        LeagueContact primary = contactRow("Sam", true);
+        LeagueContact other = contactRow("Alex", false);
+        when(leagueContactRepository.findByLeagueIdAndActiveTrue(SOURCE_ID)).thenReturn(List.of(primary, other));
+
+        DuplicateLeagueResponse response =
+                leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", null, false, true));
+
+        List<Object> rows = savedAll(leagueContactRepository);
+        assertThat(rows).hasSize(2).allSatisfy(row -> {
+            LeagueContact copy = (LeagueContact) row;
+            assertThat(copy.getId()).isNull();
+            assertThat(copy.getLeagueId()).isEqualTo(NEW_ID);
+            assertThat(copy.isActive()).isTrue();
+            assertThat(copy.getContact()).isNotNull();
+        });
+        assertThat(((LeagueContact) rows.get(0)).isPrimary()).isTrue();
+        assertThat(((LeagueContact) rows.get(1)).isPrimary()).isFalse();
+        assertThat(((LeagueContact) rows.get(0)).getContact()).isNotSameAs(primary.getContact());
+        assertThat(response.contactsCopied()).isEqualTo(2);
+        verify(leagueContactRepository, never()).findByLeagueId(any());
+    }
+
+    @Test
+    void duplicateNeverTouchesAffiliationsLeagueTeamsOrMatches() {
+        UUID seasonId = UUID.randomUUID();
+        stubSourceAndSave(richSource(true));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(seasonId)));
+        when(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(eq(SOURCE_ID), any())).thenReturn(List.of());
+        when(leagueContactRepository.findByLeagueIdAndActiveTrue(SOURCE_ID)).thenReturn(List.of());
+
+        leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(seasonId), true, true));
+
+        verifyNoInteractions(leagueAffiliationRepository, leagueTeamRepository, matchRepository);
+    }
+
+    @Test
+    void duplicateRejectsABlankNameWith400() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+
+        assertThatThrownBy(() -> leagueService.duplicate(CLUB_ID, SOURCE_ID, request("   ", null, false, false)))
+                .isInstanceOf(ValidationException.class);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateRejectsANameOver255CharactersWith400() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+
+        assertThatThrownBy(() -> leagueService.duplicate(
+                        CLUB_ID, SOURCE_ID, request("x".repeat(256), null, false, false)))
+                .isInstanceOf(ValidationException.class);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateRejectsEmptyOrMissingSeasonIdsWith400WhenPlayingConditionsAreOn() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+
+        assertThatThrownBy(() -> leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", List.of(), true, true)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", null, null, true)))
+                .isInstanceOf(ValidationException.class);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateRejectsANullSeasonIdWith400() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+        List<UUID> withNull = new ArrayList<>();
+        withNull.add(null);
+
+        assertThatThrownBy(() -> leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", withNull, true, true)))
+                .isInstanceOf(ValidationException.class);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateRejectsANameClashWith409CarryingTheTrimmedName() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+        when(leagueRepository.existsByClubIdAndNameIgnoreCase(CLUB_ID, "division 1")).thenReturn(true);
+
+        assertThatThrownBy(() -> leagueService.duplicate(
+                        CLUB_ID, SOURCE_ID, request("  division 1 ", null, false, false)))
+                .isInstanceOf(DuplicateLeagueNameException.class)
+                .hasMessage("A league named division 1 already exists");
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateOfAnotherClubsLeagueIs404() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+
+        assertThatThrownBy(() -> leagueService.duplicate(
+                        UUID.randomUUID(), SOURCE_ID, request("Division 2", null, false, false)))
+                .isInstanceOf(NotFoundException.class);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void duplicateOfAnUnknownLeagueIs404() {
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leagueService.duplicate(CLUB_ID, SOURCE_ID, request("Division 2", null, false, false)))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void duplicateWithAnUnknownOrOtherClubsSeasonIs404AndSavesNothing() {
+        UUID mine = UUID.randomUUID();
+        UUID foreign = UUID.randomUUID();
+        when(leagueRepository.findById(SOURCE_ID)).thenReturn(Optional.of(richSource(true)));
+        when(seasonRepository.findByClubId(CLUB_ID)).thenReturn(List.of(clubSeason(mine)));
+
+        assertThatThrownBy(() -> leagueService.duplicate(
+                        CLUB_ID, SOURCE_ID, request("Division 2", List.of(mine, foreign), true, true)))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining(foreign.toString());
+        verify(leagueRepository, never()).save(any());
+        verifyNoInteractions(leaguePlayingConditionsRepository, leagueContactRepository);
     }
 }

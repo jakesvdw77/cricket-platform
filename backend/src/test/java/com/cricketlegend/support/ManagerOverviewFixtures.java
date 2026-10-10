@@ -8,7 +8,13 @@ import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
 import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.DayPart;
+import com.cricketlegend.domain.Contact;
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueContact;
+import com.cricketlegend.domain.LeagueFormat;
+import com.cricketlegend.domain.LeaguePlayingConditions;
+import com.cricketlegend.domain.LeagueTeam;
+import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.domain.LeagueAffiliation;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
@@ -32,7 +38,10 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueContactRepository;
+import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.LeagueTeamRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
@@ -79,6 +88,9 @@ public final class ManagerOverviewFixtures {
     private final TeamRepository teamRepository;
     private final LeagueRepository leagueRepository;
     private final LeagueAffiliationRepository leagueAffiliationRepository;
+    private final LeagueContactRepository leagueContactRepository;
+    private final LeaguePlayingConditionsRepository leaguePlayingConditionsRepository;
+    private final LeagueTeamRepository leagueTeamRepository;
     private final MatchRepository matchRepository;
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
@@ -106,6 +118,9 @@ public final class ManagerOverviewFixtures {
         teamRepository = ctx.getBean(TeamRepository.class);
         leagueRepository = ctx.getBean(LeagueRepository.class);
         leagueAffiliationRepository = ctx.getBean(LeagueAffiliationRepository.class);
+        leagueContactRepository = ctx.getBean(LeagueContactRepository.class);
+        leaguePlayingConditionsRepository = ctx.getBean(LeaguePlayingConditionsRepository.class);
+        leagueTeamRepository = ctx.getBean(LeagueTeamRepository.class);
         matchRepository = ctx.getBean(MatchRepository.class);
         matchSideRepository = ctx.getBean(MatchSideRepository.class);
         matchSidePlayerRepository = ctx.getBean(MatchSidePlayerRepository.class);
@@ -143,6 +158,44 @@ public final class ManagerOverviewFixtures {
     public League league(World w, int maxPlayingXiSize) {
         return leagueRepository.save(League.builder().clubId(w.club().getId()).name("League " + UUID.randomUUID())
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(maxPlayingXiSize).active(true).build());
+    }
+
+    /** An INTERNAL league with every profile field set and two social links (docs/specs/096-duplicate-league.md). */
+    public League leagueWithProfile(World w, String name, boolean active) {
+        return leagueRepository.save(League.builder().clubId(w.club().getId()).name(name)
+                .source(LeagueSource.INTERNAL).maxPlayingXiSize(9).minAge(12).maxAge(15)
+                .ageCutoffDate(LocalDate.of(2031, 9, 1)).format(LeagueFormat.T20).logoUrl("/media/league.png")
+                .phone("0123456789").website("https://league.example").email("info@league.example")
+                .socialLinks(new ArrayList<>(List.of(
+                        SocialLink.builder().platform("facebook").url("https://facebook.com/league").build(),
+                        SocialLink.builder().platform("instagram").url("https://instagram.com/league").build())))
+                .active(active).build());
+    }
+
+    /** A playing conditions row for {@code league} and {@code season}: structured fields, bonus points on, and a PDF. */
+    public LeaguePlayingConditions playingConditions(League league, Season season) {
+        return leaguePlayingConditionsRepository.save(LeaguePlayingConditions.builder().leagueId(league.getId())
+                .seasonId(season.getId()).documentUrl("/media/pc-" + season.getLabel() + ".pdf")
+                .uploadedAt(Instant.parse("2031-02-01T10:00:00Z")).uploadedBy(UUID.randomUUID())
+                .maxOversPerInnings(40).powerplayOvers(10).maxOversPerBowler(8)
+                .fieldingRestrictionsNotes("Five outside the circle").allowSubstitutions(true)
+                .pointsForWin(4).pointsForLoss(0).pointsForDraw(2).pointsForNoResult(1).pointsForForfeitWin(4)
+                .bonusPointsEnabled(true).bonusBattingOversThreshold(30).bonusBowlingRestrictionPercentage(50)
+                .additionalNotes("Notes " + season.getLabel()).build());
+    }
+
+    /** A contact of {@code league} (docs/specs/096-duplicate-league.md). */
+    public LeagueContact contact(League league, String firstName, String role, boolean primary, boolean active) {
+        return leagueContactRepository.save(LeagueContact.builder().leagueId(league.getId())
+                .contact(Contact.builder().firstName(firstName).lastName("Contact")
+                        .email(firstName.toLowerCase() + "@example.com").phone("07000 " + firstName.length()).build())
+                .role(role).isPrimary(primary).active(active).build());
+    }
+
+    /** An active opponent team of {@code league} in {@code season}. */
+    public LeagueTeam leagueTeam(League league, Season season, String name) {
+        return leagueTeamRepository.save(LeagueTeam.builder().leagueId(league.getId()).seasonId(season.getId())
+                .name(name).active(true).build());
     }
 
     /** A new active section of {@code club} under {@code parent} (a top-level one when null). */
@@ -309,6 +362,11 @@ public final class ManagerOverviewFixtures {
                 "delete from section_availability_response where window_id in (" + windows + ")",
                 "delete from section_availability_window_match where window_id in (" + windows + ")",
                 "delete from match where club_id in (" + clubs + ")",
+                "delete from league_social_link where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_playing_conditions where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_contact where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_team where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_affiliation where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from section_availability_window where club_id in (" + clubs + ")",
                 "delete from section_availability_round where club_id in (" + clubs + ")",
                 "delete from team_squad_member where team_id in (select id from team where club_id in (" + clubs + "))",

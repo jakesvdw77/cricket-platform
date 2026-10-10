@@ -3686,6 +3686,37 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/duplicate:
+    post:
+      tags:
+      - league-controller
+      operationId: duplicate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateLeagueRequest"
+        required: true
+      responses:
+        "201":
+          description: League duplicated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DuplicateLeagueResponse"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/reactivate:
     post:
       tags:
@@ -9135,6 +9166,41 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SkippedLeagueTeamDto"
+    DuplicateLeagueRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 0
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        copyPlayingConditions:
+          type: boolean
+        copyContacts:
+          type: boolean
+      required:
+      - name
+    DuplicateLeagueResponse:
+      type: object
+      properties:
+        leagueId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        seasonsCopied:
+          type: integer
+          format: int32
+        playingConditionsCopied:
+          type: integer
+          format: int32
+        contactsCopied:
+          type: integer
+          format: int32
     MatchFilterOptionsDto:
       type: object
       properties:

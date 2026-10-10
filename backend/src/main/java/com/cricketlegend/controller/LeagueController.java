@@ -2,6 +2,8 @@ package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.CreateLeagueAffiliationRequest;
 import com.cricketlegend.dto.CreateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueResponse;
 import com.cricketlegend.dto.LeagueAffiliationDto;
 import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.dto.LeagueDto;
@@ -70,6 +72,17 @@ public class LeagueController {
     public ResponseEntity<LeagueDto> create(
             @PathVariable UUID clubId, @Valid @RequestBody CreateLeagueRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(leagueService.create(clubId, request));
+    }
+
+    /** docs/specs/096-duplicate-league.md: copies a league's profile, and optionally its playing conditions and contacts. */
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/duplicate")
+    @ApiResponse(responseCode = "201", description = "League duplicated")
+    public ResponseEntity<DuplicateLeagueResponse> duplicate(
+            @PathVariable UUID clubId,
+            @PathVariable UUID leagueId,
+            @Valid @RequestBody DuplicateLeagueRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(leagueService.duplicate(clubId, leagueId, request));
     }
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")

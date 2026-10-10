@@ -182,4 +182,32 @@ class LeagueRepositoryTest {
         assertThatThrownBy(() -> leagueRepository.saveAndFlush(leagueWithDuplicatePlatform))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    @Test
+    void existsByClubIdAndNameIgnoreCaseMatchesCaseInsensitivelyAndTrimmedAgainstActiveAndInactiveLeagues() {
+        Club club = savedClub("riverside-cc");
+        League padded = league(club.getId());
+        padded.setName("  Division One ");
+        leagueRepository.save(padded);
+        League inactive = league(club.getId());
+        inactive.setName("Winter Cup");
+        inactive.setActive(false);
+        leagueRepository.save(inactive);
+        leagueRepository.flush();
+
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(club.getId(), "division one")).isTrue();
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(club.getId(), "DIVISION ONE")).isTrue();
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(club.getId(), "winter cup")).isTrue();
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(club.getId(), "Division Two")).isFalse();
+    }
+
+    @Test
+    void existsByClubIdAndNameIgnoreCaseIgnoresOtherClubsLeagues() {
+        Club clubX = savedClub("riverside-cc");
+        Club clubY = savedClub("lakeside-cc");
+        leagueRepository.save(league(clubX.getId()));
+
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(clubY.getId(), "premier league")).isFalse();
+        assertThat(leagueRepository.existsByClubIdAndNameIgnoreCase(clubX.getId(), "premier league")).isTrue();
+    }
 }
