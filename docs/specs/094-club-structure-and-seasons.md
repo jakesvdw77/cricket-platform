@@ -78,7 +78,7 @@ What already exists and is reused unchanged: `GET/POST/PUT /api/v1/manage/clubs/
 
 **Club Profile page (C).** Route and data unchanged. Top to bottom:
 - **Header:** the page title "Club profile" (the `ManageScreenHeader` / poll-page style, no "Back to Dashboard", per 079), the club logo tile (64 px), name and club-type chip, and the filled **Edit profile** button on the right (to `/manage/club-profile/edit`). The old `PageHeaderBand` with its 56 px avatar goes.
-- **Key-figure strip** (`KeyFigureTile`, four across, two on a phone): **Sections** (active), **Teams**, **Players** (from `sections/summary` totals) and **Current season** (the label, or "None yet"; a tile that links to Seasons).
+- **Key-figure strip** (`KeyFigureTile`, three across, stacking on a phone): **Teams**, **Leagues** and **Players** (club totals from `sections/summary`), as the user asked (decision 2026-10-10). No Sections tile (the chart itself shows them) and no Seasons tile: Seasons has its own menu item.
 - **Details row:** Club Details, Contacts and Sponsors as three equal-height `InfoCard`s (Details with the phone, email, website, address and social icons; Contacts and Sponsors keep the `RecordIconButton` avatars, the Manage buttons and the quick-view dialogs). Empty states as today.
 - **Club structure card** (full width, below): described next. The old Structure and Seasons cards are gone.
 
@@ -104,7 +104,7 @@ What already exists and is reused unchanged: `GET/POST/PUT /api/v1/manage/clubs/
 
 ### Slice B: Seasons
 
-**Menu item (E).** A new `NavItem` in `MANAGER_NAV`, **Club group, directly after Club profile** (proposed, see Open Questions): `id: 'seasons'`, `label: 'Seasons'`, description "Define your seasons and see what each holds", `to: '/manage/fixtures/seasons'` (route kept, so no redirect and no broken link; the existing `/manage/fixtures/seasons/...` sub-routes light the item through the prefix rule). Because "first match in menu order" applies and Seasons follows Club profile, the Club profile item's season prefix is removed as above. The Menu sheet and the Overview tile grid pick the item up from the same config, so it appears there too.
+**Menu item (E).** A new `NavItem` in `MANAGER_NAV`, **Schedule group** (decision 2026-10-10; placed first in the group, ahead of Leagues, because leagues and matches sit inside a season: Seasons, Leagues, Matches, Results): `id: 'seasons'`, `label: 'Seasons'`, description "Define your seasons and see what each holds", `to: '/manage/fixtures/seasons'` (route kept, so no redirect and no broken link; the existing `/manage/fixtures/seasons/...` sub-routes light the item through the prefix rule). Because "first match in menu order" applies and the Schedule group precedes Club, Seasons would win the highlight anyway; the Club profile item's season prefix is still removed as above so the two cannot disagree. The Menu sheet and the Overview tile grid pick the item up from the same config, so it appears there too.
 - **Icon slot: `nav/seasons`** (`ui/src/icons/nav/seasons.svg`, rendered through `BrandIcon`, 078 and 080 rules: artwork only, cropped by `npm run icons:strip`). **The icon is supplied by the user.** Until the file exists, the item uses a **stand-in MUI glyph** (`CalendarMonthOutlined`) registered as a nav glyph (`seasons` in `GLYPH_ICONS`, drawn on a brand-coloured disc by `NavItemIcon`, the way Overview did before `nav/overview-home`). When the SVG is added, the `icon` value changes to `'nav/seasons'` and the glyph entry is deleted; nothing else changes. No component imports the SVG directly.
 
 **Seasons page (F).** Same shape as Leagues and Teams (091, 092), without a Season pill (this page lists the seasons):
@@ -139,7 +139,7 @@ Tiers per `docs/standards/testing.md`.
 - Clicking a node opens a read-only panel with the path, age range, gender, key figures, sub-sections, teams, leagues for the current season and linked contacts; the panel has no inputs; Edit opens `/manage/sections` with that section selected.
 - The "+" adds a child under that section through a dialog and the new node appears selected, without leaving the page.
 - Below the phone breakpoint the structure is a nested collapsible list and the details open in a sheet; the page does not scroll sideways.
-- Slice A alone leaves Seasons reachable: the Seasons item is in the Club group, opens the existing Seasons screen, and stays highlighted on its sub-routes; the Club profile item no longer lights on them.
+- Slice A alone leaves Seasons reachable: the Seasons item is in the Schedule group, opens the existing Seasons screen, and stays highlighted on its sub-routes; the Club profile item no longer lights on them.
 - The Seasons page shows the four counters (Current, Upcoming, Past, Inactive) as filters, the toolbar, and cards or the table; status badges follow the dates and the active flag; the view survives a reload.
 - A season's page shows its dates, status, progress and what it holds; the form is one sectioned card with Cancel and an Active switch, saving the same payload as before.
 - Edit is a filled primary button on the Club Profile and the season page.
@@ -148,19 +148,24 @@ Tiers per `docs/standards/testing.md`.
 
 ## Open Questions
 
-1. **Where does the Seasons menu item go?** Proposed: Club group, directly after Club profile. The alternative is the Matches group (leagues, matches and squads are all season-scoped) or a "Setup" position near the end of the Club group. Please confirm.
-2. **Slice order.** Proposed: slice A also adds the Seasons menu item (pointing at the existing screen) so removing the Seasons card never strands the page, and slice B only reworks the page behind it. The alternative is shipping B first. Please confirm.
-3. **Do org chart nodes show counts?** Proposed: no (name, age chip, "+" only, as the mockup; counts are in the panel and key figures). Option: a small "3 teams" caption under the name.
-4. **Where does the detail panel sit on a desktop?** Proposed: a card under the chart. Alternative: a right-hand `SidePanel` drawer (kept chart visible, but modal, so another node cannot be clicked while it is open).
-5. **Can a section be removed or deactivated from the read-only panel?** Proposed: no, stays on the edit screen (a destructive action should sit where the rename and contact tools are). Option: add a Deactivate button with a `ConfirmDialog`.
-6. **Is Add ("+") wanted on the Club Profile at all, or only on the edit screen?** Proposed: yes, through a small dialog, because the mockup has it. Option: "+" only appears in edit mode and here it sends you to `/manage/sections`.
-7. **Phone breakpoint.** Proposed: nested list below `sm` (600 px), chart from `sm`. A narrow tablet may prefer the list up to `md`.
-8. **Counts: backend or client-side?** Proposed: the new `sections/summary` endpoint (players and leagues cannot be derived from the lists the page loads). Option: no backend work in slice A and a panel without Players and Leagues.
-9. **Season figures on the cards (Leagues, Teams, Matches).** Proposed: the new `seasons/summary` endpoint. Option: dates and status only, no endpoint.
-10. **Season rules.** The backend has no "one current season", no overlap check and no unique label. Should the form warn (not block) when the dates overlap another active season, or when a second season contains today? Proposed: no change in this spec.
-11. **Should the Seasons URL move?** Proposed: keep `/manage/fixtures/seasons` (no redirect, no churn). Option: `/manage/seasons` with a redirect.
-12. **Season time strip amber threshold.** Proposed: amber within 7 days of a start or an end.
-13. **Drag to re-parent** is out of scope (025 Non-goal); please confirm it should stay deferred.
+**Decided by the user on 2026-10-10:**
+
+- **Seasons menu item:** in the **Schedule** group (first in it).
+- **Counts on the Club profile:** the key-figure strip shows **Teams, Leagues and Players** (club totals). The org chart nodes stay plain (name, age chip, "+"), as the mockup. The Seasons page may show season counters or none at all; the user is happy either way, so this spec keeps only the cheap client-side status counters (Current, Upcoming, Past) and no counts that need the backend beyond the figures already specified.
+- **"+" on the Club profile:** yes, through the small Add section dialog.
+- **Counts backend:** yes, the new `sections/summary` endpoint (and `seasons/summary` for the season card figures, see question 9).
+- **Seasons URL:** keep `/manage/fixtures/seasons` (no redirect).
+- **Drag to re-parent:** stays deferred.
+- **Slice order:** as proposed (slice A also adds the Seasons menu item, pointing at the existing screen; slice B reworks the page behind it).
+
+**Still open:**
+
+1. **Where does the detail panel sit on a desktop?** The user cannot decide without seeing it: mockups of both options (a card under the chart, and a right-hand drawer that keeps the chart visible) are being prepared. Proposed default: a card under the chart. Alternative: a right-hand `SidePanel` drawer (the chart stays visible, but it is modal, so another node cannot be clicked while it is open).
+2. **Can a section be removed or deactivated from the read-only panel?** Proposed: no, stays on the edit screen. Option: a Deactivate button with a `ConfirmDialog`. (The user answered "I think so" to the proposed behaviour; treated as confirmed unless the mockups change it.)
+3. **Phone breakpoint.** Proposed: nested list below `sm` (600 px), chart from `sm`. A narrow tablet may prefer the list up to `md`.
+4. **Season card figures (Leagues, Teams, Matches).** Proposed: the new `seasons/summary` endpoint. Option: dates and status only, no endpoint (the user said season counts are optional).
+5. **Season rules.** The backend has no "one current season", no overlap check and no unique label. Should the form warn (not block) when the dates overlap another active season, or when a second season contains today? Proposed: no change in this spec.
+6. **Season time strip amber threshold.** Proposed: amber within 7 days of a start or an end.
 
 ## Rollout Notes
 
