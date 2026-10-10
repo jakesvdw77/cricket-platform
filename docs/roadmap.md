@@ -186,6 +186,16 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Matches list reading `?teamId=`**, so the card's Matches footer can link to a filtered list (today it goes to the team page).
 - **Inactive team styling**: a muted card for an inactive team was not designed; the Inactive badge is all there is.
 
+## Deferred by `094`: Club structure and Seasons
+
+- Restyle `/manage/sections` (edit screen: "Section tree" card, template picker, editable detail panel) onto the gold standard; slice A only shares the org-chart component and reads `?sectionId=`.
+- Dragging a node to re-parent a section (still a `025` Non-goal); needs a re-parent endpoint and a drag library decision.
+- Remove / deactivate from the read-only section panel, if wanted after use (stays on the edit screen).
+- Season rules: one-current-season rule, overlap warning or check, unique label (the backend enforces only startDate <= endDate today).
+- Season rollover: copying teams, squads and league affiliations into a new season.
+- Counts on org chart nodes (for example "3 teams"), if the plain node proves too sparse.
+- Brand icon `nav/seasons`: supplied by the user; swap out the stand-in MUI glyph when it arrives.
+
 ## Deferred by `071` — League card
 
 `071-league-card-redesign.md` rebuilt the Leagues list card on the Match card's bones and added the current season's match counts, first/last/next match dates and team list to the leagues list response. Still deferred:
