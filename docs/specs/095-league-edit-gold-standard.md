@@ -199,6 +199,8 @@ Per `docs/standards/testing.md`. No backend change, so no backend or contract ti
 
 ## Open Questions
 
+**Decided by the user on 2026-10-10:** the Teams tab is **variant A** (zebra lists for Our teams and League teams; mockups: https://claude.ai/artifact/SdFrktKTKSJqghS99swu2G, boards Teams tab variant A, Phone and Schedule; variant B, chips, is not built). The user chose not to see mockups of the other tabs and asked for them to be built from this spec following the standards already set (Match form compactness, the Teams tab pattern, 091 and 092 cards and tables). Every other question below therefore stands at its proposed default (tabs, confirm before Unaffiliate, keep the Schedule tab reusing the league page table, no filters on it in v1, Season pill in the header and hidden on Details and Contacts, Deactivate in the Details footer only, Conditions checkboxes become switches, Contacts as a compact list, a three-dot row menu on a phone, start from `?seasonId=` when present).
+
 Each has a proposed default, used if the user does not decide.
 
 1. **Tabs or sections?** Default: tabs, as a compact strip on the page wash (see Shell). Alternative: stacked sections with an in-page nav. Mockup both.
