@@ -73,3 +73,28 @@ export const Empty: Story = {
     emptyMessage: 'No sections yet.',
   },
 }
+
+function ClubProfileDemo() {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  return (
+    <SectionTree
+      sections={AGED_SECTIONS}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+      showAgeChip
+      onAddChild={() => {}}
+    />
+  )
+}
+
+const AGED_SECTIONS: Section[] = [
+  makeSection({ id: 'juniors', name: 'Juniors' }),
+  makeSection({ id: 'boys', name: 'Boys', parentSectionId: 'juniors', minAge: 6, maxAge: 17, gender: 'MALE' }),
+  makeSection({ id: 'boys-u9', name: 'U9', parentSectionId: 'boys', maxAge: 9 }),
+  makeSection({ id: 'vets', name: 'Vets', minAge: 40 }),
+]
+
+// The Club profile's phone list: an age chip and an inline "+" on every row.
+export const WithAgeChipAndAddChild: Story = {
+  render: () => <ClubProfileDemo />,
+}

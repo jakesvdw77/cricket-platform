@@ -75,4 +75,37 @@ describe('SectionTree', () => {
 
     expect(screen.getByText('No sections yet.')).toBeInTheDocument()
   })
+
+  describe('opt-in age chip and add-child button (docs/specs/094)', () => {
+    const AGED: Section[] = [
+      makeSection({ id: 'juniors', name: 'Juniors' }),
+      makeSection({ id: 'boys', name: 'Boys', parentSectionId: 'juniors', minAge: 6, maxAge: 9 }),
+    ]
+
+    it('shows neither by default', () => {
+      render(<SectionTree sections={AGED} onSelect={vi.fn()} />)
+
+      expect(screen.queryByText('6–9')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
+    })
+
+    it('shows the age chip only for sections with an age range', () => {
+      render(<SectionTree sections={AGED} onSelect={vi.fn()} showAgeChip />)
+
+      expect(screen.getByText('6–9')).toBeInTheDocument()
+      expect(screen.getAllByText(/–|\+|Under/)).toHaveLength(1)
+    })
+
+    it('adds a child from the inline plus without selecting the row', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      const onAddChild = vi.fn()
+      render(<SectionTree sections={AGED} onSelect={onSelect} onAddChild={onAddChild} />)
+
+      await user.click(screen.getByRole('button', { name: 'Add a child section under Boys' }))
+
+      expect(onAddChild).toHaveBeenCalledWith('boys')
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+  })
 })

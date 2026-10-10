@@ -31,12 +31,11 @@ import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
 import com.cricketlegend.service.support.LeagueListRow;
 import com.cricketlegend.service.support.LeagueSeasonFields;
+import com.cricketlegend.service.support.SeasonResolution;
 import com.cricketlegend.service.support.ServerClock;
 import com.cricketlegend.service.support.SocialLinkValidation;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
  * deactivate}/{@code reactivate} mirror {@code SponsorServiceImpl}'s one-way transition-guard
  * shape; every lookup is scoped to the owning club, not just by id. Per
  * docs/specs/050-league-schedule-and-fixtures.md: {@code list} also resolves the club's own
- * "current" {@link Season} once ({@link #resolveCurrentSeasonId}) and batch-computes each league's
+ * "current" {@link Season} once ({@link SeasonResolution#currentSeasonId}) and batch-computes each league's
  * {@code currentSeasonTeamCount}/{@code currentSeasonLabel}/{@code
  * currentSeasonPlayingConditionsUrl} in one round trip each (never per-league), reconstructing
  * each {@link LeagueDto} via {@link #withCurrentSeasonFields}. Per
@@ -112,7 +111,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional(readOnly = true)
     public List<LeagueDto> list(UUID clubId, UUID seasonId, boolean includeInactive, LeagueListFocus focus) {
         List<Season> seasons = seasonRepository.findByClubId(clubId);
-        UUID resolvedSeasonId = resolveSeasonId(seasons, seasonId);
+        UUID resolvedSeasonId = SeasonResolution.resolve(seasons, seasonId);
         List<LeagueListRow> rows = buildRows(clubId, seasons, resolvedSeasonId, focus == LeagueListFocus.THIS_WEEK);
         return filter(rows, includeInactive, focus).stream().map(LeagueListRow::dto).toList();
     }
@@ -121,7 +120,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional(readOnly = true)
     public LeaguesSummaryDto summary(UUID clubId, UUID seasonId, boolean includeInactive) {
         List<Season> seasons = seasonRepository.findByClubId(clubId);
-        UUID resolvedSeasonId = resolveSeasonId(seasons, seasonId);
+        UUID resolvedSeasonId = SeasonResolution.resolve(seasons, seasonId);
         List<LeagueListRow> shown = filter(buildRows(clubId, seasons, resolvedSeasonId, true), includeInactive, null);
 
         long active = shown.stream().filter(row -> row.dto().active()).count();
@@ -136,18 +135,6 @@ public class LeagueServiceImpl implements LeagueService {
             players = teamSquadMemberRepository.countDistinctPlayersInLeagues(resolvedSeasonId, leagueIds);
         }
         return new LeaguesSummaryDto(shown.size(), active, teamsEntered, players, seasons.size(), matchesThisWeek, needAttention);
-    }
-
-    /** The requested season (it must be one of the club's), else the club's current season, else null. */
-    private UUID resolveSeasonId(List<Season> seasons, UUID requestedSeasonId) {
-        if (requestedSeasonId == null) {
-            return resolveCurrentSeasonId(seasons);
-        }
-        return seasons.stream()
-                .filter(season -> season.getId().equals(requestedSeasonId))
-                .findFirst()
-                .map(Season::getId)
-                .orElseThrow(() -> new NotFoundException("Season not found: " + requestedSeasonId));
     }
 
     private List<LeagueListRow> filter(List<LeagueListRow> rows, boolean includeInactive, LeagueListFocus focus) {
@@ -252,28 +239,6 @@ public class LeagueServiceImpl implements LeagueService {
                 dto.updatedBy(), fields.currentSeasonTeamCount(), fields.currentSeasonLabel(),
                 fields.currentSeasonPlayingConditionsUrl(), fields.matchCount(), fields.playedCount(),
                 fields.firstMatchDate(), fields.lastMatchDate(), fields.nextMatchDate(), fields.teams());
-    }
-
-    /**
-     * The club's own "current" {@link Season} — the season whose {@code [startDate, endDate]}
-     * range contains today, else the most-recently-created season, else {@code null} when the club
-     * has zero seasons. Ported from {@code ui/src/utils/defaultSeason.ts}'s {@code
-     * pickDefaultSeasonId} — keep the two definitions in lockstep; a change to one rule is a change
-     * to both. See docs/specs/050-league-schedule-and-fixtures.md.
-     */
-    private UUID resolveCurrentSeasonId(List<Season> seasons) {
-        if (seasons.isEmpty()) {
-            return null;
-        }
-        LocalDate today = LocalDate.now();
-        return seasons.stream()
-                .filter(season -> !season.getStartDate().isAfter(today) && !season.getEndDate().isBefore(today))
-                .findFirst()
-                .map(Season::getId)
-                .orElseGet(() -> seasons.stream()
-                        .max(Comparator.comparing(Season::getCreatedAt))
-                        .map(Season::getId)
-                        .orElse(null));
     }
 
     @Override

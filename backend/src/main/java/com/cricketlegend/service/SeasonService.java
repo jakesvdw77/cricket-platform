@@ -2,9 +2,11 @@ package com.cricketlegend.service;
 
 import com.cricketlegend.dto.CreateSeasonRequest;
 import com.cricketlegend.dto.SeasonDto;
+import com.cricketlegend.dto.SeasonsSummaryDto;
 import com.cricketlegend.dto.UpdateSeasonRequest;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 
 /** A club's own season/year/period — see docs/specs/029-league-management.md. */
 public interface SeasonService {
@@ -23,4 +25,10 @@ public interface SeasonService {
 
     /** Throws {@link com.cricketlegend.exception.InvalidStatusTransitionException} if already active. */
     SeasonDto reactivate(UUID clubId, UUID seasonId);
+
+    /**
+     * docs/specs/094-club-structure-and-seasons.md: every season of {@code clubId} (active and inactive) with its
+     * league, entered-team and active-match counts, zeros when nothing is attached.
+     */
+    SeasonsSummaryDto summary(Authentication authentication, UUID clubId);
 }

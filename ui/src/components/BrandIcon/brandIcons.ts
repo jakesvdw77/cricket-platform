@@ -36,6 +36,7 @@ export const BRAND_ICON_NAMES = [
   'nav/photo-gallery',
   'nav/roles-permissions',
   'nav/scorecards',
+  'nav/season-cricket',
   'nav/squads',
   'nav/teams',
   'nav/upcoming-matches',

@@ -45,6 +45,13 @@ export const MANAGER_NAV: NavGroup[] = [
     label: 'Schedule',
     items: [
       {
+        id: 'seasons',
+        label: 'Seasons',
+        description: 'Define your seasons and see what each holds',
+        to: '/manage/fixtures/seasons',
+        icon: 'nav/season-cricket',
+      },
+      {
         id: 'leagues',
         label: 'Leagues',
         description: "Create and manage your club's own leagues",
@@ -117,7 +124,7 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/club-profile',
         icon: 'nav/club-profile',
         // Reached from the Club Profile page, so they keep it highlighted.
-        match: ['/manage/club-contacts', '/manage/sponsors', '/manage/sections', '/manage/fixtures/seasons'],
+        match: ['/manage/club-contacts', '/manage/sponsors', '/manage/sections'],
       },
       {
         id: 'gallery',

@@ -12,12 +12,15 @@ export interface SidePanelProps {
   // The content; told whether the phone sheet is showing. Rendered only while the panel is open on a phone (the sheet
   // stays mounted when closed), and always inside the drawer (which unmounts its content when closed).
   children: (isPhone: boolean) => ReactNode
+  // Stacking order of the desktop drawer. The default (MUI's drawer level) sits BELOW a Dialog, so a panel opened from
+  // inside a full-screen dialog must pass a level above the modal one (e.g. theme.zIndex.modal + 1) to be seen.
+  zIndex?: number
 }
 
 // docs/specs/084 + 085 (G): the slide-in panel chrome shared by the Availability counters' panels (players, polls) - a
 // bottom sheet below sm, a 420 px right Drawer from sm up. Escape, backdrop, the close button and focus returning to the
 // element that opened it come with the MUI Modal underneath.
-export function SidePanel({ open, onClose, title, closeLabel, children }: SidePanelProps) {
+export function SidePanel({ open, onClose, title, closeLabel, children, zIndex }: SidePanelProps) {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
 
@@ -34,6 +37,7 @@ export function SidePanel({ open, onClose, title, closeLabel, children }: SidePa
       anchor="right"
       open={open}
       onClose={onClose}
+      sx={zIndex === undefined ? undefined : { zIndex }}
       PaperProps={{ 'aria-label': title, sx: { width: 420, maxWidth: '100vw', p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 } }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

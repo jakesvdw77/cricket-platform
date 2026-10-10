@@ -3577,6 +3577,52 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeaguesSummaryDto"
+  /api/v1/manage/clubs/{clubId}/sections/summary:
+    get:
+      tags:
+      - section-controller
+      operationId: summary_4
+      description: "Every section's own and subtree team and player figures, its leagues for a season and the club totals (docs/specs/094). seasonId is one of the club's (else 404), default the current season; it scopes leagues only."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SectionsSummaryDto"
+  /api/v1/manage/clubs/{clubId}/seasons/summary:
+    get:
+      tags:
+      - season-controller
+      operationId: summary_5
+      description: "Every season of the club (active and inactive) with its distinct league count, distinct own teams entered and active matches, zeros when nothing is attached (docs/specs/094)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SeasonsSummaryDto"
   /api/v1/manage/clubs/{clubId}/leagues:
     get:
       tags:
@@ -6535,6 +6581,87 @@ components:
         needAttention:
           type: integer
           format: int64
+    SeasonsSummaryDto:
+      type: object
+      description: "One row per season of the club (docs/specs/094)."
+      properties:
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeasonSummaryDto"
+    SeasonSummaryDto:
+      type: object
+      description: "One season's figures: distinct leagues with an affiliation, distinct own teams entered, active matches (docs/specs/094)."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueCount:
+          type: integer
+          format: int64
+        teamsEntered:
+          type: integer
+          format: int64
+        matchCount:
+          type: integer
+          format: int64
+    SectionsSummaryDto:
+      type: object
+      description: "Every section's figures and the club totals (docs/specs/094)."
+      properties:
+        totals:
+          $ref: "#/components/schemas/SectionsSummaryTotalsDto"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionSummaryDto"
+    SectionsSummaryTotalsDto:
+      type: object
+      description: "Club-wide figures: active sections, active teams, and active non-rejected players (tagged or not)."
+      properties:
+        sections:
+          type: integer
+          format: int64
+        teams:
+          type: integer
+          format: int64
+        players:
+          type: integer
+          format: int64
+    SectionSummaryDto:
+      type: object
+      description: "One section's own and subtree figures and the leagues its own teams are affiliated to in the season (docs/specs/094)."
+      properties:
+        sectionId:
+          type: string
+          format: uuid
+        teamCount:
+          type: integer
+          format: int64
+        activeTeamCount:
+          type: integer
+          format: int64
+        playerCount:
+          type: integer
+          format: int64
+        subtreeTeamCount:
+          type: integer
+          format: int64
+        subtreePlayerCount:
+          type: integer
+          format: int64
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/SummaryLeagueRefDto"
+    SummaryLeagueRefDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
     UpdateMatchRequest:
       type: object
       properties:

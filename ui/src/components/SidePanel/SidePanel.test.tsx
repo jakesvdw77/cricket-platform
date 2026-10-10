@@ -30,6 +30,17 @@ function renderPanel(open = true, onClose = vi.fn()) {
 }
 
 describe('SidePanel', () => {
+  it('raises the drawer above a dialog when given a zIndex (so it shows over a full-screen overlay)', () => {
+    setViewport(true)
+    render(
+      <SidePanel open onClose={vi.fn()} title="Polls" closeLabel="Close polls list" zIndex={1400}>
+        {() => <div>desktop content</div>}
+      </SidePanel>,
+    )
+
+    expect(screen.getByRole('presentation')).toHaveStyle({ zIndex: '1400' })
+  })
+
   it('is a right drawer with a title and close button from sm up', async () => {
     setViewport(true)
     const onClose = renderPanel()

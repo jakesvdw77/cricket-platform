@@ -3,10 +3,12 @@ package com.cricketlegend.service;
 import com.cricketlegend.dto.ClubContactDto;
 import com.cricketlegend.dto.CreateSectionRequest;
 import com.cricketlegend.dto.SectionDto;
+import com.cricketlegend.dto.SectionsSummaryDto;
 import com.cricketlegend.dto.UpdateSectionRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 
 /**
  * The club structure tree — {@link com.cricketlegend.domain.Section} nodes, self-referential via
@@ -25,6 +27,14 @@ public interface SectionService {
      * small bounded collection (mirrors {@code ClubContactService.list}).
      */
     List<SectionDto> list(UUID clubId);
+
+    /**
+     * Per docs/specs/094-club-structure-and-seasons.md: every section's own and subtree team and player figures, the
+     * leagues its own teams are affiliated to in {@code seasonId} (a season of the club, else 404; default the club's
+     * current season), and the club-wide totals, in a fixed number of queries. A player counts when the profile is
+     * active and not rejected, the rule of the Players page.
+     */
+    SectionsSummaryDto summary(Authentication authentication, UUID clubId, UUID seasonId);
 
     /**
      * Creates a node for {@code clubId}. Validates {@code minAge <= maxAge} when both are set

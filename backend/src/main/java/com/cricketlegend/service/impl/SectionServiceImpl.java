@@ -2,10 +2,18 @@ package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.ClubContact;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.PlayerVerificationStatus;
+import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SectionContact;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.ClubContactDto;
 import com.cricketlegend.dto.CreateSectionRequest;
 import com.cricketlegend.dto.SectionDto;
+import com.cricketlegend.dto.SectionSummaryDto;
+import com.cricketlegend.dto.SectionsSummaryDto;
+import com.cricketlegend.dto.SectionsSummaryTotalsDto;
+import com.cricketlegend.dto.SummaryLeagueRefDto;
 import com.cricketlegend.dto.UpdateSectionRequest;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -14,12 +22,26 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.ClubContactMapper;
 import com.cricketlegend.mapper.SectionMapper;
 import com.cricketlegend.repository.ClubContactRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.SectionLeagueRef;
+import com.cricketlegend.repository.PlayerProfileRepository;
+import com.cricketlegend.repository.PlayerSectionRepository;
+import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionContactRepository;
 import com.cricketlegend.repository.SectionRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.SectionService;
+import com.cricketlegend.service.support.SeasonResolution;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +57,9 @@ import org.springframework.transaction.annotation.Transactional;
  * one-way-transition-guard shape with no child-related check; {@code link}/{@code unlink} treat
  * {@link Section} and {@link ClubContact} as independent siblings under the same club — each
  * verified against {@code clubId} independently, not against each other (unlike {@code
- * SponsorContactServiceImpl}'s parent-child chain).
+ * SponsorContactServiceImpl}'s parent-child chain). Per docs/specs/094-club-structure-and-seasons.md: {@code summary}
+ * reads the club's sections, teams, player profiles, tags and season once each (plus one affiliation query) and builds
+ * the tree in memory, so the statement count never depends on the number of sections.
  */
 @Service
 public class SectionServiceImpl implements SectionService {
@@ -45,23 +69,110 @@ public class SectionServiceImpl implements SectionService {
     private final ClubContactRepository clubContactRepository;
     private final SectionMapper sectionMapper;
     private final ClubContactMapper clubContactMapper;
+    private final SeasonRepository seasonRepository;
+    private final TeamRepository teamRepository;
+    private final PlayerProfileRepository playerProfileRepository;
+    private final PlayerSectionRepository playerSectionRepository;
+    private final LeagueAffiliationRepository leagueAffiliationRepository;
 
     public SectionServiceImpl(
             SectionRepository sectionRepository,
             SectionContactRepository sectionContactRepository,
             ClubContactRepository clubContactRepository,
             SectionMapper sectionMapper,
-            ClubContactMapper clubContactMapper) {
+            ClubContactMapper clubContactMapper,
+            SeasonRepository seasonRepository,
+            TeamRepository teamRepository,
+            PlayerProfileRepository playerProfileRepository,
+            PlayerSectionRepository playerSectionRepository,
+            LeagueAffiliationRepository leagueAffiliationRepository) {
         this.sectionRepository = sectionRepository;
         this.sectionContactRepository = sectionContactRepository;
         this.clubContactRepository = clubContactRepository;
         this.sectionMapper = sectionMapper;
         this.clubContactMapper = clubContactMapper;
+        this.seasonRepository = seasonRepository;
+        this.teamRepository = teamRepository;
+        this.playerProfileRepository = playerProfileRepository;
+        this.playerSectionRepository = playerSectionRepository;
+        this.leagueAffiliationRepository = leagueAffiliationRepository;
     }
 
     @Override
     public List<SectionDto> list(UUID clubId) {
         return sectionRepository.findByClubId(clubId).stream().map(sectionMapper::toDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SectionsSummaryDto summary(Authentication authentication, UUID clubId, UUID seasonId) {
+        List<Season> seasons = seasonRepository.findByClubId(clubId);
+        UUID resolvedSeasonId = SeasonResolution.resolve(seasons, seasonId);
+
+        List<Section> sections = sectionRepository.findByClubId(clubId);
+        List<Team> teams = teamRepository.findByClubId(clubId);
+        List<PlayerProfile> profiles = playerProfileRepository.findByClubId(clubId).stream()
+                .filter(profile -> profile.isActive() && profile.getVerificationStatus() != PlayerVerificationStatus.REJECTED)
+                .toList();
+
+        Map<UUID, List<UUID>> childrenByParent = new HashMap<>();
+        for (Section section : sections) {
+            if (section.getParentSectionId() != null) {
+                childrenByParent.computeIfAbsent(section.getParentSectionId(), key -> new ArrayList<>()).add(section.getId());
+            }
+        }
+        Map<UUID, List<Team>> teamsBySection = new HashMap<>();
+        for (Team team : teams) {
+            teamsBySection.computeIfAbsent(team.getSectionId(), key -> new ArrayList<>()).add(team);
+        }
+        Map<UUID, Set<UUID>> playersBySection = new HashMap<>();
+        if (!profiles.isEmpty()) {
+            playerSectionRepository
+                    .findByPlayerProfileIdIn(profiles.stream().map(PlayerProfile::getId).toList())
+                    .forEach(link -> playersBySection
+                            .computeIfAbsent(link.getSectionId(), key -> new HashSet<>())
+                            .add(link.getPlayerProfileId()));
+        }
+        Map<UUID, List<SummaryLeagueRefDto>> leaguesBySection = new HashMap<>();
+        if (resolvedSeasonId != null) {
+            for (SectionLeagueRef ref : leagueAffiliationRepository.findSectionLeagueRefs(clubId, resolvedSeasonId)) {
+                leaguesBySection
+                        .computeIfAbsent(ref.getSectionId(), key -> new ArrayList<>())
+                        .add(new SummaryLeagueRefDto(ref.getLeagueId(), ref.getLeagueName()));
+            }
+            leaguesBySection.values().forEach(refs -> refs.sort(
+                    Comparator.comparing((SummaryLeagueRefDto ref) -> ref.name().toLowerCase())
+                            .thenComparing(SummaryLeagueRefDto::id)));
+        }
+
+        List<SectionSummaryDto> rows = new ArrayList<>();
+        for (Section section : sections) {
+            List<Team> ownTeams = teamsBySection.getOrDefault(section.getId(), List.of());
+            Set<UUID> ownPlayers = playersBySection.getOrDefault(section.getId(), Set.of());
+            long subtreeTeams = 0;
+            Set<UUID> subtreePlayers = new HashSet<>();
+            List<UUID> pending = new ArrayList<>(List.of(section.getId()));
+            while (!pending.isEmpty()) {
+                UUID current = pending.remove(pending.size() - 1);
+                subtreeTeams += teamsBySection.getOrDefault(current, List.of()).size();
+                subtreePlayers.addAll(playersBySection.getOrDefault(current, Set.of()));
+                pending.addAll(childrenByParent.getOrDefault(current, List.of()));
+            }
+            rows.add(new SectionSummaryDto(
+                    section.getId(),
+                    ownTeams.size(),
+                    ownTeams.stream().filter(Team::isActive).count(),
+                    ownPlayers.size(),
+                    subtreeTeams,
+                    subtreePlayers.size(),
+                    leaguesBySection.getOrDefault(section.getId(), List.of())));
+        }
+
+        SectionsSummaryTotalsDto totals = new SectionsSummaryTotalsDto(
+                sections.stream().filter(Section::isActive).count(),
+                teams.stream().filter(Team::isActive).count(),
+                profiles.size());
+        return new SectionsSummaryDto(totals, rows);
     }
 
     @Override

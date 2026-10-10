@@ -53,4 +53,10 @@ describe('InfoCard', () => {
     )
     expect(screen.getByText('Tile grid')).toBeInTheDocument()
   })
+
+  it('renders a header action beside the heading', () => {
+    render(<InfoCard title="Club structure" icon={<span />} headerAction={<button type="button">Add section</button>} />)
+    expect(screen.getByRole('button', { name: 'Add section' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Club structure' })).toBeInTheDocument()
+  })
 })

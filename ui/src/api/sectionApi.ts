@@ -85,3 +85,53 @@ export async function linkSectionContact(clubId: string, sectionId: string, cont
 export async function unlinkSectionContact(clubId: string, sectionId: string, contactId: string): Promise<void> {
   await api.post(`${sectionsPath(clubId)}/${sectionId}/contacts/${contactId}/unlink`)
 }
+
+// docs/specs/094-club-structure-and-seasons.md: one request behind the Club profile's key figures
+// and the read-only section panel. `totals.teams` is active teams and `totals.players` active,
+// non-rejected club players; `leagues` are those the section's teams are entered in for the
+// resolved season (the current one unless seasonId is sent).
+export interface SectionsSummaryTotals {
+  sections: number
+  teams: number
+  players: number
+}
+
+export interface SummaryLeagueRef {
+  id: string
+  name: string
+}
+
+export interface SectionSummary {
+  sectionId: string
+  teamCount: number
+  activeTeamCount: number
+  playerCount: number
+  subtreeTeamCount: number
+  subtreePlayerCount: number
+  leagues: SummaryLeagueRef[]
+}
+
+export interface SectionsSummary {
+  totals: SectionsSummaryTotals
+  sections: SectionSummary[]
+}
+
+export interface SectionsSummaryParams {
+  seasonId?: string
+}
+
+// Under the sections prefix ['managed-club', clubId, 'sections'] so invalidating that key also
+// refreshes the summary.
+export function sectionsSummaryKey(clubId: string, seasonId?: string) {
+  return ['managed-club', clubId, 'sections', 'summary', ...(seasonId ? [seasonId] : [])] as const
+}
+
+export async function getSectionsSummary(
+  clubId: string,
+  { seasonId }: SectionsSummaryParams = {},
+): Promise<SectionsSummary> {
+  const { data } = await api.get<SectionsSummary>(`${sectionsPath(clubId)}/summary`, {
+    params: seasonId ? { seasonId } : {},
+  })
+  return data
+}

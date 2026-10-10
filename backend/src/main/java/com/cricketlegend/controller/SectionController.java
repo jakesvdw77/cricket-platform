@@ -3,6 +3,7 @@ package com.cricketlegend.controller;
 import com.cricketlegend.dto.ClubContactDto;
 import com.cricketlegend.dto.CreateSectionRequest;
 import com.cricketlegend.dto.SectionDto;
+import com.cricketlegend.dto.SectionsSummaryDto;
 import com.cricketlegend.dto.UpdateSectionRequest;
 import com.cricketlegend.service.SectionService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,6 +11,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -42,6 +45,16 @@ public class SectionController {
     @GetMapping("/api/v1/manage/clubs/{clubId}/sections")
     public ResponseEntity<List<SectionDto>> list(@PathVariable UUID clubId) {
         return ResponseEntity.ok(sectionService.list(clubId));
+    }
+
+    /** docs/specs/094-club-structure-and-seasons.md: every section's team and player figures and its leagues for a season. */
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/sections/summary")
+    public ResponseEntity<SectionsSummaryDto> summary(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID seasonId) {
+        return ResponseEntity.ok(sectionService.summary(authentication, clubId, seasonId));
     }
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")

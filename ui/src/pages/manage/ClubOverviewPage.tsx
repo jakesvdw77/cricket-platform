@@ -1,38 +1,47 @@
-import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { Link as RouterLink } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, IconButton, Stack, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { Avatar, Box, Button as MuiButton, Chip, IconButton, Stack, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
+import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import OpenInFullOutlinedIcon from '@mui/icons-material/OpenInFullOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
-import AddIcon from '@mui/icons-material/Add'
-import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
+import { InfoCard } from '../../components/InfoCard'
+import { KeyFigureTile } from '../../components/KeyFigureTile'
+import { OrgChartFullScreen } from '../../components/OrgChartFullScreen'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
 import { RecordQuickViewDialog } from '../../components/RecordQuickViewDialog'
 import { RecordIconButton } from '../../components/RecordIconButton'
-import { badgeSx } from '../../components/RecordCard'
+import { avatarSx } from '../../components/RecordCard'
+import { SectionInfoPanel } from '../../components/SectionInfoPanel'
+import { SectionOrgChart } from '../../components/SectionOrgChart'
+import { SectionTree } from '../../components/SectionTree'
+import { SidePanel } from '../../components/SidePanel'
 import { getManagedClubProfile } from '../../api/clubApi'
 import type { Address, ClubProfileType } from '../../api/clubApi'
 import { listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import { listSponsors } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
-import { listSections } from '../../api/sectionApi'
+import { getSectionsSummary, listSectionContacts, listSections, sectionsSummaryKey } from '../../api/sectionApi'
+import type { Section } from '../../api/sectionApi'
 import { listSeasons } from '../../api/seasonApi'
-import type { Season } from '../../api/seasonApi'
+import { listTeamsForSection } from '../../api/teamApi'
 import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
-import { buildSectionTree } from '../../utils/sectionTree'
-import type { SectionTreeNode } from '../../utils/sectionTree'
 import { fullName as contactFullName } from './ClubContactList'
 
 const CLUB_TYPE_LABELS: Record<ClubProfileType, string> = {
@@ -41,6 +50,8 @@ const CLUB_TYPE_LABELS: Record<ClubProfileType, string> = {
   SCHOOL: 'School',
   OTHER: 'Other',
 }
+
+const DASH = '\u2013'
 
 function hasAnyAddressField(address: Address | null | undefined): boolean {
   if (!address) {
@@ -61,59 +72,19 @@ function formatAddress(address: Address): string {
     .join(', ')
 }
 
-function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function formatDateRange(startDate: string, endDate: string): string {
-  return `${formatDate(startDate)} – ${formatDate(endDate)}`
-}
-
-// The manual "section label + optional action" header row every card on this page uses — mirrors
-// ClubStructure.tsx's own convention of building this row by hand inside Card's children rather
-// than Card's own `title` prop, since that prop has no room for a trailing action button.
-function CardHeaderRow({ title, action }: { title: string; action?: ReactNode }) {
-  return (
-    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mb: 2 }}>
-      <Typography variant="subtitle1" fontWeight={600}>
-        {title}
-      </Typography>
-      {action}
-    </Stack>
-  )
-}
-
-function SectionTreeList({ nodes }: { nodes: SectionTreeNode[] }) {
-  if (nodes.length === 0) {
-    return null
-  }
-  return (
-    <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-      {nodes.map((node) => (
-        <Box component="li" key={node.section.id} sx={{ py: 0.5 }}>
-          <Typography variant="body2" fontWeight={600}>
-            {node.section.name}
-          </Typography>
-          {node.children.length > 0 && (
-            <Box sx={{ pl: 2 }}>
-              <SectionTreeList nodes={node.children} />
-            </Box>
-          )}
-        </Box>
-      ))}
-    </Box>
-  )
-}
-
-// docs/specs/056-club-profile-overview.md: the new consolidated, view-first Club Profile overview
-// — replaces the four separate Club Profile/Contacts/Sponsors/Structure dashboard cards with one
-// bento-grid page. Reads clubId from ManagerHome's Outlet context, same guard/loading/error shape
-// as every other /manage page — gated on the profile fetch specifically (the header needs it),
-// every other list fetched independently alongside it.
+// docs/specs/094-club-structure-and-seasons.md Slice A (docs/specs/056-club-profile-overview.md is the page it
+// rewrites): the Club profile. A header (logo, name, type, filled Edit profile), a three-tile key-figure strip, equal-height
+// Details / Contacts / Sponsors cards, then the "Club structure" card with the org chart (a nested list on a phone) and
+// the read-only detail card for the selected section. Reads clubId from ManagerHome's Outlet context, same guard/loading/
+// error shape as every other /manage page, gated on the profile fetch; every other query is independent and never blocks.
 export default function ClubOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   const {
     data: profile,
@@ -143,10 +114,37 @@ export default function ClubOverviewPage() {
     enabled: Boolean(clubId),
   })
 
-  const { data: seasons } = useQuery({
+  const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
     queryFn: () => listSeasons(clubId as string),
     enabled: Boolean(clubId),
+  })
+  const seasons = seasonsQuery.data
+  const seasonId = useMemo(() => (seasons ? pickDefaultSeasonId(seasons) : undefined), [seasons])
+  const seasonLabel = seasons?.find((season) => season.id === seasonId)?.label ?? 'the current season'
+
+  // One request for the key figures and every section's panel figures; held until the seasons are known so the first
+  // request already names the season. Under the sections key prefix, so creating a section refreshes it.
+  const summaryQuery = useQuery({
+    queryKey: sectionsSummaryKey(clubId as string, seasonId),
+    queryFn: () => getSectionsSummary(clubId as string, { seasonId }),
+    enabled: Boolean(clubId) && !seasonsQuery.isPending,
+  })
+
+  const sectionList: Section[] = useMemo(() => sections ?? [], [sections])
+  const selectedSection = sectionList.find((section) => section.id === selectedId) ?? null
+  const activeSelectedId = selectedSection?.id
+
+  const teamsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'sections', activeSelectedId, 'teams'],
+    queryFn: () => listTeamsForSection(clubId as string, activeSelectedId as string),
+    enabled: Boolean(clubId) && Boolean(activeSelectedId),
+  })
+
+  const sectionContactsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'sections', activeSelectedId, 'contacts'],
+    queryFn: () => listSectionContacts(clubId as string, activeSelectedId as string),
+    enabled: Boolean(clubId) && Boolean(activeSelectedId),
   })
 
   if (!clubId) {
@@ -168,9 +166,6 @@ export default function ClubOverviewPage() {
 
   const contactList: ClubContact[] = contacts ?? []
   const sponsorList: Sponsor[] = sponsors ?? []
-  const sectionTree = buildSectionTree(sections ?? [])
-  const seasonList: Season[] = seasons ?? []
-  const currentSeasonId = pickDefaultSeasonId(seasonList)
 
   const selectedContact = contactList.find((contact) => contact.id === openContactId) ?? null
   const selectedSponsor = sponsorList.find((sponsor) => sponsor.id === openSponsorId) ?? null
@@ -180,111 +175,143 @@ export default function ClubOverviewPage() {
   const hasSocialLinks = socialLinks.length > 0
   const hasAnyProfileField = Boolean(profile.phone || profile.email || profile.website || hasAddress || hasSocialLinks)
 
+  // The summary has no club-level leagues figure, so Leagues is the distinct league ids across every section's leagues.
+  const summary = summaryQuery.data
+  const leagueCount = summary ? new Set(summary.sections.flatMap((row) => row.leagues.map((league) => league.id))).size : 0
+  const figure = (value: number | undefined) => (value === undefined ? DASH : String(value))
+
+  const clearSelection = () => setSelectedId(null)
+
+  const panelFor = (section: Section) => (
+    <SectionInfoPanel
+      section={section}
+      sections={sectionList}
+      summary={summary?.sections.find((row) => row.sectionId === section.id)}
+      seasonLabel={seasonLabel}
+      teams={teamsQuery.data ?? []}
+      contacts={sectionContactsQuery.data ?? []}
+      teamsLoading={teamsQuery.isLoading}
+      contactsLoading={sectionContactsQuery.isLoading}
+      error={summaryQuery.isError || teamsQuery.isError || sectionContactsQuery.isError}
+      onRetry={() => {
+        void summaryQuery.refetch()
+        void teamsQuery.refetch()
+        void sectionContactsQuery.refetch()
+      }}
+      onClose={clearSelection}
+      embedded
+      onSelectSection={setSelectedId}
+      editTo={`/manage/sections?sectionId=${section.id}`}
+      manageTeamsTo={`/manage/sections/${section.id}/teams`}
+      teamTo={(team) => `/manage/sections/${team.sectionId}/teams/${team.id}`}
+      leagueTo={(league) => `/manage/fixtures/leagues/${league.id}`}
+    />
+  )
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
       <PageHeaderBand>
-        <MuiButton
-          component={RouterLink}
-          to="/manage"
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          sx={{ mb: 1, ml: -1, color: 'text.secondary' }}
-        >
-          Back to Dashboard
-        </MuiButton>
-
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Avatar
-              src={profile.logoUrl ?? undefined}
-              variant="rounded"
-              sx={{
-                width: 56,
-                height: 56,
-                flex: 'none',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-                color: 'primary.dark',
-              }}
+        <Stack spacing={2}>
+          <Typography variant="h5" component="h1" fontWeight={700}>
+            Club profile
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
+              <Avatar
+                src={profile.logoUrl ?? undefined}
+                variant="rounded"
+                sx={{ ...avatarSx(64), borderRadius: 1.5 }}
+              >
+                {initialsFromName(profile.name)}
+              </Avatar>
+              <Stack spacing={1} sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="h6"
+                  component="h2"
+                  sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: '1.25rem', md: '1.5rem' }, overflowWrap: 'anywhere' }}
+                >
+                  {profile.name}
+                </Typography>
+                {profile.type && (
+                  <Chip size="small" variant="outlined" label={CLUB_TYPE_LABELS[profile.type]} sx={{ alignSelf: 'flex-start' }} />
+                )}
+              </Stack>
+            </Box>
+            <MuiButton
+              component={RouterLink}
+              to="/manage/club-profile/edit"
+              variant="contained"
+              startIcon={<EditOutlinedIcon fontSize="small" />}
+              sx={{ flex: 'none' }}
             >
-              {initialsFromName(profile.name)}
-            </Avatar>
-            <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-              <Typography variant="h5" component="h1" noWrap sx={{ fontWeight: 700 }}>
-                {profile.name}
-              </Typography>
-              {profile.type && (
-                <Chip size="small" variant="outlined" label={CLUB_TYPE_LABELS[profile.type]} sx={{ alignSelf: 'flex-start' }} />
-              )}
-            </Stack>
-          </Stack>
-
-          <MuiButton
-            component={RouterLink}
-            to="/manage/club-profile/edit"
-            variant="contained"
-            startIcon={<EditOutlinedIcon fontSize="small" />}
-            sx={{ flex: 'none' }}
-          >
-            Edit profile
-          </MuiButton>
+              Edit profile
+            </MuiButton>
+          </Box>
         </Stack>
       </PageHeaderBand>
 
-      {/* Profile card — full width, no edit button of its own; the header's "Edit profile" above
-          already covers every field here. */}
-      <Card>
-        <CardHeaderRow title="Club Details" />
-        {!hasAnyProfileField ? (
-          <Typography variant="body2" color="text.secondary">
-            No contact details yet. Add a phone, email, website, address, or social link from Edit profile.
-          </Typography>
-        ) : (
-          <Box sx={{ position: 'relative', pb: hasSocialLinks ? 4 : 0 }}>
-            <DetailFieldGrid>
-              {profile.phone && <DetailFieldRow icon={<PhoneOutlinedIcon />} label="Phone" value={profile.phone} />}
-              {profile.email && <DetailFieldRow icon={<EmailOutlinedIcon />} label="Email" value={profile.email} />}
-              {profile.website && <DetailFieldRow icon={<LanguageOutlinedIcon />} label="Website" value={profile.website} />}
-              {hasAddress && profile.address && (
-                <DetailFieldRow icon={<PlaceOutlinedIcon />} label="Address" value={formatAddress(profile.address)} />
-              )}
-            </DetailFieldGrid>
-
-            {hasSocialLinks && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  right: 12,
-                  bottom: 12,
-                  '& .MuiIconButton-root': {
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    bgcolor: 'background.paper',
-                  },
-                }}
-              >
-                <SocialLinksRow links={socialLinks} />
-              </Box>
-            )}
-          </Box>
-        )}
-      </Card>
-
-      {/* Contacts + Sponsors — two-column grid, stacking to one column at xs. */}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
-        <Card>
-          <CardHeaderRow
-            title="Contacts"
-            action={
-              <MuiButton component={RouterLink} to="/manage/club-contacts" variant="text" color="inherit" size="small">
-                Manage
-              </MuiButton>
-            }
+      {!summaryQuery.isError && (
+        <Box
+          data-testid="club-key-figures"
+          sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' } }}
+        >
+          <KeyFigureTile testId="club-figure-teams" icon={<GroupsOutlinedIcon />} value={figure(summary?.totals.teams)} label="Teams" />
+          <KeyFigureTile
+            testId="club-figure-leagues"
+            icon={<EmojiEventsOutlinedIcon />}
+            value={figure(summary ? leagueCount : undefined)}
+            label="Leagues"
           />
+          <KeyFigureTile testId="club-figure-players" icon={<PeopleOutlineIcon />} value={figure(summary?.totals.players)} label="Players" />
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: { xs: 1.75, md: 2 },
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+          alignItems: 'stretch',
+        }}
+      >
+        {/* Manage opens the same edit form as the header's "Edit profile". */}
+        <InfoCard
+          title="Club Details"
+          icon={<BusinessOutlinedIcon />}
+          headerAction={
+            <MuiButton component={RouterLink} to="/manage/club-profile/edit" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          }
+        >
+          {!hasAnyProfileField ? (
+            <Typography variant="body2" color="text.secondary">
+              No contact details yet. Add a phone, email, website, address, or social link from Edit profile.
+            </Typography>
+          ) : (
+            <>
+              <DetailFieldGrid>
+                {profile.phone && <DetailFieldRow icon={<PhoneOutlinedIcon />} label="Phone" value={profile.phone} />}
+                {profile.email && <DetailFieldRow icon={<EmailOutlinedIcon />} label="Email" value={profile.email} />}
+                {profile.website && <DetailFieldRow icon={<LanguageOutlinedIcon />} label="Website" value={profile.website} />}
+                {hasAddress && profile.address && (
+                  <DetailFieldRow icon={<PlaceOutlinedIcon />} label="Address" value={formatAddress(profile.address)} />
+                )}
+              </DetailFieldGrid>
+              {hasSocialLinks && <SocialLinksRow links={socialLinks} />}
+            </>
+          )}
+        </InfoCard>
+
+        <InfoCard
+          title="Contacts"
+          icon={<ContactsOutlinedIcon />}
+          headerAction={
+            <MuiButton component={RouterLink} to="/manage/club-contacts" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          }
+        >
           {contactList.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No contacts yet.
@@ -298,7 +325,7 @@ export default function ClubOverviewPage() {
                     key={contact.id}
                     imageUrl={contact.photoUrl}
                     shape="circular"
-                    label={`${name} — ${contact.role}`}
+                    label={`${name} \u2014 ${contact.role}`}
                     name={name}
                     initials={initialsFromName(name)}
                     onClick={() => setOpenContactId(contact.id)}
@@ -307,17 +334,17 @@ export default function ClubOverviewPage() {
               })}
             </Stack>
           )}
-        </Card>
+        </InfoCard>
 
-        <Card>
-          <CardHeaderRow
-            title="Sponsors"
-            action={
-              <MuiButton component={RouterLink} to="/manage/sponsors" variant="text" color="inherit" size="small">
-                Manage
-              </MuiButton>
-            }
-          />
+        <InfoCard
+          title="Sponsors"
+          icon={<HandshakeOutlinedIcon />}
+          headerAction={
+            <MuiButton component={RouterLink} to="/manage/sponsors" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          }
+        >
           {sponsorList.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               No sponsors yet.
@@ -329,7 +356,7 @@ export default function ClubOverviewPage() {
                   key={sponsor.id}
                   imageUrl={sponsor.logoUrl}
                   shape="rounded"
-                  label={`${sponsor.name} — Sponsor`}
+                  label={`${sponsor.name} \u2014 Sponsor`}
                   name={sponsor.name}
                   initials={initialsFromName(sponsor.name)}
                   onClick={() => setOpenSponsorId(sponsor.id)}
@@ -337,78 +364,75 @@ export default function ClubOverviewPage() {
               ))}
             </Stack>
           )}
-        </Card>
+        </InfoCard>
       </Box>
 
-      {/* Structure + Seasons — same two-column/mobile-stack shape. */}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' } }}>
-        <Card>
-          <CardHeaderRow
-            title="Structure"
+      <InfoCard
+        title="Club structure"
+        icon={<AccountTreeOutlinedIcon />}
+        testId="club-structure-card"
+        headerAction={
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {!isPhone && sectionList.length > 0 && (
+              <IconButton aria-label="Expand club structure" size="small" onClick={() => setExpanded(true)}>
+                <OpenInFullOutlinedIcon fontSize="small" />
+              </IconButton>
+            )}
+            <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          </Stack>
+        }
+      >
+        {sectionList.length === 0 ? (
+          <EmptyState
+            title="No sections yet"
+            description="Set up your club's structure, for example Seniors and Juniors, to organise teams and players."
             action={
-              <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
-                Edit structure
+              <MuiButton component={RouterLink} to="/manage/sections" variant="contained">
+                Set up your structure
               </MuiButton>
             }
           />
-          {sectionTree.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No sections yet.
-            </Typography>
-          ) : (
-            <SectionTreeList nodes={sectionTree} />
-          )}
-        </Card>
-
-        <Card>
-          <CardHeaderRow
-            title="Seasons"
-            action={
-              <MuiButton
-                component={RouterLink}
-                to="/manage/fixtures/seasons/new"
-                variant="text"
-                color="inherit"
-                size="small"
-                startIcon={<AddIcon fontSize="small" />}
-              >
-                Add season
-              </MuiButton>
-            }
+        ) : isPhone ? (
+          <SectionTree
+            sections={sectionList}
+            selectedId={activeSelectedId ?? null}
+            onSelect={setSelectedId}
+            showAgeChip
           />
-          {seasonList.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No seasons yet.
-            </Typography>
-          ) : (
-            <Stack spacing={1.5}>
-              {seasonList.map((season) => (
-                <Stack key={season.id} direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" fontWeight={600} noWrap>
-                        {season.label}
-                      </Typography>
-                      {season.id === currentSeasonId && <Chip size="small" label="Current" sx={badgeSx('positive')} />}
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDateRange(season.startDate, season.endDate)}
-                    </Typography>
-                  </Box>
-                  <IconButton
-                    size="small"
-                    component={RouterLink}
-                    to={`/manage/fixtures/seasons/${season.id}/edit`}
-                    aria-label={`Edit ${season.label}`}
-                  >
-                    <EditOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-              ))}
-            </Stack>
-          )}
-        </Card>
-      </Box>
+        ) : (
+          <SectionOrgChart
+            sections={sectionList}
+            selectedId={activeSelectedId ?? null}
+            onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+            onClearSelection={clearSelection}
+          />
+        )}
+      </InfoCard>
+
+      {/* The same read-only chart, full screen with zoom and fit. A node opens the same details drawer on top of it. */}
+      <OrgChartFullScreen open={expanded && !isPhone} onClose={() => setExpanded(false)} title="Club structure">
+        <SectionOrgChart
+          sections={sectionList}
+          selectedId={activeSelectedId ?? null}
+          onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+          onClearSelection={clearSelection}
+        />
+      </OrgChartFullScreen>
+
+      {/* The details slide in: a right drawer from sm up, a bottom sheet on a phone. Closing it (Escape, backdrop, the close
+          button) clears the selection, and focus returns to the node. */}
+      <SidePanel
+        open={Boolean(selectedSection)}
+        onClose={clearSelection}
+        title={selectedSection?.name ?? ''}
+        closeLabel="Close section details"
+        // Above the full-screen overlay (a Dialog), so a node clicked there shows its details on top of it.
+        zIndex={theme.zIndex.modal + 1}
+      >
+        {() => selectedSection && panelFor(selectedSection)}
+      </SidePanel>
 
       <RecordQuickViewDialog
         open={Boolean(selectedContact)}

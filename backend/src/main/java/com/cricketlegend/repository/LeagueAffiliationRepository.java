@@ -49,6 +49,50 @@ public interface LeagueAffiliationRepository extends JpaRepository<LeagueAffilia
         String getLogoUrl();
     }
 
+    /**
+     * Per docs/specs/094-club-structure-and-seasons.md: the distinct leagues in which a team of each of the club's
+     * sections is affiliated in {@code seasonId}, in one round trip for the whole club (never per section), unordered (the service sorts by name). The club
+     * scope is the team's {@code clubId}; a league the club's team joined but another club owns is included by name.
+     */
+    @Query("select distinct t.sectionId as sectionId, l.id as leagueId, l.name as leagueName "
+            + "from LeagueAffiliation a, Team t, League l "
+            + "where a.teamId = t.id and a.leagueId = l.id and t.clubId = :clubId and a.seasonId = :seasonId")
+    List<SectionLeagueRef> findSectionLeagueRefs(@Param("clubId") UUID clubId, @Param("seasonId") UUID seasonId);
+
+    /** Projection backing {@link #findSectionLeagueRefs}. */
+    interface SectionLeagueRef {
+        UUID getSectionId();
+
+        UUID getLeagueId();
+
+        String getLeagueName();
+    }
+
+    /**
+     * Per docs/specs/094-club-structure-and-seasons.md: the number of distinct leagues the club's teams are affiliated
+     * to in each of {@code seasonIds}, in one round trip. Scoped by the club's own season ids and by the team's
+     * {@code clubId}, so another club's affiliations can never be counted.
+     */
+    @Query("select a.seasonId as seasonId, count(distinct a.leagueId) as total "
+            + "from LeagueAffiliation a, Team t "
+            + "where a.teamId = t.id and t.clubId = :clubId and a.seasonId in :seasonIds group by a.seasonId")
+    List<SeasonCount> countDistinctLeaguesBySeasonIds(
+            @Param("clubId") UUID clubId, @Param("seasonIds") List<UUID> seasonIds);
+
+    /** As {@link #countDistinctLeaguesBySeasonIds} but the distinct own teams entered in each season. */
+    @Query("select a.seasonId as seasonId, count(distinct a.teamId) as total "
+            + "from LeagueAffiliation a, Team t "
+            + "where a.teamId = t.id and t.clubId = :clubId and a.seasonId in :seasonIds group by a.seasonId")
+    List<SeasonCount> countDistinctTeamsBySeasonIds(
+            @Param("clubId") UUID clubId, @Param("seasonIds") List<UUID> seasonIds);
+
+    /** Projection backing the per-season counts above. */
+    interface SeasonCount {
+        UUID getSeasonId();
+
+        long getTotal();
+    }
+
     /** Projection backing {@link #countDistinctTeamsBySeasonId}. */
     interface LeagueTeamCount {
         UUID getLeagueId();

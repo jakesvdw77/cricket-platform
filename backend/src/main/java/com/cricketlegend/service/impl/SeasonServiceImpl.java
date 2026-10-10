@@ -3,16 +3,25 @@ package com.cricketlegend.service.impl;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.CreateSeasonRequest;
 import com.cricketlegend.dto.SeasonDto;
+import com.cricketlegend.dto.SeasonSummaryDto;
+import com.cricketlegend.dto.SeasonsSummaryDto;
 import com.cricketlegend.dto.UpdateSeasonRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SeasonMapper;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.SeasonCount;
+import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchRepository.SeasonMatchCount;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.SeasonService;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,22 +30,61 @@ import org.springframework.transaction.annotation.Transactional;
  * club (not paginated, a deliberately small bounded collection); {@code create}/{@code update}
  * validate {@code startDate <= endDate}; {@code deactivate}/{@code reactivate} mirror {@code
  * SponsorServiceImpl}'s one-way transition-guard shape; every lookup is scoped to the owning club.
+ * Per docs/specs/094-club-structure-and-seasons.md: {@code summary} reads the club's seasons plus three grouped
+ * queries (leagues, distinct own teams, active matches), so the statement count never depends on the season count.
  */
 @Service
 public class SeasonServiceImpl implements SeasonService {
 
     private final SeasonRepository seasonRepository;
     private final SeasonMapper seasonMapper;
+    private final LeagueAffiliationRepository leagueAffiliationRepository;
+    private final MatchRepository matchRepository;
 
-    public SeasonServiceImpl(SeasonRepository seasonRepository, SeasonMapper seasonMapper) {
+    public SeasonServiceImpl(
+            SeasonRepository seasonRepository,
+            SeasonMapper seasonMapper,
+            LeagueAffiliationRepository leagueAffiliationRepository,
+            MatchRepository matchRepository) {
         this.seasonRepository = seasonRepository;
         this.seasonMapper = seasonMapper;
+        this.leagueAffiliationRepository = leagueAffiliationRepository;
+        this.matchRepository = matchRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<SeasonDto> list(UUID clubId) {
         return seasonRepository.findByClubId(clubId).stream().map(seasonMapper::toDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SeasonsSummaryDto summary(Authentication authentication, UUID clubId) {
+        List<UUID> seasonIds = seasonRepository.findByClubId(clubId).stream().map(Season::getId).toList();
+        if (seasonIds.isEmpty()) {
+            return new SeasonsSummaryDto(List.of());
+        }
+        // Every query is bounded by the club's own season ids and, for affiliations and matches, by the club id too.
+        Map<UUID, Long> leagues = totals(leagueAffiliationRepository.countDistinctLeaguesBySeasonIds(clubId, seasonIds));
+        Map<UUID, Long> teams = totals(leagueAffiliationRepository.countDistinctTeamsBySeasonIds(clubId, seasonIds));
+        Map<UUID, Long> matches = new HashMap<>();
+        for (SeasonMatchCount row : matchRepository.countActiveBySeasonIds(clubId, seasonIds)) {
+            matches.put(row.getSeasonId(), row.getTotal());
+        }
+        List<SeasonSummaryDto> rows = seasonIds.stream()
+                .map(id -> new SeasonSummaryDto(
+                        id, leagues.getOrDefault(id, 0L), teams.getOrDefault(id, 0L), matches.getOrDefault(id, 0L)))
+                .toList();
+        return new SeasonsSummaryDto(rows);
+    }
+
+    private Map<UUID, Long> totals(List<SeasonCount> rows) {
+        Map<UUID, Long> totals = new HashMap<>();
+        for (SeasonCount row : rows) {
+            totals.put(row.getSeasonId(), row.getTotal());
+        }
+        return totals;
     }
 
     @Override

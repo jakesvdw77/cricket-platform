@@ -25,6 +25,7 @@ describe('SideMenu', () => {
     const labels = within(nav).getAllByRole('link').map((link) => link.textContent)
     expect(labels).toEqual([
       'Overview',
+      'Seasons',
       'Leagues',
       'Matches',
       'Results',

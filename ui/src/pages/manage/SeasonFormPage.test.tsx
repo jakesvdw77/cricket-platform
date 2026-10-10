@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -78,10 +78,10 @@ describe('SeasonFormPage', () => {
 
     expect(screen.getByText('Add Season')).toBeInTheDocument()
     expect(listSeasons).not.toHaveBeenCalled()
-    // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
-    // saved record.
-    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Active' })).not.toBeInTheDocument()
+    expect(screen.getByText('Season dates')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/seasons')
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Label'), '2026')
     await user.type(screen.getByLabelText('Start date'), '2026-01-01')
@@ -91,7 +91,7 @@ describe('SeasonFormPage', () => {
     expect(createSeason).toHaveBeenCalledTimes(1)
     const [clubId, payload] = createSeason.mock.calls[0]
     expect(clubId).toBe('test-club-id')
-    expect(payload).toMatchObject({ label: '2026' })
+    expect(payload).toEqual({ label: '2026', startDate: '2026-01-01', endDate: '2026-12-31' })
 
     expect(await screen.findByText('Season List Page')).toBeInTheDocument()
   })
@@ -136,36 +136,37 @@ describe('SeasonFormPage', () => {
     expect(await screen.findByText('Season List Page')).toBeInTheDocument()
   })
 
-  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from SeasonList's own card.
-  describe('Deactivate/Reactivate', () => {
-    it('edit mode: renders Deactivate for an active season, clicking it calls deactivateSeason and invalidates the seasons list', async () => {
+  it('edit mode: shows Save changes, an Active switch and Cancel back to the list', async () => {
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', active: true })])
+
+    renderPage('/manage/fixtures/seasons/season-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit Season')
+    expect(screen.getByRole('checkbox', { name: 'Active' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create season' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/seasons')
+  })
+
+  // docs/specs/094 (F): the Active switch replaces the old Deactivate/Reactivate button.
+  describe('Active switch', () => {
+    it('edit mode: switching an active season off calls deactivateSeason and refetches the seasons list', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1', active: true })])
-      // onSuccess invalidates the list query while this page's own useQuery is still mounted,
-      // triggering a refetch that must resolve to the now-inactive record for the button to
-      // relabel.
       listSeasons.mockResolvedValueOnce([makeSeason({ id: 'season-1', active: false })])
-      let resolveDeactivate: (value: Season) => void = () => {}
-      deactivateSeason.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveDeactivate = resolve
-        }),
-      )
+      deactivateSeason.mockResolvedValueOnce(makeSeason({ id: 'season-1', active: false }))
 
       renderPage('/manage/fixtures/seasons/season-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Season')
-      await user.click(screen.getByRole('button', { name: 'Deactivate' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Active' }))
 
       expect(deactivateSeason).toHaveBeenCalledWith('test-club-id', 'season-1')
-      expect(await screen.findByRole('button', { name: 'Deactivating…' })).toBeInTheDocument()
-
-      resolveDeactivate(makeSeason({ id: 'season-1', active: false }))
-
-      expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Active' })).not.toBeChecked())
+      expect(listSeasons).toHaveBeenCalledTimes(2)
     })
 
-    it('edit mode: renders Reactivate for an inactive season, clicking it calls reactivateSeason', async () => {
+    it('edit mode: switching an inactive season on calls reactivateSeason', async () => {
       const user = userEvent.setup()
       listSeasons.mockResolvedValue([makeSeason({ id: 'season-1', active: false })])
       reactivateSeason.mockResolvedValueOnce(makeSeason({ id: 'season-1', active: true }))
@@ -173,9 +174,11 @@ describe('SeasonFormPage', () => {
       renderPage('/manage/fixtures/seasons/season-1/edit', 'test-club-id')
 
       await screen.findByText('Edit Season')
-      await user.click(screen.getByRole('button', { name: 'Reactivate' }))
+      expect(screen.getByRole('checkbox', { name: 'Active' })).not.toBeChecked()
+      await user.click(screen.getByRole('checkbox', { name: 'Active' }))
 
       expect(reactivateSeason).toHaveBeenCalledWith('test-club-id', 'season-1')
+      expect(deactivateSeason).not.toHaveBeenCalled()
     })
   })
 })

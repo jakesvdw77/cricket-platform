@@ -191,8 +191,6 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
     // --- Season: a single season spanning today, so it's auto-selected everywhere below ---
 
-    await page.getByRole('link', { name: 'Back to Fixtures & Results' }).click();
-    await expect(page).toHaveURL(/\/manage\/fixtures$/);
     await page.getByRole('link', { name: 'Seasons' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/seasons$/);
     await page.getByRole('button', { name: 'Add Season' }).click();

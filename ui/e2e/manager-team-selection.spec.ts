@@ -184,7 +184,6 @@ test.describe('Team selection golden path (076-team-selection.md)', () => {
 
     // --- Season. ---
     await page.goto(`http://${ROOT_DOMAIN}/manage`);
-    await page.getByRole('link', { name: 'Fixtures & Results' }).click();
     await page.getByRole('link', { name: 'Seasons' }).click();
     await page.getByRole('button', { name: 'Add Season' }).click();
     await page.getByLabel('Label').fill(seasonLabel);

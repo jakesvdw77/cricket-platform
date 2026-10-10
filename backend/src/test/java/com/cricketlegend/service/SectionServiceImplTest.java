@@ -2,17 +2,25 @@ package com.cricketlegend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.ClubContact;
 import com.cricketlegend.domain.Gender;
+import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.PlayerSection;
+import com.cricketlegend.domain.PlayerVerificationStatus;
+import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
+import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.SectionContact;
 import com.cricketlegend.dto.ClubContactDto;
 import com.cricketlegend.dto.CreateSectionRequest;
 import com.cricketlegend.dto.SectionDto;
+import com.cricketlegend.dto.SectionSummaryDto;
+import com.cricketlegend.dto.SectionsSummaryDto;
 import com.cricketlegend.dto.UpdateSectionRequest;
 import com.cricketlegend.exception.ConflictException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
@@ -21,9 +29,17 @@ import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.ClubContactMapper;
 import com.cricketlegend.mapper.SectionMapper;
 import com.cricketlegend.repository.ClubContactRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.SectionLeagueRef;
+import com.cricketlegend.repository.PlayerProfileRepository;
+import com.cricketlegend.repository.PlayerSectionRepository;
+import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionContactRepository;
+import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.service.impl.SectionServiceImpl;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,12 +83,29 @@ class SectionServiceImplTest {
     @Mock
     private ClubContactMapper clubContactMapper;
 
+    @Mock
+    private SeasonRepository seasonRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private PlayerProfileRepository playerProfileRepository;
+
+    @Mock
+    private PlayerSectionRepository playerSectionRepository;
+
+    @Mock
+    private LeagueAffiliationRepository leagueAffiliationRepository;
+
     private SectionServiceImpl sectionService;
 
     @BeforeEach
     void setUp() {
         sectionService = new SectionServiceImpl(
-                sectionRepository, sectionContactRepository, clubContactRepository, sectionMapper, clubContactMapper);
+                sectionRepository, sectionContactRepository, clubContactRepository, sectionMapper, clubContactMapper,
+                seasonRepository, teamRepository, playerProfileRepository, playerSectionRepository,
+                leagueAffiliationRepository);
     }
 
     private Section section(UUID id, UUID clubId, boolean active) {
@@ -502,5 +535,190 @@ class SectionServiceImplTest {
         List<SectionDto> result = sectionService.list(clubId);
 
         assertThat(result).hasSize(2);
+    }
+
+    // --- summary (docs/specs/094-club-structure-and-seasons.md) ---
+
+    private Section child(UUID id, UUID clubId, UUID parentId) {
+        Section section = section(id, clubId, true);
+        section.setParentSectionId(parentId);
+        return section;
+    }
+
+    private Team team(UUID clubId, UUID sectionId, boolean active) {
+        return Team.builder().id(UUID.randomUUID()).clubId(clubId).sectionId(sectionId).name("T").active(active).build();
+    }
+
+    private PlayerProfile profile(UUID clubId, boolean active, PlayerVerificationStatus status) {
+        return PlayerProfile.builder().id(UUID.randomUUID()).clubId(clubId).active(active).verificationStatus(status).build();
+    }
+
+    private PlayerSection tag(PlayerProfile profile, UUID sectionId) {
+        return PlayerSection.builder().playerProfileId(profile.getId()).sectionId(sectionId).build();
+    }
+
+    private Season season(UUID clubId, int year) {
+        return Season.builder().id(UUID.randomUUID()).clubId(clubId).label("" + year)
+                .startDate(LocalDate.of(year, 1, 1)).endDate(LocalDate.of(year, 12, 31)).active(true)
+                .createdAt(Instant.parse(year + "-01-01T00:00:00Z")).build();
+    }
+
+    private SectionLeagueRef leagueRef(UUID sectionId, UUID leagueId, String name) {
+        SectionLeagueRef ref = mock(SectionLeagueRef.class);
+        when(ref.getSectionId()).thenReturn(sectionId);
+        when(ref.getLeagueId()).thenReturn(leagueId);
+        when(ref.getLeagueName()).thenReturn(name);
+        return ref;
+    }
+
+    private SectionSummaryDto row(SectionsSummaryDto dto, UUID sectionId) {
+        return dto.sections().stream().filter(r -> r.sectionId().equals(sectionId)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void summarySeparatesOwnFromSubtreeFigures() {
+        UUID clubId = UUID.randomUUID();
+        Section parent = section(UUID.randomUUID(), clubId, true);
+        Section kid = child(UUID.randomUUID(), clubId, parent.getId());
+        Section grandKid = child(UUID.randomUUID(), clubId, kid.getId());
+        PlayerProfile p1 = profile(clubId, true, PlayerVerificationStatus.VERIFIED);
+        PlayerProfile p2 = profile(clubId, true, PlayerVerificationStatus.VERIFIED);
+        PlayerProfile untagged = profile(clubId, true, PlayerVerificationStatus.VERIFIED);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(parent, kid, grandKid));
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of(
+                team(clubId, parent.getId(), true), team(clubId, kid.getId(), true), team(clubId, grandKid.getId(), true)));
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(p1, p2, untagged));
+        when(playerSectionRepository.findByPlayerProfileIdIn(ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(tag(p1, parent.getId()), tag(p2, grandKid.getId())));
+
+        SectionsSummaryDto result = sectionService.summary(null, clubId, null);
+
+        SectionSummaryDto parentRow = row(result, parent.getId());
+        assertThat(parentRow.teamCount()).isEqualTo(1);
+        assertThat(parentRow.playerCount()).isEqualTo(1);
+        assertThat(parentRow.subtreeTeamCount()).isEqualTo(3);
+        assertThat(parentRow.subtreePlayerCount()).isEqualTo(2);
+        SectionSummaryDto kidRow = row(result, kid.getId());
+        assertThat(kidRow.playerCount()).isZero();
+        assertThat(kidRow.subtreeTeamCount()).isEqualTo(2);
+        assertThat(kidRow.subtreePlayerCount()).isEqualTo(1);
+        assertThat(result.totals().sections()).isEqualTo(3);
+        assertThat(result.totals().teams()).isEqualTo(3);
+        assertThat(result.totals().players()).isEqualTo(3);
+    }
+
+    @Test
+    void summaryCountsAPlayerTaggedToParentAndChildOnceInTheParentsSubtree() {
+        UUID clubId = UUID.randomUUID();
+        Section parent = section(UUID.randomUUID(), clubId, true);
+        Section kid = child(UUID.randomUUID(), clubId, parent.getId());
+        PlayerProfile both = profile(clubId, true, PlayerVerificationStatus.VERIFIED);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(parent, kid));
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(both));
+        when(playerSectionRepository.findByPlayerProfileIdIn(ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(tag(both, parent.getId()), tag(both, kid.getId())));
+
+        SectionsSummaryDto result = sectionService.summary(null, clubId, null);
+
+        assertThat(row(result, parent.getId()).playerCount()).isEqualTo(1);
+        assertThat(row(result, parent.getId()).subtreePlayerCount()).isEqualTo(1);
+        assertThat(row(result, kid.getId()).playerCount()).isEqualTo(1);
+        assertThat(result.totals().players()).isEqualTo(1);
+    }
+
+    @Test
+    void summaryIgnoresInactiveAndRejectedPlayers() {
+        UUID clubId = UUID.randomUUID();
+        Section root = section(UUID.randomUUID(), clubId, true);
+        PlayerProfile ok = profile(clubId, true, PlayerVerificationStatus.UNVERIFIED);
+        PlayerProfile suspended = profile(clubId, false, PlayerVerificationStatus.VERIFIED);
+        PlayerProfile rejected = profile(clubId, true, PlayerVerificationStatus.REJECTED);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(root));
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of(ok, suspended, rejected));
+        when(playerSectionRepository.findByPlayerProfileIdIn(ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(tag(ok, root.getId())));
+
+        SectionsSummaryDto result = sectionService.summary(null, clubId, null);
+
+        assertThat(row(result, root.getId()).playerCount()).isEqualTo(1);
+        assertThat(result.totals().players()).isEqualTo(1);
+    }
+
+    @Test
+    void summaryCountsAnInactiveTeamInTeamCountButNotActiveTeamCountOrTheTotal() {
+        UUID clubId = UUID.randomUUID();
+        Section root = section(UUID.randomUUID(), clubId, true);
+        Section retired = section(UUID.randomUUID(), clubId, false);
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(root, retired));
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of(
+                team(clubId, root.getId(), true), team(clubId, root.getId(), false)));
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of());
+
+        SectionsSummaryDto result = sectionService.summary(null, clubId, null);
+
+        assertThat(row(result, root.getId()).teamCount()).isEqualTo(2);
+        assertThat(row(result, root.getId()).activeTeamCount()).isEqualTo(1);
+        assertThat(result.totals().teams()).isEqualTo(1);
+        assertThat(result.totals().sections()).isEqualTo(1);
+        assertThat(result.sections()).hasSize(2);
+    }
+
+    @Test
+    void summaryScopesLeaguesToTheChosenSeasonAndDefaultsToTheCurrentOne() {
+        UUID clubId = UUID.randomUUID();
+        Section root = section(UUID.randomUUID(), clubId, true);
+        Season older = season(clubId, 2020);
+        Season newer = season(clubId, 2021);
+        UUID leagueA = UUID.randomUUID();
+        UUID leagueB = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(older, newer));
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of(root));
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of());
+        List<SectionLeagueRef> olderRefs =
+                List.of(leagueRef(root.getId(), leagueB, "zeta league"), leagueRef(root.getId(), leagueA, "Alpha league"));
+        when(leagueAffiliationRepository.findSectionLeagueRefs(clubId, older.getId())).thenReturn(olderRefs);
+        when(leagueAffiliationRepository.findSectionLeagueRefs(clubId, newer.getId())).thenReturn(List.of());
+
+        SectionsSummaryDto chosen = sectionService.summary(null, clubId, older.getId());
+        assertThat(row(chosen, root.getId()).leagues()).extracting("name").containsExactly("Alpha league", "zeta league");
+
+        // no season requested: neither season contains today, so the most recently created (2021) is current
+        SectionsSummaryDto defaulted = sectionService.summary(null, clubId, null);
+        assertThat(row(defaulted, root.getId()).leagues()).isEmpty();
+        verify(leagueAffiliationRepository).findSectionLeagueRefs(clubId, newer.getId());
+    }
+
+    @Test
+    void summaryRejectsASeasonOfAnotherClub() {
+        UUID clubId = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(season(clubId, 2020)));
+
+        assertThatThrownBy(() -> sectionService.summary(null, clubId, UUID.randomUUID()))
+                .isInstanceOf(NotFoundException.class);
+        verify(sectionRepository, never()).findByClubId(clubId);
+    }
+
+    @Test
+    void summaryOfAnEmptyClubIsEmptyWithZeroTotals() {
+        UUID clubId = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(sectionRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(teamRepository.findByClubId(clubId)).thenReturn(List.of());
+        when(playerProfileRepository.findByClubId(clubId)).thenReturn(List.of());
+
+        SectionsSummaryDto result = sectionService.summary(null, clubId, null);
+
+        assertThat(result.sections()).isEmpty();
+        assertThat(result.totals().sections()).isZero();
+        assertThat(result.totals().teams()).isZero();
+        assertThat(result.totals().players()).isZero();
+        verify(playerSectionRepository, never()).findByPlayerProfileIdIn(ArgumentMatchers.anyCollection());
     }
 }
