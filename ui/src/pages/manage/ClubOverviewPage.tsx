@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Box, Button as MuiButton, Chip, Stack, Typography, useMediaQuery } from '@mui/material'
+import { Avatar, Box, Button as MuiButton, Chip, IconButton, Stack, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
@@ -9,6 +9,7 @@ import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import OpenInFullOutlinedIcon from '@mui/icons-material/OpenInFullOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
@@ -18,6 +19,7 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { EmptyState } from '../../components/EmptyState'
 import { InfoCard } from '../../components/InfoCard'
 import { KeyFigureTile } from '../../components/KeyFigureTile'
+import { OrgChartFullScreen } from '../../components/OrgChartFullScreen'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
 import { DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { SocialLinksRow } from '../../components/marketing/SocialLinksRow'
@@ -82,6 +84,7 @@ export default function ClubOverviewPage() {
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   const {
     data: profile,
@@ -271,8 +274,16 @@ export default function ClubOverviewPage() {
           alignItems: 'stretch',
         }}
       >
-        {/* No edit button of its own; the header's "Edit profile" already covers every field here. */}
-        <InfoCard title="Club Details" icon={<BusinessOutlinedIcon />}>
+        {/* Manage opens the same edit form as the header's "Edit profile". */}
+        <InfoCard
+          title="Club Details"
+          icon={<BusinessOutlinedIcon />}
+          headerAction={
+            <MuiButton component={RouterLink} to="/manage/club-profile/edit" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          }
+        >
           {!hasAnyProfileField ? (
             <Typography variant="body2" color="text.secondary">
               No contact details yet. Add a phone, email, website, address, or social link from Edit profile.
@@ -361,9 +372,16 @@ export default function ClubOverviewPage() {
         icon={<AccountTreeOutlinedIcon />}
         testId="club-structure-card"
         headerAction={
-          <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
-            Manage
-          </MuiButton>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {!isPhone && sectionList.length > 0 && (
+              <IconButton aria-label="Expand club structure" size="small" onClick={() => setExpanded(true)}>
+                <OpenInFullOutlinedIcon fontSize="small" />
+              </IconButton>
+            )}
+            <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
+              Manage
+            </MuiButton>
+          </Stack>
         }
       >
         {sectionList.length === 0 ? (
@@ -392,6 +410,16 @@ export default function ClubOverviewPage() {
           />
         )}
       </InfoCard>
+
+      {/* The same read-only chart, full screen with zoom and fit. A node opens the same details drawer on top of it. */}
+      <OrgChartFullScreen open={expanded && !isPhone} onClose={() => setExpanded(false)} title="Club structure">
+        <SectionOrgChart
+          sections={sectionList}
+          selectedId={activeSelectedId ?? null}
+          onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+          onClearSelection={clearSelection}
+        />
+      </OrgChartFullScreen>
 
       {/* The details slide in: a right drawer from sm up, a bottom sheet on a phone. Closing it (Escape, backdrop, the close
           button) clears the selection, and focus returns to the node. */}

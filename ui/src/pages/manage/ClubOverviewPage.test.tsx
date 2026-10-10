@@ -571,6 +571,72 @@ describe('ClubOverviewPage', () => {
     })
   })
 
+  describe('Club Details card', () => {
+    it('has a Manage link to the edit form', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists()
+
+      renderPage('test-club-id')
+
+      const heading = await screen.findByText('Club Details')
+      const card = heading.closest('[class*="MuiCard-root"]') as HTMLElement
+      expect(within(card).getByRole('link', { name: 'Manage' })).toHaveAttribute('href', '/manage/club-profile/edit')
+    })
+  })
+
+  describe('expanded club structure', () => {
+    async function openOverlay(user: ReturnType<typeof userEvent.setup>) {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+      renderPage('test-club-id')
+      await user.click(await screen.findByRole('button', { name: 'Expand club structure' }))
+      return screen.findByRole('dialog', { name: 'Club structure' })
+    }
+
+    it('opens a full-screen overlay with the read-only chart and zoom controls', async () => {
+      const user = userEvent.setup()
+      const dialog = await openOverlay(user)
+
+      expect(within(dialog).getByRole('button', { name: 'Open Sides' })).toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'Zoom in' })).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'Fit to screen' })).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Club structure' })).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Expand club structure' })).toBeInTheDocument()
+    })
+
+    it('selecting a node opens the drawer over the overlay; closing the drawer keeps the overlay', async () => {
+      const user = userEvent.setup()
+      const dialog = await openOverlay(user)
+
+      await user.click(within(dialog).getByRole('button', { name: '1st XI' }))
+      const drawerHeading = await screen.findByRole('heading', { name: '1st XI' })
+      const drawer = drawerHeading.closest('.MuiDrawer-paper') as HTMLElement
+      expect(within(drawer).getByTestId('section-info-panel')).toBeInTheDocument()
+
+      await user.click(within(drawer).getByRole('button', { name: 'Close section details' }))
+      await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
+      expect(screen.getByRole('dialog', { name: 'Club structure' })).toBeInTheDocument()
+    })
+
+    it('Escape closes the drawer first, then the overlay', async () => {
+      const user = userEvent.setup()
+      const dialog = await openOverlay(user)
+
+      await user.click(within(dialog).getByRole('button', { name: '1st XI' }))
+      await screen.findByTestId('section-info-panel')
+
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
+      expect(screen.getByRole('dialog', { name: 'Club structure' })).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Club structure' })).not.toBeInTheDocument())
+    })
+  })
+
   describe('on a phone', () => {
     it('shows the nested list instead of the chart and opens the details in the slide-in sheet', async () => {
       const user = userEvent.setup()
@@ -585,6 +651,7 @@ describe('ClubOverviewPage', () => {
         expect(screen.queryByRole('button', { name: 'Open Sides' })).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
         expect(screen.getByText('16\u201340')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Expand club structure' })).not.toBeInTheDocument()
 
         await user.click(screen.getByText('1st XI'))
 
