@@ -1,7 +1,7 @@
 # 095: League Edit Gold Standard: Shell, Teams, Schedule, Playing Conditions, Contacts
 
 **Depends on:** 029 (league management), 050 (schedule), 052 and 055 (playing conditions, season config), 053 (extended profile), 054 (contacts), 062 and 072 (the league page), 070 (league teams, their dialogs and copy action), 089 (the Match page and form, the user's reference for compact), 091 (Leagues gold standard; this spec finishes what its Non-goals deferred), 092 (Teams gold standard), 093 (the Match edit page becoming Details only, Deactivate living with Details), and the "Record detail page" and "Compact forms and switches" paragraphs of `docs/standards/design-system.md`.
-**Status:** draft, written 2026-10-10 from the user's feedback on the built 091: "The League edit page does not conform to the standards, I find it difficult to use. It is very bloated, not compact as for instance a Match. The Teams page is an example, it just feels all over the place." Spec `094` (club structure and seasons) lives on another open branch and is not in this tree; this spec assumes nothing from it (see Open Questions). **Needs mockups of the Teams tab (and the shell) before the plan**, see Rollout Notes.
+**Status:** built on branch `feat/095-league-edit-gold-standard`, awaiting the user's browser check (not merged, no PR). Written 2026-10-10 from the user's feedback on the built 091: "The League edit page does not conform to the standards, I find it difficult to use. It is very bloated, not compact as for instance a Match. The Teams page is an example, it just feels all over the place." Spec `094` (club structure and seasons) is merged; this spec assumes nothing from it (see Open Questions). The Teams tab mockups were approved (variant A), see Open Questions and "Built as".
 
 ## Problem & Goals
 
@@ -50,8 +50,8 @@ None.
 
 **Changes:**
 
-1. **Tabs stay, as a compact strip** (recommendation; alternative below). Same five tabs and same content ownership, but: sentence case "Playing conditions"; the league page's tab styling (underline, 40 px high, no heavy bottom margin) rather than a default MUI strip with `mb: 2`; the strip sits **on the page wash directly under the title row**, and the card below holds only the active tab's content, with the 091 compact padding (16 px, 20 px from `md`). If the league page's tab line is inline in `LeagueViewLayout`, extract its styling to a shared helper rather than copying it.
-2. **One Season pill** (`HeaderSeasonSelect`, no "All") in `RecordFormScreen`'s `headerAction` slot, shown **only on the season-scoped tabs** (Teams, Schedule, Playing conditions) and hidden on Details and Contacts. It replaces the three per-tab selects. Default and fallback: `pickDefaultSeasonId`, as now. The "Create a season first" message stays when the club has no season and the pill is then not shown.
+1. **Tabs stay, as a compact strip** (recommendation; alternative below). Same five tabs and same content ownership, but: sentence case "Playing conditions"; the league page's tab styling (underline, 44 px high, no heavy bottom margin) rather than a default MUI strip with `mb: 2`; the strip sits **on the page wash directly under the title row**, and the card below holds only the active tab's content (the form card's padding is unchanged). If the league page's tab line is inline in `LeagueViewLayout`, extract its styling to a shared helper rather than copying it.
+2. **One Season pill** (`HeaderSeasonSelect`, no "All") in `RecordFormScreen`'s `headerAction` slot (the title row), shown **only on the season-scoped tabs** (Teams, Schedule, Playing conditions) and hidden on Details and Contacts. It replaces the three per-tab selects. Default and fallback: `pickDefaultSeasonId`, as now. The "Create a season first" message stays when the club has no season and the pill is then not shown.
 3. **Footer only where it has a job.** `RecordFormScreen.actions` becomes optional; with none, no divider and no footer padding are rendered. Details keeps Cancel and Save changes / Create league (and the error text). Playing conditions gets its own footer (slice C). Teams, Schedule and Contacts have none (their actions sit in their own section headers).
 4. **Deactivate / Reactivate moves to the Details footer only** (`RecordStatusToggle`, as on the Match page after 093). It is a record action and today floats alone in an otherwise empty footer on every other tab.
 5. **Deep link:** the active tab is carried in `?tab=details|teams|schedule|conditions|contacts` (default Details; unknown value falls back to Details). This resolves the `070` roadmap item "a `?tab=` deep link into the league's Teams tab", and lets the Match form's empty-list hint link to Teams instead of Details. Season stays in local state as today (the `?seasonId=` of the league page is not read here, see Open Questions).
@@ -93,7 +93,7 @@ The tab body is two full-width, bordered panels stacked with a 12 px gap, the sa
 
 ## Schedule tab (slice C)
 
-**Today:** a Season select, outlined small **Add Match** (navigates to `/manage/fixtures/matches/new?leagueId=&seasonId=`, prefilled by `MatchFormPage`) and outlined **Share** (opens `ShareScheduleDialog`, disabled while matches load), a `Skeleton`, then `components/LeagueFixtures`: matches grouped under date headings, each a bordered three-column row (home logo and name, time and venue, away name and logo). Matches come from `listAllMatches` for the league and season.
+**Today:** a Season select, outlined small **Add Match** (navigates to `/manage/fixtures/matches/new?leagueId=&seasonId=`, prefilled by `MatchFormPage`) and outlined **Share** (opens `ShareScheduleDialog`, disabled while matches load), a `Skeleton`, then `components/LeagueFixtures`: matches grouped under date headings (the edit tab does not keep the grouping), each a bordered three-column row (home logo and name, time and venue, away name and logo). Matches come from `listAllMatches` for the league and season.
 
 **Changes:**
 
@@ -235,4 +235,18 @@ Settle the Open Questions on those boards; amend this spec to record the decisio
 - **B. Teams tab.** Our teams rows, `LeagueTeamTable`, removal of the two card components. Can ship alone after A.
 - **C. Schedule and Playing conditions.** Fixtures table reuse, `PlayingConditionsForm` restyle, footer Save. Can ship before or after B.
 
-Slice A also updates the match form's empty-list hint to use `?tab=teams` (it currently links to Details; one string). Update `docs/roadmap.md` when each slice lands: mark the `070` "`?tab=` deep link" item resolved, and record any of the above left for later (Schedule tab filters, Teams filters, the 094 reconciliation). Update `docs/standards/design-system.md` with the League edit paragraph. Migrations: none. No feature flag.
+Slice A also makes the match form's empty-list hint link to `?tab=teams` (the hint already said Teams tab; only the link was Details). Update `docs/roadmap.md` when each slice lands: mark the `070` "`?tab=` deep link" item resolved, and record any of the above left for later (Schedule tab filters, Teams filters, the 094 reconciliation). Update `docs/standards/design-system.md` with the League edit paragraph. Migrations: none. No feature flag.
+
+## Built as
+
+Corrections to the draft, as built:
+
+- Spec `094` is merged, so the Season pill uses today's `HeaderSeasonSelect` unchanged. The tab strip is 44 px (the league page's), and the form card's padding was not changed (no 16/20 px change).
+- The Season pill sits in the title row's `headerAction`, on Teams, Schedule and Playing conditions only. It starts on `?seasonId=` when it names a club season, else `pickDefaultSeasonId`.
+- The Match form's hint already said Teams tab; it now links to `?tab=teams`. The contact form returns to `?tab=contacts`.
+- Schedule rows are not grouped under date headings; the tab is the league page's `LeagueFixturesTable`, and an Our-match row opens the match page. Share and filled Add match sit in the content line's `pinned` slot.
+- **Unaffiliate asks first** in `ConfirmDialog` ("Unaffiliate X from this season?"), the one behaviour addition.
+- **A column header row** (Name, Role, Email, Phone) was added to Contacts.
+- **New shared pieces:** `components/RowActions` (icon buttons with tooltips from `sm`, a three-dot menu on a phone), `utils/viewTabs.ts` (the shared tab strip styling), the `RecordFormScreen` optional `actions` and `tabs` slot, and a `DocumentUpload` `layout` prop (`card` default, `inline`). Page-local: `LeagueEditPanel` and the zebra row styles in `pages/manage/leagueEdit`.
+- Without a season the three season tabs still show their older "Create a season first" messages.
+- **Commit order:** shared pieces (`RecordFormScreen`, `viewTabs`, `RowActions`), then the shell and Contacts, then Teams, then Schedule and Playing conditions. A league schedule badge fix (`596641c`, `156e3e1`) landed alongside.

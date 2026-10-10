@@ -86,3 +86,10 @@ All steps run sequentially because they all touch `LeagueFormPage.tsx`.
 ## Not in this plan
 
 Any API, DTO, data or permission change; the Details tab beyond a spacing check; Schedule filters on the edit tab; sections-instead-of-tabs; variant B chips; league view page changes (beyond the Edit link's `seasonId` and the shared tab sx); standings or bulk import.
+
+## Changes after approval
+
+- `RowActions` and `LeagueEditPanel` became shared pieces (`components/RowActions`; the panel and zebra row styles in `pages/manage/leagueEdit`) instead of a page-local `RowIconButton`.
+- `DocumentUpload` gained a `layout` prop (`card` default, `inline` for the Playing conditions content line).
+- The Contacts tab gained a column header row.
+- Two league schedule fixes outside the plan, the team badge in front of each team's own name: commits `74676ca` and `156e3e1`.
