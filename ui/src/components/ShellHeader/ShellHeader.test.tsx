@@ -131,4 +131,19 @@ describe('ShellHeader tone', () => {
     expect(avatar).not.toHaveStyle({ backgroundColor: 'rgb(47, 110, 79)' })
     expect(avatar).toHaveStyle({ color: 'rgb(255, 255, 255)' })
   })
+
+  it('renders no Notifications bell unless notificationsTo is passed (admin and player shells)', () => {
+    renderWithTheme(baseTheme, { tone: 'brand' })
+
+    expect(screen.queryByRole('link', { name: 'Notifications' })).not.toBeInTheDocument()
+  })
+
+  it('renders a Notifications bell link next to the account button when notificationsTo is passed', () => {
+    renderWithTheme(baseTheme, { tone: 'brand', notificationsTo: '/manage/notifications' })
+
+    const bell = screen.getByRole('link', { name: 'Notifications' })
+    expect(bell).toHaveAttribute('href', '/manage/notifications')
+    expect(bell).toHaveStyle({ color: 'rgb(255, 255, 255)' })
+    expect(bell.nextElementSibling).toBe(screen.getByRole('button', { name: 'Account menu' }))
+  })
 })

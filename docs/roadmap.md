@@ -178,6 +178,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Season carry-over** for any future rotation rule (for example who opened last season).
 - **"Past" means by date only:** same-day matches stay upcoming until midnight. A kickoff-time option is possible.
 - **Planned versus actual batting order:** see the Results module item above; 093 shows the announced plan only.
+- **Notifications:** the header bell currently links to the sending page; receiving notifications (a bell with an unread list) is a later feature.
 
 ## Deferred by `092` — Teams gold standard
 

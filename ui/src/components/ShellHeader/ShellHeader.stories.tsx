@@ -67,3 +67,8 @@ export const BrandTone: Story = {
     tone: 'brand',
   },
 }
+
+// The manager shell passes `notificationsTo`: a bell link beside the account button.
+export const WithNotificationsBell: Story = {
+  args: { ...BrandTone.args, notificationsTo: '/manage/notifications' },
+}

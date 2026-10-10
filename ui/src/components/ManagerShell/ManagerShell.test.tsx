@@ -20,7 +20,7 @@ function stubViewport(width: number) {
 }
 
 function renderShell(path = '/manage/players') {
-  render(
+  return render(
     <ThemeProvider theme={baseTheme}>
     <MemoryRouter initialEntries={[path]}>
       <ManagerShell
@@ -72,6 +72,15 @@ describe('ManagerShell', () => {
     expect(screen.getByRole('navigation', { name: 'Manager' })).toHaveStyle({ width: '232px' })
     expect(screen.getByText('People')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Manager tabs' })).not.toBeInTheDocument()
+  })
+
+  it('has the Notifications bell in the header at every width, linking to the sending page', () => {
+    for (const width of [375, 1280]) {
+      stubViewport(width)
+      const { unmount } = renderShell()
+      expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute('href', '/manage/notifications')
+      unmount()
+    }
   })
 
   it('uses the brand-tone header at every width', () => {

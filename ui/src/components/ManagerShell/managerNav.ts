@@ -15,7 +15,7 @@ export function isNavGlyph(name: NavIconName): name is NavGlyphName {
 export interface NavItem {
   id: string
   label: string
-  // Title on the Overview tile when it differs from the menu label (e.g. "Availability" for Polls).
+  // Title on the Overview tile when it differs from the menu label (e.g. "Team Managers & Permissions").
   tileTitle?: string
   description: string
   to: string
@@ -24,8 +24,7 @@ export interface NavItem {
   // boundary (`/manage/players` matches `/manage/players/1/edit`, not `/manage/players-x`); a
   // RegExp is tested as is. `to` itself always counts, and Overview matches `/manage` exactly.
   match?: Array<string | RegExp>
-  // True when `to` matches only itself, not the routes beneath it (Polls is the hub index; the
-  // Players and Coverage views live under the same path but are their own items).
+  // True when `to` matches only itself, not the routes beneath it.
   exact?: boolean
   // The bottom-bar tab this item lights when it is active, if not its own id (the hub is one page).
   tabId?: string
@@ -43,21 +42,21 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [{ id: 'overview', label: 'Overview', description: 'What needs you today', to: '/manage', icon: 'nav/overview-home' }],
   },
   {
-    label: 'Matches',
+    label: 'Schedule',
     items: [
-      {
-        id: 'matches',
-        label: 'Matches',
-        description: 'Schedule fixtures and build playing XIs',
-        to: '/manage/fixtures/matches',
-        icon: 'nav/upcoming-matches',
-      },
       {
         id: 'leagues',
         label: 'Leagues',
         description: "Create and manage your club's own leagues",
         to: '/manage/fixtures/leagues',
         icon: 'nav/cricket-leagues',
+      },
+      {
+        id: 'matches',
+        label: 'Matches',
+        description: 'Schedule fixtures and build playing XIs',
+        to: '/manage/fixtures/matches',
+        icon: 'nav/upcoming-matches',
       },
       {
         id: 'results',
@@ -87,6 +86,16 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/players',
         icon: 'nav/cricket-players',
       },
+      {
+        id: 'availability',
+        label: 'Availability',
+        description: 'Polls, player availability and match-day cover',
+        to: '/manage/availability',
+        icon: 'nav/availability-polls',
+        // Every Availability page (the hub's Polls, Players and Match-day cover tabs, and the poll,
+        // response and new-poll pages) keeps it highlighted.
+        match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability', '/manage/player-availability'],
+      },
       { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads' },
       {
         id: 'communication',
@@ -94,39 +103,6 @@ export const MANAGER_NAV: NavGroup[] = [
         description: 'Message the squad',
         to: '/manage/communication',
         icon: 'nav/communication',
-      },
-    ],
-  },
-  {
-    label: 'Availability',
-    items: [
-      {
-        id: 'polls',
-        label: 'Polls',
-        tileTitle: 'Availability',
-        description: 'Open polls and their responses',
-        to: '/manage/availability',
-        icon: 'nav/availability-polls',
-        exact: true,
-        // The hub index plus the poll, response and new-poll pages beneath it; not players/coverage.
-        match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability'],
-      },
-      {
-        id: 'player-availability',
-        label: 'Player availability',
-        description: 'Who is free, player by player',
-        to: '/manage/availability/players',
-        icon: 'nav/availability-player',
-        tabId: 'polls',
-        match: ['/manage/player-availability'],
-      },
-      {
-        id: 'team-availability',
-        label: 'Match-day cover',
-        description: 'Squad cover for each team',
-        to: '/manage/availability/coverage',
-        icon: 'nav/availability-team',
-        tabId: 'polls',
       },
     ],
   },
@@ -151,13 +127,6 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/photo-gallery',
       },
       {
-        id: 'notifications',
-        label: 'Notifications',
-        description: 'Announcements and reminders for your club',
-        to: '/manage/notifications',
-        icon: 'nav/notifications',
-      },
-      {
         id: 'managers',
         label: 'Managers',
         tileTitle: 'Team Managers & Permissions',
@@ -169,8 +138,8 @@ export const MANAGER_NAV: NavGroup[] = [
   },
 ]
 
-// The phone bottom bar: Home, Matches, Polls, Players, then a Menu button that opens the sheet.
-export const MANAGER_TAB_IDS = ['overview', 'matches', 'polls', 'players'] as const
+// The phone bottom bar: Home, Matches, Availability, Players, then a Menu button that opens the sheet.
+export const MANAGER_TAB_IDS = ['overview', 'matches', 'availability', 'players'] as const
 export const MANAGER_TAB_LABELS: Record<string, string> = { overview: 'Home' }
 
 export function flatNavItems(groups: NavGroup[] = MANAGER_NAV): NavItem[] {

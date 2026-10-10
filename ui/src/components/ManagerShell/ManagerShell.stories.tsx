@@ -31,4 +31,4 @@ type Story = StoryObj<typeof ManagerShell>
 export const Mobile: Story = { parameters: { viewport: { defaultViewport: 'mobile' } } }
 export const TabletRail: Story = { parameters: { viewport: { defaultViewport: 'tablet' } } }
 export const Desktop: Story = { parameters: { viewport: { defaultViewport: 'desktop' } } }
-export const WithPollsBadge: Story = { args: { badges: { polls: 3 } }, parameters: { viewport: { defaultViewport: 'desktop' } } }
+export const WithAvailabilityBadge: Story = { args: { badges: { availability: 3 } }, parameters: { viewport: { defaultViewport: 'desktop' } } }

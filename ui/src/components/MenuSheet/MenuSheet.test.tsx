@@ -21,7 +21,7 @@ function Harness({ onClose = vi.fn(), initialOpen = true }: { onClose?: () => vo
           setOpen(false)
         }}
         groups={MANAGER_NAV}
-        badges={{ polls: 2 }}
+        badges={{ availability: 2 }}
       />
     </MemoryRouter>
   )
@@ -35,12 +35,12 @@ describe('MenuSheet', () => {
     unmount()
 
     render(<Harness />)
-    for (const heading of ['Matches', 'People', 'Availability', 'Club']) {
+    for (const heading of ['Schedule', 'People', 'Club']) {
       expect(screen.getAllByText(heading).length).toBeGreaterThan(0)
     }
     expect(screen.getByRole('link', { name: 'Leagues' })).toHaveAttribute('href', '/manage/fixtures/leagues')
     expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
-    expect(screen.getByTestId('badge-polls')).toHaveTextContent('2')
+    expect(screen.getByTestId('badge-availability')).toHaveTextContent('2')
   })
 
   it('renders tile icons at 40 px', () => {

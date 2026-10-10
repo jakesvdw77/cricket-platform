@@ -69,7 +69,7 @@ Slices: (1) rename, route and the Matches view; (2) the Select team page; (3) Pl
 What differs from the draft above (the plan is `docs/plans/093-team-selection-hub.md`):
 
 - **Switch order:** the hub switch reads Matches | Time slots | Players | Batting order (Time slots and Players swapped from the draft at the user's request); the routes are unchanged.
-- **Players grid shows availability.** Cells use `CellMark` (Available, Unsure, Unavailable, No response, Not polled) with a picked dot and ring on top, reversing the draft's picked / not picked only. Backed by a new `availability` field on each overview cell (backend commit 492621d).
+- **Players grid shows availability.** Cells use `CellMark` (Available, Unsure, Unavailable, No response, Not polled) with a small picked dot on top, reversing the draft's picked / not picked only. Backed by a new `availability` field on each overview cell (backend commit 492621d).
 - **Batting order:** per-column Reorder (arrows only in edit mode; on an announced side the first move asks "Change an announced team?"), a Short names option (persisted in `teamSelection:battingShortNames`) and a compact header (gauge with "n / max" and a tick).
 - **Previous slot / Next slot arrows** on the Batting order, Players and Availability players grids: they scroll to the nearest group start with a gentle snap.
 - **"View entire season"** replaces "Show past" on the selection and Availability pages, because those switches are season-scoped. The Matches list and League schedule past switches follow it too (886d899); on Matches the label reads "View all seasons" when All seasons is chosen. The label of the closed-polls switch stays "Show closed polls".

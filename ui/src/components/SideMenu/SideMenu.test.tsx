@@ -18,29 +18,26 @@ describe('SideMenu', () => {
   it('renders every group heading and item link', () => {
     renderMenu('/manage')
 
-    for (const heading of ['Matches', 'People', 'Availability', 'Club']) {
+    for (const heading of ['Schedule', 'People', 'Club']) {
       expect(screen.getByText(heading, { selector: '.MuiTypography-overline' })).toBeInTheDocument()
     }
     const nav = screen.getByRole('navigation', { name: 'Manager' })
     const labels = within(nav).getAllByRole('link').map((link) => link.textContent)
     expect(labels).toEqual([
       'Overview',
-      'Matches',
       'Leagues',
+      'Matches',
       'Results',
       'Teams',
       'Players',
+      'Availability',
       'Team selection',
       'Communication',
-      'Polls',
-      'Player availability',
-      'Match-day cover',
       'Club profile',
       'Gallery',
-      'Notifications',
       'Managers',
     ])
-    expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('href', '/manage/availability')
   })
 
   it('marks Overview active on /manage only', () => {
@@ -57,27 +54,28 @@ describe('SideMenu', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
   })
 
-  it('highlights Polls on the hub index, new, group poll and squad poll routes', () => {
-    for (const path of ['/manage/availability', '/manage/availability/new', '/manage/availability/group/r1', '/manage/availability/squad/m/p']) {
+  it('highlights Availability on every Availability page, and only it', () => {
+    for (const path of [
+      '/manage/availability',
+      '/manage/availability/players',
+      '/manage/availability/coverage',
+      '/manage/availability/new',
+      '/manage/availability/group/r1',
+      '/manage/availability/squad/m/p',
+      '/manage/section-availability',
+      '/manage/player-availability',
+    ]) {
       const { unmount } = renderMenu(path)
-      expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('aria-current', 'page')
       expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
       unmount()
     }
   })
 
-  it('highlights Player availability and Match-day cover on their own routes only', () => {
-    for (const [path, name] of [
-      ['/manage/availability/players', 'Player availability'],
-      ['/manage/player-availability', 'Player availability'],
-      ['/manage/availability/coverage', 'Match-day cover'],
-    ]) {
-      const { unmount } = renderMenu(path)
-      expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
-      expect(screen.getByRole('link', { name: 'Polls' })).not.toHaveAttribute('aria-current')
-      expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
-      unmount()
-    }
+  it('has no Notifications item and highlights nothing on the Notifications page', () => {
+    renderMenu('/manage/notifications')
+    expect(screen.queryByRole('link', { name: 'Notifications' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(0)
   })
 
   it('highlights Teams (not Club profile) on a section-scoped team route, Club profile on structure', () => {
@@ -97,20 +95,20 @@ describe('SideMenu', () => {
   })
 
   it('shows a count badge only for a positive count', () => {
-    renderMenu('/manage', { badges: { polls: 3, squads: 0 } })
+    renderMenu('/manage', { badges: { availability: 3, squads: 0 } })
 
-    expect(screen.getByTestId('badge-polls')).toHaveTextContent('3')
+    expect(screen.getByTestId('badge-availability')).toHaveTextContent('3')
     expect(screen.queryByTestId('badge-squads')).not.toBeInTheDocument()
   })
 
   it('collapsed: hides labels and group headings, keeps an aria-label per link and a tooltip on hover', async () => {
-    renderMenu('/manage/players', { collapsed: true, badges: { polls: 2 } })
+    renderMenu('/manage/players', { collapsed: true, badges: { availability: 2 } })
 
     expect(screen.queryByText('People')).not.toBeInTheDocument()
     expect(screen.queryByText('Teams')).not.toBeInTheDocument()
     const players = screen.getByRole('link', { name: 'Players' })
     expect(players).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Polls, 2' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Availability, 2' })).toBeInTheDocument()
 
     await userEvent.hover(players)
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Players')

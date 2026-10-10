@@ -17,13 +17,13 @@ function renderBar(path: string, props: Partial<ComponentProps<typeof BottomTabB
 }
 
 describe('BottomTabBar', () => {
-  it('renders Home, Matches, Polls, Players and a Menu button', () => {
+  it('renders Home, Matches, Availability, Players and a Menu button', () => {
     renderBar('/manage')
 
     const nav = screen.getByRole('navigation', { name: 'Manager tabs' })
-    expect(nav).toHaveTextContent(/^HomeMatchesPollsPlayersMenu$/)
+    expect(nav).toHaveTextContent(/^HomeMatchesAvailabilityPlayersMenu$/)
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/manage')
-    expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('href', '/manage/availability')
     expect(screen.getByRole('button', { name: 'Menu' })).toBeInTheDocument()
   })
 
@@ -34,14 +34,14 @@ describe('BottomTabBar', () => {
     expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
   })
 
-  it('lights the Polls tab on the polls, players and coverage views of the availability hub', () => {
+  it('lights the Availability tab on the polls, players and coverage views of the availability hub', () => {
     for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage', '/manage/availability/group/r1']) {
       const { unmount } = render(
         <MemoryRouter initialEntries={[path]}>
           <BottomTabBar tabs={managerTabs()} groups={MANAGER_NAV} onMenuClick={vi.fn()} />
         </MemoryRouter>,
       )
-      expect(screen.getByRole('link', { name: 'Polls' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('aria-current', 'page')
       expect(screen.getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1)
       unmount()
     }
@@ -63,8 +63,8 @@ describe('BottomTabBar', () => {
   })
 
   it('shows a badge for a positive count', () => {
-    renderBar('/manage', { badges: { polls: 4 } })
+    renderBar('/manage', { badges: { availability: 4 } })
 
-    expect(screen.getByTestId('badge-polls')).toHaveTextContent('4')
+    expect(screen.getByTestId('badge-availability')).toHaveTextContent('4')
   })
 })
