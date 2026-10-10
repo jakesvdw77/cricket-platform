@@ -188,12 +188,17 @@ Named for completeness — none of these are next, none have a target spec numbe
 
 ## Deferred by `094`: Club structure and Seasons
 
-- Restyle `/manage/sections` (edit screen: "Section tree" card, template picker, editable detail panel) onto the gold standard; slice A only shares the org-chart component and reads `?sectionId=`.
+- Restyle `/manage/sections` (edit screen: "Section tree" card, template picker, editable detail panel) onto the gold standard; `094` only shared the org-chart component and made it read `?sectionId=`.
 - Dragging a node to re-parent a section (still a `025` Non-goal); needs a re-parent endpoint and a drag library decision.
 - Remove / deactivate from the read-only section panel, if wanted after use (stays on the edit screen).
-- Season rules: one-current-season rule, overlap warning or check, unique label (the backend enforces only startDate <= endDate today).
+- Season rules: one-current-season rule, overlap warning or check, unique label (the backend enforces only startDate <= endDate today). Two seasons containing today both count as Current; whether that should be allowed or flagged is still an open rule question.
 - Season rollover: copying teams, squads and league affiliations into a new season.
 - Counts on org chart nodes (for example "3 teams"), if the plain node proves too sparse.
+- **Leagues and Matches lists reading a season from the address**, so the season card footer buttons and the season page links open on that season (today they open the lists unfiltered).
+- **Adding a section from the Club Profile:** the "+" and the Add section dialog were removed by the user; adding stays on `/manage/sections`.
+- **A non-modal docked section panel** as an alternative to the modal slide-in drawer, so another node can be clicked while the panel is open.
+- **Zoom with the mouse wheel or pinch** in the expanded org chart (today buttons only, 50 to 200 percent).
+- **Local date versus UTC:** the season status uses the browser's local date while `pickDefaultSeasonId` uses the UTC date, so they can differ for a few hours around midnight; align them.
 
 ## Deferred by `071` — League card
 

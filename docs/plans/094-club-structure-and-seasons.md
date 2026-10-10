@@ -81,3 +81,7 @@ Spec 094 (`docs/specs/094-club-structure-and-seasons.md`, decisions recorded 202
 ## Not in this plan
 
 Re-parent by drag, section deactivate or delete from the read-only panel, season rules (overlap, one current, unique label), season rollover, restyle of `/manage/sections` beyond reading `?sectionId=`, the detail drawer (Option B), any migration.
+
+## Changes after approval
+
+`AddSectionDialog` and every "+" on the Club Profile were removed at the user's request, so the Club Profile structure is read-only with a Manage link to `/manage/sections`. The section details are a slide-in `SidePanel` (right drawer from `sm`, bottom sheet on a phone), not a card under the chart. An Expand overlay (`OrgChartFullScreen`, zoom 50 to 200 percent and Fit to screen) was added. The golden path in B5 creates no data. See "Built as" in the spec.
