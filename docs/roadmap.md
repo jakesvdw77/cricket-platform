@@ -167,6 +167,16 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Bulk CSV import** of league teams.
 - ~~**A `?tab=` deep link into the league's Teams tab**~~ Done by `095`: the League edit page reads `?tab=`, and the match form's empty-list hint links to `?tab=teams`.
 
+## Deferred by `096`: Duplicate league
+
+- **League-name uniqueness on create and update** (a separate small spec). Only the duplicate endpoint enforces it today; existing clubs may already hold duplicate names, and inactive leagues need a decision.
+- **A Duplicate entry on the league card or list row**, if overflow menus ever arrive. Today it is on the league page header and the edit page Details footer only.
+- **A smarter default name suffix** ("(copy 2)") when "<name> (copy)" already exists; today the manager edits the name after a `409`.
+- **A "duplicated from" reference** between the copy and its source, if a need appears. The copy is fully independent today.
+- **A shared toast or notice component.** Today the success notice rides in router state and shows as an `Alert` on the edit page.
+- **Season rollover may reuse the `LeagueCopyRules` playing conditions copy** rather than writing a second one.
+- **`055` (XI size and age rules moving onto playing conditions)** needs the copy rule re-checked when it lands, so the four values still arrive on the copy.
+
 ## Deferred by `095`: League edit gold standard
 
 - **Filters on the edit Schedule tab** (Team, search, Only our matches, Show played); the tab shows every match of the season.

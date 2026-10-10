@@ -76,3 +76,9 @@ A club often runs leagues that are identical in setup and differ only in teams a
 ## Not in this plan
 
 Copying affiliations, league teams or matches; season rollover; league-name uniqueness on create or update; a card or list-row entry; a shared toast component; a "duplicated from" link; any migration.
+
+## Changes after approval
+
+- The success notice `Alert` sits in `RecordFormScreen`'s tabs slot, above the tab strip.
+- `seasonIds` are sent newest first, so the landing season is the first chosen.
+- A name over 255 characters is blocked with a helper error instead of a `maxLength` attribute.
