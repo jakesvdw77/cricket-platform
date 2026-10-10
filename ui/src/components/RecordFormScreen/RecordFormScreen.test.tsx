@@ -170,4 +170,59 @@ describe('RecordFormScreen', () => {
     const backLink = screen.getByRole('link', { name: /back to matches/i })
     expect(screen.getByRole('heading', { name: 'Edit Match' }).parentElement).toBe(backLink.parentElement)
   })
+
+  // docs/specs/095-league-edit-gold-standard.md
+  it('renders no footer (no divider, no padding) when actions is omitted', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <RecordFormScreen title="Edit League" backTo="/leagues" backLabel="Back to Leagues">
+            <div>Field content</div>
+          </RecordFormScreen>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    const card = (screen.getByText('Field content').parentElement as HTMLElement).parentElement as HTMLElement
+    expect(card.children).toHaveLength(1)
+  })
+
+  it('renders the tabs slot between the header band and the card', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <RecordFormScreen
+            title="Edit League"
+            backTo="/leagues"
+            backLabel="Back to Leagues"
+            tabs={<div role="tablist">Tab strip</div>}
+          >
+            <div>Field content</div>
+          </RecordFormScreen>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    const heading = screen.getByRole('heading', { name: 'Edit League' })
+    const tabs = screen.getByRole('tablist')
+    const field = screen.getByText('Field content')
+    expect(heading.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(tabs.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const band = screen.getByRole('link', { name: /back to leagues/i }).parentElement as HTMLElement
+    expect(band).not.toContainElement(tabs)
+  })
+
+  it('renders no tabs wrapper when tabs is omitted', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <MemoryRouter>
+          <RecordFormScreen title="Edit League" backTo="/leagues" backLabel="Back to Leagues">
+            <div>Field content</div>
+          </RecordFormScreen>
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
 })

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Box, Typography } from '@mui/material'
+import { Box, Tab, Tabs, Typography } from '@mui/material'
 import { Input } from '../Input'
 import { Button } from '../Button'
 import { RecordFormScreen } from './RecordFormScreen'
@@ -71,4 +71,24 @@ export const TabletViewport: Story = {
 export const DesktopViewport: Story = {
   args: Default.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
+}
+
+// docs/specs/095-league-edit-gold-standard.md: tabs whose panels carry their own actions have no footer.
+export const WithoutActions: Story = {
+  args: { ...Default.args, title: 'Edit League', actions: undefined },
+}
+
+// docs/specs/095-league-edit-gold-standard.md: a tab strip on the page wash between the header and the card.
+export const WithTabs: Story = {
+  args: {
+    ...Default.args,
+    title: 'Edit League',
+    tabs: (
+      <Tabs value="details" variant="scrollable" scrollButtons={false} sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 44 }}>
+        <Tab value="details" label="Details" sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }} />
+        <Tab value="teams" label="Teams" sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }} />
+        <Tab value="schedule" label="Schedule" sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }} />
+      </Tabs>
+    ),
+  },
 }

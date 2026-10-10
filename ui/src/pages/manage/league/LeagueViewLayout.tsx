@@ -3,6 +3,7 @@ import { Link as RouterLink, Outlet, useLocation, useOutletContext, useParams, u
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Link as MuiLink, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
+import { VIEW_TABS_PROPS, viewTabSx, viewTabsSx } from '../../../utils/viewTabs'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
@@ -394,9 +395,8 @@ export default function LeagueViewLayout() {
         <Box component="nav" aria-label="League views" sx={{ minWidth: 0 }}>
           <Tabs
             value={activeTab}
-            variant="scrollable"
-            scrollButtons={false}
-            sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 44 }}
+            {...VIEW_TABS_PROPS}
+            sx={viewTabsSx}
           >
             {VIEW_TABS.map((tab) => (
               <Tab
@@ -408,7 +408,7 @@ export default function LeagueViewLayout() {
                 component={RouterLink}
                 to={{ pathname: `${leagueBasePath}/${tab.segment}`, search: location.search }}
                 aria-current={activeTab === tab.segment ? 'page' : undefined}
-                sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}
+                sx={viewTabSx}
               />
             ))}
           </Tabs>
