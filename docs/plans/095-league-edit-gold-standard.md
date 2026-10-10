@@ -1,0 +1,95 @@
+# Plan: spec 095, League edit gold standard (shell, Teams, Schedule, Playing conditions, Contacts)
+
+## Context
+
+The user finds the League edit page bloated and "all over the place" next to the Match edit page (feedback 2026-10-10 on the built 091, which restyled only the Details tab). Spec `docs/specs/095-league-edit-gold-standard.md` (decisions recorded: Teams tab **variant A**, zebra lists; mockups https://claude.ai/artifact/SdFrktKTKSJqghS99swu2G; every other open question stands at its proposed default; the user asked for the other tabs to be built from the spec following the standards without further mockups) restyles the whole edit experience, presentation only: no endpoint, DTO, permission or data change, the OpenAPI diff must stay empty. Branch `feat/095-league-edit-gold-standard` (off master after PR #110; spec and a small league-schedule badge fix already committed). Three slices, each shippable, one commit group per step, one PR only on the user's say-so. Nothing below redefines the spec; where the spec is wrong about the code or disagrees with itself, it is under "Flags".
+
+## Findings that shape the plan (code exploration)
+
+- `pages/manage/LeagueFormPage.tsx` (715 lines): `activeTab` number state; one `selectedSeasonId` state with three per-tab `Input select`s; footer shows Cancel / Save only on Details and `RecordStatusToggle` on every tab; three dialogs mounted at page level (`LinkExistingRecordDialog`, `ShareScheduleDialog`, `PlayingConditionsShareDialog`); queries keyed under `['managed-club', clubId, 'leagues', leagueId, ...]` (keys must stay identical: `useLeagueTeamMutations` invalidates the matches prefix and the league view shares the matches key); `LeagueTeamsSection` fetches its own league-teams query; `AffiliatedTeamCard` owns its own unaffiliate mutation (keep per row).
+- `RecordFormScreen`: `actions` is required today and the footer (divider and `pt: 3`) is unconditional; `headerAction` renders on the **title row**; `ContentCard` padding is the default 24 px (Match edit uses the same shell, its compactness is in its content).
+- League page tabs are inline in `LeagueViewLayout.tsx:391-415` (44 px, `textTransform: 'none'`, scrollable, MUI default indicator): no shared helper yet.
+- `LeagueFixturesTable` takes `{ matches, teamsById }` and is self-contained; `components/LeagueFixtures` has a single consumer (the edit page) and can be deleted.
+- No shared row-actions or icon-button-with-tooltip component exists (only per-table `IconButton size="small"` with aria-label and title; a three-dot `Menu` only in `TeamSelectionList`). `InfoCard` forces `height: 100%` and padding, so flush zebra tables inside a panel need a small local panel wrapper or an `InfoCard` content override.
+- `ContentControlsLine` hides `controls` on a phone and keeps only `scope` and `pinned`: Share and Add match must go in `pinned`.
+- `CompactSwitch.onChange` receives a boolean and labels are `noWrap` by default (pass `noWrap={false}` for long labels); `PlayingConditionsForm` holds every field and validation and exports `PLAYING_CONDITIONS_FORM_ID`, so a footer Save can use `form=`.
+- Spec 094 is merged, so Open Question 12 is resolved: use today's `HeaderSeasonSelect` (`seasons.map(s => ({ id: s.id, name: s.label }))`, `showAll={false}`, guard a null `onChange`).
+
+## Flags for your review (the spec is wrong or silent; plan's resolution in bold)
+
+1. **Spec 094 is merged**, so the "094 lives on another branch" notes are stale: **plan uses today's `HeaderSeasonSelect`**; spec text corrected.
+2. **League page tab strip is 44 px, not 40 px**, and is inline, not shared: **extract its sx into one shared helper and use it in both places (44 px)**.
+3. **"091 compact padding" does not exist on the form card** (`ContentCard` is 24 px; the 16/20 padding belongs to `InfoCard`): the Match page has the same shell and padding, so **no padding change; compactness comes from content, the pill, the strip and the footer rule**.
+4. **League page Edit link does not pass `seasonId`** (Open Question 11 default says it should): **plan adds `?seasonId=` to the league page's Edit link, reads it on the edit page (fall back to `pickDefaultSeasonId`), and updates `LeagueViewLayout.test.tsx:248`**.
+5. **Match form hint** already says "Open the league's Teams tab" but links to `/edit`: **link becomes `.../edit?tab=teams`** (`MatchSideFields.tsx:189`, test `MatchForm.test.tsx:486`); roadmap 070 item marked resolved.
+6. **League contact create/edit pages return to `/edit` (no tab)**: **return and Back to `?tab=contacts`** (`LeagueContactFormPage.tsx:54,100`, its test).
+7. **Schedule behaviour differences when reusing `LeagueFixturesTable`:** rows are not grouped under date headings and "Our match" rows link to the match view page (the old `LeagueFixtures` rows were inert). **Accepted as the intended coherence with the league page; called out in the PR.** The scope line must read "Showing N matches" (no "upcoming": no Show played filter on this tab).
+8. **Row height:** spec says 44 px (56 px phone); the built tables use 56 (60 phone). **Plan follows the spec (compact, user's goal)**; if it looks inconsistent next to Leagues and Teams, one constant changes it.
+9. **Playing conditions grouping:** the spec's Document / Innings / Points / Bonus points / Notes differs from the league page's cards (Innings, Points, Fielding restrictions, Notes). **Plan follows the spec**; fielding notes sit under Innings.
+10. **Season pill position:** spec Open Question 6 says "beside Back"; `RecordFormScreen.headerAction` renders on the **title row** (as in the approved mockup). **Plan uses `headerAction`.**
+11. **New shared component:** the spec's optional `RowIconButton` resolves to **new**, and because Teams, Contacts (and any later list) need the same desktop-icons / phone-three-dot behaviour, the plan builds one `components/RowActions` (four-file anatomy) taking an actions array, instead of three copies.
+12. **Existing tests that contradict the spec and must be replaced, not weakened:** "Deactivate still renders on the Teams tab" (`LeagueFormPage.test.tsx:836`), the `Unaffiliate` button test (becomes icon button plus confirm), tab and button name queries (`Playing Conditions` to "Playing conditions", `Add Match` to "Add match", `Add Contact` to "Add contact", `Save Playing Conditions` to "Save playing conditions", `Copy teams from…` to "Copy from..."), checkbox to switch queries, the "(auto: N)" helper text assertion (becomes the placeholder), and `RecordFormScreen`/`MatchForm`/`LeagueViewLayout`/`LeagueContactFormPage` tests listed above.
+13. **e2e:** `e2e/manager-league-management.spec.ts:216` already clicks a tab named "Affiliations" (now "Teams") and a stale "Leagues" link: **plan fixes those steps (cannot be run here, needs Keycloak)**.
+14. **Stale comments to fix:** `LeagueFixturesTable.tsx` (says the edit tab keeps `LeagueFixtures`), `PlayingConditionsForm.tsx:9-12` (Save inside the form), comments in `utils/leagueSchedule*`.
+
+## Order of work (builder per step; each ends with its tests and one commit; frontend only, no backend)
+
+All steps run sequentially because they all touch `LeagueFormPage.tsx`.
+
+### Slice A: shell, Details check, Contacts (`frontend-builder`, tests with it)
+
+**A1. Shared pieces**
+- `components/RecordFormScreen`: `actions` optional (no divider and no footer padding when omitted); optional `tabs?: ReactNode` rendered on the page wash between the header band and the card; update tests and add stories `WithoutActions`, `WithTabs`.
+- Shared tab-strip sx helper (44 px, `textTransform: 'none'`, `fontWeight: 600`, scrollable, divider border) in `utils/` (no `components` to `pages` import); `LeagueViewLayout` switches to it with no visible change (its scroll-sideways test is the guard).
+- New `components/RowActions/` (four-file anatomy): `actions: { id, label, icon, onClick?, to?, destructive?, disabled?, hidden? }[]`; from `sm` an inline row of 36 px `IconButton`s with MUI `Tooltip` and `aria-label`; on a phone one three-dot button (`aria-haspopup="menu"`, label "<name>, more actions") opening a `Menu` of 44 px items (pattern of `TeamSelectionList` and `PlayerStatusMenu`); icon buttons that are links render as `RouterLink`; tests (both modes, keyboard, disabled, destructive colour) and stories.
+
+**A2. Shell and page split**
+- New folder `pages/manage/leagueEdit/`: `LeagueEditTabs.tsx` (a `tablist` of router links bound to `?tab=details|teams|schedule|conditions|contacts`, unknown value falls back to Details, `setSearchParams(prev => ..., { replace: true })` keeping other params, same pattern as `LeagueViewLayout`; create mode ignores `tab` and shows no strip), and per-tab files `LeagueEditContactsTab.tsx`, `LeagueEditTeamsTab.tsx`, `LeagueEditScheduleTab.tsx`, `LeagueEditConditionsTab.tsx` as extractions of the inline bodies first (Teams, Schedule, Conditions keep today's content in this slice).
+- `LeagueFormPage.tsx` keeps the page-level queries (league, seasons, club teams, affiliations), season state and default effect (initial value from `?seasonId=` when it names a real season, else `pickDefaultSeasonId`), the Details save and deactivate mutations, and the three dialogs; queries that only one tab needs may move into that tab only if their keys stay identical.
+- Season: one `HeaderSeasonSelect` pill in `headerAction`, shown only on Teams, Schedule and Conditions and only when the club has a season; remove the three per-tab selects; keep the three per-tab "Create a season first" messages.
+- Footer: Details keeps Cancel, error text and Save changes / Create league plus `RecordStatusToggle` (Deactivate / Reactivate lives here only); the other tabs have no footer; title row, Back and the create flow unchanged (no tabs, pill or toggle).
+
+**A3. Contacts tab and the link fixes**
+- `LeagueContactRows` (page-local, `pages/manage/leagueEdit/`): panel "Contacts · n" with a **filled Add contact** in its header (same route), zebra rows (avatar, name with `contactBadgeFor` badge, Role, Email, Phone, `RowActions` View and Edit to the same routes; phone: name with role under it and a chevron opening the contact); empty state as today. Delete the contact `RecordCard` grid.
+- League page Edit link gets `?seasonId=`; `MatchSideFields` link to `?tab=teams`; league contact form save and Back return to `?tab=contacts`; update the tests listed in Flags 4 to 6.
+- Tests: rewrite `LeagueFormPage.test.tsx` shell, Contacts and Deactivate groups to the new markup (tab order and labels, `?tab=` selects and falls back, pill only on Teams / Schedule / Conditions and drives all three, no footer on Teams / Schedule / Contacts, Deactivate only on Details, create flow has no tabs).
+
+### Slice B: Teams tab (`frontend-builder`, tests with it), after A
+
+- `pages/manage/leagueEdit/`: `AffiliatedTeamRows` (panel "Our teams · n", filled **Add team** in the header opening the existing `LinkExistingRecordDialog`, zebra rows: 32 px solid logo, name, `RowActions` **Edit** (the team's edit page) and **Unaffiliate** (link-off); empty line "No teams affiliated for this season yet."; each row keeps its own unaffiliate mutation; Unaffiliate opens `ConfirmDialog` "Unaffiliate X from this season?" first (wording final here, mention matches when it has some) and then fires the existing `unaffiliateLeagueTeam`).
+- `LeagueTeamTable` and a rewritten `leagueTeams/LeagueTeamsSection.tsx` (panel "League teams · n"; the caption "Opponents you pick on matches, for this season only" once under the heading (info icon with tooltip on a phone); header actions filled **Add league team** and outlined **Copy from...** (aria-label keeps "Copy teams from another league or season"); inline `Alert` (outcomes, errors, load error) under the header with wording unchanged; zebra table Team (32 px tinted logo), Abbreviation, Used in ("3 matches", muted "-" when none), Status chip (`badgeSx` active/muted), `RowActions` Edit, Deactivate / Reactivate, Remove; inactive row text muted; phone: abbreviation and matches under the name, status chip, three-dot menu). Reuse unchanged: `LeagueTeamFormDialog`, `CopyLeagueTeamsDialog`, `ConfirmDialog` for Remove, `useLeagueTeamMutations`, `leagueTeamsQueryKey`, `key={selectedSeasonId}` remount.
+- Two matching bordered panels with a 12 px gap; one filled button per panel; flush zebra body (row 44 px, 56 px phone, `zebraTint`, `data-desktop-only` cells).
+- Remove `AffiliatedTeamCard` (in `LeagueFormPage.tsx`), `LeagueTeamCard` and their tests; migrate `LeagueTeamsSection.test.tsx` (empty state, add, 409 duplicate, general error, delete outcome, deactivate-instead outcome, copy dialog cases) to the new markup; new tests for rows, Unaffiliate confirm then mutation, table columns, inactive muted row, phone menu, one filled button per panel; stories for `AffiliatedTeamRows`, `LeagueTeamTable`.
+
+### Slice C: Schedule and Playing conditions (`frontend-builder`, tests with it), after B
+
+- **Schedule tab:** `ContentControlsLine` with `scope` "Showing N matches · <season label>" and `pinned` = outlined **Share** (disabled while loading, opens the existing `ShareScheduleDialog`) and filled **Add match** (same prefilled navigation); the body is `LeagueFixturesTable` with the season's matches and `teamsById`; loading `Skeleton`; `EmptyState` "No fixtures yet"; no filters. Delete `components/LeagueFixtures` (component, test, story) and its references (comments, roadmap line 271).
+- **Playing conditions tab:** restyle `PlayingConditionsForm` with `FormSectionHeading` sections per the spec (Innings, Points, Bonus points, Notes) in a three-column grid from `md`, no helper text (examples and "Auto (N)" as placeholders, the two bonus explanations as an info-icon tooltip with the text verbatim), `CompactSwitch` for Allow substitutions (`noWrap={false}`) and Enable bonus points, no Save button inside the form; the tab owns a `ContentControlsLine` (`pinned`: **Share**, and the conditions PDF upload / view, reshaping `DocumentUpload` usage or its layout minimally, its tests adjusted) and a footer with the error text and a filled **Save playing conditions** bound by `form={PLAYING_CONDITIONS_FORM_ID}`; payload, validation, default points seed, upload and share dialog identical; `key={selectedSeasonId}` kept.
+- Tests: Schedule group in `LeagueFormPage.test.tsx` (content line, table, Add match prefill `?leagueId=&seasonId=`, Share dialog, empty state, loading), `PlayingConditionsForm.test.tsx` (checkbox to switch queries, placeholder instead of "(auto: N)" text, Save outside the form), `DocumentUpload` tests if its layout changes; stories for `PlayingConditionsForm`, `RecordFormScreen`.
+
+### Docs and e2e (last commit, `frontend-builder`)
+
+- `docs/standards/design-system.md`: a short "League edit page (095)" paragraph (shell, header pill, tabs, `RowActions`, the two Teams panels, Contacts rows, Schedule and Conditions patterns); `docs/standards/frontend.md` only for the `RecordFormScreen` `actions`/`tabs` anatomy; `docs/roadmap.md` (mark the 070 `?tab=` item resolved, remove the `LeagueFixtures` cleanup note, add deferred: Schedule filters on the edit tab, sections-instead-of-tabs alternative, Edit League season carry-over beyond `?seasonId=`); spec 095 status line and a "Built as" section with the flag resolutions; copy this plan to `docs/plans/095-league-edit-gold-standard.md`.
+- `ui/e2e/manager-league-management.spec.ts`: repair the stale "Leagues" link and "Affiliations" tab steps and the renamed buttons; cannot be run here.
+
+## Reuse (do not rebuild)
+
+`RecordFormScreen`, `HeaderSeasonSelect`, `pickDefaultSeasonId`, `FormSectionHeading`, `LeagueForm`, `InfoCard` (heading and icon tile; or a local panel wrapper), `ContentControlsLine`, `CompactSwitch`, `ConfirmDialog`, `LinkExistingRecordDialog`, `LeagueTeamFormDialog`, `CopyLeagueTeamsDialog`, `useLeagueTeamMutations`, `leagueTeamsQueryKey`, `avatarSx`, `badgeSx`, `zebraTint`, `LeagueFixturesTable`, `ShareScheduleDialog`, `PlayingConditionsShareDialog`, `DocumentUpload`, `RecordStatusToggle`, `Button`, `Input`, `contactBadgeFor` (`utils/leagueContact.ts`), `PlayerStatusMenu` / `TeamSelectionList` menu pattern, `LeagueViewLayout`'s `setSearchParams(prev => ..., { replace: true })` convention.
+
+## Verification
+
+- **Frontend only** (`source ~/.nvm/nvm.sh; nvm use 22.12.0` in `ui/`): per step `npx tsc -b`, `npm run lint` (no errors), `npx vitest run --project=unit --maxWorkers=2` on the changed folders (`src/pages/manage/leagueEdit`, `src/pages/manage/leagueTeams`, `src/pages/manage/LeagueFormPage.test.tsx`, `src/components/RecordFormScreen`, `RowActions`, `PlayingConditionsForm`, `DocumentUpload`, `src/pages/manage/league`, `MatchForm`), and `--project=storybook` for the touched stories (always pass `--project`); at the end one full unit run alone, then one full storybook run alone, then `npm run build`. Known flake: a 5 s timeout that passes alone.
+- **Contract:** the OpenAPI diff must stay empty (no backend change).
+- **Manual (the user, backend running):** Edit League at 1440 px and 375 px: the strip, the header Season pill (Teams, Schedule, Conditions only; one control drives all three), no empty footer, Details footer with Deactivate; Teams two panels with one filled button each, icon actions with tooltips, Unaffiliate confirm, delete-or-deactivate messages, Copy from..., duplicate-name error, phone three-dot menus; Schedule table, Add match prefill, Share; Playing conditions sections, switches, footer Save, PDF upload and Share; Contacts rows and routes; `?tab=teams` and an unknown tab; the Match form hint lands on Teams; the contact form returns to Contacts; Add League shows the Details card with no tabs.
+- **Branching:** build on this branch, one commit per step, push and PR only on your say-so; CI re-runs on Docker pull errors.
+
+## Not in this plan
+
+Any API, DTO, data or permission change; the Details tab beyond a spacing check; Schedule filters on the edit tab; sections-instead-of-tabs; variant B chips; league view page changes (beyond the Edit link's `seasonId` and the shared tab sx); standings or bulk import.
+
+## Changes after approval
+
+- `RowActions` and `LeagueEditPanel` became shared pieces (`components/RowActions`; the panel and zebra row styles in `pages/manage/leagueEdit`) instead of a page-local `RowIconButton`.
+- `DocumentUpload` gained a `layout` prop (`card` default, `inline` for the Playing conditions content line).
+- The Contacts tab gained a column header row.
+- Two league schedule fixes outside the plan, the team badge in front of each team's own name: commits `74676ca` and `156e3e1`.

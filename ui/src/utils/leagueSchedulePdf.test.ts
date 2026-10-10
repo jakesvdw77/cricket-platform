@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
 
-// jsPDF produces binary PDF output, so — mirroring teamSheetPdf.test.ts's own precedent exactly —
+// jsPDF produces binary PDF output, so, mirroring teamSheetPdf.test.ts's own precedent exactly —
 // this test asserts on the *inputs* to jsPDF's own drawing calls rather than parsing the generated
 // PDF bytes.
 const textSpy = vi.fn()
@@ -91,7 +91,7 @@ function makeMatch(overrides: Partial<Match>): Match {
     awayTeamName: null,
     leagueId: 'league-1',
     seasonId: 'season-1',
-    // Matches LeagueFixtures.test.tsx's own precedent values, which this repo's test env has
+    // Matches the retired LeagueFixtures test's precedent values, which this repo's test env has
     // already confirmed render as "Sat, 14 Mar 2026"/"Sat, 21 Mar 2026" without timezone drift.
     matchDate: '2026-03-14T14:00:00Z',
     venue: 'Riverside Oval',
@@ -185,7 +185,7 @@ describe('generateLeagueSchedulePdf', () => {
     expect(texts).toContain('Riverside 1st XI — 2026')
     expect(texts).toContain('Coastal CC')
     expect(texts).toContain('Hillside CC')
-    // The third, uninvolved match's own date heading never appears — it was filtered out entirely.
+    // The third, uninvolved match's own date heading never appears, it was filtered out entirely.
     expect(texts).not.toContain('Sat, 28 Mar 2026')
   })
 

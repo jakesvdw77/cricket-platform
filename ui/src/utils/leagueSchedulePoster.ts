@@ -1,7 +1,7 @@
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
 
-// docs/specs/051-league-schedule-sharing.md — this codebase's first Canvas2D/PNG image generator
+// docs/specs/051-league-schedule-sharing.md, this codebase's first Canvas2D/PNG image generator
 // (jspdf is the only prior export library in ui/package.json). No existing component to extend,
 // so this is genuinely new drawing code, not a port of an existing pattern the way
 // leagueSchedulePdf.ts mirrors teamSheetPdf.ts.
@@ -31,7 +31,7 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates LeagueFixtures.tsx's own (unexported) resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide, deliberately, matching
 // leagueSchedulePdf.ts's/teamSheetPdf.ts's own established precedent of small pure resolution
 // helpers being independently duplicated per consumer rather than centralized, so each file stays
 // a self-contained, independently readable unit.
@@ -50,7 +50,7 @@ function resolveSide(
 
 // A distinct small loader from leagueSchedulePdf.ts's/teamSheetPdf.ts's own loadImageBase64:
 // those feed jsPDF's addImage (which wants a base64 data URL), this feeds Canvas2D's drawImage
-// (which wants a drawable image element) — fetch → blob → object URL → HTMLImageElement, resolving
+// (which wants a drawable image element), fetch → blob → object URL → HTMLImageElement, resolving
 // null on any failure so a missing/broken team logo never throws or blocks poster generation.
 async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   try {
@@ -73,7 +73,7 @@ async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   }
 }
 
-// e.g. "Sat, 14 Mar 2026" — duplicates LeagueFixtures.tsx's own (unexported) dateHeading.
+// e.g. "Sat, 14 Mar 2026", duplicates the retired LeagueFixtures list's own dateHeading.
 function dateHeading(iso: string): string {
   const date = new Date(iso)
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
@@ -81,7 +81,7 @@ function dateHeading(iso: string): string {
   return `${weekday}, ${date.getDate()} ${month} ${date.getFullYear()}`
 }
 
-// Small avatar square — a loaded logo image if one is available, else a translucent-white square
+// Small avatar square, a loaded logo image if one is available, else a translucent-white square
 // with the side's own initial, the poster's own equivalent of leagueSchedulePdf.ts's
 // drawAvatarOrInitials. Deliberately drawn with fillRect/fillText/drawImage only (no arc/path
 // calls) so it stays inside the exact Canvas2D primitives this spec's own Test Plan calls out as
@@ -116,12 +116,12 @@ export interface LeagueSchedulePosterTeamFilter {
 }
 
 // Builds a square (1:1) PNG poster of the league+season's upcoming fixtures and returns an object
-// URL for it — the caller wraps it in a forced download (this codebase's first, since a raw image
+// URL for it, the caller wraps it in a forced download (this codebase's first, since a raw image
 // blob URL has nothing meaningful to open in a new tab). Same `teamFilter` shape/pre-filtering as
 // generateLeagueSchedulePdf, so both generators are driven by the same dialog state. The gradient
 // background is derived from `primaryColorHex` (the caller's own `useTheme().palette.primary.main`,
 // re-tinted per club via `withClubBranding()` like every other themed surface) rather than a fixed
-// palette baked into this file — the same posture LeagueFixtures/RecordCard already have.
+// palette baked into this file, the same posture RecordCard already has.
 export async function generateLeagueSchedulePoster(
   matches: Match[],
   teamsById: Map<string, Team>,
@@ -173,7 +173,7 @@ export async function generateLeagueSchedulePoster(
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, POSTER_SIZE, POSTER_SIZE)
 
-  // Subtle dot-grid texture — tiny translucent-white squares on a fixed spacing, drawn with
+  // Subtle dot-grid texture, tiny translucent-white squares on a fixed spacing, drawn with
   // fillRect (not arc) so every draw call in this file stays within the fillRect/fillText/
   // drawImage set this spec's Test Plan calls out as the new Canvas2D mocking precedent.
   ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'
@@ -184,7 +184,7 @@ export async function generateLeagueSchedulePoster(
     }
   }
 
-  // Header — league name, then a season/team-scope subtitle.
+  // Header, league name, then a season/team-scope subtitle.
   ctx.fillStyle = '#ffffff'
   ctx.font = `bold 56px ${FONT_STACK}`
   ctx.fillText(leagueName, 64, 130, POSTER_SIZE - 128)

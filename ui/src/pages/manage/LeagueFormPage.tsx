@@ -1,51 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Button as MuiButton, MenuItem, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Button as MuiButton, Stack, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import AddIcon from '@mui/icons-material/Add'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
-import { RecordCard } from '../../components/RecordCard'
+import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
 import { Button } from '../../components/Button'
-import { Input } from '../../components/Input'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
-import { LeagueTeamsSection } from './leagueTeams/LeagueTeamsSection'
 import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDialog'
-import { LeagueFixtures } from '../../components/LeagueFixtures'
-import { DocumentUpload } from '../../components/DocumentUpload'
 import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
-import { PlayingConditionsForm } from '../../components/PlayingConditionsForm'
 import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
+import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
+import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
+import { LeagueEditTeamsTab } from './leagueEdit/LeagueEditTeamsTab'
+import { LeagueEditScheduleTab } from './leagueEdit/LeagueEditScheduleTab'
+import { LeagueEditConditionsTab } from './leagueEdit/LeagueEditConditionsTab'
+import { LeagueEditContactsTab } from './leagueEdit/LeagueEditContactsTab'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
 import type { LeaguePayload } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
 import { listAllMatches } from '../../api/matchApi'
-import {
-  listLeagueAffiliations,
-  createLeagueAffiliation,
-  unaffiliateLeagueTeam,
-} from '../../api/leagueAffiliationApi'
-import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
+import { listLeagueAffiliations, createLeagueAffiliation } from '../../api/leagueAffiliationApi'
 import {
   getPlayingConditions,
   uploadPlayingConditions,
   updatePlayingConditions,
-  PLAYING_CONDITIONS_PDF_NAME,
 } from '../../api/leaguePlayingConditionsApi'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 import { listLeagueContacts } from '../../api/leagueContactApi'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
 import { errorDetail } from '../../utils/errorDetail'
-import { initialsFromName } from '../../utils/initials'
-import { badgeFor as contactBadgeFor, fullName as contactFullName } from '../../utils/leagueContact'
 import { generateLeagueSchedulePdf } from '../../utils/leagueSchedulePdf'
 import { generateLeagueSchedulePoster } from '../../utils/leagueSchedulePoster'
 import { generateLeagueScheduleIcs } from '../../utils/leagueScheduleIcs'
@@ -53,46 +42,13 @@ import { generatePlayingConditionsSummaryPdf } from '../../utils/playingConditio
 import { resolvePlayingConditionsPayload } from '../../utils/playingConditions'
 import { triggerDownload } from '../../utils/triggerDownload'
 
-// One affiliated team, with its own unlink mutation — mirrors TeamFormPage's TeamSponsorCard
-// isolation pattern, so one card's pending state never leaks onto another's.
-function AffiliatedTeamCard({
-  clubId,
-  leagueId,
-  affiliation,
-  team,
-  onUnlinked,
-}: {
-  clubId: string
-  leagueId: string
-  affiliation: LeagueAffiliation
-  team: Team
-  onUnlinked: () => void
-}) {
-  const unlink = useMutation({
-    mutationFn: () => unaffiliateLeagueTeam(clubId, leagueId, affiliation.id),
-    onSuccess: onUnlinked,
-  })
+// docs/specs/029-league-management.md and docs/specs/095-league-edit-gold-standard.md: the standard list/create/update CRUD
+// anatomy, extended in edit mode with a tab strip (?tab=details|teams|schedule|conditions|contacts), each tab in its own
+// file under ./leagueEdit. This page keeps the page-level queries, the season state, the Details save and deactivate
+// mutations and the three dialogs the tabs open.
+// The tabs whose content is scoped to a season, so the header Season pill shows on them only.
+const SEASON_TABS: readonly string[] = ['teams', 'schedule', 'conditions']
 
-  return (
-    <RecordCard
-      title={team.name}
-      avatar={{ imageUrl: team.logoUrl, fallback: initialsFromName(team.name), shape: 'rounded' }}
-      editLabel="Edit"
-      editTo={`/manage/sections/${team.sectionId}/teams/${team.id}/edit`}
-      secondaryAction={{
-        label: 'Unaffiliate',
-        pendingLabel: 'Removing…',
-        pending: unlink.isPending,
-        onClick: () => unlink.mutate(),
-        icon: <LinkOffOutlinedIcon fontSize="small" />,
-      }}
-    />
-  )
-}
-
-// docs/specs/029-league-management.md: the standard list/create/update CRUD anatomy, extended in
-// edit mode (mirroring 027's TeamFormPage tab precedent) with an Affiliations tab — a Season
-// picker plus a RecordCard grid of teams currently affiliated for that season.
 export default function LeagueFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId } = useParams<{ leagueId?: string }>()
@@ -100,12 +56,15 @@ export default function LeagueFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const theme = useTheme()
+  const [searchParams] = useSearchParams()
 
-  const [activeTab, setActiveTab] = useState(0)
+  // Create mode has no tab strip, so ?tab= is ignored there.
+  const activeTab = isEdit ? resolveLeagueEditTab(searchParams.get('tab')) : 'details'
+  const seasonParam = searchParams.get('seasonId')
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  // docs/specs/052-league-playing-conditions.md — a second, independent Share flow (the captain
+  // docs/specs/052-league-playing-conditions.md, a second, independent Share flow (the captain
   // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
   // never share state.
   const [playingConditionsShareOpen, setPlayingConditionsShareOpen] = useState(false)
@@ -139,7 +98,7 @@ export default function LeagueFormPage() {
     enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
   })
 
-  // docs/specs/054-league-contacts.md: the Contacts tab's own contact list — a league's contacts
+  // docs/specs/054-league-contacts.md: the Contacts tab's own contact list, a league's contacts
   // are a small, bounded collection, deliberately not paginated (same as listSponsorContacts).
   const contactsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'],
@@ -148,7 +107,7 @@ export default function LeagueFormPage() {
   })
 
   // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
-  // list, rendered via the reusable LeagueFixtures component — reuses the existing
+  // list, rendered by LeagueFixturesTable (see LeagueEditScheduleTab), reuses the existing
   // listAllMatches (docs/specs/072-league-view-pages.md: every page of the season, not just the first
   // 20) filter combination, no new endpoint.
   const matchesQuery = useQuery({
@@ -173,16 +132,19 @@ export default function LeagueFormPage() {
     enabled: Boolean(clubId) && Boolean(leagueId) && Boolean(selectedSeasonId) && isEdit,
   })
 
-  // Defaults the Season picker to whichever season contains today, else the most recently
-  // created — same rule as TeamFormPage's Squad tab.
+  // Starts the Season pill on ?seasonId= (carried by the league page's Edit link) when it names one of the club's seasons,
+  // else on whichever season contains today, else the most recently created, same rule as TeamFormPage's Squad tab.
   useEffect(() => {
     if (!selectedSeasonId && seasonsQuery.data && seasonsQuery.data.length > 0) {
-      const defaultId = pickDefaultSeasonId(seasonsQuery.data)
+      const requested = seasonParam && seasonsQuery.data.some((season) => season.id === seasonParam) ? seasonParam : null
+      const defaultId = requested ?? pickDefaultSeasonId(seasonsQuery.data)
       if (defaultId) {
         setSelectedSeasonId(defaultId)
       }
     }
-  }, [seasonsQuery.data, selectedSeasonId])
+  }, [seasonsQuery.data, selectedSeasonId, seasonParam])
+
+  const seasons = useMemo(() => seasonsQuery.data ?? [], [seasonsQuery.data])
 
   const teamsById = useMemo(() => {
     const map = new Map<string, Team>()
@@ -195,7 +157,7 @@ export default function LeagueFormPage() {
   )
 
   // docs/specs/051-league-schedule-sharing.md: same seasonLabel derivation as
-  // the league Schedule view (LeagueScheduleView.tsx) — neither host page previously computed a plain season label string.
+  // the league Schedule view (LeagueScheduleView.tsx), neither host page previously computed a plain season label string.
   const seasonLabel = useMemo(
     () => seasonsQuery.data?.find((season) => season.id === selectedSeasonId)?.label ?? '',
     [seasonsQuery.data, selectedSeasonId],
@@ -234,7 +196,7 @@ export default function LeagueFormPage() {
     triggerDownload(url, `${team.teamName}-schedule.ics`)
   }
 
-  // docs/specs/052-league-playing-conditions.md UI Requirements item 4 — `maxOversPerInnings !=
+  // docs/specs/052-league-playing-conditions.md UI Requirements item 4, `maxOversPerInnings !=
   // null` is the "has this league+season's structured Playing Conditions ever been saved" signal;
   // shared by PlayingConditionsForm's own initialValues and PlayingConditionsShareDialog's
   // hasStructuredFields/conditions props below.
@@ -246,7 +208,7 @@ export default function LeagueFormPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey }),
   })
 
-  // A second, independent Share handler for the captain summary — never touches
+  // A second, independent Share handler for the captain summary, never touches
   // generateLeagueSchedulePdf/handleSharePdf above, which belongs to the unrelated Schedule-sharing
   // feature.
   const handleSharePlayingConditionsPdf = async () => {
@@ -288,7 +250,7 @@ export default function LeagueFormPage() {
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from LeagueList.tsx's own
-  // LeagueCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
+  // LeagueCard, same mutation fn/onSuccess invalidation, now rendered in this screen's actions
   // bar instead of the list card's footer.
   const invalidateLeagues = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues'] })
 
@@ -327,53 +289,48 @@ export default function LeagueFormPage() {
         title={isEdit ? 'Edit League' : 'Add League'}
         backTo="/manage/fixtures/leagues"
         backLabel="Back to Leagues"
+        tabs={isEdit ? <LeagueEditTabs /> : undefined}
+        headerAction={
+          isEdit && SEASON_TABS.includes(activeTab) && seasons.length > 0 ? (
+            <HeaderSeasonSelect
+              seasons={seasons.map((season) => ({ id: season.id, name: season.label }))}
+              value={selectedSeasonId}
+              showAll={false}
+              onChange={(seasonId) => {
+                if (seasonId) {
+                  setSelectedSeasonId(seasonId)
+                }
+              }}
+            />
+          ) : undefined
+        }
         actions={
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-            {activeTab === 0 && (
-              <>
-                {saveMutation.isError && (
-                  <Typography variant="body2" color="error.main">
-                    {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
-                  </Typography>
-                )}
+          activeTab === 'details' ? (
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+              {saveMutation.isError && (
+                <Typography variant="body2" color="error.main">
+                  {errorDetail(saveMutation.error, 'Something went wrong saving this league. Please try again.')}
+                </Typography>
+              )}
 
-                {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
-                <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined">
-                  Cancel
-                </MuiButton>
+              {/* docs/specs/091 (D): Cancel goes back to the league (edit) or the list (add), without saving. */}
+              <MuiButton component={RouterLink} to={isEdit && league ? `/manage/fixtures/leagues/${league.id}/schedule` : '/manage/fixtures/leagues'} variant="outlined">
+                Cancel
+              </MuiButton>
 
-                <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
-                </Button>
-              </>
-            )}
+              <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
+              </Button>
 
-            {isEdit && league && (
-              <RecordStatusToggle active={league.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
-            )}
-          </Stack>
+              {/* docs/specs/095: Deactivate / Reactivate lives with Details only. */}
+              {isEdit && league && (
+                <RecordStatusToggle active={league.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
+              )}
+            </Stack>
+          ) : undefined
         }
       >
-        {isEdit && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_event, next: number) => setActiveTab(next)}
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-            >
-              <Tab label="Details" />
-              <Tab label="Teams" />
-              <Tab label="Schedule" />
-              <Tab label="Playing Conditions" />
-              <Tab label="Contacts" />
-            </Tabs>
-          </Box>
-        )}
-
-        {activeTab === 0 && (
+        {activeTab === 'details' && (
           <LeagueForm
             initialValues={
               league
@@ -396,278 +353,63 @@ export default function LeagueFormPage() {
           />
         )}
 
-        {isEdit && activeTab === 1 && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            {(seasonsQuery.data ?? []).length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Create a season first — teams are affiliated to a league for a specific season.
-              </Typography>
-            ) : (
-              <>
-                <Input
-                  select
-                  label="Season"
-                  value={selectedSeasonId}
-                  onChange={(event) => setSelectedSeasonId(event.target.value)}
-                  sx={{ maxWidth: 280, mb: 2 }}
-                >
-                  {(seasonsQuery.data ?? []).map((season) => (
-                    <MenuItem key={season.id} value={season.id}>
-                      {season.label}
-                    </MenuItem>
-                  ))}
-                </Input>
-
-                <Typography variant="subtitle1" component="h2" fontWeight={700} sx={{ mb: 1 }}>
-                  Our teams
-                </Typography>
-
-                {affiliationsForSeason.length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    No teams affiliated for this season yet.
-                  </Typography>
-                )}
-
-                {affiliationsForSeason.length > 0 && (
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gap: 2,
-                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                      mb: 2,
-                    }}
-                  >
-                    {affiliationsForSeason.map((affiliation) => {
-                      const team = teamsById.get(affiliation.teamId)
-                      if (!team) {
-                        return null
-                      }
-                      return (
-                        <AffiliatedTeamCard
-                          key={affiliation.id}
-                          clubId={clubId}
-                          leagueId={leagueId as string}
-                          affiliation={affiliation}
-                          team={team}
-                          onUnlinked={invalidateAffiliations}
-                        />
-                      )
-                    })}
-                  </Box>
-                )}
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  startIcon={<GroupsOutlinedIcon fontSize="small" />}
-                  onClick={() => setLinkOpen(true)}
-                  disabled={!selectedSeasonId}
-                >
-                  Add team
-                </Button>
-
-                {selectedSeasonId && (
-                  <LeagueTeamsSection
-                    key={selectedSeasonId}
-                    clubId={clubId}
-                    leagueId={leagueId as string}
-                    seasonId={selectedSeasonId}
-                    contextLabel={`${league?.name ?? ''} · ${seasonLabel}`}
-                  />
-                )}
-              </>
-            )}
-          </Box>
+        {isEdit && activeTab === 'teams' && (
+          <LeagueEditTeamsTab
+            clubId={clubId}
+            leagueId={leagueId as string}
+            hasSeasons={seasons.length > 0}
+            selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
+            contextLabel={`${league?.name ?? ''} · ${seasonLabel}`}
+            affiliationsForSeason={affiliationsForSeason}
+            teamsById={teamsById}
+            onAddTeam={() => setLinkOpen(true)}
+            onUnlinked={invalidateAffiliations}
+          />
         )}
 
-        {isEdit && activeTab === 2 && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            {(seasonsQuery.data ?? []).length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Create a season first — matches are scheduled for a league and a specific season.
-              </Typography>
-            ) : (
-              <Stack spacing={4}>
-                <Input
-                  select
-                  label="Season"
-                  value={selectedSeasonId}
-                  onChange={(event) => setSelectedSeasonId(event.target.value)}
-                  sx={{ maxWidth: 280 }}
-                >
-                  {(seasonsQuery.data ?? []).map((season) => (
-                    <MenuItem key={season.id} value={season.id}>
-                      {season.label}
-                    </MenuItem>
-                  ))}
-                </Input>
-
-                <Stack direction="row" spacing={2} flexWrap="wrap">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    startIcon={<AddIcon fontSize="small" />}
-                    onClick={() =>
-                      navigate(`/manage/fixtures/matches/new?leagueId=${leagueId}&seasonId=${selectedSeasonId}`)
-                    }
-                    disabled={!selectedSeasonId}
-                  >
-                    Add Match
-                  </Button>
-
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    startIcon={<ShareOutlinedIcon fontSize="small" />}
-                    disabled={matchesQuery.isLoading}
-                    onClick={() => setShareOpen(true)}
-                  >
-                    Share
-                  </Button>
-                </Stack>
-
-                {matchesQuery.isLoading ? (
-                  <Skeleton variant="rounded" height={96} aria-label="Loading fixtures" />
-                ) : (
-                  <LeagueFixtures matches={matchesQuery.data ?? []} teamsById={teamsById} />
-                )}
-              </Stack>
-            )}
-          </Box>
+        {isEdit && activeTab === 'schedule' && (
+          <LeagueEditScheduleTab
+            leagueId={leagueId as string}
+            hasSeasons={seasons.length > 0}
+            selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
+            matches={matchesQuery.data ?? []}
+            matchesLoading={matchesQuery.isLoading}
+            teamsById={teamsById}
+            onShare={() => setShareOpen(true)}
+          />
         )}
 
-        {isEdit && activeTab === 3 && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            {(seasonsQuery.data ?? []).length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Create a season first — playing conditions are captured for a league and a specific season.
-              </Typography>
-            ) : (
-              <Stack spacing={4}>
-                <Input
-                  select
-                  label="Season"
-                  value={selectedSeasonId}
-                  onChange={(event) => setSelectedSeasonId(event.target.value)}
-                  sx={{ maxWidth: 280 }}
-                >
-                  {(seasonsQuery.data ?? []).map((season) => (
-                    <MenuItem key={season.id} value={season.id}>
-                      {season.label}
-                    </MenuItem>
-                  ))}
-                </Input>
-
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary', mb: 1.5 }}
-                  >
-                    Full Document
-                  </Typography>
-                  <DocumentUpload
-                    label="Playing Conditions"
-                    displayName={PLAYING_CONDITIONS_PDF_NAME}
-                    value={
-                      playingConditionsQuery.data?.documentUrl
-                        ? {
-                            documentUrl: playingConditionsQuery.data.documentUrl,
-                            uploadedAt: playingConditionsQuery.data.uploadedAt as string,
-                          }
-                        : null
-                    }
-                    onUpload={(file) =>
-                      uploadPlayingConditions(clubId as string, leagueId as string, selectedSeasonId, file).then(
-                        (response) => response.documentUrl,
-                      )
-                    }
-                    onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
-                  />
-                </Box>
-
-                <Box>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    flexWrap="wrap"
-                    useFlexGap
-                    spacing={2}
-                    sx={{ mb: 1.5 }}
-                  >
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}
-                    >
-                      Match Format & Points
-                    </Typography>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      startIcon={<ShareOutlinedIcon fontSize="small" />}
-                      onClick={() => setPlayingConditionsShareOpen(true)}
-                    >
-                      Share
-                    </Button>
-                  </Stack>
-
-                  <PlayingConditionsForm
-                    key={selectedSeasonId}
-                    initialValues={playingConditionsPayload}
-                    onSubmit={(payload) => updatePlayingConditionsMutation.mutate(payload)}
-                    pending={updatePlayingConditionsMutation.isPending}
-                    error={updatePlayingConditionsMutation.isError ? updatePlayingConditionsMutation.error : undefined}
-                  />
-                </Box>
-              </Stack>
-            )}
-          </Box>
+        {isEdit && activeTab === 'conditions' && (
+          <LeagueEditConditionsTab
+            hasSeasons={seasons.length > 0}
+            selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
+            document={
+              playingConditionsQuery.data?.documentUrl
+                ? {
+                    documentUrl: playingConditionsQuery.data.documentUrl,
+                    uploadedAt: playingConditionsQuery.data.uploadedAt as string,
+                  }
+                : null
+            }
+            onUpload={(file) =>
+              uploadPlayingConditions(clubId as string, leagueId as string, selectedSeasonId, file).then(
+                (response) => response.documentUrl,
+              )
+            }
+            onUploaded={() => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey })}
+            initialValues={playingConditionsPayload}
+            onSubmit={(payload) => updatePlayingConditionsMutation.mutate(payload)}
+            pending={updatePlayingConditionsMutation.isPending}
+            error={updatePlayingConditionsMutation.isError ? updatePlayingConditionsMutation.error : undefined}
+            onShare={() => setPlayingConditionsShareOpen(true)}
+          />
         )}
 
-        {isEdit && activeTab === 4 && (
-          <Box sx={{ gridColumn: '1 / -1' }}>
-            {(contactsQuery.data ?? []).length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                No contacts yet for this league.
-              </Typography>
-            )}
-
-            {(contactsQuery.data ?? []).length > 0 && (
-              <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-                  mb: 2,
-                }}
-              >
-                {(contactsQuery.data ?? []).map((contact) => (
-                  <RecordCard
-                    key={contact.id}
-                    title={contactFullName(contact)}
-                    avatar={{ fallback: initialsFromName(contactFullName(contact)), shape: 'circular' }}
-                    badge={contactBadgeFor(contact)}
-                    fields={[
-                      { label: 'Role', value: contact.role },
-                      { label: 'Email', value: contact.contact.email },
-                      { label: 'Phone', value: contact.contact.phone },
-                    ]}
-                    viewTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}`}
-                    editTo={`/manage/fixtures/leagues/${leagueId}/contacts/${contact.id}/edit`}
-                  />
-                ))}
-              </Box>
-            )}
-
-            <Button
-              variant="secondary"
-              size="sm"
-              startIcon={<AddIcon fontSize="small" />}
-              onClick={() => navigate(`/manage/fixtures/leagues/${leagueId}/contacts/new`)}
-            >
-              Add Contact
-            </Button>
-          </Box>
+        {isEdit && activeTab === 'contacts' && (
+          <LeagueEditContactsTab leagueId={leagueId as string} contacts={contactsQuery.data ?? []} />
         )}
       </RecordFormScreen>
 

@@ -1,4 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import { AxiosError } from 'axios'
+import type { AxiosResponse } from 'axios'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -22,6 +24,8 @@ const mocks = vi.hoisted(() => ({
   listLeagueTeams: vi.fn(),
   getPlayingConditions: vi.fn(),
   listMatches: vi.fn(),
+  createLeagueAffiliation: vi.fn(),
+  createLeagueTeam: vi.fn(),
 }))
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
@@ -32,6 +36,7 @@ vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mock
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
 vi.mock('../../../api/leagueAffiliationApi', () => ({
   listLeagueAffiliations: (clubId: string, leagueId: string) => mocks.listLeagueAffiliations(clubId, leagueId),
+  createLeagueAffiliation: (...args: unknown[]) => mocks.createLeagueAffiliation(...args),
 }))
 vi.mock('../../../api/leagueContactApi', () => ({
   listLeagueContacts: (clubId: string, leagueId: string) => mocks.listLeagueContacts(clubId, leagueId),
@@ -39,6 +44,7 @@ vi.mock('../../../api/leagueContactApi', () => ({
 vi.mock('../../../api/leagueTeamApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueTeamApi')>()),
   listLeagueTeams: (...args: unknown[]) => mocks.listLeagueTeams(...args),
+  createLeagueTeam: (...args: unknown[]) => mocks.createLeagueTeam(...args),
 }))
 vi.mock('../../../api/leaguePlayingConditionsApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leaguePlayingConditionsApi')>()),
@@ -183,8 +189,9 @@ describe('LeagueTeamsView', () => {
     renderLeagueView(TEAMS_PATH)
 
     expect(await screen.findByText('No teams registered for this season yet.')).toBeInTheDocument()
-    expect(screen.queryByTestId('league-teams-own')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('league-teams-league')).not.toBeInTheDocument()
+    // The cards stay, so the first team can be added from here.
+    expect(screen.getByTestId('league-teams-own')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add league team' })).toBeEnabled()
   })
 
   it('does not show the empty copy while the teams are still loading', async () => {
@@ -215,8 +222,109 @@ describe('LeagueTeamsView', () => {
 
     await screen.findByRole('link', { name: '1st XI' })
     expect(screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))).toEqual([
-      '/manage/fixtures/leagues/league-1/edit',
+      '/manage/fixtures/leagues/league-1/edit?tab=teams&seasonId=season-1',
     ])
     expect(within(screen.getAllByTestId('league-team-tile')[0]).queryByText('Edit')).not.toBeInTheDocument()
+  })
+  describe('add actions', () => {
+    function axiosFailure(status: number, detail: string) {
+      return new AxiosError('failed', undefined, undefined, undefined, { status, data: { detail } } as AxiosResponse)
+    }
+
+    it('puts a filled Add team on Our teams, and a filled Add league team and outlined Copy from... on League teams', async () => {
+      renderLeagueView(TEAMS_PATH)
+
+      const own = await screen.findByTestId('league-teams-own')
+      const league = await screen.findByTestId('league-teams-league')
+      const addTeam = within(own).getByRole('button', { name: 'Add team' })
+      const addLeagueTeam = within(league).getByRole('button', { name: 'Add league team' })
+      const copy = within(league).getByRole('button', { name: 'Copy teams from another league or season' })
+      expect(addTeam).toHaveClass('MuiButton-contained')
+      expect(addLeagueTeam).toHaveClass('MuiButton-contained')
+      expect(copy).toHaveClass('MuiButton-outlined')
+      expect(copy).toHaveTextContent('Copy from...')
+      expect(addTeam).toBeEnabled()
+    })
+
+    it('offers no Unaffiliate, Edit, Deactivate or Remove on the view page', async () => {
+      renderLeagueView(TEAMS_PATH)
+
+      await screen.findByText('Riverside Occasionals')
+      for (const name of ['Unaffiliate', 'Deactivate', 'Remove']) {
+        expect(screen.queryByRole('button', { name: new RegExp(name) })).not.toBeInTheDocument()
+      }
+    })
+
+    it('lists only the club teams not yet affiliated this season and affiliates the chosen one, then refreshes', async () => {
+      const user = userEvent.setup()
+      const first = makeTeam({ id: 'team-1', name: '1st XI' })
+      const second = makeTeam({ id: 'team-2', name: '2nd XI' })
+      const retired = makeTeam({ id: 'team-3', name: 'Old XI', active: false })
+      mocks.listTeamsForClub.mockResolvedValue([first, second, retired])
+      mocks.listLeagueAffiliations.mockResolvedValueOnce([makeAffiliation({ teamId: 'team-1' })])
+      mocks.createLeagueAffiliation.mockResolvedValue(makeAffiliation({ id: 'affiliation-2', teamId: 'team-2' }))
+
+      renderLeagueView(TEAMS_PATH)
+      await screen.findByRole('link', { name: '1st XI' })
+      mocks.listLeagueAffiliations.mockResolvedValue([
+        makeAffiliation({ teamId: 'team-1' }),
+        makeAffiliation({ id: 'affiliation-2', teamId: 'team-2' }),
+      ])
+
+      await user.click(within(screen.getByTestId('league-teams-own')).getByRole('button', { name: 'Add team' }))
+      await user.click(await screen.findByRole('combobox', { name: 'Search teams' }))
+      expect(await screen.findByRole('option', { name: '2nd XI' })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: '1st XI' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Old XI' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('option', { name: '2nd XI' }))
+
+      expect(mocks.createLeagueAffiliation).toHaveBeenCalledWith('test-club-id', 'league-1', 'team-2', 'season-1')
+      expect(await screen.findByRole('link', { name: '2nd XI' })).toBeInTheDocument()
+      expect(await screen.findByText('2nd XI was added to this season.')).toBeInTheDocument()
+    })
+
+    it('creates a league team through the form, refreshes the list and shows the outcome', async () => {
+      const user = userEvent.setup()
+      mocks.createLeagueTeam.mockResolvedValue(makeLeagueTeam({ id: 'lt-new', name: 'Police' }))
+
+      renderLeagueView(TEAMS_PATH)
+      await screen.findByText('Riverside Occasionals')
+      mocks.listLeagueTeams.mockImplementation(async () => [
+        makeLeagueTeam({ id: 'lt-active', name: 'Riverside Occasionals' }),
+        makeLeagueTeam({ id: 'lt-new', name: 'Police' }),
+      ])
+
+      await user.click(screen.getByRole('button', { name: 'Add league team' }))
+      await user.type(await screen.findByLabelText(/Team name/), 'Police')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() =>
+        expect(mocks.createLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', expect.objectContaining({ name: 'Police' })),
+      )
+      expect(await screen.findByText('Police was added.')).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: 'League teams · 2' })).toBeInTheDocument()
+    })
+
+    it('shows a 409 duplicate name against the Name field', async () => {
+      const user = userEvent.setup()
+      mocks.createLeagueTeam.mockRejectedValue(axiosFailure(409, 'Police is already registered for this season.'))
+
+      renderLeagueView(TEAMS_PATH)
+      await user.click(await screen.findByRole('button', { name: 'Add league team' }))
+      await user.type(await screen.findByLabelText(/Team name/), 'Police')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(await screen.findByText('Police is already registered for this season.')).toBeInTheDocument()
+      expect(screen.getByLabelText(/Team name/)).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('opens the Copy league teams dialog from Copy from...', async () => {
+      const user = userEvent.setup()
+
+      renderLeagueView(TEAMS_PATH)
+      await user.click(await screen.findByRole('button', { name: 'Copy teams from another league or season' }))
+
+      expect(await screen.findByText('Copy league teams')).toBeInTheDocument()
+    })
   })
 })

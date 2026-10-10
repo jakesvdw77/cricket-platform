@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { DocumentUpload } from './DocumentUpload'
 
 // docs/specs/050-league-schedule-and-fixtures.md item 23: mirrors MediaUpload.test.tsx's own
-// structure — the injected onUpload prop stands in for MediaUpload's fixed uploadMedia/
+// structure, the injected onUpload prop stands in for MediaUpload's fixed uploadMedia/
 // uploadManagedMedia import, since DocumentUpload deliberately keeps its upload delegate generic.
 describe('DocumentUpload', () => {
   it('renders "No document uploaded yet" and an "Upload" button in the empty state', () => {
@@ -113,5 +113,47 @@ describe('DocumentUpload', () => {
 
     expect(openSpy).toHaveBeenCalledWith('/media/2f6a1c9e-playing-conditions.pdf', '_blank')
     openSpy.mockRestore()
+  })
+  describe('inline layout (docs/specs/095)', () => {
+    const value = { documentUrl: '/media/2f6a1c9e-playing-conditions.pdf', uploadedAt: '2026-02-01T09:00:00Z' }
+
+    it('shows only an Upload button and no card text when nothing is stored', () => {
+      render(<DocumentUpload layout="inline" label="Playing Conditions" value={null} onUpload={vi.fn()} onUploaded={vi.fn()} />)
+
+      expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument()
+      expect(screen.queryByText('No document uploaded yet')).not.toBeInTheDocument()
+      expect(screen.queryByText('PDF, up to 5MB.')).not.toBeInTheDocument()
+    })
+
+    it('shows a button named displayName that opens the document, beside Replace', async () => {
+      const user = userEvent.setup()
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+      render(
+        <DocumentUpload layout="inline" label="Playing Conditions" displayName="Playing Conditions.pdf" value={value} onUpload={vi.fn()} onUploaded={vi.fn()} />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Playing Conditions.pdf' }))
+      expect(openSpy).toHaveBeenCalledWith('/media/2f6a1c9e-playing-conditions.pdf', '_blank', 'noopener')
+      openSpy.mockRestore()
+    })
+
+    it('uploads a PDF through the same onUpload delegate and shows a rejected type inline', async () => {
+      const user = userEvent.setup({ applyAccept: false })
+      const onUpload = vi.fn().mockResolvedValue('/media/new.pdf')
+      const onUploaded = vi.fn()
+
+      render(<DocumentUpload layout="inline" label="Playing Conditions" value={null} onUpload={onUpload} onUploaded={onUploaded} />)
+
+      await user.upload(screen.getByLabelText('Playing Conditions file'), new File(['x'], 'photo.png', { type: 'image/png' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('"photo.png" isn\'t a supported document type')
+      expect(onUpload).not.toHaveBeenCalled()
+
+      const file = new File(['%PDF-1.4'], 'conditions.pdf', { type: 'application/pdf' })
+      await user.upload(screen.getByLabelText('Playing Conditions file'), file)
+      await waitFor(() => expect(onUploaded).toHaveBeenCalledWith('/media/new.pdf'))
+      expect(onUpload).toHaveBeenCalledWith(file)
+    })
   })
 })

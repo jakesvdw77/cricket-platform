@@ -165,7 +165,17 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Tidy-up or merge of historical free-text opponent names** into league teams. The `042` autocomplete item above stays open for friendlies.
 - **Opponent rosters and players.**
 - **Bulk CSV import** of league teams.
-- **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
+- ~~**A `?tab=` deep link into the league's Teams tab**~~ Done by `095`: the League edit page reads `?tab=`, and the match form's empty-list hint links to `?tab=teams`.
+
+## Deferred by `095`: League edit gold standard
+
+- **Filters on the edit Schedule tab** (Team, search, Only our matches, Show played); the tab shows every match of the season.
+- **Sections instead of tabs** (one long page with an in-page nav) was considered and not built.
+- **The Details tab was not restyled** beyond a spacing check; `LeagueForm` stays as built in `091`.
+- **The `Create a season first` messages** on the Teams, Schedule and Playing conditions tabs still carry their older wording.
+- **E2E for the league edit page needs Keycloak**, so `ui/e2e/manager-league-management.spec.ts` was repaired but not run, and there is no new golden path.
+- **`RowActions` on other lists:** adopt it where a list still has its own icon or menu actions.
+- **Row height:** the edit panels use 44 px rows (56 px on a phone) while the Leagues, Teams and Seasons tables use 56 px (60 px on a phone); decide whether they should agree.
 
 ## Deferred by `093`: Team selection hub
 
@@ -268,7 +278,7 @@ Found by the standards and code review of the built feature; none blocks the mer
 - **Persist the original Playing Conditions PDF file name.** The label is a fixed display string; the uploader's file name is not stored.
 - **Show Playing XI size and age range on the Conditions view**, to land with draft `055` (which moves them onto `LeaguePlayingConditions`).
 - **Check `RecordDetailScreen`'s `sections` prop for any remaining consumer.** `072` removed the last `/manage` league user, as `062` had asked.
-- **Stale `LeagueDetailPage` mentions in code comments** (`utils/playingConditions.ts`, `utils/leagueContact.ts`, `NextMatchCountdown`, `LeagueFixtures`, `ShareScheduleDialog`, `api/leagueApi.ts`) can be cleaned up opportunistically.
+- **Stale `LeagueDetailPage` mentions in code comments** (`utils/playingConditions.ts`, `utils/leagueContact.ts`, `NextMatchCountdown`, `ShareScheduleDialog`, `api/leagueApi.ts`) can be cleaned up opportunistically.
 - **Push the purple format token and the new badge tones to Claude Design** (the design-token-sync push step needs a session with that tool).
 
 ## Deferred by `052` — the rest of `League`'s per-season fields

@@ -20,6 +20,22 @@ export const Empty: Story = {
   },
 }
 
+// docs/specs/095: the compact pair of buttons for a content line.
+export const InlinePopulated: Story = {
+  args: {
+    label: 'Playing Conditions',
+    displayName: 'Playing Conditions.pdf',
+    layout: 'inline',
+    value: { documentUrl: '/media/2f6a1c9e-playing-conditions.pdf', uploadedAt: '2026-02-01T09:00:00Z' },
+    onUpload: () => Promise.resolve('/media/2f6a1c9e-playing-conditions.pdf'),
+    onUploaded: () => undefined,
+  },
+}
+
+export const InlineEmpty: Story = {
+  args: { ...InlinePopulated.args, value: null },
+}
+
 export const Populated: Story = {
   args: {
     label: 'Playing Conditions',
@@ -33,7 +49,7 @@ export const WithDisplayName: Story = {
   args: { ...Populated.args, displayName: 'Playing Conditions.pdf' },
 }
 
-// Uploading is local state only reachable via interaction, not a settable prop — the play
+// Uploading is local state only reachable via interaction, not a settable prop, the play
 // function selects a file via the hidden input (same convention MediaUpload.test.tsx uses) with
 // an onUpload that never resolves, so the story settles on the in-flight state rather than
 // racing past it. Same "exercise it via play" posture as TeamSheetCommunicationDialog's own
@@ -53,7 +69,7 @@ export const Uploading: Story = {
   },
 }
 
-// Named ErrorState, not Error — a local `const Error` shadows the global `Error` constructor
+// Named ErrorState, not Error, a local `const Error` shadows the global `Error` constructor
 // within this module's scope, which breaks Storybook's own CSF typings (same reasoning
 // TeamSheetCommunicationDialog.stories.tsx's own ErrorState story name already follows).
 export const ErrorState: Story = {
@@ -71,7 +87,7 @@ export const ErrorState: Story = {
   },
 }
 
-// docs/standards/design-system.md's Storybook rule — every component gets a story with the
+// docs/standards/design-system.md's Storybook rule, every component gets a story with the
 // viewport addon at 375/768/1280.
 export const MobileViewport: Story = {
   args: Populated.args,

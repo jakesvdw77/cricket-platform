@@ -483,7 +483,7 @@ describe('MatchForm league teams', () => {
     renderWithTeams({ initialValues: SCOPE, leagueTeams: [] })
     await user.click(screen.getAllByRole('button', { name: 'League team' })[0])
     expect(screen.getByText('No league teams registered for this league and season.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Teams tab/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit')
+    expect(screen.getByRole('link', { name: /Teams tab/ })).toHaveAttribute('href', '/manage/fixtures/leagues/league-1/edit?tab=teams')
   })
 
   it('opens a stored league-team side on League team, showing an inactive pick with its suffix', async () => {
