@@ -12,7 +12,8 @@ export interface SectionOrgChartProps {
   sections: Section[]
   selectedId: string | null
   onSelect: (id: string) => void
-  onAddChild: (parentId: string) => void
+  // Optional: without it no "+" is drawn and the chart is read-only.
+  onAddChild?: (parentId: string) => void
   // Called when Escape is pressed while focus is inside the chart.
   onClearSelection?: () => void
   // Optional per-node toolbar slot, shown in a pill above the node. Return null for nodes that
@@ -108,7 +109,7 @@ interface NodeCardProps {
   node: TreeNode
   selectedId: string | null
   onSelect: (id: string) => void
-  onAddChild: (parentId: string) => void
+  onAddChild?: (parentId: string) => void
   renderNodeToolbar?: (section: Section) => ReactNode
 }
 
@@ -184,6 +185,7 @@ function NodeCard({ node, selectedId, onSelect, onAddChild, renderNodeToolbar }:
         )}
       </ButtonBase>
 
+      {onAddChild && (
       <Tooltip title="Add a child section">
         <IconButton
           size="small"
@@ -206,6 +208,7 @@ function NodeCard({ node, selectedId, onSelect, onAddChild, renderNodeToolbar }:
           <AddIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Tooltip>
+      )}
     </Box>
   )
 }

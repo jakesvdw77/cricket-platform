@@ -64,6 +64,10 @@ function Interactive({ width }: { width?: number }) {
 
 export const Default: Story = { render: () => <Interactive /> }
 
+export const ReadOnly: Story = {
+  render: () => <SectionOrgChart sections={SAMPLE_SECTIONS} selectedId="b9" onSelect={() => {}} />,
+}
+
 export const WithToolbar: Story = {
   render: () => (
     <SectionOrgChart

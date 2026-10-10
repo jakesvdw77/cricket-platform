@@ -16,7 +16,6 @@ const listSponsors = vi.fn()
 const listSections = vi.fn()
 const listSeasons = vi.fn()
 const getSectionsSummary = vi.fn()
-const createSection = vi.fn()
 const listSectionContacts = vi.fn()
 const listTeamsForSection = vi.fn()
 
@@ -41,7 +40,6 @@ vi.mock('../../api/sectionApi', async (importOriginal) => {
     ...actual,
     listSections: (clubId: string) => listSections(clubId),
     getSectionsSummary: (clubId: string, params: unknown) => getSectionsSummary(clubId, params),
-    createSection: (clubId: string, payload: unknown) => createSection(clubId, payload),
     listSectionContacts: (clubId: string, sectionId: string) => listSectionContacts(clubId, sectionId),
   }
 })
@@ -510,7 +508,6 @@ describe('ClubOverviewPage', () => {
 
       expect(await screen.findByText('No sections yet')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Set up your structure' })).toHaveAttribute('href', '/manage/sections')
-      expect(screen.getByRole('button', { name: 'Add top-level section' })).toBeInTheDocument()
     })
 
     it('renders the org chart with every section as a node', async () => {
@@ -560,60 +557,17 @@ describe('ClubOverviewPage', () => {
       await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
     })
 
-    it('the "+" on a node opens the Add section dialog titled with the parent path, and creating selects the new node', async () => {
-      const user = userEvent.setup()
-      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
-      mockAllLists({ sections: TWO_SECTIONS })
-      const created = makeSection({ id: 'new-1', name: '2nd XI', parentSectionId: 'child-1' })
-      createSection.mockImplementation(async () => {
-        listSections.mockResolvedValue([...TWO_SECTIONS, created])
-        return created
-      })
-
-      renderPage('test-club-id')
-
-      await user.click(await screen.findByRole('button', { name: 'Add a child section under 1st XI' }))
-
-      const dialog = await screen.findByRole('dialog')
-      expect(within(dialog).getByText('Add a section under Open Sides, 1st XI')).toBeInTheDocument()
-
-      await user.type(within(dialog).getByLabelText(/name/i), '2nd XI')
-      await user.click(within(dialog).getByRole('button', { name: /^(add|create|save)/i }))
-
-      await waitFor(() =>
-        expect(createSection).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ name: '2nd XI', parentSectionId: 'child-1' })),
-      )
-      expect(await screen.findByRole('button', { name: '2nd XI', hidden: true })).toBeInTheDocument()
-      expect(await screen.findByRole('heading', { name: '2nd XI' })).toBeInTheDocument()
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    })
-
-    it('"Add top-level section" opens the dialog for a top-level section', async () => {
-      const user = userEvent.setup()
+    it('is read-only: no plus buttons and no Add top-level section, and Manage links to /manage/sections', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sections: TWO_SECTIONS })
 
       renderPage('test-club-id')
 
-      await user.click(await screen.findByRole('button', { name: 'Add top-level section' }))
-
-      expect(within(await screen.findByRole('dialog')).getByText('Add a top-level section')).toBeInTheDocument()
-    })
-
-    it('keeps the dialog open and shows an error when creating fails', async () => {
-      const user = userEvent.setup()
-      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
-      mockAllLists({ sections: TWO_SECTIONS })
-      createSection.mockRejectedValue(new Error('boom'))
-
-      renderPage('test-club-id')
-
-      await user.click(await screen.findByRole('button', { name: 'Add top-level section' }))
-      const dialog = await screen.findByRole('dialog')
-      await user.type(within(dialog).getByLabelText(/name/i), 'Seniors')
-      await user.click(within(dialog).getByRole('button', { name: /^(add|create|save)/i }))
-
-      expect(await within(dialog).findByText("Couldn't add the section. Please try again.")).toBeInTheDocument()
+      await screen.findByRole('button', { name: 'Open Sides' })
+      expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add top-level section' })).not.toBeInTheDocument()
+      const card = screen.getByTestId('club-structure-card')
+      expect(within(card).getByRole('link', { name: 'Manage' })).toHaveAttribute('href', '/manage/sections')
     })
   })
 
@@ -629,6 +583,7 @@ describe('ClubOverviewPage', () => {
 
         expect(await screen.findByRole('tree')).toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Open Sides' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
         expect(screen.getByText('16\u201340')).toBeInTheDocument()
 
         await user.click(screen.getByText('1st XI'))

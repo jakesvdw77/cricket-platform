@@ -89,4 +89,9 @@ describe('SectionOrgChart', () => {
     expect(screen.getByText('Toolbar for Vets')).toBeInTheDocument()
     expect(screen.getAllByText(/Toolbar for/)).toHaveLength(1)
   })
+
+  it('draws no plus button when onAddChild is omitted', () => {
+    setup({ onAddChild: undefined })
+    expect(screen.queryByRole('button', { name: /Add a child section/ })).not.toBeInTheDocument()
+  })
 })

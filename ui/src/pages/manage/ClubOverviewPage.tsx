@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useOutletContext } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Avatar, Box, Button as MuiButton, Chip, Stack, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
-import AddIcon from '@mui/icons-material/Add'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -16,7 +15,6 @@ import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
-import { AddSectionDialog } from '../../components/AddSectionDialog'
 import { EmptyState } from '../../components/EmptyState'
 import { InfoCard } from '../../components/InfoCard'
 import { KeyFigureTile } from '../../components/KeyFigureTile'
@@ -36,13 +34,12 @@ import { listClubContacts } from '../../api/clubContactApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import { listSponsors } from '../../api/sponsorApi'
 import type { Sponsor } from '../../api/sponsorApi'
-import { createSection, getSectionsSummary, listSectionContacts, listSections, sectionsSummaryKey } from '../../api/sectionApi'
-import type { Section, SectionPayload } from '../../api/sectionApi'
+import { getSectionsSummary, listSectionContacts, listSections, sectionsSummaryKey } from '../../api/sectionApi'
+import type { Section } from '../../api/sectionApi'
 import { listSeasons } from '../../api/seasonApi'
 import { listTeamsForSection } from '../../api/teamApi'
 import { initialsFromName } from '../../utils/initials'
 import { pickDefaultSeasonId } from '../../utils/defaultSeason'
-import { breadcrumbFor } from '../../utils/sectionBreadcrumb'
 import { fullName as contactFullName } from './ClubContactList'
 
 const CLUB_TYPE_LABELS: Record<ClubProfileType, string> = {
@@ -81,12 +78,10 @@ function formatAddress(address: Address): string {
 export default function ClubOverviewPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const theme = useTheme()
-  const queryClient = useQueryClient()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [openSponsorId, setOpenSponsorId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [dialog, setDialog] = useState<{ parentId: string | null } | null>(null)
 
   const {
     data: profile,
@@ -149,15 +144,6 @@ export default function ClubOverviewPage() {
     enabled: Boolean(clubId) && Boolean(activeSelectedId),
   })
 
-  const createMutation = useMutation({
-    mutationFn: (payload: SectionPayload) => createSection(clubId as string, payload),
-    onSuccess: async (created) => {
-      await queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'sections'] })
-      setDialog(null)
-      setSelectedId(created.id)
-    },
-  })
-
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -190,15 +176,6 @@ export default function ClubOverviewPage() {
   const summary = summaryQuery.data
   const leagueCount = summary ? new Set(summary.sections.flatMap((row) => row.leagues.map((league) => league.id))).size : 0
   const figure = (value: number | undefined) => (value === undefined ? DASH : String(value))
-
-  const sectionsById = new Map(sectionList.map((section) => [section.id, section]))
-  const dialogParent = dialog?.parentId ? (sectionsById.get(dialog.parentId) ?? null) : null
-  const dialogParentPath = dialogParent ? [...breadcrumbFor(dialogParent, sectionsById), dialogParent.name].join(', ') : undefined
-
-  const openAdd = (parentId: string | null) => {
-    createMutation.reset()
-    setDialog({ parentId })
-  }
 
   const clearSelection = () => setSelectedId(null)
 
@@ -384,8 +361,8 @@ export default function ClubOverviewPage() {
         icon={<AccountTreeOutlinedIcon />}
         testId="club-structure-card"
         headerAction={
-          <MuiButton variant="outlined" size="small" startIcon={<AddIcon fontSize="small" />} onClick={() => openAdd(null)}>
-            Add top-level section
+          <MuiButton component={RouterLink} to="/manage/sections" variant="text" color="inherit" size="small">
+            Manage
           </MuiButton>
         }
       >
@@ -405,14 +382,12 @@ export default function ClubOverviewPage() {
             selectedId={activeSelectedId ?? null}
             onSelect={setSelectedId}
             showAgeChip
-            onAddChild={openAdd}
           />
         ) : (
           <SectionOrgChart
             sections={sectionList}
             selectedId={activeSelectedId ?? null}
             onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
-            onAddChild={openAdd}
             onClearSelection={clearSelection}
           />
         )}
@@ -428,16 +403,6 @@ export default function ClubOverviewPage() {
       >
         {() => selectedSection && panelFor(selectedSection)}
       </SidePanel>
-
-      <AddSectionDialog
-        open={dialog !== null}
-        parent={dialogParent}
-        parentPath={dialogParentPath}
-        onClose={() => setDialog(null)}
-        onCreate={(payload) => createMutation.mutateAsync(payload).catch(() => undefined)}
-        pending={createMutation.isPending}
-        error={createMutation.isError ? "Couldn't add the section. Please try again." : null}
-      />
 
       <RecordQuickViewDialog
         open={Boolean(selectedContact)}
