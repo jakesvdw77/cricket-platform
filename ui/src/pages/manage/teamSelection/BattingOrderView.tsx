@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
-import { Alert, Box, IconButton, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
+import { Alert, Box, IconButton, Link, Button as MuiButton, Menu, MenuItem, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { CompactSwitch } from '../../../components/CompactSwitch'
@@ -245,9 +245,18 @@ function BattingMatrix({
                   sx={{ ...headCellSx, ...pinnedHeightSx(MATCH_HEAD_HEIGHT), py: 0.5, lineHeight: 'normal', top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT, zIndex: 3, ...editSx(column), minWidth: columnWidth, maxWidth: columnWidth, verticalAlign: 'top', whiteSpace: 'normal', fontWeight: 400, px: 0.75, scrollMarginLeft: `${first.width}px`, ...(slotAttrs ? slotSnapTargetSx : {}) }}
                 >
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                    <Typography variant="caption" noWrap title={columnLabel(column)} sx={{ fontWeight: 600, lineHeight: 1.25, display: 'block' }}>
+                    <Link
+                      component={RouterLink}
+                      to={selectTeamPath(match.matchId, side.sideId, side.home)}
+                      title={columnLabel(column)}
+                      aria-label={`${columnLabel(column)}: select team`}
+                      variant="caption"
+                      underline="hover"
+                      noWrap
+                      sx={{ fontWeight: 600, lineHeight: 1.25, display: 'block' }}
+                    >
                       {columnLabel(column)}
-                    </Typography>
+                    </Link>
                     <Typography variant="caption" color="text.secondary" noWrap sx={{ ...numberSx, lineHeight: 1.25, display: 'block' }}>
                       {kickoffText(match.matchDate)}
                     </Typography>

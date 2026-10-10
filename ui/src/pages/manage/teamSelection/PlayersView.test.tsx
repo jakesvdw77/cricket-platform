@@ -110,6 +110,14 @@ describe('PlayersView', () => {
     expect(within(screen.getByRole('list', { name: 'Legend' })).getByText('Picked for the match')).toBeInTheDocument()
   })
 
+  it('makes each match name a link to that match\'s Select team page', async () => {
+    renderView()
+    await screen.findByTestId('cell-ann-m-1-team-1')
+    const links = screen.getAllByRole('link', { name: /: select team$/ })
+    expect(links.length).toBeGreaterThan(0)
+    expect(links[0].getAttribute('href')).toMatch(/^\/manage\/team-selection\/matches\/m-1\/sides\//)
+  })
+
   it('creates the side first when the match has none', async () => {
     renderView()
     await userEvent.click(await screen.findByTestId('cell-ann-m-2-team-1'))

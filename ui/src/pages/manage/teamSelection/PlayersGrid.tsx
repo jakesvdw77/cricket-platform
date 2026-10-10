@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
-import { Box, ButtonBase, Chip, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Tooltip, Typography } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, ButtonBase, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Tooltip, Typography } from '@mui/material'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
 import type { CellStatus } from '../../../api/playerAvailabilityApi'
@@ -23,6 +24,7 @@ import { CellMark } from '../playerAvailability/CellMark'
 import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from '../playerAvailability/slotNavigation'
 import type { SlotAttrs } from '../playerAvailability/slotNavigation'
 import { reasonText } from './pickReasons'
+import { selectTeamPath } from './selectionLinks'
 import type { PickTarget } from './usePlayerPick'
 
 const playerName = (player: Pick<TeamSelectionPlayer, 'firstName' | 'lastName'>) => `${player.firstName} ${player.lastName}`.trim()
@@ -115,9 +117,17 @@ function MatchHeader({ match, firstColWidth, slotAttrs }: { match: TeamSelection
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, alignItems: 'center' }}>
-        <Typography variant="caption" title={match.label} sx={clampTwoLinesSx}>
+        <Link
+          component={RouterLink}
+          to={selectTeamPath(match.matchId, match.sides[0]?.sideId ?? null, match.sides[0]?.home ?? true)}
+          title={match.label}
+          aria-label={`${match.label}: select team`}
+          variant="caption"
+          underline="hover"
+          sx={clampTwoLinesSx}
+        >
           {match.label}
-        </Typography>
+        </Link>
         <Typography variant="caption" color="text.secondary" sx={{ ...numberSx, lineHeight: 1.25 }}>
           {kickoffText(match.matchDate)}
         </Typography>

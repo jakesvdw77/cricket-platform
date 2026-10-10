@@ -76,6 +76,14 @@ describe('BattingOrderView', () => {
     expect(rowHeads.slice(0, 13)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12th man', 'No position'])
   })
 
+  it('makes each column\'s match name a link to its Select team page', async () => {
+    renderView()
+    await screen.findByTestId('batting-cell-m-1-team-1-1')
+    const links = screen.getAllByRole('link', { name: /: select team$/ })
+    expect(links.length).toBe(4)
+    expect(links[0].getAttribute('href')).toMatch(/^\/manage\/team-selection\/matches\/m-1\/sides\//)
+  })
+
   it('shows names with C and WK markers at their positions, the 12th man and the unpositioned pick', async () => {
     renderView()
     await screen.findByTestId('batting-cell-m-1-team-1-1')
