@@ -215,7 +215,7 @@ describe('LeagueTeamsView', () => {
 
     await screen.findByRole('link', { name: '1st XI' })
     expect(screen.getAllByRole('link', { name: 'Edit' }).map((link) => link.getAttribute('href'))).toEqual([
-      '/manage/fixtures/leagues/league-1/edit',
+      '/manage/fixtures/leagues/league-1/edit?seasonId=season-1',
     ])
     expect(within(screen.getAllByTestId('league-team-tile')[0]).queryByText('Edit')).not.toBeInTheDocument()
   })

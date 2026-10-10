@@ -186,7 +186,7 @@ export function MatchSideFields({
                 No league teams registered for this league and season.
               </Typography>
               {leagueId && (
-                <MuiButton size="small" variant="outlined" component={RouterLink} to={`/manage/fixtures/leagues/${leagueId}/edit`}>
+                <MuiButton size="small" variant="outlined" component={RouterLink} to={`/manage/fixtures/leagues/${leagueId}/edit?tab=teams`}>
                   Open the league&apos;s Teams tab
                 </MuiButton>
               )}

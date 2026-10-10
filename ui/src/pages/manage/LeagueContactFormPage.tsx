@@ -22,8 +22,7 @@ import { errorDetail } from '../../utils/errorDetail'
 // single-contact GET endpoint (only list/create/update/deactivate/reactivate, per docs/plans/
 // 054-league-contacts.md item 4) — edit mode fetches the full (small, unpaginated) list and finds
 // the matching row client-side rather than adding a new backend endpoint. Back link goes to this
-// league's edit screen (Details tab — LeagueFormPage's activeTab state isn't deep-linkable today,
-// matching its own existing tabs' identical behaviour).
+// league's edit screen on its Contacts tab (?tab=contacts), where saving also returns to.
 export default function LeagueContactFormPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { leagueId, contactId } = useParams<{ leagueId: string; contactId?: string }>()
@@ -51,7 +50,7 @@ export default function LeagueContactFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'] })
-      navigate(`/manage/fixtures/leagues/${leagueId}/edit`)
+      navigate(`/manage/fixtures/leagues/${leagueId}/edit?tab=contacts`)
     },
   })
 
@@ -97,7 +96,7 @@ export default function LeagueContactFormPage() {
   return (
     <RecordFormScreen
       title={isEdit ? 'Edit Contact' : 'Add Contact'}
-      backTo={`/manage/fixtures/leagues/${leagueId}/edit`}
+      backTo={`/manage/fixtures/leagues/${leagueId}/edit?tab=contacts`}
       backLabel="Back to League"
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>

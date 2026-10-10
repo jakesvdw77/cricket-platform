@@ -282,7 +282,7 @@ export default function LeagueViewLayout() {
               </MuiButton>
               <MuiButton
                 component={RouterLink}
-                to={`${leagueBasePath}/edit`}
+                to={selectedSeasonId ? `${leagueBasePath}/edit?seasonId=${selectedSeasonId}` : `${leagueBasePath}/edit`}
                 variant="contained"
                 startIcon={<EditOutlinedIcon fontSize="small" />}
               >

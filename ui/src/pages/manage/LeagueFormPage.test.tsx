@@ -260,11 +260,16 @@ describe('LeagueFormPage', () => {
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/leagues')
   })
 
-  it('create mode: does not render tabs or the Teams tab content', async () => {
-    renderPage('/manage/fixtures/leagues/new', 'test-club-id')
+  it('create mode: does not render tabs, the Season pill or the Teams tab content, even with ?tab=', async () => {
+    listSeasons.mockResolvedValue([makeSeason()])
+    renderPage('/manage/fixtures/leagues/new?tab=teams', 'test-club-id')
 
     expect(await screen.findByText('Add League')).toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Teams' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create league' })).toBeInTheDocument()
     expect(listLeagueAffiliations).not.toHaveBeenCalled()
     // docs/specs/038-move-deactivate-to-edit-screen.md: never rendered on a brand-new, not-yet-
     // saved record.
@@ -317,6 +322,185 @@ describe('LeagueFormPage', () => {
     expect(screen.getByLabelText('Email (optional)')).toHaveValue('league@riverside.example.com')
     expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('https://facebook.com/riverside-league')).toBeInTheDocument()
+  })
+
+  // docs/specs/095-league-edit-gold-standard.md (Shell): the compact tab strip bound to ?tab=, the one header Season pill and
+  // the footer that exists only where there is something to save.
+  describe('Shell', () => {
+    const TWO_SEASONS = [
+      makeSeason({ id: 'season-1', label: '2024', startDate: '2024-01-01', endDate: '2024-12-31', createdAt: '2024-01-01T00:00:00Z' }),
+      makeSeason({ id: 'season-2', label: '2025', startDate: '2025-01-01', endDate: '2025-12-31', createdAt: '2025-01-01T00:00:00Z' }),
+    ]
+
+    function renderAt(path: string) {
+      return renderPage(path, 'test-club-id')
+    }
+
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+      listSeasons.mockResolvedValue(TWO_SEASONS)
+    })
+
+    it('renders a real tablist with the five tabs in order, in sentence case', async () => {
+      const user = userEvent.setup()
+      renderAt('/manage/fixtures/leagues/league-1/edit')
+
+      await screen.findByText('Edit League')
+      expect(screen.getByRole('tablist')).toBeInTheDocument()
+      // Switch off Details first so only the outer strip's tabs are in the document.
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Details',
+        'Teams',
+        'Schedule',
+        'Playing conditions',
+        'Contacts',
+      ])
+    })
+
+    it.each([
+      ['teams', 'Teams'],
+      ['schedule', 'Schedule'],
+      ['conditions', 'Playing conditions'],
+      ['contacts', 'Contacts'],
+      ['details', 'Details'],
+    ])('?tab=%s selects the %s tab', async (value, label) => {
+      renderAt(`/manage/fixtures/leagues/league-1/edit?tab=${value}`)
+
+      await screen.findByText('Edit League')
+      expect(screen.getByRole('tab', { name: label })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('shows the right content for ?tab=teams, ?tab=contacts and ?tab=conditions', async () => {
+      const { unmount } = renderAt('/manage/fixtures/leagues/league-1/edit?tab=teams')
+      expect(await screen.findByRole('button', { name: 'Add team' })).toBeInTheDocument()
+      unmount()
+
+      const second = renderAt('/manage/fixtures/leagues/league-1/edit?tab=contacts')
+      expect(await screen.findByText('No contacts yet for this league.')).toBeInTheDocument()
+      second.unmount()
+
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=conditions')
+      expect(await screen.findByText('Full Document')).toBeInTheDocument()
+    })
+
+    it('falls back to Details for an unknown ?tab= value', async () => {
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=nonsense')
+
+      await screen.findByText('Edit League')
+      expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByLabelText('Name')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+    })
+
+    it('shows the Season pill on Teams, Schedule and Playing conditions only', async () => {
+      const user = userEvent.setup()
+      renderAt('/manage/fixtures/leagues/league-1/edit')
+
+      await screen.findByText('Edit League')
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+
+      for (const name of ['Teams', 'Schedule', 'Playing conditions']) {
+        await user.click(screen.getByRole('tab', { name }))
+        expect(await screen.findByRole('button', { name: 'Season' })).toBeInTheDocument()
+      }
+
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('tab', { name: 'Details' }))
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+    })
+
+    it('has no per-tab Season select any more, only the one pill', async () => {
+      const user = userEvent.setup()
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=teams')
+
+      await screen.findByText('Edit League')
+      for (const name of ['Teams', 'Schedule', 'Playing conditions']) {
+        await user.click(screen.getByRole('tab', { name }))
+        expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
+        expect(screen.getAllByRole('button', { name: 'Season' })).toHaveLength(1)
+      }
+    })
+
+    it('one Season pill drives the Teams, Schedule and Playing conditions tabs', async () => {
+      const user = userEvent.setup()
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=teams')
+
+      await screen.findByText('Edit League')
+      // The default is the most recently created season.
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-2'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2025')
+
+      await user.click(screen.getByRole('button', { name: 'Season' }))
+      await user.click(await screen.findByRole('option', { name: '2024' }))
+
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+
+      await user.click(screen.getByRole('tab', { name: 'Schedule' }))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+      await waitFor(() =>
+        expect(listMatches).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ seasonId: 'season-1' })),
+      )
+
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+      await waitFor(() => expect(getPlayingConditions).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+    })
+
+    it('starts on ?seasonId= when it names one of the club\'s seasons', async () => {
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=teams&seasonId=season-1')
+
+      await screen.findByText('Edit League')
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+    })
+
+    it('falls back to the default season when ?seasonId= is not one of the club\'s seasons', async () => {
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=teams&seasonId=nope')
+
+      await screen.findByText('Edit League')
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-2'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2025')
+    })
+
+    it('hides the pill and keeps the per-tab "Create a season first" message when the club has no season', async () => {
+      listSeasons.mockResolvedValue([])
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=schedule')
+
+      expect(await screen.findByText(/Create a season first/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Season' })).not.toBeInTheDocument()
+    })
+
+    it('keeps the other parameters (seasonId) when switching tab', async () => {
+      const user = userEvent.setup()
+      renderAt('/manage/fixtures/leagues/league-1/edit?seasonId=season-1')
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+    })
+
+    it('has a footer on Details: Cancel, Save changes and Deactivate', async () => {
+      renderAt('/manage/fixtures/leagues/league-1/edit')
+
+      await screen.findByText('Edit League')
+      expect(screen.getByRole('link', { name: 'Cancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+    })
+
+    it.each(['teams', 'schedule', 'contacts'])('has no footer on the %s tab', async (tab) => {
+      renderAt(`/manage/fixtures/leagues/league-1/edit?tab=${tab}`)
+
+      await screen.findByText('Edit League')
+      expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
+    })
   })
 
   it('edit mode: renders Details/Teams tabs, listing affiliated teams for the selected season', async () => {
@@ -551,7 +735,7 @@ describe('LeagueFormPage', () => {
       renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
       expect(await screen.findByText('Full Document')).toBeInTheDocument()
       expect(await screen.findByText('No document uploaded yet')).toBeInTheDocument()
@@ -596,7 +780,7 @@ describe('LeagueFormPage', () => {
       renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
       // docs/specs/072-league-view-pages.md: the stored uuid file name is never shown.
       expect(await screen.findByText('Playing Conditions.pdf')).toBeInTheDocument()
@@ -619,7 +803,7 @@ describe('LeagueFormPage', () => {
       renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
       await screen.findByText('No document uploaded yet')
 
       const file = new File(['%PDF-1.4'], 'playing-conditions.pdf', { type: 'application/pdf' })
@@ -658,7 +842,7 @@ describe('LeagueFormPage', () => {
       renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
       expect(await screen.findByText('Match Format & Points')).toBeInTheDocument()
 
@@ -685,7 +869,7 @@ describe('LeagueFormPage', () => {
       renderPlayingConditionsTab()
 
       await screen.findByText('Edit League')
-      await user.click(screen.getByRole('tab', { name: 'Playing Conditions' }))
+      await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
       expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
       expect(screen.queryByText('Share Playing Conditions')).not.toBeInTheDocument()
@@ -697,8 +881,8 @@ describe('LeagueFormPage', () => {
     })
   })
 
-  // docs/specs/054-league-contacts.md: the new, last "Contacts" tab — only in edit mode, a
-  // RecordCard grid of the league's own named contacts, plus an "Add Contact" shortcut.
+  // docs/specs/054-league-contacts.md and docs/specs/095: the last "Contacts" tab — only in edit mode, a panel of the
+  // league's own named contacts as zebra rows, with a filled "Add contact" in its header.
   describe('Contacts tab', () => {
     function renderContactsTab() {
       return render(
@@ -731,7 +915,7 @@ describe('LeagueFormPage', () => {
       expect(listLeagueContacts).not.toHaveBeenCalled()
     })
 
-    it('renders the Contacts tab as the 5th tab, after Playing Conditions', async () => {
+    it('renders the Contacts tab as the 5th tab, after Playing conditions', async () => {
       const user = userEvent.setup()
       renderContactsTab()
 
@@ -742,10 +926,10 @@ describe('LeagueFormPage', () => {
       await user.click(screen.getByRole('tab', { name: 'Teams' }))
       const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
 
-      expect(tabs).toEqual(['Details', 'Teams', 'Schedule', 'Playing Conditions', 'Contacts'])
+      expect(tabs).toEqual(['Details', 'Teams', 'Schedule', 'Playing conditions', 'Contacts'])
     })
 
-    it('lists the league\'s contacts as RecordCards with Role/Email/Phone fields', async () => {
+    it('lists the league\'s contacts as rows with Role, Email and Phone, and the Primary badge', async () => {
       const user = userEvent.setup()
       listLeagueContacts.mockResolvedValue([
         makeContact({ id: 'contact-1', role: 'League Administrator', isPrimary: true }),
@@ -758,10 +942,30 @@ describe('LeagueFormPage', () => {
 
       expect(listLeagueContacts).toHaveBeenCalledWith('test-club-id', 'league-1')
       expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
-      expect(screen.getByText('League Administrator')).toBeInTheDocument()
+      expect(screen.getByTestId('league-contact-role')).toHaveTextContent('League Administrator')
       expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument()
       expect(screen.getByText('+27 21 555 0100')).toBeInTheDocument()
       expect(screen.getByText('Primary')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Contacts · 1' })).toBeInTheDocument()
+    })
+
+    it('opens the contact\'s View and Edit routes from the row actions', async () => {
+      const user = userEvent.setup()
+      listLeagueContacts.mockResolvedValue([makeContact({ id: 'contact-1' })])
+
+      renderContactsTab()
+
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+
+      expect(await screen.findByRole('link', { name: 'View Jane Smith' })).toHaveAttribute(
+        'href',
+        '/manage/fixtures/leagues/league-1/contacts/contact-1',
+      )
+      expect(screen.getByRole('link', { name: 'Edit Jane Smith' })).toHaveAttribute(
+        'href',
+        '/manage/fixtures/leagues/league-1/contacts/contact-1/edit',
+      )
     })
 
     it('renders "No contacts yet for this league." when there are none', async () => {
@@ -774,9 +978,11 @@ describe('LeagueFormPage', () => {
       await user.click(screen.getByRole('tab', { name: 'Contacts' }))
 
       expect(await screen.findByText('No contacts yet for this league.')).toBeInTheDocument()
+      // The filled Add contact stays in the panel header even when empty.
+      expect(screen.getByRole('button', { name: 'Add contact' })).toBeInTheDocument()
     })
 
-    it('"Add Contact" navigates to the new League Contact route', async () => {
+    it('"Add contact" navigates to the new League Contact route', async () => {
       const user = userEvent.setup()
       listLeagueContacts.mockResolvedValue([])
 
@@ -784,14 +990,14 @@ describe('LeagueFormPage', () => {
 
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Contacts' }))
-      await user.click(await screen.findByRole('button', { name: 'Add Contact' }))
+      await user.click(await screen.findByRole('button', { name: 'Add contact' }))
 
       expect(await screen.findByText('Add League Contact Page')).toBeInTheDocument()
     })
   })
 
-  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from LeagueList's own card, plus
-  // the tab-gating restructure — the button must render on both tabs, not just Details.
+  // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from LeagueList's own card; docs/specs/095: it now lives
+  // in the Details footer only.
   describe('Deactivate/Reactivate', () => {
     it('edit mode: renders Deactivate for an active league on the Details tab, clicking it calls deactivateLeague', async () => {
       const user = userEvent.setup()
@@ -833,17 +1039,31 @@ describe('LeagueFormPage', () => {
       expect(reactivateLeague).toHaveBeenCalledWith('test-club-id', 'league-1')
     })
 
-    it('still renders on the Teams tab, while Save is hidden there', async () => {
+    it('is not rendered on the Teams tab, nor is Save', async () => {
       const user = userEvent.setup()
       listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', active: true })])
 
       renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
 
       await screen.findByText('Edit League')
+      expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
       await user.click(screen.getByRole('tab', { name: 'Teams' }))
 
-      expect(await screen.findByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+    })
+
+    it('Reactivate is likewise only on the Details tab', async () => {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', active: false })])
+
+      renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+      await screen.findByText('Edit League')
+      expect(screen.getByRole('button', { name: 'Reactivate' })).toBeInTheDocument()
+      await user.click(screen.getByRole('tab', { name: 'Contacts' }))
+
+      expect(screen.queryByRole('button', { name: 'Reactivate' })).not.toBeInTheDocument()
     })
   })
 })

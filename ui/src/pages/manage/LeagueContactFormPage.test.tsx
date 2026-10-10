@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueContactFormPage from './LeagueContactFormPage'
 import type { LeagueContact } from '../../api/leagueContactApi'
@@ -54,6 +54,12 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
+// Shows the search string the contact form navigated with, so the tab deep link is asserted.
+function LeagueEditPageStub() {
+  const location = useLocation()
+  return <div>League Edit Page {location.search}</div>
+}
+
 function renderPage(initialPath: string, clubId?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -61,7 +67,7 @@ function renderPage(initialPath: string, clubId?: string) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
-            <Route path="fixtures/leagues/:leagueId/edit" element={<div>League Edit Page</div>} />
+            <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueEditPageStub />} />
             <Route path="fixtures/leagues/:leagueId/contacts/new" element={<LeagueContactFormPage />} />
             <Route
               path="fixtures/leagues/:leagueId/contacts/:contactId/edit"
@@ -75,6 +81,16 @@ function renderPage(initialPath: string, clubId?: string) {
 }
 
 describe('LeagueContactFormPage', () => {
+  it('points Back at the league\'s Contacts tab', async () => {
+    listLeagueContacts.mockResolvedValue([])
+    renderPage('/manage/fixtures/leagues/test-league-id/contacts/new', 'test-club-id')
+
+    expect(await screen.findByRole('link', { name: 'Back to League' })).toHaveAttribute(
+      'href',
+      '/manage/fixtures/leagues/test-league-id/edit?tab=contacts',
+    )
+  })
+
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {
     renderPage('/manage/fixtures/leagues/test-league-id/contacts/new', undefined)
 
@@ -108,7 +124,7 @@ describe('LeagueContactFormPage', () => {
     expect(leagueId).toBe('test-league-id')
     expect(payload).toMatchObject({ role: 'League Administrator', isPrimary: false })
 
-    expect(await screen.findByText('League Edit Page')).toBeInTheDocument()
+    expect(await screen.findByText('League Edit Page ?tab=contacts')).toBeInTheDocument()
   })
 
   it('edit mode: fetches the full list and prefills from the matching contact id', async () => {
@@ -158,7 +174,7 @@ describe('LeagueContactFormPage', () => {
     expect(contactId).toBe('contact-1')
     expect(payload).toMatchObject({ role: 'League Administrator' })
 
-    expect(await screen.findByText('League Edit Page')).toBeInTheDocument()
+    expect(await screen.findByText('League Edit Page ?tab=contacts')).toBeInTheDocument()
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from a list card onto this
