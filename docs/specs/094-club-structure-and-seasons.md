@@ -105,7 +105,7 @@ What already exists and is reused unchanged: `GET/POST/PUT /api/v1/manage/clubs/
 ### Slice B: Seasons
 
 **Menu item (E).** A new `NavItem` in `MANAGER_NAV`, **Schedule group** (decision 2026-10-10; placed first in the group, ahead of Leagues, because leagues and matches sit inside a season: Seasons, Leagues, Matches, Results): `id: 'seasons'`, `label: 'Seasons'`, description "Define your seasons and see what each holds", `to: '/manage/fixtures/seasons'` (route kept, so no redirect and no broken link; the existing `/manage/fixtures/seasons/...` sub-routes light the item through the prefix rule). Because "first match in menu order" applies and the Schedule group precedes Club, Seasons would win the highlight anyway; the Club profile item's season prefix is still removed as above so the two cannot disagree. The Menu sheet and the Overview tile grid pick the item up from the same config, so it appears there too.
-- **Icon slot: `nav/seasons`** (`ui/src/icons/nav/seasons.svg`, rendered through `BrandIcon`, 078 and 080 rules: artwork only, cropped by `npm run icons:strip`). **The icon is supplied by the user.** Until the file exists, the item uses a **stand-in MUI glyph** (`CalendarMonthOutlined`) registered as a nav glyph (`seasons` in `GLYPH_ICONS`, drawn on a brand-coloured disc by `NavItemIcon`, the way Overview did before `nav/overview-home`). When the SVG is added, the `icon` value changes to `'nav/seasons'` and the glyph entry is deleted; nothing else changes. No component imports the SVG directly.
+- **Icon: `nav/season-cricket`** (`ui/src/icons/nav/season-cricket.svg`, rendered through `BrandIcon`, 078 and 080 rules: artwork only, background stripped and cropped by `npm run icons:strip`). **Supplied by the user and already added** (registered in `brandIcons.ts`; the 128, 256 and 512 px PNG exports are reference copies in `ui/design/icon-exports/nav/`, not bundled). The Seasons menu item therefore uses `icon: 'nav/season-cricket'` straight away; no stand-in MUI glyph is needed. No component imports the SVG directly.
 
 **Seasons page (F).** Same shape as Leagues and Teams (091, 092), without a Season pill (this page lists the seasons):
 - **Header:** "Seasons" with **Add season** (filled) on the right; no back link (persistent menu).
@@ -119,7 +119,7 @@ What already exists and is reused unchanged: `GET/POST/PUT /api/v1/manage/clubs/
 
 **Add / Edit season form (F).** `RecordFormScreen`, one compact card with a `FormSectionHeading` section **Season dates** (Label, Start date, End date; three columns on a desktop, one on a phone, "(optional)" rules as everywhere, no helper text), a footer with the **Active** switch (edit only, replacing the old `RecordStatusToggle` button in the actions bar), **Cancel** and **Save changes** / **Create season**. Same fields, validation (end not before start, now also shown inline under End date) and payload. Saving returns to the Seasons page as today.
 
-**Updates.** `docs/standards/design-system.md` gets a short "Club profile and Seasons (094)" paragraph (the org chart and the read-only panel, the Seasons status vocabulary, the nav glyph stand-in rule), `docs/standards/frontend.md` the `seasonList:view` key, `docs/architecture.md` is untouched (no relationship changes), and `docs/roadmap.md` gets the section below.
+**Updates.** `docs/standards/design-system.md` gets a short "Club profile and Seasons (094)" paragraph (the org chart and the read-only panel, the Seasons status vocabulary), `docs/standards/frontend.md` the `seasonList:view` key, `docs/architecture.md` is untouched (no relationship changes), and `docs/roadmap.md` gets the section below.
 
 ## Test Plan
 
@@ -143,7 +143,7 @@ Tiers per `docs/standards/testing.md`.
 - The Seasons page shows the four counters (Current, Upcoming, Past, Inactive) as filters, the toolbar, and cards or the table; status badges follow the dates and the active flag; the view survives a reload.
 - A season's page shows its dates, status, progress and what it holds; the form is one sectioned card with Cancel and an Active switch, saving the same payload as before.
 - Edit is a filled primary button on the Club Profile and the season page.
-- The Seasons menu item uses the stand-in glyph until the user supplies `nav/seasons.svg`; replacing it is a one-line change.
+- The Seasons menu item uses the brand icon `nav/season-cricket` (supplied by the user).
 - No permission or data rule changes: cross-club access is still a 404.
 
 ## Open Questions
@@ -171,6 +171,6 @@ Tiers per `docs/standards/testing.md`.
 
 One branch, two slices, each independently shippable; migrations: none.
 
-- **Slice A (Club structure):** (1) refactor: extract `SectionOrgChart` and `ageRangeLabel` from `SectionTreeEditor`, `?sectionId=` on `/manage/sections` (no visible change elsewhere); (2) backend `sections/summary` (service, repository, integration test, `openapi.yaml`); (3) the Club Profile page restyle, the full-width chart, the phone list, `SectionInfoPanel` and `AddSectionDialog`; (4) remove the Seasons card and add the Seasons menu item (stand-in glyph, existing screen), drop the season prefix from Club profile's `match`. After (4) slice A is complete and nothing is orphaned.
-- **Slice B (Seasons):** (1) backend `seasons/summary`; (2) the Seasons page (counters, toolbar, `SeasonCard`, `SeasonTable`); (3) the season page; (4) the form. When the user supplies `nav/seasons.svg`, add it with `npm run icons:strip`, switch the item's `icon` to `'nav/seasons'` and remove the glyph entry.
+- **Slice A (Club structure):** (1) refactor: extract `SectionOrgChart` and `ageRangeLabel` from `SectionTreeEditor`, `?sectionId=` on `/manage/sections` (no visible change elsewhere); (2) backend `sections/summary` (service, repository, integration test, `openapi.yaml`); (3) the Club Profile page restyle, the full-width chart, the phone list, `SectionInfoPanel` and `AddSectionDialog`; (4) remove the Seasons card and add the Seasons menu item (`nav/season-cricket` icon, existing screen), drop the season prefix from Club profile's `match`. After (4) slice A is complete and nothing is orphaned.
+- **Slice B (Seasons):** (1) backend `seasons/summary`; (2) the Seasons page (counters, toolbar, `SeasonCard`, `SeasonTable`); (3) the season page; (4) the form. The `nav/season-cricket` icon is already in the repo and registered, so no icon work remains.
 - Update `docs/standards/design-system.md`, `frontend.md` and `docs/roadmap.md` as each slice lands. Plan: `/plan-feature` against this file once approved, per `docs/workflow.md`.

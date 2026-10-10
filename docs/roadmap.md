@@ -194,7 +194,6 @@ Named for completeness — none of these are next, none have a target spec numbe
 - Season rules: one-current-season rule, overlap warning or check, unique label (the backend enforces only startDate <= endDate today).
 - Season rollover: copying teams, squads and league affiliations into a new season.
 - Counts on org chart nodes (for example "3 teams"), if the plain node proves too sparse.
-- Brand icon `nav/seasons`: supplied by the user; swap out the stand-in MUI glyph when it arrives.
 
 ## Deferred by `071` — League card
 
