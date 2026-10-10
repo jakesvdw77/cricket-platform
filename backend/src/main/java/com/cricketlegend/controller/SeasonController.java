@@ -2,6 +2,7 @@ package com.cricketlegend.controller;
 
 import com.cricketlegend.dto.CreateSeasonRequest;
 import com.cricketlegend.dto.SeasonDto;
+import com.cricketlegend.dto.SeasonsSummaryDto;
 import com.cricketlegend.dto.UpdateSeasonRequest;
 import com.cricketlegend.service.SeasonService;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +37,13 @@ public class SeasonController {
     @GetMapping("/api/v1/manage/clubs/{clubId}/seasons")
     public ResponseEntity<List<SeasonDto>> list(@PathVariable UUID clubId) {
         return ResponseEntity.ok(seasonService.list(clubId));
+    }
+
+    /** docs/specs/094-club-structure-and-seasons.md: every season's league, team and active-match counts. */
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/seasons/summary")
+    public ResponseEntity<SeasonsSummaryDto> summary(Authentication authentication, @PathVariable UUID clubId) {
+        return ResponseEntity.ok(seasonService.summary(authentication, clubId));
     }
 
     @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")

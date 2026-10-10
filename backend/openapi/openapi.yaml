@@ -3603,6 +3603,26 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SectionsSummaryDto"
+  /api/v1/manage/clubs/{clubId}/seasons/summary:
+    get:
+      tags:
+      - season-controller
+      operationId: summary_5
+      description: "Every season of the club (active and inactive) with its distinct league count, distinct own teams entered and active matches, zeros when nothing is attached (docs/specs/094)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SeasonsSummaryDto"
   /api/v1/manage/clubs/{clubId}/leagues:
     get:
       tags:
@@ -6559,6 +6579,30 @@ components:
           type: integer
           format: int64
         needAttention:
+          type: integer
+          format: int64
+    SeasonsSummaryDto:
+      type: object
+      description: "One row per season of the club (docs/specs/094)."
+      properties:
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeasonSummaryDto"
+    SeasonSummaryDto:
+      type: object
+      description: "One season's figures: distinct leagues with an affiliation, distinct own teams entered, active matches (docs/specs/094)."
+      properties:
+        seasonId:
+          type: string
+          format: uuid
+        leagueCount:
+          type: integer
+          format: int64
+        teamsEntered:
+          type: integer
+          format: int64
+        matchCount:
           type: integer
           format: int64
     SectionsSummaryDto:

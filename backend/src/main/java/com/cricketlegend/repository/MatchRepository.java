@@ -196,6 +196,22 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
         long getMatchCount();
     }
 
+    /**
+     * Per docs/specs/094-club-structure-and-seasons.md: the number of active matches of the club in each of
+     * {@code seasonIds}, in one round trip (seasons with no match are absent).
+     */
+    @Query("select m.seasonId as seasonId, count(m) as total from Match m "
+            + "where m.clubId = :clubId and m.seasonId in :seasonIds and m.active = true group by m.seasonId")
+    List<SeasonMatchCount> countActiveBySeasonIds(
+            @Param("clubId") UUID clubId, @Param("seasonIds") List<UUID> seasonIds);
+
+    /** Projection backing {@link #countActiveBySeasonIds}. */
+    interface SeasonMatchCount {
+        UUID getSeasonId();
+
+        long getTotal();
+    }
+
     /** Projection backing {@link #summariseByLeagueForSeason}. */
     interface LeagueMatchSummary {
         UUID getLeagueId();

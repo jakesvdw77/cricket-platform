@@ -157,6 +157,19 @@ public final class ManagerOverviewFixtures {
                 .teamId(team.getId()).seasonId(season.getId()).build());
     }
 
+    /** A new active season of {@code club} labelled {@code label} (docs/specs/094 seasons summary). */
+    public Season season(Club club, String label) {
+        return seasonRepository.save(Season.builder().clubId(club.getId()).label(label)
+                .startDate(LocalDate.of(2020, 1, 1)).endDate(LocalDate.of(2020, 12, 31)).active(true).build());
+    }
+
+    /** A match of {@code home} against free-text "Occasionals" in {@code season} of the world's club. */
+    public Match matchIn(World w, Season season, Team home, boolean active) {
+        return matchRepository.save(Match.builder().clubId(w.club().getId()).homeTeamId(home.getId())
+                .awayTeamName("Occasionals").seasonId(season.getId()).matchDate(Instant.parse("2031-06-01T12:00:00Z"))
+                .venue("Ground").active(active).build());
+    }
+
     /** An active match of {@code home} against {@code away} (a free-text "Occasionals" when null). */
     public Match match(World w, Team home, Team away, Instant when) {
         return match(w, home, away, when, true, null);

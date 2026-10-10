@@ -5,16 +5,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.dto.CreateSeasonRequest;
 import com.cricketlegend.dto.SeasonDto;
+import com.cricketlegend.dto.SeasonSummaryDto;
+import com.cricketlegend.dto.SeasonsSummaryDto;
 import com.cricketlegend.dto.UpdateSeasonRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.SeasonMapper;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository.SeasonCount;
+import com.cricketlegend.repository.MatchRepository;
+import com.cricketlegend.repository.MatchRepository.SeasonMatchCount;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.impl.SeasonServiceImpl;
 import java.time.LocalDate;
@@ -41,11 +48,17 @@ class SeasonServiceImplTest {
     @Mock
     private SeasonMapper seasonMapper;
 
+    @Mock
+    private LeagueAffiliationRepository leagueAffiliationRepository;
+
+    @Mock
+    private MatchRepository matchRepository;
+
     private SeasonServiceImpl seasonService;
 
     @BeforeEach
     void setUp() {
-        seasonService = new SeasonServiceImpl(seasonRepository, seasonMapper);
+        seasonService = new SeasonServiceImpl(seasonRepository, seasonMapper, leagueAffiliationRepository, matchRepository);
     }
 
     private SeasonDto dummyDto() {
@@ -180,5 +193,81 @@ class SeasonServiceImplTest {
         List<SeasonDto> result = seasonService.list(clubId);
 
         assertThat(result).containsExactly(dto);
+    }
+
+    private SeasonCount count(UUID seasonId, long total) {
+        return new SeasonCount() {
+            @Override
+            public UUID getSeasonId() {
+                return seasonId;
+            }
+
+            @Override
+            public long getTotal() {
+                return total;
+            }
+        };
+    }
+
+    private SeasonMatchCount matches(UUID seasonId, long total) {
+        return new SeasonMatchCount() {
+            @Override
+            public UUID getSeasonId() {
+                return seasonId;
+            }
+
+            @Override
+            public long getTotal() {
+                return total;
+            }
+        };
+    }
+
+    @Test
+    void summaryReportsCountsPerSeasonAndZerosForASeasonWithNothingAttached() {
+        UUID clubId = UUID.randomUUID();
+        UUID busy = UUID.randomUUID();
+        UUID idle = UUID.randomUUID();
+        UUID inactive = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId))
+                .thenReturn(List.of(existingSeason(busy, clubId, true), existingSeason(idle, clubId, true),
+                        existingSeason(inactive, clubId, false)));
+        List<UUID> ids = List.of(busy, idle, inactive);
+        when(leagueAffiliationRepository.countDistinctLeaguesBySeasonIds(clubId, ids))
+                .thenReturn(List.of(count(busy, 2), count(inactive, 1)));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonIds(clubId, ids))
+                .thenReturn(List.of(count(busy, 3), count(inactive, 1)));
+        when(matchRepository.countActiveBySeasonIds(clubId, ids)).thenReturn(List.of(matches(busy, 7)));
+
+        SeasonsSummaryDto result = seasonService.summary(null, clubId);
+
+        assertThat(result.seasons()).containsExactly(
+                new SeasonSummaryDto(busy, 2, 3, 7),
+                new SeasonSummaryDto(idle, 0, 0, 0),
+                new SeasonSummaryDto(inactive, 1, 1, 0));
+    }
+
+    @Test
+    void summaryTakesTheTeamsAndMatchesFromTheGroupedQueriesAsGiven() {
+        // distinct teams across several leagues are counted once by the query; the service must not add them up again
+        UUID clubId = UUID.randomUUID();
+        UUID season = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of(existingSeason(season, clubId, true)));
+        List<UUID> ids = List.of(season);
+        when(leagueAffiliationRepository.countDistinctLeaguesBySeasonIds(clubId, ids)).thenReturn(List.of(count(season, 3)));
+        when(leagueAffiliationRepository.countDistinctTeamsBySeasonIds(clubId, ids)).thenReturn(List.of(count(season, 1)));
+        when(matchRepository.countActiveBySeasonIds(clubId, ids)).thenReturn(List.of());
+
+        assertThat(seasonService.summary(null, clubId).seasons())
+                .containsExactly(new SeasonSummaryDto(season, 3, 1, 0));
+    }
+
+    @Test
+    void summaryOfAClubWithoutSeasonsIsEmptyAndRunsNoGroupedQuery() {
+        UUID clubId = UUID.randomUUID();
+        when(seasonRepository.findByClubId(clubId)).thenReturn(List.of());
+
+        assertThat(seasonService.summary(null, clubId).seasons()).isEmpty();
+        verifyNoInteractions(leagueAffiliationRepository, matchRepository);
     }
 }
