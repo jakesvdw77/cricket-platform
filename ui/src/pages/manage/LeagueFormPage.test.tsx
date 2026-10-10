@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -540,22 +540,35 @@ describe('LeagueFormPage', () => {
     expect(createLeagueAffiliation).toHaveBeenCalledWith('test-club-id', 'league-1', 'team-2', 'season-1')
   })
 
-  it('edit mode: unaffiliates a team via the card action', async () => {
-    const user = userEvent.setup()
-    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
-    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
-    listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
-    listLeagueAffiliations.mockResolvedValue([
-      { id: 'aff-1', leagueId: 'league-1', teamId: 'team-1', seasonId: 'season-1', createdAt: '2026-01-01T00:00:00Z', createdBy: null } as LeagueAffiliation,
-    ])
+  describe('unaffiliating a team', () => {
+    async function openTeamsTab() {
+      const user = userEvent.setup()
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+      listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+      listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
+      listLeagueAffiliations.mockResolvedValue([
+        { id: 'aff-1', leagueId: 'league-1', teamId: 'team-1', seasonId: 'season-1', createdAt: '2026-01-01T00:00:00Z', createdBy: null } as LeagueAffiliation,
+      ])
+      renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+      await screen.findByText('Edit League')
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+      await user.click(await screen.findByRole('button', { name: 'Unaffiliate 1st XI' }))
+      return { user, dialog: await screen.findByRole('dialog') }
+    }
 
-    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+    it('asks first, then unaffiliates once confirmed', async () => {
+      const { user, dialog } = await openTeamsTab()
+      expect(within(dialog).getByText('Unaffiliate 1st XI from this season?')).toBeInTheDocument()
+      expect(unaffiliateLeagueTeam).not.toHaveBeenCalled()
+      await user.click(within(dialog).getByRole('button', { name: 'Unaffiliate' }))
+      await waitFor(() => expect(unaffiliateLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'aff-1'))
+    })
 
-    await screen.findByText('Edit League')
-    await user.click(screen.getByRole('tab', { name: 'Teams' }))
-    await user.click(await screen.findByRole('button', { name: 'Unaffiliate' }))
-
-    expect(unaffiliateLeagueTeam).toHaveBeenCalledWith('test-club-id', 'league-1', 'aff-1')
+    it('does not unaffiliate when cancelled', async () => {
+      const { user, dialog } = await openTeamsTab()
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      expect(unaffiliateLeagueTeam).not.toHaveBeenCalled()
+    })
   })
 
   // docs/specs/050-league-schedule-and-fixtures.md item 4/28: the new Schedule tab — a season-

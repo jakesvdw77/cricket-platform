@@ -1,6 +1,4 @@
 import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
-import { lighten } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -11,9 +9,10 @@ import { Button } from '../../../components/Button'
 import { avatarSx, badgeSx } from '../../../components/RecordCard'
 import { RowActions } from '../../../components/RowActions'
 import type { LeagueContact } from '../../../api/leagueContactApi'
+import { LeagueEditPanel } from './LeagueEditPanel'
 import { initialsFromName } from '../../../utils/initials'
 import { badgeFor, fullName } from '../../../utils/leagueContact'
-import { zebraTint } from '../../../utils/zebraTint'
+import { DESKTOP_ONLY, bodyRowSx, desktopOnly, headerRowSx } from './leagueEditRowStyles'
 
 export interface LeagueContactRowsProps {
   leagueId: string
@@ -29,21 +28,6 @@ const COLUMNS = {
   sm: 'minmax(200px, 1.6fr) minmax(120px, 1fr) minmax(180px, 1.5fr) minmax(130px, 1fr) 80px',
 }
 
-const gridSx = {
-  display: 'grid',
-  gridTemplateColumns: COLUMNS,
-  alignItems: 'center',
-  columnGap: { xs: 0.75, sm: 1.5 },
-  pl: 1.5,
-  pr: { xs: 0.5, sm: 1.5 },
-} as const
-
-const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
-// Marks those cells for assistive tooling and tests (jsdom does not evaluate responsive CSS).
-const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
-
-const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
-
 function ContactRow({ leagueId, contact }: { leagueId: string; contact: LeagueContact }) {
   const name = fullName(contact)
   const badge = badgeFor(contact)
@@ -54,14 +38,7 @@ function ContactRow({ leagueId, contact }: { leagueId: string; contact: LeagueCo
     <Box
       role="row"
       data-testid="league-contact-row"
-      sx={{
-        ...gridSx,
-        position: 'relative',
-        minHeight: { xs: 56, sm: 44 },
-        '&:nth-of-type(odd)': { bgcolor: zebraTint },
-        '&:hover': { bgcolor: hoverTint },
-        '&:focus-within': { outline: (theme: Theme) => `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
-      }}
+      sx={bodyRowSx(COLUMNS)}
     >
       <Box role="cell" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
         <Avatar sx={avatarSx(28, '0.75rem')}>{initialsFromName(name)}</Avatar>
@@ -120,37 +97,11 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
   const navigate = useNavigate()
 
   return (
-    <Box
-      data-testid="league-contacts-panel"
-      sx={{ border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 2, overflow: 'clip' }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: { xs: 1.5, md: 2 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-          <Box
-            aria-hidden
-            sx={{
-              width: 32,
-              height: 32,
-              flex: 'none',
-              borderRadius: 1,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              '& svg': { fontSize: 20 },
-            }}
-          >
-            <PeopleOutlineIcon />
-          </Box>
-          <Typography
-            variant="subtitle2"
-            component="h2"
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, fontSize: '0.9375rem' }}
-          >
-            {`Contacts · ${contacts.length}`}
-          </Typography>
-        </Box>
+    <LeagueEditPanel
+      icon={<PeopleOutlineIcon />}
+      title={`Contacts · ${contacts.length}`}
+      testId="league-contacts-panel"
+      actions={
         <Button
           size="sm"
           startIcon={<AddIcon fontSize="small" />}
@@ -159,8 +110,8 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
         >
           Add contact
         </Button>
-      </Box>
-
+      }
+    >
       {contacts.length === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ px: { xs: 1.5, md: 2 }, pb: 2 }}>
           No contacts yet for this league.
@@ -169,19 +120,7 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
         <Box role="table" aria-label="League contacts">
           <Box
             role="row"
-            sx={{
-              ...gridSx,
-              height: { xs: 36, sm: 40 },
-              bgcolor: 'background.paper',
-              borderTop: 1,
-              borderBottom: 1,
-              borderColor: 'divider',
-              fontSize: { xs: '0.6875rem', sm: '0.75rem' },
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              color: 'text.secondary',
-            }}
+            sx={headerRowSx(COLUMNS)}
           >
             <Box role="columnheader">Contact</Box>
             <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Role</Box>
@@ -196,6 +135,6 @@ export function LeagueContactRows({ leagueId, contacts }: LeagueContactRowsProps
           </Box>
         </Box>
       )}
-    </Box>
+    </LeagueEditPanel>
   )
 }

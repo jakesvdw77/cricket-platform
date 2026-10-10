@@ -359,6 +359,7 @@ export default function LeagueFormPage() {
             leagueId={leagueId as string}
             hasSeasons={seasons.length > 0}
             selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
             contextLabel={`${league?.name ?? ''} · ${seasonLabel}`}
             affiliationsForSeason={affiliationsForSeason}
             teamsById={teamsById}

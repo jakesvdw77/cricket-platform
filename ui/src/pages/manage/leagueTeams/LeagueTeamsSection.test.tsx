@@ -57,15 +57,41 @@ describe('LeagueTeamsSection', () => {
     renderSection()
     expect(await screen.findByText('No league teams yet')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add league team' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Copy teams from/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy teams from another league or season' })).toHaveTextContent('Copy from...')
+    expect(screen.getByRole('heading', { name: 'League teams · 0' })).toBeInTheDocument()
   })
 
-  it('renders active and inactive cards', async () => {
+  it('shows the caption once under the heading', async () => {
+    listLeagueTeams.mockResolvedValue([])
+    renderSection()
+    await screen.findByText('No league teams yet')
+    expect(screen.getAllByText('Opponents you pick on matches, for this season only')).toHaveLength(1)
+  })
+
+  it('renders active and inactive rows with the count in the heading and no "N teams" chip', async () => {
     listLeagueTeams.mockResolvedValue([makeLeagueTeam(), makeLeagueTeam({ id: 'lt-2', name: 'Ladium', active: false })])
     renderSection()
-    expect(await screen.findByRole('heading', { name: 'Centurion Brits CC' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Ladium' })).toBeInTheDocument()
+    expect(await screen.findByText('Centurion Brits CC')).toBeInTheDocument()
+    expect(screen.getByText('Ladium')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'League teams · 2' })).toBeInTheDocument()
+    expect(screen.queryByText('2 teams')).not.toBeInTheDocument()
+    expect(screen.getByText('Active')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reactivate Ladium' })).toBeInTheDocument()
+  })
+
+  it('has exactly one filled button in the panel header', async () => {
+    listLeagueTeams.mockResolvedValue([makeLeagueTeam()])
+    renderSection()
+    await screen.findByText('Centurion Brits CC')
+    const filled = screen.getAllByRole('button').filter((button) => button.classList.contains('MuiButton-contained'))
+    expect(filled.map((button) => button.textContent)).toEqual(['Add league team'])
+  })
+
+  it('shows the load error under the header', async () => {
+    listLeagueTeams.mockRejectedValue(new Error('boom'))
+    renderSection()
+    expect(await screen.findByText("Couldn't load the league teams. Please try again.")).toBeInTheDocument()
   })
 
   it('adds a league team for the selected league and season', async () => {
@@ -154,7 +180,7 @@ describe('LeagueTeamsSection', () => {
     it('defaults to the most recent other season, ticks all, disables duplicates and sends nothing until confirmed', async () => {
       const user = userEvent.setup()
       renderSection()
-      await user.click(await screen.findByRole('button', { name: /Copy teams from/ }))
+      await user.click(await screen.findByRole('button', { name: 'Copy teams from another league or season' }))
       const dialog = await screen.findByRole('dialog', { name: 'Copy league teams' })
       expect(await within(dialog).findByLabelText('Centurion Brits CC')).toBeChecked()
       expect(within(dialog).getByLabelText('Laudium Cricket Club')).toBeChecked()
@@ -171,7 +197,7 @@ describe('LeagueTeamsSection', () => {
         skipped: [{ name: 'Police', reason: 'DUPLICATE_NAME' }],
       })
       renderSection()
-      await user.click(await screen.findByRole('button', { name: /Copy teams from/ }))
+      await user.click(await screen.findByRole('button', { name: 'Copy teams from another league or season' }))
       const dialog = await screen.findByRole('dialog', { name: 'Copy league teams' })
       await user.click(await within(dialog).findByRole('button', { name: 'Select none' }))
       expect(within(dialog).getByRole('button', { name: 'Copy 0 teams' })).toBeDisabled()

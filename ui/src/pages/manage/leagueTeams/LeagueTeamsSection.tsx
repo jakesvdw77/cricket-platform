@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Alert, Box, Chip, Stack, Typography } from '@mui/material'
+import { Alert, Box } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
@@ -10,7 +11,8 @@ import { EmptyState } from '../../../components/EmptyState'
 import { leagueTeamsQueryKey, listLeagueTeams } from '../../../api/leagueTeamApi'
 import type { LeagueTeam } from '../../../api/leagueTeamApi'
 import { errorDetail } from '../../../utils/errorDetail'
-import { LeagueTeamCard } from './LeagueTeamCard'
+import { LeagueEditPanel } from '../leagueEdit/LeagueEditPanel'
+import { LeagueTeamTable } from '../leagueEdit/LeagueTeamTable'
 import { LeagueTeamFormDialog } from './LeagueTeamFormDialog'
 import { CopyLeagueTeamsDialog } from './CopyLeagueTeamsDialog'
 import { useLeagueTeamMutations } from './useLeagueTeamMutations'
@@ -96,55 +98,64 @@ export function LeagueTeamsSection({ clubId, leagueId, seasonId, contextLabel }:
       : `This permanently deletes ${removing.name} from this league and season.`
     : ''
 
+  const bodyPx = { px: { xs: 1.5, md: 2 }, pb: 2 }
+
   return (
-    <Stack spacing={1.5} sx={{ mt: 4 }} component="section" aria-label="League teams">
-      <Stack direction="row" alignItems="center" spacing={1.25} flexWrap="wrap" useFlexGap>
-        <Typography variant="subtitle1" component="h2" fontWeight={700}>
-          League teams
-        </Typography>
-        {teamsQuery.isSuccess && <Chip size="small" variant="outlined" label={`${teams.length} ${teams.length === 1 ? 'team' : 'teams'}`} />}
-        <Typography variant="caption" color="text.secondary">
-          Opponents you pick on matches, for this season only
-        </Typography>
-      </Stack>
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-        <Button startIcon={<AddIcon fontSize="small" />} onClick={() => setEditing('new')}>
-          Add league team
-        </Button>
-        <Button variant="secondary" startIcon={<ContentCopyOutlinedIcon fontSize="small" />} onClick={() => setCopyOpen(true)}>
-          Copy teams from…
-        </Button>
-      </Stack>
-
+    <LeagueEditPanel
+      icon={<GroupsOutlinedIcon />}
+      title={`League teams · ${teams.length}`}
+      ariaLabel="League teams"
+      testId="league-teams-panel"
+      caption="Opponents you pick on matches, for this season only"
+      actions={
+        <>
+          <Button size="sm" startIcon={<AddIcon fontSize="small" />} onClick={() => setEditing('new')} sx={{ flex: 'none' }}>
+            Add league team
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+            aria-label="Copy teams from another league or season"
+            onClick={() => setCopyOpen(true)}
+            sx={{ flex: 'none' }}
+          >
+            Copy from...
+          </Button>
+        </>
+      }
+    >
       {feedback && (
-        <Alert severity={feedback.severity} onClose={() => setFeedback(null)}>
-          {feedback.message}
-        </Alert>
+        <Box sx={bodyPx}>
+          <Alert severity={feedback.severity} onClose={() => setFeedback(null)}>
+            {feedback.message}
+          </Alert>
+        </Box>
       )}
 
-      {teamsQuery.isError && <Alert severity="error">Couldn&apos;t load the league teams. Please try again.</Alert>}
+      {teamsQuery.isError && (
+        <Box sx={bodyPx}>
+          <Alert severity="error">Couldn&apos;t load the league teams. Please try again.</Alert>
+        </Box>
+      )}
 
       {teamsQuery.isSuccess && teams.length === 0 && (
-        <EmptyState
-          title="No league teams yet"
-          description="Add the teams in this league one at a time, or copy them from another league or season."
-        />
+        <Box sx={bodyPx}>
+          <EmptyState
+            title="No league teams yet"
+            description="Add the teams in this league one at a time, or copy them from another league or season."
+          />
+        </Box>
       )}
 
       {teams.length > 0 && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }}>
-          {teams.map((team) => (
-            <LeagueTeamCard
-              key={team.id}
-              leagueTeam={team}
-              onEdit={() => setEditing(team)}
-              onToggleActive={() => handleToggle(team)}
-              onRemove={() => setRemoving(team)}
-              togglePending={deactivate.isPending || reactivate.isPending}
-            />
-          ))}
-        </Box>
+        <LeagueTeamTable
+          teams={teams}
+          onEdit={setEditing}
+          onToggleActive={handleToggle}
+          onRemove={setRemoving}
+          togglePending={deactivate.isPending || reactivate.isPending}
+        />
       )}
 
       {editing && (
@@ -169,7 +180,7 @@ export function LeagueTeamsSection({ clubId, leagueId, seasonId, contextLabel }:
         title={removing ? (removing.referencedByMatchCount > 0 ? `Deactivate ${removing.name}?` : `Delete ${removing.name}?`) : ''}
         description={removeDescription}
         confirmLabel={removing && removing.referencedByMatchCount > 0 ? 'Deactivate' : 'Delete'}
-        pendingLabel="Removing…"
+        pendingLabel="Removing..."
         destructive
         pending={remove.isPending}
         onConfirm={handleRemove}
@@ -206,6 +217,6 @@ export function LeagueTeamsSection({ clubId, leagueId, seasonId, contextLabel }:
           }}
         />
       )}
-    </Stack>
+    </LeagueEditPanel>
   )
 }
