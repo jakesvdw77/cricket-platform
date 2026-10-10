@@ -9,6 +9,7 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.DayPart;
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueAffiliation;
 import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
@@ -30,6 +31,7 @@ import com.cricketlegend.domain.SectionAvailabilityWindow;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.repository.ClubRepository;
+import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -76,6 +78,7 @@ public final class ManagerOverviewFixtures {
     private final SectionRepository sectionRepository;
     private final TeamRepository teamRepository;
     private final LeagueRepository leagueRepository;
+    private final LeagueAffiliationRepository leagueAffiliationRepository;
     private final MatchRepository matchRepository;
     private final MatchSideRepository matchSideRepository;
     private final MatchSidePlayerRepository matchSidePlayerRepository;
@@ -102,6 +105,7 @@ public final class ManagerOverviewFixtures {
         sectionRepository = ctx.getBean(SectionRepository.class);
         teamRepository = ctx.getBean(TeamRepository.class);
         leagueRepository = ctx.getBean(LeagueRepository.class);
+        leagueAffiliationRepository = ctx.getBean(LeagueAffiliationRepository.class);
         matchRepository = ctx.getBean(MatchRepository.class);
         matchSideRepository = ctx.getBean(MatchSideRepository.class);
         matchSidePlayerRepository = ctx.getBean(MatchSidePlayerRepository.class);
@@ -139,6 +143,18 @@ public final class ManagerOverviewFixtures {
     public League league(World w, int maxPlayingXiSize) {
         return leagueRepository.save(League.builder().clubId(w.club().getId()).name("League " + UUID.randomUUID())
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(maxPlayingXiSize).active(true).build());
+    }
+
+    /** A new active section of {@code club} under {@code parent} (a top-level one when null). */
+    public Section childSection(Club club, Section parent, String name) {
+        return sectionRepository.save(Section.builder().clubId(club.getId())
+                .parentSectionId(parent == null ? null : parent.getId()).name(name).active(true).build());
+    }
+
+    /** Affiliates {@code team} to {@code league} in {@code season} (docs/specs/094 sections summary leagues). */
+    public LeagueAffiliation affiliate(League league, Team team, Season season) {
+        return leagueAffiliationRepository.save(LeagueAffiliation.builder().leagueId(league.getId())
+                .teamId(team.getId()).seasonId(season.getId()).build());
     }
 
     /** An active match of {@code home} against {@code away} (a free-text "Occasionals" when null). */
@@ -283,6 +299,7 @@ public final class ManagerOverviewFixtures {
                 "delete from section_availability_window where club_id in (" + clubs + ")",
                 "delete from section_availability_round where club_id in (" + clubs + ")",
                 "delete from team_squad_member where team_id in (select id from team where club_id in (" + clubs + "))",
+                "delete from league_affiliation where team_id in (select id from team where club_id in (" + clubs + "))",
                 "delete from player_section where section_id in (select id from section where club_id in (" + clubs + "))",
                 "delete from role_assignment where person_id in (" + persons + ")",
                 "delete from player_profile where club_id in (" + clubs + ")",
