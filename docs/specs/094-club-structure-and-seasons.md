@@ -150,7 +150,8 @@ Tiers per `docs/standards/testing.md`.
 
 **Decided by the user on 2026-10-10:**
 
-- **Seasons menu item:** in the **Schedule** group (first in it).
+- **Seasons menu item:** in the **Schedule** group, **first** in it (Seasons, Leagues, Matches, Results), confirmed 2026-10-10.
+- **Detail panel placement:** **Option A**, a card under the chart (mockups: https://claude.ai/artifact/4nhMP6hWr1PMgUynenMYGk, boards Option A and Phone). The docked right-hand drawer (Option B) is not built.
 - **Counts on the Club profile:** the key-figure strip shows **Teams, Leagues and Players** (club totals). The org chart nodes stay plain (name, age chip, "+"), as the mockup. The Seasons page may show season counters or none at all; the user is happy either way, so this spec keeps only the cheap client-side status counters (Current, Upcoming, Past) and no counts that need the backend beyond the figures already specified.
 - **"+" on the Club profile:** yes, through the small Add section dialog.
 - **Counts backend:** yes, the new `sections/summary` endpoint (and `seasons/summary` for the season card figures, see question 9).
@@ -160,12 +161,11 @@ Tiers per `docs/standards/testing.md`.
 
 **Still open:**
 
-1. **Where does the detail panel sit on a desktop?** The user cannot decide without seeing it: mockups of both options (a card under the chart, and a right-hand drawer that keeps the chart visible) are being prepared. Proposed default: a card under the chart. Alternative: a right-hand `SidePanel` drawer (the chart stays visible, but it is modal, so another node cannot be clicked while it is open).
-2. **Can a section be removed or deactivated from the read-only panel?** Proposed: no, stays on the edit screen. Option: a Deactivate button with a `ConfirmDialog`. (The user answered "I think so" to the proposed behaviour; treated as confirmed unless the mockups change it.)
-3. **Phone breakpoint.** Proposed: nested list below `sm` (600 px), chart from `sm`. A narrow tablet may prefer the list up to `md`.
-4. **Season card figures (Leagues, Teams, Matches).** Proposed: the new `seasons/summary` endpoint. Option: dates and status only, no endpoint (the user said season counts are optional).
-5. **Season rules.** The backend has no "one current season", no overlap check and no unique label. Should the form warn (not block) when the dates overlap another active season, or when a second season contains today? Proposed: no change in this spec.
-6. **Season time strip amber threshold.** Proposed: amber within 7 days of a start or an end.
+1. **Can a section be removed or deactivated from the read-only panel?** Proposed: no, stays on the edit screen. Option: a Deactivate button with a `ConfirmDialog`. (The user answered "I think so" to the proposed behaviour; treated as confirmed unless the mockups change it.)
+2. **Phone breakpoint.** Proposed: nested list below `sm` (600 px), chart from `sm`. A narrow tablet may prefer the list up to `md`.
+3. **Season card figures (Leagues, Teams, Matches).** Proposed: the new `seasons/summary` endpoint. Option: dates and status only, no endpoint (the user said season counts are optional).
+4. **Season rules.** The backend has no "one current season", no overlap check and no unique label. Should the form warn (not block) when the dates overlap another active season, or when a second season contains today? Proposed: no change in this spec.
+5. **Season time strip amber threshold.** Proposed: amber within 7 days of a start or an end.
 
 ## Rollout Notes
 
