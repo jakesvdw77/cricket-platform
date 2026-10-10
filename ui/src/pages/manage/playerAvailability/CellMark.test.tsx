@@ -18,13 +18,6 @@ describe('CellMark', () => {
     expect(screen.queryByTestId('picked-dot')).not.toBeInTheDocument()
   })
 
-  it('adds a ring round a picked mark only when asked', () => {
-    const { rerender } = render(<CellMark status="AVAILABLE" label="A" picked />)
-    expect(screen.getByRole('img', { name: 'A' })).not.toHaveStyle({ borderRadius: '50%' })
-    rerender(<CellMark status="AVAILABLE" label="A" picked pickedRing />)
-    expect(screen.getByRole('img', { name: 'A' })).toHaveStyle({ borderRadius: '50%' })
-  })
-
   it('NO_RESPONSE is a hollow dashed circle with no glyph', () => {
     render(<CellMark status="NO_RESPONSE" label="Anton: No response" />)
 

@@ -89,7 +89,7 @@ function PickCell({
         }}
         sx={{ borderRadius: '50%', p: { xs: 0.75, sm: 0.25 }, opacity: muted ? 0.5 : 1, cursor: muted ? 'not-allowed' : busy ? 'progress' : 'pointer' }}
       >
-        <CellMark status={AVAILABILITY_STATUS[cell.availability]} picked={cell.picked} pickedRing />
+        <CellMark status={AVAILABILITY_STATUS[cell.availability]} picked={cell.picked} />
       </ButtonBase>
     </Tooltip>
   )
