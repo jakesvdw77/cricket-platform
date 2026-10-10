@@ -7,7 +7,7 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { Button } from '../Button'
 
 // docs/specs/050-league-schedule-and-fixtures.md: the first PDF/document upload control in this
-// codebase — a sibling to MediaUpload, not a variant on it (there's no image to preview for a
+// codebase, a sibling to MediaUpload, not a variant on it (there's no image to preview for a
 // PDF, so overloading MediaUpload's image-specific preview box/DIMENSIONS map would bend that
 // component around a case it wasn't built for). Client-side allowlist restricted to PDF only,
 // mirroring MediaUpload's own client-side-allowlist pattern but for one type instead of three.
@@ -22,14 +22,14 @@ export interface DocumentUploadValue {
 export interface DocumentUploadProps {
   label: string
   value: DocumentUploadValue | null
-  // Injected upload delegate, resolving a selected file to the new document's URL — kept generic
+  // Injected upload delegate, resolving a selected file to the new document's URL, kept generic
   // (rather than a fixed import the way MediaUpload picks between uploadMedia/uploadManagedMedia
   // via its own namespace prop) so this component stays genuinely reusable for a future PDF/
   // document field beyond its first consumer, LeagueFormPage.tsx's Schedule tab (wired to
   // leaguePlayingConditionsApi's uploadPlayingConditions, which needs clubId/leagueId/seasonId
   // this component has no reason to know about).
   onUpload: (file: File) => Promise<string>
-  // Notifies the caller once onUpload resolves — e.g. to invalidate/re-fetch the query backing
+  // Notifies the caller once onUpload resolves, e.g. to invalidate/re-fetch the query backing
   // `value`, since (unlike MediaUpload's plain form-state value) this control's value is normally
   // server state owned by the caller, not local form state.
   onUploaded: (documentUrl: string) => void
@@ -43,7 +43,7 @@ export interface DocumentUploadProps {
 
 // The backend never preserves a document's original filename (MediaServiceImpl generates a UUID
 // filename on every upload, the same "/media/{filename}"-style URL an image upload already
-// returns) — the trailing URL segment is the closest thing to a display name available.
+// returns), the trailing URL segment is the closest thing to a display name available.
 function filenameFromUrl(url: string): string {
   const segments = url.split('/')
   return segments[segments.length - 1] || url

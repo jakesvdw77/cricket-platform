@@ -111,13 +111,13 @@ describe('PlayingConditionsForm', () => {
 
     await user.hover(screen.getByLabelText('About fielding restrictions notes'))
     expect(
-      await screen.findByText('Optional — free text for circle/leg-side clauses too varied to model as fields'),
+      await screen.findByText('Optional: free text for circle/leg-side clauses too varied to model as fields'),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: /enable bonus points/i }))
     await user.hover(screen.getByLabelText('About the early-chase overs threshold'))
     expect(
-      await screen.findByText('e.g. 17 — the batting-second side earns a bonus point for chasing before this over'),
+      await screen.findByText('e.g. 17: the batting-second side earns a bonus point for chasing before this over'),
     ).toBeInTheDocument()
   })
 

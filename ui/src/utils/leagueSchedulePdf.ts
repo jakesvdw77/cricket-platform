@@ -2,22 +2,22 @@ import { jsPDF } from 'jspdf'
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
 
-// docs/specs/051-league-schedule-sharing.md — mirrors teamSheetPdf.ts's own jsPDF structure and
+// docs/specs/051-league-schedule-sharing.md, mirrors teamSheetPdf.ts's own jsPDF structure and
 // colour constants (theme.palette tokens converted to RGB tuples) exactly, but renders a
 // date-grouped fixture list rather than a squad roster. Deliberately not consolidated with
-// teamSheetPdf.ts into a shared "PDF poster" abstraction — see this spec's own Non-goals (a
+// teamSheetPdf.ts into a shared "PDF poster" abstraction, see this spec's own Non-goals (a
 // squad roster and a fixture list are two genuinely different data shapes, not the ~70% overlap
 // docs/standards/frontend.md's extraction threshold requires). Only DARK/MID/WHITE/LGRAY are
-// needed here — GRAY/TWELFTH_FILL/TWELFTH_BORDER are team-sheet-specific and stay there.
+// needed here, GRAY/TWELFTH_FILL/TWELFTH_BORDER are team-sheet-specific and stay there.
 const DARK: [number, number, number] = [20, 35, 28] // theme.palette.text.primary (#14231c)
 const MID: [number, number, number] = [47, 110, 79] // theme.palette.primary.main (#2f6e4f)
 const WHITE: [number, number, number] = [255, 255, 255]
 const LGRAY: [number, number, number] = [150, 165, 158]
 
-// fetch → blob → FileReader.readAsDataURL — the exact same pattern teamSheetPdf.ts's own
+// fetch → blob → FileReader.readAsDataURL, the exact same pattern teamSheetPdf.ts's own
 // (unexported) loadImageBase64 uses, duplicated here rather than imported so this file stays a
 // self-contained, independently readable unit (docs/plans/030-team-sheet-communication.md's Flag
-// #2 — the same reasoning teamSheetWhatsAppText.ts's own doc comment states for playerName/
+// #2, the same reasoning teamSheetWhatsAppText.ts's own doc comment states for playerName/
 // resolveRosterLines applies here). Resolves null on any failure so a missing/broken team logo
 // never throws or blocks PDF generation.
 async function loadImageBase64(url: string): Promise<string | null> {
@@ -43,7 +43,7 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates the retired LeagueFixtures list's own resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide, deliberately, matching
 // teamSheetPdf.ts's own established precedent of small pure resolution helpers being
 // independently duplicated per consumer rather than centralized, so each file stays a
 // self-contained, independently readable unit.
@@ -60,7 +60,7 @@ function resolveSide(
   return { name: teamName ?? 'TBC', logoUrl }
 }
 
-// e.g. "Sat, 14 Mar 2026" — duplicates the retired LeagueFixtures list's own dateHeading.
+// e.g. "Sat, 14 Mar 2026", duplicates the retired LeagueFixtures list's own dateHeading.
 function dateHeading(iso: string): string {
   const date = new Date(iso)
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
@@ -89,7 +89,7 @@ function groupByDay(matches: Match[]): [string, Match[]][] {
 }
 
 // A logo image if one loaded successfully, else a DARK rounded square with the side's own
-// initial — the exact fallback shape teamSheetPdf.ts's own team-section header already uses.
+// initial, the exact fallback shape teamSheetPdf.ts's own team-section header already uses.
 function drawAvatarOrInitials(
   doc: jsPDF,
   side: ResolvedSide,
@@ -104,7 +104,7 @@ function drawAvatarOrInitials(
       doc.addImage(logoB64, 'PNG', x, y, size, size)
       return
     } catch {
-      // A broken/unsupported image never blocks the rest of the PDF — fall through to initials.
+      // A broken/unsupported image never blocks the rest of the PDF, fall through to initials.
     }
   }
   doc.setFillColor(...DARK)
@@ -121,9 +121,9 @@ export interface LeagueScheduleTeamFilter {
 }
 
 // Builds an A4 portrait schedule PDF for the given league+season's matches and returns an object
-// URL for it — the caller owns opening it (window.open(url, '_blank')). When `teamFilter` is
+// URL for it, the caller owns opening it (window.open(url, '_blank')). When `teamFilter` is
 // set, the match list is pre-filtered to that team's own fixtures (home or away) before any
-// layout math and the header subtitle is scoped to that team — the one code path that serves
+// layout math and the header subtitle is scoped to that team, the one code path that serves
 // both the "Full Schedule" and "Per Team" scopes, per this spec's own stated goal of not
 // repeating the legacy app's three-generator mistake.
 export async function generateLeagueSchedulePdf(
@@ -191,7 +191,7 @@ export async function generateLeagueSchedulePdf(
     }
   }
 
-  // Header band — league name, season (and, when scoped, the team-scope subtitle), drawn once on
+  // Header band, league name, season (and, when scoped, the team-scope subtitle), drawn once on
   // page 1 only, mirroring teamSheetPdf.ts's own header band shape exactly.
   doc.setFillColor(...DARK)
   doc.rect(0, 0, pageW, 30, 'F')
@@ -203,7 +203,7 @@ export async function generateLeagueSchedulePdf(
   doc.setFontSize(12)
   doc.text(leagueName, margin, 13)
 
-  const subtitle = teamFilter ? `${teamFilter.teamName} — ${seasonLabel}` : seasonLabel
+  const subtitle = teamFilter ? `${teamFilter.teamName}, ${seasonLabel}` : seasonLabel
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(200, 225, 210)
@@ -249,14 +249,14 @@ export async function generateLeagueSchedulePdf(
 
       const rowMidY = y + rowH / 2
 
-      // Home side — logo/initials avatar + name, left-aligned.
+      // Home side, logo/initials avatar + name, left-aligned.
       drawAvatarOrInitials(doc, home, margin + 2, rowMidY - avatarSize / 2, avatarSize, logosByUrl)
       doc.setTextColor(...DARK)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8.5)
       doc.text(home.name, margin + 2 + avatarSize + 3, rowMidY + 1)
 
-      // Centre — "VS" + time + venue.
+      // Centre, "VS" + time + venue.
       const centerX = pageW / 2
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7.5)
@@ -272,7 +272,7 @@ export async function generateLeagueSchedulePdf(
         doc.text(match.venue, centerX, rowMidY + 6, { align: 'center' })
       }
 
-      // Away side — name + logo/initials avatar, right-aligned.
+      // Away side, name + logo/initials avatar, right-aligned.
       doc.setTextColor(...DARK)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8.5)

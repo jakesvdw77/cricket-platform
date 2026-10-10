@@ -64,7 +64,7 @@ export default function LeagueFormPage() {
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  // docs/specs/052-league-playing-conditions.md — a second, independent Share flow (the captain
+  // docs/specs/052-league-playing-conditions.md, a second, independent Share flow (the captain
   // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
   // never share state.
   const [playingConditionsShareOpen, setPlayingConditionsShareOpen] = useState(false)
@@ -98,7 +98,7 @@ export default function LeagueFormPage() {
     enabled: Boolean(clubId) && Boolean(leagueId) && isEdit,
   })
 
-  // docs/specs/054-league-contacts.md: the Contacts tab's own contact list — a league's contacts
+  // docs/specs/054-league-contacts.md: the Contacts tab's own contact list, a league's contacts
   // are a small, bounded collection, deliberately not paginated (same as listSponsorContacts).
   const contactsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues', leagueId, 'contacts'],
@@ -107,7 +107,7 @@ export default function LeagueFormPage() {
   })
 
   // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
-  // list, rendered by LeagueFixturesTable (see LeagueEditScheduleTab) — reuses the existing
+  // list, rendered by LeagueFixturesTable (see LeagueEditScheduleTab), reuses the existing
   // listAllMatches (docs/specs/072-league-view-pages.md: every page of the season, not just the first
   // 20) filter combination, no new endpoint.
   const matchesQuery = useQuery({
@@ -133,7 +133,7 @@ export default function LeagueFormPage() {
   })
 
   // Starts the Season pill on ?seasonId= (carried by the league page's Edit link) when it names one of the club's seasons,
-  // else on whichever season contains today, else the most recently created — same rule as TeamFormPage's Squad tab.
+  // else on whichever season contains today, else the most recently created, same rule as TeamFormPage's Squad tab.
   useEffect(() => {
     if (!selectedSeasonId && seasonsQuery.data && seasonsQuery.data.length > 0) {
       const requested = seasonParam && seasonsQuery.data.some((season) => season.id === seasonParam) ? seasonParam : null
@@ -157,7 +157,7 @@ export default function LeagueFormPage() {
   )
 
   // docs/specs/051-league-schedule-sharing.md: same seasonLabel derivation as
-  // the league Schedule view (LeagueScheduleView.tsx) — neither host page previously computed a plain season label string.
+  // the league Schedule view (LeagueScheduleView.tsx), neither host page previously computed a plain season label string.
   const seasonLabel = useMemo(
     () => seasonsQuery.data?.find((season) => season.id === selectedSeasonId)?.label ?? '',
     [seasonsQuery.data, selectedSeasonId],
@@ -196,7 +196,7 @@ export default function LeagueFormPage() {
     triggerDownload(url, `${team.teamName}-schedule.ics`)
   }
 
-  // docs/specs/052-league-playing-conditions.md UI Requirements item 4 — `maxOversPerInnings !=
+  // docs/specs/052-league-playing-conditions.md UI Requirements item 4, `maxOversPerInnings !=
   // null` is the "has this league+season's structured Playing Conditions ever been saved" signal;
   // shared by PlayingConditionsForm's own initialValues and PlayingConditionsShareDialog's
   // hasStructuredFields/conditions props below.
@@ -208,7 +208,7 @@ export default function LeagueFormPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: playingConditionsQueryKey }),
   })
 
-  // A second, independent Share handler for the captain summary — never touches
+  // A second, independent Share handler for the captain summary, never touches
   // generateLeagueSchedulePdf/handleSharePdf above, which belongs to the unrelated Schedule-sharing
   // feature.
   const handleSharePlayingConditionsPdf = async () => {
@@ -250,7 +250,7 @@ export default function LeagueFormPage() {
   })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated verbatim from LeagueList.tsx's own
-  // LeagueCard — same mutation fn/onSuccess invalidation, now rendered in this screen's actions
+  // LeagueCard, same mutation fn/onSuccess invalidation, now rendered in this screen's actions
   // bar instead of the list card's footer.
   const invalidateLeagues = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues'] })
 

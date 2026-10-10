@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
 
-// jsPDF produces binary PDF output, so — mirroring teamSheetPdf.test.ts's own precedent exactly —
+// jsPDF produces binary PDF output, so, mirroring teamSheetPdf.test.ts's own precedent exactly —
 // this test asserts on the *inputs* to jsPDF's own drawing calls rather than parsing the generated
 // PDF bytes.
 const textSpy = vi.fn()
@@ -181,11 +181,11 @@ describe('generateLeagueSchedulePdf', () => {
 
     expect(url).toBe('blob:mock-url')
     const texts = textSpy.mock.calls.map((call) => call[0])
-    // Scoped subtitle reads "<team> — <season>", not just the season label.
-    expect(texts).toContain('Riverside 1st XI — 2026')
+    // Scoped subtitle reads "<team>, <season>", not just the season label.
+    expect(texts).toContain('Riverside 1st XI, 2026')
     expect(texts).toContain('Coastal CC')
     expect(texts).toContain('Hillside CC')
-    // The third, uninvolved match's own date heading never appears — it was filtered out entirely.
+    // The third, uninvolved match's own date heading never appears, it was filtered out entirely.
     expect(texts).not.toContain('Sat, 28 Mar 2026')
   })
 

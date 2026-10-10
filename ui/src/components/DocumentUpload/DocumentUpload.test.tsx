@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { DocumentUpload } from './DocumentUpload'
 
 // docs/specs/050-league-schedule-and-fixtures.md item 23: mirrors MediaUpload.test.tsx's own
-// structure — the injected onUpload prop stands in for MediaUpload's fixed uploadMedia/
+// structure, the injected onUpload prop stands in for MediaUpload's fixed uploadMedia/
 // uploadManagedMedia import, since DocumentUpload deliberately keeps its upload delegate generic.
 describe('DocumentUpload', () => {
   it('renders "No document uploaded yet" and an "Upload" button in the empty state', () => {

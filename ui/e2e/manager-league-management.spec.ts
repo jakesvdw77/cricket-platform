@@ -204,20 +204,19 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
     // --- Affiliation: enter the league, affiliate the team for this season ---
 
-    await page.getByRole('link', { name: 'Back to Fixtures & Results' }).click();
-    await page.getByRole('link', { name: 'Leagues' }).click();
+    await page.goto(`http://${ROOT_DOMAIN}/manage/fixtures/leagues`);
     // docs/specs/036-view-first-record-detail-screens.md: the card's primary action is now View,
     // landing on the read-only detail screen first; its own Edit action is what reaches the real
-    // form the Affiliations tab lives on.
+    // form the Teams tab lives on (docs/specs/095-league-edit-gold-standard.md: a real tab, deep-linkable as ?tab=teams).
     await leagueCard.getByRole('link', { name: 'View' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/[^/]+$/);
     await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/leagues\/.+\/edit$/);
-    await page.getByRole('tab', { name: 'Affiliations' }).click();
+    await page.getByRole('tab', { name: 'Teams' }).click();
     await page.getByRole('button', { name: 'Add team' }).click();
     await page.getByRole('combobox', { name: 'Search teams' }).click();
     await page.getByRole('option', { name: teamName, exact: true }).click();
-    await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Our teams' }).getByText(teamName, { exact: true })).toBeVisible();
 
     // --- Players: four squad candidates — three age-eligible, one deliberately too young ---
     //

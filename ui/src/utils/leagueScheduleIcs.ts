@@ -1,9 +1,9 @@
 import type { Match } from '../api/matchApi'
 import type { Team } from '../api/teamApi'
 
-// docs/specs/051-league-schedule-sharing.md — this codebase's first `.ics`/calendar generation
+// docs/specs/051-league-schedule-sharing.md, this codebase's first `.ics`/calendar generation
 // (confirmed by exhaustive grep: no library dependency, no prior code). Hand-rolled `VCALENDAR`/
-// `VEVENT` text, deliberately not a new dependency — matching both the legacy Cricket Legend app's
+// `VEVENT` text, deliberately not a new dependency, matching both the legacy Cricket Legend app's
 // own precedent of hand-building this rather than adding an ICS library, and this codebase's own
 // teamSheetWhatsAppText.ts precedent of hand-building a well-understood, bounded text format
 // rather than pulling one in.
@@ -13,10 +13,10 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates the retired LeagueFixtures list's own resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide, deliberately, matching
 // leagueSchedulePdf.ts's/leagueSchedulePoster.ts's own established precedent of small pure
 // resolution helpers being independently duplicated per consumer rather than centralized. Only
-// `.name` is read here — no logo to embed in a calendar event.
+// `.name` is read here, no logo to embed in a calendar event.
 function resolveSide(
   teamId: string | null,
   teamName: string | null,
@@ -30,7 +30,7 @@ function resolveSide(
   return { name: teamName ?? 'TBC', logoUrl }
 }
 
-// RFC 5545 §3.3.11 text escaping — backslash first (so it doesn't double-escape the characters
+// RFC 5545 §3.3.11 text escaping, backslash first (so it doesn't double-escape the characters
 // escaped after it), then semicolon/comma, then any line break to a literal "\n" token.
 function escapeIcsText(value: string): string {
   return value
@@ -40,7 +40,7 @@ function escapeIcsText(value: string): string {
     .replace(/\r\n|\r|\n/g, '\\n')
 }
 
-// UTC `YYYYMMDDTHHMMSSZ` — deliberately not attempting VTIMEZONE handling, since a UTC-stamped
+// UTC `YYYYMMDDTHHMMSSZ`, deliberately not attempting VTIMEZONE handling, since a UTC-stamped
 // event already renders correctly in the recipient's own local time in every mainstream calendar
 // app (this spec's own stated reasoning).
 function formatIcsDate(date: Date): string {
@@ -53,9 +53,9 @@ export interface LeagueScheduleIcsTeam {
 }
 
 // Builds a single per-team `.ics` calendar (one VEVENT per that team's fixtures in the given
-// league+season) and returns a blob object URL — the caller wraps it in the same forced-download
+// league+season) and returns a blob object URL, the caller wraps it in the same forced-download
 // pattern as leagueSchedulePoster.ts (a `.ics` file has no browser-native renderer to open into).
-// `team` is required, not optional — per this spec's own Non-goals, there is no whole-league
+// `team` is required, not optional, per this spec's own Non-goals, there is no whole-league
 // calendar file, only ever a single team's own fixtures.
 export function generateLeagueScheduleIcs(
   matches: Match[],
@@ -78,7 +78,7 @@ export function generateLeagueScheduleIcs(
     const home = resolveSide(match.homeTeamId, match.homeTeamName, match.homeTeamLogoUrl, teamsById)
     const away = resolveSide(match.awayTeamId, match.awayTeamName, match.awayTeamLogoUrl, teamsById)
     const start = new Date(match.matchDate)
-    // Fixed 3-hour event duration — this spec's own explicit decision (Match carries no format/
+    // Fixed 3-hour event duration, this spec's own explicit decision (Match carries no format/
     // duration field to derive a more precise figure from; a generic club cricket fixture plus a
     // realistic pre/post-match window runs closer to 3 hours than a shorter default).
     const end = new Date(start.getTime() + 3 * 60 * 60 * 1000)
@@ -91,7 +91,7 @@ export function generateLeagueScheduleIcs(
     lines.push(`DTSTART:${formatIcsDate(start)}`)
     lines.push(`DTEND:${formatIcsDate(end)}`)
     lines.push(`SUMMARY:${escapeIcsText(`${home.name} vs ${away.name}`)}`)
-    lines.push(`DESCRIPTION:${escapeIcsText(`${leagueName} — ${seasonLabel}`)}`)
+    lines.push(`DESCRIPTION:${escapeIcsText(`${leagueName}, ${seasonLabel}`)}`)
     if (match.venue) {
       lines.push(`LOCATION:${escapeIcsText(match.venue)}`)
     }

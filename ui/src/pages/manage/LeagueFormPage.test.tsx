@@ -65,7 +65,7 @@ vi.mock('../../api/leagueAffiliationApi', () => ({
     unaffiliateLeagueTeam(clubId, leagueId, affiliationId),
 }))
 
-// docs/specs/050-league-schedule-and-fixtures.md: the new Schedule tab's own data — matches
+// docs/specs/050-league-schedule-and-fixtures.md: the new Schedule tab's own data, matches
 // (listMatches, reused unmodified from the existing matchApi) and Playing Conditions (the new
 // leaguePlayingConditionsApi module).
 // docs/specs/072-league-view-pages.md: matchApi stays real so the Schedule tab's listAllMatches paging
@@ -295,7 +295,7 @@ describe('LeagueFormPage', () => {
 
   // docs/specs/053-league-extended-profile.md: LeagueFormPage's initialValues object (passed to
   // <LeagueForm>) must correctly thread the five new profile fields from the fetched league
-  // through to the form on the edit path — LeagueForm.test.tsx's own "prefills the Basic Info tab
+  // through to the form on the edit path, LeagueForm.test.tsx's own "prefills the Basic Info tab
   // from initialValues" test already proves LeagueForm renders these correctly given the right
   // props; this proves LeagueFormPage actually passes them.
   it('edit mode: prefills the form with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
@@ -571,7 +571,7 @@ describe('LeagueFormPage', () => {
     })
   })
 
-  // docs/specs/050-league-schedule-and-fixtures.md item 4/28: the new Schedule tab — a season-
+  // docs/specs/050-league-schedule-and-fixtures.md item 4/28: the new Schedule tab, a season-
   // scoped fixture table (LeagueFixturesTable) under a content line with Share and a filled "Add match" shortcut
   // pre-filling League/Season (docs/specs/095).
   describe('Schedule tab', () => {
@@ -880,7 +880,7 @@ describe('LeagueFormPage', () => {
       )
     })
 
-    // docs/specs/052-league-playing-conditions.md: a second, independent Share flow — never
+    // docs/specs/052-league-playing-conditions.md: a second, independent Share flow, never
     // touches the Schedule tab's own ShareScheduleDialog/shareOpen state.
     it('"Share" button on the Playing Conditions tab opens PlayingConditionsShareDialog, independent of the Schedule tab\'s own Share', async () => {
       const user = userEvent.setup()
@@ -901,7 +901,7 @@ describe('LeagueFormPage', () => {
     })
   })
 
-  // docs/specs/054-league-contacts.md and docs/specs/095: the last "Contacts" tab — only in edit mode, a panel of the
+  // docs/specs/054-league-contacts.md and docs/specs/095: the last "Contacts" tab, only in edit mode, a panel of the
   // league's own named contacts as zebra rows, with a filled "Add contact" in its header.
   describe('Contacts tab', () => {
     function renderContactsTab() {
@@ -940,7 +940,7 @@ describe('LeagueFormPage', () => {
       renderContactsTab()
 
       await screen.findByText('Edit League')
-      // Switch off the Details tab first — LeagueForm renders its own nested "Basic Info"/
+      // Switch off the Details tab first, LeagueForm renders its own nested "Basic Info"/
       // "Branding"/"Social Media" Tabs while active, which would otherwise also match
       // getAllByRole('tab') and pollute this assertion about the outer tab row.
       await user.click(screen.getByRole('tab', { name: 'Teams' }))

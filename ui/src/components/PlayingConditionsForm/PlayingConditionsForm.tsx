@@ -12,7 +12,7 @@ import { Input } from '../Input'
 import { resolveEffectiveMaxOversPerBowler } from '../../utils/playingConditions'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 
-// Stable id the <form> element renders with — mirrors LEAGUE_FORM_ID/TEAM_FORM_ID's own precedent: the Save button
+// Stable id the <form> element renders with, mirrors LEAGUE_FORM_ID/TEAM_FORM_ID's own precedent: the Save button
 // lives outside the form (the Playing conditions tab's footer, docs/specs/095) and submits it with form={this id}.
 export const PLAYING_CONDITIONS_FORM_ID = 'playing-conditions-form'
 
@@ -62,7 +62,7 @@ const POINTS_FIELDS: { field: PointsField; label: string }[] = [
   { field: 'pointsForForfeitWin', label: 'Points for forfeit win' },
 ]
 
-// docs/specs/052-league-playing-conditions.md UI Requirements item 2 — a reasonable starting point
+// docs/specs/052-league-playing-conditions.md UI Requirements item 2, a reasonable starting point
 // for a typical T20 league so a first-ever save isn't a wall of empty required fields, matching
 // LeagueForm's own precedent of defaulting maxPlayingXiSize to 11. Only seeded when initialValues
 // is absent; every value remains freely editable.
@@ -99,7 +99,7 @@ function toFormState(initialValues?: PlayingConditionsPayload | null): FormState
 
 // Mirrors the server's own cross-field validation (UpdateLeaguePlayingConditionsRequest's bean
 // validation plus LeaguePlayingConditionsServiceImpl.update()'s cross-field rules) so an obviously-
-// invalid combination never round-trips to the backend just to be rejected — same posture
+// invalid combination never round-trips to the backend just to be rejected, same posture
 // LeagueForm's own validate() already documents for minAge <= maxAge.
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {}
@@ -240,7 +240,7 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
       <Box sx={{ gridColumn: '1 / -1' }}>
         <FieldWithInfo
           multiline
-          info="Optional — free text for circle/leg-side clauses too varied to model as fields"
+          info="Optional: free text for circle/leg-side clauses too varied to model as fields"
           infoLabel="About fielding restrictions notes"
         >
           <Input
@@ -302,7 +302,7 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
         {values.bonusPointsEnabled && (
           <>
             <FieldWithInfo
-              info="e.g. 17 — the batting-second side earns a bonus point for chasing before this over"
+              info="e.g. 17: the batting-second side earns a bonus point for chasing before this over"
               infoLabel="About the early-chase overs threshold"
             >
               <Input
@@ -315,7 +315,7 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
               />
             </FieldWithInfo>
             <FieldWithInfo
-              info="e.g. 80 — the bowling-second side earns a bonus point for restricting them to this % of the target"
+              info="e.g. 80: the bowling-second side earns a bonus point for restricting them to this % of the target"
               infoLabel="About the bowling restriction percentage"
             >
               <Input
@@ -337,7 +337,7 @@ export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingCondit
       )}
 
       <FormSectionHeading icon={<NotesOutlinedIcon />} title="Notes" />
-      <FieldWithInfo multiline info="Optional — anything club-specific that doesn't fit the fields above" infoLabel="About additional notes">
+      <FieldWithInfo multiline info="Optional: anything club-specific that doesn't fit the fields above" infoLabel="About additional notes">
         <Input
           label="Additional notes"
           value={values.additionalNotes}

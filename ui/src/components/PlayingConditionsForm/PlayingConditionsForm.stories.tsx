@@ -37,7 +37,7 @@ const savedValues: PlayingConditionsPayload = {
   additionalNotes: 'DLS applies for rain-affected matches.',
 }
 
-// First-ever save for this league+season — seeded T20 point defaults, no bonus fields mounted.
+// First-ever save for this league+season, seeded T20 point defaults, no bonus fields mounted.
 export const NewSeason: Story = {
   args: { onSubmit: () => undefined },
 }
@@ -47,7 +47,7 @@ export const SavedValues: Story = {
 }
 
 // Play function turns the bonus switch on to actually exercise the "genuinely unmounted, not
-// disabled" threshold fields — same pattern TeamSheetCommunicationDialog's own WhatsAppSelected
+// disabled" threshold fields, same pattern TeamSheetCommunicationDialog's own WhatsAppSelected
 // story uses for a state only reachable via interaction, not a settable prop.
 export const BonusPointsEnabled: Story = {
   args: { onSubmit: () => undefined },
