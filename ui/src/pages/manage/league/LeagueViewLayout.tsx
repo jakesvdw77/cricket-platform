@@ -43,6 +43,7 @@ import { generateLeagueScheduleIcs } from '../../../utils/leagueScheduleIcs'
 import { triggerDownload } from '../../../utils/triggerDownload'
 import { leagueBadges } from '../leagues/leagueBadges'
 import { DuplicateLeagueDialog } from '../leagues/DuplicateLeagueDialog'
+import { editTabForView } from '../leagueEdit/leagueEditTabConfig'
 import { LeagueKeyFigures } from './LeagueKeyFigures'
 import type { LeagueViewContext } from './leagueViewContext'
 
@@ -200,6 +201,18 @@ export default function LeagueViewLayout() {
   const activeSegment = location.pathname.split('/').filter(Boolean).pop()
   const activeTab = VIEW_TABS.some((tab) => tab.segment === activeSegment) ? activeSegment : false
 
+  // Edit opens the tab matching the view on screen (none for an unknown view: Details), keeping the selected season.
+  const editParams = new URLSearchParams()
+  const editTab = editTabForView(activeSegment)
+  if (editTab) {
+    editParams.set('tab', editTab)
+  }
+  if (selectedSeasonId) {
+    editParams.set('seasonId', selectedSeasonId)
+  }
+  const editQuery = editParams.toString()
+  const editPath = `${leagueBasePath}/edit${editQuery ? `?${editQuery}` : ''}`
+
   const context: LeagueViewContext = {
     clubId,
     leagueId: league.id,
@@ -293,7 +306,7 @@ export default function LeagueViewLayout() {
               </MuiButton>
               <MuiButton
                 component={RouterLink}
-                to={selectedSeasonId ? `${leagueBasePath}/edit?seasonId=${selectedSeasonId}` : `${leagueBasePath}/edit`}
+                to={editPath}
                 variant="contained"
                 startIcon={<EditOutlinedIcon fontSize="small" />}
               >

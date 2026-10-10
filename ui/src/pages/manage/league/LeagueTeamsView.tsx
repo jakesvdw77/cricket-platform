@@ -3,6 +3,14 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Avatar, Box, Link as MuiLink, Skeleton, Stack, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import AddIcon from '@mui/icons-material/Add'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import { Button } from '../../../components/Button'
+import { LinkExistingRecordDialog } from '../../../components/LinkExistingRecordDialog'
+import { createLeagueAffiliation } from '../../../api/leagueAffiliationApi'
+import type { Team } from '../../../api/teamApi'
+import { useLeagueTeamActions } from '../leagueTeams/useLeagueTeamActions'
 import { avatarSx } from '../../../components/RecordCard'
 import { Card } from '../../../components/Card'
 import { CompactToggleGroup } from '../../../components/CompactToggleGroup'
@@ -71,10 +79,20 @@ function TeamTile({ name, abbreviation, logoUrl, to }: TeamTileProps) {
   )
 }
 
-function TeamsCard({ title, count, testId, children }: { title: string; count: number; testId: string; children: React.ReactNode }) {
+interface TeamsCardProps {
+  title: string
+  count: number
+  testId: string
+  // Header buttons: the card's one filled button, plus any outlined one. They wrap onto a second line on a narrow screen.
+  actions?: React.ReactNode
+  children: React.ReactNode
+}
+
+function TeamsCard({ title, count, testId, actions, children }: TeamsCardProps) {
   return (
     <Card data-testid={testId} sx={{ height: '100%' }} contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }}>
-      <Stack direction="row" alignItems="center" spacing={1.25}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
         <Box
           aria-hidden
           sx={{ width: 32, height: 32, flex: 'none', borderRadius: 1, bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'center', '& svg': { fontSize: 20 } }}
@@ -85,18 +103,49 @@ function TeamsCard({ title, count, testId, children }: { title: string; count: n
           {`${title} · ${count}`}
         </Typography>
       </Stack>
+      {actions && (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%' }}>{actions}</Box>
+      )}
+      </Box>
       <Box sx={{ display: 'grid', gap: 1.25, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, alignContent: 'start' }}>{children}</Box>
     </Card>
   )
 }
 
-// docs/specs/091 (C) (replacing 072 section 5's tile cards): the Teams view, read-only - a search and an All | Our teams |
+// docs/specs/091 (C) (replacing 072 section 5's tile cards): the Teams view, a read-focused page whose only writes are the
+// Add actions (Add team, Add league team, Copy from...), the same dialogs as the edit page's Teams tab - a search and an All | Our teams |
 // League teams switch, then "Our teams" (the season's affiliated club teams, linked to their page) and "League teams" (the
 // season's active league teams, not linked) as equal-height cards with icon-tile headings.
 export default function LeagueTeamsView() {
-  const { seasons, seasonLabel, teamsById, affiliationsForSeason, activeLeagueTeams, isLoadingTeams } = useLeagueView()
+  const { clubId, leagueId, league, seasons, selectedSeasonId, seasonLabel, teamsById, affiliationsForSeason, activeLeagueTeams, isLoadingTeams } =
+    useLeagueView()
+  const queryClient = useQueryClient()
+  const [linkOpen, setLinkOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [scope, setScope] = useState<TeamScope>('all')
+
+  const contextLabel = `${league.name} · ${seasonLabel}`
+  const leagueTeamActions = useLeagueTeamActions({
+    clubId,
+    leagueId,
+    seasonId: selectedSeasonId,
+    contextLabel,
+    targetTeams: activeLeagueTeams,
+    announceAdded: true,
+  })
+
+  // The club's active teams not yet affiliated to this league for the selected season (as on the edit page).
+  const affiliatedTeamIds = new Set(affiliationsForSeason.map((affiliation) => affiliation.teamId))
+  const linkableTeams: Team[] = Array.from(teamsById.values()).filter((team) => team.active && !affiliatedTeamIds.has(team.id))
+
+  const linkMutation = useMutation({
+    mutationFn: (team: Team) => createLeagueAffiliation(clubId, leagueId, team.id, selectedSeasonId),
+    onSuccess: (_affiliation, team) => {
+      queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'leagues', leagueId, 'affiliations'] })
+      setLinkOpen(false)
+      leagueTeamActions.setFeedback({ severity: 'success', message: `${team.name} was added to this season.` })
+    },
+  })
 
   const term = search.trim().toLowerCase()
   const ownTeams = useMemo(
@@ -127,6 +176,7 @@ export default function LeagueTeamsView() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      {leagueTeamActions.feedbackAlert}
       <FilterBar
         density="compact"
         searchValue={search}
@@ -157,14 +207,26 @@ export default function LeagueTeamsView() {
 
       {isLoadingTeams && nothingRegistered ? (
         <Skeleton variant="rounded" height={96} aria-label="Loading teams" />
-      ) : nothingRegistered ? (
-        <Typography variant="body2" color="text.secondary">
-          No teams registered for this season yet.
-        </Typography>
       ) : (
+        <>
+        {nothingRegistered && (
+          // The cards stay so the first team can be added from here.
+          <Typography variant="body2" color="text.secondary">
+            No teams registered for this season yet.
+          </Typography>
+        )}
         <Box sx={{ display: 'grid', gap: 2, alignItems: 'stretch', gridTemplateColumns: { xs: '1fr', md: showOwn && showLeague ? 'repeat(2, minmax(0, 1fr))' : '1fr' } }}>
           {showOwn && (
-            <TeamsCard testId="league-teams-own" title="Our teams" count={ownTeams.length}>
+            <TeamsCard
+              testId="league-teams-own"
+              title="Our teams"
+              count={ownTeams.length}
+              actions={
+                <Button size="sm" startIcon={<GroupsOutlinedIcon fontSize="small" />} onClick={() => setLinkOpen(true)} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
+                  Add team
+                </Button>
+              }
+            >
               {ownTeams.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   {term ? 'No teams match your search.' : 'None of your teams are entered this season.'}
@@ -177,7 +239,29 @@ export default function LeagueTeamsView() {
             </TeamsCard>
           )}
           {showLeague && (
-            <TeamsCard testId="league-teams-league" title="League teams" count={leagueTeams.length}>
+            <TeamsCard
+              testId="league-teams-league"
+              title="League teams"
+              count={leagueTeams.length}
+              actions={
+                <>
+                  <Button size="sm" startIcon={<AddIcon fontSize="small" />} onClick={leagueTeamActions.openAdd} disabled={!selectedSeasonId} sx={{ flex: 'none' }}>
+                    Add league team
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+                    aria-label="Copy teams from another league or season"
+                    onClick={leagueTeamActions.openCopy}
+                    disabled={!selectedSeasonId}
+                    sx={{ flex: 'none' }}
+                  >
+                    Copy from...
+                  </Button>
+                </>
+              }
+            >
               {leagueTeams.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   {term ? 'No teams match your search.' : 'No league teams registered this season.'}
@@ -190,7 +274,22 @@ export default function LeagueTeamsView() {
             </TeamsCard>
           )}
         </Box>
+        </>
       )}
+
+      {leagueTeamActions.dialogs}
+      <LinkExistingRecordDialog<Team>
+        open={linkOpen}
+        onClose={() => setLinkOpen(false)}
+        title="Affiliate a team for this season"
+        candidates={linkableTeams}
+        loading={isLoadingTeams}
+        getOptionLabel={(option) => option.name}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        searchLabel="Search teams"
+        searchPlaceholder="Search by name"
+        onLink={(option) => linkMutation.mutate(option)}
+      />
     </Box>
   )
 }
