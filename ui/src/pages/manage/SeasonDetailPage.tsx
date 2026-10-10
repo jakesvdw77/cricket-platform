@@ -6,11 +6,11 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import { RecordDetailScreen, DetailFieldRow, DetailFieldGrid } from '../../components/RecordDetailScreen'
 import { EmptyState } from '../../components/EmptyState'
 import { listSeasons } from '../../api/seasonApi'
-import { badgeFor } from './SeasonList'
+import { seasonBadge } from '../../utils/seasonStatus'
 
 // docs/specs/036-view-first-record-detail-screens.md: the read-only counterpart to
 // SeasonFormPage.tsx — same data-fetch shape (list + find-by-id, no single-season GET exists),
-// same badgeFor mapping (imported, not duplicated). One un-headed section, since Season was
+// same status badge as the Seasons list (utils/seasonStatus.ts, not duplicated). One un-headed section, since Season was
 // already untabbed on its edit form.
 export default function SeasonDetailPage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
@@ -50,7 +50,7 @@ export default function SeasonDetailPage() {
       backTo="/manage/fixtures/seasons"
       backLabel="Back to Seasons"
       avatar={{ fallback: <EventOutlinedIcon fontSize="small" />, shape: 'rounded' }}
-      badge={badgeFor(season)}
+      badge={seasonBadge(season)}
       editTo={`/manage/fixtures/seasons/${season.id}/edit`}
       sections={[
         {
