@@ -153,7 +153,7 @@ function FixtureRow({ match, teamsById }: { match: Match; teamsById: Map<string,
 
 // docs/specs/091 (C): the Schedule tab's fixtures as a zebra table (the standard of PlayerTable, MatchTable and PollTable):
 // When, Match with a logo beside each team, Venue and an "Our match" chip; our matches open the match, the others are plain
-// rows. (The edit form's Schedule tab keeps the LeagueFixtures list.)
+// rows. (The edit form's Schedule tab uses this table too.)
 export function LeagueFixturesTable({ matches, teamsById }: LeagueFixturesTableProps) {
   return (
     <Box

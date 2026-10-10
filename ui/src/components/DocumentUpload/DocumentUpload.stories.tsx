@@ -20,6 +20,22 @@ export const Empty: Story = {
   },
 }
 
+// docs/specs/095: the compact pair of buttons for a content line.
+export const InlinePopulated: Story = {
+  args: {
+    label: 'Playing Conditions',
+    displayName: 'Playing Conditions.pdf',
+    layout: 'inline',
+    value: { documentUrl: '/media/2f6a1c9e-playing-conditions.pdf', uploadedAt: '2026-02-01T09:00:00Z' },
+    onUpload: () => Promise.resolve('/media/2f6a1c9e-playing-conditions.pdf'),
+    onUploaded: () => undefined,
+  },
+}
+
+export const InlineEmpty: Story = {
+  args: { ...InlinePopulated.args, value: null },
+}
+
 export const Populated: Story = {
   args: {
     label: 'Playing Conditions',

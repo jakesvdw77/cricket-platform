@@ -39,31 +39,23 @@ const savedValues: PlayingConditionsPayload = {
 
 // First-ever save for this league+season — seeded T20 point defaults, no bonus fields mounted.
 export const NewSeason: Story = {
-  args: { onSubmit: () => undefined, pending: false },
+  args: { onSubmit: () => undefined },
 }
 
 export const SavedValues: Story = {
-  args: { onSubmit: () => undefined, pending: false, initialValues: savedValues },
+  args: { onSubmit: () => undefined, initialValues: savedValues },
 }
 
-// Play function checks the bonus checkbox to actually exercise the "genuinely unmounted, not
+// Play function turns the bonus switch on to actually exercise the "genuinely unmounted, not
 // disabled" threshold fields — same pattern TeamSheetCommunicationDialog's own WhatsAppSelected
 // story uses for a state only reachable via interaction, not a settable prop.
 export const BonusPointsEnabled: Story = {
-  args: { onSubmit: () => undefined, pending: false },
+  args: { onSubmit: () => undefined },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByLabelText(/enable bonus points/i))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /enable bonus points/i }))
     await canvas.findByLabelText('Early-chase overs threshold')
   },
-}
-
-export const Pending: Story = {
-  args: { onSubmit: () => undefined, pending: true, initialValues: savedValues },
-}
-
-export const ErrorState: Story = {
-  args: { onSubmit: () => undefined, pending: false, error: new Error('boom') },
 }
 
 export const MobileViewport: Story = {

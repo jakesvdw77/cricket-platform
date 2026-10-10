@@ -13,7 +13,7 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates LeagueFixtures.tsx's own (unexported) resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide — deliberately, matching
 // leagueSchedulePdf.ts's/leagueSchedulePoster.ts's own established precedent of small pure
 // resolution helpers being independently duplicated per consumer rather than centralized. Only
 // `.name` is read here — no logo to embed in a calendar event.

@@ -381,7 +381,7 @@ describe('LeagueFormPage', () => {
       second.unmount()
 
       renderAt('/manage/fixtures/leagues/league-1/edit?tab=conditions')
-      expect(await screen.findByText('Full Document')).toBeInTheDocument()
+      expect(await screen.findByText(/^Playing conditions for /)).toBeInTheDocument()
     })
 
     it('falls back to Details for an unknown ?tab= value', async () => {
@@ -572,8 +572,8 @@ describe('LeagueFormPage', () => {
   })
 
   // docs/specs/050-league-schedule-and-fixtures.md item 4/28: the new Schedule tab — a season-
-  // scoped fixture list (via LeagueFixtures), an "Add Match" shortcut pre-filling League/Season,
-  // and the Playing Conditions DocumentUpload control.
+  // scoped fixture table (LeagueFixturesTable) under a content line with Share and a filled "Add match" shortcut
+  // pre-filling League/Season (docs/specs/095).
   describe('Schedule tab', () => {
     function renderScheduleTab() {
       const routerRender = render(
@@ -607,7 +607,7 @@ describe('LeagueFormPage', () => {
       listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
     })
 
-    it('renders the league+season\'s matches via LeagueFixtures', async () => {
+    it('shows the content line and the league+season\'s matches in the fixtures table', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue({
         content: [makeMatch({ homeTeamId: 'team-1', awayTeamName: 'Riverside Occasionals' })],
@@ -624,6 +624,8 @@ describe('LeagueFormPage', () => {
 
       expect(await screen.findByText('1st XI')).toBeInTheDocument()
       expect(screen.getByText('Riverside Occasionals')).toBeInTheDocument()
+      expect(screen.getByText('Showing 1 match · 2026')).toBeInTheDocument()
+      expect(screen.getByRole('table')).toBeInTheDocument()
       expect(listMatches).toHaveBeenCalledWith(
         'test-club-id',
         expect.objectContaining({ leagueId: 'league-1', seasonId: 'season-1' }),
@@ -654,6 +656,7 @@ describe('LeagueFormPage', () => {
       expect(screen.getByText('Opponent page 1')).toBeInTheDocument()
       expect(screen.getByText('Opponent page 2')).toBeInTheDocument()
       expect(listMatches).toHaveBeenCalledTimes(3)
+      expect(screen.getByText('Showing 3 matches · 2026')).toBeInTheDocument()
       expect(listMatches).toHaveBeenLastCalledWith(
         'test-club-id',
         expect.objectContaining({ page: 2, size: 200, sort: 'matchDate,asc', leagueId: 'league-1', seasonId: 'season-1' }),
@@ -674,7 +677,7 @@ describe('LeagueFormPage', () => {
       expect(screen.queryByText('No fixtures yet')).not.toBeInTheDocument()
     })
 
-    it('renders the League Fixtures empty state when the selected season has no matches yet', async () => {
+    it('renders the empty state when the selected season has no matches yet', async () => {
       const user = userEvent.setup()
 
       renderScheduleTab()
@@ -685,21 +688,21 @@ describe('LeagueFormPage', () => {
       expect(await screen.findByText('No fixtures yet')).toBeInTheDocument()
     })
 
-    it('"Add Match" navigates to the create route pre-filling the selected League and Season as query params', async () => {
+    it('"Add match" navigates to the create route pre-filling the selected League and Season as query params', async () => {
       const user = userEvent.setup()
 
       renderScheduleTab()
 
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Schedule' }))
-      await user.click(await screen.findByRole('button', { name: 'Add Match' }))
+      await user.click(await screen.findByRole('button', { name: 'Add match' }))
 
       expect(await screen.findByText('Add Match Page: ?leagueId=league-1&seasonId=season-1')).toBeInTheDocument()
     })
 
     // docs/specs/051-league-schedule-sharing.md item 8: the Share button, rendered alongside "Add
-    // Match" in the same row, opens the same ShareScheduleDialog used on the league Schedule view.
-    it('"Share" button, alongside "Add Match", opens ShareScheduleDialog', async () => {
+    // match" on the content line, opens the same ShareScheduleDialog used on the league Schedule view.
+    it('"Share" button, alongside "Add match", opens ShareScheduleDialog', async () => {
       const user = userEvent.setup()
 
       renderScheduleTab()
@@ -707,7 +710,7 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Schedule' }))
 
-      expect(screen.getByRole('button', { name: 'Add Match' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add match' })).toBeInTheDocument()
       expect(screen.queryByText('Share Schedule')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Share' }))
@@ -717,9 +720,8 @@ describe('LeagueFormPage', () => {
 
   })
 
-  // docs/specs/052-league-playing-conditions.md: promotes Playing Conditions out of the Schedule
-  // tab into its own 4th tab — the "Full Document" DocumentUpload control (relocated, unchanged
-  // capability) plus the new structured PlayingConditionsForm.
+  // docs/specs/052-league-playing-conditions.md and docs/specs/095: the Playing conditions tab - a content line with the
+  // PDF upload / view and Share, the sectioned PlayingConditionsForm, and a footer Save bound to the form by id.
   describe('Playing Conditions tab', () => {
     function renderPlayingConditionsTab() {
       return render(
@@ -741,7 +743,7 @@ describe('LeagueFormPage', () => {
       listTeamsForClub.mockResolvedValue([makeTeam({ id: 'team-1', name: '1st XI' })])
     })
 
-    it('renders the Playing Conditions DocumentUpload control under a "Full Document" heading, empty by default', async () => {
+    it('shows the scope line and an Upload button (no document yet) on the content line', async () => {
       const user = userEvent.setup()
       getPlayingConditions.mockResolvedValue(null)
 
@@ -750,8 +752,9 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
-      expect(await screen.findByText('Full Document')).toBeInTheDocument()
-      expect(await screen.findByText('No document uploaded yet')).toBeInTheDocument()
+      expect(await screen.findByText('Playing conditions for 2026')).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Upload' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Playing Conditions.pdf' })).not.toBeInTheDocument()
     })
 
     it('does not render the DocumentUpload control under the Schedule tab any more', async () => {
@@ -763,7 +766,7 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Schedule' }))
 
-      expect(screen.queryByText('No document uploaded yet')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Upload' })).not.toBeInTheDocument()
     })
 
     it('renders the uploaded Playing Conditions document with a View action once one exists', async () => {
@@ -796,9 +799,9 @@ describe('LeagueFormPage', () => {
       await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
       // docs/specs/072-league-view-pages.md: the stored uuid file name is never shown.
-      expect(await screen.findByText('Playing Conditions.pdf')).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Playing Conditions.pdf' })).toBeInTheDocument()
       expect(screen.queryByText('2f6a1c9e-playing-conditions.pdf')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
     })
 
     it('uploading a Playing Conditions PDF calls uploadPlayingConditions for the selected league+season', async () => {
@@ -817,7 +820,7 @@ describe('LeagueFormPage', () => {
 
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
-      await screen.findByText('No document uploaded yet')
+      await screen.findByRole('button', { name: 'Upload' })
 
       const file = new File(['%PDF-1.4'], 'playing-conditions.pdf', { type: 'application/pdf' })
       await user.upload(screen.getByLabelText('Playing Conditions file'), file)
@@ -827,7 +830,7 @@ describe('LeagueFormPage', () => {
       )
     })
 
-    it('renders PlayingConditionsForm under a "Match Format & Points" heading and saves via updatePlayingConditions', async () => {
+    it('renders the sectioned PlayingConditionsForm and saves from the footer button via updatePlayingConditions', async () => {
       const user = userEvent.setup()
       getPlayingConditions.mockResolvedValue(null)
       updatePlayingConditions.mockResolvedValueOnce({
@@ -857,11 +860,15 @@ describe('LeagueFormPage', () => {
       await screen.findByText('Edit League')
       await user.click(screen.getByRole('tab', { name: 'Playing conditions' }))
 
-      expect(await screen.findByText('Match Format & Points')).toBeInTheDocument()
+      for (const name of ['Innings', 'Points', 'Bonus points', 'Notes']) {
+        expect(await screen.findByRole('heading', { name })).toBeInTheDocument()
+      }
+      expect(screen.queryByText('Full Document')).not.toBeInTheDocument()
+      expect(screen.queryByText('Match Format & Points')).not.toBeInTheDocument()
 
       await user.type(screen.getByLabelText('Max overs per innings'), '20')
       await user.type(screen.getByLabelText('Powerplay overs'), '6')
-      await user.click(screen.getByRole('button', { name: 'Save Playing Conditions' }))
+      await user.click(screen.getByRole('button', { name: 'Save playing conditions' }))
 
       await waitFor(() =>
         expect(updatePlayingConditions).toHaveBeenCalledWith(

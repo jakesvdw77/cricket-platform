@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { Box, CircularProgress, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { Button } from '../Button'
 
 // docs/specs/050-league-schedule-and-fixtures.md: the first PDF/document upload control in this
@@ -35,6 +36,9 @@ export interface DocumentUploadProps {
   // docs/specs/072-league-view-pages.md: replaces the stored (uuid-prefixed) file name as the line
   // shown for an uploaded document. Omitted, the name derived from the URL is shown as before.
   displayName?: string
+  // docs/specs/095: 'inline' is the compact pair of buttons for a content line (a View button named displayName and a
+  // Upload / Replace button, errors in a small line under them) instead of the bordered 'card' with its caption.
+  layout?: 'card' | 'inline'
 }
 
 // The backend never preserves a document's original filename (MediaServiceImpl generates a UUID
@@ -45,7 +49,7 @@ function filenameFromUrl(url: string): string {
   return segments[segments.length - 1] || url
 }
 
-export function DocumentUpload({ label, value, onUpload, onUploaded, displayName }: DocumentUploadProps) {
+export function DocumentUpload({ label, value, onUpload, onUploaded, displayName, layout = 'card' }: DocumentUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +77,51 @@ export function DocumentUpload({ label, value, onUpload, onUploaded, displayName
     } finally {
       setUploading(false)
     }
+  }
+
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept={ALLOWED_TYPES.join(',')}
+      hidden
+      aria-label={`${label} file`}
+      onChange={handleFileSelected}
+    />
+  )
+
+  if (layout === 'inline') {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', sm: 'flex-end' }, gap: 0.5 }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          {value && (
+            <Button
+              variant="secondary"
+              size="sm"
+              startIcon={<DescriptionOutlinedIcon fontSize="small" />}
+              onClick={() => window.open(value.documentUrl, '_blank', 'noopener')}
+            >
+              {displayName ?? 'View'}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            startIcon={uploading ? <CircularProgress size={16} aria-label="Uploading" /> : <UploadFileOutlinedIcon fontSize="small" />}
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {uploading ? 'Uploading…' : value ? 'Replace' : 'Upload'}
+          </Button>
+        </Stack>
+        {fileInput}
+        {error && (
+          <Typography variant="caption" color="error.main" role="alert">
+            {error}
+          </Typography>
+        )}
+      </Box>
+    )
   }
 
   return (
@@ -142,14 +191,7 @@ export function DocumentUpload({ label, value, onUpload, onUploaded, displayName
         </Stack>
       </Box>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ALLOWED_TYPES.join(',')}
-        hidden
-        aria-label={`${label} file`}
-        onChange={handleFileSelected}
-      />
+      {fileInput}
 
       <Typography variant="caption" color={error ? 'error.main' : 'text.secondary'}>
         {error ?? `${ALLOWED_TYPES_LABEL}, up to 5MB.`}

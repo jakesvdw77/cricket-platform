@@ -1,23 +1,25 @@
 import { useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
-import { Box, Checkbox, FormControlLabel, Stack, Typography } from '@mui/material'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import { Box, Tooltip, Typography } from '@mui/material'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import StarOutlineOutlinedIcon from '@mui/icons-material/StarOutlineOutlined'
+import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined'
+import { CompactSwitch } from '../CompactSwitch'
+import { FormSectionHeading } from '../FormSectionHeading'
 import { Input } from '../Input'
-import { Button } from '../Button'
-import { errorDetail } from '../../utils/errorDetail'
 import { resolveEffectiveMaxOversPerBowler } from '../../utils/playingConditions'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 
-// Stable id the <form> element renders with — mirrors LEAGUE_FORM_ID/TEAM_FORM_ID's own precedent,
-// even though (unlike LeagueForm) this form's Save button lives inside itself rather than a
-// parent RecordFormScreen actions bar — see this component's own doc comment below.
+// Stable id the <form> element renders with — mirrors LEAGUE_FORM_ID/TEAM_FORM_ID's own precedent: the Save button
+// lives outside the form (the Playing conditions tab's footer, docs/specs/095) and submits it with form={this id}.
 export const PLAYING_CONDITIONS_FORM_ID = 'playing-conditions-form'
 
 export interface PlayingConditionsFormProps {
   // null/undefined when nothing has been saved yet for this league+season.
   initialValues?: PlayingConditionsPayload | null
   onSubmit: (payload: PlayingConditionsPayload) => void
-  pending: boolean
-  error?: unknown
 }
 
 interface FormState {
@@ -145,7 +147,12 @@ function validate(values: FormState): FormErrors {
   return errors
 }
 
-export function PlayingConditionsForm({ initialValues, onSubmit, pending, error }: PlayingConditionsFormProps) {
+const fieldGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }
+
+// docs/specs/052 (fields, validation, payload) restyled by docs/specs/095: FormSectionHeading sections (Innings, Points, Bonus
+// points, Notes) in a three-column grid from md. There is no Save button in here: the tab's footer owns it and submits this
+// form through PLAYING_CONDITIONS_FORM_ID, and shows the save error.
+export function PlayingConditionsForm({ initialValues, onSubmit }: PlayingConditionsFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
 
@@ -189,165 +196,182 @@ export function PlayingConditionsForm({ initialValues, onSubmit, pending, error 
 
   const maxOversPerInningsNum = values.maxOversPerInnings.trim() ? Number(values.maxOversPerInnings) : null
   const autoMaxOversPerBowler = resolveEffectiveMaxOversPerBowler(maxOversPerInningsNum, null)
-  const maxOversPerBowlerHelperText =
-    errors.maxOversPerBowler ??
-    `Leave blank to use the standard ceil(overs ÷ 5) rule${autoMaxOversPerBowler != null ? ` (auto: ${autoMaxOversPerBowler})` : ''}`
 
-  const fieldGridSx = { display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mt: 1.5 }
-  const groupHeadingSx = { display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }
+  // Compact 40 px inputs, no helper text except validation errors: examples and the live "Auto (N)" are placeholders (so the
+  // label stays shrunk above them), and the longer explanations live in an info-icon tooltip beside the field.
+  const placeholderLabel = { shrink: true }
+  const innings = (
+    <>
+      <Input
+        label="Max overs per innings"
+        type="number"
+        placeholder="e.g. 20"
+        InputLabelProps={placeholderLabel}
+        value={values.maxOversPerInnings}
+        onChange={handleChange('maxOversPerInnings')}
+        error={Boolean(errors.maxOversPerInnings)}
+        helperText={errors.maxOversPerInnings}
+        inputProps={{ min: 1 }}
+      />
+      <Input
+        label="Powerplay overs"
+        type="number"
+        placeholder="e.g. 6"
+        InputLabelProps={placeholderLabel}
+        value={values.powerplayOvers}
+        onChange={handleChange('powerplayOvers')}
+        error={Boolean(errors.powerplayOvers)}
+        helperText={errors.powerplayOvers}
+        inputProps={{ min: 1 }}
+      />
+      <FieldWithInfo info="Leave blank to use the standard ceil(overs ÷ 5) rule" infoLabel="About max overs per bowler">
+        <Input
+          label="Max overs per bowler"
+          type="number"
+          placeholder={autoMaxOversPerBowler != null ? `Auto (${autoMaxOversPerBowler})` : 'Auto'}
+          InputLabelProps={placeholderLabel}
+          value={values.maxOversPerBowler}
+          onChange={handleChange('maxOversPerBowler')}
+          error={Boolean(errors.maxOversPerBowler)}
+          helperText={errors.maxOversPerBowler}
+          inputProps={{ min: 1 }}
+        />
+      </FieldWithInfo>
+      <Box sx={{ gridColumn: '1 / -1' }}>
+        <FieldWithInfo
+          multiline
+          info="Optional — free text for circle/leg-side clauses too varied to model as fields"
+          infoLabel="About fielding restrictions notes"
+        >
+          <Input
+            label="Fielding restrictions notes"
+            value={values.fieldingRestrictionsNotes}
+            onChange={handleChange('fieldingRestrictionsNotes')}
+            multiline
+            minRows={2}
+          />
+        </FieldWithInfo>
+      </Box>
+      <Box sx={{ gridColumn: '1 / -1' }}>
+        <CompactSwitch
+          checked={values.allowSubstitutions}
+          onChange={(checked) => setValues((prev) => ({ ...prev, allowSubstitutions: checked }))}
+          label="Allow substitutions (e.g. Vets cricket, where a twelfth man may fully bat/bowl)"
+          noWrap={false}
+        />
+      </Box>
+    </>
+  )
 
   return (
-    <Box component="form" id={PLAYING_CONDITIONS_FORM_ID} onSubmit={handleSubmit} noValidate>
-      <Stack spacing={4}>
-        <Box>
-          <Typography variant="subtitle2" sx={groupHeadingSx}>
-            Match Format
-          </Typography>
-          <Box sx={fieldGridSx}>
-            <Input
-              label="Max overs per innings"
-              type="number"
-              value={values.maxOversPerInnings}
-              onChange={handleChange('maxOversPerInnings')}
-              error={Boolean(errors.maxOversPerInnings)}
-              helperText={errors.maxOversPerInnings ?? 'e.g. 20 for a T20 league'}
-              inputProps={{ min: 1 }}
-            />
-            <Input
-              label="Powerplay overs"
-              type="number"
-              value={values.powerplayOvers}
-              onChange={handleChange('powerplayOvers')}
-              error={Boolean(errors.powerplayOvers)}
-              helperText={errors.powerplayOvers ?? 'e.g. 6'}
-              inputProps={{ min: 1 }}
-            />
-            <Input
-              label="Max overs per bowler"
-              type="number"
-              value={values.maxOversPerBowler}
-              onChange={handleChange('maxOversPerBowler')}
-              error={Boolean(errors.maxOversPerBowler)}
-              helperText={maxOversPerBowlerHelperText}
-              inputProps={{ min: 1 }}
-            />
-            <Box sx={{ gridColumn: '1 / -1' }}>
-              <Input
-                label="Fielding restrictions notes"
-                value={values.fieldingRestrictionsNotes}
-                onChange={handleChange('fieldingRestrictionsNotes')}
-                multiline
-                minRows={3}
-                helperText="Optional — free text for circle/leg-side clauses too varied to model as fields"
-              />
-            </Box>
-            <Box sx={{ gridColumn: '1 / -1' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={values.allowSubstitutions}
-                    onChange={(event) =>
-                      setValues((prev) => ({ ...prev, allowSubstitutions: event.target.checked }))
-                    }
-                  />
-                }
-                label="Allow substitutions (e.g. Vets cricket, where a twelfth man may fully bat/bowl)"
-              />
-            </Box>
-          </Box>
-        </Box>
+    <Box
+      component="form"
+      id={PLAYING_CONDITIONS_FORM_ID}
+      onSubmit={handleSubmit}
+      noValidate
+      sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+    >
+      <FormSectionHeading icon={<TimerOutlinedIcon />} title="Innings" />
+      <Box sx={fieldGridSx}>{innings}</Box>
 
-        <Box>
-          <Typography variant="subtitle2" sx={groupHeadingSx}>
-            Points System
-          </Typography>
-          <Box sx={fieldGridSx}>
-            {POINTS_FIELDS.map(({ field, label }) => (
-              <Input
-                key={field}
-                label={label}
-                type="number"
-                value={values[field]}
-                onChange={handleChange(field)}
-                error={Boolean(errors[field])}
-                helperText={errors[field]}
-                inputProps={{ min: 0 }}
-              />
-            ))}
-          </Box>
-        </Box>
+      <FormSectionHeading icon={<EmojiEventsOutlinedIcon />} title="Points" />
+      <Box sx={fieldGridSx}>
+        {POINTS_FIELDS.map(({ field, label }) => (
+          <Input
+            key={field}
+            label={label}
+            type="number"
+            value={values[field]}
+            onChange={handleChange(field)}
+            error={Boolean(errors[field])}
+            helperText={errors[field]}
+            inputProps={{ min: 0 }}
+          />
+        ))}
+      </Box>
 
-        <Box>
-          <Typography variant="subtitle2" sx={groupHeadingSx}>
-            Bonus Points
-          </Typography>
-          <Box sx={{ mt: 1.5 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={values.bonusPointsEnabled}
-                  onChange={(event) => setValues((prev) => ({ ...prev, bonusPointsEnabled: event.target.checked }))}
-                />
-              }
-              label="Enable bonus points"
-            />
-          </Box>
-          {values.bonusPointsEnabled && (
-            <Box sx={fieldGridSx}>
+      <FormSectionHeading icon={<StarOutlineOutlinedIcon />} title="Bonus points" />
+      <Box sx={fieldGridSx}>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <CompactSwitch
+            checked={values.bonusPointsEnabled}
+            onChange={(checked) => setValues((prev) => ({ ...prev, bonusPointsEnabled: checked }))}
+            label="Enable bonus points"
+          />
+        </Box>
+        {values.bonusPointsEnabled && (
+          <>
+            <FieldWithInfo
+              info="e.g. 17 — the batting-second side earns a bonus point for chasing before this over"
+              infoLabel="About the early-chase overs threshold"
+            >
               <Input
                 label="Early-chase overs threshold"
                 type="number"
                 value={values.bonusBattingOversThreshold}
                 onChange={handleChange('bonusBattingOversThreshold')}
                 error={Boolean(errors.bonusThresholds)}
-                helperText="e.g. 17 — the batting-second side earns a bonus point for chasing before this over"
                 inputProps={{ min: 1 }}
               />
+            </FieldWithInfo>
+            <FieldWithInfo
+              info="e.g. 80 — the bowling-second side earns a bonus point for restricting them to this % of the target"
+              infoLabel="About the bowling restriction percentage"
+            >
               <Input
                 label="Bowling restriction %"
                 type="number"
                 value={values.bonusBowlingRestrictionPercentage}
                 onChange={handleChange('bonusBowlingRestrictionPercentage')}
                 error={Boolean(errors.bonusThresholds)}
-                helperText="e.g. 80 — the bowling-second side earns a bonus point for restricting them to this % of the target"
                 inputProps={{ min: 1, max: 100 }}
               />
-            </Box>
-          )}
-          {errors.bonusThresholds && (
-            <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 1 }}>
-              {errors.bonusThresholds}
-            </Typography>
-          )}
-        </Box>
+            </FieldWithInfo>
+          </>
+        )}
+      </Box>
+      {errors.bonusThresholds && (
+        <Typography variant="caption" color="error.main" sx={{ display: 'block' }}>
+          {errors.bonusThresholds}
+        </Typography>
+      )}
 
-        <Box>
-          <Typography variant="subtitle2" sx={groupHeadingSx}>
-            Additional Notes
-          </Typography>
-          <Box sx={{ mt: 1.5 }}>
-            <Input
-              label="Additional notes"
-              value={values.additionalNotes}
-              onChange={handleChange('additionalNotes')}
-              multiline
-              minRows={3}
-              helperText="Optional — anything club-specific that doesn't fit the fields above"
-            />
-          </Box>
-        </Box>
+      <FormSectionHeading icon={<NotesOutlinedIcon />} title="Notes" />
+      <FieldWithInfo multiline info="Optional — anything club-specific that doesn't fit the fields above" infoLabel="About additional notes">
+        <Input
+          label="Additional notes"
+          value={values.additionalNotes}
+          onChange={handleChange('additionalNotes')}
+          multiline
+          minRows={2}
+        />
+      </FieldWithInfo>
+    </Box>
+  )
+}
 
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {error && (
-            <Typography variant="body2" color="error.main">
-              {errorDetail(error, 'Something went wrong saving Playing Conditions. Please try again.')}
-            </Typography>
-          )}
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save Playing Conditions'}
-          </Button>
-        </Stack>
-      </Stack>
+interface FieldWithInfoProps {
+  children: ReactNode
+  // The explanation, kept verbatim from the old helper text.
+  info: string
+  infoLabel: string
+  multiline?: boolean
+}
+
+// A field with a small info icon beside it: the tooltip carries the text that used to sit under the field.
+function FieldWithInfo({ children, info, infoLabel, multiline = false }: FieldWithInfoProps) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center', gap: 0.5, minWidth: 0 }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      <Tooltip title={info} enterTouchDelay={0}>
+        <InfoOutlinedIcon
+          aria-label={infoLabel}
+          role="img"
+          tabIndex={0}
+          fontSize="small"
+          sx={{ color: 'text.secondary', flex: 'none', mt: multiline ? 1 : 0, cursor: 'help' }}
+        />
+      </Tooltip>
     </Box>
   )
 }

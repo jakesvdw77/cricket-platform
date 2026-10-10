@@ -31,7 +31,7 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates LeagueFixtures.tsx's own (unexported) resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide — deliberately, matching
 // leagueSchedulePdf.ts's/teamSheetPdf.ts's own established precedent of small pure resolution
 // helpers being independently duplicated per consumer rather than centralized, so each file stays
 // a self-contained, independently readable unit.
@@ -73,7 +73,7 @@ async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   }
 }
 
-// e.g. "Sat, 14 Mar 2026" — duplicates LeagueFixtures.tsx's own (unexported) dateHeading.
+// e.g. "Sat, 14 Mar 2026" — duplicates the retired LeagueFixtures list's own dateHeading.
 function dateHeading(iso: string): string {
   const date = new Date(iso)
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
@@ -121,7 +121,7 @@ export interface LeagueSchedulePosterTeamFilter {
 // generateLeagueSchedulePdf, so both generators are driven by the same dialog state. The gradient
 // background is derived from `primaryColorHex` (the caller's own `useTheme().palette.primary.main`,
 // re-tinted per club via `withClubBranding()` like every other themed surface) rather than a fixed
-// palette baked into this file — the same posture LeagueFixtures/RecordCard already have.
+// palette baked into this file — the same posture RecordCard already has.
 export async function generateLeagueSchedulePoster(
   matches: Match[],
   teamsById: Map<string, Team>,

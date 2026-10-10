@@ -43,7 +43,7 @@ interface ResolvedSide {
   logoUrl: string | null
 }
 
-// Duplicates LeagueFixtures.tsx's own (unexported) resolveSide — deliberately, matching
+// Duplicates the retired LeagueFixtures list's own resolveSide — deliberately, matching
 // teamSheetPdf.ts's own established precedent of small pure resolution helpers being
 // independently duplicated per consumer rather than centralized, so each file stays a
 // self-contained, independently readable unit.
@@ -60,7 +60,7 @@ function resolveSide(
   return { name: teamName ?? 'TBC', logoUrl }
 }
 
-// e.g. "Sat, 14 Mar 2026" — duplicates LeagueFixtures.tsx's own (unexported) dateHeading.
+// e.g. "Sat, 14 Mar 2026" — duplicates the retired LeagueFixtures list's own dateHeading.
 function dateHeading(iso: string): string {
   const date = new Date(iso)
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
@@ -68,7 +68,7 @@ function dateHeading(iso: string): string {
   return `${weekday}, ${date.getDate()} ${month} ${date.getFullYear()}`
 }
 
-// Duplicates LeagueFixtures.tsx's own (unexported) dayKey.
+// Duplicates the retired LeagueFixtures list's own dayKey.
 function dayKey(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10)
 }

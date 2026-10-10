@@ -107,7 +107,7 @@ export default function LeagueFormPage() {
   })
 
   // docs/specs/050-league-schedule-and-fixtures.md: the Schedule tab's own season-scoped match
-  // list, rendered via the reusable LeagueFixtures component — reuses the existing
+  // list, rendered by LeagueFixturesTable (see LeagueEditScheduleTab) — reuses the existing
   // listAllMatches (docs/specs/072-league-view-pages.md: every page of the season, not just the first
   // 20) filter combination, no new endpoint.
   const matchesQuery = useQuery({
@@ -373,6 +373,7 @@ export default function LeagueFormPage() {
             leagueId={leagueId as string}
             hasSeasons={seasons.length > 0}
             selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
             matches={matchesQuery.data ?? []}
             matchesLoading={matchesQuery.isLoading}
             teamsById={teamsById}
@@ -384,6 +385,7 @@ export default function LeagueFormPage() {
           <LeagueEditConditionsTab
             hasSeasons={seasons.length > 0}
             selectedSeasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
             document={
               playingConditionsQuery.data?.documentUrl
                 ? {

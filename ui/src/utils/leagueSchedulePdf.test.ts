@@ -91,7 +91,7 @@ function makeMatch(overrides: Partial<Match>): Match {
     awayTeamName: null,
     leagueId: 'league-1',
     seasonId: 'season-1',
-    // Matches LeagueFixtures.test.tsx's own precedent values, which this repo's test env has
+    // Matches the retired LeagueFixtures test's precedent values, which this repo's test env has
     // already confirmed render as "Sat, 14 Mar 2026"/"Sat, 21 Mar 2026" without timezone drift.
     matchDate: '2026-03-14T14:00:00Z',
     venue: 'Riverside Oval',
