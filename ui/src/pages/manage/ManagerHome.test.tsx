@@ -39,10 +39,22 @@ function clubProfile(overrides: Partial<ClubProfile> = {}): ClubProfile {
   }
 }
 
+const keycloakMock = vi.hoisted(() => ({
+  authenticated: true,
+  initPromise: Promise.resolve() as Promise<unknown>,
+}))
+
 vi.mock('../../auth/keycloak', () => ({
+  AUTH_AWARE_PATH_PREFIXES: ['/admin', '/manage'],
   keycloak: {
     logout: vi.fn(),
     tokenParsed: { name: 'Riya Naidu', email: 'riya@riverside.example.com' },
+    get authenticated() {
+      return keycloakMock.authenticated
+    },
+  },
+  get keycloakInitPromise() {
+    return keycloakMock.initPromise
   },
 }))
 
@@ -72,6 +84,7 @@ function renderManagerHome(initialPath = '/manage') {
           <Route path="/manage" element={<ManagerHome />}>
             <Route index element={<OutletContextProbe />} />
           </Route>
+          <Route path="/" element={<div>Landing page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -84,6 +97,40 @@ describe('ManagerHome', () => {
     // mockResolvedValueOnce calls resolves to something rather than undefined — same convention
     // TeamFormPage.test.tsx already uses for this same call.
     getManagedClubProfile.mockResolvedValue(clubProfile())
+    keycloakMock.authenticated = true
+    keycloakMock.initPromise = Promise.resolve()
+  })
+
+  it('navigates to the landing page when init resolved with no Keycloak session', async () => {
+    keycloakMock.authenticated = false
+    activateSession.mockRejectedValue(new Error('401'))
+
+    renderManagerHome()
+
+    expect(await screen.findByText('Landing page')).toBeInTheDocument()
+    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+  })
+
+  it('navigates to the landing page when init rejected and there is no session', async () => {
+    keycloakMock.authenticated = false
+    keycloakMock.initPromise = Promise.reject(new Error('init failed'))
+    keycloakMock.initPromise.catch(() => undefined)
+    activateSession.mockRejectedValue(new Error('401'))
+
+    renderManagerHome()
+
+    expect(await screen.findByText('Landing page')).toBeInTheDocument()
+  })
+
+  it('renders nothing (no Not authorized, no redirect) while Keycloak init is pending', async () => {
+    keycloakMock.initPromise = new Promise(() => undefined)
+    activateSession.mockRejectedValue(new Error('403'))
+
+    renderManagerHome()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(screen.queryByText('Not authorized')).not.toBeInTheDocument()
+    expect(screen.queryByText('Landing page')).not.toBeInTheDocument()
   })
 
   it('renders "Not authorized" when activateSession() rejects', async () => {

@@ -58,6 +58,10 @@ ui/src/
 └── test/         # vitest setup
 ```
 
+## Expired sessions
+
+On `/admin` and `/manage` (the auth-aware paths, listed once in `auth/keycloak.ts`), an expired Keycloak session sends the user to the landing page (`/`) to log in again. `api/axiosConfig.ts` does this when `updateToken` fails or the server answers 401, via `redirectToLanding()` in `auth/sessionExpiry.ts` (once per page load, clears the token, full navigation). `AdminHome` and `ManagerHome` wait for `keycloakInitPromise` and navigate to `/` when `keycloak.authenticated` is false, which also covers manual logout. "Not authorized" is kept for a genuinely logged-in user without the role, and a 403 never redirects. Public pages and `/post-login` are never redirected by an auth failure.
+
 ## Enforcement
 
 - **dependency-cruiser rule** — `components/**` may not import from `pages/**`; `api/**` is the only place axios is imported.
