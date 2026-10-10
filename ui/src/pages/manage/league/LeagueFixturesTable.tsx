@@ -34,6 +34,9 @@ const DESKTOP_ONLY = { 'data-desktop-only': 'true' } as const
 
 const hoverTint = (theme: Theme) => lighten(theme.palette.primary.main, 0.86)
 
+const nameSx = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } as const
+const srOnly = { position: 'absolute', width: 1, height: 1, p: 0, m: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 } as const
+
 function SideLogo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   return (
     <Avatar
@@ -66,6 +69,28 @@ function FixtureRow({ match, teamsById }: { match: Match; teamsById: Map<string,
   const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   const ours = isOurMatch(match)
   const title = `${homeName} vs ${awayName}`
+  // Each team's badge sits in front of its own name: [badge] Home vs [badge] Away. The whole title is also kept as screen
+  // reader text, so the row reads "Home vs Away" however the visual pieces wrap or truncate.
+  const sides = (
+    <>
+      <Box component="span" aria-hidden sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <SideLogo name={homeName} logoUrl={homeLogo} />
+        <Box component="span" sx={nameSx}>
+          {homeName}
+        </Box>
+        <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, flex: 'none' }}>
+          vs
+        </Box>
+        <SideLogo name={awayName} logoUrl={awayLogo} />
+        <Box component="span" sx={nameSx}>
+          {awayName}
+        </Box>
+      </Box>
+      <Box component="span" sx={srOnly}>
+        {title}
+      </Box>
+    </>
+  )
 
   return (
     <Box
@@ -82,27 +107,27 @@ function FixtureRow({ match, teamsById }: { match: Match; teamsById: Map<string,
       }}
     >
       <Box role="cell" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          {/* Both team badges sit together in front of the title (home first), not one each side of the text. */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 'none' }}>
-            <SideLogo name={homeName} logoUrl={homeLogo} />
-            <SideLogo name={awayName} logoUrl={awayLogo} />
-          </Box>
-          <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-            <Typography variant="body2" fontWeight={600} noWrap component="div">
-              {ours ? (
-                // Stretched link over the whole row (docs/specs/059): the row is position: relative.
-                <MuiLink component={RouterLink} to={`/manage/fixtures/matches/${match.id}`} color="inherit" underline="none" sx={{ '&::after': { content: '""', position: 'absolute', inset: 0 } }}>
-                  {title}
-                </MuiLink>
-              ) : (
-                title
-              )}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: { xs: 'block', sm: 'none' } }} data-testid="fixture-row-phone-when">
-              {`${day}, ${time}${match.venue ? ` · ${match.venue}` : ''}`}
-            </Typography>
-          </Box>
+        <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+          <Typography variant="body2" fontWeight={600} component="div" sx={{ minWidth: 0 }}>
+            {ours ? (
+              // Stretched link over the whole row (docs/specs/059): the row is position: relative.
+              <MuiLink
+                component={RouterLink}
+                to={`/manage/fixtures/matches/${match.id}`}
+                color="inherit"
+                underline="none"
+                aria-label={title}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, '&::after': { content: '""', position: 'absolute', inset: 0 } }}
+              >
+                {sides}
+              </MuiLink>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>{sides}</Box>
+            )}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ display: { xs: 'block', sm: 'none' } }} data-testid="fixture-row-phone-when">
+            {`${day}, ${time}${match.venue ? ` · ${match.venue}` : ''}`}
+          </Typography>
         </Box>
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, order: -1 }} {...DESKTOP_ONLY} data-testid="fixture-row-when">
