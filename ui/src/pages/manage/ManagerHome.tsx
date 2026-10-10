@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { Box } from '@mui/material'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { activateSession } from '../../api/meApi'
 import { getManagedClubProfile } from '../../api/clubApi'
 import { ManagerShell } from '../../components/ManagerShell'
 import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
+import { useKeycloakSettled } from '../../auth/sessionExpiry'
 
 export default function ManagerHome() {
+  const keycloakSettled = useKeycloakSettled()
   // Same query key PostLoginRedirect.tsx already uses for this exact call — a fresh login's
   // cached result is reused here rather than double-fetched; a direct nav/refresh to /manage
   // fetches fresh (docs/specs/020-club-manager-access.md).
@@ -29,6 +31,17 @@ export default function ManagerHome() {
     queryFn: () => getManagedClubProfile(clubId as string),
     enabled: Boolean(clubId),
   })
+
+  // Wait for Keycloak init so there is no blank flash; an expired or ended session (or a manual
+  // logout) lands here unauthenticated and goes to the landing page to log in again, rather than
+  // showing "Not authorized" to someone who is simply not logged in.
+  if (!keycloakSettled) {
+    return null
+  }
+
+  if (!keycloak.authenticated) {
+    return <Navigate to="/" replace />
+  }
 
   if (isError || (data && !data.platformAdmin && data.clubAdminClubIds.length === 0)) {
     return (

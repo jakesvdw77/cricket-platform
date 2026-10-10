@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Box } from '@mui/material'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { getAdminIdentity } from '../../api/adminApi'
 import { AppShell } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { keycloak } from '../../auth/keycloak'
+import { useKeycloakSettled } from '../../auth/sessionExpiry'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/admin' },
@@ -16,10 +17,20 @@ const NAV_ITEMS = [
 ]
 
 export default function AdminHome() {
+  const keycloakSettled = useKeycloakSettled()
   const { data, isError } = useQuery({
     queryKey: ['admin-me'],
     queryFn: getAdminIdentity,
   })
+
+  // Same session guard as ManagerHome: unauthenticated after init means expired or logged out.
+  if (!keycloakSettled) {
+    return null
+  }
+
+  if (!keycloak.authenticated) {
+    return <Navigate to="/" replace />
+  }
 
   if (isError) {
     return (
