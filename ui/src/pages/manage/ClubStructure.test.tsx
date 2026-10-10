@@ -96,11 +96,11 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
-function renderPage(clubId?: string) {
+function renderPage(clubId?: string, url = '/manage/sections') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/sections']}>
+      <MemoryRouter initialEntries={[url]}>
         <Routes>
           <Route path="/manage" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="sections" element={<ClubStructure />} />
@@ -112,6 +112,29 @@ function renderPage(clubId?: string) {
 }
 
 describe('ClubStructure', () => {
+  it('selects the section named by ?sectionId= and opens the detail panel', async () => {
+    listSections.mockResolvedValue([
+      makeSection({ id: 'juniors', name: 'Juniors' }),
+      makeSection({ id: 'u13', name: 'U13', parentSectionId: 'juniors' }),
+    ])
+
+    renderPage('test-club-id', '/manage/sections?sectionId=u13')
+
+    expect(await screen.findByRole('button', { name: 'Collapse section details' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Expand section details' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rename U13' })).toBeInTheDocument()
+  })
+
+  it('ignores an unknown ?sectionId=', async () => {
+    listSections.mockResolvedValue([makeSection({ id: 'juniors', name: 'Juniors' })])
+
+    renderPage('test-club-id', '/manage/sections?sectionId=nope')
+
+    expect(await screen.findByRole('button', { name: 'Juniors' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Rename / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Collapse section details' })).not.toBeInTheDocument()
+  })
+
   it('renders "Not authorized" and does not fetch when no clubId is in the Outlet context', () => {
     renderPage(undefined)
 

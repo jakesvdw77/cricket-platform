@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, IconButton, Stack, Typography } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SectionTreeEditor } from '../../components/SectionTreeEditor'
 import { SectionDetailPanel } from '../../components/SectionDetailPanel'
@@ -124,6 +124,7 @@ const SECTION_CONTACTS_QUERY_KEY = (clubId?: string, sectionId?: string | null) 
 export default function ClubStructure() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Bumped on every click of the tree's "Rename" toolbar button (which only ever shows on an
@@ -157,6 +158,22 @@ export default function ClubStructure() {
     queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
+
+  // Deep link: `?sectionId=` is honoured once, after the sections have loaded. An unknown or
+  // missing id is ignored. Setting selectedId and detailCollapsed together keeps the
+  // "collapse when nothing is selected" effect above from re-collapsing the panel.
+  const deepLinkHandled = useRef(false)
+  useEffect(() => {
+    if (deepLinkHandled.current || sections === undefined) {
+      return
+    }
+    deepLinkHandled.current = true
+    const requestedId = searchParams.get('sectionId')
+    if (requestedId && sections.some((section) => section.id === requestedId)) {
+      setSelectedId(requestedId)
+      setDetailCollapsed(false)
+    }
+  }, [sections, searchParams])
 
   const sectionsById = useMemo(() => {
     const map = new Map<string, Section>()
