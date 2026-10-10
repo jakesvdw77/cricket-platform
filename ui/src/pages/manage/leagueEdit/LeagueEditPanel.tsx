@@ -75,7 +75,10 @@ export function LeagueEditPanel({ icon, title, caption, actions, testId, ariaLab
             )}
           </Box>
         </Box>
-        {actions && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 'none' }}>{actions}</Box>}
+        {actions && (
+          // Wraps (and may shrink) so two header buttons drop onto a second line on a narrow screen instead of being clipped.
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, minWidth: 0, maxWidth: '100%' }}>{actions}</Box>
+        )}
       </Box>
       {children}
     </Box>
