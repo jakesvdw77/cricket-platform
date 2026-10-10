@@ -181,8 +181,8 @@ describe('generateLeagueSchedulePdf', () => {
 
     expect(url).toBe('blob:mock-url')
     const texts = textSpy.mock.calls.map((call) => call[0])
-    // Scoped subtitle reads "<team>, <season>", not just the season label.
-    expect(texts).toContain('Riverside 1st XI, 2026')
+    // Scoped subtitle reads "<team> — <season>", not just the season label.
+    expect(texts).toContain('Riverside 1st XI — 2026')
     expect(texts).toContain('Coastal CC')
     expect(texts).toContain('Hillside CC')
     // The third, uninvolved match's own date heading never appears, it was filtered out entirely.

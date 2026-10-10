@@ -91,7 +91,7 @@ export function generateLeagueScheduleIcs(
     lines.push(`DTSTART:${formatIcsDate(start)}`)
     lines.push(`DTEND:${formatIcsDate(end)}`)
     lines.push(`SUMMARY:${escapeIcsText(`${home.name} vs ${away.name}`)}`)
-    lines.push(`DESCRIPTION:${escapeIcsText(`${leagueName}, ${seasonLabel}`)}`)
+    lines.push(`DESCRIPTION:${escapeIcsText(`${leagueName} — ${seasonLabel}`)}`)
     if (match.venue) {
       lines.push(`LOCATION:${escapeIcsText(match.venue)}`)
     }

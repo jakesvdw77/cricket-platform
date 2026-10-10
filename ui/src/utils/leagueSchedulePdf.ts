@@ -203,7 +203,7 @@ export async function generateLeagueSchedulePdf(
   doc.setFontSize(12)
   doc.text(leagueName, margin, 13)
 
-  const subtitle = teamFilter ? `${teamFilter.teamName}, ${seasonLabel}` : seasonLabel
+  const subtitle = teamFilter ? `${teamFilter.teamName} — ${seasonLabel}` : seasonLabel
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(200, 225, 210)

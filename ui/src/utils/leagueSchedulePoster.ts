@@ -191,7 +191,7 @@ export async function generateLeagueSchedulePoster(
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.82)'
   ctx.font = `28px ${FONT_STACK}`
-  const subtitle = teamFilter ? `${teamFilter.teamName}, ${seasonLabel}` : `${seasonLabel}, Full Schedule`
+  const subtitle = teamFilter ? `${teamFilter.teamName} — ${seasonLabel}` : `${seasonLabel} — Full Schedule`
   ctx.fillText(subtitle, 64, 172, POSTER_SIZE - 128)
 
   // Upcoming match rows.
