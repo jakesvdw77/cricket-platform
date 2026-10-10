@@ -83,7 +83,11 @@ function FixtureRow({ match, teamsById }: { match: Match; teamsById: Map<string,
     >
       <Box role="cell" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <SideLogo name={homeName} logoUrl={homeLogo} />
+          {/* Both team badges sit together in front of the title (home first), not one each side of the text. */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 'none' }}>
+            <SideLogo name={homeName} logoUrl={homeLogo} />
+            <SideLogo name={awayName} logoUrl={awayLogo} />
+          </Box>
           <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
             <Typography variant="body2" fontWeight={600} noWrap component="div">
               {ours ? (
@@ -99,7 +103,6 @@ function FixtureRow({ match, teamsById }: { match: Match; teamsById: Map<string,
               {`${day}, ${time}${match.venue ? ` · ${match.venue}` : ''}`}
             </Typography>
           </Box>
-          <SideLogo name={awayName} logoUrl={awayLogo} />
         </Box>
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, order: -1 }} {...DESKTOP_ONLY} data-testid="fixture-row-when">
