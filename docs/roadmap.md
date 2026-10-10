@@ -164,7 +164,7 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **A cross-club or platform-wide opponent directory**, and sharing league teams between clubs that play the same league.
 - **Tidy-up or merge of historical free-text opponent names** into league teams. The `042` autocomplete item above stays open for friendlies.
 - **Opponent rosters and players.**
-- **Bulk CSV import** of league teams.
+- ~~**Bulk CSV import** of league teams.~~ Now a planned consumer of the import framework (`097`), the second consumer after `098`'s schedule import.
 - ~~**A `?tab=` deep link into the league's Teams tab**~~ Done by `095`: the League edit page reads `?tab=`, and the match form's empty-list hint links to `?tab=teams`.
 
 ## Deferred by `095`: League edit gold standard
@@ -176,6 +176,27 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **E2E for the league edit page needs Keycloak**, so `ui/e2e/manager-league-management.spec.ts` was repaired but not run, and there is no new golden path.
 - **`RowActions` on other lists:** adopt it where a list still has its own icon or menu actions.
 - **Row height:** the edit panels use 44 px rows (56 px on a phone) while the Leagues, Teams and Seasons tables use 56 px (60 px on a phone); decide whether they should agree.
+
+## Deferred by `097` and `098`: Import framework and league schedule import
+
+Both specs are written and not built (`097-import-framework.md`, `098-league-schedule-import.md`); `050`'s "no bulk fixture import" non-goal is resolved by `098`.
+
+- **Club time zone.** The platform assumes South Africa (GMT+2): there is no club time zone, times are read in the server zone and the browser zone on entry. Clubs in other zones are a known gap (confirmed by the user, 2026-10-10). Imports take the browser zone for now (`097` R11); a club time zone setting is the real fix.
+- **Matches list default.** A league-wide import adds fixtures that are not ours to the club-admin Matches list and league counters; a "matches involving our teams" default for that list, as its own spec (`098` R3).
+- **Phase 2 AI transform** inside the app (needs a provider terms and POPIA review first; the key stays in the environment). Phase 1 is prompts only.
+- **More import types:** league teams bulk import (next consumer), then players, squads, contacts, sponsors and results.
+- **Schedule update import** beyond the narrow opt-in update of time and venue.
+- **Remembered names screen** to manage team aliases, after the first slice.
+- **Per-club default for the scope option** ("Our teams only" or "All matches").
+- **Import history across clubs** as a platform view.
+- **Store the original file** once media storage moves off local disk (not stored in v1).
+- **Per-type section-scoped import rights** once roles exist.
+- **Block-layout reader** for sheets laid out in blocks, which may beat in-app AI.
+- **A venue entity** (venue is free text today) and a **`Round` column**.
+- **A club-level opponent identity across seasons.** There is no stable team identity across seasons, so linking a previous season's team copies it.
+- **A communication log** so delete can block on sent communications (communications are not persisted today).
+- **Results module:** it must register a `MatchResult` blocker with the schedule import's delete; the structural test fails until it does (see also `093`).
+- **Standards amendments** when built: `backend.md` (named exception may carry structured detail; hard delete only through an import batch) and `frontend.md` (an "Imports" paragraph).
 
 ## Deferred by `093`: Team selection hub
 
