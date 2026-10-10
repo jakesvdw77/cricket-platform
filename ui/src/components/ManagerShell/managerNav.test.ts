@@ -61,7 +61,10 @@ describe('managerNav', () => {
     ['/manage/sections/s/teams', 'teams'],
     ['/manage/sections', 'club-profile'],
     ['/manage/sponsors/9/contacts', 'club-profile'],
-    ['/manage/fixtures/seasons', 'club-profile'],
+    ['/manage/fixtures/seasons', 'seasons'],
+    ['/manage/fixtures/seasons/new', 'seasons'],
+    ['/manage/fixtures/seasons/s1', 'seasons'],
+    ['/manage/fixtures/seasons/s1/edit', 'seasons'],
     ['/manage/permissions', 'managers'],
   ])('%s highlights %s', (path, id) => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
@@ -70,6 +73,7 @@ describe('managerNav', () => {
   it('groups People as Teams, Players, Availability, Team selection, Communication, with no Availability group of its own', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
     expect(labels('People')).toEqual(['Teams', 'Players', 'Availability', 'Team selection', 'Communication'])
+    expect(labels('Schedule')?.[0]).toBe('Seasons')
     expect(MANAGER_NAV.map((group) => group.label)).toEqual([null, 'Schedule', 'People', 'Club'])
   })
 
@@ -80,7 +84,7 @@ describe('managerNav', () => {
 
   it('lights exactly one item on every real path', () => {
     const paths = [
-      '/manage', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/results', '/manage/teams',
+      '/manage', '/manage/fixtures/seasons', '/manage/fixtures/seasons/new', '/manage/fixtures/seasons/s1/edit', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/results', '/manage/teams',
       '/manage/sections/s/teams', '/manage/players', '/manage/team-selection', '/manage/team-selection/batting', '/manage/communication',
       '/manage/availability', '/manage/availability/new', '/manage/availability/group/r1',
       '/manage/availability/squad/m/p', '/manage/availability/players', '/manage/availability/coverage',

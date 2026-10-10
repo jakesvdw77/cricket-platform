@@ -39,6 +39,7 @@ describe('MenuSheet', () => {
       expect(screen.getAllByText(heading).length).toBeGreaterThan(0)
     }
     expect(screen.getByRole('link', { name: 'Leagues' })).toHaveAttribute('href', '/manage/fixtures/leagues')
+    expect(screen.getByRole('link', { name: 'Seasons' })).toHaveAttribute('href', '/manage/fixtures/seasons')
     expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
     expect(screen.getByTestId('badge-availability')).toHaveTextContent('2')
   })

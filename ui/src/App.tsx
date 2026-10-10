@@ -193,8 +193,8 @@ function App() {
                   match-day squad selection — 006's pre-existing "Fixtures & Results" and "Squads"
                   nav cards finally get real screens. docs/specs/056-club-profile-overview.md
                   dissolved the "fixtures" index hub (ManageFixturesHome) entirely — Leagues/Matches
-                  are now reached directly from the dashboard, Seasons from the Club Profile
-                  overview; every fixtures/* sub-route below stays registered unchanged. */}
+                  are now reached directly from the dashboard, Seasons from its own Schedule menu
+                  item (docs/specs/094-club-structure-and-seasons.md); every fixtures/* sub-route below stays registered unchanged. */}
               <Route path="fixtures/leagues" element={<LeagueList />} />
               <Route path="fixtures/leagues/new" element={<LeagueFormPage />} />
               {/* docs/specs/072-league-view-pages.md: the league view is a layout route (header +
