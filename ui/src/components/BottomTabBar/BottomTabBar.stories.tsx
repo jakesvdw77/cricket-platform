@@ -24,4 +24,4 @@ export const Default: Story = {}
 
 export const MenuOpen: Story = { args: { menuOpen: true } }
 
-export const WithPollsBadge: Story = { args: { badges: { polls: 3 } } }
+export const WithAvailabilityBadge: Story = { args: { badges: { availability: 3 } } }

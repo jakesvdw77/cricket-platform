@@ -1,3 +1,4 @@
+import CheckCircle from '@mui/icons-material/CheckCircle'
 import { Box, Typography } from '@mui/material'
 
 export interface SelectionGaugeProps {
@@ -11,6 +12,8 @@ export interface SelectionGaugeProps {
   pickedLabel?: string
   toGoLabel?: string
   completeLabel?: string
+  // The bar with one "picked / size" figure beside it and a tick once full, instead of the colour-keyed legend (dense table headers).
+  compact?: boolean
 }
 
 function Key({ color, count, label, testId }: { color: string; count: number; label: string; testId: string }) {
@@ -32,10 +35,32 @@ export function SelectionGauge({
   pickedLabel = 'Picked',
   toGoLabel = 'To go',
   completeLabel = 'Squad complete',
+  compact = false,
 }: SelectionGaugeProps) {
   const clamped = Math.max(0, Math.min(picked, size))
   const percent = size > 0 ? Math.min(100, (clamped / size) * 100) : 0
   const complete = size > 0 && picked >= size
+  if (compact) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        <Box
+          role="progressbar"
+          aria-label={ariaLabel}
+          aria-valuemin={0}
+          aria-valuemax={size}
+          aria-valuenow={clamped}
+          aria-valuetext={`${picked} of ${size} ${pickedLabel.toLowerCase()}`}
+          sx={{ flex: 1, minWidth: 0, height: 8, borderRadius: 6, overflow: 'hidden', bgcolor: 'grey.300' }}
+        >
+          <Box data-testid={`${testIdPrefix}-fill`} sx={{ width: `${percent}%`, height: '100%', bgcolor: 'primary.main' }} />
+        </Box>
+        <Typography component="span" variant="caption" data-testid={`${testIdPrefix}-figure`} sx={{ fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+          {picked} / {size}
+        </Typography>
+        {complete && <CheckCircle data-testid={`${testIdPrefix}-complete`} titleAccess={completeLabel} color="primary" sx={{ fontSize: 14, flexShrink: 0 }} />}
+      </Box>
+    )
+  }
   return (
     <Box>
       <Box

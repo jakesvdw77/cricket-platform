@@ -27,8 +27,17 @@ describe('availabilitySummaryApi', () => {
       params: { leagueId: 'l-1', sectionId: 's-1', teamId: 't-1', type: 'SQUAD', includeClosed: true },
     })
 
-    await getAvailabilitySummary('club-1', { leagueId: null, sectionId: null, type: 'ALL', includeClosed: false })
+    await getAvailabilitySummary('club-1', { leagueId: null, sectionId: null, type: 'ALL', includeClosed: false, seasonId: null })
     expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary', { params: {} })
+  })
+
+  it('sends seasonId only when set, and keys the summary by it', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: {} })
+
+    await getAvailabilitySummary('club-1', { seasonId: 'se-1' })
+    expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary', { params: { seasonId: 'se-1' } })
+    expect(availabilitySummaryKey('club-1', { seasonId: 'se-1' })).not.toEqual(availabilitySummaryKey('club-1', { seasonId: 'se-2' }))
+    expect(availabilitySummaryKey('club-1', { seasonId: 'se-1' })[3]).toEqual({ seasonId: 'se-1' })
   })
 
   it('derives the poll type from the two toggles', () => {
@@ -81,6 +90,18 @@ describe('availabilitySummaryApi', () => {
           type: 'GROUP', includeClosed: true, closingSoon: true, search: 'ann',
         },
       })
+    })
+
+    it('sends seasonId on the players request and keys by it', async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: {} })
+
+      await listAvailabilitySummaryPlayers('club-1', { kind: 'awaiting', seasonId: 'se-1' })
+      expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability/summary/players', {
+        params: { kind: 'awaiting', page: 0, size: 25, seasonId: 'se-1' },
+      })
+      expect(availabilitySummaryPlayersKey('club-1', { kind: 'awaiting', seasonId: 'se-1' })).not.toEqual(
+        availabilitySummaryPlayersKey('club-1', { kind: 'awaiting', seasonId: 'se-2' }),
+      )
     })
 
     it('omits default and blank filters', async () => {

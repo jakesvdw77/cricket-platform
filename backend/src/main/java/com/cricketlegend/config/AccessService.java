@@ -201,6 +201,25 @@ public class AccessService {
         return result;
     }
 
+    /**
+     * Batch form of {@link #sectionAndDescendantIds(UUID, UUID)}: the closure of each given root from
+     * ONE sections query, so a page of matches or windows never costs a query per section. Every
+     * root is a key; a root unknown to the club maps to just itself. Does not check access.
+     */
+    public Map<UUID, Set<UUID>> sectionClosures(UUID clubId, Collection<UUID> sectionIds) {
+        Map<UUID, Set<UUID>> closures = new HashMap<>();
+        if (sectionIds.isEmpty()) {
+            return closures;
+        }
+        Map<UUID, List<UUID>> childrenByParent = buildChildrenByParent(sectionRepository.findByClubId(clubId));
+        for (UUID rootId : sectionIds) {
+            Set<UUID> closure = new HashSet<>();
+            collectSelfAndDescendants(rootId, childrenByParent, closure);
+            closures.put(rootId, closure);
+        }
+        return closures;
+    }
+
     private void collectSelfAndDescendants(
             UUID rootId, Map<UUID, List<UUID>> childrenByParent, Set<UUID> accumulator) {
         Deque<UUID> queue = new ArrayDeque<>();

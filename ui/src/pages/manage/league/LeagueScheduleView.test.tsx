@@ -180,14 +180,14 @@ describe('LeagueScheduleView', () => {
       })
     })
 
-    it('hides played matches by default and Show played brings them back', async () => {
+    it('hides played matches by default and View entire season brings them back', async () => {
       const user = userEvent.setup()
       renderLeagueView(SCHEDULE_PATH)
 
       expect(await screen.findAllByTestId('fixture-row')).toHaveLength(2)
       expect(screen.queryByText('1st XI vs Old Boys')).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('checkbox', { name: /show played/i }))
+      await user.click(screen.getByRole('checkbox', { name: /view entire season/i }))
       expect(await screen.findAllByTestId('fixture-row')).toHaveLength(3)
       expect(screen.getByText('1st XI vs Old Boys')).toBeInTheDocument()
       expect(screen.getByText(/^Showing 3 matches/)).toBeInTheDocument()

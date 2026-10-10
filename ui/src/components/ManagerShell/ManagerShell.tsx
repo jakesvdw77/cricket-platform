@@ -41,6 +41,7 @@ export function ManagerShell({ brand, user, onLogout, profileTo, homeTo, logoUrl
         onLogout={onLogout}
         profileTo={profileTo}
         homeTo={homeTo}
+        notificationsTo="/manage/notifications"
         logoUrl={logoUrl}
       />
 

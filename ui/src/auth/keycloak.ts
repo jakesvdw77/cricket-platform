@@ -32,7 +32,7 @@ export const keycloak = new Keycloak({
 //   only ever loaded fresh via a direct navigation/refresh/bookmark — never via a pending OAuth
 //   callback (Login.tsx's redirectUri points at /post-login, never straight to /admin) — so it's
 //   the one path that's actually safe to run check-sso on.
-const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage']
+export const AUTH_AWARE_PATH_PREFIXES = ['/admin', '/manage']
 const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix))
 
 // Fires once, automatically, the first time anything imports this module
@@ -62,8 +62,9 @@ const needsKeycloakSession = AUTH_AWARE_PATH_PREFIXES.some((prefix) => window.lo
 // unconditionally to origin + '/' was a real bug: it forced every check-sso round-trip back to
 // the root page regardless of where the admin actually was. keycloak.logout()'s 3 call sites
 // (AdminHome/ManagerHome/PlayerHome) don't pass their own redirectUri either, for the same
-// reason the legacy app doesn't — landing back on the current (now-unauthenticated) page after
-// logout is the simpler, already-proven-fine behavior, not a gap.
+// reason the legacy app doesn't (Keycloak's valid post-logout URIs are an infra dependency):
+// logout returns to the current URL, check-sso finds no session, and the AdminHome/ManagerHome
+// guards then send the user to the landing page (see sessionExpiry.ts).
 export const keycloakInitPromise = keycloak.init({
   ...(needsKeycloakSession && { onLoad: 'check-sso' }),
   checkLoginIframe: false,

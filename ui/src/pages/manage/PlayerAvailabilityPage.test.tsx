@@ -163,7 +163,7 @@ describe('PlayerAvailabilityPage', () => {
     const search = screen.getByPlaceholderText('Search players')
     expect(order[2].compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByLabelText('Season')).not.toBeInTheDocument()
-    const toggle = screen.getByRole('checkbox', { name: 'Show past games' })
+    const toggle = screen.getByRole('checkbox', { name: 'View entire season' })
     expect(search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
   })
@@ -284,13 +284,13 @@ describe('PlayerAvailabilityPage', () => {
     )
   })
 
-  it('Show past games sends includePast and is not persisted', async () => {
+  it('View entire season sends includePast and is not persisted', async () => {
     const user = userEvent.setup()
     renderPage()
     await loaded()
 
-    expect(screen.getByRole('checkbox', { name: 'Show past games' })).not.toBeChecked()
-    await user.click(screen.getByRole('checkbox', { name: 'Show past games' }))
+    expect(screen.getByRole('checkbox', { name: 'View entire season' })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'View entire season' }))
 
     await waitFor(() =>
       expect(listPlayerAvailability).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),
@@ -499,7 +499,7 @@ describe('PlayerAvailabilityPage', () => {
       expect(screen.getByPlaceholderText('Search players')).toBeVisible()
       // The closed sheet stays mounted but hidden (SwipeableDrawer), so it is not in the accessibility tree.
     expect(screen.queryByRole('combobox', { name: 'League' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('checkbox', { name: 'Show past games' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'View entire season' })).not.toBeInTheDocument()
       // No Jump to today on a phone (085): the header slot stays empty.
       expect(screen.queryByRole('button', { name: 'Jump to today' })).not.toBeInTheDocument()
 
@@ -508,7 +508,7 @@ describe('PlayerAvailabilityPage', () => {
       expect(await screen.findByLabelText('League')).toBeInTheDocument()
       expect(screen.getByLabelText('Section')).toBeInTheDocument()
       expect(screen.getByLabelText('Team')).toBeInTheDocument()
-      expect(screen.getByRole('checkbox', { name: 'Show past games' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'View entire season' })).toBeInTheDocument()
       expect(screen.getByRole('checkbox', { name: 'Hide players with no answers' })).toBeInTheDocument()
     })
 

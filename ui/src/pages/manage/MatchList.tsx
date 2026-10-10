@@ -383,7 +383,7 @@ export default function MatchList({
       ]
     : []
   const showCounters = !summaryQuery.isError && (summaryQuery.isPending || Boolean(summary))
-  const pastToggle = <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label="Show past matches" />
+  const pastToggle = <CompactSwitch checked={!upcomingOnly} onChange={(checked) => setUpcomingOnly(!checked)} label={seasonId ? 'View entire season' : 'View all seasons'} />
   const sortLink = (
     <SortLink
       label={sort === 'matchDate,asc' ? 'soonest first' : 'latest first'}
@@ -511,7 +511,7 @@ export default function MatchList({
           title={upcomingOnly ? 'No upcoming matches' : 'No matches yet'}
           description={
             upcomingOnly
-              ? 'Nothing scheduled ahead. Turn on "Show past matches" to see earlier fixtures, or schedule a new one.'
+              ? 'Nothing scheduled ahead. Turn on "View entire season" to see earlier fixtures, or schedule a new one.'
               : "Schedule your club's first match to get started."
           }
         />

@@ -68,9 +68,10 @@ public class SectionAvailabilityRoundController {
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) Boolean open) {
         return ResponseEntity.ok(
-                sectionAvailabilityRoundService.list(authentication, clubId, sectionId, leagueId, teamId, open));
+                sectionAvailabilityRoundService.list(authentication, clubId, sectionId, leagueId, teamId, seasonId, open));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

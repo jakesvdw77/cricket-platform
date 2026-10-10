@@ -17,6 +17,16 @@ describe('matchAvailabilityApi poll lists (docs/specs/083)', () => {
     })
   })
 
+  it('sends seasonId on both lists only when set', async () => {
+    await listOpenPolls('club-1', { seasonId: 'se-1' })
+    expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability-polls/open', { params: { seasonId: 'se-1' } })
+
+    await listClosedPolls('club-1', { sectionId: 's-1', seasonId: 'se-1' })
+    expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability-polls/closed', {
+      params: { sectionId: 's-1', seasonId: 'se-1' },
+    })
+  })
+
   it('sends the same filters on the closed list', async () => {
     await listClosedPolls('club-1', { leagueId: 'l-1', teamId: 't-1' })
     expect(api.get).toHaveBeenLastCalledWith('/manage/clubs/club-1/availability-polls/closed', {

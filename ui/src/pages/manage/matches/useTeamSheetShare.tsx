@@ -40,6 +40,8 @@ export interface UseTeamSheetShareArgs {
   teamsById: Map<string, Team>
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
+  // Start the dialog on one side (the Team selection pages share a single announced side).
+  initialScope?: TeamSheetPrintScope
 }
 
 export interface TeamSheetShare {
@@ -58,6 +60,7 @@ export function useTeamSheetShare({
   teamsById,
   leaguesById,
   seasonsById,
+  initialScope,
 }: UseTeamSheetShareArgs): TeamSheetShare {
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -127,6 +130,7 @@ export function useTeamSheetShare({
       sidesLoading={Boolean(sidesLoading)}
       onPrint={handlePrint}
       subtitle={subtitle}
+      initialScope={initialScope}
     />
   )
 

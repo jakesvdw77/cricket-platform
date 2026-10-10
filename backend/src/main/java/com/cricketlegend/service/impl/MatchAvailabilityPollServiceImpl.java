@@ -297,13 +297,14 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Override
     @Transactional(readOnly = true)
     public List<OpenAvailabilityPollDto> listOpenForClub(
-            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId) {
+            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId, UUID seasonId) {
         List<OpenAvailabilityPollDto> result = listScopedPolls(
                 authentication,
                 clubId,
                 sectionId,
                 leagueId,
                 teamId,
+                seasonId,
                 matchAvailabilityPollRepository.findOpenByMatchClubId(clubId),
                 Integer.MAX_VALUE);
         result.sort(Comparator.comparing(OpenAvailabilityPollDto::matchDate));
@@ -318,7 +319,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
     @Override
     @Transactional(readOnly = true)
     public List<OpenAvailabilityPollDto> listClosedForClub(
-            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId) {
+            Authentication authentication, UUID clubId, UUID sectionId, UUID leagueId, UUID teamId, UUID seasonId) {
         // The repository query is already ordered by match date descending; the scoped filter and
         // the cap both preserve that order.
         return listScopedPolls(
@@ -327,6 +328,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
                 sectionId,
                 leagueId,
                 teamId,
+                seasonId,
                 matchAvailabilityPollRepository.findClosedByMatchClubId(clubId),
                 AvailabilityPollFilter.CLOSED_POLLS_LIMIT);
     }
@@ -343,6 +345,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
             UUID sectionId,
             UUID leagueId,
             UUID teamId,
+            UUID seasonId,
             List<MatchAvailabilityPoll> polls,
             int limit) {
         Set<UUID> matchIds = polls.stream().map(MatchAvailabilityPoll::getMatchId).collect(Collectors.toSet());
@@ -353,7 +356,7 @@ public class MatchAvailabilityPollServiceImpl implements MatchAvailabilityPollSe
         Optional<Set<UUID>> accessibleSectionIds = accessService.accessibleSectionIds(authentication, clubId);
         // Validates section/league/team (403/404) and builds the shared narrowing (docs/specs/083).
         AvailabilityPollFilter filter = pollFilters.resolve(
-                authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false);
+                authentication, clubId, accessibleSectionIds, leagueId, sectionId, teamId, null, false, seasonId);
 
         List<OpenAvailabilityPollDto> result = new ArrayList<>();
         for (MatchAvailabilityPoll poll : polls) {

@@ -33,6 +33,7 @@ type PollListItem =
 // docs/specs/034-availability-polls-dashboard.md's squad-poll list (and absorbs 063's group-poll
 // list from the removed /manage/section-availability screen) into the standard record-list
 // pattern (the header and New poll action live in AvailabilityHubLayout, 073): a RecordCard grid mixing both kinds.
+// The polls and rounds are those of the hub's season (the default season, no control), sent as seasonId.
 // docs/specs/083: the toolbar is the shared FilterBar (League, Section and Team from the hub's shared filters, plus search).
 // The poll type is two light toggles (Group polls, Squad polls - both on by default, the last one cannot be
 // switched off), the sort order a quiet text link, and 'Show closed polls' a switch (mirroring MatchList's
@@ -45,13 +46,14 @@ type PollListItem =
 // deliberately not sent to the counters (083 lists only the shared filters, type and Show closed as counter inputs).
 export default function AvailabilityPollsDashboard() {
   const {
-    clubId, filters, teams: teamOptions, validTeamId: teamId, teamsLoading, teamsError,
+    clubId, filters, seasonId, seasonsLoading, teams: teamOptions, validTeamId: teamId, teamsLoading, teamsError,
     showGroup, setShowGroup, showSquad, setShowSquad, showClosed, setShowClosed, setPollRows,
   } = useAvailabilityHub()
   const { sectionId, leagueId } = filters
-  const scopeParams = { leagueId: leagueId ?? undefined, sectionId: sectionId ?? undefined, teamId: teamId ?? undefined }
-  // Held until the team list loaded (and not at all if it failed), so the requests carry a validated team.
-  const ready = Boolean(clubId) && !teamsLoading && !teamsError
+  const scopeParams = { leagueId: leagueId ?? undefined, sectionId: sectionId ?? undefined, teamId: teamId ?? undefined, seasonId }
+  // Held until the team list and the season resolved (and not at all if the teams failed), so the requests carry a
+  // validated team and the hub's season, and never go out unscoped first.
+  const ready = Boolean(clubId) && !teamsLoading && !teamsError && !seasonsLoading
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -65,25 +67,25 @@ export default function AvailabilityPollsDashboard() {
   const wantGroup = showGroup
 
   const pollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'availability-polls', 'open', { leagueId, sectionId, teamId }],
+    queryKey: ['managed-club', clubId, 'availability-polls', 'open', { leagueId, sectionId, teamId, seasonId }],
     queryFn: () => listOpenPolls(clubId as string, scopeParams),
     enabled: ready && wantSquad,
   })
 
   const roundsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'open', { leagueId, sectionId, teamId }],
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'open', { leagueId, sectionId, teamId, seasonId }],
     queryFn: () => listRounds(clubId as string, { ...scopeParams, open: true }),
     enabled: ready && wantGroup,
   })
 
   const closedPollsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'availability-polls', 'closed', { leagueId, sectionId, teamId }],
+    queryKey: ['managed-club', clubId, 'availability-polls', 'closed', { leagueId, sectionId, teamId, seasonId }],
     queryFn: () => listClosedPolls(clubId as string, scopeParams),
     enabled: ready && wantSquad && showClosed,
   })
 
   const closedRoundsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'closed', { leagueId, sectionId, teamId }],
+    queryKey: ['managed-club', clubId, 'section-availability-rounds', 'closed', { leagueId, sectionId, teamId, seasonId }],
     queryFn: () => listRounds(clubId as string, { ...scopeParams, open: false }),
     enabled: ready && wantGroup && showClosed,
   })
@@ -168,6 +170,7 @@ export default function AvailabilityPollsDashboard() {
 
   const isLoading =
     teamsLoading ||
+    seasonsLoading ||
     (wantSquad && (pollsQuery.isLoading || (showClosed && closedPollsQuery.isLoading))) ||
     (wantGroup && (roundsQuery.isLoading || (showClosed && closedRoundsQuery.isLoading)))
   const isError =

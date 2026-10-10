@@ -236,4 +236,61 @@ class AvailabilitySummaryParityIntegrationTest {
         assertThat(summaryCount(admin, w, filters(null, null, w.juniorsTeam().getId().toString()), "ALL", false))
                 .isEqualTo(2);
     }
+
+    private Match moveToOtherSeason(World w, Match match) {
+        var season = context.getBean(com.cricketlegend.repository.SeasonRepository.class)
+                .save(com.cricketlegend.domain.Season.builder().clubId(w.club().getId()).label("2032")
+                        .startDate(java.time.LocalDate.of(2032, 1, 1)).endDate(java.time.LocalDate.of(2032, 12, 31))
+                        .active(false).build());
+        match.setSeasonId(season.getId());
+        return context.getBean(com.cricketlegend.repository.MatchRepository.class).save(match);
+    }
+
+    @Test
+    void seasonIdNarrowsTheSummaryAndPlayersToExactlyTheListedPollsAndAbsentKeepsAll() throws Exception {
+        World w = fixtures.world();
+        Instant now = Instant.now();
+        PlayerProfile r1 = fixtures.rosterPlayer(w, w.seniors1(), "R1");
+        PlayerProfile r2 = fixtures.rosterPlayer(w, w.seniors1(), "R2");
+        PlayerProfile ann = fixtures.player(w, "Ann", true);
+        fixtures.tag(w.seniors(), ann);
+        Match inSeason = fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(2)));
+        Match otherSeason = moveToOtherSeason(w, fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(3))));
+        fixtures.squadPoll(inSeason, w.seniors1(), null, r1);
+        fixtures.squadPoll(otherSeason, w.seniors1(), null, r2);
+        Match closedIn = fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(2)));
+        Match closedOther = moveToOtherSeason(w, fixtures.match(w, w.seniors1(), null, now.minus(Duration.ofDays(3))));
+        fixtures.closeSquadPoll(fixtures.squadPoll(closedIn, w.seniors1(), null, r1));
+        fixtures.closeSquadPoll(fixtures.squadPoll(closedOther, w.seniors1(), null, r2));
+        SectionAvailabilityRound inRound = fixtures.groupPoll(w, w.seniors(), null, ann);
+        fixtures.linkMatch(inRound, fixtures.match(w, w.seniors1(), null, now.plus(Duration.ofDays(5))));
+        SectionAvailabilityRound otherRound = fixtures.groupPoll(w, w.seniors(), null, ann);
+        fixtures.linkMatch(otherRound, moveToOtherSeason(w, fixtures.match(w, w.seniors2(), null, now.plus(Duration.ofDays(6)))));
+        JwtRequestPostProcessor admin = fixtures.clubAdmin(w);
+        String[] inSeasonFilter = {"seasonId", w.season().getId().toString()};
+        String[] noFilter = {};
+
+        for (String type : new String[] {"ALL", "SQUAD", "GROUP"}) {
+            for (boolean closed : new boolean[] {false, true}) {
+                for (String[] filters : new String[][] {noFilter, inSeasonFilter,
+                        {"seasonId", UUID.randomUUID().toString()}}) {
+                    assertThat(summaryCount(admin, w, filters, type, closed))
+                            .as("type=%s closed=%s filters=%s", type, closed, java.util.Arrays.toString(filters))
+                            .isEqualTo(listed(admin, w, filters, type, closed));
+                    int[] counters = summaryPlayers(admin, w, filters, type, closed);
+                    assertThat(playersTotal(admin, w, filters, type, closed, "responded")).isEqualTo(counters[0]);
+                    assertThat(playersTotal(admin, w, filters, type, closed, "awaiting")).isEqualTo(counters[1]);
+                }
+            }
+        }
+        // absent seasonId is today's behaviour: every season; the season narrows to its own polls
+        assertThat(summaryCount(admin, w, noFilter, "ALL", false)).isEqualTo(4);
+        assertThat(summaryCount(admin, w, inSeasonFilter, "ALL", false)).isEqualTo(2);
+        assertThat(summaryCount(admin, w, noFilter, "ALL", true)).isEqualTo(6);
+        assertThat(summaryCount(admin, w, inSeasonFilter, "ALL", true)).isEqualTo(3);
+        assertThat(summaryCount(admin, w, new String[] {"seasonId", UUID.randomUUID().toString()}, "ALL", true))
+                .isZero();
+        // the season-scoped player counters only see the season's own poll, whose roster has r1
+        assertThat(summaryPlayers(admin, w, inSeasonFilter, "SQUAD", false)[0]).isEqualTo(1);
+    }
 }

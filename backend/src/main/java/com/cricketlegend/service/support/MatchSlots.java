@@ -130,6 +130,114 @@ public class MatchSlots {
         return result;
     }
 
+    /** One selection row that holds a player for a match's slots, and where. */
+    public record Held(UUID playerId, TakenBy by) {
+    }
+
+    /**
+     * Batch form of {@link #taken} for the team-selection overview: for each of {@code matches}
+     * (one club's), every selection row of a side of a colliding active match of the club, or of any
+     * side of the match itself, in five statements however many matches there are. Use {@link
+     * #takenFor} to apply one team's view (its own side of the match is never held against it).
+     */
+    public Map<UUID, List<Held>> heldByMatch(Collection<Match> matches) {
+        Map<UUID, List<Held>> result = new HashMap<>();
+        if (matches.isEmpty()) {
+            return result;
+        }
+        ZoneId zone = ZoneId.systemDefault();
+        Instant from = null;
+        Instant to = null;
+        UUID clubId = null;
+        Set<UUID> targetLeagueIds = new HashSet<>();
+        Map<UUID, League> targetLeagues = new HashMap<>();
+        for (Match match : matches) {
+            clubId = match.getClubId();
+            if (match.getLeagueId() != null) {
+                targetLeagueIds.add(match.getLeagueId());
+            }
+        }
+        if (!targetLeagueIds.isEmpty()) {
+            leagueRepository.findAllById(targetLeagueIds).forEach(league -> targetLeagues.put(league.getId(), league));
+        }
+        for (Match match : matches) {
+            LocalDate firstDate = match.getMatchDate().atZone(zone).toLocalDate();
+            Instant start = firstDate.minusDays(MAX_LOOK_BACK_DAYS).atStartOfDay(zone).toInstant();
+            Instant end = firstDate.plusDays(spanDays(targetLeagues.get(match.getLeagueId()))).atStartOfDay(zone)
+                    .toInstant();
+            from = from == null || start.isBefore(from) ? start : from;
+            to = to == null || end.isAfter(to) ? end : to;
+        }
+        Map<UUID, Match> universe = new HashMap<>();
+        for (Match other : matchRepository.findActiveInWindow(clubId, from, to)) {
+            universe.put(other.getId(), other);
+        }
+        matches.forEach(match -> universe.put(match.getId(), match));
+        Map<UUID, League> leagues = new HashMap<>(targetLeagues);
+        Set<UUID> missingLeagueIds = universe.values().stream()
+                .map(Match::getLeagueId)
+                .filter(id -> id != null && !leagues.containsKey(id))
+                .collect(Collectors.toSet());
+        if (!missingLeagueIds.isEmpty()) {
+            leagueRepository.findAllById(missingLeagueIds).forEach(league -> leagues.put(league.getId(), league));
+        }
+        Map<UUID, Set<Slot>> slotsByMatch = new HashMap<>();
+        universe.values().forEach(m -> slotsByMatch.put(m.getId(), occupied(m, leagues.get(m.getLeagueId()))));
+
+        List<MatchSide> sides = matchSideRepository.findByMatchIdIn(universe.keySet());
+        Map<UUID, List<MatchSide>> sidesByMatch = new HashMap<>();
+        sides.forEach(side -> sidesByMatch.computeIfAbsent(side.getMatchId(), key -> new java.util.ArrayList<>()).add(side));
+        Map<UUID, List<MatchSidePlayer>> rowsBySide = new HashMap<>();
+        if (!sides.isEmpty()) {
+            matchSidePlayerRepository
+                    .findByMatchSideIdIn(sides.stream().map(MatchSide::getId).collect(Collectors.toSet()))
+                    .forEach(row -> rowsBySide
+                            .computeIfAbsent(row.getMatchSideId(), key -> new java.util.ArrayList<>())
+                            .add(row));
+        }
+        Map<UUID, Team> teams = sides.isEmpty()
+                ? Map.of()
+                : teamRepository.findAllById(sides.stream().map(MatchSide::getTeamId).collect(Collectors.toSet()))
+                        .stream()
+                        .collect(Collectors.toMap(Team::getId, team -> team));
+
+        for (Match target : matches) {
+            List<Held> held = new java.util.ArrayList<>();
+            for (Match holder : universe.values()) {
+                boolean same = holder.getId().equals(target.getId());
+                if (!same && !intersects(slotsByMatch.get(target.getId()), slotsByMatch.get(holder.getId()))) {
+                    continue;
+                }
+                for (MatchSide side : sidesByMatch.getOrDefault(holder.getId(), List.of())) {
+                    Team team = teams.get(side.getTeamId());
+                    if (team == null) {
+                        continue;
+                    }
+                    TakenBy by = takenBy(target, holder, side, team);
+                    rowsBySide.getOrDefault(side.getId(), List.of())
+                            .forEach(row -> held.add(new Held(row.getPlayerProfileId(), by)));
+                }
+            }
+            result.put(target.getId(), held);
+        }
+        return result;
+    }
+
+    /**
+     * One team's view of {@link #heldByMatch}: each held player and where (the earliest match wins),
+     * leaving out the team's own side of the match itself, exactly as {@link #taken} does.
+     */
+    public static Map<UUID, TakenBy> takenFor(List<Held> held, UUID ownTeamId) {
+        Map<UUID, TakenBy> result = new HashMap<>();
+        for (Held row : held) {
+            if (row.by().sameMatch() && row.by().teamId().equals(ownTeamId)) {
+                continue;
+            }
+            result.merge(row.playerId(), row.by(), MatchSlots::earlier);
+        }
+        return result;
+    }
+
     private TakenBy takenBy(Match thisMatch, Match holder, MatchSide side, Team team) {
         return new TakenBy(
                 team.getId(), team.getName(), team.getClubId(), team.getSectionId(),

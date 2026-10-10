@@ -1,17 +1,30 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Chip, Link, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from '@mui/material'
-import { alpha, darken, lighten } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
-import type { SystemStyleObject } from '@mui/system'
 import { useFillViewportHeight } from '../../../hooks/useFillViewportHeight'
 import { zebraTint } from '../../../utils/zebraTint'
 import type { GameColumn, PlayerRow } from '../../../api/playerAvailabilityApi'
-import { CellMark } from './CellMark'
+import { CELL_MARK_SIZE, CellMark } from './CellMark'
 import { ChangeAnswerMenu, canChangeAnswer } from './ChangeAnswerMenu'
 import type { ChangeAnswerHandlers } from './useChangeAnswer'
 import { GridEmptyState } from './GridEmptyState'
+import { FIRST_COL_ATTR, slotSnapBoxSx, slotSnapTargetSx, slotStartAttrs } from './slotNavigation'
+import type { SlotAttrs } from './slotNavigation'
 import { Legend } from './Legend'
+import {
+  COUNT_COL_WIDTH,
+  DATE_ROW_HEIGHT,
+  GAME_COL_WIDTH,
+  SCROLL_BOX_MIN_HEIGHT,
+  SLOT_ROW_HEIGHT,
+  clampTwoLinesSx,
+  headCellSx,
+  hoverTint,
+  numberSx,
+  pinnedHeightSx,
+  stickyFirstColSx,
+  useFirstColWidth,
+} from './gridStyles'
 import {
   cellFor,
   cellLabel,
@@ -34,72 +47,24 @@ import {
 // sideways. Header rows are sticky at fixed heights so each row can offset the one above it.
 // docs/specs/085 (D1): its height is measured (useFillViewportHeight) so the box ends at the bottom of the window and
 // the page itself does not scroll; below SCROLL_BOX_MIN_HEIGHT the page scrolls instead.
-export const SCROLL_BOX_MIN_HEIGHT = 150
-export const DATE_ROW_HEIGHT = 34
-export const SLOT_ROW_HEIGHT = 26
-// The player column sizes to its content between these bounds; the real width is measured at runtime
-// (see firstColWidth) so the sticky date headers and scrollToGame offsets clear it exactly.
-const FIRST_COL_MIN_WIDTH = { xs: 150, sm: 180 }
-const FIRST_COL_MAX_WIDTH = 320
-const GAME_COL_WIDTH = { xs: 104, sm: 128 }
-const COUNT_COL_WIDTH = 64
+export { DATE_ROW_HEIGHT, SCROLL_BOX_MIN_HEIGHT, SLOT_ROW_HEIGHT }
 
 export interface AvailabilityGridHandle {
   // Scrolls the grid sideways so the given game's column sits next to the sticky player column.
   scrollToGame: (matchId: string) => void
 }
 
-const stickyFirstColSx: SystemStyleObject<Theme> = {
-  position: 'sticky',
-  left: 0,
-  bgcolor: 'background.paper',
-  width: 'max-content',
-  minWidth: FIRST_COL_MIN_WIDTH,
-  maxWidth: FIRST_COL_MAX_WIDTH,
-  // The right-hand edge reads as a divider with a soft shadow, so scrolled columns visibly pass under it.
-  boxShadow: (theme: Theme) => `inset -1px 0 0 ${theme.palette.divider}, 2px 0 4px ${alpha(theme.palette.text.primary, 0.06)}`,
-}
-
-const headCellSx: SystemStyleObject<Theme> = {
-  position: 'sticky',
-  bgcolor: 'background.paper',
-  fontWeight: 600,
-  p: 0.5,
-  whiteSpace: 'nowrap',
-  textAlign: 'center',
-}
-
-// Opaque tints (never alpha) so the sticky player cell never lets scrolled content show through.
-const hoverTint = (theme: Theme) =>
-  theme.palette.mode === 'dark' ? darken(theme.palette.primary.main, 0.6) : lighten(theme.palette.primary.main, 0.86)
-
-const numberSx = { fontVariantNumeric: 'tabular-nums' }
-
-// A sticky header row whose height cannot grow: the cell's border-box height is pinned to the
-// constant (TableRow height is only a minimum) and its content clipped, so the next sticky row's
-// `top` (the exact sum of the pinned heights above it) never overlaps or leaves a gap.
-function pinnedHeightSx(height: number): SystemStyleObject<Theme> {
-  return { height, maxHeight: height, boxSizing: 'border-box', py: 0, lineHeight: `${height}px`, overflow: 'clip' }
-}
-
-const clampTwoLinesSx = {
-  fontWeight: 600,
-  lineHeight: 1.25,
-  display: '-webkit-box',
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
-  overflow: 'hidden',
-  wordBreak: 'break-word',
-}
-
 function GameHeader({
   game,
   headerRef,
   firstColWidth,
+  slotAttrs,
 }: {
   game: GameColumn
   headerRef: (element: HTMLElement | null) => void
   firstColWidth: number
+  // Set on the first column of a day-and-slot group: what the Previous / Next slot arrows look for.
+  slotAttrs?: SlotAttrs
 }) {
   const path = pollPath(game)
   return (
@@ -107,6 +72,7 @@ function GameHeader({
       component="th"
       scope="col"
       ref={headerRef}
+      {...slotAttrs}
       sx={{
           ...headCellSx,
           top: DATE_ROW_HEIGHT + SLOT_ROW_HEIGHT,
@@ -119,6 +85,7 @@ function GameHeader({
           px: 0.75,
           // So scrollIntoView lands the column just right of the sticky player column.
           scrollMarginLeft: `${firstColWidth}px`,
+          ...(slotAttrs ? slotSnapTargetSx : {}),
         }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, alignItems: 'center' }}>
@@ -174,33 +141,26 @@ function GameHeader({
 // the keyboard-reachable link.
 export const AvailabilityGrid = forwardRef<
   AvailabilityGridHandle,
-  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers }
->(function AvailabilityGrid({ games, players, now, changeAnswer }, ref) {
+  { games: GameColumn[]; players: PlayerRow[]; now?: Date; changeAnswer?: ChangeAnswerHandlers; onScrollBox?: (element: HTMLDivElement | null) => void }
+>(function AvailabilityGrid({ games, players, now, changeAnswer, onScrollBox }, ref) {
   const navigate = useNavigate()
   const headerRefs = useRef(new Map<string, HTMLElement>())
-  const firstColRef = useRef<HTMLTableCellElement>(null)
-  const [firstColWidth, setFirstColWidth] = useState<number>(FIRST_COL_MIN_WIDTH.sm)
   const fill = useFillViewportHeight<HTMLDivElement>({ minHeight: SCROLL_BOX_MIN_HEIGHT })
+  const fillRef = fill.ref
+  const boxRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      fillRef(element)
+      onScrollBox?.(element)
+    },
+    [fillRef, onScrollBox],
+  )
 
   const groups = useMemo(() => groupGames(games), [games])
   const columns = useMemo(() => orderedGames(groups), [groups])
   const marker = useMemo(() => nextGameDayMarker(groups, now ?? new Date()), [groups, now])
+  const slotStarts = useMemo(() => slotStartAttrs(groups, (game) => game.matchId), [groups])
 
-  // The player column is content-sized, so measure it: the sticky date labels and the scroll margin
-  // need its real width to sit just right of it.
-  useLayoutEffect(() => {
-    const element = firstColRef.current
-    if (!element) return undefined
-    const measure = () => {
-      const width = Math.round(element.getBoundingClientRect().width)
-      if (width > 0) setFirstColWidth(width)
-    }
-    measure()
-    if (typeof ResizeObserver === 'undefined') return undefined
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [players, games])
+  const { ref: firstColRef, width: firstColWidth } = useFirstColWidth([players, games])
 
   useImperativeHandle(ref, () => ({
     scrollToGame: (matchId: string) => {
@@ -218,7 +178,7 @@ export const AvailabilityGrid = forwardRef<
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Legend />
       <Box
-        ref={fill.ref}
+        ref={boxRef}
         role="region"
         aria-label="Player availability grid, scrolls sideways"
         tabIndex={0}
@@ -231,6 +191,7 @@ export const AvailabilityGrid = forwardRef<
           borderRadius: 1,
           bgcolor: 'background.paper',
           overscrollBehavior: 'contain',
+          ...slotSnapBoxSx,
         }}
       >
         <Table
@@ -245,6 +206,7 @@ export const AvailabilityGrid = forwardRef<
                 scope="col"
                 rowSpan={3}
                 ref={firstColRef}
+                {...{ [FIRST_COL_ATTR]: '' }}
                 sx={{ ...stickyFirstColSx, top: 0, zIndex: 5, fontWeight: 600, verticalAlign: 'bottom' }}
               >
                 Player
@@ -312,6 +274,7 @@ export const AvailabilityGrid = forwardRef<
                   key={game.matchId}
                   game={game}
                   firstColWidth={firstColWidth}
+                  slotAttrs={slotStarts.get(game.matchId)}
                   headerRef={(element) => {
                     if (element) headerRefs.current.set(game.matchId, element)
                     else headerRefs.current.delete(game.matchId)
@@ -342,7 +305,7 @@ export const AvailabilityGrid = forwardRef<
                   '&:hover > th, &:hover > td': { bgcolor: hoverTint },
                 }}
               >
-                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.75 }}>
+                <TableCell component="th" scope="row" sx={{ ...stickyFirstColSx, bgcolor: undefined, zIndex: 2, px: 1, py: 0.25 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
                     {playerFullName(player)}
                   </Typography>
@@ -358,10 +321,10 @@ export const AvailabilityGrid = forwardRef<
                       // docs/specs/085 (F): with the change handlers a cell that has a poll is a button opening the answer menu;
                       // without them (older callers) a click still opens the poll.
                       onClick={path && !changeAnswer ? () => navigate(path) : undefined}
-                      sx={{ px: 0.5, py: 0.75, cursor: path && !changeAnswer ? 'pointer' : 'default' }}
+                      sx={{ px: 0.5, py: { xs: 0.25, sm: 0.5 }, cursor: path && !changeAnswer ? 'pointer' : 'default' }}
                     >
                       {cell && changeAnswer && canChangeAnswer(game, cell) ? (
-                        <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer}>
+                        <ChangeAnswerMenu player={player} game={game} cell={cell} handlers={changeAnswer} sx={{ minHeight: { xs: 32, sm: CELL_MARK_SIZE }, minWidth: { xs: 32, sm: CELL_MARK_SIZE }, justifyContent: 'center' }}>
                           <CellMark status={cell.status} picked={cell.picked} />
                         </ChangeAnswerMenu>
                       ) : (
@@ -370,10 +333,10 @@ export const AvailabilityGrid = forwardRef<
                     </TableCell>
                   )
                 })}
-                <TableCell align="center" sx={{ ...numberSx, borderLeft: 1, borderLeftColor: 'divider' }}>
+                <TableCell align="center" sx={{ ...numberSx, py: 0.25, borderLeft: 1, borderLeftColor: 'divider' }}>
                   {player.answeredCount}
                 </TableCell>
-                <TableCell align="center" sx={numberSx}>
+                <TableCell align="center" sx={{ ...numberSx, py: 0.25 }}>
                   {player.pickedCount}
                 </TableCell>
               </TableRow>
@@ -390,7 +353,7 @@ export const AvailabilityGrid = forwardRef<
                   bottom: 0,
                   zIndex: 5,
                   px: 1,
-                  py: 0.75,
+                  py: 0.25,
                   fontWeight: 600,
                   fontSize: 11,
                   lineHeight: 1.2,
@@ -413,7 +376,7 @@ export const AvailabilityGrid = forwardRef<
                       zIndex: 3,
                       bgcolor: 'background.paper',
                       px: 0.5,
-                      py: 0.75,
+                      py: 0.25,
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
                       borderTop: 1,

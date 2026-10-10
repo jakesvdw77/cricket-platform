@@ -4,6 +4,8 @@ The forward-looking backlog for this project — what's next, what's known but n
 
 Update this file whenever a spec's own forward-references change (a new "Flag for a future spec" note, a Deliberately Deferred item added/resolved) — it's a living index, not a one-time snapshot.
 
+**Also built:** spec [`093`](specs/093-team-selection-hub.md) (Team selection hub) is built on branch `feat/093-team-selection-hub`, awaiting the user's browser check (no PR yet).
+
 ## Resume here: 085 Availability polish (built, awaiting the browser check; PR #104)
 
 Specs 083 and 084 are merged. Spec [`specs/085-availability-polish.md`](specs/085-availability-polish.md) and plan [`plans/085-availability-polish.md`](plans/085-availability-polish.md) are built in one PR (#104, one commit per item): compact counters, small toggles, browser tab titles, the Responses pages (header gauge, no Summary tab, aligned lists), the Players grid (one scrollbar, Jump to today in the header, legend above), the phone lists (By game / By player), changing an answer from the Players grid (F) and poll lists behind the Open polls and Close in 48 hours counters (G). Still to do: the user's browser check (Storybook and Playwright were never run), then merge. Mockups are linked in the spec.
@@ -164,6 +166,19 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **Opponent rosters and players.**
 - **Bulk CSV import** of league teams.
 - **A `?tab=` deep link into the league's Teams tab** (the match form's empty-list helper currently links to the league's Details tab).
+
+## Deferred by `093`: Team selection hub
+
+- **Actual batting order and rotation (needs a Results module first).** The planned order (the announced team) stays fixed once announced. On the day any batter can be promoted or dropped, and in age groups such as under 9 a rotation rule applies (for example a batter may not open twice in a row), so coaches need a record of where each player actually batted. Decision (2026-10-09): there is no Results module yet and it will be its own module; when it exists, the recorded result sets the batting order for a completed match, the announced plan is kept as a snapshot ("planned 3, batted 1"), players who did not bat stay listed without a position, and a correction to a result re-derives the order. Rotation checks (for example "opened in the last N matches", a setting per league or section, shown as a warning not a block) read from those result-driven orders. Until then the planned order is all there is. Needs its own spec.
+- **Select team page: confirm before reordering an announced team.** The Batting order view asks "Change an announced team?" before a move; the Select team page sends the reorder with no warning and relies on the server un-announcing.
+- **Bulk announce**, **phone variants of the Players grid and Batting order matrix** (today they scroll sideways), **keep or drop the Time slots view** if unused, and **a menu icon for Team selection** (it still uses the old `nav/squads` icon).
+- **Players grid: confirm before unpicking from an announced team** (it un-announces silently, as spec 076 does).
+- **Set the 12th man and "click a name to change player or position" from the Batting order view** (12th man is display only there; set it on the Select team page).
+- **Share announced teams: built** on the Select team page, announced Matches rows and Time slots cards (reusing `useTeamSheetShare` and `TeamSheetCommunicationDialog`). **Bulk share per day** is still deferred.
+- **Season carry-over** for any future rotation rule (for example who opened last season).
+- **"Past" means by date only:** same-day matches stay upcoming until midnight. A kickoff-time option is possible.
+- **Planned versus actual batting order:** see the Results module item above; 093 shows the announced plan only.
+- **Notifications:** the header bell currently links to the sending page; receiving notifications (a bell with an unread list) is a later feature.
 
 ## Deferred by `092` — Teams gold standard
 

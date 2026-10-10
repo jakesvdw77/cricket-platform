@@ -141,16 +141,19 @@ public class SelectionEligibility {
         Set<UUID> members = poolMemberIds(match, team);
         Set<UUID> outside = new HashSet<>();
         for (UUID playerId : playerIds) {
-            PlayerInfo info = players.get(playerId);
-            boolean eligible = info != null
-                    && info.active()
-                    && match.getClubId().equals(info.clubId())
-                    && members.contains(playerId);
-            if (!eligible) {
+            if (!inPool(match.getClubId(), players.get(playerId), playerId, members)) {
                 outside.add(playerId);
             }
         }
         return outside;
+    }
+
+    /**
+     * The pool test for one player given the team's already resolved member ids: a known, active
+     * profile of the match's club who is a member. Shared with the batch overview.
+     */
+    public boolean inPool(UUID matchClubId, PlayerInfo info, UUID playerId, Set<UUID> members) {
+        return info != null && info.active() && matchClubId.equals(info.clubId()) && members.contains(playerId);
     }
 
     /**
@@ -168,13 +171,24 @@ public class SelectionEligibility {
         if (league.getMinAge() == null && league.getMaxAge() == null) {
             return problems;
         }
-        LocalDate cutoffDate = league.getAgeCutoffDate();
-        if (cutoffDate == null) {
-            Season season = seasonRepository
-                    .findById(match.getSeasonId())
-                    .orElseThrow(() -> new NotFoundException("Season not found: " + match.getSeasonId()));
-            cutoffDate = season.getStartDate();
+        Season season = league.getAgeCutoffDate() != null ? null : seasonRepository
+                .findById(match.getSeasonId())
+                .orElseThrow(() -> new NotFoundException("Season not found: " + match.getSeasonId()));
+        return ageProblems(league, season, playerIds, players);
+    }
+
+    /**
+     * The age rule for already loaded rows: {@code season} is only read (for its start date) when
+     * the league has no cutoff date of its own, so the caller may pass null otherwise. Shared with
+     * the batch overview, which loads every league and season in one query each.
+     */
+    public Map<UUID, String> ageProblems(
+            League league, Season season, Collection<UUID> playerIds, Map<UUID, PlayerInfo> players) {
+        Map<UUID, String> problems = new HashMap<>();
+        if (league.getMinAge() == null && league.getMaxAge() == null) {
+            return problems;
         }
+        LocalDate cutoffDate = league.getAgeCutoffDate() != null ? league.getAgeCutoffDate() : season.getStartDate();
         for (UUID playerId : playerIds) {
             PlayerInfo info = players.get(playerId);
             if (info == null) {

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Avatar, Box, Typography } from '@mui/material'
+import { Avatar, Box, IconButton, Tooltip, Typography } from '@mui/material'
+import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { AvatarMenu } from '../AvatarMenu'
 import { avatarSx } from '../RecordCard'
@@ -31,13 +32,17 @@ export interface ShellHeaderProps {
   // primary.contrastText, logo on a white tile). Undefined/'plain' is the white header the admin and
   // player shells keep unchanged.
   tone?: 'plain' | 'brand'
+  // Renders a bell icon button (aria-label "Notifications") linking here, just before the profile
+  // icon. Undefined renders no bell, so only the shell that passes it (the manager shell) has one.
+  // For now it opens the sending page; receiving notifications is a later feature.
+  notificationsTo?: string
 }
 
 // The header row (brand + AvatarMenu) shared by every post-login shell — see
 // docs/specs/006-post-login-home-shells.md. Pulled out once AppShell, ManagerShell, and
 // BottomTabShell all turned out to render the same row, differing only in what nav they wrap
 // it with (sidebar drawer, nothing, or a bottom tab bar).
-export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain' }: ShellHeaderProps) {
+export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, homeTo, logoUrl, tone = 'plain', notificationsTo }: ShellHeaderProps) {
   const hasLogoSlot = logoUrl !== undefined
   const onBrand = tone === 'brand'
 
@@ -82,7 +87,22 @@ export function ShellHeader({ brand, user, onLogout, profileTo, leading, dense, 
           {brand}
         </Typography>
       </Box>
-      <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        {notificationsTo && (
+          <Tooltip title="Notifications">
+            <IconButton
+              component={RouterLink}
+              to={notificationsTo}
+              aria-label="Notifications"
+              size="small"
+              sx={{ color: onBrand ? 'primary.contrastText' : 'text.secondary', p: 0.5 }}
+            >
+              <NotificationsOutlined sx={{ fontSize: 28 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+        <AvatarMenu name={user.name} email={user.email} onLogout={onLogout} profileTo={profileTo} onBrand={onBrand} />
+      </Box>
     </Box>
   )
 }

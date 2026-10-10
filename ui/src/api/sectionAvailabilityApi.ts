@@ -151,6 +151,8 @@ export interface ListRoundsParams {
   // docs/specs/083: the shared League and Team filters, validated server-side.
   leagueId?: string
   teamId?: string
+  // The season whose rounds are listed; absent lists every season's.
+  seasonId?: string
 }
 
 // Plain array response, not Page<T> - a club's section availability rounds are a small, bounded,
@@ -162,6 +164,7 @@ export async function listRounds(clubId: string, params: ListRoundsParams = {}):
       ...(params.open !== undefined ? { open: params.open } : {}),
       ...(params.leagueId ? { leagueId: params.leagueId } : {}),
       ...(params.teamId ? { teamId: params.teamId } : {}),
+      ...(params.seasonId ? { seasonId: params.seasonId } : {}),
     },
   })
   return data

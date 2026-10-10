@@ -6,6 +6,7 @@ import { CompactSwitch } from '../../components/CompactSwitch'
 import { ContentControlsLine } from '../../components/ContentControlsLine'
 import { EmptyState } from '../../components/EmptyState'
 import { listPlayerAvailability } from '../../api/playerAvailabilityApi'
+import { SlotNavigator } from './playerAvailability/SlotNavigator'
 import { AvailabilityGrid } from './playerAvailability/AvailabilityGrid'
 import { useChangeAnswer } from './playerAvailability/useChangeAnswer'
 import { PlayersPhoneLists } from './playerAvailability/PlayersPhoneLists'
@@ -17,7 +18,7 @@ import { useAvailabilityHub } from './availability/hubContext'
 // docs/specs/068-player-availability-grid.md: a season of availability at a glance. docs/specs/083:
 // League, Section and Team are the hub's shared filters (saved per club and mirrored in the address),
 // shown in the shared FilterBar with search; the season is always the default one (no season control), also
-// from the hub. Search, Show past games and Hide players with no answers are a per-visit view choice
+// from the hub. Search, View entire season and Hide players with no answers are a per-visit view choice
 // (not persisted), the two toggles on the line above the grid (in the Filters sheet on a phone). There is
 // no "All seasons" option: the grid is one season's games by design (the spec bounds it to one season
 // and one section), and a multi-season grid would hit the server's hard cap for nothing.
@@ -25,6 +26,7 @@ export default function PlayerAvailabilityPage() {
   const { clubId, filters, seasonId, seasonsLoading, teams, teamsLoading, teamsError, validTeamId: teamId, scopeText, setJumpToToday } =
     useAvailabilityHub()
   const gridRef = useRef<AvailabilityGridHandle>(null)
+  const [scrollBox, setScrollBox] = useState<HTMLElement | null>(null)
   const theme = useTheme()
   // Same idiom as FilterBar and ContentControlsLine: the phone has no Jump to today in the header.
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
@@ -81,7 +83,7 @@ export default function PlayerAvailabilityPage() {
 
   const toggles = (
     <>
-      <CompactSwitch checked={includePast} onChange={setIncludePast} label="Show past games" />
+      <CompactSwitch checked={includePast} onChange={setIncludePast} label="View entire season" />
       <CompactSwitch checked={hideUnanswered} onChange={setHideUnanswered} label="Hide players with no answers" />
     </>
   )
@@ -104,6 +106,7 @@ export default function PlayerAvailabilityPage() {
       <ContentControlsLine
         scope={!showsGrid ? '' : `Showing ${visiblePlayers.length} ${visiblePlayers.length === 1 ? 'player' : 'players'} · ${games.length} ${games.length === 1 ? 'game' : 'games'}${scopeFilters ? ` · ${scopeFilters}` : ''}`}
         controls={toggles}
+        pinned={!isPhone ? <SlotNavigator scrollBox={scrollBox} /> : undefined}
       />
 
       {loading && (
@@ -138,7 +141,7 @@ export default function PlayerAvailabilityPage() {
           {isPhone ? (
             <PlayersPhoneLists games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
           ) : (
-            <AvailabilityGrid ref={gridRef} games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
+            <AvailabilityGrid ref={gridRef} onScrollBox={setScrollBox} games={games} players={visiblePlayers} changeAnswer={changeAnswer} />
           )}
         </Box>
       )}

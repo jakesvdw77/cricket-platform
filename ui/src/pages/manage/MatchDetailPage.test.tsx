@@ -488,11 +488,11 @@ describe('MatchDetailPage', () => {
   })
 
   describe('actions', () => {
-    it('Select team links to the Playing XI tab', async () => {
+    it('Select team links to the Select team page', async () => {
       await renderLoaded()
       expect(within(screen.getByTestId('match-header-actions')).getByRole('link', { name: 'Select team' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/matches/match-1/edit?tab=playing-xi',
+        '/manage/team-selection/matches/match-1/sides/home',
       )
     })
 
@@ -711,7 +711,7 @@ describe('MatchDetailPage', () => {
       expect(await within(card).findByText('No players selected yet.')).toBeInTheDocument()
       expect(within(card).getByRole('link', { name: 'Select team' })).toHaveAttribute(
         'href',
-        '/manage/fixtures/matches/match-1/edit?tab=playing-xi',
+        '/manage/team-selection/matches/match-1/sides/home',
       )
     })
 

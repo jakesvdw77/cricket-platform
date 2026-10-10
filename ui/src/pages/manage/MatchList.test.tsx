@@ -185,7 +185,7 @@ describe('MatchList', () => {
 
       await user.click(screen.getAllByRole('button', { name: 'List' })[0])
       expect(await screen.findByRole('table', { name: 'Matches' })).toBeInTheDocument()
-      expect(screen.getByLabelText('Show past matches')).toBeInTheDocument()
+      expect(screen.getByLabelText(/view (entire season|all seasons)/i)).toBeInTheDocument()
 
       await user.click(screen.getAllByRole('button', { name: 'Cards' })[0])
       await waitFor(() => expect(screen.queryByRole('table', { name: 'Matches' })).not.toBeInTheDocument())
@@ -268,7 +268,7 @@ describe('MatchList', () => {
   })
 
   // docs/specs/037-match-improvements.md item 1
-  it('sends upcomingOnly: true by default, and "Show past matches" turns it off', async () => {
+  it('sends upcomingOnly: true by default, and "View entire season" turns it off', async () => {
     const user = userEvent.setup()
     listMatches.mockResolvedValue(makePage([makeMatch()]))
 
@@ -277,12 +277,12 @@ describe('MatchList', () => {
     await screen.findByText('1st XI vs Riverside Occasionals')
     expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true }))
 
-    await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
     await waitFor(() =>
       expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: false })),
     )
 
-    await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+    await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
     await waitFor(() =>
       expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ upcomingOnly: true })),
     )
@@ -325,11 +325,11 @@ describe('MatchList', () => {
       renderPage('test-club-id')
 
       expect(await screen.findByText(/Showing 1 upcoming match/)).toBeInTheDocument()
-      await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+      await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
       expect(await screen.findByText(/^Showing 1 match(?!es)/)).toBeInTheDocument()
     })
 
-    it('on a phone shows search and a Filters button, with Show past matches and the sort link inside the sheet', async () => {
+    it('on a phone shows search and a Filters button, with View entire season and the sort link inside the sheet', async () => {
       const user = userEvent.setup()
       window.matchMedia = ((query: string) => ({
         matches: query.includes('max-width'),
@@ -348,11 +348,11 @@ describe('MatchList', () => {
 
         await screen.findByText('1st XI vs Riverside Occasionals')
         expect(screen.getByText(/Showing 1 upcoming match/)).toBeInTheDocument()
-        expect(screen.queryByRole('checkbox', { name: /show past matches/i })).not.toBeInTheDocument()
+        expect(screen.queryByRole('checkbox', { name: /view (entire season|all seasons)/i })).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: /soonest first/i })).not.toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Filters' }))
-        expect(await screen.findByRole('checkbox', { name: /show past matches/i })).toBeInTheDocument()
+        expect(await screen.findByRole('checkbox', { name: /view (entire season|all seasons)/i })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: /soonest first/i })).toBeInTheDocument()
       } finally {
         delete (window as { matchMedia?: unknown }).matchMedia
@@ -894,7 +894,7 @@ describe('MatchList', () => {
       expect(counter('this-week')).toHaveAttribute('aria-pressed', 'false')
     })
 
-    it('asks the summary for exactly the list filters, with includePast the inverse of Show past matches', async () => {
+    it('asks the summary for exactly the list filters, with includePast the inverse of View entire season', async () => {
       const user = userEvent.setup()
       listMatches.mockResolvedValue(makePage([makeMatch()]))
 
@@ -904,7 +904,7 @@ describe('MatchList', () => {
       expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: false }))
       expect(within(counter('shown')).getByText('Upcoming matches')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('checkbox', { name: /show past matches/i }))
+      await user.click(screen.getByRole('checkbox', { name: /view (entire season|all seasons)/i }))
 
       await waitFor(() =>
         expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ includePast: true })),

@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Avatar,
   Box,
   Button as MuiButton,
   Chip,
@@ -33,17 +32,18 @@ import { listMatchSides } from '../../api/matchSideApi'
 import type { MatchSide } from '../../api/matchSideApi'
 import { listPolls } from '../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
-import { initialsFromName } from '../../utils/initials'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
+import { TeamLogo } from './matches/TeamLogo'
+import { logoFor } from './matches/teamLogoHelpers'
+import { selectTeamPath } from './teamSelection/selectionLinks'
 import {
   badgeFor,
   matchPollsFrom,
   NO_CLUB_TEAM_REASON,
   ownSides,
-  withPlayingXiTab,
     pollDestination,
   sideName,
 } from './matches/matchCardHelpers'
@@ -226,6 +226,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   // limits.maxSelected (a 12th man counts); a match with no league keeps 075's rule (no bar).
   const hasLeague = Boolean(match.leagueId)
   const editTo = `${MATCHES_PATH}/${match.id}/edit`
+  // docs/specs/093: Select team opens the Select team page of the first own side (home when it is ours).
+  const selectTo = selectTeamPath(match.id, (homeOwn ? homeSide : awaySide)?.id ?? null, Boolean(homeOwn))
 
   // The one open squad poll's scheduled close, when there is exactly one (group polls carry none): the Poll tile's caption.
   const openScheduled = (pollsQuery.data ?? []).filter((poll) => poll.open && poll.scheduledCloseAt)
@@ -345,7 +347,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 ) : (
                   <MuiButton
                     component={RouterLink}
-                    to={withPlayingXiTab(editTo)}
+                    to={selectTo}
                     variant="outlined"
                     startIcon={<GroupsOutlinedIcon fontSize="small" />}
                     sx={ACTION_SX}
@@ -445,7 +447,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 announcedReady={sidesReady}
                 sidesReady={sidesReady}
                 playingXiSize={hasLeague ? (side?.limits?.maxSelected ?? null) : null}
-                selectTo={withPlayingXiTab(editTo)}
+                selectTo={selectTeamPath(match.id, side?.id ?? null, entry.side === 'home')}
               />
             )
           })}
@@ -471,50 +473,5 @@ function ActionSlot({ disabled, children }: { disabled: boolean; children: React
     >
       {children}
     </Box>
-  )
-}
-
-interface SideLogo {
-  src: string | null
-  initials: string
-}
-
-// Source per side (spec 1a): a real team's logo is Team.logoUrl; a free-text or league-team
-// opponent's is the match's copied side logo. No logo shows initials: the team's abbreviation when
-// it has one, else the name's initials.
-function logoFor(
-  teamId: string | null,
-  sideLogoUrl: string | null,
-  name: string,
-  teamsById: Map<string, Team>,
-): SideLogo {
-  const team = teamId ? teamsById.get(teamId) : undefined
-  const src = teamId ? (team?.logoUrl ?? null) : sideLogoUrl
-  return { src, initials: team?.abbreviation || initialsFromName(name) }
-}
-
-function TeamLogo({ logo, testId }: { logo: SideLogo; testId: string }) {
-  return (
-    <Avatar
-      variant="rounded"
-      src={logo.src ?? undefined}
-      alt=""
-      aria-hidden
-      data-testid={testId}
-      sx={{
-        width: { xs: 36, md: 44 },
-        height: { xs: 36, md: 44 },
-        flex: 'none',
-        fontSize: { xs: '0.7rem', md: '0.8rem' },
-        fontWeight: 700,
-        bgcolor: 'background.paper',
-        color: 'primary.main',
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1.25,
-      }}
-    >
-      {logo.initials}
-    </Avatar>
   )
 }

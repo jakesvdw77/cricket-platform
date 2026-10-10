@@ -37,8 +37,8 @@ describe('managerNav', () => {
     expect(items.find((item) => item.id === 'overview')?.icon).toBe('nav/overview-home')
   })
 
-  it('the bottom tabs are Home, Matches, Polls, Players', () => {
-    expect(managerTabs().map((tab) => tab.label)).toEqual(['Home', 'Matches', 'Polls', 'Players'])
+  it('the bottom tabs are Home, Matches, Availability, Players', () => {
+    expect(managerTabs().map((tab) => tab.label)).toEqual(['Home', 'Matches', 'Availability', 'Players'])
   })
 
   it.each([
@@ -47,15 +47,15 @@ describe('managerNav', () => {
     ['/manage/fixtures/matches', 'matches'],
     ['/manage/fixtures/matches/1/edit', 'matches'],
     ['/manage/fixtures/leagues/2/schedule', 'leagues'],
-    ['/manage/availability', 'polls'],
-    ['/manage/availability/', 'polls'],
-    ['/manage/availability/new', 'polls'],
-    ['/manage/availability/group/r1', 'polls'],
-    ['/manage/availability/squad/m/p', 'polls'],
-    ['/manage/section-availability', 'polls'],
-    ['/manage/availability/players', 'player-availability'],
-    ['/manage/player-availability', 'player-availability'],
-    ['/manage/availability/coverage', 'team-availability'],
+    ['/manage/availability', 'availability'],
+    ['/manage/availability/', 'availability'],
+    ['/manage/availability/new', 'availability'],
+    ['/manage/availability/group/r1', 'availability'],
+    ['/manage/availability/squad/m/p', 'availability'],
+    ['/manage/section-availability', 'availability'],
+    ['/manage/availability/players', 'availability'],
+    ['/manage/player-availability', 'availability'],
+    ['/manage/availability/coverage', 'availability'],
     ['/manage/communication', 'communication'],
     ['/manage/teams/new', 'teams'],
     ['/manage/sections/s/teams', 'teams'],
@@ -67,20 +67,25 @@ describe('managerNav', () => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
 
-  it('groups People as Teams, Players, Squads, Communication and Availability as Polls, Player availability, Match-day cover', () => {
+  it('groups People as Teams, Players, Availability, Team selection, Communication, with no Availability group of its own', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
-    expect(labels('People')).toEqual(['Teams', 'Players', 'Squads', 'Communication'])
-    expect(labels('Availability')).toEqual(['Polls', 'Player availability', 'Match-day cover'])
+    expect(labels('People')).toEqual(['Teams', 'Players', 'Availability', 'Team selection', 'Communication'])
+    expect(MANAGER_NAV.map((group) => group.label)).toEqual([null, 'Schedule', 'People', 'Club'])
+  })
+
+  it('has no Polls, Player availability, Match-day cover or Notifications item (the hub tabs and the header bell reach them)', () => {
+    const ids = items.map((item) => item.id)
+    for (const gone of ['polls', 'player-availability', 'team-availability', 'notifications']) expect(ids).not.toContain(gone)
   })
 
   it('lights exactly one item on every real path', () => {
     const paths = [
       '/manage', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/results', '/manage/teams',
-      '/manage/sections/s/teams', '/manage/players', '/manage/squads', '/manage/communication',
+      '/manage/sections/s/teams', '/manage/players', '/manage/team-selection', '/manage/team-selection/batting', '/manage/communication',
       '/manage/availability', '/manage/availability/new', '/manage/availability/group/r1',
       '/manage/availability/squad/m/p', '/manage/availability/players', '/manage/availability/coverage',
       '/manage/player-availability', '/manage/section-availability', '/manage/club-profile', '/manage/gallery',
-      '/manage/notifications', '/manage/permissions',
+      '/manage/permissions',
     ]
     // Section-scoped team routes also sit under Club profile's /manage/sections; first-match-wins
     // (Teams precedes Club) resolves that, so it is covered by the activeNavId cases above.
@@ -89,9 +94,13 @@ describe('managerNav', () => {
     }
   })
 
-  it('the bottom bar lights Polls for the whole availability hub', () => {
+  it('highlights nothing on the Notifications page (reached from the header bell)', () => {
+    expect(activeNavId(MANAGER_NAV, '/manage/notifications')).toBeUndefined()
+  })
+
+  it('the bottom bar lights Availability for the whole availability hub', () => {
     for (const path of ['/manage/availability', '/manage/availability/players', '/manage/availability/coverage', '/manage/player-availability']) {
-      expect(activeTabId(MANAGER_NAV, path), path).toBe('polls')
+      expect(activeTabId(MANAGER_NAV, path), path).toBe('availability')
     }
     expect(activeTabId(MANAGER_NAV, '/manage/players')).toBe('players')
   })

@@ -14,7 +14,7 @@ public interface AvailabilitySummaryService {
 
     /**
      * Counters over the polls of {@code clubId} the caller can see that match the optional filters
-     * (docs/specs/083): open polls only unless {@code includeClosed}; {@code type} null means ALL.
+     * (docs/specs/083): {@code seasonId} (null = all seasons) narrows with the poll lists' own season rule (squad poll by its match's season, group poll when any active match in its windows is in the season); open polls only unless {@code includeClosed}; {@code type} null means ALL.
      * Never includes another club's data; 404 for another club's league or team, 403 for a section
      * (or team section) the caller cannot administer.
      */
@@ -24,6 +24,7 @@ public interface AvailabilitySummaryService {
             UUID leagueId,
             UUID sectionId,
             UUID teamId,
+            UUID seasonId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed);
 
@@ -52,6 +53,7 @@ public interface AvailabilitySummaryService {
             UUID leagueId,
             UUID sectionId,
             UUID teamId,
+            UUID seasonId,
             AvailabilityPollTypeFilter type,
             boolean includeClosed,
             boolean closingSoon,

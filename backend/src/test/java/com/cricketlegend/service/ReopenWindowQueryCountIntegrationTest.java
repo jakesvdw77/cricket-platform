@@ -118,7 +118,7 @@ class ReopenWindowQueryCountIntegrationTest {
         Authentication admin = new TestingAuthenticationToken("ops", "n/a", "ROLE_platform_admin");
         Statistics statistics = statistics();
 
-        var polls = pollService.listClosedForClub(admin, w.club().getId(), null, null, null);
+        var polls = pollService.listClosedForClub(admin, w.club().getId(), null, null, null, null);
 
         assertThat(polls).hasSize(6).allMatch(p -> p.canReopen());
         assertThat(statistics.getEntityStatistics(Match.class.getName()).getFetchCount()).isZero();
@@ -130,7 +130,7 @@ class ReopenWindowQueryCountIntegrationTest {
         Authentication admin = new TestingAuthenticationToken("ops", "n/a", "ROLE_platform_admin");
         Statistics statistics = statistics();
 
-        var rounds = roundService.list(admin, w.club().getId(), null, null, null, false);
+        var rounds = roundService.list(admin, w.club().getId(), null, null, null, null, false);
 
         assertThat(rounds).hasSize(7).allMatch(r -> r.canReopen());
         assertThat(statistics.getEntityStatistics(Match.class.getName()).getFetchCount()).isZero();

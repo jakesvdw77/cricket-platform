@@ -20,22 +20,35 @@ import java.util.UUID;
  *       when any own-club section of its match is in it, a group poll when its section is.
  *   <li>{@code leagueId}: a squad poll matches when its match is in the league; a group poll when
  *       any match in any of its windows is.
+ *   <li>{@code seasonId}: a squad poll matches when its match is in the season; a group poll when any
+ *       match in any of its windows is (a round has no season of its own).
  *   <li>{@code teamId} (one of the club's own teams): a squad poll matches when it is the team's
  *       poll; a group poll when the team is a side of any match in its windows.
  * </ul>
  */
 public record AvailabilityPollFilter(
-        UUID leagueId, Set<UUID> sectionIds, UUID teamId, AvailabilityPollTypeFilter type, boolean includeClosed) {
+        UUID leagueId,
+        Set<UUID> sectionIds,
+        UUID teamId,
+        AvailabilityPollTypeFilter type,
+        boolean includeClosed,
+        UUID seasonId) {
 
     /** The one cap on closed polls of each kind, in the poll lists and the summary counters alike. */
     public static final int CLOSED_POLLS_LIMIT = 50;
 
     /** Today's behaviour: every open poll of both kinds. */
     public static final AvailabilityPollFilter OPEN_ONLY =
-            new AvailabilityPollFilter(null, null, null, AvailabilityPollTypeFilter.ALL, false);
+            new AvailabilityPollFilter(null, null, null, AvailabilityPollTypeFilter.ALL, false, null);
 
     public AvailabilityPollFilter {
         type = type == null ? AvailabilityPollTypeFilter.ALL : type;
+    }
+
+    /** No season narrowing. */
+    public AvailabilityPollFilter(
+            UUID leagueId, Set<UUID> sectionIds, UUID teamId, AvailabilityPollTypeFilter type, boolean includeClosed) {
+        this(leagueId, sectionIds, teamId, type, includeClosed, null);
     }
 
     public boolean includesSquad() {
@@ -48,7 +61,7 @@ public record AvailabilityPollFilter(
 
     /** Whether deciding on a group poll needs the matches of its windows loaded. */
     public boolean needsGroupMatches() {
-        return leagueId != null || teamId != null;
+        return leagueId != null || teamId != null || seasonId != null;
     }
 
     /** {@code matchSectionIds}: the match's own-club section ids. */
@@ -57,6 +70,9 @@ public record AvailabilityPollFilter(
             return false;
         }
         if (leagueId != null && !leagueId.equals(match.getLeagueId())) {
+            return false;
+        }
+        if (seasonId != null && !seasonId.equals(match.getSeasonId())) {
             return false;
         }
         if (teamId != null && !teamId.equals(poll.getTeamId())) {
@@ -74,6 +90,9 @@ public record AvailabilityPollFilter(
             return false;
         }
         if (leagueId != null && slotMatches.stream().noneMatch(match -> leagueId.equals(match.getLeagueId()))) {
+            return false;
+        }
+        if (seasonId != null && slotMatches.stream().noneMatch(match -> seasonId.equals(match.getSeasonId()))) {
             return false;
         }
         return teamId == null

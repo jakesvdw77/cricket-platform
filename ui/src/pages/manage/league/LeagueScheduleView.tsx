@@ -35,7 +35,7 @@ export default function LeagueScheduleView() {
   )
 
   const ourSwitch = <CompactSwitch checked={onlyOurs} onChange={setOnlyOurs} label="Only our matches" />
-  const playedSwitch = <CompactSwitch checked={showPlayed} onChange={setShowPlayed} label="Show played" />
+  const playedSwitch = <CompactSwitch checked={showPlayed} onChange={setShowPlayed} label="View entire season" />
   const isFiltering = teamId !== null || search.trim() !== '' || onlyOurs
 
   if (seasons.length === 0) {
@@ -93,7 +93,7 @@ export default function LeagueScheduleView() {
           description={
             isFiltering
               ? 'No matches match the current filters. Try a different team, search, or turn off Only our matches.'
-              : 'No upcoming matches. Turn on Show played to see earlier fixtures.'
+              : 'No upcoming matches. Turn on View entire season to see earlier fixtures.'
           }
         />
       )}

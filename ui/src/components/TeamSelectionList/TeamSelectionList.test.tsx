@@ -92,16 +92,18 @@ describe('TeamSelectionList', () => {
     expect(screen.queryByTestId('holding-area')).not.toBeInTheDocument()
   })
 
-  it('shows Captain and Wicketkeeper word badges on one player each, plus the role badge', () => {
+  it('shows small C and WK markers on one player each, and the role as plain text', () => {
     setup({ captainPlayerId: 'a', wicketKeeperPlayerId: 'b' })
-    expect(screen.getAllByText('Captain')).toHaveLength(1)
-    expect(screen.getAllByText('Wicketkeeper')).toHaveLength(1)
-    expect(within(screen.getByTestId('selection-row-a')).getByText('Captain')).toBeInTheDocument()
-    expect(within(screen.getByTestId('selection-row-b')).getByText('Wicketkeeper')).toBeInTheDocument()
+    expect(screen.getAllByText('C')).toHaveLength(1)
+    expect(screen.getAllByText('WK')).toHaveLength(1)
+    expect(within(screen.getByTestId('selection-row-a')).getByText('C')).toBeInTheDocument()
+    expect(within(screen.getByTestId('selection-row-b')).getByText('WK')).toBeInTheDocument()
     expect(within(screen.getByTestId('selection-row-c')).getByText('Batsman')).toBeInTheDocument()
+    expect(screen.queryByText('Captain')).not.toBeInTheDocument()
+    expect(screen.queryByText('Wicketkeeper')).not.toBeInTheDocument()
   })
 
-  it('draws the availability badges (Unsure, No response, Not polled, Said unavailable) and Also in, and none for Available or null', () => {
+  it('draws the availability as one small icon with its meaning as the name, and Also in as text', () => {
     setup({
       players: [
         player('a', 'Ann Ash', 1, { availability: 'UNSURE' }),
@@ -112,31 +114,38 @@ describe('TeamSelectionList', () => {
         player('f', 'Fay Fir', 6, { availability: null, alsoIn: '2nd XI' }),
       ],
     })
-    expect(screen.getByText('Unsure')).toBeInTheDocument()
-    expect(screen.getByText('No response')).toBeInTheDocument()
-    expect(screen.getByText('Not polled')).toBeInTheDocument()
-    expect(screen.getByText('Said unavailable')).toBeInTheDocument()
-    expect(screen.queryByText('Available')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Ann Ash, Unsure' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Bob Birch, No response' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Cal Cedar, Not polled' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Dee Dale, Said unavailable' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Eve Elm, Available' })).toBeInTheDocument()
+    expect(within(screen.getByTestId('selection-row-f')).queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByText('Also in 2nd XI')).toBeInTheDocument()
+    // No word chips any more.
+    expect(screen.queryByText('Unsure')).not.toBeInTheDocument()
   })
 
-  it('draws a brand icon on the role, Captain and Wicketkeeper badges without changing their labels', () => {
+  it('draws no brand icon pills in a row (role is text, markers are small)', () => {
     setup({ captainPlayerId: 'a', wicketKeeperPlayerId: 'a' })
-    const badges = screen.getByRole('button', { name: 'Ann Ash, role Batsman, change role' })
-    expect(badges.querySelector('img')).toHaveStyle({ width: '28px', height: '28px' })
-    expect(screen.getByRole('button', { name: 'Ann Ash, captain, open options' }).querySelector('img')).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Ann Ash, wicketkeeper, open options' }).querySelector('img')).not.toBeNull()
+    expect(screen.getByTestId('team-selection-list').querySelector('img')).toBeNull()
   })
 
-  it('has no per-row buttons beyond the name and the role/captain/keeper badges', () => {
+  it('has per-row buttons only for the name, the C / WK markers, the role text and the row menu', () => {
     setup({ captainPlayerId: 'a' })
     const buttons = within(screen.getByTestId('selection-row-a')).getAllByRole('button')
     expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
       'Ann Ash, open menu',
-      'Ann Ash, role Batsman, change role',
       'Ann Ash, captain, open options',
+      'Ann Ash, role Batsman, change role',
+      'Ann Ash, more actions',
     ])
     expect(screen.queryByRole('button', { name: /remove|delete/i })).not.toBeInTheDocument()
+  })
+
+  it('the row menu button opens the same menu as the name', async () => {
+    setup()
+    await userEvent.click(screen.getByRole('button', { name: 'Bob Birch, more actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Make captain' })).toBeInTheDocument()
   })
 
   describe('the name menu', () => {

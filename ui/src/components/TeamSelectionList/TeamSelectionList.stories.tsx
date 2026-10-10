@@ -48,7 +48,7 @@ export const WithWaitingPlayersAndTwelfthMan: Story = {
   },
 }
 
-export const AvailabilityBadges: Story = {
+export const AvailabilityIcons: Story = {
   args: {
     players: [
       player('1', 'Liam Carter', 1, { availability: 'UNSURE' }),
