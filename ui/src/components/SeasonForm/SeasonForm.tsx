@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Box } from '@mui/material'
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import { Input } from '../Input'
+import { FormSectionHeading } from '../FormSectionHeading'
 import type { SeasonPayload } from '../../api/seasonApi'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
@@ -78,36 +80,39 @@ export function SeasonForm({ initialValues, onSubmit }: SeasonFormProps) {
   }
 
   return (
-    <Box component="form" id={SEASON_FORM_ID} onSubmit={handleSubmit} noValidate sx={{ display: 'contents' }}>
-      <Input
-        label="Label"
-        value={values.label}
-        onChange={handleChange('label')}
-        error={Boolean(errors.label)}
-        helperText={errors.label ?? 'e.g. 2026'}
-      />
+    // docs/specs/094 (F): one "Season dates" section, Label / Start date / End date in three columns from md. No helper
+    // text; only validation errors show under a field.
+    <Box
+      component="form"
+      id={SEASON_FORM_ID}
+      onSubmit={handleSubmit}
+      noValidate
+      sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}
+    >
+      <FormSectionHeading icon={<EventOutlinedIcon />} title="Season dates" />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+        <Input label="Label" value={values.label} onChange={handleChange('label')} error={Boolean(errors.label)} helperText={errors.label} />
 
-      <Box sx={{ gridColumn: '1 / -1' }} />
+        <Input
+          label="Start date"
+          type="date"
+          value={values.startDate}
+          onChange={handleChange('startDate')}
+          error={Boolean(errors.startDate)}
+          helperText={errors.startDate}
+          InputLabelProps={{ shrink: true }}
+        />
 
-      <Input
-        label="Start date"
-        type="date"
-        value={values.startDate}
-        onChange={handleChange('startDate')}
-        error={Boolean(errors.startDate) || Boolean(errors.dateRange)}
-        helperText={errors.startDate ?? errors.dateRange}
-        InputLabelProps={{ shrink: true }}
-      />
-
-      <Input
-        label="End date"
-        type="date"
-        value={values.endDate}
-        onChange={handleChange('endDate')}
-        error={Boolean(errors.endDate) || Boolean(errors.dateRange)}
-        helperText={errors.endDate}
-        InputLabelProps={{ shrink: true }}
-      />
+        <Input
+          label="End date"
+          type="date"
+          value={values.endDate}
+          onChange={handleChange('endDate')}
+          error={Boolean(errors.endDate) || Boolean(errors.dateRange)}
+          helperText={errors.endDate ?? errors.dateRange}
+          InputLabelProps={{ shrink: true }}
+        />
+      </Box>
     </Box>
   )
 }

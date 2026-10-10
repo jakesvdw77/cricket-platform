@@ -1,10 +1,10 @@
-import { Stack, Typography } from '@mui/material'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SeasonForm, SEASON_FORM_ID } from '../../components/SeasonForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
-import { RecordStatusToggle } from '../../components/RecordStatusToggle'
+import { CompactSwitch } from '../../components/CompactSwitch'
 import { EmptyState } from '../../components/EmptyState'
 import { listSeasons, createSeason, updateSeason, deactivateSeason, reactivateSeason } from '../../api/seasonApi'
 import type { SeasonPayload } from '../../api/seasonApi'
@@ -62,6 +62,7 @@ export default function SeasonFormPage() {
 
   const toggle = season?.active ? deactivate : reactivate
 
+
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
@@ -86,19 +87,31 @@ export default function SeasonFormPage() {
       backLabel="Back to Seasons"
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {saveMutation.isError && (
+          {isEdit && season && (
+            <CompactSwitch
+              label="Active"
+              checked={season.active}
+              disabled={toggle.isPending}
+              onChange={(checked) => (checked ? reactivate : deactivate).mutate()}
+            />
+          )}
+
+          {(saveMutation.isError || toggle.isError) && (
             <Typography variant="body2" color="error.main">
-              {errorDetail(saveMutation.error, 'Something went wrong saving this season. Please try again.')}
+              {errorDetail(
+                saveMutation.isError ? saveMutation.error : toggle.error,
+                'Something went wrong saving this season. Please try again.',
+              )}
             </Typography>
           )}
+
+          <MuiButton component={RouterLink} to="/manage/fixtures/seasons" variant="outlined">
+            Cancel
+          </MuiButton>
 
           <Button type="submit" form={SEASON_FORM_ID} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create season'}
           </Button>
-
-          {isEdit && season && (
-            <RecordStatusToggle active={season.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
-          )}
         </Stack>
       }
     >

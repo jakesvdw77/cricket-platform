@@ -8,7 +8,7 @@ const meta: Meta<typeof SeasonForm> = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
         <Story />
       </Box>
     ),

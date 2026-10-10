@@ -40,7 +40,12 @@ describe('SeasonForm', () => {
     await user.type(screen.getByLabelText('End date'), '2026-01-01')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    expect(await screen.findByText('Start date must be on or before end date')).toBeInTheDocument()
+    const error = await screen.findByText('Start date must be on or before end date')
+    expect(error).toBeInTheDocument()
+    // Inline under End date only.
+    expect(screen.getByLabelText('End date')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Start date')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('End date')).toHaveAttribute('aria-describedby', error.id)
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
@@ -57,6 +62,16 @@ describe('SeasonForm', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as SeasonPayload
     expect(payload).toEqual({ label: '2026', startDate: '2026-01-01', endDate: '2026-12-31' })
+  })
+
+  it('renders the "Season dates" section with three fields and no helper text', () => {
+    renderSeasonForm({ onSubmit: vi.fn() })
+
+    expect(screen.getByText('Season dates')).toBeInTheDocument()
+    expect(screen.getByLabelText('Label')).toBeInTheDocument()
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument()
+    expect(screen.getByLabelText('End date')).toBeInTheDocument()
+    expect(screen.queryByText('e.g. 2026')).not.toBeInTheDocument()
   })
 
   it('prefills from initialValues', () => {
