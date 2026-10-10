@@ -93,3 +93,15 @@ export const Inactive: Story = { args: { section: { ...BOYS, active: false } } }
 export const Loading: Story = { args: { summary: undefined, teamsLoading: true, contactsLoading: true } }
 
 export const ErrorState: Story = { args: { summary: undefined, error: true } }
+
+// The panel as the Club profile shows it inside the 420 px slide-in drawer (padding 20 px each side).
+export const Embedded: Story = {
+  args: { embedded: true },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 420, padding: 20, boxSizing: 'border-box' }}>
+        <Story />
+      </div>
+    ),
+  ],
+}

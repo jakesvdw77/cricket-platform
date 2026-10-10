@@ -195,4 +195,34 @@ describe('SectionInfoPanel (docs/specs/094)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(props.onClose).toHaveBeenCalled()
   })
+
+  it('embedded leaves out the name heading and Close but keeps the path, badge and buttons', () => {
+    renderPanel({ embedded: true })
+    expect(screen.queryByRole('heading', { name: 'Boys' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Section path')).toBeInTheDocument()
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sections?sectionId=boys')
+    expect(screen.getByRole('link', { name: /manage teams/i })).toBeInTheDocument()
+  })
+
+  it('embedded shows a flat compact stat row with the subtree note on its own line', () => {
+    renderPanel({ embedded: true })
+    expect(screen.getByTestId('section-panel-subsections-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('section-panel-teams-value')).toHaveTextContent('2')
+    expect(screen.getByText('5 with sub-sections')).toBeInTheDocument()
+    expect(screen.getByTestId('section-panel-players-value')).toHaveTextContent('10')
+    expect(screen.queryByText(/Players \(/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('section-info-panel').className).not.toContain('MuiCard')
+  })
+
+  it('embedded uses friendly empty wording', () => {
+    renderPanel({ embedded: true, section: JUNIORS, sections: [JUNIORS], contacts: [] })
+    const fields = within(screen.getByRole('region', { name: 'Eligibility' })).getAllByTestId('section-panel-field')
+    expect(within(fields[0]).getByText('Not set')).toBeInTheDocument()
+    expect(within(fields[1]).getByText('Not specified')).toBeInTheDocument()
+    expect(within(fields[2]).getByText('Not set')).toBeInTheDocument()
+    expect(screen.getByText('No sub-sections')).toBeInTheDocument()
+    expect(screen.getByText('No linked contacts')).toBeInTheDocument()
+  })
 })

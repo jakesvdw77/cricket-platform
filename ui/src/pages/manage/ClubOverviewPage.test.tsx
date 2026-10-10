@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +7,7 @@ import ClubOverviewPage from './ClubOverviewPage'
 import type { ClubProfile } from '../../api/clubApi'
 import type { ClubContact } from '../../api/clubContactApi'
 import type { Sponsor } from '../../api/sponsorApi'
-import type { Section } from '../../api/sectionApi'
+import type { Section, SectionsSummary } from '../../api/sectionApi'
 import type { Season } from '../../api/seasonApi'
 
 const getManagedClubProfile = vi.fn()
@@ -15,6 +15,10 @@ const listClubContacts = vi.fn()
 const listSponsors = vi.fn()
 const listSections = vi.fn()
 const listSeasons = vi.fn()
+const getSectionsSummary = vi.fn()
+const createSection = vi.fn()
+const listSectionContacts = vi.fn()
+const listTeamsForSection = vi.fn()
 
 vi.mock('../../api/clubApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/clubApi')>()
@@ -33,7 +37,18 @@ vi.mock('../../api/sponsorApi', async (importOriginal) => {
 
 vi.mock('../../api/sectionApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/sectionApi')>()
-  return { ...actual, listSections: (clubId: string) => listSections(clubId) }
+  return {
+    ...actual,
+    listSections: (clubId: string) => listSections(clubId),
+    getSectionsSummary: (clubId: string, params: unknown) => getSectionsSummary(clubId, params),
+    createSection: (clubId: string, payload: unknown) => createSection(clubId, payload),
+    listSectionContacts: (clubId: string, sectionId: string) => listSectionContacts(clubId, sectionId),
+  }
+})
+
+vi.mock('../../api/teamApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/teamApi')>()
+  return { ...actual, listTeamsForSection: (clubId: string, sectionId: string) => listTeamsForSection(clubId, sectionId) }
 })
 
 vi.mock('../../api/seasonApi', async (importOriginal) => {
@@ -131,6 +146,54 @@ function makeSeason(overrides: Partial<Season> = {}): Season {
   }
 }
 
+function makeSummary(overrides: Partial<SectionsSummary> = {}): SectionsSummary {
+  return {
+    totals: { sections: 2, teams: 7, players: 42 },
+    sections: [
+      {
+        sectionId: 'root-1',
+        teamCount: 1,
+        activeTeamCount: 1,
+        playerCount: 10,
+        subtreeTeamCount: 7,
+        subtreePlayerCount: 42,
+        leagues: [{ id: 'league-1', name: 'Premier League' }],
+      },
+      {
+        sectionId: 'child-1',
+        teamCount: 6,
+        activeTeamCount: 6,
+        playerCount: 32,
+        subtreeTeamCount: 6,
+        subtreePlayerCount: 32,
+        leagues: [
+          { id: 'league-1', name: 'Premier League' },
+          { id: 'league-2', name: 'Cup' },
+        ],
+      },
+    ],
+    ...overrides,
+  }
+}
+
+const TWO_SECTIONS = [
+  makeSection({ id: 'root-1', name: 'Open Sides', parentSectionId: null }),
+  makeSection({ id: 'child-1', name: '1st XI', parentSectionId: 'root-1', minAge: 16, maxAge: 40 }),
+]
+
+function mockPhone() {
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia
+}
+
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
@@ -149,8 +212,6 @@ function renderPage(clubId?: string) {
             <Route path="sponsors" element={<div>Sponsors Page</div>} />
             <Route path="sponsors/:id/edit" element={<div>Edit Sponsor Page</div>} />
             <Route path="sections" element={<div>Club Structure Page</div>} />
-            <Route path="fixtures/seasons/new" element={<div>Add Season Page</div>} />
-            <Route path="fixtures/seasons/:id/edit" element={<div>Edit Season Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -163,11 +224,21 @@ function mockAllLists({
   sponsors = [],
   sections = [],
   seasons = [],
-}: { contacts?: ClubContact[]; sponsors?: Sponsor[]; sections?: Section[]; seasons?: Season[] } = {}) {
+  summary = makeSummary(),
+}: {
+  contacts?: ClubContact[]
+  sponsors?: Sponsor[]
+  sections?: Section[]
+  seasons?: Season[]
+  summary?: SectionsSummary
+} = {}) {
   listClubContacts.mockResolvedValue(contacts)
   listSponsors.mockResolvedValue(sponsors)
   listSections.mockResolvedValue(sections)
   listSeasons.mockResolvedValue(seasons)
+  getSectionsSummary.mockReturnValue(Promise.resolve(summary))
+  listSectionContacts.mockResolvedValue([])
+  listTeamsForSection.mockResolvedValue([])
 }
 
 describe('ClubOverviewPage', () => {
@@ -376,61 +447,198 @@ describe('ClubOverviewPage', () => {
     })
   })
 
-  describe('Structure card', () => {
-    it('shows the empty state when the club has zero sections', async () => {
+  describe('page structure', () => {
+    it('has no Seasons card and no plain section list', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS, seasons: [makeSeason()] })
+
+      renderPage('test-club-id')
+
+      await screen.findByRole('button', { name: 'Open Sides' })
+      expect(screen.queryByText('Seasons')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /add season/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit structure' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Back to Dashboard')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('key figures', () => {
+    it('shows Teams, Leagues (distinct across sections) and Players from the summary', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+
+      renderPage('test-club-id')
+
+      await screen.findByTestId('club-figure-teams-value')
+      await waitFor(() => expect(screen.getByTestId('club-figure-teams-value')).toHaveTextContent('7'))
+      await waitFor(() => expect(screen.getByTestId('club-figure-players-value')).toHaveTextContent('42'))
+      expect(screen.getByTestId('club-figure-leagues-value')).toHaveTextContent('2')
+      expect(screen.getByTestId('club-figure-teams')).toHaveTextContent('Teams')
+      expect(screen.getByTestId('club-figure-leagues')).toHaveTextContent('Leagues')
+    })
+
+    it('shows muted dashes while the summary loads', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+      getSectionsSummary.mockReturnValue(new Promise(() => {}))
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByTestId('club-figure-teams-value')).toHaveTextContent('\u2013')
+      expect(screen.getByTestId('club-figure-players-value')).toHaveTextContent('\u2013')
+    })
+
+    it('hides the strip, and still renders the page, when the summary fails', async () => {
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+      getSectionsSummary.mockImplementation(() => Promise.reject(new Error('boom')))
+
+      renderPage('test-club-id')
+
+      await screen.findByRole('button', { name: 'Open Sides' })
+      await waitFor(() => expect(screen.queryByTestId('club-key-figures')).not.toBeInTheDocument())
+      expect(screen.getByRole('heading', { name: 'Riverside Cricket Club' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Club structure card', () => {
+    it('shows the empty state with a "Set up your structure" link when the club has zero sections', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
       mockAllLists({ sections: [] })
 
       renderPage('test-club-id')
 
-      expect(await screen.findByText('No sections yet.')).toBeInTheDocument()
+      expect(await screen.findByText('No sections yet')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Set up your structure' })).toHaveAttribute('href', '/manage/sections')
+      expect(screen.getByRole('button', { name: 'Add top-level section' })).toBeInTheDocument()
     })
 
-    it('renders a nested name-only tree grouped by parentSectionId, and "Edit structure" targets /manage/sections', async () => {
+    it('renders the org chart with every section as a node', async () => {
       getManagedClubProfile.mockResolvedValueOnce(makeProfile())
-      mockAllLists({
-        sections: [
-          makeSection({ id: 'root-1', name: 'Open Sides', parentSectionId: null }),
-          makeSection({ id: 'child-1', name: '1st XI', parentSectionId: 'root-1' }),
-        ],
+      mockAllLists({ sections: TWO_SECTIONS })
+
+      renderPage('test-club-id')
+
+      expect(await screen.findByRole('button', { name: 'Open Sides' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '1st XI' })).toBeInTheDocument()
+      expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument()
+    })
+
+    it('clicking a node shows the read-only panel with its Edit link, and Close clears it', async () => {
+      const user = userEvent.setup()
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: '1st XI' }))
+
+      const drawer = (await screen.findByRole('heading', { name: '1st XI' })).closest('.MuiDrawer-paper') as HTMLElement
+      const panel = within(drawer).getByTestId('section-info-panel')
+      expect(within(drawer).getByRole('heading', { name: '1st XI' })).toBeInTheDocument()
+      expect(within(panel).queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+      expect(within(panel).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sections?sectionId=child-1')
+      expect(within(panel).getByRole('link', { name: /manage teams/i })).toHaveAttribute('href', '/manage/sections/child-1/teams')
+      expect(listTeamsForSection).toHaveBeenCalledWith('test-club-id', 'child-1')
+      expect(listSectionContacts).toHaveBeenCalledWith('test-club-id', 'child-1')
+
+      await user.click(within(drawer).getByRole('button', { name: 'Close section details' }))
+      await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
+    })
+
+    it('Escape clears the selection', async () => {
+      const user = userEvent.setup()
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Open Sides' }))
+      await screen.findByTestId('section-info-panel')
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(screen.queryByTestId('section-info-panel')).not.toBeInTheDocument())
+    })
+
+    it('the "+" on a node opens the Add section dialog titled with the parent path, and creating selects the new node', async () => {
+      const user = userEvent.setup()
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+      const created = makeSection({ id: 'new-1', name: '2nd XI', parentSectionId: 'child-1' })
+      createSection.mockImplementation(async () => {
+        listSections.mockResolvedValue([...TWO_SECTIONS, created])
+        return created
       })
 
       renderPage('test-club-id')
 
-      await screen.findByText('Open Sides')
-      expect(screen.getByText('1st XI')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Edit structure' })).toHaveAttribute('href', '/manage/sections')
+      await user.click(await screen.findByRole('button', { name: 'Add a child section under 1st XI' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Add a section under Open Sides, 1st XI')).toBeInTheDocument()
+
+      await user.type(within(dialog).getByLabelText(/name/i), '2nd XI')
+      await user.click(within(dialog).getByRole('button', { name: /^(add|create|save)/i }))
+
+      await waitFor(() =>
+        expect(createSection).toHaveBeenCalledWith('test-club-id', expect.objectContaining({ name: '2nd XI', parentSectionId: 'child-1' })),
+      )
+      expect(await screen.findByRole('button', { name: '2nd XI', hidden: true })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: '2nd XI' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('"Add top-level section" opens the dialog for a top-level section', async () => {
+      const user = userEvent.setup()
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Add top-level section' }))
+
+      expect(within(await screen.findByRole('dialog')).getByText('Add a top-level section')).toBeInTheDocument()
+    })
+
+    it('keeps the dialog open and shows an error when creating fails', async () => {
+      const user = userEvent.setup()
+      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+      mockAllLists({ sections: TWO_SECTIONS })
+      createSection.mockRejectedValue(new Error('boom'))
+
+      renderPage('test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Add top-level section' }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText(/name/i), 'Seniors')
+      await user.click(within(dialog).getByRole('button', { name: /^(add|create|save)/i }))
+
+      expect(await within(dialog).findByText("Couldn't add the section. Please try again.")).toBeInTheDocument()
     })
   })
 
-  describe('Seasons card', () => {
-    it('shows the empty state when the club has zero seasons, and "Add season" targets fixtures/seasons/new', async () => {
-      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
-      mockAllLists({ seasons: [] })
+  describe('on a phone', () => {
+    it('shows the nested list instead of the chart and opens the details in the slide-in sheet', async () => {
+      const user = userEvent.setup()
+      mockPhone()
+      try {
+        getManagedClubProfile.mockResolvedValueOnce(makeProfile())
+        mockAllLists({ sections: TWO_SECTIONS })
 
-      renderPage('test-club-id')
+        renderPage('test-club-id')
 
-      expect(await screen.findByText('No seasons yet.')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /add season/i })).toHaveAttribute('href', '/manage/fixtures/seasons/new')
-    })
+        expect(await screen.findByRole('tree')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Open Sides' })).not.toBeInTheDocument()
+        expect(screen.getByText('16\u201340')).toBeInTheDocument()
 
-    it('renders a "Current" chip on the season whose date range contains today, and an edit link per row', async () => {
-      getManagedClubProfile.mockResolvedValueOnce(makeProfile())
-      mockAllLists({
-        seasons: [
-          makeSeason({ id: 'season-past', label: '2020', startDate: '2020-01-01', endDate: '2020-12-31' }),
-          makeSeason({ id: 'season-current', label: '2026', startDate: '2026-01-01', endDate: '2026-12-31' }),
-        ],
-      })
+        await user.click(screen.getByText('1st XI'))
 
-      renderPage('test-club-id')
-
-      await screen.findByText('2026')
-      expect(screen.getByText('Current')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Edit 2026' })).toHaveAttribute(
-        'href',
-        '/manage/fixtures/seasons/season-current/edit',
-      )
+        const panel = await screen.findByTestId('section-info-panel')
+        expect(screen.getByRole('button', { name: 'Close section details' })).toBeInTheDocument()
+        expect(within(panel).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/manage/sections?sectionId=child-1')
+      } finally {
+        delete (window as { matchMedia?: unknown }).matchMedia
+      }
     })
   })
 })

@@ -35,6 +35,9 @@ export interface SectionInfoPanelProps {
   error?: boolean
   onRetry?: () => void
   onClose: () => void
+  // True when the panel sits inside a SidePanel that already shows the section name as its title and has its own close
+  // button: the name heading and Close are left out, the breadcrumb, Active badge and the buttons stay.
+  embedded?: boolean
   onSelectSection: (sectionId: string) => void
   // Routes are passed in so this component never imports a page.
   editTo: To
@@ -51,9 +54,9 @@ const MUTED_CHIP_SX = {
   opacity: 0.7,
 } as const
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function Field({ label, value, placeholder = NOT_ON_FILE, wide = false }: { label: string; value: string | null | undefined; placeholder?: string; wide?: boolean }) {
   return (
-    <Box data-testid="section-panel-field" sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 }}>
+    <Box data-testid="section-panel-field" sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0, ...(wide && { gridColumn: '1 / -1' }) }}>
       <Typography variant="caption" color="text.secondary">
         {label}
       </Typography>
@@ -62,8 +65,34 @@ function Field({ label, value }: { label: string; value: string | null | undefin
         color={value ? 'text.primary' : 'text.secondary'}
         sx={{ fontWeight: value ? 600 : 400, overflowWrap: 'anywhere' }}
       >
-        {value || NOT_ON_FILE}
+        {value || placeholder}
       </Typography>
+    </Box>
+  )
+}
+
+function StatRow({ stats }: { stats: { testId: string; label: string; value: string | number; note?: string | null; loading?: boolean }[] }) {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
+      {stats.map((stat) =>
+        stat.loading ? (
+          <Skeleton key={stat.testId} variant="rounded" height={52} data-testid="section-panel-skeleton" />
+        ) : (
+          <Box key={stat.testId} data-testid={stat.testId} sx={{ minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, fontSize: '0.6875rem' }}>
+              {stat.label}
+            </Typography>
+            <Typography component="b" data-testid={`${stat.testId}-value`} sx={{ display: 'block', fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+              {stat.value}
+            </Typography>
+            {stat.note && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>
+                {stat.note}
+              </Typography>
+            )}
+          </Box>
+        ),
+      )}
     </Box>
   )
 }
@@ -93,6 +122,10 @@ function ChipRow({ children, loading }: { children: ReactNode; loading?: boolean
 
 const chipSx = { height: 32, fontWeight: 600 } as const
 
+function subtreeNote(own: number, subtree: number) {
+  return subtree !== own ? `${subtree} with sub-sections` : null
+}
+
 function figureCaption(label: string, own: number, subtree: number) {
   return subtree !== own ? `${label} (${subtree} with sub-sections)` : label
 }
@@ -111,6 +144,7 @@ export function SectionInfoPanel({
   error = false,
   onRetry,
   onClose,
+  embedded = false,
   onSelectSection,
   editTo,
   manageTeamsTo,
@@ -124,8 +158,13 @@ export function SectionInfoPanel({
   const activeChildren = children.filter((child) => child.active).length
   const summaryLoading = summary === undefined && !error
 
+  const Wrapper = embedded ? Box : Card
+  const wrapperProps = embedded
+    ? { sx: { display: 'flex', flexDirection: 'column', gap: 2.5 } }
+    : { contentSx: { display: 'flex', flexDirection: 'column', gap: 2.5, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } } }
+
   return (
-    <Card data-testid="section-info-panel" contentSx={{ display: 'flex', flexDirection: 'column', gap: 2.5, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }}>
+    <Wrapper data-testid="section-info-panel" {...(wrapperProps as object)}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
           <Box sx={{ minWidth: 0 }}>
@@ -142,9 +181,11 @@ export function SectionInfoPanel({
               </Breadcrumbs>
             )}
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="h6" component="h2" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-                {section.name}
-              </Typography>
+              {!embedded && (
+                <Typography variant="h6" component="h2" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                  {section.name}
+                </Typography>
+              )}
               <Chip
                 size="small"
                 label={section.active ? 'Active' : 'Inactive'}
@@ -152,9 +193,11 @@ export function SectionInfoPanel({
               />
             </Box>
           </Box>
-          <IconButton aria-label="Close" onClick={onClose} sx={{ width: 40, height: 40, flex: 'none' }}>
-            <CloseIcon />
-          </IconButton>
+          {!embedded && (
+            <IconButton aria-label="Close" onClick={onClose} sx={{ width: 40, height: 40, flex: 'none' }}>
+              <CloseIcon />
+            </IconButton>
+          )}
         </Box>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
           {/* Raw MuiButton: the shared Button is not polymorphic, so component+to would fail tsc -b. */}
@@ -184,13 +227,34 @@ export function SectionInfoPanel({
       )}
 
       <Group title="Eligibility">
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
-          <Field label="Age range" value={ageRangeLabel(section) === null ? null : ageRangeWritten(section)} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: embedded ? 'repeat(2, minmax(0, 1fr))' : { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 1.5 }}>
+          <Field label="Age range" value={ageRangeLabel(section) === null ? null : ageRangeWritten(section)} placeholder={embedded ? 'Not set' : NOT_ON_FILE} />
           <Field label="Gender" value={section.gender ? GENDER_LABEL[section.gender] : 'Not specified'} />
-          <Field label="Parent section" value={parent?.name} />
+          <Field label="Parent section" value={parent?.name} placeholder={embedded ? 'Not set' : NOT_ON_FILE} wide={embedded} />
         </Box>
       </Group>
 
+      {embedded ? (
+        <StatRow
+          stats={[
+            { testId: 'section-panel-subsections', label: 'Sub-sections', value: activeChildren },
+            {
+              testId: 'section-panel-teams',
+              label: 'Teams',
+              value: summary ? summary.teamCount : NOT_ON_FILE,
+              note: summary ? subtreeNote(summary.teamCount, summary.subtreeTeamCount) : null,
+              loading: summaryLoading,
+            },
+            {
+              testId: 'section-panel-players',
+              label: 'Players',
+              value: summary ? summary.playerCount : NOT_ON_FILE,
+              note: summary ? subtreeNote(summary.playerCount, summary.subtreePlayerCount) : null,
+              loading: summaryLoading,
+            },
+          ]}
+        />
+      ) : (
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 1 }}>
         <KeyFigureTile
           testId="section-panel-subsections"
@@ -220,12 +284,13 @@ export function SectionInfoPanel({
           </>
         )}
       </Box>
+      )}
 
       <Group title="Sub-sections">
         <ChipRow>
           {children.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              {NOT_ON_FILE}
+              {embedded ? 'No sub-sections' : NOT_ON_FILE}
             </Typography>
           ) : (
             children.map((child) => (
@@ -293,7 +358,7 @@ export function SectionInfoPanel({
           </Box>
         ) : contacts.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            {NOT_ON_FILE}
+            {embedded ? 'No linked contacts' : NOT_ON_FILE}
           </Typography>
         ) : (
           <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -324,6 +389,6 @@ export function SectionInfoPanel({
           </Box>
         )}
       </Group>
-    </Card>
+    </Wrapper>
   )
 }
