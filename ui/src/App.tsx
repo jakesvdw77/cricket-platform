@@ -32,6 +32,7 @@ import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerDetailPage from './pages/manage/PlayerDetailPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
+import { LeagueEditRoute } from './pages/manage/LeagueEditRoute'
 import LeagueViewLayout from './pages/manage/league/LeagueViewLayout'
 import LeagueIndexRedirect from './pages/manage/league/LeagueIndexRedirect'
 import LeagueScheduleView from './pages/manage/league/LeagueScheduleView'
@@ -206,7 +207,7 @@ function App() {
                 <Route path="teams" element={<LeagueTeamsView />} />
                 <Route path="conditions" element={<LeagueConditionsView />} />
               </Route>
-              <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueFormPage />} />
+              <Route path="fixtures/leagues/:leagueId/edit" element={<LeagueEditRoute />} />
               {/* docs/specs/054-league-contacts.md: a league's named contacts, one level deeper
                   than fixtures/leagues/:leagueId/edit — no standalone list route, the list itself
                   is embedded in LeagueFormPage's Contacts tab and surfaced as avatars in the

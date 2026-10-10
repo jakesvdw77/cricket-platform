@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Alert, Button as MuiButton, Stack, Typography } from '@mui/material'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { useTheme } from '@mui/material/styles'
-import { Link as RouterLink, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -13,6 +14,7 @@ import { LinkExistingRecordDialog } from '../../components/LinkExistingRecordDia
 import { ShareScheduleDialog } from '../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../components/ShareScheduleDialog'
 import { PlayingConditionsShareDialog } from '../../components/PlayingConditionsShareDialog'
+import { DuplicateLeagueDialog } from './leagues/DuplicateLeagueDialog'
 import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
 import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
 import { LeagueEditTeamsTab } from './leagueEdit/LeagueEditTeamsTab'
@@ -57,6 +59,7 @@ export default function LeagueFormPage() {
   const queryClient = useQueryClient()
   const theme = useTheme()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
 
   // Create mode has no tab strip, so ?tab= is ignored there.
   const activeTab = isEdit ? resolveLeagueEditTab(searchParams.get('tab')) : 'details'
@@ -64,6 +67,18 @@ export default function LeagueFormPage() {
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  // docs/specs/096-duplicate-league.md: the success notice a Duplicate league navigation carries in router state. Read once
+  // on mount, shown until dismissed, and the router state is then cleared so a reload or Back does not show it again.
+  const [notice, setNotice] = useState<string | null>(() => {
+    const carried = (location.state as { notice?: unknown } | null)?.notice
+    return typeof carried === 'string' ? carried : null
+  })
+  useEffect(() => {
+    if ((location.state as { notice?: unknown } | null)?.notice) {
+      navigate(location.pathname + location.search, { replace: true, state: null })
+    }
+  }, [location, navigate])
   // docs/specs/052-league-playing-conditions.md, a second, independent Share flow (the captain
   // summary) alongside the existing Schedule-sharing `shareOpen`/ShareScheduleDialog above; the two
   // never share state.
@@ -289,7 +304,18 @@ export default function LeagueFormPage() {
         title={isEdit ? 'Edit League' : 'Add League'}
         backTo="/manage/fixtures/leagues"
         backLabel="Back to Leagues"
-        tabs={isEdit ? <LeagueEditTabs /> : undefined}
+        tabs={
+          isEdit ? (
+            <Stack spacing={1.5}>
+              {notice && (
+                <Alert severity="success" onClose={() => setNotice(null)}>
+                  {notice}
+                </Alert>
+              )}
+              <LeagueEditTabs />
+            </Stack>
+          ) : undefined
+        }
         headerAction={
           isEdit && SEASON_TABS.includes(activeTab) && seasons.length > 0 ? (
             <HeaderSeasonSelect
@@ -321,6 +347,17 @@ export default function LeagueFormPage() {
               <Button type="submit" form={LEAGUE_FORM_ID} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create league'}
               </Button>
+
+              {/* docs/specs/096: Duplicate league sits beside the status toggle, edit mode only. */}
+              {isEdit && league && (
+                <Button
+                  variant="secondary"
+                  startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+                  onClick={() => setDuplicateOpen(true)}
+                >
+                  Duplicate league
+                </Button>
+              )}
 
               {/* docs/specs/095: Deactivate / Reactivate lives with Details only. */}
               {isEdit && league && (
@@ -450,6 +487,17 @@ export default function LeagueFormPage() {
           seasonLabel={seasonLabel}
           conditions={playingConditionsPayload}
           onSharePdf={handleSharePlayingConditionsPdf}
+        />
+      )}
+
+      {isEdit && league && duplicateOpen && (
+        <DuplicateLeagueDialog
+          open
+          clubId={clubId}
+          league={{ id: league.id, name: league.name }}
+          seasons={seasons}
+          defaultSeasonId={selectedSeasonId}
+          onClose={() => setDuplicateOpen(false)}
         />
       )}
     </>
