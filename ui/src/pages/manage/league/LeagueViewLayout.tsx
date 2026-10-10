@@ -12,6 +12,7 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -42,6 +43,7 @@ import { generateLeagueSchedulePoster } from '../../../utils/leagueSchedulePoste
 import { generateLeagueScheduleIcs } from '../../../utils/leagueScheduleIcs'
 import { triggerDownload } from '../../../utils/triggerDownload'
 import { leagueBadges } from '../leagues/leagueBadges'
+import { DuplicateLeagueDialog } from '../leagues/DuplicateLeagueDialog'
 import { editTabForView } from '../leagueEdit/leagueEditTabConfig'
 import { LeagueKeyFigures } from './LeagueKeyFigures'
 import type { LeagueViewContext } from './leagueViewContext'
@@ -68,6 +70,7 @@ export default function LeagueViewLayout() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
 
   const seasonsQuery = useQuery({
@@ -264,7 +267,7 @@ export default function LeagueViewLayout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
       <PageHeaderBand>
         <Stack spacing={2}>
-          {/* Top row: Back on the left; the Season pill, Share schedule and the filled primary Edit on the right. */}
+          {/* Top row: Back on the left; the Season pill, Share schedule, Duplicate league and the filled primary Edit on the right. */}
           <Box
             data-testid="league-header-top-row"
             sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}
@@ -297,6 +300,14 @@ export default function LeagueViewLayout() {
                 onClick={() => setShareOpen(true)}
               >
                 Share schedule
+              </MuiButton>
+              {/* docs/specs/096: outlined, so Edit stays the one filled primary action; the labelled button wraps on a phone. */}
+              <MuiButton
+                variant="outlined"
+                startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+                onClick={() => setDuplicateOpen(true)}
+              >
+                Duplicate league
               </MuiButton>
               <MuiButton
                 component={RouterLink}
@@ -474,6 +485,17 @@ export default function LeagueViewLayout() {
         onSharePoster={handleSharePoster}
         onShareCalendar={handleShareCalendar}
       />
+
+      {duplicateOpen && (
+        <DuplicateLeagueDialog
+          open
+          clubId={clubId}
+          league={{ id: league.id, name: league.name }}
+          seasons={seasons}
+          defaultSeasonId={selectedSeasonId}
+          onClose={() => setDuplicateOpen(false)}
+        />
+      )}
 
       <RecordQuickViewDialog
         open={Boolean(selectedContact)}

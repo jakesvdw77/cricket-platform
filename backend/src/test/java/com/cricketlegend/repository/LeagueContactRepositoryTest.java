@@ -121,4 +121,17 @@ class LeagueContactRepositoryTest {
                 .extracting(LeagueContact::getId)
                 .containsExactly(activePrimary.getId());
     }
+
+    @Test
+    void findByLeagueIdAndActiveTrueReturnsOnlyThatLeaguesActiveContacts() {
+        League league = savedLeague("riverside-cc");
+        League other = savedLeague("lakeside-cc");
+        LeagueContact active = leagueContactRepository.save(contact(league.getId(), true, true));
+        leagueContactRepository.save(contact(league.getId(), false, false));
+        leagueContactRepository.save(contact(other.getId(), true, false));
+
+        assertThat(leagueContactRepository.findByLeagueIdAndActiveTrue(league.getId()))
+                .extracting(LeagueContact::getId)
+                .containsExactly(active.getId());
+    }
 }

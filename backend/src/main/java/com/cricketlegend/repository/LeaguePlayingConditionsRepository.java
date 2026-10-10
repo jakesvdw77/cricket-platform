@@ -25,4 +25,7 @@ public interface LeaguePlayingConditionsRepository extends JpaRepository<LeagueP
      */
     List<LeaguePlayingConditions> findByLeagueIdInAndSeasonIdIn(
             Collection<UUID> leagueIds, Collection<UUID> seasonIds);
+
+    /** The league's rows for the given seasons in one query, for duplicating it (docs/specs/096-duplicate-league.md). */
+    List<LeaguePlayingConditions> findByLeagueIdAndSeasonIdIn(UUID leagueId, Collection<UUID> seasonIds);
 }

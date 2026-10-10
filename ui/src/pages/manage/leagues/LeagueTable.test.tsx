@@ -84,6 +84,14 @@ describe('LeagueTable', () => {
     expect(within(none).getByTestId('league-row-teams')).toHaveTextContent('–')
   })
 
+  // docs/specs/096-duplicate-league.md: no row-level Duplicate; it lives on the league page header and the edit page.
+  it('has no Duplicate control', () => {
+    renderTable([makeLeague(), makeLeague({ id: 'league-2', name: 'Vets League' })])
+
+    expect(screen.queryByText(/duplicate/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /duplicate/i })).not.toBeInTheDocument()
+  })
+
   it('shows Inactive for a retired league', () => {
     renderTable([makeLeague({ active: false })])
     expect(screen.getByTestId('league-row-status')).toHaveTextContent('Inactive')
