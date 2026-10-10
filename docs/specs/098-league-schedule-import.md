@@ -1,7 +1,7 @@
 # 098: League Schedule Import
 
 **Depends on:** `097-import-framework.md` (the flow, batch model, token, endpoints, wizard, undo rules, scope option and re-import principles this spec uses unchanged; read it first), `029-league-management.md` (`League`, `Season`, `Match`, `LeagueAffiliation`), `050-league-schedule-and-fixtures.md` (lifts its "no bulk fixture import" Non-goal; `Match` logos, `LeagueFixtures`), `051` (Full Schedule PDF, poster and calendar shares), `070-league-teams.md` (per league and season `LeagueTeam`, `lower(name)` uniqueness including inactive rows, `Match` side rules, "Must not change" sites, `CopyLeagueTeamsDialog`), `091-leagues-gold-standard.md` and `095-league-edit-gold-standard.md` (the league page and edit page Schedule tabs). `096` is not present in `docs/specs/` on this branch (see `097`).
-**Status:** draft. First consumer of the framework; also its proof (`097` Rollout slice 3).
+**Status:** approved (open questions resolved with their defaults, 2026-10-10); not planned or built. First consumer of the framework; also its proof (`097` Rollout slice 3).
 
 ## Problem & Goals
 
@@ -413,7 +413,7 @@ Labelled **R**, each with a recommended default and the alternative. `097`'s R1 
 
 ## Open Questions
 
-Each with a proposed default.
+**Resolved 2026-10-10: the user accepted every proposed default below** ("yes to all"). Question 11 in `098` is still to be verified in the integration test, as its default says.
 
 1. **Default scope mode** (R3, R10). Proposed default: All matches.
 2. **Update in v1** (R7). Proposed default: yes, narrow (time and venue), blocked by dependants.
