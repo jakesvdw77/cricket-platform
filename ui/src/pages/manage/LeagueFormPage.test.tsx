@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeagueFormPage from './LeagueFormPage'
+import { LeagueEditRoute } from './LeagueEditRoute'
 import type { League } from '../../api/leagueApi'
 import type { Season } from '../../api/seasonApi'
 import type { Team } from '../../api/teamApi'
@@ -16,6 +17,7 @@ const createLeague = vi.fn()
 const updateLeague = vi.fn()
 const deactivateLeague = vi.fn()
 const reactivateLeague = vi.fn()
+const duplicateLeague = vi.fn()
 const listSeasons = vi.fn()
 const listTeamsForClub = vi.fn()
 const listLeagueAffiliations = vi.fn()
@@ -36,6 +38,7 @@ vi.mock('../../api/leagueApi', async (importOriginal) => {
     updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
     deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
     reactivateLeague: (clubId: string, leagueId: string) => reactivateLeague(clubId, leagueId),
+    duplicateLeague: (clubId: string, leagueId: string, request: unknown) => duplicateLeague(clubId, leagueId, request),
   }
 })
 
@@ -234,7 +237,7 @@ function renderPage(initialPath: string, clubId?: string) {
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="leagues" element={<div>League List Page</div>} />
             <Route path="leagues/new" element={<LeagueFormPage />} />
-            <Route path="leagues/:leagueId/edit" element={<LeagueFormPage />} />
+            <Route path="leagues/:leagueId/edit" element={<LeagueEditRoute />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -1018,6 +1021,148 @@ describe('LeagueFormPage', () => {
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from LeagueList's own card; docs/specs/095: it now lives
   // in the Details footer only.
+  // docs/specs/096-duplicate-league.md: the Duplicate league entry on the Details footer, the success notice carried in
+  // router state, and a fresh page instance per league.
+  describe('Duplicate league', () => {
+    const TWO_SEASONS = [
+      makeSeason({ id: 'season-1', label: '2024', startDate: '2024-01-01', endDate: '2024-12-31', createdAt: '2024-01-01T00:00:00Z' }),
+      makeSeason({ id: 'season-2', label: '2025', startDate: '2025-01-01', endDate: '2025-12-31', createdAt: '2025-01-01T00:00:00Z' }),
+    ]
+
+    function LocationAndNav() {
+      const location = useLocation()
+      const navigate = useNavigate()
+      return (
+        <>
+          <div data-testid="location">{`${location.pathname}${location.search}`}</div>
+          <div data-testid="state">{JSON.stringify(location.state)}</div>
+          <button type="button" onClick={() => navigate('/manage/fixtures/leagues/league-2/edit?tab=teams&seasonId=season-2')}>
+            Go to league 2
+          </button>
+        </>
+      )
+    }
+
+    function renderEntry(entry: string | { pathname: string; state: unknown }) {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      return render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[entry]}>
+            <LocationAndNav />
+            <Routes>
+              <Route path="/manage/fixtures" element={<OutletContextWrapper clubId="test-club-id" />}>
+                <Route path="leagues/new" element={<LeagueFormPage />} />
+                <Route path="leagues/:leagueId/edit" element={<LeagueEditRoute />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+    }
+
+    beforeEach(() => {
+      listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' }), makeLeague({ id: 'league-2', name: 'Division 2' })])
+      listSeasons.mockResolvedValue(TWO_SEASONS)
+    })
+
+    it('shows Duplicate league beside Deactivate on the Details footer in edit mode', async () => {
+      renderEntry('/manage/fixtures/leagues/league-1/edit')
+
+      const button = await screen.findByRole('button', { name: 'Duplicate league' })
+      expect(button.className).toContain('MuiButton-outlined')
+      expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+    })
+
+    it.each(['teams', 'schedule', 'conditions', 'contacts'])('is not on the %s tab, which has no footer', async (tab) => {
+      renderEntry(`/manage/fixtures/leagues/league-1/edit?tab=${tab}`)
+
+      await screen.findByText('Edit League')
+      expect(screen.queryByRole('button', { name: 'Duplicate league' })).not.toBeInTheDocument()
+    })
+
+    it('is not on Add League', async () => {
+      renderEntry('/manage/fixtures/leagues/new')
+
+      await screen.findByText('Add League')
+      expect(screen.queryByRole('button', { name: 'Duplicate league' })).not.toBeInTheDocument()
+    })
+
+    it('opens the dialog prefilled for this league with the page season ticked', async () => {
+      const user = userEvent.setup()
+      renderEntry('/manage/fixtures/leagues/league-1/edit?seasonId=season-1')
+
+      await user.click(await screen.findByRole('button', { name: 'Duplicate league' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByLabelText(/New league name/)).toHaveValue('Internal League (copy)')
+      expect(within(dialog).getByRole('checkbox', { name: '2024' })).toBeChecked()
+      expect(within(dialog).getByRole('checkbox', { name: '2025' })).not.toBeChecked()
+    })
+
+    it('duplicates, lands on the new league Teams tab on that season, and shows the notice, then clears the router state', async () => {
+      const user = userEvent.setup()
+      duplicateLeague.mockResolvedValue({
+        leagueId: 'league-2',
+        name: 'Division 2',
+        seasonsCopied: 1,
+        playingConditionsCopied: 1,
+        contactsCopied: 2,
+      })
+      renderEntry('/manage/fixtures/leagues/league-1/edit?seasonId=season-1')
+
+      await user.click(await screen.findByRole('button', { name: 'Duplicate league' }))
+      const dialog = await screen.findByRole('dialog')
+      await user.clear(within(dialog).getByLabelText(/New league name/))
+      await user.type(within(dialog).getByLabelText(/New league name/), 'Division 2')
+      await user.click(within(dialog).getByRole('button', { name: 'Duplicate league' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('location')).toHaveTextContent('/manage/fixtures/leagues/league-2/edit?tab=teams&seasonId=season-1'),
+      )
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Division 2 created. Playing conditions copied for 1 season, 2 contacts. Add its teams next.',
+      )
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-2', 'season-1'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+      await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('null'))
+    })
+
+    it('shows a notice from router state, and the close button dismisses it', async () => {
+      const user = userEvent.setup()
+      renderEntry({ pathname: '/manage/fixtures/leagues/league-1/edit', state: { notice: 'Division 2 created. Add its teams next.' } })
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('Division 2 created. Add its teams next.')
+      await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('null'))
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+
+      await user.click(within(alert).getByRole('button', { name: 'Close' }))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('shows no notice when the router state carries none', async () => {
+      renderEntry('/manage/fixtures/leagues/league-1/edit')
+
+      await screen.findByText('Edit League')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('uses a fresh page, and the new ?seasonId=, when navigating from one league edit page to another', async () => {
+      const user = userEvent.setup()
+      renderEntry('/manage/fixtures/leagues/league-1/edit?tab=teams&seasonId=season-1')
+
+      await screen.findByText('Edit League')
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+
+      await user.click(screen.getByRole('button', { name: 'Go to league 2' }))
+
+      await waitFor(() => expect(listLeagueTeams).toHaveBeenCalledWith('test-club-id', 'league-2', 'season-2'))
+      expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2025')
+      expect(listLeagueTeams).not.toHaveBeenCalledWith('test-club-id', 'league-2', 'season-1')
+    })
+  })
+
   describe('Deactivate/Reactivate', () => {
     it('edit mode: renders Deactivate for an active league on the Details tab, clicking it calls deactivateLeague', async () => {
       const user = userEvent.setup()

@@ -1,6 +1,7 @@
 package com.cricketlegend.service.impl;
 
 import com.cricketlegend.domain.League;
+import com.cricketlegend.domain.LeagueContact;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.domain.LeagueSource;
@@ -8,11 +9,14 @@ import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SocialLink;
 import com.cricketlegend.dto.CreateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueResponse;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.LeagueSeasonTeamDto;
 import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.dto.SocialLinkDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
+import com.cricketlegend.exception.DuplicateLeagueNameException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
@@ -20,6 +24,7 @@ import com.cricketlegend.mapper.LeagueMapper;
 import com.cricketlegend.repository.LeagueAffiliationRepository;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamCount;
 import com.cricketlegend.repository.LeagueAffiliationRepository.LeagueTeamSummary;
+import com.cricketlegend.repository.LeagueContactRepository;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.LeagueTeamRepository;
@@ -29,6 +34,7 @@ import com.cricketlegend.repository.MatchRepository.LeagueWeekMatchCount;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import com.cricketlegend.service.support.LeagueCopyRules;
 import com.cricketlegend.service.support.LeagueListRow;
 import com.cricketlegend.service.support.LeagueSeasonFields;
 import com.cricketlegend.service.support.SeasonResolution;
@@ -37,8 +43,10 @@ import com.cricketlegend.service.support.SocialLinkValidation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,6 +76,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LeagueServiceImpl implements LeagueService {
 
+    private static final int MAX_NAME_LENGTH = 255;
+
     private final LeagueRepository leagueRepository;
     private final SeasonRepository seasonRepository;
     private final LeagueAffiliationRepository leagueAffiliationRepository;
@@ -75,6 +85,7 @@ public class LeagueServiceImpl implements LeagueService {
     private final MatchRepository matchRepository;
     private final LeagueTeamRepository leagueTeamRepository;
     private final TeamSquadMemberRepository teamSquadMemberRepository;
+    private final LeagueContactRepository leagueContactRepository;
     private final LeagueMapper leagueMapper;
 
     public LeagueServiceImpl(
@@ -85,6 +96,7 @@ public class LeagueServiceImpl implements LeagueService {
             MatchRepository matchRepository,
             LeagueTeamRepository leagueTeamRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
+            LeagueContactRepository leagueContactRepository,
             LeagueMapper leagueMapper) {
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
@@ -93,6 +105,7 @@ public class LeagueServiceImpl implements LeagueService {
         this.matchRepository = matchRepository;
         this.leagueTeamRepository = leagueTeamRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
+        this.leagueContactRepository = leagueContactRepository;
         this.leagueMapper = leagueMapper;
     }
 
@@ -311,6 +324,66 @@ public class LeagueServiceImpl implements LeagueService {
         }
         league.setActive(true);
         return leagueMapper.toDto(leagueRepository.save(league));
+    }
+
+    /**
+     * docs/specs/096-duplicate-league.md: a fixed number of reads however many rows are copied (source league and its
+     * social links, name check, seasons, then one query each for the source conditions and contacts when ticked), then
+     * the new league and one {@code saveAll} per group. Affiliations, league teams and matches are never copied.
+     */
+    @Override
+    @Transactional
+    public DuplicateLeagueResponse duplicate(UUID clubId, UUID leagueId, DuplicateLeagueRequest request) {
+        League source = findOrThrowForClub(clubId, leagueId);
+        String name = LeagueCopyRules.normaliseName(request.name());
+        if (name.isEmpty()) {
+            throw new ValidationException("name must not be blank");
+        }
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new ValidationException("name must be at most " + MAX_NAME_LENGTH + " characters");
+        }
+        boolean copyConditions = !Boolean.FALSE.equals(request.copyPlayingConditions());
+        boolean copyContacts = !Boolean.FALSE.equals(request.copyContacts());
+
+        List<UUID> seasonIds = new ArrayList<>();
+        if (copyConditions) {
+            List<UUID> requested = request.seasonIds() == null ? List.of() : request.seasonIds();
+            if (requested.isEmpty()) {
+                throw new ValidationException("seasonIds must not be empty when copying playing conditions");
+            }
+            if (requested.stream().anyMatch(Objects::isNull)) {
+                throw new ValidationException("seasonIds must not contain null");
+            }
+            List<Season> seasons = seasonRepository.findByClubId(clubId);
+            seasonIds.addAll(new LinkedHashSet<>(requested));
+            seasonIds.forEach(id -> SeasonResolution.resolve(seasons, id));
+        }
+
+        if (leagueRepository.existsByClubIdAndNameIgnoreCase(clubId, name)) {
+            throw new DuplicateLeagueNameException("A league named " + name + " already exists");
+        }
+
+        League saved = leagueRepository.save(LeagueCopyRules.copyOfLeague(source, name, clubId));
+
+        int conditionsCopied = 0;
+        if (copyConditions) {
+            List<LeaguePlayingConditions> copies = leaguePlayingConditionsRepository
+                    .findByLeagueIdAndSeasonIdIn(leagueId, seasonIds)
+                    .stream()
+                    .map(row -> LeagueCopyRules.copyOfPlayingConditions(row, saved.getId()))
+                    .toList();
+            leaguePlayingConditionsRepository.saveAll(copies);
+            conditionsCopied = copies.size();
+        }
+        int contactsCopied = 0;
+        if (copyContacts) {
+            List<LeagueContact> copies = leagueContactRepository.findByLeagueIdAndActiveTrue(leagueId).stream()
+                    .map(row -> LeagueCopyRules.copyOfContact(row, saved.getId()))
+                    .toList();
+            leagueContactRepository.saveAll(copies);
+            contactsCopied = copies.size();
+        }
+        return new DuplicateLeagueResponse(saved.getId(), saved.getName(), seasonIds.size(), conditionsCopied, contactsCopied);
     }
 
     private void validateAgeRange(Integer minAge, Integer maxAge) {

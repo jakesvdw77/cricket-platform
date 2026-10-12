@@ -193,6 +193,7 @@ describe('LeagueViewLayout', () => {
       const back = within(topRow).getByRole('link', { name: 'Back to Leagues' })
       const season = within(topRow).getByRole('button', { name: 'Season' })
       const share = within(topRow).getByRole('button', { name: 'Share schedule' })
+      const duplicate = within(topRow).getByRole('button', { name: 'Duplicate league' })
       const edit = within(topRow).getByRole('link', { name: 'Edit' })
       const people = screen.getByTestId('league-header-contact-people')
       const links = screen.getByTestId('league-header-links-row')
@@ -200,7 +201,8 @@ describe('LeagueViewLayout', () => {
 
       expect(following(back, season)).toBe(true)
       expect(following(season, share)).toBe(true)
-      expect(following(share, edit)).toBe(true)
+      expect(following(share, duplicate)).toBe(true)
+      expect(following(duplicate, edit)).toBe(true)
       expect(following(topRow, titleRow)).toBe(true)
       expect(within(titleRow).getByRole('heading', { name: 'Internal League' })).toBe(heading)
       expect(within(titleRow).getByLabelText('League badges')).toBeInTheDocument()
@@ -213,9 +215,11 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       const heading = await screen.findByRole('heading', { name: 'Internal League' })
-      const edit = within(screen.getByTestId('league-header-top-row')).getByRole('link', { name: 'Edit' })
+      const topRow = screen.getByTestId('league-header-top-row')
+      const edit = within(topRow).getByRole('link', { name: 'Edit' })
 
       expect(edit.className).toContain('MuiButton-contained')
+      expect(within(topRow).getByRole('button', { name: 'Duplicate league' }).className).toContain('MuiButton-outlined')
       expect(getComputedStyle(heading).overflowWrap).toBe('anywhere')
       expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis')
     })
@@ -343,6 +347,22 @@ describe('LeagueViewLayout', () => {
       await user.click(await screen.findByRole('button', { name: 'Share schedule' }))
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+
+    // docs/specs/096-duplicate-league.md: the header action works from every tab.
+    it.each(['schedule', 'teams', 'conditions'])('opens the Duplicate league dialog from the header on the %s tab', async (tab) => {
+      const user = userEvent.setup()
+      renderLeagueView(`${LEAGUE_PATH}/${tab}`)
+
+      await user.click(await screen.findByRole('button', { name: 'Duplicate league' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByRole('heading', { name: 'Duplicate league' })).toBeInTheDocument()
+      expect(within(dialog).getByLabelText(/New league name/)).toHaveValue('Internal League (copy)')
+      expect(within(dialog).getByRole('checkbox', { name: '2026' })).toBeChecked()
+
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
     it('hides the Season select when the club has no seasons', async () => {

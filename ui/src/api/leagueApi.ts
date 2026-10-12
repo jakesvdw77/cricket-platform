@@ -162,3 +162,30 @@ export async function reactivateLeague(clubId: string, leagueId: string): Promis
   const { data } = await api.post<League>(`${leaguesPath(clubId)}/${leagueId}/reactivate`)
   return data
 }
+
+// docs/specs/096-duplicate-league.md: creates a new league from an existing one. The profile is always copied; the two
+// flags choose the playing conditions (for the listed seasons only) and the active contacts. Teams, affiliations and
+// matches are never copied. The server defaults an omitted flag to true.
+export interface DuplicateLeagueRequest {
+  name: string
+  seasonIds: string[]
+  copyPlayingConditions?: boolean
+  copyContacts?: boolean
+}
+
+export interface DuplicateLeagueResponse {
+  leagueId: string
+  name: string
+  seasonsCopied: number
+  playingConditionsCopied: number
+  contactsCopied: number
+}
+
+export async function duplicateLeague(
+  clubId: string,
+  leagueId: string,
+  request: DuplicateLeagueRequest,
+): Promise<DuplicateLeagueResponse> {
+  const { data } = await api.post<DuplicateLeagueResponse>(`${leaguesPath(clubId)}/${leagueId}/duplicate`, request)
+  return data
+}

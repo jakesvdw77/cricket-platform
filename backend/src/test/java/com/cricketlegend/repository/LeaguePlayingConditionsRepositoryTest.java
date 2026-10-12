@@ -212,4 +212,27 @@ class LeaguePlayingConditionsRepositoryTest {
                 .leagueId(league.getId()).seasonId(season.getId()).documentUrl("/media/rules.pdf")
                 .uploadedAt(Instant.now()).build());
     }
+
+    @Test
+    void findByLeagueIdAndSeasonIdInReturnsOnlyTheLeaguesRowsForTheGivenSeasons() {
+        Club club = savedClub("riverside-cc");
+        League league = savedLeague(club.getId());
+        League other = savedLeague(club.getId());
+        Season s1 = savedSeason(club.getId());
+        Season s2 = savedSeason(club.getId());
+        Season s3 = savedSeason(club.getId());
+        LeaguePlayingConditions row1 = leaguePlayingConditionsRepository.save(
+                LeaguePlayingConditions.builder().leagueId(league.getId()).seasonId(s1.getId()).build());
+        LeaguePlayingConditions row2 = leaguePlayingConditionsRepository.save(
+                LeaguePlayingConditions.builder().leagueId(league.getId()).seasonId(s2.getId()).build());
+        leaguePlayingConditionsRepository.save(
+                LeaguePlayingConditions.builder().leagueId(league.getId()).seasonId(s3.getId()).build());
+        leaguePlayingConditionsRepository.save(
+                LeaguePlayingConditions.builder().leagueId(other.getId()).seasonId(s1.getId()).build());
+
+        assertThat(leaguePlayingConditionsRepository.findByLeagueIdAndSeasonIdIn(
+                        league.getId(), List.of(s1.getId(), s2.getId())))
+                .extracting(LeaguePlayingConditions::getId)
+                .containsExactlyInAnyOrder(row1.getId(), row2.getId());
+    }
 }

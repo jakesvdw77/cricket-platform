@@ -20,4 +20,11 @@ public interface LeagueRepository extends JpaRepository<League, UUID> {
      */
     @Query("select distinct l from League l left join fetch l.socialLinks where l.clubId = :clubId")
     List<League> findByClubId(@Param("clubId") UUID clubId);
+
+    /**
+     * Whether the club already has a league with this name, ignoring case and surrounding spaces, active or inactive
+     * (docs/specs/096-duplicate-league.md). {@code name} must already be trimmed.
+     */
+    @Query("select count(l) > 0 from League l where l.clubId = :clubId and lower(trim(l.name)) = lower(:name)")
+    boolean existsByClubIdAndNameIgnoreCase(@Param("clubId") UUID clubId, @Param("name") String name);
 }

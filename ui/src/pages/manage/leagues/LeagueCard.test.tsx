@@ -72,6 +72,15 @@ function chipLabels(): string[] {
 const BASE = '/manage/fixtures/leagues/league-1'
 
 describe('LeagueCard', () => {
+  // docs/specs/096-duplicate-league.md: the entry point is the league page header and the edit page, not the card.
+  it('has no Duplicate control', () => {
+    renderCard(makeLeague())
+
+    expect(screen.queryByText(/duplicate/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /duplicate/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /duplicate/i })).not.toBeInTheDocument()
+  })
+
   describe('header', () => {
     it('renders the league name as a heading that can wrap, linking to the Schedule', () => {
       renderCard(makeLeague({ name: 'A very long league name that needs to wrap over more than one line' }))

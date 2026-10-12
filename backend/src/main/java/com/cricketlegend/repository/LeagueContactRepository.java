@@ -15,6 +15,9 @@ public interface LeagueContactRepository extends JpaRepository<LeagueContact, UU
 
     List<LeagueContact> findByLeagueId(UUID leagueId);
 
+    /** The active contacts of a league, for duplicating it (docs/specs/096-duplicate-league.md). */
+    List<LeagueContact> findByLeagueIdAndActiveTrue(UUID leagueId);
+
     /**
      * The currently-flagged active primary contact for a league, if any — used by the service to
      * auto-unset the previous primary when a new one is flagged. At most one row per league given

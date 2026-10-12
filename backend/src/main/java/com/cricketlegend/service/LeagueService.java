@@ -2,6 +2,8 @@ package com.cricketlegend.service;
 
 import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.dto.CreateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueRequest;
+import com.cricketlegend.dto.DuplicateLeagueResponse;
 import com.cricketlegend.dto.LeagueDto;
 import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.dto.UpdateLeagueRequest;
@@ -37,4 +39,11 @@ public interface LeagueService {
 
     /** Throws {@link com.cricketlegend.exception.InvalidStatusTransitionException} if already active. */
     LeagueDto reactivate(UUID clubId, UUID leagueId);
+
+    /**
+     * docs/specs/096-duplicate-league.md: copies the league profile under a new name, plus optionally the playing
+     * conditions of the chosen seasons and the active contacts, in one transaction. Never copies affiliations, league
+     * teams or matches.
+     */
+    DuplicateLeagueResponse duplicate(UUID clubId, UUID leagueId, DuplicateLeagueRequest request);
 }
