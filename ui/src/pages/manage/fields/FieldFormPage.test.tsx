@@ -114,12 +114,11 @@ describe('FieldFormPage', { timeout: 20000 }, () => {
       expect(createPlayingArea).not.toHaveBeenCalled()
     })
 
-    it('on a 409 duplicate offers the existing field, and Use this field links it home and opens it', async () => {
+    it('on a 409 duplicate offers the existing field, and Use this field only opens it, never linking the club', async () => {
       const user = userEvent.setup()
       const existing = makeField({ id: 'dup-1', name: 'Hilton Oval' })
       createPlayingArea.mockRejectedValue(problem(409, { existingPlayingAreaId: 'dup-1' }))
       getPlayingArea.mockResolvedValue(existing)
-      linkPlayingAreaHome.mockResolvedValue(undefined)
       renderPage('/manage/fixtures/fields/new')
       await screen.findByRole('heading', { name: 'Add field' })
       await fillRequired(user)
@@ -129,8 +128,8 @@ describe('FieldFormPage', { timeout: 20000 }, () => {
       expect(within(panel).getByText('This field already exists.')).toBeInTheDocument()
       await user.click(within(panel).getByRole('button', { name: 'Use this field' }))
 
-      await waitFor(() => expect(linkPlayingAreaHome).toHaveBeenCalledWith('club-1', 'dup-1'))
       expect(await screen.findByText('At: /manage/fixtures/fields/dup-1')).toBeInTheDocument()
+      expect(linkPlayingAreaHome).not.toHaveBeenCalled()
     })
 
     it('shows the server\'s message when saving fails for another reason', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Chip, MenuItem, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
@@ -14,6 +14,7 @@ import { Input } from '../Input'
 import { badgeSx } from '../RecordCard'
 import { findSimilarPlayingAreas, getPlayingArea, playingAreasKey } from '../../api/playingAreaApi'
 import type { FieldCategory, FieldOwnerType, PlayingArea } from '../../api/playingAreaApi'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { countryName } from '../../utils/countries'
 import { FIELD_CATEGORIES, FIELD_CATEGORY_LABEL, FIELD_OWNER_TYPES, FIELD_OWNER_TYPE_LABEL } from '../../utils/fieldLabels'
 import { effectiveOwnerType, MAX_MAP_URL_LENGTH, MAX_NAME_LENGTH, MAX_NOTES_LENGTH } from '../../utils/fieldForm'
@@ -41,15 +42,6 @@ export interface FieldFormFieldsProps {
 
 const SUGGEST_DEBOUNCE_MS = 400
 const MIN_NAME_FOR_SUGGEST = 3
-
-function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const handle = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(handle)
-  }, [value, delay])
-  return debounced
-}
 
 function ExistingFieldRow({ field, onUse }: { field: PlayingArea; onUse?: (field: PlayingArea) => void }) {
   const badge = fieldStatusBadge(fieldStatusOf(field))
@@ -107,7 +99,7 @@ function SimilarFieldsPanel({
   duplicateOfId?: string | null
   onUseExisting?: (field: PlayingArea) => void
 }) {
-  const typed = useDebounced({ name: name.trim(), city: city.trim(), country: country.trim() }, SUGGEST_DEBOUNCE_MS)
+  const typed = useDebouncedValue({ name: name.trim(), city: city.trim(), country: country.trim() }, SUGGEST_DEBOUNCE_MS)
   const key = `${typed.name}|${typed.city}|${typed.country}`.toLowerCase()
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 

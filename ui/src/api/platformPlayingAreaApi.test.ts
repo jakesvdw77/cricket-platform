@@ -44,7 +44,7 @@ describe('platformPlayingAreaApi', () => {
   it('derives linkedClubCount from the linked clubs the server lists, per row', async () => {
     get.mockResolvedValue({
       data: fieldPage([
-        makeField({ id: 'a', linkedClubs: [{ id: 'c1', name: 'One' }, { id: 'c2', name: 'Two' }] }),
+        makeField({ id: 'a', linkedClubs: [{ clubId: 'c1', clubName: 'One', home: false }, { clubId: 'c2', clubName: 'Two', home: false }] }),
         makeField({ id: 'b', linkedClubs: [] }),
         makeField({ id: 'c', linkedClubs: undefined }),
       ]),
@@ -59,7 +59,7 @@ describe('platformPlayingAreaApi', () => {
   })
 
   it('derives linkedClubCount on a single field and on every moderation result', async () => {
-    const withClubs = makeField({ linkedClubs: [{ id: 'c1', name: 'One' }] })
+    const withClubs = makeField({ linkedClubs: [{ clubId: 'c1', clubName: 'One', home: false }] })
     get.mockResolvedValue({ data: withClubs })
     expect((await getPlatformPlayingArea('f1')).linkedClubCount).toBe(1)
     expect(get).toHaveBeenLastCalledWith(`${BASE}/f1`)

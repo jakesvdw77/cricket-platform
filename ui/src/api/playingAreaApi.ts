@@ -14,6 +14,12 @@ export type FieldOwnerType = 'CLUB' | 'SCHOOL' | 'PROVINCE' | 'OTHER'
 // The only area type this spec creates or lists. Always sent on the list/similar calls.
 export const FIELD_AREA_TYPE = 'CRICKET_FIELD'
 
+export interface PlayingAreaLinkedClub {
+  clubId: string
+  clubName: string
+  home: boolean
+}
+
 export interface PlayingArea {
   id: string
   name: string
@@ -36,8 +42,10 @@ export interface PlayingArea {
   // Club-scoped: this club's matches on the field. Platform: every match using it.
   matchCount?: number
   linkedClubCount?: number
+  // Platform responses only: set when this field has been merged into another.
+  mergedIntoId?: string | null
   // Platform responses list the clubs using it; linkedClubCount is derived from this on the client.
-  linkedClubs?: { id: string; name: string }[]
+  linkedClubs?: PlayingAreaLinkedClub[]
   // Platform responses: existing fields that look like a duplicate of this one (name only, for the card).
   possibleDuplicates?: { id: string; name: string }[]
 }
@@ -65,6 +73,8 @@ export interface ListPlayingAreasParams {
   verification?: Exclude<FieldVerificationStatus, 'REJECTED'>
   // Only this club's home fields.
   mine?: boolean
+  // Fields this club linked or used on one of its matches (away grounds included); the Matches Field filter.
+  usedByClub?: boolean
 }
 
 export interface PlayingAreasSummary {

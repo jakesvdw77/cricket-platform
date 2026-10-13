@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Box, Stack, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Button } from '../../../components/Button'
 import { ContentControlsLine, SortLink } from '../../../components/ContentControlsLine'
 import { EmptyState } from '../../../components/EmptyState'
 import { FieldCard } from '../../../components/FieldCard'
@@ -9,6 +8,8 @@ import { FieldTable } from '../../../components/FieldTable'
 import { FilterBar } from '../../../components/FilterBar'
 import { ListViewToggle } from '../../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
+import { PageNav } from '../../../components/PageNav'
 import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
 import {
@@ -40,18 +41,13 @@ const VERIFICATION_WORDS: Record<FieldVerificationStatus, string> = {
 export default function AdminFieldsPage() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [verification, setVerification] = useState<FieldVerificationStatus>('UNVERIFIED')
   const [category, setCategory] = useState<FieldCategory | ''>('')
   const [country, setCountry] = useState('')
   const [newestFirst, setNewestFirst] = useState(false)
   const [view, setView] = useListViewPreference('adminFieldList:view')
   const statusActions = useFieldStatusActions()
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-  }, [search])
 
   useEffect(() => {
     setPage(0)
@@ -190,19 +186,7 @@ export default function AdminFieldsPage() {
         />
       )}
 
-      {hasFields && data.totalPages > 1 && (
-        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-          <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((previous) => previous - 1)}>
-            Previous
-          </Button>
-          <Typography variant="body2" color="text.secondary">
-            Page {data.number + 1} of {data.totalPages}
-          </Typography>
-          <Button variant="secondary" size="sm" disabled={page + 1 >= data.totalPages} onClick={() => setPage((previous) => previous + 1)}>
-            Next
-          </Button>
-        </Stack>
-      )}
+      {hasFields && <PageNav page={data.number} totalPages={data.totalPages} onPageChange={setPage} />}
 
       {statusActions.dialog}
     </Box>

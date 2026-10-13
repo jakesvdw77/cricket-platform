@@ -8,14 +8,17 @@ export type FieldStatus = 'verified' | 'unverified' | 'rejected'
 
 export type FieldStatusAction = 'verify' | 'reject' | 'reopen'
 
+// A record always carries a status; should one arrive without it, the safe reading is Unverified, never a Verified badge.
 export function fieldStatusOf(field: Pick<PlayingArea, 'verificationStatus'>): FieldStatus {
-  return fieldStatusFrom(field.verificationStatus)
+  return fieldStatusFrom(field.verificationStatus) ?? 'unverified'
 }
 
-export function fieldStatusFrom(status: FieldVerificationStatus | null | undefined): FieldStatus {
+// null when there is no (or an unrecognised) status, so a caller never shows "Verified" for a missing one.
+export function fieldStatusFrom(status: FieldVerificationStatus | null | undefined): FieldStatus | null {
+  if (status === 'VERIFIED') return 'verified'
   if (status === 'UNVERIFIED') return 'unverified'
   if (status === 'REJECTED') return 'rejected'
-  return 'verified'
+  return null
 }
 
 export const FIELD_STATUS_LABEL: Record<FieldStatus, string> = {
@@ -58,9 +61,11 @@ export interface FieldEditState {
 
 // A club manager may edit a field only while it is unverified and their club captured it (the API enforces the same).
 export function fieldEditState(
-  field: Pick<PlayingArea, 'verificationStatus' | 'createdByClubId'>,
+  field: Pick<PlayingArea, 'verificationStatus' | 'createdByClubId' | 'mergedIntoId'>,
   clubId: string | undefined,
 ): FieldEditState {
+  if (field.mergedIntoId) return { editable: false, reason: 'This field has been merged into another field.' }
+  if (field.verificationStatus === 'REJECTED') return { editable: false, reason: 'A rejected field cannot be edited.' }
   if (field.verificationStatus === 'UNVERIFIED') {
     if (clubId && field.createdByClubId === clubId) return { editable: true, reason: null }
     return { editable: false, reason: 'Only the club that captured this field can change it until it is verified.' }

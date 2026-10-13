@@ -33,7 +33,7 @@ const SOURCE: PlatformPlayingArea = makeField({
   name: 'Hilton Oval (dup)',
   verificationStatus: 'UNVERIFIED',
   matchCount: 3,
-  linkedClubs: [{ id: 'c1', name: 'Riverside CC' }, { id: 'c2', name: 'Oakfield CC' }],
+  linkedClubs: [{ clubId: 'c1', clubName: 'Riverside CC', home: false }, { clubId: 'c2', clubName: 'Oakfield CC', home: false }],
   linkedClubCount: 2,
   possibleDuplicates: [{ id: 'keep-1', name: 'Hilton Oval' }],
 })

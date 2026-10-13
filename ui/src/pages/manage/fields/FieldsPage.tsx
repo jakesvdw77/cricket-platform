@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Link, Stack, Typography } from '@mui/material'
+import { Box, Link, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -12,6 +12,8 @@ import { FieldTable } from '../../../components/FieldTable'
 import { FilterBar } from '../../../components/FilterBar'
 import { ListViewToggle } from '../../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
+import { PageNav } from '../../../components/PageNav'
 import { PageCounters } from '../../../components/PageCounters'
 import type { PageCounterItem } from '../../../components/PageCounters'
 import {
@@ -51,7 +53,7 @@ export default function FieldsPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [descending, setDescending] = useState(false)
   const [unverifiedOnly, setUnverifiedOnly] = useState(false)
   const [view, setView] = useListViewPreference('fieldList:view')
@@ -66,11 +68,6 @@ export default function FieldsPage() {
   })
   const [autoOwnOnly, setAutoOwnOnly] = useState<boolean | null>(null)
   const homeLink = useFieldHomeLink(clubId)
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-  }, [search])
 
   const { category, country, province, city } = filters
 
@@ -309,19 +306,7 @@ export default function FieldsPage() {
         <EmptyState title="No fields found" description="Nothing in the directory matches these filters. Try clearing a filter, or add a new field." />
       )}
 
-      {hasFields && data.totalPages > 1 && (
-        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-          <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((previous) => previous - 1)}>
-            Previous
-          </Button>
-          <Typography variant="body2" color="text.secondary">
-            Page {data.number + 1} of {data.totalPages}
-          </Typography>
-          <Button variant="secondary" size="sm" disabled={page + 1 >= data.totalPages} onClick={() => setPage((previous) => previous + 1)}>
-            Next
-          </Button>
-        </Stack>
-      )}
+      {hasFields && <PageNav page={data.number} totalPages={data.totalPages} onPageChange={setPage} />}
 
       {homeLink.dialog}
     </Box>

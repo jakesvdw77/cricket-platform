@@ -54,6 +54,14 @@ describe('playingAreaApi', () => {
     })
   })
 
+  it('sends usedByClub only when true', async () => {
+    get.mockResolvedValue({ data: fieldPage([]) })
+    await listPlayingAreas('club-1', { usedByClub: true })
+    expect(get).toHaveBeenLastCalledWith(BASE, { params: { page: 0, size: 20, areaType: 'CRICKET_FIELD', usedByClub: true } })
+    await listPlayingAreas('club-1', { usedByClub: false })
+    expect(get).toHaveBeenLastCalledWith(BASE, { params: { page: 0, size: 20, areaType: 'CRICKET_FIELD' } })
+  })
+
   it('does not send mine=false (the unfiltered list)', async () => {
     get.mockResolvedValue({ data: fieldPage([]) })
     await listPlayingAreas('club-1', { mine: false })

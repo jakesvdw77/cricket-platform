@@ -1,14 +1,11 @@
 import api from './axiosConfig'
-import type { FieldCategory, FieldVerificationStatus, PlayingArea, PlayingAreaPayload } from './playingAreaApi'
+import type { FieldCategory, FieldVerificationStatus, PlayingArea, PlayingAreaLinkedClub, PlayingAreaPayload } from './playingAreaApi'
 import type { Page } from './productApi'
 
 // docs/specs/099-fields-directory.md: the platform-admin moderation API under /api/v1/platform/playing-areas (gated to
 // platform_admin by URL). Written against the spec's API Contract.
 
-export interface PlatformLinkedClub {
-  id: string
-  name: string
-}
+export type PlatformLinkedClub = PlayingAreaLinkedClub
 
 // The admin's full record: every linked club, the matches using it and possible duplicates.
 export interface PlatformPlayingArea extends PlayingArea {

@@ -8,7 +8,7 @@ import { CompactSwitch } from '../../../components/CompactSwitch'
 import { EmptyState } from '../../../components/EmptyState'
 import { FieldFormFields } from '../../../components/FieldFormFields'
 import { RecordFormScreen } from '../../../components/RecordFormScreen'
-import { createPlayingArea, getPlayingArea, linkPlayingAreaHome, playingAreasKey, updatePlayingArea } from '../../../api/playingAreaApi'
+import { createPlayingArea, getPlayingArea, playingAreasKey, updatePlayingArea } from '../../../api/playingAreaApi'
 import type { PlayingArea, PlayingAreaPayload } from '../../../api/playingAreaApi'
 import { useFieldForm } from '../../../hooks/useFieldForm'
 import { duplicateFieldId } from '../../../utils/fieldForm'
@@ -39,14 +39,9 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
     onError: (error) => setDuplicateOfId(duplicateFieldId(error)),
   })
 
-  // "Use this field" in the Did you mean panel: add the existing field to this club's own fields and open it.
-  const useExisting = useMutation({
-    mutationFn: (existing: PlayingArea) => linkPlayingAreaHome(clubId, existing.id).then(() => existing),
-    onSuccess: (existing) => {
-      queryClient.invalidateQueries({ queryKey: playingAreasKey(clubId) })
-      navigate(`${LIST_PATH}/${existing.id}`)
-    },
-  })
+  // "Use this field" in the Did you mean panel: open the existing field. Linking it to the club is never automatic; the
+  // field's own page has the button for that.
+  const openExisting = (existing: PlayingArea) => navigate(`${LIST_PATH}/${existing.id}`)
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -65,11 +60,6 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
           {save.isError && !duplicateOfId && (
             <Typography variant="body2" color="error.main">
               {errorDetail(save.error, 'Something went wrong saving this field. Please try again.')}
-            </Typography>
-          )}
-          {useExisting.isError && (
-            <Typography variant="body2" color="error.main">
-              {errorDetail(useExisting.error, "That field couldn't be added to your fields. Please try again.")}
             </Typography>
           )}
           <MuiButton component={RouterLink} to={backTo} variant="outlined">
@@ -97,7 +87,7 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
           clubId={clubId}
           suggest={!isEdit}
           duplicateOfId={duplicateOfId}
-          onUseExisting={(existing) => useExisting.mutate(existing)}
+          onUseExisting={openExisting}
           countryHint={isEdit ? undefined : 'Chosen from your browser. Change it if it is wrong.'}
         />
         {!isEdit && (

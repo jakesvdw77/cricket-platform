@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Autocomplete, Box, Chip, CircularProgress, ListSubheader, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useQuery } from '@tanstack/react-query'
@@ -7,6 +7,7 @@ import { Input } from '../Input'
 import { badgeSx } from '../RecordCard'
 import { listPlayingAreas, playingAreasKey } from '../../api/playingAreaApi'
 import type { FieldVerificationStatus, PlayingArea } from '../../api/playingAreaApi'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { FIELD_CATEGORY_LABEL } from '../../utils/fieldLabels'
 
 // Same debounce timing ClubPicker's club search uses.
@@ -54,7 +55,7 @@ function groupOf(option: PickerOption): string {
 export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)', disabled = false, error = false, helperText }: FieldPickerProps) {
   const [hasFocused, setHasFocused] = useState(false)
   const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(query.trim(), FIELD_SEARCH_DEBOUNCE_MS)
   // Suppresses the dropdown right after a selection: re-syncing the input to the chosen name would otherwise search for it
   // and keep the popper open (the same trap ClubPicker documents). Cleared the moment the manager types again.
   const [suppressOpen, setSuppressOpen] = useState(false)
@@ -62,11 +63,6 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
   // Focus returns to the input when the dialog closes (and right after the "Add a new field..." click); it must not
   // reopen the dropdown. Cleared as soon as the manager opens or types in the box again.
   const ignoreFocusRef = useRef(false)
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedQuery(query.trim()), FIELD_SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-  }, [query])
 
   const { data: page, isFetching, isError } = useQuery({
     queryKey: [...playingAreasKey(clubId), 'picker', debouncedQuery],
@@ -138,11 +134,15 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
               >
                 {params.group}
               </ListSubheader>
-              <ul style={{ padding: 0 }}>{params.children}</ul>
+              <Box component="ul" sx={{ p: 0 }}>
+                {params.children}
+              </Box>
             </li>
           ) : (
             <li key={params.key}>
-              <ul style={{ padding: 0 }}>{params.children}</ul>
+              <Box component="ul" sx={{ p: 0 }}>
+                {params.children}
+              </Box>
             </li>
           )
         }

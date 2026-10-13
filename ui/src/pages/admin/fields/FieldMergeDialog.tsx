@@ -8,6 +8,7 @@ import { listPlatformPlayingAreas, mergePlayingArea, PLATFORM_FIELDS_KEY } from 
 import type { PlatformPlayingArea } from '../../../api/platformPlayingAreaApi'
 import type { PlayingArea } from '../../../api/playingAreaApi'
 import { countryName } from '../../../utils/countries'
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
 import { FIELD_STATUS_LABEL, fieldStatusOf } from '../../../utils/fieldStatus'
 import { FIELD_CATEGORY_LABEL } from '../../../utils/fieldLabels'
 import { NOT_ON_FILE } from '../../../utils/playerFormat'
@@ -105,14 +106,9 @@ function FieldComparison({ source, target }: { source: PlayingArea; target: Play
 export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMergeDialogProps) {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS)
   const [target, setTarget] = useState<PlayingArea | null>(null)
   const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-  }, [query])
 
   useEffect(() => {
     if (!open) {

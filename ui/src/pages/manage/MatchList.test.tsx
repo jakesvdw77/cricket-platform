@@ -183,12 +183,12 @@ describe('MatchList', () => {
 
   // docs/specs/099-fields-directory.md: matches on one field, a backend param.
   describe('Field filter', () => {
-    it('asks for the club\'s own fields only, and offers no Field filter when the club has none', async () => {
+    it('asks for the fields the club has used and offers no Field filter when the club has none', async () => {
       listMatches.mockResolvedValue(makePage([makeMatch()]))
       renderPage('test-club-id')
 
       await screen.findByText('1st XI vs Riverside Occasionals')
-      expect(listPlayingAreas).toHaveBeenCalledWith('test-club-id', { size: 100, mine: true })
+      expect(listPlayingAreas).toHaveBeenCalledWith('test-club-id', { size: 200, usedByClub: true })
       expect(screen.queryByLabelText('Field')).not.toBeInTheDocument()
     })
 

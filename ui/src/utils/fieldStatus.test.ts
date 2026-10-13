@@ -8,11 +8,14 @@ import {
 } from './fieldStatus'
 
 describe('fieldStatus', () => {
-  it('maps the server verification status to the UI status, treating anything unknown as verified', () => {
+  it('maps the server verification status to the UI status, and has no status for a missing one', () => {
     expect(fieldStatusFrom('UNVERIFIED')).toBe('unverified')
     expect(fieldStatusFrom('REJECTED')).toBe('rejected')
     expect(fieldStatusFrom('VERIFIED')).toBe('verified')
-    expect(fieldStatusFrom(null)).toBe('verified')
+    expect(fieldStatusFrom(null)).toBeNull()
+    expect(fieldStatusFrom(undefined)).toBeNull()
+    // fieldStatusOf never claims Verified for a missing status.
+    expect(fieldStatusOf({ verificationStatus: undefined as never })).toBe('unverified')
     expect(fieldStatusOf({ verificationStatus: 'REJECTED' })).toBe('rejected')
   })
 
@@ -42,6 +45,20 @@ describe('fieldStatus', () => {
     it('refuses everyone on a verified field, saying only a platform admin can change it', () => {
       const state = fieldEditState({ verificationStatus: 'VERIFIED', createdByClubId: 'club-1' }, 'club-1')
       expect(state).toEqual({ editable: false, reason: 'Only a platform admin can change a verified field.' })
+    })
+
+    it('gives a rejected field its own reason', () => {
+      expect(fieldEditState({ verificationStatus: 'REJECTED', createdByClubId: 'club-1' }, 'club-1')).toEqual({
+        editable: false,
+        reason: 'A rejected field cannot be edited.',
+      })
+    })
+
+    it('gives a merged field its own reason, whatever its status', () => {
+      expect(fieldEditState({ verificationStatus: 'VERIFIED', createdByClubId: 'club-1', mergedIntoId: 'f-2' }, 'club-1')).toEqual({
+        editable: false,
+        reason: 'This field has been merged into another field.',
+      })
     })
 
     it('refuses when the calling club is unknown', () => {

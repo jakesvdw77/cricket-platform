@@ -208,10 +208,10 @@ export default function MatchList({
     enabled: Boolean(clubId),
   })
 
-  // The Field filter offers the club's own fields (its home fields), from the directory's paged search.
+  // The Field filter offers every field the club linked or used on a match (away grounds included), from the directory's paged search.
   const { data: ownFields } = useQuery({
-    queryKey: [...playingAreasKey(clubId ?? ''), 'match-filter', 'mine'],
-    queryFn: () => listPlayingAreas(clubId as string, { size: 100, mine: true }),
+    queryKey: [...playingAreasKey(clubId ?? ''), 'match-filter', 'used'],
+    queryFn: () => listPlayingAreas(clubId as string, { size: 200, usedByClub: true }),
     enabled: Boolean(clubId),
     retry: false,
   })

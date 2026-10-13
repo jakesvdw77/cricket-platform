@@ -147,7 +147,7 @@ export default function AdminFieldDetailPage() {
 
       <FieldInfoCards
         field={field}
-        extraDetails={[{ label: 'Clubs', value: (field.linkedClubs ?? []).map((club) => club.name).join(', ') }]}
+        extraDetails={[{ label: 'Clubs', value: (field.linkedClubs ?? []).map((club) => club.clubName).join(', ') }]}
         extraCards={
           <InfoCard title="Possible duplicates" icon={<FlagOutlinedIcon />}>
             {duplicates.length === 0 ? (
