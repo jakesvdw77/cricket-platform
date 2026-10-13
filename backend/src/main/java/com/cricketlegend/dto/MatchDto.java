@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import com.cricketlegend.domain.MatchResultStatus;
 import com.cricketlegend.domain.PlayingAreaVerificationStatus;
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,10 @@ import java.util.UUID;
  * <p>{@code playingAreaId}/{@code playingAreaName}/{@code playingAreaVerificationStatus}
  * (docs/specs/099-fields-directory.md) describe the chosen field; the name equals {@code venue} when linked, and all
  * three are {@code null} for a match with no field.
+ *
+ * <p>{@code resultStatus} (docs/specs/100-match-results-core.md) is {@code NONE}, {@code DRAFT} or {@code PUBLISHED}:
+ * a match is completed when its result is published. Computed in batch on the list and single-match paths; normalised
+ * here to {@code NONE} when not set.
  */
 public record MatchDto(
         UUID id,
@@ -60,10 +65,12 @@ public record MatchDto(
         String streamingUrl,
         UUID playingAreaId,
         String playingAreaName,
-        PlayingAreaVerificationStatus playingAreaVerificationStatus) {
+        PlayingAreaVerificationStatus playingAreaVerificationStatus,
+        MatchResultStatus resultStatus) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;
+        resultStatus = resultStatus == null ? MatchResultStatus.NONE : resultStatus;
     }
 
     /** A copy carrying the chosen field's name and verification status (docs/specs/099-fields-directory.md). */
@@ -72,6 +79,16 @@ public record MatchDto(
                 id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
-                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status);
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, resultStatus);
+    }
+
+    /** A copy carrying the match's result status (docs/specs/100-match-results-core.md). */
+    public MatchDto withResultStatus(MatchResultStatus status) {
+        return new MatchDto(
+                id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
+                leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
+                updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
+                playingAreaVerificationStatus, status);
     }
 }

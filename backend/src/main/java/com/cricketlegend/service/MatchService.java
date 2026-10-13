@@ -1,6 +1,8 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchListFocus;
+import com.cricketlegend.domain.MatchResultStatus;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 
 /**
@@ -57,7 +60,26 @@ public interface MatchService {
             UUID teamId,
             UUID playingAreaId,
             MatchListFocus focus,
+            MatchResultStatus resultStatus,
             Pageable pageable);
+
+    /** As above without the docs/specs/100 {@code resultStatus} filter. */
+    default Page<MatchDto> list(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean upcomingOnly,
+            String search,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            UUID playingAreaId,
+            MatchListFocus focus,
+            Pageable pageable) {
+        return list(
+                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId, playingAreaId,
+                focus, null, pageable);
+    }
 
     /** As above without the docs/specs/099 {@code playingAreaId} filter. */
     default Page<MatchDto> list(
@@ -112,7 +134,23 @@ public interface MatchService {
             UUID teamId,
             UUID playingAreaId,
             String search,
-            boolean includePast);
+            boolean includePast,
+            MatchResultStatus resultStatus);
+
+    /** As above without the docs/specs/100 {@code resultStatus} filter. */
+    default MatchesSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            UUID playingAreaId,
+            String search,
+            boolean includePast) {
+        return summary(
+                authentication, clubId, sectionId, leagueId, seasonId, teamId, playingAreaId, search, includePast, null);
+    }
 
     /** As above without the docs/specs/099 {@code playingAreaId} filter. */
     default MatchesSummaryDto summary(
@@ -128,6 +166,41 @@ public interface MatchService {
     }
 
     MatchDto get(Authentication authentication, UUID clubId, UUID matchId);
+
+    /**
+     * docs/specs/100-match-results-core.md: the Matches list pipeline (club, caller's section scope, the shared
+     * league/season/team/search filters, default sort {@code matchDate} descending, the same enrichment) narrowed by one
+     * more {@code extra} specification. How the Results list and awaiting list reuse Matches rather than a second
+     * query stack. A match is never past/upcoming-filtered here: {@code extra} owns any date rule.
+     */
+    Page<MatchDto> listMatching(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            String search,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            Specification<Match> extra,
+            Pageable pageable);
+
+    /** The total {@link #listMatching} would return for the same arguments (the Results counters). */
+    long countMatching(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            String search,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            Specification<Match> extra);
+
+    /**
+     * docs/specs/100-match-results-core.md: the club's match, 404 if it does not exist or belongs to another club,
+     * after the per-match section gate ({@code AccessDeniedException} when a section-scoped caller cannot administer
+     * it). Result capture reuses this so it applies exactly the Matches write rule.
+     */
+    Match requireAdministrableMatch(Authentication authentication, UUID clubId, UUID matchId);
 
     /**
      * Creates a match. {@code clubId} (the acting club from the URL) is always the saved {@code

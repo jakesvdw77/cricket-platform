@@ -3078,6 +3078,16 @@ paths:
         description: "A Matches quick filter (docs/specs/087), case-insensitive: this-week, not-announced or no-poll. Each covers active, upcoming matches only and is the definition the summary counters count. Anything else is a 400."
         schema:
           type: string
+      - name: resultStatus
+        in: query
+        required: false
+        description: "Only matches whose result is in this state (docs/specs/100): NONE, DRAFT or PUBLISHED."
+        schema:
+          type: string
+          enum:
+          - NONE
+          - DRAFT
+          - PUBLISHED
       - name: pageable
         in: query
         required: true
@@ -5230,6 +5240,16 @@ paths:
         schema:
           type: boolean
           default: false
+      - name: resultStatus
+        in: query
+        required: false
+        description: "Only matches whose result is in this state (docs/specs/100): NONE, DRAFT or PUBLISHED."
+        schema:
+          type: string
+          enum:
+          - NONE
+          - DRAFT
+          - PUBLISHED
       responses:
         "200":
           description: OK
@@ -5237,6 +5257,457 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchesSummaryDto"
+  /api/v1/manage/clubs/{clubId}/results:
+    get:
+      tags:
+      - match-result-controller
+      operationId: listResults
+      description: "The Results list (docs/specs/100): matches that have a result, draft or published, through the Matches filter, section and sort pipeline (default sort matchDate descending), each with its result. focus is one of played, won, lost, tied-or-none or drafts (case-insensitive; anything else is a 400) and is the definition the summary counters count."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: outcome
+        in: query
+        required: false
+        description: "Only results with one of these outcomes."
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - WON
+            - TIE
+            - DRAW
+            - NO_RESULT
+            - ABANDONED
+            - FORFEIT
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+      - name: focus
+        in: query
+        required: false
+        description: "played, won, lost, tied-or-none or drafts."
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: false
+        description: "Only matches on or after this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        description: "Only matches on or before this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResultListItemDto"
+  /api/v1/manage/clubs/{clubId}/results/summary:
+    get:
+      tags:
+      - match-result-controller
+      operationId: resultsSummary
+      description: "The Results page counters (docs/specs/100) for the same filters the list uses, section-scoped like the list."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: false
+        description: "Only matches on or after this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        description: "Only matches on or before this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultsSummaryDto"
+  /api/v1/manage/clubs/{clubId}/results/filter-options:
+    get:
+      tags:
+      - match-result-controller
+      operationId: resultsFilterOptions
+      description: "The Matches filter options (docs/specs/042, 087) for the Results filter bar."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/results/awaiting:
+    get:
+      tags:
+      - match-result-controller
+      operationId: awaitingResult
+      description: "Active matches with no result, newest first, for the capture picker (docs/specs/100). Up to the end of today unless includeUpcoming."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: false
+        description: "Only matches on or after this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        description: "Only matches on or before this local day (inclusive)."
+        schema:
+          type: string
+          format: date
+      - name: includeUpcoming
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageMatchDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result:
+    get:
+      tags:
+      - match-result-controller
+      operationId: getResult
+      description: "The match's result, any status; 404 when there is none."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
+    put:
+      tags:
+      - match-result-controller
+      operationId: saveResultDraft
+      description: "Creates or replaces the draft (docs/specs/100). Enforces structural validity only (400 with errors if malformed). The field defaults from the match and the scheduled length from the league's playing conditions. 409 when the result is published or the match is inactive."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultDraft"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
+    delete:
+      tags:
+      - match-result-controller
+      operationId: deleteResultDraft
+      description: "Deletes a draft; 409 when published (unpublish first)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/validate:
+    post:
+      tags:
+      - match-result-controller
+      operationId: validateResult
+      description: "Dry run (docs/specs/100): validates the body when given, otherwise the stored result. Writes nothing. Errors block publishing; warnings need acknowledging."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultDraft"
+        required: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultValidationDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/publish:
+    post:
+      tags:
+      - match-result-controller
+      operationId: publishResult
+      description: "Re-validates the stored draft: errors give a 400 carrying errors and warnings; warnings need acknowledgedWarnings. Then sets PUBLISHED."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishResultRequest"
+        required: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/unpublish:
+    post:
+      tags:
+      - match-result-controller
+      operationId: unpublishResult
+      description: "Back to DRAFT; everything derived follows."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MatchResultDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -7460,6 +7931,13 @@ components:
           - UNVERIFIED
           - VERIFIED
           - REJECTED
+        resultStatus:
+          type: string
+          description: "NONE, DRAFT or PUBLISHED (docs/specs/100); a match is completed when its result is published."
+          enum:
+          - NONE
+          - DRAFT
+          - PUBLISHED
     MatchPollDto:
       type: object
       properties:
@@ -9898,6 +10376,287 @@ components:
         withoutPoll:
           type: integer
           format: int64
+    InningsDto:
+      type: object
+      description: "One innings' totals (docs/specs/100). balls is balls faced, never decimal overs; oversDisplay (e.g. 36.4) is derived on read and ignored on write. On write sequence, kind and allOut may be omitted."
+      properties:
+        sequence:
+          type: integer
+          format: int32
+        kind:
+          type: string
+          enum:
+          - REGULAR
+          - SUPER_OVER
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        runs:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        extras:
+          type: integer
+          format: int32
+        allOut:
+          type: boolean
+        oversDisplay:
+          type: string
+    ResultDraft:
+      type: object
+      description: "The canonical result being captured (docs/specs/100); partial values allowed. decidedBy defaults to REGULAR and ballsPerOver to 6."
+      properties:
+        outcomeType:
+          type: string
+          enum:
+          - WON
+          - TIE
+          - DRAW
+          - NO_RESULT
+          - ABANDONED
+          - FORFEIT
+        decidedBy:
+          type: string
+          enum:
+          - REGULAR
+          - DLS
+          - SUPER_OVER
+        winningSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        marginType:
+          type: string
+          enum:
+          - RUNS
+          - WICKETS
+        marginValue:
+          type: integer
+          format: int32
+        dlsTarget:
+          type: integer
+          format: int32
+        dlsRevisedBalls:
+          type: integer
+          format: int32
+        scheduledBalls:
+          type: integer
+          format: int32
+        ballsPerOver:
+          type: integer
+          format: int32
+        tossWonBy:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        tossDecision:
+          type: string
+          enum:
+          - BAT
+          - BOWL
+        playingAreaId:
+          type: string
+          format: uuid
+        note:
+          type: string
+        innings:
+          type: array
+          items:
+            $ref: "#/components/schemas/InningsDto"
+    MatchResultDto:
+      type: object
+      description: "A stored result with its innings in sequence order (docs/specs/100). outcomeType is null only on a draft."
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        detailLevel:
+          type: string
+          enum:
+          - SUMMARY
+          - OUR_SIDE
+          - FULL
+        outcomeType:
+          type: string
+          enum:
+          - WON
+          - TIE
+          - DRAW
+          - NO_RESULT
+          - ABANDONED
+          - FORFEIT
+        decidedBy:
+          type: string
+          enum:
+          - REGULAR
+          - DLS
+          - SUPER_OVER
+        winningSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        marginType:
+          type: string
+          enum:
+          - RUNS
+          - WICKETS
+        marginValue:
+          type: integer
+          format: int32
+        dlsTarget:
+          type: integer
+          format: int32
+        dlsRevisedBalls:
+          type: integer
+          format: int32
+        scheduledBalls:
+          type: integer
+          format: int32
+        ballsPerOver:
+          type: integer
+          format: int32
+        tossWonBy:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        tossDecision:
+          type: string
+          enum:
+          - BAT
+          - BOWL
+        playingAreaId:
+          type: string
+          format: uuid
+        playingAreaName:
+          type: string
+        note:
+          type: string
+        source:
+          type: string
+        externalId:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        publishedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          format: uuid
+        innings:
+          type: array
+          items:
+            $ref: "#/components/schemas/InningsDto"
+    ResultListItemDto:
+      type: object
+      description: "One Results list row (docs/specs/100): the match with its result. result is null only if the result vanished between the two reads."
+      properties:
+        match:
+          $ref: "#/components/schemas/MatchDto"
+        result:
+          $ref: "#/components/schemas/MatchResultDto"
+    PageResultListItemDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResultListItemDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    ResultsSummaryDto:
+      type: object
+      description: "The Results page counters (docs/specs/100). played counts matches with a published result; won/lost count published results won/lost by one of the club's own sides (a match between two own teams is one of each); tiedOrNone is a published tie, draw, no result or abandonment; drafts are unpublished results; awaiting are active matches up to the end of today with no result. Each equals the list's total for the same filters with that focus."
+      properties:
+        played:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tiedOrNone:
+          type: integer
+          format: int64
+        drafts:
+          type: integer
+          format: int64
+        awaiting:
+          type: integer
+          format: int64
+    ResultValidationDto:
+      type: object
+      description: "Validation dry run in plain English (docs/specs/100). Errors block publishing; warnings are acknowledged at publish. The same errors and warnings arrays are returned as properties of a 400 problem body when a save or publish is refused."
+      properties:
+        canPublish:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+    PublishResultRequest:
+      type: object
+      properties:
+        acknowledgedWarnings:
+          type: boolean
     AvailabilityRespondentDto:
       type: object
       properties:

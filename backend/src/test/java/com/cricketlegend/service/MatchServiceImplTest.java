@@ -106,6 +106,9 @@ class MatchServiceImplTest {
     @Mock
     private com.cricketlegend.service.support.PlayingAreaMatchResolver playingAreaMatchResolver;
 
+    @Mock
+    private com.cricketlegend.service.support.ResultStatusResolver resultStatusResolver;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -118,13 +121,13 @@ class MatchServiceImplTest {
                 new com.cricketlegend.service.support.SelectionLimitsResolver(
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
-                accessService, playingAreaRepository, playingAreaMatchResolver);
+                accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -560,9 +563,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -603,7 +606,7 @@ class MatchServiceImplTest {
     private MatchDto cardDto(Match m) {
         return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
                 m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
-                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private List<MatchDto> listCard(Match... matches) {
@@ -1626,7 +1629,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, homeLtId, awayLtId, null, null, null, null, null));
+                null, null, homeLtId, awayLtId, null, null, null, null, null, null));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1839,7 +1842,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null));
+                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
