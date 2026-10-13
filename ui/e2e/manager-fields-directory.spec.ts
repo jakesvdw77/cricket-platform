@@ -47,22 +47,6 @@ async function login(page: Page, username: string, password: string) {
   await page.getByRole('button', { name: 'Sign In' }).click();
 }
 
-// Same section-tree helper as manager-availability-polls.spec.ts.
-async function addTopLevelSection(page: Page, name: string) {
-  const startBlankButton = page.getByRole('button', { name: 'Start blank' });
-  const addTopLevelButton = page.getByRole('button', { name: /add top-level section/i });
-  await expect(startBlankButton.or(addTopLevelButton)).toBeVisible();
-  if (await startBlankButton.isVisible()) {
-    await startBlankButton.click();
-  }
-  await addTopLevelButton.click();
-  const nameField = page.getByRole('textbox', { name: 'Name', exact: true });
-  await expect(nameField).toHaveValue('New section');
-  await nameField.fill(name);
-  await nameField.blur();
-  await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
-}
-
 test.describe('Fields directory golden path (099-fields-directory.md)', () => {
   test.beforeEach(() => {
     test.skip(!!process.env.CI, 'requires local Keycloak — not wired into CI yet, see docs/plans/005-admin-login.md Flag #2');
@@ -77,46 +61,27 @@ test.describe('Fields directory golden path (099-fields-directory.md)', () => {
     browser,
   }) => {
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const sectionName = `E2E Field Section ${uniqueSuffix}`;
-    const teamName = `E2E Field Team ${uniqueSuffix}`;
-    const seasonLabel = `E2E Field Season ${uniqueSuffix}`;
     const opponentName = `E2E Field Opponents ${uniqueSuffix}`;
     const fieldName = `E2E Away Park ${uniqueSuffix}`;
-    const matchTitle = `${teamName} vs ${opponentName}`;
+    // The club's existing first season and first own team are used: the test only needs a match to hang the field on.
+    const matchTitle = opponentName;
     const today = new Date();
     const matchDateTimeLocal = `${new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}T09:00`;
 
     await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
     await expect(page).toHaveURL(new RegExp('/manage$'));
 
-    // --- Set-up: a section, a team and a season to hang the match on. ---
-    await page.getByRole('link', { name: 'Club Structure' }).click();
-    await addTopLevelSection(page, sectionName);
-    await page.getByRole('link', { name: 'Manage Teams' }).click();
-    await page.getByRole('button', { name: 'Add Team' }).click();
-    await page.getByLabel('Name').fill(teamName);
-    await page.getByRole('button', { name: 'Create team' }).click();
-    await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
-
-    await page.goto(`http://${ROOT_DOMAIN}/manage/fixtures/seasons`);
-    await page.getByRole('button', { name: 'Add Season' }).click();
-    await page.getByLabel('Label').fill(seasonLabel);
-    await page.getByLabel('Start date').fill(`${today.getFullYear()}-01-01`);
-    await page.getByLabel('End date').fill(`${today.getFullYear()}-12-31`);
-    await page.getByRole('button', { name: 'Create season' }).click();
-    await expect(page).toHaveURL(/\/manage\/fixtures\/seasons$/);
-
     // --- The match, with an away field added inline: no ground, type or playing-area step. ---
     await page.goto(`http://${ROOT_DOMAIN}/manage/fixtures/matches`);
     await page.getByRole('button', { name: 'Add Match' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/matches\/new$/);
-    await page.getByLabel('Season').click();
-    await page.getByRole('option', { name: seasonLabel, exact: true }).click();
+    await page.getByRole('combobox', { name: 'Season' }).click();
+    await page.getByRole('option').first().click();
     await page.getByLabel('Match date & time').fill(matchDateTimeLocal);
-    await page.getByLabel('Home team').click();
-    await page.getByRole('option', { name: teamName, exact: true }).click();
-    await page.getByRole('button', { name: 'External opponent' }).nth(1).click();
-    await page.getByLabel('Away opponent name').fill(opponentName);
+    await page.getByRole('combobox', { name: 'Home team' }).click();
+    await page.getByRole('option').first().click();
+    await page.getByRole('group', { name: 'Away side' }).getByRole('button', { name: 'Other' }).click();
+    await page.getByRole('textbox', { name: /away/i }).fill(opponentName);
 
     await addFieldInline(page, fieldName);
     // The picked field is unverified, so the form warns before saving.
@@ -159,9 +124,9 @@ test.describe('Fields directory golden path (099-fields-directory.md)', () => {
     await expect(page.locator('.MuiCard-root').filter({ hasText: matchTitle }).getByText('Unverified field')).toHaveCount(0);
 
     // --- A second club finds the verified field in the directory and adds it to its own fields. ---
-    await test.step('second club reuses the field (needs E2E_CLUB_ADMIN_2_*)', async () => {
-      test.skip(!HAS_SECOND_CLUB, 'requires E2E_CLUB_ADMIN_2_USERNAME / E2E_CLUB_ADMIN_2_PASSWORD / E2E_CLUB_ADMIN_2_CLUB_ID');
-
+    // Only when a second club's login is provided (E2E_CLUB_ADMIN_2_*). test.skip() inside a step would mark the
+    // whole test skipped, so the step is simply not run otherwise.
+    if (HAS_SECOND_CLUB) await test.step('second club reuses the field', async () => {
       const club2Context = await browser.newContext();
       const club2Page = await club2Context.newPage();
       await login(club2Page, CLUB_2_USERNAME as string, CLUB_2_PASSWORD as string);

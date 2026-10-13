@@ -12,12 +12,13 @@ type Page = import('@playwright/test').Page;
  * duplicate). Owner and City are the only other required answers; Country is defaulted by the app.
  */
 export async function addFieldInline(page: Page, name: string, city = 'Pretoria') {
-  const picker = page.getByLabel('Field (optional)');
+  const picker = page.getByRole('combobox', { name: 'Field (optional)' });
   await picker.click();
   await picker.fill(name);
   await page.getByRole('option', { name: 'Add a new field...' }).click();
 
-  const dialog = page.getByRole('dialog', { name: 'Add a new field' });
+  // A dialog on a desktop, a bottom sheet (drawer) on a phone.
+  const dialog = page.locator('[role="dialog"], .MuiDrawer-paper').filter({ hasText: 'Add a new field' }).last();
   await expect(dialog.getByLabel('Name')).toHaveValue(name);
   await dialog.getByLabel('Owner').fill('E2E Owner');
   await dialog.getByLabel('City').fill(city);
