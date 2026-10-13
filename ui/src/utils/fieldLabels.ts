@@ -6,10 +6,11 @@ export const FIELD_CATEGORY_LABEL: Record<FieldCategory, string> = {
   SCHOOL: 'School',
   CLUB: 'Club',
   ACADEMY: 'Academy',
+  MUNICIPAL: 'Municipal',
   PROVINCIAL: 'Provincial',
 }
 
-export const FIELD_CATEGORIES: FieldCategory[] = ['SCHOOL', 'CLUB', 'ACADEMY', 'PROVINCIAL']
+export const FIELD_CATEGORIES: FieldCategory[] = ['SCHOOL', 'CLUB', 'ACADEMY', 'MUNICIPAL', 'PROVINCIAL']
 
 export const FIELD_OWNER_TYPE_LABEL: Record<FieldOwnerType, string> = {
   CLUB: 'Club',
@@ -25,6 +26,7 @@ export const OWNER_TYPE_FOR_CATEGORY: Record<FieldCategory, FieldOwnerType> = {
   SCHOOL: 'SCHOOL',
   CLUB: 'CLUB',
   ACADEMY: 'OTHER',
+  MUNICIPAL: 'OTHER',
   PROVINCIAL: 'PROVINCE',
 }
 

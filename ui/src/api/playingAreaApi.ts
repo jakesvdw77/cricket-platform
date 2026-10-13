@@ -8,7 +8,7 @@ import type { Page } from './productApi'
 // client expects.
 
 export type FieldVerificationStatus = 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'
-export type FieldCategory = 'SCHOOL' | 'CLUB' | 'ACADEMY' | 'PROVINCIAL'
+export type FieldCategory = 'SCHOOL' | 'CLUB' | 'ACADEMY' | 'MUNICIPAL' | 'PROVINCIAL'
 export type FieldOwnerType = 'CLUB' | 'SCHOOL' | 'PROVINCE' | 'OTHER'
 
 // The only area type this spec creates or lists. Always sent on the list/similar calls.

@@ -5,5 +5,6 @@ public enum PlayingAreaCategory {
     SCHOOL,
     CLUB,
     ACADEMY,
+    MUNICIPAL,
     PROVINCIAL
 }

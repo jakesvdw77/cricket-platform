@@ -15,7 +15,7 @@ This spec adds a **Fields directory**: a platform-wide list of cricket fields, c
 - A club links fields to itself as **home** (it manages or plays at it, whether or not it owns it), so the manager sees "Our fields" first. More than one club may share a home field.
 - Creating or editing a match picks a field from the directory, or creates one inline in one small dialog.
 - **Setting up a match never makes the user think about grounds, area types or facilities.** A manager sees one box called Field.
-- Fields can be filtered by type (School, Club, Academy, Provincial).
+- Fields can be filtered by type (School, Club, Academy, Municipal, Provincial).
 - The data model leaves clear room for grounds (facilities), nets and bookings (step 2) without a migration that rewrites field rows.
 
 ## Terminology
@@ -70,7 +70,7 @@ A field is **not** owned by a club row: it is shared. It deliberately has no `cl
 | `id` | uuid PK | |
 | `area_type` | varchar(24), not null, default `CRICKET_FIELD`; CHECK `IN ('CRICKET_FIELD')` | Enum `PlayingAreaType` (`@Enumerated(STRING)`, `ck_playing_area_area_type`, the same shape as `ck_player_profile_verification_status`). Only `CRICKET_FIELD` exists now. Step 2 widens the CHECK for `CRICKET_NETS` and others. Never shown to a user in this spec |
 | `name` | varchar(200), not null | e.g. "Irene Main Oval" |
-| `category` | enum `PlayingAreaCategory`: `SCHOOL`, `CLUB`, `ACADEMY`, `PROVINCIAL`; not null | The filter dimension, labelled **Type** in the UI. varchar(16) plus CHECK |
+| `category` | enum `PlayingAreaCategory`: `SCHOOL`, `CLUB`, `ACADEMY`, `MUNICIPAL`, `PROVINCIAL`; not null | The filter dimension, labelled **Type** in the UI. varchar(16) plus CHECK |
 | `owner_type` | enum `PlayingAreaOwnerType`: `CLUB`, `SCHOOL`, `PROVINCE`, `OTHER`; not null | Who owns the land or runs it |
 | `owner_name` | varchar(200), not null | The owner as text ("Irene Country Club", "Irene Estate", "St Andrew's College", "Western Province Cricket"). A club that only manages a field it does not own still records the real owner here; the club's relationship is the home link |
 | embedded `Address` (`012`) | `address_*` columns | Reuses the shared `@Embeddable Address` (`number, street, city, provinceState, country, postalCode`; columns `address_number`, `address_street`, `address_city`, `address_province_state`, `address_country`, `address_postal_code`), not a new type. **City and country are required** (street is optional: an away field is often known by name and town, and the map link finds it) (enforced in the service, as every `Address` column is nullable); province/county, number and postal code are optional. `address_country` holds the **ISO 3166-1 alpha-2 code** for a field (the UI shows the name), stricter than `012`'s free text on the club profile |
@@ -187,7 +187,7 @@ Per `docs/standards/testing.md`:
 - **A manager can create a match with an away field in one dialog, with no ground, playing-area or area-type step, and no screen a manager uses to set up a match shows those words.**
 - The Country field defaults from the browser's time zone (falling back to the locale region, then the club's own country) and the manager can change it.
 - Saving a field whose name and city match an existing field offers to use that field; an exact duplicate (same name, city, country, ignoring case) is refused with 409 and the existing field offered.
-- The directory lists fields from every club, can be filtered by type (School, Club, Academy, Provincial), country, province and city, searched by name, and is paged by the backend.
+- The directory lists fields from every club, can be filtered by type (School, Club, Academy, Municipal, Provincial), country, province and city, searched by name, and is paged by the backend.
 - A manager can edit a field only while it is unverified and their club captured it; they cannot edit anyone else's field or any verified field, and the API enforces it, not just the UI.
 - Creating or editing a match offers one searchable Field box (own home fields first) listing cricket fields only, and an **Add a new field...** option that creates the field without leaving or resetting the match form.
 - Selecting an unverified field on a match shows a visible warning on the form, and an **Unverified field** flag on the match card, list and page; a verified field shows none.
