@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Autocomplete, Box, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography } from '@mui/material'
+import { Alert, Autocomplete, Box, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Link, Typography } from '@mui/material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
@@ -9,6 +9,8 @@ import type { PlatformPlayingArea } from '../../../api/platformPlayingAreaApi'
 import type { PlayingArea } from '../../../api/playingAreaApi'
 import { countryName } from '../../../utils/countries'
 import { FIELD_STATUS_LABEL, fieldStatusOf } from '../../../utils/fieldStatus'
+import { FIELD_CATEGORY_LABEL } from '../../../utils/fieldLabels'
+import { NOT_ON_FILE } from '../../../utils/playerFormat'
 import { errorDetail } from '../../../utils/errorDetail'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -23,6 +25,79 @@ export interface FieldMergeDialogProps {
 }
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+
+const sameText = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+
+function addressLine(field: PlayingArea): string {
+  const { street, city, provinceState, postalCode, country } = field.address
+  return [street, city, provinceState, postalCode, countryName(country)].filter(Boolean).join(', ')
+}
+
+function clubCount(field: PlayingArea): number {
+  return field.linkedClubs?.length ?? field.linkedClubCount ?? 0
+}
+
+// One side of the comparison: everything an admin needs to tell two fields apart, so the wrong one is not picked.
+function FieldFacts({ heading, tone, field }: { heading: string; tone: 'goes' | 'stays'; field: PlayingArea }) {
+  const rows: [string, string | null][] = [
+    ['Type', FIELD_CATEGORY_LABEL[field.category]],
+    ['Owner', field.ownerName || null],
+    ['Address', addressLine(field) || null],
+    ['Status', FIELD_STATUS_LABEL[fieldStatusOf(field)]],
+    ['Used by', `${plural(field.matchCount ?? 0, 'match', 'matches')}, ${plural(clubCount(field), 'club', 'clubs')}`],
+  ]
+  return (
+    <Box
+      data-testid={`merge-facts-${tone}`}
+      sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}
+    >
+      <Chip
+        size="small"
+        label={heading}
+        color={tone === 'goes' ? 'error' : 'success'}
+        variant="outlined"
+        sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
+      />
+      <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>
+        {field.name}
+      </Typography>
+      {rows.map(([label, value]) => (
+        <Box key={label} sx={{ display: 'flex', gap: 1, fontSize: '0.8125rem', minWidth: 0 }}>
+          <Box component="span" sx={{ color: 'text.secondary', width: 56, flex: 'none' }}>
+            {label}
+          </Box>
+          <Box component="span" sx={{ fontWeight: value ? 600 : 400, color: value ? 'text.primary' : 'text.secondary', overflowWrap: 'anywhere' }}>
+            {value || NOT_ON_FILE}
+          </Box>
+        </Box>
+      ))}
+      {field.mapUrl && (
+        <Link href={field.mapUrl} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+          Open in maps
+        </Link>
+      )}
+    </Box>
+  )
+}
+
+// Both sides next to each other, with a warning when they are not in the same town and country.
+function FieldComparison({ source, target }: { source: PlayingArea; target: PlayingArea }) {
+  const differentPlace = !sameText(source.address.city, target.address.city) || !sameText(source.address.country, target.address.country)
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+        <FieldFacts heading="Goes away" tone="goes" field={source} />
+        <FieldFacts heading="Stays" tone="stays" field={target} />
+      </Box>
+      {differentPlace && (
+        <Alert severity="warning" data-testid="merge-different-place">
+          These fields are in different places ({[source.address.city, countryName(source.address.country)].filter(Boolean).join(', ')} and{' '}
+          {[target.address.city, countryName(target.address.country)].filter(Boolean).join(', ')}). Check you have picked the right one.
+        </Alert>
+      )}
+    </Box>
+  )
+}
 
 // docs/specs/099-fields-directory.md (9): "Merge into..." on the platform admin's field page. A search picker for the field
 // that stays (verified and unverified ones; a rejected or merged one cannot be a target), then an explicit confirmation
@@ -75,7 +150,7 @@ export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMerge
 
   return (
     <>
-      <Dialog open={open && !confirming} onClose={onClose} fullWidth maxWidth="sm">
+      <Dialog open={open && !confirming} onClose={onClose} fullWidth maxWidth="md">
         <DialogTitle>Merge into another field</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
@@ -98,8 +173,11 @@ export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMerge
               return (
                 <Box component="li" key={key} {...rest} sx={{ display: 'block !important' }}>
                   <Typography variant="body2">{option.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {[option.address.city, countryName(option.address.country), FIELD_STATUS_LABEL[fieldStatusOf(option)]].filter(Boolean).join(' · ')}
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    {[option.address.city, option.address.provinceState, countryName(option.address.country)].filter(Boolean).join(', ')}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    {[FIELD_CATEGORY_LABEL[option.category], option.ownerName, FIELD_STATUS_LABEL[fieldStatusOf(option)]].filter(Boolean).join(' · ')}
                   </Typography>
                 </Box>
               )
@@ -121,6 +199,7 @@ export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMerge
               />
             )}
           />
+          {target && <FieldComparison source={source} target={target} />}
         </DialogContent>
         <DialogActions>
           <Button variant="ghost" onClick={onClose}>
@@ -140,6 +219,7 @@ export function FieldMergeDialog({ open, onClose, source, onMerged }: FieldMerge
             <Typography variant="body2" component="p" sx={{ mb: 1 }}>
               Merge <b>{source.name}</b> into <b>{target?.name}</b>?
             </Typography>
+            {target && <FieldComparison source={source} target={target} />}
             <Typography variant="body2" component="p" color="text.secondary">
               {plural(matches, 'match', 'matches')} and {plural(clubs, 'club', 'clubs')} will move to {target?.name}. The old record is hidden. This cannot be undone.
             </Typography>
