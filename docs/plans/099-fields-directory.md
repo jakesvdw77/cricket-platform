@@ -25,7 +25,7 @@ Branch: one branch `feat/099-fields-directory`, cut from the current docs branch
 8. **Section-only admins.** Plan uses `canAccessClub` as the spec recommends (Open question 9).
 9. **Club country to ISO** for the form's country fallback needs a name-to-code lookup from `utils/countries.ts` (new, no country list exists).
 
-## Order of work (each step ends with tests and one commit; test-writer fills tests per spec Test Plan after each step)
+## Order of work (each step ends with one commit. **Amended 2026-10-13 by the user: no tests and no standards review per step.** Build to functional correctness first; the user checks it; only after approval do `test-writer` (spec Test Plan) and `standards-reviewer` run. A compile or build check alone is allowed.)
 
 ### Slice A: backend (`backend-builder`, then `test-writer`), scratch copy only
 - **A1 Schema and entities.** `db/changelog/v1/041-playing-areas.sql` (confirm the number is free; `playing_area`, `club_playing_area`, `match.playing_area_id`, CHECKs, `ux_playing_area_identity` functional unique index with `WHERE merged_into_id IS NULL`, search and status indexes) and its `db.changelog-master.xml` include. `domain/PlayingArea`, `ClubPlayingArea` (embedded `Address`, flat UUIDs), enums `PlayingAreaType/Category/OwnerType/VerificationStatus`; `Match.playingAreaId`. Repositories `PlayingAreaRepository` (`JpaSpecificationExecutor`), `ClubPlayingAreaRepository`; `PlayingAreaSpecifications` (modelled on `MatchSpecifications`).
@@ -59,3 +59,6 @@ Step 2 (grounds, nets, bookings), `pg_trgm`, owner-to-club link, import resoluti
 
 ## Changes after approval
 Copy this plan verbatim to `docs/plans/099-fields-directory.md` on the feature branch and commit it first; mark the spec status approved.
+
+## Amendment (2026-10-13, user)
+Tests, test-writer and the standards review are deferred until the user has approved the working feature. Slices below describe the build only; every "then `test-writer`" in the headings means after approval.
