@@ -1,7 +1,7 @@
 # 099 — Grounds Directory
 
 **Depends on:** `001-tenancy-identity-model.md` (`Club`, `RoleAssignment`, `PLATFORM` scope, the one shared realm), `005-admin-login.md` and `010-minimal-club-creation.md` (the `platform_admin` surface under `/admin`), `012-club-profile.md` (the shared `@Embeddable Address` and the club's own address, used for the country default), `029-league-management.md` and `037-match-improvements.md` (`Match`, today carrying a free-text `venue`), `075-match-view-and-edit.md` and `089-match-page-form-and-list-view.md` (where venue is shown and edited), `097-import-framework.md` and `098-league-schedule-import.md` (venue stays free text there; see Non-goals), `043-list-toolbar-gold-standard.md`, `087-matches-polls-alignment.md` (`FilterBar`, `PageCounters`, `ContentControlsLine`), `091-leagues-gold-standard.md` (the list-page shape this follows).
-**Status:** draft. Written 2026-10-13 from the user's request ("Fields Directory Manager"; renamed to Grounds the same day). Numbered 099 because 086 is reserved for the poll test mode idea. Not approved; a human reviews and edits it before `/plan-feature` runs against it.
+**Status:** approved 2026-10-13 (user). Written 2026-10-13 from the user's request ("Fields Directory Manager"; renamed to Grounds the same day). Numbered 099 because 086 is reserved for the poll test mode idea.
 
 ## Problem & Goals
 

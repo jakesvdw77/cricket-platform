@@ -187,6 +187,19 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **`RowActions` on other lists:** adopt it where a list still has its own icon or menu actions.
 - **Row height:** the edit panels use 44 px rows (56 px on a phone) while the Leagues, Teams and Seasons tables use 56 px (60 px on a phone); decide whether they should agree.
 
+## Deferred by `099`: Grounds directory
+
+Spec written and approved, not built (`specs/099-grounds-directory.md`). Resolves the "venue entity" item under `097` and `098`.
+
+- **Step 2: ground booking and availability.** Own spec. Shape fixed by `099`: bookings reference `ground.id`, home clubs (`club_ground.is_home`) grant them, optional `ground_area` (type `FIELD` or `NETS`: Field A, Field B, nets) on a booking and, for fields only, on a match.
+- **Areas inside a ground** (`ground_area`), the per-ground time zone, and clash detection on `(ground_id, time)`; part of step 2.
+- **Clubs suggesting corrections** to a verified ground.
+- **Resolve imported venue text** (`097`/`098`) to grounds, and retire the client-writable `Match.venue`.
+- **Coordinates and map embed;** facilities, photos, opening hours, contacts.
+- **Public ground page** and "grounds near me".
+- **Header-bell notification** to the platform admin on a new unverified ground; until then the counter on the admin home.
+- **One-off review job** turning legacy `match.venue` strings into suggested grounds.
+
 ## Deferred by `097` and `098`: Import framework and league schedule import
 
 Both specs are written and not built (`097-import-framework.md`, `098-league-schedule-import.md`); `050`'s "no bulk fixture import" non-goal is resolved by `098`.
@@ -202,7 +215,7 @@ Both specs are written and not built (`097-import-framework.md`, `098-league-sch
 - **Store the original file** once media storage moves off local disk (not stored in v1).
 - **Per-type section-scoped import rights** once roles exist.
 - **Block-layout reader** for sheets laid out in blocks, which may beat in-app AI.
-- **A venue entity** (venue is free text today) and a **`Round` column**.
+- ~~**A venue entity** (venue is free text today)~~ — resolved by [`099`](specs/099-grounds-directory.md) (Grounds directory, approved, not built). Imported venue text is not linked to grounds yet (see below). **`Round` column** still open.
 - **A club-level opponent identity across seasons.** There is no stable team identity across seasons, so linking a previous season's team copies it.
 - **A communication log** so delete can block on sent communications (communications are not persisted today).
 - **Results module:** it must register a `MatchResult` blocker with the schedule import's delete; the structural test fails until it does (see also `093`).
