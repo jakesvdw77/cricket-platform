@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 /**
  * docs/specs/099-fields-directory.md: the one place a {@link PlayingAreaRequest} is validated and applied to a {@link
  * PlayingArea}, shared by the club-scoped capture/edit and the platform edit so the rules cannot drift. Forces {@code
- * area_type = CRICKET_FIELD}, trims text, requires street/city/country, checks the country is an ISO 3166-1 alpha-2
+ * area_type = CRICKET_FIELD}, trims text, requires city/country, checks the country is an ISO 3166-1 alpha-2
  * code, accepts only an https {@code mapUrl}, and refuses a second field with the same identity (name and city ignoring
  * case, country) with {@link DuplicateFieldException}.
  */
@@ -75,7 +75,7 @@ public class PlayingAreaWriter {
         if (raw == null) {
             throw new ValidationException("address is required");
         }
-        String street = requireText(raw.getStreet(), "address.street", 255);
+        String street = optionalText(raw.getStreet(), "address.street", 255);
         String city = requireText(raw.getCity(), "address.city", 255);
         String country = requireText(raw.getCountry(), "address.country", 2).toUpperCase(Locale.ROOT);
         if (!ISO_COUNTRIES.contains(country)) {

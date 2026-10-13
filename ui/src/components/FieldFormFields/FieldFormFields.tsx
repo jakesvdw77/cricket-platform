@@ -288,7 +288,7 @@ export function FieldFormFields({
             fields={['city', 'provinceState', 'country', 'street']}
             wide={['street']}
             wideFrom={wrapFrom}
-            optional={['provinceState']}
+            optional={['street', 'provinceState']}
             errors={{ street: errors.street, city: errors.city, country: errors.country }}
             disabled={disabled}
           />
@@ -330,7 +330,7 @@ export function FieldFormFields({
           isoCountry
           fields={['street', 'postalCode', 'city', 'provinceState', 'country']}
           wide={['street']}
-          optional={['postalCode', 'provinceState']}
+          optional={['street', 'postalCode', 'provinceState']}
           errors={{ street: errors.street, city: errors.city, country: errors.country }}
           countryHelperText={countryHint}
           disabled={disabled}

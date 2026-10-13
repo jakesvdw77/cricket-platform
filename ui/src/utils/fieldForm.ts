@@ -76,7 +76,6 @@ export function validateFieldForm(values: FieldFormValues): FieldFormErrors {
   if (!values.name.trim()) errors.name = 'Name is required'
   else if (values.name.trim().length > MAX_NAME_LENGTH) errors.name = 'Name must be 200 characters or fewer'
   if (!values.ownerName.trim()) errors.ownerName = 'Owner is required'
-  if (!(values.address.street ?? '').trim()) errors.street = 'Street is required'
   if (!(values.address.city ?? '').trim()) errors.city = 'City is required'
   if (!(values.address.country ?? '').trim()) errors.country = 'Country is required'
   const mapError = validateMapUrl(values.mapUrl)

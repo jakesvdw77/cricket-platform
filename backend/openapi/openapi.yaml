@@ -9979,7 +9979,7 @@ components:
           minLength: 1
         address:
           $ref: "#/components/schemas/AddressDto"
-          description: "street, city and country are required (country is an ISO 3166-1 alpha-2 code); enforced by the service."
+          description: "city and country are required (street is optional) (country is an ISO 3166-1 alpha-2 code); enforced by the service."
         mapUrl:
           type: string
           maxLength: 500
