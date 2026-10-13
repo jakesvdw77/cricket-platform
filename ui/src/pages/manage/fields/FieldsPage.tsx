@@ -94,7 +94,7 @@ export default function FieldsPage() {
 
   useEffect(() => {
     if (autoOwnOnly === null && (summary || summaryQuery.isError)) {
-      setAutoOwnOnly(Boolean(summary && summary.ownFields > 0))
+      setAutoOwnOnly(Boolean(summary && summary.ourFields > 0))
     }
   }, [autoOwnOnly, summary, summaryQuery.isError])
 
@@ -153,7 +153,7 @@ export default function FieldsPage() {
   const isSearching = debouncedSearch.length > 0
   const counters: PageCounterItem[] = summary
     ? [
-        { id: 'own', value: summary.ownFields, label: 'Our fields' },
+        { id: 'own', value: summary.ourFields, label: 'Our fields' },
         { id: 'directory', value: summary.inDirectory, label: 'In the directory', shortLabel: 'In directory' },
         {
           id: 'unverified',

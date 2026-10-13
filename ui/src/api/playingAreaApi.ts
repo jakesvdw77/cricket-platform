@@ -68,7 +68,7 @@ export interface ListPlayingAreasParams {
 }
 
 export interface PlayingAreasSummary {
-  ownFields: number
+  ourFields: number
   inDirectory: number
   unverified: number
 }
