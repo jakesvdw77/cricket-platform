@@ -55,3 +55,18 @@ export const DesktopViewport: Story = {
   args: Filled.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
 }
+
+// docs/specs/099: the Fields form's variant - Country as a selector over ISO codes, a Province label that follows it, and
+// only the parts a field has.
+export const IsoCountryForField: Story = {
+  args: {
+    value: { number: null, street: null, city: 'Hilton', provinceState: null, country: 'ZA', postalCode: null },
+    onChange: () => undefined,
+    isoCountry: true,
+    fields: ['street', 'postalCode', 'city', 'provinceState', 'country'],
+    wide: ['street'],
+    optional: ['street', 'postalCode', 'provinceState'],
+    errors: { city: undefined },
+    countryHelperText: 'Chosen from your browser. Change it if it is wrong.',
+  },
+}

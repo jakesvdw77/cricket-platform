@@ -110,3 +110,28 @@ describe('Matches counters and quick filters', () => {
   })
 })
 
+
+// docs/specs/099-fields-directory.md
+describe('Matches on one field', () => {
+  beforeEach(() => {
+    get.mockReset()
+  })
+
+  it('listMatches sends playingAreaId only when set', async () => {
+    get.mockResolvedValue(pageOf([], 0, 1))
+
+    await listMatches('club-1', { page: 0 })
+    expect(get).toHaveBeenLastCalledWith('/manage/clubs/club-1/matches', { params: { page: 0, size: 20 } })
+
+    await listMatches('club-1', { page: 0, playingAreaId: 'field-1' })
+    expect(get).toHaveBeenLastCalledWith('/manage/clubs/club-1/matches', { params: { page: 0, size: 20, playingAreaId: 'field-1' } })
+  })
+
+  it('getMatchesSummary sends playingAreaId so the counters follow the Field filter', async () => {
+    get.mockResolvedValue({ data: {} })
+
+    await getMatchesSummary('club-1', { playingAreaId: 'field-1' })
+
+    expect(get).toHaveBeenLastCalledWith('/manage/clubs/club-1/matches/summary', { params: { playingAreaId: 'field-1' } })
+  })
+})

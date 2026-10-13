@@ -448,6 +448,23 @@ describe('MatchDetailPage', () => {
       expect(screen.getByTestId('match-figure-starts-value')).toBeInTheDocument()
     })
 
+    // docs/specs/099-fields-directory.md
+    it('links the Venue tile to the field page and flags an unverified field', async () => {
+      await renderLoaded(makeMatch({ playingAreaId: 'field-1', playingAreaName: 'Riverside Oval', playingAreaVerificationStatus: 'UNVERIFIED' }))
+
+      const tile = screen.getByTestId('match-figure-venue')
+      expect(tile).toHaveAttribute('href', '/manage/fixtures/fields/field-1')
+      expect(tile).toHaveTextContent('Field · Unverified')
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+    })
+
+    it('leaves the Venue tile unlinked for a match with only the old venue text', async () => {
+      await renderLoaded(makeMatch({ playingAreaId: null }))
+
+      expect(screen.getByTestId('match-figure-venue')).not.toHaveAttribute('href')
+      expect(screen.getByTestId('match-figure-venue')).toHaveTextContent('Venue')
+    })
+
     it('shows TBC for no venue and Friendly for a match with no league', async () => {
       await renderLoaded(makeMatch({ venue: null }))
 

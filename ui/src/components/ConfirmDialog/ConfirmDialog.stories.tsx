@@ -48,3 +48,14 @@ export const WithIcon: Story = {
     icon: <BrandIcon name="actions/announce-team" size={40} />,
   },
 }
+
+// docs/specs/099: asks for a required reason; Confirm stays disabled until one is typed.
+export const WithReason: Story = {
+  args: {
+    title: 'Reject this field?',
+    description: 'It will stop appearing in search and in the match field picker.',
+    reasonLabel: 'Reason for rejecting',
+    confirmLabel: 'Reject field',
+    destructive: true,
+  },
+}

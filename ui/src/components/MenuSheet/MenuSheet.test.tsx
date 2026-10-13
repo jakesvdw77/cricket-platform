@@ -44,6 +44,17 @@ describe('MenuSheet', () => {
     expect(screen.getByTestId('badge-availability')).toHaveTextContent('2')
   })
 
+  // docs/specs/099-fields-directory.md: Fields is a Club tile, right after Club profile.
+  it('shows a Fields tile to /manage/fixtures/fields in the Club group, after Club profile', () => {
+    render(<Harness />)
+
+    expect(screen.getByRole('link', { name: 'Fields' })).toHaveAttribute('href', '/manage/fixtures/fields')
+    const labels = screen.getAllByRole('link').map((link) => link.textContent ?? '')
+    const at = (label: string) => labels.findIndex((text) => text.startsWith(label))
+    expect(at('Fields')).toBe(at('Club profile') + 1)
+    expect(at('Fields')).toBeGreaterThan(at('Communication'))
+  })
+
   it('renders tile icons at 40 px', () => {
     render(<Harness />)
 

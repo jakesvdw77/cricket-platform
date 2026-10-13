@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -10,10 +11,17 @@ import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
+import { fieldPage, makeField } from '../../test/fieldFixtures'
 
 // docs/specs/050-league-schedule-and-fixtures.md: MatchForm's per-side external-opponent logo
 // renders via the real MediaUpload component (namespace="manage"), so its own uploadManagedMedia
 // call needs mocking here the same way MediaUpload.test.tsx mocks it directly.
+const listPlayingAreas = vi.fn()
+vi.mock('../../api/playingAreaApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/playingAreaApi')>()
+  return { ...actual, listPlayingAreas: (clubId: string, params: unknown) => listPlayingAreas(clubId, params) }
+})
+
 const uploadMedia = vi.fn()
 const uploadManagedMedia = vi.fn()
 
@@ -110,10 +118,12 @@ const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  listPlayingAreas.mockResolvedValue(fieldPage([makeField({ id: 'field-1', name: 'Riverside Oval' }), makeField({ id: 'field-2', name: 'Away Park', verificationStatus: 'UNVERIFIED' })]))
 })
 
 function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Submit') {
   const merged: MatchFormProps = {
+    clubId: 'club-1',
     teams: TEAMS,
     seasons: SEASONS,
     leagues: LEAGUES,
@@ -121,13 +131,15 @@ function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Sub
     onSubmit: vi.fn(),
     ...props,
   }
+  // docs/specs/099: the Field box (FieldPicker) is backed by React Query.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <>
+    <QueryClientProvider client={queryClient}>
       <MatchForm {...merged} />
       <button type="submit" form={MATCH_FORM_ID}>
         {submitLabel}
       </button>
-    </>,
+    </QueryClientProvider>,
   )
   return merged
 }
@@ -197,6 +209,7 @@ describe('MatchForm', () => {
       awayTeamName: null,
       leagueId: null,
       seasonId: 'season-1',
+      playingAreaId: null,
       venue: null,
     })
     expect(payload.matchDate).toEqual(expect.any(String))
@@ -375,6 +388,7 @@ describe('MatchForm league teams', () => {
 
   function renderWithTeams(props: Partial<MatchFormProps> = {}) {
     const merged: MatchFormProps = {
+      clubId: 'club-1',
       teams: TEAMS,
       seasons: SEASONS,
       leagues: LEAGUES,
@@ -385,12 +399,14 @@ describe('MatchForm league teams', () => {
       ...props,
     }
     render(
-      <MemoryRouter>
-        <MatchForm {...merged} />
-        <button type="submit" form={MATCH_FORM_ID}>
-          Submit
-        </button>
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <MatchForm {...merged} />
+          <button type="submit" form={MATCH_FORM_ID}>
+            Submit
+          </button>
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
     return merged
   }
@@ -642,5 +658,100 @@ describe('validateMatchLink', () => {
 
   it('rejects more than 1024 characters', () => {
     expect(validateMatchLink(`https://${'a'.repeat(1025 - 8)}`)).toBe('Link must be 1024 characters or fewer')
+  })
+})
+
+// docs/specs/099-fields-directory.md (7): the single Field box replaces the Venue text input.
+describe('MatchForm Field box', () => {
+  async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByLabelText('Season'))
+    await user.click(await screen.findByRole('option', { name: '2026' }))
+    await user.click(screen.getByLabelText('Home team'))
+    await user.click(await screen.findByRole('option', { name: '1st XI' }))
+    await user.click(screen.getByLabelText('Away team'))
+    await user.click(await screen.findByRole('option', { name: '2nd XI' }))
+    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+  }
+
+  it('shows the Field (optional) picker and no Venue input', () => {
+    renderMatchForm()
+    expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Venue/)).not.toBeInTheDocument()
+  })
+
+  it('submits the chosen field as playingAreaId, with its name as the venue', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+
+    await user.click(screen.getByLabelText('Field (optional)'))
+    await user.click(await screen.findByRole('option', { name: /Riverside Oval/ }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ playingAreaId: 'field-1', venue: 'Riverside Oval' })
+    expect(screen.queryByTestId('field-unverified-alert')).not.toBeInTheDocument()
+  })
+
+  it('warns that an unverified field may have a wrong address, and still saves', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit })
+    await fillRequired(user)
+
+    await user.click(screen.getByLabelText('Field (optional)'))
+    await user.click(await screen.findByRole('option', { name: /Away Park/ }))
+
+    expect(screen.getByTestId('field-unverified-alert')).toHaveTextContent('This field has not been verified yet. The address may be wrong.')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ playingAreaId: 'field-2' })
+  })
+
+  it('shows no flag for a verified field', () => {
+    renderMatchForm({ initialField: { id: 'field-1', name: 'Riverside Oval', verificationStatus: 'VERIFIED' } })
+    expect(screen.getByLabelText('Field (optional)')).toHaveValue('Riverside Oval')
+    expect(screen.queryByTestId('field-unverified-alert')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('field-rejected-alert')).not.toBeInTheDocument()
+  })
+
+  it('blocks Save on a rejected field with a red alert, until the field is cleared', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({
+      onSubmit,
+      initialField: { id: 'field-3', name: 'Old Ground', verificationStatus: 'REJECTED' },
+      initialValues: { homeTeamId: 'team-1', awayTeamId: 'team-2', seasonId: 'season-1', matchDate: '2026-06-01T14:30:00Z' },
+    })
+
+    expect(screen.getByTestId('field-rejected-alert')).toHaveTextContent('This field was rejected')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('This field was rejected. Choose another field or clear this one.')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await user.hover(screen.getByLabelText('Field (optional)'))
+    await user.click(screen.getByTitle('Clear'))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ playingAreaId: null, venue: null })
+  })
+
+  it('keeps the old venue text read-only under the box, and submits it unchanged, until a field is chosen', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderMatchForm({
+      onSubmit,
+      initialValues: { homeTeamId: 'team-1', awayTeamId: 'team-2', seasonId: 'season-1', matchDate: '2026-06-01T14:30:00Z', venue: 'Old Oval' },
+    })
+
+    expect(screen.getByTestId('legacy-venue')).toHaveTextContent('Current venue: Old Oval')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ playingAreaId: null, venue: 'Old Oval' })
+
+    await user.click(screen.getByLabelText('Field (optional)'))
+    await user.click(await screen.findByRole('option', { name: /Riverside Oval/ }))
+    expect(screen.queryByTestId('legacy-venue')).not.toBeInTheDocument()
   })
 })

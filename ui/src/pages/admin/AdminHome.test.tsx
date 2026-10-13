@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,13 @@ import AdminDashboard from './AdminDashboard'
 import { EmptyState } from '../../components/EmptyState'
 
 const getAdminIdentity = vi.fn()
+const getPlatformPlayingAreasSummary = vi.fn()
+
+// docs/specs/099-fields-directory.md: the dashboard's "Fields to verify" tile counts the queue.
+vi.mock('../../api/platformPlayingAreaApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/platformPlayingAreaApi')>()
+  return { ...actual, getPlatformPlayingAreasSummary: () => getPlatformPlayingAreasSummary() }
+})
 
 vi.mock('../../api/adminApi', () => ({
   getAdminIdentity: () => getAdminIdentity(),
@@ -50,6 +57,7 @@ function renderAdminHome(initialPath = '/admin') {
 
 describe('AdminHome', () => {
   beforeEach(() => {
+    getPlatformPlayingAreasSummary.mockResolvedValue({ unverified: 3, verified: 10, rejected: 1 })
     keycloakMock.authenticated = true
     keycloakMock.initPromise = Promise.resolve()
   })
@@ -112,5 +120,46 @@ describe('AdminHome', () => {
     await userEvent.click(screen.getAllByText('Club Onboarding')[0])
 
     expect(await screen.findByText('Coming soon.')).toBeInTheDocument()
+  })
+
+  // docs/specs/099-fields-directory.md (9)
+  describe('Fields to verify', () => {
+    const identity = { keycloakUserId: 'a1', username: 'ada.lovelace', email: 'ada@example.com' }
+
+    it('has a Fields item in the top navigation to /admin/fields', async () => {
+      getAdminIdentity.mockResolvedValueOnce(identity)
+      renderAdminHome()
+      await screen.findByText('You are logged in as an admin')
+
+      expect(screen.getAllByRole('link', { name: 'Fields' })[0]).toHaveAttribute('href', '/admin/fields')
+    })
+
+    it('shows a Fields to verify tile on the dashboard with the unverified count, linking to the queue', async () => {
+      getAdminIdentity.mockResolvedValueOnce(identity)
+      renderAdminHome()
+
+      const tile = await screen.findByRole('link', { name: /Fields to verify/ })
+      expect(tile).toHaveAttribute('href', '/admin/fields')
+      await waitFor(() => expect(within(tile).getByTestId('nav-tile-count')).toHaveTextContent('3'))
+    })
+
+    it('shows the count 0 when nothing waits', async () => {
+      getAdminIdentity.mockResolvedValueOnce(identity)
+      getPlatformPlayingAreasSummary.mockResolvedValue({ unverified: 0, verified: 10, rejected: 0 })
+      renderAdminHome()
+
+      const tile = await screen.findByRole('link', { name: /Fields to verify/ })
+      await waitFor(() => expect(within(tile).getByTestId('nav-tile-count')).toHaveTextContent('0'))
+    })
+
+    it('leaves the tile without a count, rather than a wrong one, when the summary fails', async () => {
+      getAdminIdentity.mockResolvedValueOnce(identity)
+      getPlatformPlayingAreasSummary.mockRejectedValue(new Error('500'))
+      renderAdminHome()
+
+      const tile = await screen.findByRole('link', { name: /Fields to verify/ })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(within(tile).queryByTestId('nav-tile-count')).not.toBeInTheDocument()
+    })
   })
 })

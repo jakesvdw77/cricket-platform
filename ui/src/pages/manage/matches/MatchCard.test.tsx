@@ -169,6 +169,30 @@ describe('MatchCard', () => {
       expect(screen.queryByText('League')).not.toBeInTheDocument()
     })
 
+    // docs/specs/099-fields-directory.md: the Venue line carries the field's flag.
+    it('flags an unverified field with a small Unverified field badge beside the venue', () => {
+      renderCard(makeMatch({ playingAreaId: 'field-1', playingAreaName: 'Riverside Oval', playingAreaVerificationStatus: 'UNVERIFIED' }))
+
+      expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
+      expect(screen.getByTestId('match-field-flag')).toHaveTextContent('Unverified field')
+    })
+
+    it('flags a rejected field with Field rejected', () => {
+      renderCard(makeMatch({ playingAreaId: 'field-1', playingAreaVerificationStatus: 'REJECTED' }))
+
+      expect(screen.getByTestId('match-field-flag')).toHaveTextContent('Field rejected')
+    })
+
+    it('shows no flag for a verified field or for a match with only the old venue text', () => {
+      const { unmount } = renderCard(makeMatch({ playingAreaId: 'field-1', playingAreaVerificationStatus: 'VERIFIED' }))
+      expect(screen.queryByTestId('match-field-flag')).not.toBeInTheDocument()
+      unmount()
+
+      renderCard(makeMatch({ playingAreaId: null, playingAreaVerificationStatus: null }))
+      expect(screen.getByText('Riverside Oval')).toBeInTheDocument()
+      expect(screen.queryByTestId('match-field-flag')).not.toBeInTheDocument()
+    })
+
     it('omits Venue when empty', () => {
       renderCard(makeMatch({ venue: null }))
 

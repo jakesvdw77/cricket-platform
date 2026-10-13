@@ -53,6 +53,19 @@ describe('BottomTabBar', () => {
     expect(screen.getAllByRole('link').some((link) => link.hasAttribute('aria-current'))).toBe(false)
   })
 
+  it('has no Fields tab and lights none on the Fields routes (it lives in the Menu sheet)', () => {
+    for (const path of ['/manage/fixtures/fields', '/manage/fixtures/fields/f1']) {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}>
+          <BottomTabBar tabs={managerTabs()} groups={MANAGER_NAV} onMenuClick={vi.fn()} />
+        </MemoryRouter>,
+      )
+      expect(screen.queryByRole('link', { name: 'Fields' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('link').some((link) => link.hasAttribute('aria-current')), path).toBe(false)
+      unmount()
+    }
+  })
+
   it('calls onMenuClick from the Menu button, and shows it expanded and the tabs unlit while open', async () => {
     const onMenuClick = renderBar('/manage', { menuOpen: true })
 

@@ -135,6 +135,7 @@ describe('icon artwork has no baked-in background', () => {
         'nav/squads': '24 48 208 208',
         'nav/availability-player': '24 48 208 208',
         'nav/availability-team': '24 48 208 208',
+        'nav/ground-oval': '16 26 224 224',
         'actions/announce-team': '24 29 208 208',
       }
       const key = Object.keys(shifted).find((name) => path.endsWith(`/${name}.svg`))

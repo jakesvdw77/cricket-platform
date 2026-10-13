@@ -35,10 +35,29 @@ describe('SideMenu', () => {
       'Team selection',
       'Communication',
       'Club profile',
+      'Fields',
       'Gallery',
       'Managers',
     ])
     expect(screen.getByRole('link', { name: 'Availability' })).toHaveAttribute('href', '/manage/availability')
+    expect(screen.getByRole('link', { name: 'Fields' })).toHaveAttribute('href', '/manage/fixtures/fields')
+  })
+
+  it('lists Fields under the Club heading, right after Club profile (docs/specs/099)', () => {
+    renderMenu('/manage')
+    const nav = screen.getByRole('navigation', { name: 'Manager' })
+    const links = within(nav).getAllByRole('link').map((link) => link.textContent)
+    expect(links.indexOf('Fields')).toBe(links.indexOf('Club profile') + 1)
+    expect(links.indexOf('Fields')).toBeGreaterThan(links.indexOf('Communication'))
+  })
+
+  it('highlights Fields on its list, add and detail routes', () => {
+    for (const path of ['/manage/fixtures/fields', '/manage/fixtures/fields/new', '/manage/fixtures/fields/f1', '/manage/fixtures/fields/f1/edit']) {
+      const { unmount } = renderMenu(path)
+      expect(screen.getByRole('link', { name: 'Fields' }), path).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Matches' }), path).not.toHaveAttribute('aria-current')
+      unmount()
+    }
   })
 
   it('marks Overview active on /manage only', () => {
