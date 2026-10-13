@@ -66,13 +66,6 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/upcoming-matches',
       },
       {
-        id: 'fields',
-        label: 'Fields',
-        description: 'Find and add the fields you play on',
-        to: '/manage/fixtures/fields',
-        icon: 'nav/field-pitch',
-      },
-      {
         id: 'results',
         label: 'Results',
         description: 'Capture and review match results',
@@ -132,6 +125,13 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/club-profile',
         // Reached from the Club Profile page, so they keep it highlighted.
         match: ['/manage/club-contacts', '/manage/sponsors', '/manage/sections'],
+      },
+      {
+        id: 'fields',
+        label: 'Fields',
+        description: 'Find and add the fields you play on',
+        to: '/manage/fixtures/fields',
+        icon: 'nav/ground-oval',
       },
       {
         id: 'gallery',
