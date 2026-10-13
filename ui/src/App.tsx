@@ -43,6 +43,9 @@ import LeagueContactDetailPage from './pages/manage/LeagueContactDetailPage'
 import SeasonList from './pages/manage/SeasonList'
 import SeasonFormPage from './pages/manage/SeasonFormPage'
 import SeasonDetailPage from './pages/manage/SeasonDetailPage'
+import FieldsPage from './pages/manage/fields/FieldsPage'
+import FieldFormPage from './pages/manage/fields/FieldFormPage'
+import FieldDetailPage from './pages/manage/fields/FieldDetailPage'
 import MatchList from './pages/manage/MatchList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
@@ -61,6 +64,9 @@ import PublicAvailabilityPoll from './pages/view/PublicAvailabilityPoll'
 import PublicSectionAvailabilityRound from './pages/view/PublicSectionAvailabilityRound'
 import PlayerHome from './pages/view/PlayerHome'
 import PlayerProfile from './pages/view/PlayerProfile'
+import AdminFieldsPage from './pages/admin/fields/AdminFieldsPage'
+import AdminFieldDetailPage from './pages/admin/fields/AdminFieldDetailPage'
+import AdminFieldFormPage from './pages/admin/fields/AdminFieldFormPage'
 import ConfigurationHome from './pages/admin/ConfigurationHome'
 import ClubList from './pages/admin/ClubList'
 import ClubFormPage from './pages/admin/ClubFormPage'
@@ -126,6 +132,10 @@ function App() {
               <Route path="billing/new" element={<SubscriptionFormPage />} />
               <Route path="billing/:id/edit" element={<SubscriptionFormPage />} />
               <Route path="leagues" element={<EmptyState title="Leagues" description="Coming soon." />} />
+              {/* docs/specs/099-fields-directory.md: the platform admin's field verification queue. */}
+              <Route path="fields" element={<AdminFieldsPage />} />
+              <Route path="fields/:fieldId" element={<AdminFieldDetailPage />} />
+              <Route path="fields/:fieldId/edit" element={<AdminFieldFormPage />} />
               <Route path="configuration">
                 <Route index element={<ConfigurationHome />} />
                 <Route path="products" element={<ProductList />} />
@@ -226,6 +236,11 @@ function App() {
               <Route path="fixtures/matches/new" element={<MatchFormPage />} />
               <Route path="fixtures/matches/:matchId" element={<MatchDetailPage />} />
               <Route path="fixtures/matches/:matchId/edit" element={<MatchFormPage />} />
+              {/* docs/specs/099-fields-directory.md: the Fields directory in the Schedule group. */}
+              <Route path="fixtures/fields" element={<FieldsPage />} />
+              <Route path="fixtures/fields/new" element={<FieldFormPage />} />
+              <Route path="fixtures/fields/:fieldId" element={<FieldDetailPage />} />
+              <Route path="fixtures/fields/:fieldId/edit" element={<FieldFormPage />} />
               <Route path="results" element={<EmptyState title="Results" description="Coming soon." />} />
               <Route
                 path="permissions"

@@ -21,6 +21,8 @@ const VIEWBOX_OVERRIDES = {
   'nav/squads': '24 48 208 208',
   'nav/availability-player': '24 48 208 208',
   'nav/availability-team': '24 48 208 208',
+  // The Fields oval fills almost the whole canvas (artwork x 22 to 234, y 50 to 226), so a slightly larger window avoids clipping it.
+  'nav/ground-oval': '16 26 224 224',
   'actions/announce-team': '24 29 208 208',
 }
 

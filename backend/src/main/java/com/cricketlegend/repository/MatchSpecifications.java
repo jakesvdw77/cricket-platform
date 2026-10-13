@@ -103,6 +103,19 @@ public final class MatchSpecifications {
             UUID seasonId,
             UUID teamId,
             String search) {
+        return forList(clubId, sectionIds, upcomingFrom, leagueId, seasonId, teamId, null, search);
+    }
+
+    /** As above, plus {@code playingAreaId} (docs/specs/099): the match is played on that field. */
+    public static Specification<Match> forList(
+            UUID clubId,
+            Optional<Set<UUID>> sectionIds,
+            Instant upcomingFrom,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            UUID playingAreaId,
+            String search) {
         Specification<Match> spec = Specification.where(clubId(clubId));
         if (sectionIds.isPresent()) {
             spec = spec.and(sectionIn(sectionIds.get()));
@@ -119,10 +132,18 @@ public final class MatchSpecifications {
         if (teamId != null) {
             spec = spec.and(teamIdEquals(teamId));
         }
+        if (playingAreaId != null) {
+            spec = spec.and(playingAreaIdEquals(playingAreaId));
+        }
         if (search != null && !search.isBlank()) {
             spec = spec.and(searchMatches(search));
         }
         return spec;
+    }
+
+    /** docs/specs/099-fields-directory.md: the match is played on this field. */
+    public static Specification<Match> playingAreaIdEquals(UUID playingAreaId) {
+        return (root, query, cb) -> cb.equal(root.get("playingAreaId"), playingAreaId);
     }
 
     public static Specification<Match> leagueIdEquals(UUID leagueId) {

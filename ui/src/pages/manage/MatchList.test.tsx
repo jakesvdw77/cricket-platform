@@ -15,6 +15,7 @@ const listTeamsForClub = vi.fn()
 const listLeagues = vi.fn()
 const listSeasons = vi.fn()
 const listSections = vi.fn()
+const listPlayingAreas = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
@@ -40,6 +41,12 @@ vi.mock('../../api/seasonApi', () => ({
 vi.mock('../../api/sectionApi', () => ({
   listSections: (clubId: string) => listSections(clubId),
 }))
+
+// docs/specs/099-fields-directory.md: the Field filter offers the club's own fields from the directory search.
+vi.mock('../../api/playingAreaApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/playingAreaApi')>()
+  return { ...actual, listPlayingAreas: (clubId: string, params: unknown) => listPlayingAreas(clubId, params) }
+})
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
   return {
@@ -89,6 +96,7 @@ beforeEach(() => {
   listTeamsForClub.mockResolvedValue([{ id: 'team-1', name: '1st XI' }])
   listLeagues.mockResolvedValue([])
   listSeasons.mockResolvedValue([])
+  listPlayingAreas.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 100 })
   listSections.mockResolvedValue([
     { id: 'section-1', clubId: 'test-club-id', parentSectionId: null, name: 'Men', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
   ])
@@ -171,6 +179,38 @@ describe('MatchList', () => {
     await user.click(pill)
     await user.click(await screen.findByRole('option', { name: '2026/27' }))
     expect(screen.getByRole('button', { name: 'Season' })).toHaveTextContent('2026/27')
+  })
+
+  // docs/specs/099-fields-directory.md: matches on one field, a backend param.
+  describe('Field filter', () => {
+    it('asks for the fields the club has used and offers no Field filter when the club has none', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      renderPage('test-club-id')
+
+      await screen.findByText('1st XI vs Riverside Occasionals')
+      expect(listPlayingAreas).toHaveBeenCalledWith('test-club-id', { size: 200, usedByClub: true })
+      expect(screen.queryByLabelText('Field')).not.toBeInTheDocument()
+    })
+
+    it('offers the own fields and sends the chosen one to listMatches and the summary as playingAreaId', async () => {
+      const user = userEvent.setup()
+      listMatches.mockResolvedValue(makePage([makeMatch()]))
+      listPlayingAreas.mockResolvedValue({
+        content: [{ id: 'field-1', name: 'Riverside Oval' }],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 100,
+      })
+      renderPage('test-club-id')
+      await screen.findByText('1st XI vs Riverside Occasionals')
+
+      await user.click(await screen.findByLabelText('Field'))
+      await user.click(await screen.findByRole('option', { name: 'Riverside Oval' }))
+
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ page: 0, playingAreaId: 'field-1' })))
+      await waitFor(() => expect(getMatchesSummary).toHaveBeenLastCalledWith('test-club-id', expect.objectContaining({ playingAreaId: 'field-1' })))
+    })
   })
 
   // docs/specs/089 (C): the Cards | List switch and its remembered preference.

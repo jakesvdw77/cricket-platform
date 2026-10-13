@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
 import { Button } from '../Button'
+import { Input } from '../Input'
 
 export interface ConfirmDialogProps {
   open: boolean
@@ -18,7 +20,12 @@ export interface ConfirmDialogProps {
   // docs/specs/064-unified-availability-polls.md: an acknowledge-only notice (no Cancel, no
   // onConfirm) for e.g. 'this group poll can't be deleted' - the single button just dismisses.
   acknowledgeOnly?: boolean
-  onConfirm?: () => void
+  // docs/specs/099-fields-directory.md: when set, the dialog asks for a required free-text reason (labelled with this
+  // text, e.g. "Reason for rejecting") and the confirm button stays disabled until one is typed. `onConfirm` then
+  // receives the trimmed reason. Cleared each time the dialog closes.
+  reasonLabel?: string
+  reasonMaxLength?: number
+  onConfirm?: (reason?: string) => void
   onClose: () => void
 }
 
@@ -35,9 +42,16 @@ export function ConfirmDialog({
   destructive = false,
   pending = false,
   acknowledgeOnly = false,
+  reasonLabel,
+  reasonMaxLength = 500,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
+  const [reason, setReason] = useState('')
+  useEffect(() => {
+    if (!open) setReason('')
+  }, [open])
+  const reasonMissing = Boolean(reasonLabel) && !acknowledgeOnly && !reason.trim()
   const resolvedConfirmLabel = confirmLabel ?? (acknowledgeOnly ? 'OK' : 'Confirm')
 
   return (
@@ -48,6 +62,19 @@ export function ConfirmDialog({
       </DialogTitle>
       <DialogContent>
         <DialogContentText component="div">{description}</DialogContentText>
+        {reasonLabel && !acknowledgeOnly && (
+          <Input
+            label={reasonLabel}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            disabled={pending}
+            multiline
+            minRows={2}
+            required
+            inputProps={{ maxLength: reasonMaxLength }}
+            sx={{ mt: 2 }}
+          />
+        )}
       </DialogContent>
       <DialogActions>
         {!acknowledgeOnly && (
@@ -57,8 +84,8 @@ export function ConfirmDialog({
         )}
         <Button
           variant={destructive && !acknowledgeOnly ? 'danger' : 'primary'}
-          onClick={acknowledgeOnly ? onClose : onConfirm}
-          disabled={pending}
+          onClick={acknowledgeOnly ? onClose : () => onConfirm?.(reasonLabel ? reason.trim() : undefined)}
+          disabled={pending || reasonMissing}
         >
           {pending && pendingLabel ? pendingLabel : resolvedConfirmLabel}
         </Button>

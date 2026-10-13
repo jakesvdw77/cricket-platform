@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchKeyFigures } from './MatchKeyFigures'
 import type { MatchPoll } from '../../../api/matchApi'
@@ -45,6 +46,42 @@ describe('MatchKeyFigures', () => {
     render(<MatchKeyFigures {...base} venue={null} leagueName={null} matchDate="2026-10-15T07:15:00" />)
     expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('TBC')
     expect(screen.getByTestId('match-figure-league-value')).toHaveTextContent('Friendly')
+  })
+
+  // docs/specs/099-fields-directory.md: with a field the tile is the Field tile - a link, with the verification flag.
+  describe('Field tile', () => {
+    const renderWithField = (status: 'VERIFIED' | 'UNVERIFIED' | 'REJECTED' | null) =>
+      render(
+        <MemoryRouter>
+          <MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" playingAreaId="field-1" playingAreaVerificationStatus={status} />
+        </MemoryRouter>,
+      )
+
+    it('links to the field page and is captioned Field for a verified field, with no warning tone', () => {
+      renderWithField('VERIFIED')
+      const tile = screen.getByTestId('match-figure-venue')
+      expect(tile).toHaveAttribute('href', '/manage/fixtures/fields/field-1')
+      expect(tile).toHaveAttribute('data-tone', 'neutral')
+      expect(screen.getByText('Field')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue-value')).toHaveTextContent('Riverside Oval')
+    })
+
+    it('flags an unverified field in the caption and turns amber', () => {
+      renderWithField('UNVERIFIED')
+      expect(screen.getByText('Field · Unverified')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue')).toHaveAttribute('data-tone', 'warning')
+    })
+
+    it('flags a rejected field', () => {
+      renderWithField('REJECTED')
+      expect(screen.getByText('Field · Rejected')).toBeInTheDocument()
+    })
+
+    it('stays a plain Venue tile, not a link, when the match has no field', () => {
+      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
+      expect(screen.getByText('Venue')).toBeInTheDocument()
+      expect(screen.getByTestId('match-figure-venue')).not.toHaveAttribute('href')
+    })
   })
 
   it('shows the poll as None, Open (with its close time) and Closed', () => {

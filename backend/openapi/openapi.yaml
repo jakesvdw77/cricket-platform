@@ -2770,7 +2770,7 @@ paths:
         description: "False also leaves out suspended (inactive) and rejected players; unverified players always stay (docs/specs/088). The default keeps every caller unchanged."
         schema:
           type: boolean
-          default: true
+          default: false
       - name: focus
         in: query
         required: false
@@ -3062,6 +3062,13 @@ paths:
         in: query
         required: false
         description: "Only matches that have this team as their home or away side (docs/specs/087)."
+        schema:
+          type: string
+          format: uuid
+      - name: playingAreaId
+        in: query
+        required: false
+        description: "Only matches played on this field (docs/specs/099)."
         schema:
           type: string
           format: uuid
@@ -5205,6 +5212,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: playingAreaId
+        in: query
+        required: false
+        description: "Only matches played on this field (docs/specs/099)."
+        schema:
+          type: string
+          format: uuid
       - name: search
         in: query
         required: false
@@ -5340,6 +5354,631 @@ paths:
       responses:
         "204":
           description: Availability poll deleted
+  /api/v1/manage/clubs/{clubId}/playing-areas:
+    get:
+      tags:
+      - playing-area-controller
+      operationId: listPlayingAreas
+      description: "docs/specs/099: searches the whole fields directory (not merged away, not rejected). Home fields of the club first, then by name; sort=name,desc reverses the name order. q matches name or city (case-insensitive substring)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        description: "Repeatable: SCHOOL, CLUB, ACADEMY, MUNICIPAL, PROVINCIAL."
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - SCHOOL
+            - CLUB
+            - ACADEMY
+            - MUNICIPAL
+            - PROVINCIAL
+      - name: country
+        in: query
+        required: false
+        description: "ISO 3166-1 alpha-2 code."
+        schema:
+          type: string
+      - name: province
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: verification
+        in: query
+        required: false
+        description: "UNVERIFIED or VERIFIED. REJECTED is a 400: rejected fields never appear in search."
+        schema:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+      - name: mine
+        in: query
+        required: false
+        description: "Only this club's home fields."
+        schema:
+          type: boolean
+          default: false
+      - name: usedByClub
+        in: query
+        required: false
+        description: "Fields this club has linked or used on a match; backs the Matches Field filter"
+        schema:
+          type: boolean
+          default: false
+      - name: areaType
+        in: query
+        required: false
+        description: "Defaults to CRICKET_FIELD, the only value accepted now."
+        schema:
+          type: string
+          default: CRICKET_FIELD
+          enum:
+          - CRICKET_FIELD
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagePlayingAreaDto"
+    post:
+      tags:
+      - playing-area-controller
+      operationId: createPlayingArea
+      description: "docs/specs/099: captures a field. area_type is forced to CRICKET_FIELD; created UNVERIFIED by this club and, only when linkHome=true, linked home to it (never automatic: a club also records away fields). 409 DuplicateField (ProblemDetail with existingPlayingAreaId) on an exact name+city+country duplicate."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: linkHome
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayingAreaRequest"
+        required: true
+      responses:
+        "201":
+          description: Field captured
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaDto"
+        "409":
+          description: Duplicate field; the body carries existingPlayingAreaId
+  /api/v1/manage/clubs/{clubId}/playing-areas/summary:
+    get:
+      tags:
+      - playing-area-controller
+      operationId: playingAreasSummary
+      description: "docs/specs/099: directory counters for the list's filters other than mine and verification."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        description: "Repeatable: SCHOOL, CLUB, ACADEMY, MUNICIPAL, PROVINCIAL."
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - SCHOOL
+            - CLUB
+            - ACADEMY
+            - MUNICIPAL
+            - PROVINCIAL
+      - name: country
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: province
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: areaType
+        in: query
+        required: false
+        description: "Defaults to CRICKET_FIELD, the only value accepted now."
+        schema:
+          type: string
+          default: CRICKET_FIELD
+          enum:
+          - CRICKET_FIELD
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaSummaryDto"
+  /api/v1/manage/clubs/{clubId}/playing-areas/filter-options:
+    get:
+      tags:
+      - playing-area-controller
+      operationId: playingAreaFilterOptions
+      description: "docs/specs/099: distinct countries, provinces and cities reachable under the other active filters (each list ignores its own pick)."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        description: "Repeatable: SCHOOL, CLUB, ACADEMY, MUNICIPAL, PROVINCIAL."
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - SCHOOL
+            - CLUB
+            - ACADEMY
+            - MUNICIPAL
+            - PROVINCIAL
+      - name: country
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: province
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: verification
+        in: query
+        required: false
+        description: "UNVERIFIED or VERIFIED. REJECTED is a 400: rejected fields never appear in search."
+        schema:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+      - name: mine
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: areaType
+        in: query
+        required: false
+        description: "Defaults to CRICKET_FIELD, the only value accepted now."
+        schema:
+          type: string
+          default: CRICKET_FIELD
+          enum:
+          - CRICKET_FIELD
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/playing-areas/similar:
+    get:
+      tags:
+      - playing-area-controller
+      operationId: similarPlayingAreas
+      description: "docs/specs/099: Did you mean. Up to 5 existing fields in the same country whose normalised name (lowercase, punctuation and whitespace stripped) contains or is contained in the normalised input. city is accepted but does not filter."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: country
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayingAreaDto"
+  /api/v1/manage/clubs/{clubId}/playing-areas/{id}:
+    get:
+      tags:
+      - playing-area-controller
+      operationId: getPlayingArea
+      description: "docs/specs/099: one field; a merged-away id resolves to the surviving field."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaDto"
+    put:
+      tags:
+      - playing-area-controller
+      operationId: updatePlayingArea
+      description: "docs/specs/099: edit; only while UNVERIFIED and captured by this club, otherwise 409 FieldNotEditable."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayingAreaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaDto"
+        "409":
+          description: Not editable by this club
+  /api/v1/manage/clubs/{clubId}/playing-areas/{id}/home:
+    put:
+      tags:
+      - playing-area-controller
+      operationId: linkPlayingAreaHome
+      description: "docs/specs/099: idempotent; links the field home for this club. A rejected field is a 400."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayingAreaDto"
+    delete:
+      tags:
+      - playing-area-controller
+      operationId: unlinkPlayingAreaHome
+      description: "docs/specs/099: idempotent; removes this club's link. Matches that use the field are untouched."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Home link removed
+  /api/v1/platform/playing-areas:
+    get:
+      tags:
+      - platform-playing-area-controller
+      operationId: listPlatformPlayingAreas
+      description: "docs/specs/099: moderation list (merged-away rows excluded). Default verification UNVERIFIED; default order oldest first. possibleDuplicates is empty on the list."
+      parameters:
+      - name: verification
+        in: query
+        required: false
+        schema:
+          type: string
+          default: UNVERIFIED
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        description: "Repeatable: SCHOOL, CLUB, ACADEMY, MUNICIPAL, PROVINCIAL."
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - SCHOOL
+            - CLUB
+            - ACADEMY
+            - MUNICIPAL
+            - PROVINCIAL
+      - name: country
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagePlatformPlayingAreaDto"
+  /api/v1/platform/playing-areas/summary:
+    get:
+      tags:
+      - platform-playing-area-controller
+      operationId: platformPlayingAreasSummary
+      description: "docs/specs/099: Unverified, Verified and Rejected counters (merged-away rows not counted)."
+      parameters:
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaSummaryDto"
+  /api/v1/platform/playing-areas/{id}:
+    get:
+      tags:
+      - platform-playing-area-controller
+      operationId: getPlatformPlayingArea
+      description: "docs/specs/099: full detail with linked clubs, match count, creator club and possible duplicates."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+    put:
+      tags:
+      - platform-playing-area-controller
+      operationId: updatePlatformPlayingArea
+      description: "docs/specs/099: edit any field in any state except merged away; editing a verified field keeps it verified."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayingAreaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        "409":
+          description: Merged away or duplicate
+  /api/v1/platform/playing-areas/{id}/verify:
+    post:
+      tags:
+      - platform-playing-area-controller
+      operationId: verifyPlayingArea
+      description: "docs/specs/099: UNVERIFIED to VERIFIED, stamping verified_at and verified_by_subject (the Keycloak subject). Idempotent on a verified field; 409 from REJECTED (reopen first)."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        "409":
+          description: Rejected field
+  /api/v1/platform/playing-areas/{id}/reject:
+    post:
+      tags:
+      - platform-playing-area-controller
+      operationId: rejectPlayingArea
+      description: "docs/specs/099: UNVERIFIED to REJECTED; reason required."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectPlayingAreaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        "409":
+          description: Not unverified
+  /api/v1/platform/playing-areas/{id}/reopen:
+    post:
+      tags:
+      - platform-playing-area-controller
+      operationId: reopenPlayingArea
+      description: "docs/specs/099: REJECTED to UNVERIFIED."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        "409":
+          description: Not rejected
+  /api/v1/platform/playing-areas/{id}/merge:
+    post:
+      tags:
+      - platform-playing-area-controller
+      operationId: mergePlayingArea
+      description: "docs/specs/099: merges this field into the target in one transaction: matches repointed (venue copied from the target), club links moved and de-duplicated, this field marked merged. Returns the surviving target. 409 if the target is merged away, rejected, or the same row."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergePlayingAreaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        "409":
+          description: Invalid merge target
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -6731,6 +7370,10 @@ components:
           type: string
         streamingUrl:
           type: string
+        playingAreaId:
+          type: string
+          format: uuid
+          description: "Optional field from the directory (docs/specs/099). When set, venue is written from the field's name and wins over any venue sent; when null the field link is cleared and venue is stored as sent."
       required:
       - matchDate
       - seasonId
@@ -6806,6 +7449,17 @@ components:
           type: string
         streamingUrl:
           type: string
+        playingAreaId:
+          type: string
+          format: uuid
+        playingAreaName:
+          type: string
+        playingAreaVerificationStatus:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
     MatchPollDto:
       type: object
       properties:
@@ -8113,6 +8767,10 @@ components:
           type: string
         streamingUrl:
           type: string
+        playingAreaId:
+          type: string
+          format: uuid
+          description: "Optional field from the directory (docs/specs/099). When set, venue is written from the field's name and wins over any venue sent; when null the field link is cleared and venue is stored as sent."
       required:
       - matchDate
       - seasonId
@@ -9310,4 +9968,326 @@ components:
           type: string
           format: date-time
         canReopen:
+          type: boolean
+    PlayingAreaRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 1
+        category:
+          type: string
+          enum:
+          - SCHOOL
+          - CLUB
+          - ACADEMY
+          - MUNICIPAL
+          - PROVINCIAL
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SCHOOL
+          - PROVINCE
+          - OTHER
+        ownerName:
+          type: string
+          maxLength: 200
+          minLength: 1
+        address:
+          $ref: "#/components/schemas/AddressDto"
+          description: "city and country are required (street is optional) (country is an ISO 3166-1 alpha-2 code); enforced by the service."
+        mapUrl:
+          type: string
+          maxLength: 500
+          description: "Optional https URL."
+        locationNotes:
+          type: string
+          maxLength: 500
+      required:
+      - address
+      - category
+      - name
+      - ownerName
+      - ownerType
+    PlayingAreaDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        areaType:
+          type: string
+          enum:
+          - CRICKET_FIELD
+        name:
+          type: string
+        category:
+          type: string
+          enum:
+          - SCHOOL
+          - CLUB
+          - ACADEMY
+          - MUNICIPAL
+          - PROVINCIAL
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SCHOOL
+          - PROVINCE
+          - OTHER
+        ownerName:
+          type: string
+        address:
+          $ref: "#/components/schemas/AddressDto"
+        mapUrl:
+          type: string
+        locationNotes:
+          type: string
+        verificationStatus:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+        verifiedAt:
+          type: string
+          format: date-time
+        rejectionReason:
+          type: string
+        createdByClubId:
+          type: string
+          format: uuid
+        createdByClubName:
+          type: string
+        linkedHome:
+          type: boolean
+        matchCount:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    PlayingAreaSummaryDto:
+      type: object
+      properties:
+        ourFields:
+          type: integer
+          format: int64
+        inDirectory:
+          type: integer
+          format: int64
+        unverified:
+          type: integer
+          format: int64
+    PlayingAreaFilterOptionsDto:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            type: string
+        provinces:
+          type: array
+          items:
+            type: string
+        cities:
+          type: array
+          items:
+            type: string
+    PlayingAreaRefDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        verificationStatus:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+    PlayingAreaLinkedClubDto:
+      type: object
+      properties:
+        clubId:
+          type: string
+          format: uuid
+        clubName:
+          type: string
+        home:
+          type: boolean
+    PlatformPlayingAreaDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        areaType:
+          type: string
+          enum:
+          - CRICKET_FIELD
+        name:
+          type: string
+        category:
+          type: string
+          enum:
+          - SCHOOL
+          - CLUB
+          - ACADEMY
+          - MUNICIPAL
+          - PROVINCIAL
+        ownerType:
+          type: string
+          enum:
+          - CLUB
+          - SCHOOL
+          - PROVINCE
+          - OTHER
+        ownerName:
+          type: string
+        address:
+          $ref: "#/components/schemas/AddressDto"
+        mapUrl:
+          type: string
+        locationNotes:
+          type: string
+        verificationStatus:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+          - REJECTED
+        verifiedAt:
+          type: string
+          format: date-time
+        verifiedBySubject:
+          type: string
+        rejectionReason:
+          type: string
+        createdByClubId:
+          type: string
+          format: uuid
+        createdByClubName:
+          type: string
+        mergedIntoId:
+          type: string
+          format: uuid
+        matchCount:
+          type: integer
+          format: int64
+        linkedClubs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayingAreaLinkedClubDto"
+        possibleDuplicates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayingAreaRefDto"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PlatformPlayingAreaSummaryDto:
+      type: object
+      properties:
+        unverified:
+          type: integer
+          format: int64
+        verified:
+          type: integer
+          format: int64
+        rejected:
+          type: integer
+          format: int64
+    RejectPlayingAreaRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 1
+      required:
+      - reason
+    MergePlayingAreaRequest:
+      type: object
+      properties:
+        targetPlayingAreaId:
+          type: string
+          format: uuid
+      required:
+      - targetPlayingAreaId
+    PagePlayingAreaDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayingAreaDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
+    PagePlatformPlayingAreaDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformPlayingAreaDto"
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
           type: boolean

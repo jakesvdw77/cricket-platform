@@ -127,6 +127,13 @@ export const MANAGER_NAV: NavGroup[] = [
         match: ['/manage/club-contacts', '/manage/sponsors', '/manage/sections'],
       },
       {
+        id: 'fields',
+        label: 'Fields',
+        description: 'Find and add the fields you play on',
+        to: '/manage/fixtures/fields',
+        icon: 'nav/ground-oval',
+      },
+      {
         id: 'gallery',
         label: 'Gallery',
         description: 'Share photos and highlights from your club',

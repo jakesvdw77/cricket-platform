@@ -100,6 +100,12 @@ class MatchServiceImplTest {
     @Mock
     private AccessService accessService;
 
+    @Mock
+    private com.cricketlegend.repository.PlayingAreaRepository playingAreaRepository;
+
+    @Mock
+    private com.cricketlegend.service.support.PlayingAreaMatchResolver playingAreaMatchResolver;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -112,13 +118,13 @@ class MatchServiceImplTest {
                 new com.cricketlegend.service.support.SelectionLimitsResolver(
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
-                accessService);
+                accessService, playingAreaRepository, playingAreaMatchResolver);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -147,7 +153,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateMatchRequest request = new CreateMatchRequest(
                 UUID.randomUUID(), "Occasionals", null, "Away Team", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -158,7 +164,7 @@ class MatchServiceImplTest {
     void createWithNeitherAwayTeamIdNorAwayTeamNameSetThrowsValidationException() {
         UUID clubId = UUID.randomUUID();
         CreateMatchRequest request = new CreateMatchRequest(
-                UUID.randomUUID(), null, null, null, null, null, null, UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), null, null, null, null, null, null, UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -173,7 +179,7 @@ class MatchServiceImplTest {
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, otherClubId)));
 
         CreateMatchRequest request = new CreateMatchRequest(
-                null, "Home Occasionals", null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null);
+                null, "Home Occasionals", null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -190,7 +196,7 @@ class MatchServiceImplTest {
 
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", null, null, leagueId, seasonId,
-                Instant.now(), null, null, null, null, null);
+                Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -204,7 +210,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateMatchRequest request = new CreateMatchRequest(
                 UUID.randomUUID(), null, null, "Away Occasionals", "/media/logo.png", null, null,
-                UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -216,7 +222,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home Occasionals", UUID.randomUUID(), null, null, "/media/logo.png", null,
-                UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -234,7 +240,7 @@ class MatchServiceImplTest {
 
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", "/media/home-logo.png",
-                "/media/away-logo.png", null, seasonId, Instant.now(), null, null, null, null, null);
+                "/media/away-logo.png", null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         matchService.create(authentication, clubId, request);
 
@@ -254,7 +260,7 @@ class MatchServiceImplTest {
 
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", null, null, null, seasonId,
-                Instant.now(), null, null, null, null, null);
+                Instant.now(), null, null, null, null, null, null);
 
         matchService.create(authentication, clubId, request);
 
@@ -270,7 +276,7 @@ class MatchServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
         UpdateMatchRequest request = new UpdateMatchRequest(
                 UUID.randomUUID(), null, null, "Away Occasionals", "/media/logo.png", null, null,
-                UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -284,7 +290,7 @@ class MatchServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
         UpdateMatchRequest request = new UpdateMatchRequest(
                 null, "Home Occasionals", UUID.randomUUID(), null, null, "/media/logo.png", null,
-                UUID.randomUUID(), Instant.now(), null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -304,7 +310,7 @@ class MatchServiceImplTest {
 
         UpdateMatchRequest request = new UpdateMatchRequest(
                 null, "Home Occasionals", null, "Away Occasionals", "/media/home-logo.png",
-                "/media/away-logo.png", null, seasonId, Instant.now(), null, null, null, null, null);
+                "/media/away-logo.png", null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         matchService.update(authentication, clubId, matchId, request);
 
@@ -324,7 +330,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(any(Match.class))).thenReturn(dummyDto());
 
         CreateMatchRequest request = new CreateMatchRequest(
-                otherClubsTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null);
+                otherClubsTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         matchService.create(authentication, clubId, request);
 
@@ -342,7 +348,7 @@ class MatchServiceImplTest {
         when(teamRepository.existsById(missingTeamId)).thenReturn(false);
 
         CreateMatchRequest request = new CreateMatchRequest(
-                missingTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null);
+                missingTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -361,7 +367,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(any(Match.class))).thenReturn(dummyDto());
 
         CreateMatchRequest request = new CreateMatchRequest(
-                otherClubsHomeTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null);
+                otherClubsHomeTeamId, null, null, "Away Occasionals", null, null, null, seasonId, Instant.now(), null, null, null, null, null, null);
 
         matchService.create(authentication, actingClubId, request);
 
@@ -435,7 +441,7 @@ class MatchServiceImplTest {
         UUID matchId = UUID.randomUUID();
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
         UpdateMatchRequest request = new UpdateMatchRequest(
-                null, "Home Occasionals", null, "Away Occasionals", null, null, null, null, Instant.now(), null, null, null, null, null);
+                null, "Home Occasionals", null, "Away Occasionals", null, null, null, null, Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -554,9 +560,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -597,7 +603,7 @@ class MatchServiceImplTest {
     private MatchDto cardDto(Match m) {
         return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
                 m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
-                false, false, null, null, null, null, null, null, null, null, null, null, null);
+                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private List<MatchDto> listCard(Match... matches) {
@@ -882,10 +888,10 @@ class MatchServiceImplTest {
         when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
         when(accessService.resolveMatchSectionIds(any(), any(), any())).thenReturn(Set.of(sectionId));
         assertNoCardValues(matchService.create(authentication, clubId, new CreateMatchRequest(
-                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null, null, null, null, null)));
+                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null, null, null, null, null, null)));
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(active));
         assertNoCardValues(matchService.update(authentication, clubId, matchId, new UpdateMatchRequest(
-                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null, null, null, null, null)));
+                null, "Home FC", null, "Away FC", null, null, leagueId, seasonId, Instant.now(), null, null, null, null, null, null)));
 
         verify(matchPollCoverageService, never()).pollsForMatches(any());
         verify(matchSidePlayerRepository, never()).findByMatchSideIdIn(any());
@@ -1261,7 +1267,7 @@ class MatchServiceImplTest {
             UUID leagueId, UUID seasonId, UUID awayLeagueTeamId) {
         return new CreateMatchRequest(
                 homeTeamId, homeName, null, awayName, homeLogo, null, leagueId, seasonId, Instant.now(), null,
-                homeLeagueTeamId, awayLeagueTeamId, null, null);
+                homeLeagueTeamId, awayLeagueTeamId, null, null, null);
     }
 
     @Test
@@ -1283,7 +1289,7 @@ class MatchServiceImplTest {
         // client-sent away name and logo for a league-team side are ignored
         CreateMatchRequest request = new CreateMatchRequest(
                 ownTeamId, null, null, "Typed Name", null, "/media/typed.png", leagueId, seasonId, Instant.now(),
-                null, null, leagueTeamId, null, null);
+                null, null, leagueTeamId, null, null, null);
         matchService.create(authentication, clubId, request);
 
         Match saved = captor.getValue();
@@ -1322,7 +1328,7 @@ class MatchServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateMatchRequest request = new CreateMatchRequest(
                 null, "Home", UUID.randomUUID(), null, null, null, UUID.randomUUID(), UUID.randomUUID(),
-                Instant.now(), null, null, UUID.randomUUID(), null, null);
+                Instant.now(), null, null, UUID.randomUUID(), null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, request))
                 .isInstanceOf(ValidationException.class);
@@ -1454,7 +1460,7 @@ class MatchServiceImplTest {
         // the 050 free-text logo rule is untouched for a side without a league team
         CreateMatchRequest logoWithTeamId = new CreateMatchRequest(
                 UUID.randomUUID(), null, UUID.randomUUID(), null, null, "/media/x.png", null, UUID.randomUUID(),
-                Instant.now(), null, null, null, null, null);
+                Instant.now(), null, null, null, null, null, null);
 
         assertThatThrownBy(() -> matchService.create(authentication, clubId, logoWithTeamId))
                 .isInstanceOf(ValidationException.class);
@@ -1480,7 +1486,7 @@ class MatchServiceImplTest {
 
         UpdateMatchRequest request = new UpdateMatchRequest(
                 null, "Home Occasionals", null, null, null, null, leagueId, seasonId, Instant.now(), "New venue",
-                null, leagueTeamId, null, null);
+                null, leagueTeamId, null, null, null);
         matchService.update(authentication, clubId, matchId, request);
 
         assertThat(existing.getAwayLeagueTeamId()).isEqualTo(leagueTeamId);
@@ -1506,7 +1512,7 @@ class MatchServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
 
         UpdateMatchRequest request = new UpdateMatchRequest(
-                null, "Home", null, null, null, null, leagueId, seasonId, Instant.now(), null, null, newInactiveId, null, null);
+                null, "Home", null, null, null, null, leagueId, seasonId, Instant.now(), null, null, newInactiveId, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -1531,7 +1537,7 @@ class MatchServiceImplTest {
 
         // the stored reference is on the HOME side; selecting it for AWAY is a new selection
         UpdateMatchRequest request = new UpdateMatchRequest(
-                null, "Home", null, null, null, null, leagueId, seasonId, Instant.now(), null, null, leagueTeamId, null, null);
+                null, "Home", null, null, null, null, leagueId, seasonId, Instant.now(), null, null, leagueTeamId, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -1556,7 +1562,7 @@ class MatchServiceImplTest {
         when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
 
         UpdateMatchRequest request = new UpdateMatchRequest(
-                null, "Home", null, null, null, null, newLeagueId, seasonId, Instant.now(), null, null, leagueTeamId, null, null);
+                null, "Home", null, null, null, null, newLeagueId, seasonId, Instant.now(), null, null, leagueTeamId, null, null, null);
 
         assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, request))
                 .isInstanceOf(ValidationException.class);
@@ -1578,7 +1584,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(existing)).thenReturn(dummyDto());
 
         UpdateMatchRequest request = new UpdateMatchRequest(
-                null, "Home", null, "Typed Opponent", null, null, null, seasonId, Instant.now(), null, null, null, null, null);
+                null, "Home", null, "Typed Opponent", null, null, null, seasonId, Instant.now(), null, null, null, null, null, null);
         matchService.update(authentication, clubId, matchId, request);
 
         assertThat(existing.getAwayLeagueTeamId()).isNull();
@@ -1620,7 +1626,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, homeLtId, awayLtId, null, null));
+                null, null, homeLtId, awayLtId, null, null, null, null, null));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1644,13 +1650,13 @@ class MatchServiceImplTest {
     private CreateMatchRequest createWithLinks(String scoringUrl, String streamingUrl) {
         return new CreateMatchRequest(
                 null, "Home", null, "Away", null, null, null, UUID.randomUUID(), Instant.now(), null,
-                null, null, scoringUrl, streamingUrl);
+                null, null, scoringUrl, streamingUrl, null);
     }
 
     private UpdateMatchRequest updateWithLinks(UUID seasonId, String scoringUrl, String streamingUrl) {
         return new UpdateMatchRequest(
                 null, "Home", null, "Away", null, null, null, seasonId, Instant.now(), null,
-                null, null, scoringUrl, streamingUrl);
+                null, null, scoringUrl, streamingUrl, null);
     }
 
     private void stubCreateSave() {
@@ -1833,7 +1839,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live"));
+                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService

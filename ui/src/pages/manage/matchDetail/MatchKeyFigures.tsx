@@ -6,11 +6,16 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { KeyFigureTile } from '../../../components/KeyFigureTile'
 import { useCountdown } from '../../../components/Countdown'
 import type { MatchPoll } from '../../../api/matchApi'
+import type { FieldVerificationStatus } from '../../../api/playingAreaApi'
 import { formatMatchDateTime } from '../availability/pollHelpers'
 
 export interface MatchKeyFiguresProps {
   matchDate: string
   venue: string | null
+  // docs/specs/099: the field the match is played on. When set, the tile is the Field tile: it links to the field's page and
+  // carries the verification flag. Without one (legacy text, or nothing) it stays the Venue tile as before.
+  playingAreaId?: string | null
+  playingAreaVerificationStatus?: FieldVerificationStatus | null
   // The league's name, or null for a standalone friendly; the season label caption goes with it.
   leagueName: string | null
   seasonLabel: string | null
@@ -22,6 +27,12 @@ export interface MatchKeyFiguresProps {
 }
 
 const NOT_KNOWN = '–'
+
+function fieldCaption(status: FieldVerificationStatus | null | undefined): string {
+  if (status === 'UNVERIFIED') return 'Field · Unverified'
+  if (status === 'REJECTED') return 'Field · Rejected'
+  return 'Field'
+}
 
 function pollValue(polls: MatchPoll[]): string {
   if (polls.some((poll) => poll.open)) return 'Open'
@@ -36,7 +47,7 @@ function pollCaption(polls: MatchPoll[], closesAt: string | null): string {
 
 // docs/specs/089 (A): the four things a manager reads first on the match page - when it starts (with the card's live
 // countdown, amber within 24 hours, "Played" once it has started), where, in which league and season, and the poll.
-export function MatchKeyFigures({ matchDate, venue, leagueName, seasonLabel, pollsReady, polls, pollClosesAt }: MatchKeyFiguresProps) {
+export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt }: MatchKeyFiguresProps) {
   const kickoff = useCountdown(matchDate)
   const played = kickoff.stage === 'expired'
   const start = new Date(matchDate)
@@ -57,7 +68,15 @@ export function MatchKeyFigures({ matchDate, venue, leagueName, seasonLabel, pol
         tone={!played && kickoff.warn ? 'warning' : 'neutral'}
         textValue
       />
-      <KeyFigureTile testId="match-figure-venue" icon={<PlaceOutlinedIcon />} value={venue || 'TBC'} label="Venue" textValue />
+      <KeyFigureTile
+        testId="match-figure-venue"
+        icon={<PlaceOutlinedIcon />}
+        value={venue || 'TBC'}
+        label={playingAreaId ? fieldCaption(playingAreaVerificationStatus) : 'Venue'}
+        tone={playingAreaId && playingAreaVerificationStatus && playingAreaVerificationStatus !== 'VERIFIED' ? 'warning' : 'neutral'}
+        to={playingAreaId ? `/manage/fixtures/fields/${playingAreaId}` : undefined}
+        textValue
+      />
       <KeyFigureTile
         testId="match-figure-league"
         icon={<EmojiEventsOutlinedIcon />}

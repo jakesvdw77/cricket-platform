@@ -29,4 +29,29 @@ describe('NavTile', () => {
     expect(img).toHaveAttribute('aria-hidden', 'true')
     expect(container.querySelector('svg')).toBeNull()
   })
+
+  // docs/specs/099-fields-directory.md: the admin dashboard's "Fields to verify" count.
+  it('shows the count when given, including 0, and none otherwise', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <NavTile title="Fields to verify" description="d" icon={<GroupsOutlinedIcon />} to="/admin/fields" count={4} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId('nav-tile-count')).toHaveTextContent('4')
+    expect(screen.getByLabelText('4 waiting')).toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter>
+        <NavTile title="Fields to verify" description="d" icon={<GroupsOutlinedIcon />} to="/admin/fields" count={0} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId('nav-tile-count')).toHaveTextContent('0')
+
+    rerender(
+      <MemoryRouter>
+        <NavTile title="Fields to verify" description="d" icon={<GroupsOutlinedIcon />} to="/admin/fields" />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByTestId('nav-tile-count')).not.toBeInTheDocument()
+  })
 })

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Box, Card as MuiCard, CardContent, Typography } from '@mui/material'
+import { Box, Card as MuiCard, CardContent, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
 import { BrandIcon } from '../BrandIcon'
@@ -13,6 +13,9 @@ export interface NavTileProps {
   // docs/specs/078-brand-icon-set.md + 080: a brand icon at 40 px on the default club-tinted tile. Wins over `icon` when both are given.
   brandIcon?: BrandIconName
   to: string
+  // docs/specs/099-fields-directory.md: an optional count shown top right (the admin dashboard's "Fields to verify").
+  // Shown as a plain figure, including 0; omitted, the tile is unchanged.
+  count?: number
 }
 
 // A dashboard nav card — ManagerDashboard.tsx and ConfigurationHome.tsx both used a bare `Card`
@@ -28,7 +31,7 @@ export interface NavTileProps {
 // separate View/Edit split), but it carried no hover feedback — real user feedback that every
 // clickable card in the app should show the same hover halo RecordCard.tsx gained in
 // docs/specs/059-record-card-click-to-view.md, dashboard tiles included.
-export function NavTile({ title, description, icon, brandIcon, to }: NavTileProps) {
+export function NavTile({ title, description, icon, brandIcon, to, count }: NavTileProps) {
   return (
     <Box component={RouterLink} to={to} sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       <MuiCard
@@ -38,8 +41,19 @@ export function NavTile({ title, description, icon, brandIcon, to }: NavTileProp
           transition: 'box-shadow 0.15s ease, outline-color 0.15s ease',
           outline: '1px solid transparent',
           '&:hover': { boxShadow: 6, outlineColor: 'primary.main' },
+          position: 'relative',
         }}
       >
+        {count !== undefined && (
+          <Chip
+            size="small"
+            data-testid="nav-tile-count"
+            label={count}
+            aria-label={`${count} waiting`}
+            color={count > 0 ? 'warning' : 'default'}
+            sx={{ position: 'absolute', top: 12, right: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+          />
+        )}
         <CardContent>
           {brandIcon ? (
             <Box sx={{ mb: 1.25 }}>

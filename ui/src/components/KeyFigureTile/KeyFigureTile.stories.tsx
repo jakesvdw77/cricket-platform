@@ -27,3 +27,8 @@ export const Warning: Story = {
 export const Picker: Story = {
   args: { icon: <EventAvailableOutlinedIcon />, value: 'Michiel Boshoff', label: 'Captain', textValue: true, onClick: () => {}, ariaLabel: 'Captain: Michiel Boshoff, change' },
 }
+
+// docs/specs/099: a link tile - the match page's Field tile opens the field.
+export const AsLink: Story = {
+  args: { icon: <EventAvailableOutlinedIcon />, value: 'Riverside Oval', label: 'Field · Unverified', textValue: true, tone: 'warning', to: '/manage/fixtures/fields/field-1' },
+}

@@ -239,7 +239,7 @@ describe('MatchFormPage', () => {
 
       expect(await screen.findByText('Edit Match')).toBeInTheDocument()
       expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-      expect(screen.getByLabelText('Venue (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
@@ -301,12 +301,69 @@ describe('MatchFormPage', () => {
       getMatch.mockResolvedValue(makeMatch())
       const { unmount } = renderPage('/manage/fixtures/matches/match-1/edit?tab=availability', 'test-club-id')
       await screen.findByText('Edit Match')
-      expect(screen.getByLabelText('Venue (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
       unmount()
 
       renderPage('/manage/fixtures/matches/match-1/edit?tab=availability&side=away', 'test-club-id')
       await screen.findByText('Edit Match')
-      expect(screen.getByLabelText('Venue (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/099-fields-directory.md: the Venue input became the Field picker; the page feeds it the match's field.
+  describe('Field picker (099)', () => {
+    it('edit mode: a match on a field shows it in the box, flags it when unverified, and saves its id', async () => {
+      const user = userEvent.setup()
+      const match = makeMatch({ playingAreaId: 'field-7', playingAreaName: 'Away Park', playingAreaVerificationStatus: 'UNVERIFIED', venue: 'Away Park' })
+      getMatch.mockResolvedValue(match)
+      updateMatch.mockResolvedValue(match)
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toHaveValue('Away Park')
+      expect(screen.getByTestId('field-unverified-alert')).toBeInTheDocument()
+      expect(screen.queryByTestId('legacy-venue')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+      expect(updateMatch).toHaveBeenCalledWith('test-club-id', 'match-1', expect.objectContaining({ playingAreaId: 'field-7', venue: 'Away Park' }))
+    })
+
+    it('edit mode: a match with only the old venue text shows it under the box and saves it unchanged', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ venue: 'Riverside Oval' }))
+      updateMatch.mockResolvedValue(makeMatch())
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toHaveValue('')
+      expect(screen.getByTestId('legacy-venue')).toHaveTextContent('Current venue: Riverside Oval')
+
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+      expect(updateMatch).toHaveBeenCalledWith('test-club-id', 'match-1', expect.objectContaining({ playingAreaId: null, venue: 'Riverside Oval' }))
+    })
+
+    it('edit mode: a rejected field blocks Save', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ playingAreaId: 'field-8', playingAreaName: 'Old Ground', playingAreaVerificationStatus: 'REJECTED' }))
+
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      expect(await screen.findByTestId('field-rejected-alert')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+      expect(updateMatch).not.toHaveBeenCalled()
+    })
+
+    it('create mode: shows the Field (optional) picker and no Venue input', async () => {
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
+      expect(screen.getByLabelText('Field (optional)')).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Venue/)).not.toBeInTheDocument()
     })
   })
 

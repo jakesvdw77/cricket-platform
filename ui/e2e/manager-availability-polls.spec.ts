@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addFieldInline } from './helpers/addFieldInline';
 
 /**
  * E2E golden path for docs/specs/064-unified-availability-polls.md's Test Plan (Playwright row)
@@ -59,7 +60,8 @@ async function createMatchAgainstExternalOpponent(
   await page.getByLabel('Season').click();
   await page.getByRole('option', { name: params.seasonLabel, exact: true }).click();
   await page.getByLabel('Match date & time').fill(params.matchDateTimeLocal);
-  await page.getByLabel('Venue').fill(params.venue);
+  // docs/specs/099: the Venue input is now the Field picker; this adds a new field inline and selects it.
+  await addFieldInline(page, params.venue);
   await page.getByLabel('Home team').click();
   await page.getByRole('option', { name: params.teamName, exact: true }).click();
   await page.getByRole('button', { name: 'External opponent' }).nth(1).click();
@@ -138,7 +140,8 @@ test.describe('Unified availability polls golden path (064-unified-availability-
       opponentName: opponent2Name,
       seasonLabel,
       matchDateTimeLocal: match2DateTimeLocal,
-      venue,
+      // a second field needs its own name: the same name and city is a duplicate
+      venue: `${venue} B`,
     });
 
     // --- New poll -> Squad: poll only match 1 (match 2 unticked). ---

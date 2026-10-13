@@ -54,4 +54,70 @@ describe('AddressFields', () => {
 
     expect(onChange).toHaveBeenCalledWith({ ...emptyAddress(), city: 'A' })
   })
+
+  // docs/specs/099-fields-directory.md: the optional props the Fields form uses; ClubForm's call is unchanged (above).
+  describe('with the Fields form props', () => {
+    it('renders only the fields asked for, in the order asked', () => {
+      render(<AddressFields value={emptyAddress()} onChange={vi.fn()} fields={['city', 'country', 'street']} />)
+
+      expect(screen.queryByLabelText('Number')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Postal code')).not.toBeInTheDocument()
+      const all = screen.getAllByLabelText(/^(City|Country|Street)$/).map((el) => el.closest('.MuiFormControl-root')?.querySelector('label')?.textContent)
+      expect(all).toEqual(['City', 'Country', 'Street'])
+    })
+
+    it('adds (optional) to the labels it is told are optional', () => {
+      render(<AddressFields value={emptyAddress()} onChange={vi.fn()} optional={['street', 'postalCode']} />)
+
+      expect(screen.getByLabelText('Street (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Postal code (optional)')).toBeInTheDocument()
+      expect(screen.getByLabelText('City')).toBeInTheDocument()
+    })
+
+    it('shows per-field errors and the country hint, and disables everything when asked', () => {
+      render(
+        <AddressFields
+          value={emptyAddress()}
+          onChange={vi.fn()}
+          errors={{ city: 'City is required' }}
+          countryHelperText="Chosen from your browser"
+          disabled
+        />,
+      )
+
+      expect(screen.getByText('City is required')).toBeInTheDocument()
+      expect(screen.getByLabelText('City')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByText('Chosen from your browser')).toBeInTheDocument()
+      expect(screen.getByLabelText('City')).toBeDisabled()
+    })
+
+    describe('isoCountry', () => {
+      it('shows the Country by name and reports the ISO code when another is chosen', async () => {
+        const onChange = vi.fn()
+        render(<AddressFields value={{ ...emptyAddress(), country: 'ZA' }} onChange={onChange} isoCountry />)
+
+        expect(screen.getByLabelText('Country')).toHaveTextContent('South Africa')
+        await userEvent.click(screen.getByLabelText('Country'))
+        await userEvent.click(await screen.findByRole('option', { name: 'New Zealand' }))
+
+        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ country: 'NZ' }))
+      })
+
+      it.each([
+        ['ZA', 'Province'],
+        ['GB', 'County'],
+        ['US', 'State'],
+        [null, 'Province/County/State'],
+      ])('labels the region level for %s as %s', (country, label) => {
+        render(<AddressFields value={{ ...emptyAddress(), country }} onChange={vi.fn()} isoCountry />)
+        expect(screen.getByLabelText(label)).toBeInTheDocument()
+      })
+
+      it('keeps the free-text Province/State label and Country input without it (ClubForm)', () => {
+        render(<AddressFields value={emptyAddress()} onChange={vi.fn()} />)
+        expect(screen.getByLabelText('Province/State')).toBeInTheDocument()
+        expect(screen.getByLabelText('Country').tagName).toBe('INPUT')
+      })
+    })
+  })
 })

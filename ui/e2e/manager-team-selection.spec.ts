@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addFieldInline } from './helpers/addFieldInline';
 
 /**
  * E2E golden path for docs/specs/076-team-selection.md's Test Plan (End-to-end / smoke row) and
@@ -80,7 +81,8 @@ async function createMatchAgainstExternalOpponent(
   await page.getByLabel('Season').click();
   await page.getByRole('option', { name: params.seasonLabel, exact: true }).click();
   await page.getByLabel('Match date & time').fill(params.matchDateTimeLocal);
-  await page.getByLabel('Venue').fill(params.venue);
+  // docs/specs/099: the Venue input is now the Field picker; this adds a new field inline and selects it.
+  await addFieldInline(page, params.venue);
   await page.getByLabel('Home team').click();
   await page.getByRole('option', { name: params.teamName, exact: true }).click();
   await page.getByRole('button', { name: 'External opponent' }).nth(1).click();
@@ -230,7 +232,8 @@ test.describe('Team selection golden path (076-team-selection.md)', () => {
       opponentName: opponentBName,
       seasonLabel,
       matchDateTimeLocal,
-      venue,
+      // a second field needs its own name: the same name and city is a duplicate
+      venue: `${venue} B`,
     });
 
     // --- Team A: Home XI tab, Select players. ---

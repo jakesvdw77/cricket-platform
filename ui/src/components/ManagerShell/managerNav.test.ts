@@ -61,6 +61,9 @@ describe('managerNav', () => {
     ['/manage/sections/s/teams', 'teams'],
     ['/manage/sections', 'club-profile'],
     ['/manage/sponsors/9/contacts', 'club-profile'],
+    ['/manage/fixtures/fields', 'fields'],
+    ['/manage/fixtures/fields/new', 'fields'],
+    ['/manage/fixtures/fields/f1/edit', 'fields'],
     ['/manage/fixtures/seasons', 'seasons'],
     ['/manage/fixtures/seasons/new', 'seasons'],
     ['/manage/fixtures/seasons/s1', 'seasons'],
@@ -77,6 +80,17 @@ describe('managerNav', () => {
     expect(MANAGER_NAV.map((group) => group.label)).toEqual([null, 'Schedule', 'People', 'Club'])
   })
 
+  it('puts Fields in the Club group directly after Club profile, and not in Schedule', () => {
+    const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label) ?? []
+    const club = labels('Club')
+    expect(club.indexOf('Fields')).toBe(club.indexOf('Club profile') + 1)
+    expect(club.indexOf('Fields')).toBeGreaterThan(0)
+    expect(labels('Schedule')).not.toContain('Fields')
+    const fields = items.find((item) => item.id === 'fields')
+    expect(fields?.to).toBe('/manage/fixtures/fields')
+    expect(fields?.icon).toBe('nav/ground-oval')
+  })
+
   it('has no Polls, Player availability, Match-day cover or Notifications item (the hub tabs and the header bell reach them)', () => {
     const ids = items.map((item) => item.id)
     for (const gone of ['polls', 'player-availability', 'team-availability', 'notifications']) expect(ids).not.toContain(gone)
@@ -84,7 +98,7 @@ describe('managerNav', () => {
 
   it('lights exactly one item on every real path', () => {
     const paths = [
-      '/manage', '/manage/fixtures/seasons', '/manage/fixtures/seasons/new', '/manage/fixtures/seasons/s1/edit', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/results', '/manage/teams',
+      '/manage', '/manage/fixtures/seasons', '/manage/fixtures/seasons/new', '/manage/fixtures/seasons/s1/edit', '/manage/fixtures/matches', '/manage/fixtures/leagues', '/manage/fixtures/fields', '/manage/results', '/manage/teams',
       '/manage/sections/s/teams', '/manage/players', '/manage/team-selection', '/manage/team-selection/batting', '/manage/communication',
       '/manage/availability', '/manage/availability/new', '/manage/availability/group/r1',
       '/manage/availability/squad/m/p', '/manage/availability/players', '/manage/availability/coverage',

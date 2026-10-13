@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { KeyFigureTile } from './KeyFigureTile'
 
@@ -33,5 +34,30 @@ describe('KeyFigureTile', () => {
     render(<KeyFigureTile icon={<span />} value="Ann" label="Captain" onClick={onClick} ariaLabel="Captain" disabled />)
     await userEvent.click(screen.getByRole('button', { name: 'Captain' }))
     expect(onClick).not.toHaveBeenCalled()
+  })
+
+  // docs/specs/099-fields-directory.md: the match page's Field tile opens the field.
+  describe('to', () => {
+    it('becomes a link to the route, without being a button', () => {
+      render(
+        <MemoryRouter>
+          <KeyFigureTile testId="tile" icon={<span />} value="Riverside Oval" label="Field" to="/manage/fixtures/fields/f1" />
+        </MemoryRouter>,
+      )
+      expect(screen.getByTestId('tile')).toHaveAttribute('href', '/manage/fixtures/fields/f1')
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('lets onClick win when both are given', async () => {
+      const onClick = vi.fn()
+      render(
+        <MemoryRouter>
+          <KeyFigureTile testId="tile" icon={<span />} value="Ann" label="Captain" ariaLabel="Captain" onClick={onClick} to="/elsewhere" />
+        </MemoryRouter>,
+      )
+      expect(screen.getByTestId('tile')).not.toHaveAttribute('href')
+      await userEvent.click(screen.getByRole('button', { name: 'Captain' }))
+      expect(onClick).toHaveBeenCalledTimes(1)
+    })
   })
 })

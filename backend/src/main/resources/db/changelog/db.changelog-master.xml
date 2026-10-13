@@ -45,5 +45,7 @@
     <include file="db/changelog/v1/038-team-selection.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/039-public-availability.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/040-player-verification-status.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/041-playing-areas.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/042-playing-area-municipal.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

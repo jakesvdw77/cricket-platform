@@ -40,3 +40,10 @@ export const BrandIconTile: Story = {
     to: '/manage/teams',
   },
 }
+
+// docs/specs/099: the admin dashboard's "Fields to verify" count.
+export const WithCount: Story = {
+  args: { title: 'Fields to verify', description: 'Check the fields clubs have added', icon: <GroupsOutlinedIcon />, to: '/admin/fields', count: 4 },
+}
+
+export const WithZeroCount: Story = { args: { ...WithCount.args, count: 0 } }

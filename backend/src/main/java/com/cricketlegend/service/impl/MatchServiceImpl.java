@@ -7,6 +7,8 @@ import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchListFocus;
 import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.PlayingArea;
+import com.cricketlegend.domain.PlayingAreaVerificationStatus;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
@@ -27,6 +29,7 @@ import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchSidePlayerRepository;
 import com.cricketlegend.repository.MatchSideRepository;
 import com.cricketlegend.repository.MatchSpecifications;
+import com.cricketlegend.repository.PlayingAreaRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionRepository;
 import com.cricketlegend.repository.TeamRepository;
@@ -34,6 +37,7 @@ import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.SelectionLimitsResolver;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
+import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ServerClock;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -88,6 +92,8 @@ public class MatchServiceImpl implements MatchService {
     private final SectionRepository sectionRepository;
     private final MatchMapper matchMapper;
     private final AccessService accessService;
+    private final PlayingAreaRepository playingAreaRepository;
+    private final PlayingAreaMatchResolver playingAreaMatchResolver;
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
@@ -101,7 +107,9 @@ public class MatchServiceImpl implements MatchService {
             TeamRepository teamRepository,
             SectionRepository sectionRepository,
             MatchMapper matchMapper,
-            AccessService accessService) {
+            AccessService accessService,
+            PlayingAreaRepository playingAreaRepository,
+            PlayingAreaMatchResolver playingAreaMatchResolver) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
@@ -114,6 +122,8 @@ public class MatchServiceImpl implements MatchService {
         this.sectionRepository = sectionRepository;
         this.matchMapper = matchMapper;
         this.accessService = accessService;
+        this.playingAreaRepository = playingAreaRepository;
+        this.playingAreaMatchResolver = playingAreaMatchResolver;
     }
 
     @Override
@@ -127,13 +137,14 @@ public class MatchServiceImpl implements MatchService {
             UUID leagueId,
             UUID seasonId,
             UUID teamId,
+            UUID playingAreaId,
             MatchListFocus focus,
             Pageable pageable) {
         Optional<Set<UUID>> sectionIds = resolveAuthorizedSectionIds(authentication, clubId, sectionId);
         Pageable sorted = withDefaultSort(pageable);
 
-        Specification<Match> spec =
-                buildMatchSpecification(clubId, sectionIds, upcomingOnly, leagueId, seasonId, teamId, search);
+        Specification<Match> spec = buildMatchSpecification(
+                clubId, sectionIds, upcomingOnly, leagueId, seasonId, teamId, playingAreaId, search);
         if (focus != null) {
             spec = spec.and(focusSpecification(focus, clubId, sectionIds));
         }
@@ -160,14 +171,15 @@ public class MatchServiceImpl implements MatchService {
             UUID leagueId,
             UUID seasonId,
             UUID teamId,
+            UUID playingAreaId,
             String search,
             boolean includePast) {
         Optional<Set<UUID>> sectionIds = resolveAuthorizedSectionIds(authentication, clubId, sectionId);
         if (sectionIds.isPresent() && sectionIds.get().isEmpty()) {
             return new MatchesSummaryDto(0, 0, 0, 0);
         }
-        Specification<Match> base =
-                buildMatchSpecification(clubId, sectionIds, !includePast, leagueId, seasonId, teamId, search);
+        Specification<Match> base = buildMatchSpecification(
+                clubId, sectionIds, !includePast, leagueId, seasonId, teamId, playingAreaId, search);
         return new MatchesSummaryDto(
                 matchRepository.count(base),
                 matchRepository.count(base.and(focusSpecification(MatchListFocus.THIS_WEEK, clubId, sectionIds))),
@@ -212,9 +224,11 @@ public class MatchServiceImpl implements MatchService {
             UUID leagueId,
             UUID seasonId,
             UUID teamId,
+            UUID playingAreaId,
             String search) {
         return MatchSpecifications.forList(
-                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, teamId, search);
+                clubId, sectionIds, upcomingOnly ? ServerClock.startOfToday() : null, leagueId, seasonId, teamId,
+                playingAreaId, search);
     }
 
     @Override
@@ -241,17 +255,17 @@ public class MatchServiceImpl implements MatchService {
         Optional<Set<UUID>> sectionRestrictionForOwnArray = resolveAuthorizedSectionIds(authentication, clubId, null);
 
         List<Match> matchesForSectionIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionForOwnArray, upcomingOnly, leagueId, seasonId, teamId, search));
+                clubId, sectionRestrictionForOwnArray, upcomingOnly, leagueId, seasonId, teamId, null, search));
         List<Match> matchesForLeagueIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, null, seasonId, teamId, search));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, null, seasonId, teamId, null, search));
         List<Match> matchesForSeasonIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, null, teamId, search));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, null, teamId, null, search));
         // teamIds drives Search's autocomplete suggestions, not a picker's own dropdown — narrowed
         // by every filter the admin has actually picked (section/league/season), matching the
         // match list itself, but deliberately NOT by `search` (see MatchFilterOptionsDto's own
         // Javadoc: suggesting names to help decide what to type would be circular otherwise).
         List<Match> matchesForTeamIds = matchRepository.findAll(buildMatchSpecification(
-                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, seasonId, null, null));
+                clubId, sectionRestrictionIncludingOwnPick, upcomingOnly, leagueId, seasonId, null, null, null));
 
         List<UUID> leagueIds =
                 matchesForLeagueIds.stream().map(Match::getLeagueId).filter(Objects::nonNull).distinct().toList();
@@ -371,6 +385,9 @@ public class MatchServiceImpl implements MatchService {
                     .forEach(p -> pickedBySideId.merge(p.getMatchSideId(), 1L, Long::sum));
         }
 
+        Map<UUID, PlayingArea> fieldsById = playingAreasById(
+                content.stream().map(MatchDto::playingAreaId).filter(Objects::nonNull).collect(Collectors.toSet()));
+
         Set<SelectionLimitsResolver.LeagueSeason> leagueSeasons = content.stream()
                 .filter(dto -> dto.leagueId() != null)
                 .map(dto -> new SelectionLimitsResolver.LeagueSeason(dto.leagueId(), dto.seasonId()))
@@ -412,7 +429,10 @@ public class MatchServiceImpl implements MatchService {
                     playingXiSize(dto, limitsByLeagueSeason),
                     polls,
                     dto.homeLeagueTeamId(), dto.awayLeagueTeamId(),
-                    dto.scoringUrl(), dto.streamingUrl());
+                    dto.scoringUrl(), dto.streamingUrl(),
+                    dto.playingAreaId(),
+                    fieldName(fieldsById, dto.playingAreaId()),
+                    fieldStatus(fieldsById, dto.playingAreaId()));
         });
     }
 
@@ -447,7 +467,7 @@ public class MatchServiceImpl implements MatchService {
     public MatchDto get(Authentication authentication, UUID clubId, UUID matchId) {
         Match match = findOrThrowForClub(clubId, matchId);
         assertCanAdministerMatch(authentication, clubId, match);
-        return matchMapper.toDto(match);
+        return toDto(match);
     }
 
     @Override
@@ -473,6 +493,7 @@ public class MatchServiceImpl implements MatchService {
                 authentication,
                 clubId,
                 accessService.resolveMatchSectionIds(clubId, request.homeTeamId(), request.awayTeamId()));
+        PlayingArea field = resolveField(request.playingAreaId());
 
         Match match = Match.builder()
                 .clubId(clubId)
@@ -487,13 +508,14 @@ public class MatchServiceImpl implements MatchService {
                 .leagueId(request.leagueId())
                 .seasonId(request.seasonId())
                 .matchDate(request.matchDate())
-                .venue(request.venue())
+                .venue(venueFor(field, request.venue()))
+                .playingAreaId(field == null ? null : field.getId())
                 .scoringUrl(scoringUrl)
                 .streamingUrl(streamingUrl)
                 .active(true)
                 .build();
 
-        return matchMapper.toDto(matchRepository.save(match));
+        return toDto(matchRepository.save(match));
     }
 
     @Override
@@ -520,6 +542,7 @@ public class MatchServiceImpl implements MatchService {
                 request.homeLeagueTeamId(), match.getAwayLeagueTeamId(), "away");
 
         assertCanAdministerMatch(authentication, clubId, match);
+        PlayingArea field = resolveField(request.playingAreaId());
         match.setHomeTeamId(request.homeTeamId());
         match.setHomeTeamName(sideName(homeLeagueTeam, request.homeTeamName()));
         match.setAwayTeamId(request.awayTeamId());
@@ -531,11 +554,12 @@ public class MatchServiceImpl implements MatchService {
         match.setLeagueId(request.leagueId());
         match.setSeasonId(request.seasonId());
         match.setMatchDate(request.matchDate());
-        match.setVenue(request.venue());
+        match.setVenue(venueFor(field, request.venue()));
+        match.setPlayingAreaId(field == null ? null : field.getId());
         match.setScoringUrl(scoringUrl);
         match.setStreamingUrl(streamingUrl);
 
-        return matchMapper.toDto(matchRepository.save(match));
+        return toDto(matchRepository.save(match));
     }
 
     @Override
@@ -547,7 +571,7 @@ public class MatchServiceImpl implements MatchService {
             throw new InvalidStatusTransitionException("Match is already inactive: " + matchId);
         }
         match.setActive(false);
-        return matchMapper.toDto(matchRepository.save(match));
+        return toDto(matchRepository.save(match));
     }
 
     @Override
@@ -559,7 +583,63 @@ public class MatchServiceImpl implements MatchService {
             throw new InvalidStatusTransitionException("Match is already active: " + matchId);
         }
         match.setActive(true);
-        return matchMapper.toDto(matchRepository.save(match));
+        return toDto(matchRepository.save(match));
+    }
+
+    /**
+     * docs/specs/099-fields-directory.md: the field a request names (a merged-away id resolves to its target; a
+     * rejected or non-cricket field is refused), or null when none is named.
+     */
+    private PlayingArea resolveField(UUID playingAreaId) {
+        return playingAreaId == null ? null : playingAreaMatchResolver.resolveForMatch(playingAreaId);
+    }
+
+    /**
+     * With a field, {@code venue} is the field's name (the field wins over any client-sent text); without one the
+     * client's text is stored as sent, so imports and legacy clients keep working.
+     */
+    private String venueFor(PlayingArea field, String requestedVenue) {
+        return field == null ? requestedVenue : field.getName();
+    }
+
+    /** A single match as a DTO including its field's name and verification status. */
+    private MatchDto toDto(Match match) {
+        return toDtos(List.of(match)).get(0);
+    }
+
+    private List<MatchDto> toDtos(List<Match> matches) {
+        Map<UUID, PlayingArea> fieldsById = playingAreasById(matches.stream()
+                .map(Match::getPlayingAreaId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return matches.stream()
+                .map(match -> {
+                    MatchDto dto = matchMapper.toDto(match);
+                    return match.getPlayingAreaId() == null
+                            ? dto
+                            : dto.withPlayingArea(
+                                    fieldName(fieldsById, match.getPlayingAreaId()),
+                                    fieldStatus(fieldsById, match.getPlayingAreaId()));
+                })
+                .toList();
+    }
+
+    private Map<UUID, PlayingArea> playingAreasById(Set<UUID> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return playingAreaRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(PlayingArea::getId, area -> area));
+    }
+
+    private String fieldName(Map<UUID, PlayingArea> fieldsById, UUID playingAreaId) {
+        PlayingArea area = playingAreaId == null ? null : fieldsById.get(playingAreaId);
+        return area == null ? null : area.getName();
+    }
+
+    private PlayingAreaVerificationStatus fieldStatus(Map<UUID, PlayingArea> fieldsById, UUID playingAreaId) {
+        PlayingArea area = playingAreaId == null ? null : fieldsById.get(playingAreaId);
+        return area == null ? null : area.getVerificationStatus();
     }
 
     private Pageable withDefaultSort(Pageable pageable) {
@@ -761,11 +841,8 @@ public class MatchServiceImpl implements MatchService {
         accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
         findSeasonOrThrowForClub(clubId, seasonId);
 
-        return matchRepository
-                .findPreviousForTeamSeasonLeague(clubId, teamId, seasonId, leagueId, Instant.now(), excludeMatchId)
-                .stream()
-                .map(matchMapper::toDto)
-                .toList();
+        return toDtos(matchRepository.findPreviousForTeamSeasonLeague(
+                clubId, teamId, seasonId, leagueId, Instant.now(), excludeMatchId));
     }
 
     /** Same 404 logic/messages as {@code TeamSquadServiceImpl}'s own helper of the same name. */

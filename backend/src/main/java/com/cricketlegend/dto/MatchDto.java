@@ -1,5 +1,6 @@
 package com.cricketlegend.dto;
 
+import com.cricketlegend.domain.PlayingAreaVerificationStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,10 @@ import java.util.UUID;
  *
  * <p>{@code scoringUrl}/{@code streamingUrl} (docs/specs/075-match-view-and-edit.md) are optional
  * external http(s) links, plain stored fields returned on every path.
+ *
+ * <p>{@code playingAreaId}/{@code playingAreaName}/{@code playingAreaVerificationStatus}
+ * (docs/specs/099-fields-directory.md) describe the chosen field; the name equals {@code venue} when linked, and all
+ * three are {@code null} for a match with no field.
  */
 public record MatchDto(
         UUID id,
@@ -52,9 +57,21 @@ public record MatchDto(
         UUID homeLeagueTeamId,
         UUID awayLeagueTeamId,
         String scoringUrl,
-        String streamingUrl) {
+        String streamingUrl,
+        UUID playingAreaId,
+        String playingAreaName,
+        PlayingAreaVerificationStatus playingAreaVerificationStatus) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;
+    }
+
+    /** A copy carrying the chosen field's name and verification status (docs/specs/099-fields-directory.md). */
+    public MatchDto withPlayingArea(String name, PlayingAreaVerificationStatus status) {
+        return new MatchDto(
+                id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
+                leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
+                updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status);
     }
 }

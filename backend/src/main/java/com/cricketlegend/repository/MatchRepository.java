@@ -212,6 +212,43 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
         long getTotal();
     }
 
+    /**
+     * docs/specs/099-fields-directory.md merge: repoints every match of {@code fromPlayingAreaId} to {@code
+     * toPlayingAreaId} and copies the surviving field's name to {@code venue}. A bulk update bypasses the
+     * entity's pre-update hook, so {@code updatedAt} is set here; flushed first and cleared afterwards like {@link
+     * #propagateLeagueTeamToHomeSide}. Returns the number of matches moved.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Match m SET m.playingAreaId = :toId, m.venue = :venue, m.updatedAt = :now "
+            + "WHERE m.playingAreaId = :fromId")
+    int repointPlayingArea(
+            @Param("fromId") UUID fromPlayingAreaId,
+            @Param("toId") UUID toPlayingAreaId,
+            @Param("venue") String venue,
+            @Param("now") Instant now);
+
+    /**
+     * The number of the club's active matches on each of {@code playingAreaIds}, in one round trip (fields with none
+     * are absent). Backs the Matches line of the field card.
+     */
+    @Query("select m.playingAreaId as playingAreaId, count(m) as total from Match m "
+            + "where m.clubId = :clubId and m.active = true and m.playingAreaId in :playingAreaIds "
+            + "group by m.playingAreaId")
+    List<PlayingAreaMatchCount> countActiveByPlayingAreaIds(
+            @Param("clubId") UUID clubId, @Param("playingAreaIds") Collection<UUID> playingAreaIds);
+
+    /** As {@link #countActiveByPlayingAreaIds} but across every club and including deactivated matches (moderation). */
+    @Query("select m.playingAreaId as playingAreaId, count(m) as total from Match m "
+            + "where m.playingAreaId in :playingAreaIds group by m.playingAreaId")
+    List<PlayingAreaMatchCount> countAllByPlayingAreaIds(@Param("playingAreaIds") Collection<UUID> playingAreaIds);
+
+    /** Projection backing {@link #countActiveByPlayingAreaIds}. */
+    interface PlayingAreaMatchCount {
+        UUID getPlayingAreaId();
+
+        long getTotal();
+    }
+
     /** Projection backing {@link #summariseByLeagueForSeason}. */
     interface LeagueMatchSummary {
         UUID getLeagueId();

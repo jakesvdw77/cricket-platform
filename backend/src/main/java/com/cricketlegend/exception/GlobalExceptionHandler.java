@@ -37,6 +37,17 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /**
+     * docs/specs/099-fields-directory.md: an exact duplicate field carries the existing record's id as an {@code
+     * existingPlayingAreaId} property, so the form can offer it. Wins over the generic {@link ConflictException} handler.
+     */
+    @ExceptionHandler(DuplicateFieldException.class)
+    ProblemDetail handleDuplicateField(DuplicateFieldException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("existingPlayingAreaId", ex.getExistingPlayingAreaId());
+        return problem;
+    }
+
     /** 077: the single generic verify failure, with the tries left on the key. */
     @ExceptionHandler(PublicVerificationFailedException.class)
     ProblemDetail handlePublicVerificationFailed(PublicVerificationFailedException ex) {

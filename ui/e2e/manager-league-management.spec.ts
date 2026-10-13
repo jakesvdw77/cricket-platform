@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addFieldInline } from './helpers/addFieldInline';
 
 /**
  * E2E golden path for docs/specs/029-league-management.md, extended to also cover
@@ -345,7 +346,8 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await page.getByLabel('League').click();
     await page.getByRole('option', { name: leagueName, exact: true }).click();
     await page.getByLabel('Match date & time').fill(matchDateTimeLocal);
-    await page.getByLabel('Venue').fill(venue);
+    // docs/specs/099: the Venue input is now the Field picker; this adds a new field inline and selects it.
+    await addFieldInline(page, venue);
 
     // Home side defaults to "One of our teams" already — just pick this club's own team.
     await page.getByLabel('Home team').click();

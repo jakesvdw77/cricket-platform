@@ -1,4 +1,4 @@
-import { Box, IconButton } from '@mui/material'
+import { Box, Chip, IconButton } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -12,7 +12,7 @@ import { BrandIcon } from '../../../components/BrandIcon'
 import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { Countdown, useCountdown } from '../../../components/Countdown'
 import { DetailLine } from '../../../components/DetailLine'
-import { RecordCard } from '../../../components/RecordCard'
+import { badgeSx, RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
 import type { Match } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
@@ -163,7 +163,25 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
           value={formatMatchDateTime(match.matchDate)}
           trailing={played ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
         />
-        {match.venue && <DetailLine icon={<PlaceOutlinedIcon fontSize="small" />} label="Venue" value={match.venue} />}
+        {match.venue && (
+          <DetailLine
+            icon={<PlaceOutlinedIcon fontSize="small" />}
+            label="Venue"
+            value={
+              <>
+                {match.venue}
+                {/* docs/specs/099: a small amber flag until an administrator verifies the field (red if it was rejected);
+                    a match with only the old venue text shows none. */}
+                {match.playingAreaVerificationStatus === 'UNVERIFIED' && (
+                  <Chip size="small" label="Unverified field" data-testid="match-field-flag" sx={{ ...badgeSx('warning'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
+                )}
+                {match.playingAreaVerificationStatus === 'REJECTED' && (
+                  <Chip size="small" label="Field rejected" data-testid="match-field-flag" sx={{ ...badgeSx('closed'), height: 20, fontSize: '0.6875rem', ml: 0.75 }} />
+                )}
+              </>
+            }
+          />
+        )}
         <SelectionBlock rows={selectionRows(match, teamsById)} />
       </RecordCard>
       {menu}
