@@ -230,6 +230,16 @@ export default function MatchFormPage() {
       }
     >
       <MatchForm
+        clubId={clubId}
+        initialField={
+          match?.playingAreaId
+            ? {
+                id: match.playingAreaId,
+                name: match.playingAreaName ?? match.venue ?? '',
+                verificationStatus: match.playingAreaVerificationStatus ?? null,
+              }
+            : null
+        }
         initialValues={
           match
             ? {

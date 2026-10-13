@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { label: 'Club Onboarding', to: '/admin/onboarding' },
   { label: 'Whitelisting', to: '/admin/whitelisting' },
   { label: 'Subscriptions', to: '/admin/billing' },
+  { label: 'Fields', to: '/admin/fields' },
   { label: 'Leagues', to: '/admin/leagues' },
   { label: 'Configuration', to: '/admin/configuration' },
 ]

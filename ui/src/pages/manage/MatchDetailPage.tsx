@@ -410,6 +410,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
       <MatchKeyFigures
         matchDate={match.matchDate}
         venue={match.venue}
+        playingAreaId={match.playingAreaId}
+        playingAreaVerificationStatus={match.playingAreaVerificationStatus}
         leagueName={leagueName}
         seasonLabel={seasonLabel}
         pollsReady={pollsReady}

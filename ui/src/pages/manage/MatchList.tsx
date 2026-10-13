@@ -21,6 +21,7 @@ import type { League } from '../../api/leagueApi'
 import { listSeasons } from '../../api/seasonApi'
 import type { Season } from '../../api/seasonApi'
 import { listSections } from '../../api/sectionApi'
+import { listPlayingAreas, playingAreasKey } from '../../api/playingAreaApi'
 import { MatchCard } from './matches/MatchCard'
 import { MatchTable } from './matches/MatchTable'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
@@ -100,6 +101,8 @@ export default function MatchList({
   // is saved with Section/League/Season below. At most one quick filter is active at a time.
   const [teamId, setTeamId] = useState<string | null>(null)
   const [focus, setFocus] = useState<MatchListFocus | null>(null)
+  // docs/specs/099-fields-directory.md: matches on one field, a backend param, per visit like Team.
+  const [playingAreaId, setPlayingAreaId] = useState<string | null>(null)
   // docs/specs/089 (C): Cards | List, remembered for this page.
   const [view, setView] = useListViewPreference('matchList:view')
   // docs/specs/037-match-improvements.md item 1: the list defaults to upcoming matches only. The
@@ -128,7 +131,7 @@ export default function MatchList({
 
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly])
+  }, [debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, playingAreaId, upcomingOnly])
 
   // docs/specs/042-match-list-filters-and-search.md: Section/League/Season selections (never
   // search) persist per club across visits — the first localStorage call site in this codebase,
@@ -167,7 +170,7 @@ export default function MatchList({
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly],
+    queryKey: ['managed-club', clubId, 'matches', page, debouncedSearch, sort, sectionId, leagueId, seasonId, teamId, focus, playingAreaId, upcomingOnly],
     queryFn: () =>
       listMatches(clubId as string, {
         page,
@@ -178,6 +181,7 @@ export default function MatchList({
         ...(seasonId ? { seasonId } : {}),
         ...(teamId ? { teamId } : {}),
         ...(focus ? { focus } : {}),
+        ...(playingAreaId ? { playingAreaId } : {}),
         upcomingOnly,
       }),
     enabled: Boolean(clubId),
@@ -202,6 +206,14 @@ export default function MatchList({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId as string),
     enabled: Boolean(clubId),
+  })
+
+  // The Field filter offers the club's own fields (its home fields), from the directory's paged search.
+  const { data: ownFields } = useQuery({
+    queryKey: [...playingAreasKey(clubId ?? ''), 'match-filter', 'mine'],
+    queryFn: () => listPlayingAreas(clubId as string, { size: 100, mine: true }),
+    enabled: Boolean(clubId),
+    retry: false,
   })
 
   const { data: seasons } = useQuery({
@@ -235,6 +247,7 @@ export default function MatchList({
     seasonId: seasonId ?? undefined,
     teamId: teamId ?? undefined,
     search: debouncedSearch || undefined,
+    playingAreaId: playingAreaId ?? undefined,
     includePast: !upcomingOnly,
   }
   const summaryQuery = useQuery({
@@ -431,6 +444,20 @@ export default function MatchList({
         onTeamChange={setTeamId}
         searchValue={search}
         onSearchChange={setSearch}
+        extraSelects={
+          ownFields && ownFields.content.length > 0
+            ? [
+                {
+                  key: 'field',
+                  label: 'Field',
+                  allLabel: 'All fields',
+                  options: ownFields.content.map((field) => ({ value: field.id, label: field.name })),
+                  value: playingAreaId ?? '',
+                  onChange: (value: string) => setPlayingAreaId(value || null),
+                },
+              ]
+            : []
+        }
         searchPlaceholder="Search by opponent or team name"
         searchOptions={searchSuggestions}
         extraChips={focus ? [{ key: 'focus', label: FOCUS_LABELS[focus], onRemove: () => setFocus(null) }] : []}
@@ -457,6 +484,7 @@ export default function MatchList({
           setLeagueId(null)
           setSectionId(null)
           setTeamId(null)
+          setPlayingAreaId(null)
           setFocus(null)
         }}
       />

@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import { Link as RouterLink } from 'react-router-dom'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 
 export interface KeyFigureTileProps {
@@ -19,16 +20,22 @@ export interface KeyFigureTileProps {
   ariaLabel?: string
   expanded?: boolean
   disabled?: boolean
+  // docs/specs/099-fields-directory.md: makes the tile a link to this route (the match page's Field tile opens the field
+  // page). It has no dropdown arrow; `onClick` wins if both are passed.
+  to?: string
 }
 
 // docs/specs/088 (Player page) and docs/specs/089 (match page): one non-clickable tile of a key-figure strip - a tinted
 // icon tile, a large value and a caption. The strip itself (a 4-up / 2-up grid) belongs to the page.
-export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false }: KeyFigureTileProps) {
+export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to }: KeyFigureTileProps) {
   const warn = tone === 'warning'
+  const asLink = Boolean(to) && !onClick
+  const interactive = Boolean(onClick) || asLink
   return (
     <Box
-      component={onClick ? 'button' : 'div'}
+      component={onClick ? 'button' : asLink ? RouterLink : 'div'}
       type={onClick ? 'button' : undefined}
+      to={asLink ? to : undefined}
       onClick={onClick}
       disabled={onClick ? disabled : undefined}
       aria-label={onClick ? ariaLabel : undefined}
@@ -37,11 +44,12 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
       data-testid={testId}
       data-tone={warn ? 'warning' : 'neutral'}
       sx={{
-        ...(onClick && {
+        ...(interactive && {
           border: 0,
           font: 'inherit',
           color: 'inherit',
           textAlign: 'left',
+          textDecoration: 'none',
           width: '100%',
           cursor: 'pointer',
           '&:hover:not(:disabled)': { bgcolor: 'action.hover' },

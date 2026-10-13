@@ -66,6 +66,13 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/upcoming-matches',
       },
       {
+        id: 'fields',
+        label: 'Fields',
+        description: 'Find and add the fields you play on',
+        to: '/manage/fixtures/fields',
+        icon: 'nav/field-pitch',
+      },
+      {
         id: 'results',
         label: 'Results',
         description: 'Capture and review match results',

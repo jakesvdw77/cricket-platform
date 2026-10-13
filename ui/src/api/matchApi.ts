@@ -1,5 +1,6 @@
 import api from './axiosConfig'
 import type { Page } from './productApi'
+import type { FieldVerificationStatus } from './playingAreaApi'
 
 // Pre-existing public "upcoming matches" summary (docs/specs/003-club-onboarding.md's own
 // deliberately small rollout slice) — a different, unrelated resource from the club-scoped
@@ -49,6 +50,11 @@ export interface Match {
   // Optional so older fixtures stay valid.
   scoringUrl?: string | null
   streamingUrl?: string | null
+  // docs/specs/099-fields-directory.md: the field the match is played on. `venue` carries the field's name when linked
+  // (kept in step by the server). Optional so older fixtures stay valid; null/absent for a match with only legacy text.
+  playingAreaId?: string | null
+  playingAreaName?: string | null
+  playingAreaVerificationStatus?: FieldVerificationStatus | null
   // docs/specs/069-match-card-redesign.md: list-response only (non-list endpoints return null / []).
   // Picked = players in that side's playing XI; null for a free-text or other-club side.
   homePickedCount: number | null
@@ -91,6 +97,8 @@ export interface MatchPayload {
   seasonId: string
   matchDate: string
   venue?: string | null
+  // docs/specs/099: the chosen field; when set it wins over a differing `venue`. null clears it.
+  playingAreaId?: string | null
   // docs/specs/075-match-view-and-edit.md: optional http(s) links; blank/null clears.
   scoringUrl?: string | null
   streamingUrl?: string | null
@@ -120,6 +128,8 @@ export interface ListMatchesParams {
   // filters (the same definitions the summary counters count). Both are real backend params.
   teamId?: string
   focus?: MatchListFocus
+  // docs/specs/099: matches played on one field (a backend filter).
+  playingAreaId?: string
   // docs/specs/037-match-improvements.md: restricts results to matches dated today or later
   // (server/database local date). Omitted or false preserves today's exact unfiltered behaviour —
   // purely additive. MatchList.tsx sends `true` by default (no UI toggle yet); a future "Show past
@@ -136,7 +146,7 @@ function matchesPath(clubId: string): string {
 // pagination rule.
 export async function listMatches(
   clubId: string,
-  { page, size = 20, sort, search, sectionId, leagueId, seasonId, teamId, focus, upcomingOnly }: ListMatchesParams,
+  { page, size = 20, sort, search, sectionId, leagueId, seasonId, teamId, focus, playingAreaId, upcomingOnly }: ListMatchesParams,
 ): Promise<Page<Match>> {
   const { data } = await api.get<Page<Match>>(matchesPath(clubId), {
     params: {
@@ -149,6 +159,7 @@ export async function listMatches(
       ...(seasonId ? { seasonId } : {}),
       ...(teamId ? { teamId } : {}),
       ...(focus ? { focus } : {}),
+      ...(playingAreaId ? { playingAreaId } : {}),
       ...(upcomingOnly ? { upcomingOnly } : {}),
     },
   })
@@ -242,6 +253,8 @@ export interface MatchesSummaryFilters {
   seasonId?: string
   teamId?: string
   search?: string
+  // docs/specs/099: sent so the counters follow the Field filter when the server honours it.
+  playingAreaId?: string
   // The inverse of the list's upcomingOnly: past matches are counted in matchesShown.
   includePast?: boolean
 }
@@ -259,6 +272,7 @@ export async function getMatchesSummary(clubId: string, filters: MatchesSummaryF
   if (filters.seasonId) params.seasonId = filters.seasonId
   if (filters.teamId) params.teamId = filters.teamId
   if (filters.search) params.search = filters.search
+  if (filters.playingAreaId) params.playingAreaId = filters.playingAreaId
   if (filters.includePast) params.includePast = true
   const { data } = await api.get<MatchesSummary>(`${matchesPath(clubId)}/summary`, { params })
   return data

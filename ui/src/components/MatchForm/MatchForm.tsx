@@ -4,6 +4,8 @@ import { Alert, Box, MenuItem, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
+import { FieldPicker } from '../FieldPicker'
+import type { FieldPickerValue } from '../FieldPicker'
 import { Input } from '../Input'
 import { MatchSideFields } from './MatchSideFields'
 import type { SideMode, SideState } from './MatchSideFields'
@@ -20,7 +22,12 @@ import type { LeagueTeam } from '../../api/leagueTeamApi'
 export const MATCH_FORM_ID = 'match-form'
 
 export interface MatchFormProps {
+  // docs/specs/099-fields-directory.md: the club whose fields the Field box searches (home fields first).
+  clubId: string
   initialValues?: Partial<MatchPayload>
+  // The field the match already has (its id, name and verification state), shown in the Field box. A match with only the
+  // old free-text venue has none, and that text is shown beneath the box until a field is chosen.
+  initialField?: FieldPickerValue | null
   // The current club's own teams only — cross-club Team references stay backend-supported (any
   // club's Team id is a valid homeTeamId/awayTeamId) but this pass's UI only ever lets an admin
   // pick from their own club's teams (docs/specs/029-league-management.md's Rollout Notes).
@@ -50,7 +57,7 @@ interface FormState {
   leagueId: string
   seasonId: string
   matchDate: string
-  venue: string
+  field: FieldPickerValue | null
   scoringUrl: string
   streamingUrl: string
 }
@@ -65,6 +72,7 @@ type FormErrors = Partial<
     | 'awayLeagueTeamId'
     | 'seasonId'
     | 'matchDate'
+    | 'field'
     | 'scoringUrl'
     | 'streamingUrl',
     string
@@ -90,7 +98,7 @@ function toSideState(
   }
 }
 
-function toFormState(initialValues?: Partial<MatchPayload>): FormState {
+function toFormState(initialValues?: Partial<MatchPayload>, initialField?: FieldPickerValue | null): FormState {
   return {
     home: toSideState(
       initialValues?.homeTeamId,
@@ -107,7 +115,7 @@ function toFormState(initialValues?: Partial<MatchPayload>): FormState {
     leagueId: initialValues?.leagueId ?? '',
     seasonId: initialValues?.seasonId ?? '',
     matchDate: initialValues?.matchDate ? toDatetimeLocal(initialValues.matchDate) : '',
-    venue: initialValues?.venue ?? '',
+    field: initialField ?? null,
     scoringUrl: initialValues?.scoringUrl ?? '',
     streamingUrl: initialValues?.streamingUrl ?? '',
   }
@@ -160,6 +168,10 @@ function validate(values: FormState): FormErrors {
   if (!values.matchDate) {
     errors.matchDate = 'Match date is required'
   }
+  // docs/specs/099: a rejected field already on the match blocks Save until another field is chosen or the box is cleared.
+  if (values.field?.verificationStatus === 'REJECTED') {
+    errors.field = 'This field was rejected. Choose another field or clear this one.'
+  }
   const scoringError = validateMatchLink(values.scoringUrl)
   if (scoringError) {
     errors.scoringUrl = scoringError
@@ -188,7 +200,9 @@ function sidePayload(side: SideState) {
 // see MatchSideFields. Season is required (squad membership is season-scoped); League stays
 // optional and independent.
 export function MatchForm({
+  clubId,
   initialValues,
+  initialField,
   teams,
   seasons,
   leagues,
@@ -199,9 +213,12 @@ export function MatchForm({
   onScopeChange,
   onSubmit,
 }: MatchFormProps) {
-  const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
+  const [values, setValues] = useState<FormState>(() => toFormState(initialValues, initialField))
   const [errors, setErrors] = useState<FormErrors>({})
   const [leagueTeamsNotice, setLeagueTeamsNotice] = useState(false)
+  // Text from before fields existed (a match with a venue but no field): kept as it is, and shown read-only under the
+  // Field box until a field is chosen. Clearing a field that was chosen clears the venue with it.
+  const legacyVenue = initialField ? '' : (initialValues?.venue ?? '').trim()
 
   const hasScope = Boolean(values.leagueId && values.seasonId)
 
@@ -255,7 +272,7 @@ export function MatchForm({
   )
   const narrowedByAffiliation = affiliatedTeamIds !== null
 
-  const handleTextChange = (field: 'venue' | 'scoringUrl' | 'streamingUrl') => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleTextChange = (field: 'scoringUrl' | 'streamingUrl') => (event: ChangeEvent<HTMLInputElement>) => {
     setValues((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
@@ -282,7 +299,9 @@ export function MatchForm({
       leagueId: values.leagueId || null,
       seasonId: values.seasonId,
       matchDate: fromDatetimeLocal(values.matchDate),
-      venue: values.venue.trim() ? values.venue.trim() : null,
+      // Choosing a field sends its id and the server writes the venue from its name; with no field the venue is the old text.
+      playingAreaId: values.field ? values.field.id : null,
+      venue: values.field ? values.field.name : legacyVenue || null,
       scoringUrl: values.scoringUrl.trim() ? values.scoringUrl.trim() : null,
       streamingUrl: values.streamingUrl.trim() ? values.streamingUrl.trim() : null,
     }
@@ -336,7 +355,20 @@ export function MatchForm({
             InputLabelProps={{ shrink: true }}
           />
 
-          <Input label="Venue (optional)" value={values.venue} onChange={handleTextChange('venue')} />
+          <Box>
+            <FieldPicker
+              clubId={clubId}
+              value={values.field}
+              onChange={(field) => setValues((prev) => ({ ...prev, field }))}
+              error={Boolean(errors.field)}
+              helperText={errors.field}
+            />
+            {legacyVenue && !values.field && (
+              <Typography variant="caption" color="text.secondary" component="p" data-testid="legacy-venue" sx={{ mt: 0.5, mb: 0, ml: 1.75 }}>
+                Current venue: {legacyVenue}
+              </Typography>
+            )}
+          </Box>
 
           <Input
             label="Scoring link (optional)"
@@ -358,6 +390,17 @@ export function MatchForm({
             InputLabelProps={{ shrink: true }}
           />
         </Box>
+
+        {values.field?.verificationStatus === 'UNVERIFIED' && (
+          <Alert severity="warning" data-testid="field-unverified-alert">
+            <b>This field has not been verified yet.</b> The address may be wrong.
+          </Alert>
+        )}
+        {values.field?.verificationStatus === 'REJECTED' && (
+          <Alert severity="error" data-testid="field-rejected-alert">
+            <b>This field was rejected by an administrator.</b> Choose another field, or clear this one, before saving.
+          </Alert>
+        )}
 
         {leagueTeamsNotice && (
           <Alert severity="info" onClose={() => setLeagueTeamsNotice(false)}>
