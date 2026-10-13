@@ -25,6 +25,8 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 
   **Prefer a specific, named exception over a generic one.** A distinct, recurring failure mode gets its own small subclass of the right base — e.g. `InvalidStatusTransitionException extends ConflictException`, `DuplicateSlugException extends ConflictException` — living in `com.cricketlegend.exception` alongside the three base classes, instead of every call site throwing the same base exception with just a different string message. This keeps call sites self-documenting and makes a specific failure catchable by type where that matters. Never reach for a raw `RuntimeException`/`IllegalArgumentException`/`IllegalStateException` for a business rule violation — it skips the exception→status mapping entirely and `GlobalExceptionHandler` won't handle it meaningfully.
 
+  **An exception may carry structured detail for the client**, as a `ProblemDetail` property set by its own `GlobalExceptionHandler` method (a more specific type wins over `ConflictException`): `SelectionRejectedException` carries `rejections` and `DuplicateFieldException` (spec 099) carries `existingPlayingAreaId`, so the screen can offer the existing record instead of only showing a message.
+
 - Every `@Service` method carrying a business rule ships with a unit test in the same PR; every custom repository query ships with a Testcontainers-backed integration test in the same PR (base class: `com.cricketlegend.AbstractIntegrationTest`).
 - **Shared logic lives in one place.** Business logic needed by two or more services is extracted into a shared service/utility before the second use is written — never copy-pasted. Same for validation rules, mapping helpers, and query specifications (reusable `Specification<T>` classes over hand-rolled duplicate queries).
 - **Pagination is backend-driven, never client-side.** Any list endpoint whose result set can grow unbounded returns a Spring Data `Page<T>` (`Pageable` request param — `page`/`size`/`sort`), fetched with a real `LIMIT`/`OFFSET` (or keyset) query — never the full table handed to the frontend to slice, filter, or paginate in memory. The whole point is keeping that memory and scalability cost on the server, where it's one tunable query, not duplicated per browser tab. See `docs/standards/frontend.md`'s matching rule for how the client consumes this.
@@ -73,6 +75,8 @@ Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(
 ```
 
 Don't reintroduce flat role checks for anything club/section/team-scoped — that's the exact pattern this project moved away from.
+
+A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `SecurityConfig`) record who acted as the Keycloak subject, `authentication.getName()`, not a `Person` id, because a `platform_admin` may have no `Person` row (`MeAccessDto`): see `verified_by_subject` on a field (spec 099).
 
 ## Enforcement
 
