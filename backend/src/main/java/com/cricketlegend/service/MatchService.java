@@ -44,6 +44,7 @@ public interface MatchService {
      * <p>Per docs/specs/087-matches-polls-alignment.md: {@code teamId} (the match has that team as its home or away
      * side) and {@code focus} (one of the Matches quick filters, {@code null} for none) narrow the list further;
      * {@code focus} brings its own active/upcoming bounds and is the same definition {@link #summary} counts.
+     * Per docs/specs/099-fields-directory.md: {@code playingAreaId} keeps only the matches played on that field.
      */
     Page<MatchDto> list(
             Authentication authentication,
@@ -54,8 +55,26 @@ public interface MatchService {
             UUID leagueId,
             UUID seasonId,
             UUID teamId,
+            UUID playingAreaId,
             MatchListFocus focus,
             Pageable pageable);
+
+    /** As above without the docs/specs/099 {@code playingAreaId} filter. */
+    default Page<MatchDto> list(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            boolean upcomingOnly,
+            String search,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            MatchListFocus focus,
+            Pageable pageable) {
+        return list(
+                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId, null, focus,
+                pageable);
+    }
 
     /**
      * Per docs/specs/042-match-list-filters-and-search.md: the distinct {@code Section}/{@code
@@ -91,8 +110,22 @@ public interface MatchService {
             UUID leagueId,
             UUID seasonId,
             UUID teamId,
+            UUID playingAreaId,
             String search,
             boolean includePast);
+
+    /** As above without the docs/specs/099 {@code playingAreaId} filter. */
+    default MatchesSummaryDto summary(
+            Authentication authentication,
+            UUID clubId,
+            UUID sectionId,
+            UUID leagueId,
+            UUID seasonId,
+            UUID teamId,
+            String search,
+            boolean includePast) {
+        return summary(authentication, clubId, sectionId, leagueId, seasonId, teamId, null, search, includePast);
+    }
 
     MatchDto get(Authentication authentication, UUID clubId, UUID matchId);
 

@@ -87,6 +87,10 @@ public class Match {
 
     private String venue;
 
+    /** docs/specs/099-fields-directory.md: the chosen field; {@link #venue} is kept equal to its name. */
+    @Column(name = "playing_area_id")
+    private UUID playingAreaId;
+
     @Column(name = "scoring_url")
     private String scoringUrl;
 

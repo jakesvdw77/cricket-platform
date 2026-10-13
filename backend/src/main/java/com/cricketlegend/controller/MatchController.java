@@ -49,10 +49,11 @@ public class MatchController {
             @RequestParam(required = false) UUID leagueId,
             @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID playingAreaId, // docs/specs/099: matches on this field
             @RequestParam(required = false) String focus, // docs/specs/087: this-week | not-announced | no-poll
             Pageable pageable) {
         return ResponseEntity.ok(matchService.list(
-                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId,
+                authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId, playingAreaId,
                 MatchListFocus.parse(focus), pageable));
     }
 
@@ -69,10 +70,11 @@ public class MatchController {
             @RequestParam(required = false) UUID seasonId,
             @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID playingAreaId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "false") boolean includePast) {
         return ResponseEntity.ok(matchService.summary(
-                authentication, clubId, sectionId, leagueId, seasonId, teamId, search, includePast));
+                authentication, clubId, sectionId, leagueId, seasonId, teamId, playingAreaId, search, includePast));
     }
 
     /**

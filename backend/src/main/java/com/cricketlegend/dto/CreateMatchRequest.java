@@ -18,6 +18,10 @@ import java.util.UUID;
  * pick a registered league team for that side: they exclude the same side's {@code *TeamId}, and
  * the side's {@code *TeamName}/{@code *TeamLogoUrl} are ignored and overwritten from the league
  * team. The match must have a league, and the league team must belong to its league and season.
+ *
+ * <p>{@code playingAreaId} (optional, docs/specs/099-fields-directory.md) picks a field from the directory: the match's
+ * {@code venue} is then written from the field's name and wins over any {@code venue} sent alongside. Without it,
+ * {@code venue} is stored as sent and any previous field link is cleared.
  */
 public record CreateMatchRequest(
         UUID homeTeamId,
@@ -33,5 +37,6 @@ public record CreateMatchRequest(
         UUID homeLeagueTeamId,
         UUID awayLeagueTeamId,
         String scoringUrl,
-        String streamingUrl) {
+        String streamingUrl,
+        UUID playingAreaId) {
 }
