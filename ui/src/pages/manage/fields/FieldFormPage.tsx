@@ -4,6 +4,7 @@ import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/materia
 import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
+import { CompactSwitch } from '../../../components/CompactSwitch'
 import { EmptyState } from '../../../components/EmptyState'
 import { FieldFormFields } from '../../../components/FieldFormFields'
 import { RecordFormScreen } from '../../../components/RecordFormScreen'
@@ -24,11 +25,13 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
   const isEdit = field !== null
   const form = useFieldForm(field, clubId)
   const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null)
+  // Never automatic: a club records away fields here too, so it says whether this one is its own.
+  const [ownField, setOwnField] = useState(false)
   const edit = field ? fieldEditState(field, clubId) : { editable: true, reason: null }
   const backTo = field ? `${LIST_PATH}/${field.id}` : LIST_PATH
 
   const save = useMutation({
-    mutationFn: (payload: PlayingAreaPayload) => (field ? updatePlayingArea(clubId, field.id, payload) : createPlayingArea(clubId, payload)),
+    mutationFn: (payload: PlayingAreaPayload) => (field ? updatePlayingArea(clubId, field.id, payload) : createPlayingArea(clubId, payload, ownField)),
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: playingAreasKey(clubId) })
       navigate(`${LIST_PATH}/${saved.id}`)
@@ -97,6 +100,15 @@ function FieldFormScreen({ clubId, field }: { clubId: string; field: PlayingArea
           onUseExisting={(existing) => useExisting.mutate(existing)}
           countryHint={isEdit ? undefined : 'Chosen from your browser. Change it if it is wrong.'}
         />
+        {!isEdit && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <CompactSwitch
+              checked={ownField}
+              onChange={setOwnField}
+              label="This is one of our fields (we play home games here or manage it)"
+            />
+          </Box>
+        )}
       </Box>
     </RecordFormScreen>
   )

@@ -67,7 +67,7 @@ public interface PlayingAreaService {
 
     /**
      * Captures a field: forced to a cricket field, created unverified by {@code clubId}. Linked home to the club only when
-     * {@code linkHome} (the Fields page); a field captured for an away match is not one of the club's own fields.
+     * {@code linkHome}, the manager's explicit choice: a club records away fields too, so nothing is automatic.
      */
     PlayingAreaDto create(UUID clubId, PlayingAreaRequest request, boolean linkHome);
 

@@ -2770,7 +2770,7 @@ paths:
         description: "False also leaves out suspended (inactive) and rejected players; unverified players always stay (docs/specs/088). The default keeps every caller unchanged."
         schema:
           type: boolean
-          default: true
+          default: false
       - name: focus
         in: query
         required: false
@@ -5444,7 +5444,7 @@ paths:
       tags:
       - playing-area-controller
       operationId: createPlayingArea
-      description: "docs/specs/099: captures a field. area_type is forced to CRICKET_FIELD; created UNVERIFIED by this club and, unless linkHome=false, linked home to it (the match form's add-field dialog sends linkHome=false: an away field is not one of the club's own). 409 DuplicateField (ProblemDetail with existingPlayingAreaId) on an exact name+city+country duplicate."
+      description: "docs/specs/099: captures a field. area_type is forced to CRICKET_FIELD; created UNVERIFIED by this club and, only when linkHome=true, linked home to it (never automatic: a club also records away fields). 409 DuplicateField (ProblemDetail with existingPlayingAreaId) on an exact name+city+country duplicate."
       parameters:
       - name: clubId
         in: path

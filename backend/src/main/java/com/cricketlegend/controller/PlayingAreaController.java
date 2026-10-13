@@ -108,7 +108,7 @@ public class PlayingAreaController {
     @ApiResponse(responseCode = "201", description = "Field captured")
     public ResponseEntity<PlayingAreaDto> create(
             @PathVariable UUID clubId,
-            @RequestParam(defaultValue = "true") boolean linkHome,
+            @RequestParam(defaultValue = "false") boolean linkHome,
             @Valid @RequestBody PlayingAreaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(playingAreaService.create(clubId, request, linkHome));
     }
