@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Autocomplete, Box, Chip, CircularProgress, ListSubheader, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { useQuery } from '@tanstack/react-query'
@@ -59,6 +59,9 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
   // and keep the popper open (the same trap ClubPicker documents). Cleared the moment the manager types again.
   const [suppressOpen, setSuppressOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  // Focus returns to the input when the dialog closes (and right after the "Add a new field..." click); it must not
+  // reopen the dropdown. Cleared as soon as the manager opens or types in the box again.
+  const ignoreFocusRef = useRef(false)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(query.trim()), FIELD_SEARCH_DEBOUNCE_MS)
@@ -75,13 +78,14 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
   const found = (page?.content ?? []).slice().sort((a, b) => Number(Boolean(b.linkedHome)) - Number(Boolean(a.linkedHome)))
   // A failed search must never be mistaken for "nothing matches, so add one" (ClubPicker's rule): no add row on error.
   const options: PickerOption[] = isError ? found : [...found, ADD_OPTION]
-  const autocompleteOpen = hasFocused && !suppressOpen && !disabled
+  const autocompleteOpen = hasFocused && !suppressOpen && !disabled && !dialogOpen
 
   return (
     <>
       <Autocomplete<PickerOption>
         open={autocompleteOpen}
         onOpen={() => {
+          ignoreFocusRef.current = false
           setHasFocused(true)
           setSuppressOpen(false)
         }}
@@ -93,6 +97,7 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
         value={value as PickerOption | null}
         onFocus={() => {
           setHasFocused(true)
+          if (ignoreFocusRef.current) return
           setSuppressOpen(false)
         }}
         onChange={(_event, next) => {
@@ -102,6 +107,7 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
           }
           setSuppressOpen(true)
           if (isAddOption(next)) {
+            ignoreFocusRef.current = true
             setDialogOpen(true)
             return
           }
@@ -110,6 +116,7 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
         inputValue={query}
         onInputChange={(_event, next, reason) => {
           if (reason === 'input') {
+            ignoreFocusRef.current = false
             setSuppressOpen(false)
             setQuery(next)
             return
@@ -192,7 +199,11 @@ export function FieldPicker({ value, onChange, clubId, label = 'Field (optional)
 
       <FieldFormDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          ignoreFocusRef.current = true
+          setSuppressOpen(true)
+          setDialogOpen(false)
+        }}
         clubId={clubId}
         initialName={query.trim()}
         onCreated={(field) => {
