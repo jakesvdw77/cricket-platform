@@ -23,7 +23,8 @@ public interface PlayingAreaService {
      * Searches the whole directory (not merged away, not rejected). {@code areaType} null means {@code
      * CRICKET_FIELD}. {@code verification} may be {@code UNVERIFIED} or {@code VERIFIED} only. Home fields of {@code
      * clubId} first, then by name (the {@code name} sort direction of {@code pageable} is honoured; any other sort is
-     * ignored).
+     * ignored). {@code usedByClub} restricts to fields {@code clubId} has linked home or
+     * that any of its matches use.
      */
     Page<PlayingAreaDto> list(
             UUID clubId,
@@ -35,6 +36,7 @@ public interface PlayingAreaService {
             String city,
             PlayingAreaVerificationStatus verification,
             boolean mine,
+            boolean usedByClub,
             Pageable pageable);
 
     /** Counters for the list's filters other than {@code mine} and {@code verification}. */
@@ -59,7 +61,10 @@ public interface PlayingAreaService {
             PlayingAreaVerificationStatus verification,
             boolean mine);
 
-    /** Up to five existing fields in {@code country} whose normalised name is near {@code name}. */
+    /**
+     * Up to five existing fields in {@code country} whose normalised name is near {@code name}; those in {@code city}
+     * (case-insensitive) come first.
+     */
     List<PlayingAreaDto> similar(UUID clubId, String name, String city, String country);
 
     /** One field; a merged-away id resolves to the surviving field. */

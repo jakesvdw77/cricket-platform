@@ -29,6 +29,7 @@ import com.cricketlegend.repository.PlayingAreaRepository;
 import com.cricketlegend.service.impl.PlayingAreaServiceImpl;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.PlayingAreaWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -303,7 +304,7 @@ class PlayingAreaServiceImplTest {
     @Test
     void listRefusesARejectedVerificationFilter() {
         assertThatThrownBy(() -> service.list(
-                        CLUB, null, null, null, null, null, null, PlayingAreaVerificationStatus.REJECTED, false,
+                        CLUB, null, null, null, null, null, null, PlayingAreaVerificationStatus.REJECTED, false, false,
                         PageRequest.of(0, 10)))
                 .isInstanceOf(ValidationException.class);
     }
@@ -313,5 +314,23 @@ class PlayingAreaServiceImplTest {
         assertThat(service.similar(CLUB, "Oval", "Pretoria", null)).isEmpty();
         assertThat(service.similar(CLUB, "  !! ", "Pretoria", "ZA")).isEmpty();
         verify(playingAreaRepository, never()).findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void filterOptionsComeFromDistinctProjectionsDedupedIgnoringCaseAndSortedWithoutLoadingEntities() {
+        when(playingAreaRepository.findDistinctAddressValues(any(org.springframework.data.jpa.domain.Specification.class), org.mockito.ArgumentMatchers.eq("country")))
+                .thenReturn(new ArrayList<>(List.of("za", "GB", "ZA")));
+        when(playingAreaRepository.findDistinctAddressValues(any(org.springframework.data.jpa.domain.Specification.class), org.mockito.ArgumentMatchers.eq("provinceState")))
+                .thenReturn(new ArrayList<>(List.of("western cape", "Gauteng", "Western Cape")));
+        when(playingAreaRepository.findDistinctAddressValues(any(org.springframework.data.jpa.domain.Specification.class), org.mockito.ArgumentMatchers.eq("city")))
+                .thenReturn(new ArrayList<>(List.of("pretoria", "Cape Town")));
+
+        var options = service.filterOptions(CLUB, null, null, null, null, null, null, null, false);
+
+        assertThat(options.countries()).containsExactly("GB", "ZA");
+        assertThat(options.provinces()).containsExactly("Gauteng", "Western Cape");
+        assertThat(options.cities()).containsExactly("Cape Town", "pretoria");
+        verify(playingAreaRepository, never()).findAll(any(org.springframework.data.jpa.domain.Specification.class));
     }
 }

@@ -51,10 +51,11 @@ public class PlayingAreaController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) PlayingAreaVerificationStatus verification,
             @RequestParam(required = false, defaultValue = "false") boolean mine,
+            @RequestParam(required = false, defaultValue = "false") boolean usedByClub,
             @RequestParam(required = false, defaultValue = "CRICKET_FIELD") PlayingAreaType areaType,
             Pageable pageable) {
         return ResponseEntity.ok(playingAreaService.list(
-                clubId, areaType, q, categories, country, province, city, verification, mine, pageable));
+                clubId, areaType, q, categories, country, province, city, verification, mine, usedByClub, pageable));
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")

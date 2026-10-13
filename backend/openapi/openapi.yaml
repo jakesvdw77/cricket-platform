@@ -5419,6 +5419,13 @@ paths:
         schema:
           type: boolean
           default: false
+      - name: usedByClub
+        in: query
+        required: false
+        description: "Fields this club has linked or used on a match; backs the Matches Field filter"
+        schema:
+          type: boolean
+          default: false
       - name: areaType
         in: query
         required: false

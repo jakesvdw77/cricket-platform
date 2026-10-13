@@ -1,15 +1,18 @@
 package com.cricketlegend.repository;
 
 import com.cricketlegend.domain.ClubPlayingArea;
+import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.PlayingArea;
 import com.cricketlegend.domain.PlayingAreaCategory;
 import com.cricketlegend.domain.PlayingAreaType;
 import com.cricketlegend.domain.PlayingAreaVerificationStatus;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
@@ -74,6 +77,22 @@ public final class PlayingAreaSpecifications {
         return (root, query, cb) -> cb.exists(homeLinks(query.subquery(UUID.class), root, cb, clubId));
     }
 
+    /**
+     * The club has linked the area as a home field, or one of the club's matches uses it (backs the Matches Field
+     * filter). Visibility (rejected / merged) is the caller's job, as with every other spec here.
+     */
+    public static Specification<PlayingArea> usedByClub(UUID clubId) {
+        return (root, query, cb) -> {
+            Subquery<UUID> matches = query.subquery(UUID.class);
+            Root<Match> match = matches.from(Match.class);
+            matches.select(match.get("id"))
+                    .where(
+                            cb.equal(match.get("playingAreaId"), root.get("id")),
+                            cb.equal(match.get("clubId"), clubId));
+            return cb.or(cb.exists(homeLinks(query.subquery(UUID.class), root, cb, clubId)), cb.exists(matches));
+        };
+    }
+
     private static Subquery<UUID> homeLinks(
             Subquery<UUID> sub, Root<PlayingArea> root, CriteriaBuilder cb, UUID clubId) {
         Root<ClubPlayingArea> link = sub.from(ClubPlayingArea.class);
@@ -122,16 +141,34 @@ public final class PlayingAreaSpecifications {
      * for the count query), so callers must pass an unsorted {@code Pageable}.
      */
     public static Specification<PlayingArea> homeFirstThenName(UUID clubId, boolean nameDescending) {
+        return ordered(clubId, null, nameDescending);
+    }
+
+    /**
+     * The "did you mean" order: areas in {@code city} (case-insensitive) first, then the {@link #homeFirstThenName}
+     * order. A blank {@code city} adds no city rank. Same contract as {@code homeFirstThenName}: callers pass an
+     * unsorted {@code Pageable}.
+     */
+    public static Specification<PlayingArea> sameCityFirstThenHomeFirstThenName(UUID clubId, String city) {
+        return ordered(clubId, city, false);
+    }
+
+    private static Specification<PlayingArea> ordered(UUID clubId, String city, boolean nameDescending) {
         return (root, query, cb) -> {
             if (!Long.class.equals(query.getResultType())) {
-                Expression<Integer> homeRank = cb.<Integer>selectCase()
+                List<Order> order = new ArrayList<>();
+                if (city != null && !city.isBlank()) {
+                    order.add(cb.asc(cb.<Integer>selectCase()
+                            .when(cb.equal(cb.lower(root.get("address").get("city")), city.trim().toLowerCase()), 0)
+                            .otherwise(1)));
+                }
+                order.add(cb.asc(cb.<Integer>selectCase()
                         .when(cb.exists(homeLinks(query.subquery(UUID.class), root, cb, clubId)), 0)
-                        .otherwise(1);
+                        .otherwise(1)));
                 Expression<String> name = cb.lower(root.get("name"));
-                query.orderBy(
-                        cb.asc(homeRank),
-                        nameDescending ? cb.desc(name) : cb.asc(name),
-                        cb.asc(root.get("id")));
+                order.add(nameDescending ? cb.desc(name) : cb.asc(name));
+                order.add(cb.asc(root.get("id")));
+                query.orderBy(order);
             }
             return null;
         };

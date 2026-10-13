@@ -163,6 +163,54 @@ class PlayingAreaControllerIntegrationTest extends AbstractPlayingAreaIntegratio
     // ---- summary, filter options, similar -----------------------------------------------------------------------
 
     @Test
+    void filterOptionsAreDistinctCaseInsensitiveSortedAndExcludeRejectedAndMergedRows() throws Exception {
+        Club club = club("Riverside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        area("One", "Pretoria", "ZA", "gauteng", PlayingAreaCategory.CLUB, VERIFIED, null);
+        area("Two", "pretoria", "ZA", "Gauteng", PlayingAreaCategory.CLUB, VERIFIED, null);
+        area("Three", "Cape Town", "ZA", "Western Cape", PlayingAreaCategory.CLUB, UNVERIFIED, null);
+        area("Four", "Durban", "ZA", "KwaZulu-Natal", PlayingAreaCategory.CLUB, REJECTED, null);
+        PlayingArea merged = area("Five", "Soweto", "ZA", "Gauteng", PlayingAreaCategory.CLUB, VERIFIED, null);
+        PlayingArea survivor = area("Six", "Cape Town", "ZA", "Western Cape", PlayingAreaCategory.CLUB, VERIFIED, null);
+        jdbc.update("update playing_area set merged_into_id = ? where id = ?", survivor.getId(), merged.getId());
+
+        mockMvc.perform(get(BASE + "/filter-options", club.getId()).param("province", "GAUTENG").with(admin))
+                .andExpect(jsonPath("$.countries", contains("ZA")))
+                .andExpect(jsonPath("$.provinces", hasSize(2)))
+                .andExpect(jsonPath("$.provinces[1]").value("Western Cape"))
+                .andExpect(jsonPath("$.cities", hasSize(1)))
+                .andExpect(jsonPath("$.cities[0]").value(org.hamcrest.Matchers.equalToIgnoringCase("pretoria")));
+    }
+
+    @Test
+    void usedByClubReturnsFieldsLinkedHomeOrUsedOnAnyOfTheClubsMatchesOnly() throws Exception {
+        Club club = club("Riverside CC");
+        Club other = club("Lakeside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        PlayingArea linked = area("Linked", "Pretoria", "ZA", VERIFIED);
+        PlayingArea played = area("Played", "Pretoria", "ZA", VERIFIED);
+        PlayingArea both = area("Both", "Pretoria", "ZA", VERIFIED);
+        PlayingArea rejectedUsed = area("Rejected used", "Pretoria", "ZA", REJECTED);
+        PlayingArea otherClubsOnly = area("Other club only", "Pretoria", "ZA", VERIFIED);
+        area("Nobody", "Pretoria", "ZA", VERIFIED);
+        home(club.getId(), linked.getId());
+        home(club.getId(), both.getId());
+        home(other.getId(), otherClubsOnly.getId());
+        match(club.getId(), season(club.getId()).getId(), played.getId(), "Played");
+        match(club.getId(), season(club.getId()).getId(), both.getId(), "Both");
+        match(club.getId(), season(club.getId()).getId(), rejectedUsed.getId(), "Rejected used");
+        match(other.getId(), season(other.getId()).getId(), otherClubsOnly.getId(), "Other");
+
+        mockMvc.perform(get(BASE, club.getId()).param("usedByClub", "true").with(admin))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.content[*].name", contains("Both", "Linked", "Played")));
+        mockMvc.perform(get(BASE, club.getId()).with(admin))
+                .andExpect(jsonPath("$.totalElements").value(5));
+        mockMvc.perform(get(BASE + "/summary", club.getId()).param("usedByClub", "true").with(admin))
+                .andExpect(jsonPath("$.inDirectory").value(5));
+    }
+
+    @Test
     void summaryCountsOurFieldsDirectoryAndUnverified() throws Exception {
         Club club = club("Riverside CC");
         JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
@@ -206,6 +254,25 @@ class PlayingAreaControllerIntegrationTest extends AbstractPlayingAreaIntegratio
                 .andExpect(jsonPath("$[*].name", contains("Centurion Oval Ground")));
         mockMvc.perform(get(BASE + "/similar", club.getId()).param("name", "Centurion").with(admin))
                 .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void similarPutsSameCityMatchesFirstIgnoringCaseThenKeepsTheExistingOrderAndCapsAtFive() throws Exception {
+        Club club = club("Riverside CC");
+        JwtRequestPostProcessor admin = clubAdmin("sub-1", club.getId());
+        area("Oval A", "Cape Town", "ZA", VERIFIED);
+        area("Oval B", "Cape Town", "ZA", VERIFIED);
+        area("Oval C", "pretoria", "ZA", VERIFIED);
+        area("Oval Z", "PRETORIA", "ZA", VERIFIED);
+        area("Oval D", "Durban", "ZA", VERIFIED);
+        area("Oval E", "Durban", "ZA", VERIFIED);
+        area("Oval F", "Durban", "ZA", VERIFIED);
+
+        mockMvc.perform(get(BASE + "/similar", club.getId())
+                        .param("name", "Oval").param("city", "Pretoria").param("country", "ZA").with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(5)))
+                .andExpect(jsonPath("$[*].name", contains("Oval C", "Oval Z", "Oval A", "Oval B", "Oval D")));
     }
 
     // ---- create and edit ----------------------------------------------------------------------------------------

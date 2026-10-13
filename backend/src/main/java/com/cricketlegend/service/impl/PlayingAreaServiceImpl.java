@@ -88,9 +88,10 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
             String city,
             PlayingAreaVerificationStatus verification,
             boolean mine,
+            boolean usedByClub,
             Pageable pageable) {
         Specification<PlayingArea> spec =
-                filtered(clubId, areaType, q, categories, country, province, city, verification, mine);
+                filtered(clubId, areaType, q, categories, country, province, city, verification, mine, usedByClub);
         boolean nameDescending = pageable.getSort().getOrderFor("name") != null
                 && pageable.getSort().getOrderFor("name").isDescending();
         // The ordering (home fields first, then name) lives in the specification; the page itself is unsorted.
@@ -133,16 +134,23 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
             PlayingAreaVerificationStatus verification,
             boolean mine) {
         // Each dimension is computed ignoring its own pick, so a chosen value never narrows its own dropdown to itself.
-        List<PlayingArea> forCountries =
-                playingAreaRepository.findAll(filtered(clubId, areaType, q, categories, null, province, city, verification, mine));
-        List<PlayingArea> forProvinces =
-                playingAreaRepository.findAll(filtered(clubId, areaType, q, categories, country, null, city, verification, mine));
-        List<PlayingArea> forCities =
-                playingAreaRepository.findAll(filtered(clubId, areaType, q, categories, country, province, null, verification, mine));
+        // Distinct values come straight from the database; only those few strings are loaded.
         return new PlayingAreaFilterOptionsDto(
-                distinctSorted(forCountries, a -> a.getAddress().getCountry(), true),
-                distinctSorted(forProvinces, a -> a.getAddress().getProvinceState(), false),
-                distinctSorted(forCities, a -> a.getAddress().getCity(), false));
+                distinctSorted(
+                        playingAreaRepository.findDistinctAddressValues(
+                                filtered(clubId, areaType, q, categories, null, province, city, verification, mine, false),
+                                "country"),
+                        true),
+                distinctSorted(
+                        playingAreaRepository.findDistinctAddressValues(
+                                filtered(clubId, areaType, q, categories, country, null, city, verification, mine, false),
+                                "provinceState"),
+                        false),
+                distinctSorted(
+                        playingAreaRepository.findDistinctAddressValues(
+                                filtered(clubId, areaType, q, categories, country, province, null, verification, mine, false),
+                                "city"),
+                        false));
     }
 
     @Override
@@ -155,7 +163,7 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
         Specification<PlayingArea> spec = Specification.where(PlayingAreaSpecifications.visible())
                 .and(PlayingAreaSpecifications.areaType(PlayingAreaType.CRICKET_FIELD))
                 .and(PlayingAreaSpecifications.similarName(country, normalised))
-                .and(PlayingAreaSpecifications.homeFirstThenName(clubId, false));
+                .and(PlayingAreaSpecifications.sameCityFirstThenHomeFirstThenName(clubId, city));
         Page<PlayingArea> page = playingAreaRepository.findAll(spec, PageRequest.of(0, SIMILAR_LIMIT));
         return toDtos(clubId, page.getContent());
     }
@@ -249,7 +257,8 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
             String province,
             String city,
             PlayingAreaVerificationStatus verification,
-            boolean mine) {
+            boolean mine,
+            boolean usedByClub) {
         Specification<PlayingArea> spec =
                 PlayingAreaSpecifications.directoryBase(typeOrDefault(areaType), q, categories, country, province, city);
         if (verification != null) {
@@ -261,6 +270,9 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
         if (mine) {
             spec = spec.and(PlayingAreaSpecifications.linkedHome(clubId));
         }
+        if (usedByClub) {
+            spec = spec.and(PlayingAreaSpecifications.usedByClub(clubId));
+        }
         return spec;
     }
 
@@ -268,16 +280,12 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
         return areaType == null ? PlayingAreaType.CRICKET_FIELD : areaType;
     }
 
-    /** Distinct non-blank values, de-duplicated ignoring case (first spelling wins), sorted; codes are upper-cased. */
-    private static List<String> distinctSorted(
-            Collection<PlayingArea> areas, Function<PlayingArea, String> value, boolean upper) {
+    /** Distinct values, de-duplicated ignoring case (first spelling in sorted order wins), sorted; codes are upper-cased. */
+    private static List<String> distinctSorted(Collection<String> values, boolean upper) {
         Map<String, String> byKey = new LinkedHashMap<>();
-        for (PlayingArea area : areas) {
-            String v = value.apply(area);
-            if (v != null && !v.isBlank()) {
-                byKey.putIfAbsent(v.trim().toLowerCase(Locale.ROOT), upper ? v.trim().toUpperCase(Locale.ROOT) : v.trim());
-            }
-        }
+        values.stream()
+                .sorted()
+                .forEach(v -> byKey.putIfAbsent(v.toLowerCase(Locale.ROOT), upper ? v.toUpperCase(Locale.ROOT) : v));
         return byKey.values().stream().sorted(String.CASE_INSENSITIVE_ORDER).toList();
     }
 

@@ -14,7 +14,7 @@ import org.springframework.data.repository.query.Param;
  * docs/specs/099-fields-directory.md: the directory of playing areas. Search, counters and moderation queue are all
  * composed from {@link PlayingAreaSpecifications} so a counter always equals its list.
  */
-public interface PlayingAreaRepository extends JpaRepository<PlayingArea, UUID>, JpaSpecificationExecutor<PlayingArea> {
+public interface PlayingAreaRepository extends JpaRepository<PlayingArea, UUID>, JpaSpecificationExecutor<PlayingArea>, PlayingAreaRepositoryCustom {
 
     /**
      * The not-merged-away area with exactly this identity (type, name and city ignoring case, country code): the row
