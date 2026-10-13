@@ -187,18 +187,18 @@ Named for completeness — none of these are next, none have a target spec numbe
 - **`RowActions` on other lists:** adopt it where a list still has its own icon or menu actions.
 - **Row height:** the edit panels use 44 px rows (56 px on a phone) while the Leagues, Teams and Seasons tables use 56 px (60 px on a phone); decide whether they should agree.
 
-## Deferred by `099`: Grounds directory
+## Deferred by `099`: Fields directory
 
-Spec written and approved, not built (`specs/099-grounds-directory.md`). Resolves the "venue entity" item under `097` and `098`.
+Spec revised and awaiting re-approval, not built (`specs/099-fields-directory.md`). Resolves the "venue entity" item under `097` and `098`. A field is a `PlayingArea` with `area_type = CRICKET_FIELD`; a Ground is the step 2 facility above it.
 
-- **Step 2: ground booking and availability.** Own spec. Shape fixed by `099`: bookings reference `ground.id`, home clubs (`club_ground.is_home`) grant them, optional `ground_area` (type `FIELD` or `NETS`: Field A, Field B, nets) on a booking and, for fields only, on a match.
-- **Areas inside a ground** (`ground_area`), the per-ground time zone, and clash detection on `(ground_id, time)`; part of step 2.
-- **Clubs suggesting corrections** to a verified ground.
-- **Resolve imported venue text** (`097`/`098`) to grounds, and retire the client-writable `Match.venue`.
+- **Step 2: facility management and booking.** Own spec. Grounds (a facility such as a country club) containing fields and nets (`CRICKET_NETS`, `PADEL_COURT` and other `area_type` values); the `ground` table and the foreign key on `playing_area.ground_id` (the nullable column exists from `099`); bookings on `playing_area.id`; home-club approval; clash detection on `(playing_area_id, time)`; per-ground time zone.
+- **Clubs suggesting corrections** to a verified field.
+- **Link a field's owner to a club on the platform** (needs a manager-accessible club search).
+- **Resolve imported venue text** (`097`/`098`) to fields, and retire the client-writable `Match.venue`.
 - **Coordinates and map embed;** facilities, photos, opening hours, contacts.
-- **Public ground page** and "grounds near me".
-- **Header-bell notification** to the platform admin on a new unverified ground; until then the counter on the admin home.
-- **One-off review job** turning legacy `match.venue` strings into suggested grounds.
+- **Public field page** and "fields near me".
+- **Header-bell notification** to the platform admin on a new unverified field.
+- **One-off review job** turning legacy `match.venue` strings into suggested fields.
 
 ## Deferred by `097` and `098`: Import framework and league schedule import
 
@@ -215,7 +215,7 @@ Both specs are written and not built (`097-import-framework.md`, `098-league-sch
 - **Store the original file** once media storage moves off local disk (not stored in v1).
 - **Per-type section-scoped import rights** once roles exist.
 - **Block-layout reader** for sheets laid out in blocks, which may beat in-app AI.
-- ~~**A venue entity** (venue is free text today)~~ — resolved by [`099`](specs/099-grounds-directory.md) (Grounds directory, approved, not built). Imported venue text is not linked to grounds yet (see below). **`Round` column** still open.
+- ~~**A venue entity** (venue is free text today)~~ — resolved by [`099`](specs/099-fields-directory.md) (Fields directory, revised, awaiting re-approval, not built). Imported venue text is not linked to grounds yet (see below). **`Round` column** still open.
 - **A club-level opponent identity across seasons.** There is no stable team identity across seasons, so linking a previous season's team copies it.
 - **A communication log** so delete can block on sent communications (communications are not persisted today).
 - **Results module:** it must register a `MatchResult` blocker with the schedule import's delete; the structural test fails until it does (see also `093`).
