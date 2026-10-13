@@ -1,7 +1,7 @@
 # 099 — Fields Directory
 
 **Depends on:** `001-tenancy-identity-model.md` (`Club`, `RoleAssignment`, `PLATFORM` scope, the one shared realm), `005-admin-login.md` and `010-minimal-club-creation.md` (the `platform_admin` surface), `012-club-profile.md` (the shared `@Embeddable Address` and the club's own address, used for the country default), `029-league-management.md` and `037-match-improvements.md` (`Match`, today carrying a free-text `venue`), `075-match-view-and-edit.md` and `089-match-page-form-and-list-view.md` (where venue is shown and edited), `088-players-polls-alignment.md` (player verification: the status menu, card and list view this follows), `091-leagues-gold-standard.md`, `087-matches-polls-alignment.md`, `043-list-toolbar-gold-standard.md` (`FilterBar`, `PageCounters`, `ContentControlsLine`), `097-import-framework.md` and `098-league-schedule-import.md` (venue stays free text there; see Non-goals).
-**Status:** revised 2026-10-13 after the first approval (the user's Irene example showed the "ground" model was the wrong shape, see Terminology). Awaiting re-approval. Written 2026-10-13 from the user's request ("Fields Directory Manager").
+**Status:** approved 2026-10-13 (revised after the first approval: the user's Irene example showed the "ground" model was the wrong shape, see Terminology; mockups approved). Plan: `docs/plans/099-fields-directory.md`. Written 2026-10-13 from the user's request ("Fields Directory Manager").
 
 ## Problem & Goals
 
