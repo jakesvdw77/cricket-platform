@@ -98,7 +98,7 @@ Indexes and constraints:
 | `is_home` | boolean, not null, default true | The club manages or regularly plays at the field, whether it owns it or not. The UI only creates `is_home = true` links; the column exists so a "saved away field" favourites feature needs no migration |
 | `created_at` | timestamptz | |
 
-Unique `(club_id, playing_area_id)`. Many clubs may link the same field home. A field captured by a manager is **automatically linked home** to the capturing club. Unlinking a field that matches still reference is allowed: the link is only the "Our fields" shortlist, matches reference the field directly.
+Unique `(club_id, playing_area_id)`. Many clubs may link the same field home. A field captured on the **Fields page** is automatically linked home to the capturing club; a field captured **from the match form** (an away game) is not: it stays a directory field and the club can add it to its own fields later. Unlinking a field that matches still reference is allowed: the link is only the "Our fields" shortlist, matches reference the field directly.
 
 ### Change to `Match`
 
@@ -130,7 +130,7 @@ Two surfaces. Club-scoped under `/api/v1/manage/clubs/{clubId}/playing-areas` (g
 | `GET /api/v1/manage/clubs/{clubId}/playing-areas/filter-options` | club manager | Distinct countries, provinces and cities reachable under the current selection, as `GET /matches/filter-options` does, to fill the Country, Province and City selects |
 | `GET /api/v1/manage/clubs/{clubId}/playing-areas/similar` | club manager | "Did you mean": params `name`, `city`, `country`; up to 5 existing fields by normalised-name match within the same country (see Open question 4). Read-only |
 | `GET /api/v1/manage/clubs/{clubId}/playing-areas/{id}` | club manager | One field with `linkedHome`, creator club name, verification details, this club's match count |
-| `POST /api/v1/manage/clubs/{clubId}/playing-areas` | club manager | Capture a field. `area_type` is set to `CRICKET_FIELD` by the service (not accepted from the client in this spec). Creates it `UNVERIFIED` with `created_by_club_id = clubId` and auto-links it home. 409 `DuplicateFieldException` on the identity index, as a `ProblemDetail` with a property `existingPlayingAreaId` (a dedicated handler in `GlobalExceptionHandler`, following `SelectionRejectedException`) |
+| `POST /api/v1/manage/clubs/{clubId}/playing-areas` | club manager | Capture a field. `area_type` is set to `CRICKET_FIELD` by the service (not accepted from the client in this spec). Creates it `UNVERIFIED` with `created_by_club_id = clubId`. Query parameter `linkHome` (default `true`) auto-links it home; the match form's add-field dialog sends `false`. 409 `DuplicateFieldException` on the identity index, as a `ProblemDetail` with a property `existingPlayingAreaId` (a dedicated handler in `GlobalExceptionHandler`, following `SelectionRejectedException`) |
 | `PUT /api/v1/manage/clubs/{clubId}/playing-areas/{id}` | club manager | Edit. Allowed only when the record is `UNVERIFIED` **and** `created_by_club_id = clubId`; otherwise 409 `FieldNotEditableException` whose message says who can edit (see Open question 5) |
 | `PUT /api/v1/manage/clubs/{clubId}/playing-areas/{id}/home` | club manager | Link home for this club (idempotent). `DELETE` unlinks. Body-less |
 | `GET /api/v1/platform/playing-areas` | platform admin | Moderation list. Params: `verification` (default `UNVERIFIED`), `q`, `category`, `country`. Paged, oldest unverified first |

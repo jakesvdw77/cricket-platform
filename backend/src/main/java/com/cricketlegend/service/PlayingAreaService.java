@@ -65,8 +65,11 @@ public interface PlayingAreaService {
     /** One field; a merged-away id resolves to the surviving field. */
     PlayingAreaDto get(UUID clubId, UUID playingAreaId);
 
-    /** Captures a field: forced to a cricket field, created unverified by {@code clubId}, linked home to it. */
-    PlayingAreaDto create(UUID clubId, PlayingAreaRequest request);
+    /**
+     * Captures a field: forced to a cricket field, created unverified by {@code clubId}. Linked home to the club only when
+     * {@code linkHome} (the Fields page); a field captured for an away match is not one of the club's own fields.
+     */
+    PlayingAreaDto create(UUID clubId, PlayingAreaRequest request, boolean linkHome);
 
     /** Edits a field; only while unverified and captured by {@code clubId}, else {@code FieldNotEditableException}. */
     PlayingAreaDto update(UUID clubId, UUID playingAreaId, PlayingAreaRequest request);

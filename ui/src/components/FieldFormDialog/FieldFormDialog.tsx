@@ -32,7 +32,7 @@ function DialogBody({ clubId, initialName, phone, onClose, onCreated }: Omit<Fie
   const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null)
 
   const save = useMutation({
-    mutationFn: (payload: Parameters<typeof createPlayingArea>[1]) => createPlayingArea(clubId, payload),
+    mutationFn: (payload: Parameters<typeof createPlayingArea>[1]) => createPlayingArea(clubId, payload, false),
     onSuccess: (field) => {
       queryClient.invalidateQueries({ queryKey: playingAreasKey(clubId) })
       onCreated(field)

@@ -169,15 +169,17 @@ public class PlayingAreaServiceImpl implements PlayingAreaService {
 
     @Override
     @Transactional
-    public PlayingAreaDto create(UUID clubId, PlayingAreaRequest request) {
+    public PlayingAreaDto create(UUID clubId, PlayingAreaRequest request, boolean linkHome) {
         requireClub(clubId);
         PlayingArea area = new PlayingArea();
         playingAreaWriter.apply(area, request);
         area.setVerificationStatus(PlayingAreaVerificationStatus.UNVERIFIED);
         area.setCreatedByClubId(clubId);
         area = playingAreaRepository.save(area);
-        clubPlayingAreaRepository.save(
-                ClubPlayingArea.builder().clubId(clubId).playingAreaId(area.getId()).home(true).build());
+        if (linkHome) {
+            clubPlayingAreaRepository.save(
+                    ClubPlayingArea.builder().clubId(clubId).playingAreaId(area.getId()).home(true).build());
+        }
         return toDtos(clubId, List.of(area)).get(0);
     }
 

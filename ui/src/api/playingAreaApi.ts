@@ -148,8 +148,10 @@ export async function getPlayingArea(clubId: string, id: string): Promise<Playin
 }
 
 // 409 with a `existingPlayingAreaId` property when the same name, city and country already exist.
-export async function createPlayingArea(clubId: string, payload: PlayingAreaPayload): Promise<PlayingArea> {
-  const { data } = await api.post<PlayingArea>(basePath(clubId), payload)
+// `linkHome` (default true: the Fields page) makes it one of the club's own fields; the match form's add-field dialog sends
+// false, because a field captured for an away game is not the club's own.
+export async function createPlayingArea(clubId: string, payload: PlayingAreaPayload, linkHome = true): Promise<PlayingArea> {
+  const { data } = await api.post<PlayingArea>(basePath(clubId), payload, { params: { linkHome } })
   return data
 }
 

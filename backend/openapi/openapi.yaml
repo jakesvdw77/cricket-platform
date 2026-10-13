@@ -5444,7 +5444,7 @@ paths:
       tags:
       - playing-area-controller
       operationId: createPlayingArea
-      description: "docs/specs/099: captures a field. area_type is forced to CRICKET_FIELD; created UNVERIFIED by this club and linked home to it. 409 DuplicateField (ProblemDetail with existingPlayingAreaId) on an exact name+city+country duplicate."
+      description: "docs/specs/099: captures a field. area_type is forced to CRICKET_FIELD; created UNVERIFIED by this club and, unless linkHome=false, linked home to it (the match form's add-field dialog sends linkHome=false: an away field is not one of the club's own). 409 DuplicateField (ProblemDetail with existingPlayingAreaId) on an exact name+city+country duplicate."
       parameters:
       - name: clubId
         in: path
@@ -5452,6 +5452,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: linkHome
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
       requestBody:
         content:
           application/json:
