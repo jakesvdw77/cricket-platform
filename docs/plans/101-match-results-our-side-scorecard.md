@@ -6,6 +6,30 @@ Spec: `docs/specs/101-match-results-our-side-scorecard.md` (merged to master via
 
 Spec 100 (merged, PR #116) captures what happened in a match (outcome, toss, innings totals) but not who did it. 101 adds our side's scorecard for regular innings: `result_player` list, batting/bowling/fielding entries, extras breakdown, standouts (relative rules plus a star override), player of the match awards, guest and swap handling, derby support, a Full name / First name display toggle, and 12 reconciliation warnings in the shared `ResultValidator`. Four optional wizard steps are registered after the toss (Our team, Our batting, Our bowling and fielding, Awards). Super-over scorecards (105), the opposition scorecard (102), stats (103) and imports (104) are out of scope.
 
+## Revised scope (2026-10-14, Decisions 22 and 23 of the rewritten spec; this section overrides anything below that disagrees)
+
+The spec is now ONE spec for the full scorecard flow, our side and the opposition (the former `102` is merged in). What is built (migration `044`, backend, the older wizard Result, Toss, Our team, Batting, Bowling, Awards, Scores, Review, calculated innings) stays; the plan changes as follows.
+
+**Backend**
+1. **Relax the players-only rule** in `ScorecardRules` (line ~61 and `inningsExists`): a scorecard with players and no innings saves; only batting, bowling and fielding entries need their innings (`SCORECARD_INNINGS_MISSING`). Confirm a draft with no outcome and no innings saves and reads back (outcome is already nullable on a draft); update tests that pinned the old rejection.
+2. **Migration `045-match-results-opposition-scorecard.sql`** (new-migration skill): `result_player.opposition` + CHECK; `batting_entry.bowler_result_player_id` / `fielder_result_player_id` (fk set null, indexed); `bowling_entry.wickets_source`, `fielding_entry.credits_source` (default `MANUAL`). Re-check the number at build time.
+3. `DismissalCredits` (derive wickets and credits in the save transaction for `DERIVED` rows), `non_bowler_wickets` derived from either side's batting entries, `detail_level = FULL`, award name snapshot, structural rules (`OPPOSITION_NOT_ALLOWED`, `DISMISSAL_DETAIL_NOT_ALLOWED`, `DISMISSAL_PLAYER_WRONG_SIDE`, `OPPOSITION_NO_STANDOUTS`), link route refuses opposition, the validator rules applied to either side, new codes (`DISMISSAL_BOWLER_NOT_IN_BOWLING_LIST`, `BOWLER_WICKETS_DIFFER_FROM_DISMISSALS`, `FIELDING_DIFFERS_FROM_DISMISSALS`, error `OPPOSITION_WITHOUT_OUR_SCORECARD`, info `OUR_TEAM_NOT_SELECTED`), `ResultWizardStep` values renamed to `TEAMS`, `BATTING`, `BOWLING`, `AWARDS`, `SCORES` (drop `OUR_*`; branch unmerged), appearance rule limited to played outcomes.
+4. **Prefill** returns `selectionState` (`NONE` / `NOT_ANNOUNCED` / `ANNOUNCED`); **new `GET /results/opposition-names`** (paged, club-scoped, by league team id else normalised name, most recent first with counts), modelled on `guest-names`. Confirm which match columns hold the opposing team's id and name.
+5. Hand-regenerate `backend/openapi/openapi.yaml` (additions); extend `LayeringRulesTest`. Verify in a scratch copy only.
+
+**Frontend: rework of the built wizard**
+1. **Step order and names:** Teams, Result, Toss and field, Batting, Bowling and fielding, Awards, Scores and margin, Review. Rename "Our team" to Teams and move it first; drop "Our" from the others; Teams shown with no outcome; Batting/Bowling/Awards `isApplicable` no longer need scores; Result note "You can record the result with or without the teams..."; Toss prompt becomes "Add the batting and bowling" / "Skip to scores". `isBlankDraft` must treat players as content. Update pinned step labels in `ResultCapturePage.test.tsx` and the e2e selectors.
+2. **`SideToggle`** (over `TileChoiceGroup`, logos, dot) replacing the derby-only Home | Away switch on Teams, Batting, Bowling and fielding, Awards, in every match.
+3. **Teams:** our side as built plus the not-selected banner (`selectionState`, fewer than 11 non-substitute rows); opposition side: type/paste list (`parseNameList`, `InlineNameCell`), reorder, substitute, remove, "Played for X before" suggestion chips (`opposition-names`); skip = "Don't capture the team".
+4. **Batting and Bowling and fielding for both sides:** rows from Teams plus inline typing that creates the entry (our side: squad type-ahead then guest; opposition: select with type-ahead and "Add a new name" last); `DismissalFields` (bowler, fielder from the other side's list, inline creation); `DerivedMarker` and "Use N"; derived `non_bowler_wickets` read-only; banner at the top for an unselected ours side; Add to bowling offer; bulk "Use dismissals for all".
+5. **Awards:** official player of the match above the toggle (either list or free text, opposition name snapshotted); standouts and team award under the toggle (ours only); no stars on opposition rows.
+6. **Review / result page:** per-side status for both sides, `OUR_TEAM_NOT_SELECTED` as an INFO line with no acknowledgement, step/side mapping to the new step names, both scorecards on the result page with `dismissalText`; `playerDisplayName` single-initial rule.
+7. Mockups to add before building (list in the spec's UI Requirements).
+
+**Order of work (replaces "Order of work" below for the remaining build):** (a) backend relax-rule + `045` + derivation + validator + endpoints, scratch verification, user restarts the backend; (b) frontend rework of the wizard skeleton (order, toggle, Teams for both sides); (c) Batting and Bowling and fielding for both sides with dismissals and derived credits; (d) Awards, Review, result page; (e) tests and `/review` only after the user has browser-checked.
+
+**Superseded flags:** item 13 (Our team as the only place to add players) is amended: inline typing on Batting and Bowling now creates entries; items 6 and 12 (step numbers, migration number) re-checked at build time.
+
 ## Items to flag back to the human (spec says X, code says Y)
 
 Each has a default the plan follows unless told otherwise.
