@@ -106,7 +106,7 @@ export function ReviewStep({
   const infos = issues.filter((issue) => issue.severity === 'INFO')
   const issueText = (issue: ResultIssue) => (derby && issue.side && isScorecardStep(issue.step) ? `${teamNameOf(issue.side)}: ${issue.message}` : issue.message)
   const issueFix = (issue: ResultIssue) => {
-    const id = stepIdForIssue(issue.step)
+    const id = stepIdForIssue(issue.step, issue.code)
     if (!id || !onGoToStep) return undefined
     return (
       <Button variant="secondary" size="sm" onClick={() => onGoToStep(id, issue.side ?? undefined)}>
@@ -190,7 +190,7 @@ export function ReviewStep({
                   text={text}
                   action={
                     status !== 'COMPLETE' && onGoToStep ? (
-                      <Button variant="secondary" size="sm" onClick={() => onGoToStep('our-batting', ours.side)}>
+                      <Button variant="secondary" size="sm" onClick={() => onGoToStep('our-team', ours.side)}>
                         {status === 'NONE' ? 'Add' : 'Complete'}
                       </Button>
                     ) : undefined

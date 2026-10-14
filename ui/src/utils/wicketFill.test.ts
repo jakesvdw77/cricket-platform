@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DismissalType } from '../api/matchResultApi'
-import { applyWicketFill, dismissalCount, initialBattedCount, initialRows, newRowFill } from './wicketFill'
+import { applyWicketFill, dismissalCount, initialBattedCount, initialRows, newRowFill, applyBattedWindow } from './wicketFill'
 import type { FillRow } from './wicketFill'
 
 const howOuts = (rows: FillRow[]) => rows.map((row) => row.howOut)
@@ -106,5 +106,19 @@ describe('wicketFill', () => {
 
   it('adds an undecided row when the wickets are not known', () => {
     expect(newRowFill(initialRows(5, null), null)).toEqual({ howOut: null })
+  })
+
+  it('moves undecided rows beyond wickets + 2 to Did not bat when the wickets arrive late, and back when they rise', () => {
+    const open = initialRows(6, null)
+    const late = applyBattedWindow(open, 1)
+    expect(howOuts(late)).toEqual([null, null, null, 'DID_NOT_BAT', 'DID_NOT_BAT', 'DID_NOT_BAT'])
+    expect(howOuts(applyBattedWindow(late, 3))).toEqual([null, null, null, null, null, 'DID_NOT_BAT'])
+  })
+
+  it('leaves rows the manager set or typed figures for alone', () => {
+    const rows = mark(initialRows(5, null), 3, 'DID_NOT_BAT')
+    const withRuns = rows.map((row, i) => (i === 4 ? { ...row, runs: 7 } : row))
+    expect(howOuts(applyBattedWindow(withRuns, 1))).toEqual([null, null, null, 'DID_NOT_BAT', null])
+    expect(applyBattedWindow(initialRows(5, null), null)).toEqual(initialRows(5, null))
   })
 })

@@ -104,8 +104,8 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await page.getByRole('radiogroup', { name: 'Who won the toss?' }).getByRole('radio').first().click();
     await page.getByRole('button', { name: 'Bat', exact: true }).click();
 
-    // --- Step 3, Scores: home 180/6 in 40 overs, away 150/9 in 38.4 overs; overs as "38.4", not a decimal. ---
-    await nextTo(page, 'Scores').click();
+    // --- Scores and margin (the optional scorecard steps are skipped): home 180/6 in 40 overs, away 150/9 in 38.4 overs; overs as "38.4", not a decimal. ---
+    await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
     await expect(page.getByTestId('toss-context')).toBeVisible();
     await fillInnings(page, 0, '180', '6', '40');
     await fillInnings(page, 1, '150', '9', '38.4');
@@ -165,7 +165,7 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').nth(1).click(); // the opponent wins it
 
     await nextTo(page, 'Toss & field').click();
-    await nextTo(page, 'Scores').click();
+    await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
     // No toss was recorded, so the wizard asks who batted first.
     await page.getByRole('radiogroup', { name: 'Who batted first?' }).getByRole('radio').first().click();
 

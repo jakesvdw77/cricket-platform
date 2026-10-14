@@ -53,6 +53,8 @@ export interface ScorecardGridProps<R> {
   // `/` on a cell: open the player picker for that row.
   onPickPlayer?: (rowId: string) => void
   emptyMessage?: ReactNode
+  // No keyboard shortcuts caption (a list with no cells to navigate, e.g. Our team).
+  hideHelp?: boolean
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md: the keyboard-first row and column engine behind Our batting and
@@ -80,7 +82,7 @@ const STICKY_FIRST_COL = {
 const HEAD_CELL: SxProps<Theme> = {
   bgcolor: 'background.paper',
   color: 'text.secondary',
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 700,
   letterSpacing: '0.05em',
   textTransform: 'uppercase',
@@ -121,6 +123,7 @@ export function ScorecardGrid<R>({
   isRowMuted,
   onPickPlayer,
   emptyMessage,
+  hideHelp = false,
 }: ScorecardGridProps<R>) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
@@ -166,15 +169,16 @@ export function ScorecardGrid<R>({
     }
   }
 
+  // Under the table, so the table does not move when the caption appears or the shortcuts open.
   const help = (
     <>
-      <Box sx={{ display: { xs: 'none', sm: 'flex' }, justifyContent: 'flex-end', pb: 0.5 }}>
+      <Box sx={{ display: { xs: 'none', sm: 'flex' }, justifyContent: 'flex-end', pt: 0.25 }}>
         <Button
           size="small"
-          startIcon={<KeyboardOutlinedIcon />}
+          startIcon={<KeyboardOutlinedIcon sx={{ fontSize: 16 }} />}
           aria-expanded={helpOpen}
           onClick={() => setHelpOpen((open) => !open)}
-          sx={{ textTransform: 'none', color: 'text.secondary' }}
+          sx={{ textTransform: 'none', color: 'text.secondary', fontSize: 11.5, minHeight: 0, py: 0.25 }}
         >
           Keyboard shortcuts (?)
         </Button>
@@ -183,7 +187,7 @@ export function ScorecardGrid<R>({
         <Box
           role="note"
           aria-label={`${ariaLabel}: keyboard shortcuts`}
-          sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, mb: 1, fontSize: 12.5, lineHeight: 1.7 }}
+          sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, mt: 0.5, fontSize: 12.5, lineHeight: 1.7 }}
         >
           {SHORTCUTS.map(([keys, does]) => (
             <Box key={keys}>
@@ -232,7 +236,6 @@ export function ScorecardGrid<R>({
 
   return (
     <Box onKeyDown={onKeyDown}>
-      {help}
       <Box sx={{ overflowX: 'auto', border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
         <Table size="small" aria-label={ariaLabel} sx={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 'max-content', width: '100%' }}>
           <TableHead>
@@ -333,6 +336,7 @@ export function ScorecardGrid<R>({
           </TableBody>
         </Table>
       </Box>
+      {!hideHelp && help}
     </Box>
   )
 }

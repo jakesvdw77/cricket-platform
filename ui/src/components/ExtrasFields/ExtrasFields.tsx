@@ -14,6 +14,8 @@ export interface ExtrasFieldsProps {
   owner?: string
   // The sum is shown beside the fields ("Extras 14"); hide it where the parent shows its own total.
   hideTotal?: boolean
+  // A small note under one field ("Edited. Calculated: 12" with a Reset), for figures derived elsewhere.
+  fieldNote?: (key: (typeof FIELDS)[number]['key']) => React.ReactNode
 }
 
 const FIELDS = [
@@ -28,7 +30,7 @@ const FIELDS = [
 // panel (the opposition's): Wides, No-balls, Byes, Leg byes, Penalty and their sum, which the server stores as the
 // innings' `extras`. The number cells join the grid's keyboard flow (Enter moves on). Wides and no-balls are charged to
 // bowlers; byes, leg byes and penalty runs are not.
-export function ExtrasFields({ value, onChange, disabled = false, owner, hideTotal = false }: ExtrasFieldsProps) {
+export function ExtrasFields({ value, onChange, disabled = false, owner, hideTotal = false, fieldNote }: ExtrasFieldsProps) {
   const prefix = useId()
   const total = extrasTotal(value)
   return (
@@ -49,6 +51,7 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
               disabled={disabled}
               width={72}
             />
+            {fieldNote?.(key)}
           </Box>
         )
       })}

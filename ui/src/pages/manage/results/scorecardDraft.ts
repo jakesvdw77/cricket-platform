@@ -1,5 +1,6 @@
 import type {
   AwardType,
+  Innings,
   ScorecardPrefillSide,
   BattingEntry,
   BowlingEntry,
@@ -11,6 +12,11 @@ import type {
   ResultSide,
   Scorecard,
 } from '../../../api/matchResultApi'
+import type { PickedPlayer } from '../../../components/PlayerSlotPicker'
+import { scorecardPersonName } from '../../../utils/playerDisplayName'
+import type { RemoveKind } from './scorecard/usePlayerActions'
+import { isWicket } from '../../../utils/dismissal'
+import { extrasTotal, hasExtras } from '../../../utils/battingTotals'
 import { canFeatureBatter, canFeatureBowler } from '../../../utils/standout'
 import { blankBattingEntry, entryPlayerKey, entryRefOf, newClientKey, playerRowKey, prefillSideRows } from '../../../utils/scorecardPrefill'
 
@@ -323,7 +329,13 @@ export function normalizeLoaded(scorecard: Scorecard): Scorecard {
   for (const side of ['HOME', 'AWAY'] as const) {
     const present = new Set(battingOf(next, side).map((entry) => entryPlayerKey(entry)))
     const missing = playersOfSide(next, side).filter((player) => !player.substitute && !present.has(playerRowKey(player)))
-    const rows = [...battingOf(next, side), ...missing.map((player) => blankBattingEntry(side, player, 0))]
+    // A player who bowls or fields but never had a batting row (a promoted 12th man) did not bat; anyone else is undecided.
+    const plays = (player: ResultPlayer) =>
+      next.bowling.some((entry) => entryPlayerKey(entry) === playerRowKey(player)) || next.fielding.some((entry) => entryPlayerKey(entry) === playerRowKey(player))
+    const rows = [
+      ...battingOf(next, side),
+      ...missing.map((player) => (plays(player) ? { ...blankBattingEntry(side, player, 0), howOut: 'DID_NOT_BAT' as const } : blankBattingEntry(side, player, 0))),
+    ]
     if (rows.length > 0) next = setBatting(next, side, rows)
   }
   return next
@@ -434,4 +446,215 @@ export function duplicatePlayerKeys(scorecard: Scorecard, side: ResultSide): Set
     if (id) groups.set(id, [...(groups.get(id) ?? []), playerRowKey(player)])
   }
   return new Set([...groups.values()].filter((keys) => keys.length > 1).flat())
+}
+
+// ---- innings figures suggested by the scorecard ----
+
+export interface InningsSuggestion {
+  runs: number | null
+  wickets: number | null
+  balls: number | null
+  // The extras the bowlers' own wides and no-balls add up to (null when no bowler has them entered).
+  wides: number | null
+  noBalls: number | null
+}
+
+// What the scorecard adds up to for each regular innings (by sequence), for Scores and margin to offer where a figure is
+// empty or disagrees. Our batting: runs = the batters' runs + the extras, wickets = the batters out. Else our bowling
+// (the innings the other side batted): runs = bowlers' runs + byes + leg byes + penalty, wickets = bowlers' wickets + the
+// wickets not credited to a bowler. Balls always come from our bowlers' balls, when there are any. Nothing is suggested
+// from an empty scorecard.
+export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSuggestion> {
+  const scorecard = scorecardOf(draft)
+  const out = new Map<number, InningsSuggestion>()
+  for (const innings of (draft.innings ?? []).filter((item) => item.kind !== 'SUPER_OVER')) {
+    if (!innings.battingSide || innings.sequence == null) continue
+    const batters = battingOf(scorecard, innings.battingSide).filter((entry) => entry.howOut !== null && entry.howOut !== 'DID_NOT_BAT')
+    const bowlers = bowlingOf(scorecard, opposite(innings.battingSide)).filter(hasBowlingFigures)
+    const n = (value: number | null | undefined) => value ?? 0
+    let runs: number | null = null
+    let wickets: number | null = null
+    const hasRuns = batters.some((entry) => entry.runs != null)
+    if (batters.length > 0 && (hasRuns || hasExtras(innings) || batters.some((entry) => isWicket(entry.howOut)))) {
+      runs = hasRuns || hasExtras(innings) ? batters.reduce((sum, entry) => sum + n(entry.runs), 0) + extrasTotal(innings) : null
+      wickets = batters.length > 0 ? batters.filter((entry) => isWicket(entry.howOut)).length : null
+    } else if (bowlers.length > 0) {
+      runs = bowlers.reduce((sum, entry) => sum + n(entry.runs), 0) + n(innings.byes) + n(innings.legByes) + n(innings.penaltyRuns)
+      wickets = bowlers.reduce((sum, entry) => sum + n(entry.wickets), 0) + n(innings.nonBowlerWickets)
+    }
+    const balls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
+    // Wides and no-balls are charged to the bowler: they are inside the bowlers' runs already (never added to the runs again)
+    // and add up to the innings' wides and no-balls extras.
+    const sum = (pick: (entry: BowlingEntry) => number | null | undefined) => (bowlers.some((entry) => pick(entry) != null) ? bowlers.reduce((total, entry) => total + n(pick(entry)), 0) : null)
+    const wides = sum((entry) => entry.wides)
+    const noBalls = sum((entry) => entry.noBalls)
+    if (runs !== null || balls > 0 || wides !== null || noBalls !== null) out.set(innings.sequence, { runs, wickets, balls: balls > 0 ? balls : null, wides, noBalls })
+  }
+  return out
+}
+
+// ---- calculated innings figures, and the manager's corrections ----
+
+export type InningsFigure = 'runs' | 'wickets' | 'balls' | 'wides' | 'noBalls'
+const FLAG = { runs: 'runsCorrected', wickets: 'wicketsCorrected', balls: 'ballsCorrected', wides: 'widesCorrected', noBalls: 'noBallsCorrected' } as const
+
+// The manager owns the wickets once they typed them (or they came from an earlier entry): typed wickets drive the
+// not-out / did-not-bat fill and are not overwritten while entering the card. Only "Use calculated" (or clearing the
+// field) hands them back to the scorecard.
+export const wicketsOwned = (innings: Pick<Innings, 'wickets' | 'wicketsCorrected'>): boolean =>
+  innings.wicketsCorrected === true || (innings.wicketsCorrected === undefined && innings.wickets != null)
+
+// A figure the manager typed that disagrees with what the scorecard adds up to ("Corrected, was 187 from the scorecard").
+export function figureCorrected(innings: Innings, field: InningsFigure, calculated: number | null | undefined): boolean {
+  const value = innings[field] ?? null
+  if (calculated == null || value === null || value === calculated) return false
+  if (field === 'wickets') return wicketsOwned(innings)
+  return innings[FLAG[field]] !== false
+}
+
+// Keeps the calculated figures of every regular innings in step with the scorecard after an edit: runs, wickets and balls
+// follow the scorecard unless the manager corrected them. A corrected figure is left alone until it equals the
+// calculation again (runs, balls) or "Use calculated" is clicked (wickets stay the manager's). Returns the same draft when
+// nothing changes.
+export function syncInningsFromScorecard(draft: ResultDraft): ResultDraft {
+  const calculated = inningsSuggestions(draft)
+  let changed = false
+  const innings = (draft.innings ?? []).map((item) => {
+    const calc = item.sequence != null ? calculated.get(item.sequence) : undefined
+    if (!calc) return item
+    let next = item
+    for (const field of ['runs', 'wickets', 'balls', 'wides', 'noBalls'] as const) {
+      const value = calc[field]
+      if (value === null) continue
+      if (field === 'wickets' ? wicketsOwned(next) : figureCorrected(next, field, value)) continue
+      if (next[field] !== value || next[FLAG[field]] !== false) next = { ...next, [field]: value, [FLAG[field]]: false }
+    }
+    if (next !== item) changed = true
+    return next
+  })
+  return changed ? { ...draft, innings } : draft
+}
+
+// The manager types a figure: it is theirs (flagged corrected) until it equals the calculation again or is cleared.
+export function editInningsFigure(draft: ResultDraft, sequence: number, field: InningsFigure, value: number | null): ResultDraft {
+  const patched = {
+    ...draft,
+    innings: (draft.innings ?? []).map((item) => (item.sequence === sequence ? { ...item, [field]: value, [FLAG[field]]: value !== null } : item)),
+  }
+  return syncInningsFromScorecard(patched)
+}
+
+// "Use calculated": hand the figure back to the scorecard.
+export function applyCalculatedFigure(draft: ResultDraft, sequence: number, field: InningsFigure): ResultDraft {
+  const patched = {
+    ...draft,
+    innings: (draft.innings ?? []).map((item) => (item.sequence === sequence ? { ...item, [field]: null, [FLAG[field]]: false } : item)),
+  }
+  return syncInningsFromScorecard(patched)
+}
+
+// ---- the match squad for the pickers ----
+
+// The registered players of THIS match for one side: the team selection (with the 12th man) and anyone already on the
+// side's scorecard list, deduped. With `bowlersFirst` (Add bowler, fielding) the selection's bowlers and all-rounders come
+// first. Empty when no team was selected and nothing is on the list yet.
+export function matchSquadFor(scorecard: Scorecard, side: ResultSide, prefillSide: ScorecardPrefillSide | null, bowlersFirst: boolean): PickedPlayer[] {
+  const out = new Map<string, PickedPlayer & { rank: number }>()
+  const rankOf = (role: string | null | undefined) => (bowlersFirst ? (role === 'BOWLER' || role === 'ALL_ROUNDER' ? 0 : 1) : 0)
+  for (const player of prefillSide?.players ?? []) {
+    out.set(player.playerProfileId, { playerProfileId: player.playerProfileId, firstName: player.firstName, lastName: player.lastName, rank: rankOf(player.role) })
+  }
+  for (const player of playersOfSide(scorecard, side)) {
+    if (!player.playerProfileId || out.has(player.playerProfileId)) continue
+    out.set(player.playerProfileId, { playerProfileId: player.playerProfileId, firstName: player.firstName ?? '', lastName: player.lastName ?? '', rank: bowlersFirst ? 1 : 0 })
+  }
+  return [...out.values()]
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => a.entry.rank - b.entry.rank || a.index - b.index)
+    .map(({ entry: { rank: _rank, ...person } }) => person)
+}
+
+// ---- the side's list, the 12th man and safe removal ----
+
+export interface MatchPlayer {
+  key: string
+  firstName: string
+  lastName: string
+  substitute: boolean
+}
+
+// Every result player of the side, whatever their batting status (Did not bat, the 12th man, substitutes, guests): the
+// list Our bowling and fielding pick from. The selection's bowlers and all-rounders come first.
+export function matchPlayersFor(scorecard: Scorecard, side: ResultSide, prefillSide: ScorecardPrefillSide | null): MatchPlayer[] {
+  const roles = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player.role]))
+  const rank = (player: ResultPlayer) => {
+    const role = player.playerProfileId ? roles.get(player.playerProfileId) : undefined
+    return role === 'BOWLER' || role === 'ALL_ROUNDER' ? 0 : 1
+  }
+  return playersOfSide(scorecard, side)
+    .map((player, index) => ({ player, index }))
+    .sort((a, b) => rank(a.player) - rank(b.player) || a.index - b.index)
+    .map(({ player }) => {
+      const person = scorecardPersonName(player)
+      return { key: playerRowKey(player), firstName: person.firstName, lastName: person.lastName, substitute: player.substitute }
+    })
+}
+
+// A player has a part in the match once they batted (or are yet to be decided), bowled or fielded.
+export function playsInMatch(scorecard: Scorecard, player: ResultPlayer): boolean {
+  const key = playerRowKey(player)
+  return (
+    scorecard.batting.some((entry) => entryPlayerKey(entry) === key && entry.howOut !== 'DID_NOT_BAT') ||
+    scorecard.bowling.some((entry) => entryPlayerKey(entry) === key && hasBowlingFigures(entry)) ||
+    scorecard.fielding.some((entry) => entryPlayerKey(entry) === key && hasCredit(entry))
+  )
+}
+
+// The selection's 12th man becomes a real player the moment they bat, bowl or field (so they count as a match played), and
+// goes back to being the 12th man if all of that is taken away again. Nobody else is ever demoted.
+export function reconcileSubstitutes(scorecard: Scorecard, selectionSubstitutes: ReadonlySet<string>): Scorecard {
+  let changed = false
+  const players = scorecard.players.map((player) => {
+    const active = playsInMatch(scorecard, player)
+    if (player.substitute && active) {
+      changed = true
+      return { ...player, substitute: false }
+    }
+    if (!player.substitute && !active && player.playerProfileId && selectionSubstitutes.has(player.playerProfileId)) {
+      changed = true
+      return { ...player, substitute: true }
+    }
+    return player
+  })
+  return changed ? { ...scorecard, players } : scorecard
+}
+
+// What the batting popup offers for taking `key` off the list. A player from the selection, or who bowls, fields or has an
+// award, stays in the match squad: they are set to Did not bat instead. Only a manually added player with nothing else is
+// removed.
+export function removalOf(scorecard: Scorecard, key: string, selectionProfiles: ReadonlySet<string>, name: string): RemoveKind {
+  const player = scorecard.players.find((candidate) => playerRowKey(candidate) === key)
+  if (!player) return { kind: 'remove' }
+  if (player.playerProfileId && selectionProfiles.has(player.playerProfileId)) return { kind: 'dnb' }
+  const bowls = scorecard.bowling.some((entry) => entryPlayerKey(entry) === key)
+  const fields = scorecard.fielding.some((entry) => entryPlayerKey(entry) === key)
+  const award = scorecard.awards.some((entry) => entryPlayerKey(entry) === key)
+  if (bowls || fields || award) {
+    const what = [bowls ? 'bowls' : null, fields ? 'fields' : null, award ? 'has an award' : null].filter(Boolean).join('/')
+    return { kind: 'blocked', message: `${name} also ${what} on this scorecard. Remove those first.` }
+  }
+  return { kind: 'remove' }
+}
+
+// Mark as 12th man / substitute (and back). A substitute has no batting row; a player brought back into the team gets a Did
+// not bat row at the end.
+export function setSubstitute(scorecard: Scorecard, key: string, substitute: boolean): Scorecard {
+  const target = scorecard.players.find((player) => playerRowKey(player) === key)
+  if (!target || target.substitute === substitute) return scorecard
+  const players = scorecard.players.map((player) => (playerRowKey(player) === key ? { ...player, substitute } : player))
+  const next = { ...scorecard, players }
+  const rows = battingOf(next, target.side)
+  if (substitute) return setBatting(next, target.side, rows.filter((entry) => entryPlayerKey(entry) !== key))
+  if (rows.some((entry) => entryPlayerKey(entry) === key)) return next
+  return setBatting(next, target.side, [...rows, { ...blankBattingEntry(target.side, target, rows.length + 1), howOut: 'DID_NOT_BAT', auto: true }])
 }

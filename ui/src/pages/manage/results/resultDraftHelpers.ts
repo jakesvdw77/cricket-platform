@@ -249,9 +249,9 @@ function extrasPayload(innings: Innings): Partial<Innings> {
   return out
 }
 
-// docs/specs/101: the scorecard steps (Our batting, Our bowling and fielding, Awards) apply once at least one regular
-// innings has runs, and never to a forfeit, an abandoned match or no result.
-export function scorecardStepsApplicable(draft: Pick<ResultDraft, 'outcomeType' | 'innings'>): boolean {
-  if (draft.outcomeType === 'FORFEIT' || draft.outcomeType === 'ABANDONED' || draft.outcomeType === 'NO_RESULT') return false
-  return (draft.innings ?? []).some((innings) => !isSuperOver(innings) && innings.runs !== null)
+// docs/specs/101 (decision 20): the scorecard steps (Our batting, Our bowling and fielding, Awards) come right after the
+// toss and no longer wait for scores: they apply to every match that was played, never to a forfeit, an abandoned match or
+// no result. The innings figures are entered on them.
+export function scorecardStepsApplicable(draft: Pick<ResultDraft, 'outcomeType'>): boolean {
+  return !(draft.outcomeType === 'FORFEIT' || draft.outcomeType === 'ABANDONED' || draft.outcomeType === 'NO_RESULT')
 }

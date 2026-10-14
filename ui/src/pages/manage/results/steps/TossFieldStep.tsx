@@ -30,7 +30,7 @@ export interface TossFieldStepProps extends StepProps {
 
 // docs/specs/100-match-results-core.md, step 2 "Toss and field": who won the toss and chose to bat or bowl, the field
 // (the match's, with Change field opening the Fields picker), the scheduled overs and an optional note.
-export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disabled, field, fieldChanged, onFieldChange, leagueScheduledBalls }: TossFieldStepProps) {
+export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disabled, field, fieldChanged, onFieldChange, leagueScheduledBalls, scorecardAvailable, onGoToStep }: TossFieldStepProps) {
   const [picking, setPicking] = useState(false)
   const ballsPerOver = draft.ballsPerOver ?? 6
 
@@ -145,6 +145,23 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
           inputProps={{ maxLength: NOTE_MAX }}
         />
       </Box>
+
+      {scorecardAvailable && onGoToStep && (
+        <Box
+          data-testid="scorecard-prompt"
+          sx={{ p: 1.5, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
+            Want to record who batted, bowled and fielded? It is optional, and the scores are worked out from it.
+          </Typography>
+          <Button variant="secondary" size="sm" onClick={() => onGoToStep('our-team')} disabled={disabled}>
+            Add our scorecard
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('scores')} disabled={disabled}>
+            Skip to scores
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }

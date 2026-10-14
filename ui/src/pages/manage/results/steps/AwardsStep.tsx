@@ -4,6 +4,7 @@ import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import StarOutlineIcon from '@mui/icons-material/StarOutline'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import type { BattingEntry, BowlingEntry, FieldingEntry, MatchAward, ResultPlayer, ResultSide, Scorecard } from '../../../../api/matchResultApi'
+import { Button } from '../../../../components/Button'
 import { InfoCard } from '../../../../components/InfoCard'
 import { Input } from '../../../../components/Input'
 import { PlayerName } from '../../../../components/PlayerName'
@@ -49,7 +50,7 @@ function battingFigure(entry: BattingEntry): string {
 
 function bowlingFigure(entry: BowlingEntry, ballsPerOver: number): string {
   const overs = entry.balls != null ? ` (${ballsToOvers(entry.balls, ballsPerOver)})` : ''
-  return `${entry.wickets ?? 0} for ${entry.runs ?? 0}${overs}`
+  return `${entry.wickets ?? 0} ${entry.wickets === 1 ? 'wicket' : 'wickets'} for ${entry.runs ?? 0} runs${overs.replace(')', ' overs)')}`
 }
 
 function fieldingFigure(entry: FieldingEntry): string {
@@ -110,7 +111,7 @@ function PersonSelect({ label, value, onChange, groups, standoutKeys, view, none
 // each row to remove or add one), the official player of the match (one of our players, someone else by name, or none)
 // and our team's player of the match. In a derby the official pick lists both teams' players and each team has its own
 // pick; the Home | Away switch only chooses which team's standouts are shown.
-export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSide, onScorecardSideChange, sides }: ScorecardStepProps) {
+export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSide, onScorecardSideChange, sides, onGoToStep }: ScorecardStepProps) {
   const ours = oursSides.find((candidate) => candidate.side === scorecardSide) ?? oursSides[0]
   const derby = oursSides.length > 1
   const scorecard = scorecardOf(draft)
@@ -328,6 +329,15 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
           )
         })}
       </InfoCard>
+
+      {onGoToStep && (
+        <Typography variant="body2" color="text.secondary">
+          Not listed?{' '}
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('our-team', ours.side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
+            Add them on Our team
+          </Button>
+        </Typography>
+      )}
     </Box>
   )
 }

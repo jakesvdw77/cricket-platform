@@ -9,13 +9,15 @@ export interface SuggestedResultLineProps {
   check: MarginCheck
   names: SideNames
   onUse: () => void
+  // False when only the margin differs: that follows the scores (or is the manager's edit) and needs no button.
+  canUse?: boolean
   disabled?: boolean
 }
 
 // docs/specs/100-match-results-core.md: "Suggested result" - what the entered scores say, with a Use this action that
 // writes outcome, winner and margin into the form. Hidden until both innings are in; once the form agrees it reads as a
 // quiet confirmation instead of offering the action.
-export function SuggestedResultLine({ check, names, onUse, disabled }: SuggestedResultLineProps) {
+export function SuggestedResultLine({ check, names, onUse, canUse = true, disabled }: SuggestedResultLineProps) {
   if (!check.suggestion) return null
   const agrees = check.status === 'match'
   return (
@@ -35,7 +37,7 @@ export function SuggestedResultLine({ check, names, onUse, disabled }: Suggested
           {agrees ? 'Matches the result you entered' : 'Worked out from the scores; change it if the scorecard says otherwise'}
         </Typography>
       </Box>
-      {!agrees && (
+      {!agrees && canUse && (
         <Button variant="secondary" size="sm" onClick={onUse} disabled={disabled}>
           Use this
         </Button>

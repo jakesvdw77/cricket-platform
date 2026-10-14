@@ -35,7 +35,7 @@ export interface PickedPlayer {
   lastName: string
 }
 
-export type PlayerSlotScope = 'squad' | 'club' | 'guest'
+export type PlayerSlotScope = 'match' | 'squad' | 'club' | 'guest'
 
 export interface PlayerSlotPickerProps {
   open: boolean
@@ -54,14 +54,30 @@ export interface PlayerSlotPickerProps {
   hints?: Record<string, string>
   onPickPlayer: (player: PickedPlayer) => void
   onPickGuest: (displayName: string) => void
+  // The players of THIS match for the Match squad scope, already in the order to show: the match selection (with the 12th
+  // man) and anyone already on this side's list. Omitted, the picker has no Match squad scope. Empty means no team was
+  // selected and nothing is on the list yet: it opens on Team squad with a note.
+  matchSquad?: PickedPlayer[]
+  // docs/specs/101: pick ONLY from the side's list as defined on Our batting (Our bowling and fielding). Shown instead of the
+  // other scopes: `matchPlayers` are all the side's players, `key` identifies each (it is also the key of `takenPlayers` and
+  // `hints`), `onPickMatchPlayer` receives the key, and `onNotListed` is the "Add them on Our batting" link.
+  matchOnly?: boolean
+  // One short explanatory line at the top (what Swap player means).
+  note?: string
+  matchPlayers?: Array<{ key: string; firstName: string; lastName: string }>
+  onPickMatchPlayer?: (key: string) => void
+  onNotListed?: () => void
+  // The link's text; defaults to "Add them on Our team".
+  notListedLabel?: string
   // False when the row can only become a registered player (Link to a registered player...): no Guest scope.
   allowGuest?: boolean
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
-  squad: "This team's squad",
-  club: 'Anyone in the club',
-  guest: 'Guest (name only)',
+  match: 'Match squad',
+  squad: 'Team squad',
+  club: 'Club',
+  guest: 'Guest',
 }
 
 const norm = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase()
@@ -123,9 +139,18 @@ function PickerBody({
   onPickPlayer,
   onPickGuest,
   allowGuest = true,
+  matchSquad,
+  matchOnly = false,
+  note,
+  matchPlayers = [],
+  onPickMatchPlayer,
+  onNotListed,
+  notListedLabel = 'Add them on Our team',
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
-  const [scope, setScope] = useState<PlayerSlotScope>(hasSquad ? 'squad' : 'club')
+  const hasMatch = matchSquad !== undefined
+  const noSelection = hasMatch && matchSquad.length === 0
+  const [scope, setScope] = useState<PlayerSlotScope>(hasMatch && !noSelection ? 'match' : hasSquad ? 'squad' : 'club')
   const [search, setSearch] = useState('')
   const [guest, setGuest] = useState('')
   const debouncedGuest = useDebouncedValue(guest, 250)
@@ -139,7 +164,7 @@ function PickerBody({
   const clubQuery = useQuery({
     queryKey: ['managed-club', clubId, 'players', { includeInactive: false }],
     queryFn: () => listPlayers(clubId, { includeInactive: false }),
-    enabled: scope !== 'squad',
+    enabled: scope === 'club' || scope === 'guest',
   })
   const guestQuery = useQuery({
     queryKey: resultKeys.guestNames(clubId, { teamId: teamId ?? undefined, q: debouncedGuest || undefined }),
@@ -170,17 +195,61 @@ function PickerBody({
   const registeredMatch = guestName === '' ? undefined : clubPeople.find((p) => norm(fullName(p)) === norm(guestName))
   const registeredTaken = registeredMatch ? takenPlayers[registeredMatch.playerProfileId] : undefined
 
-  const scopes: PlayerSlotScope[] = [...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : [])]
+  if (matchOnly) {
+    const people: PickedPlayer[] = matchPlayers.map((player) => ({ playerProfileId: player.key, firstName: player.firstName, lastName: player.lastName }))
+    const needleOnly = norm(search)
+    const shown = needleOnly ? people.filter((p) => norm(fullName(p)).includes(needleOnly)) : people
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+        {note && (
+          <Typography variant="caption" color="text.secondary">
+            {note}
+          </Typography>
+        )}
+        <TextField size="small" label="Search players" value={search} onChange={(event) => setSearch(event.target.value)} inputProps={{ 'aria-label': 'Search players' }} autoFocus />
+        <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
+          <PlayerRows
+            people={shown}
+            takenPlayers={takenPlayers}
+            hints={hints}
+            onPick={(player) => onPickMatchPlayer?.(player.playerProfileId)}
+            emptyText={needleOnly ? 'No player matches that search.' : 'No players on this side yet.'}
+          />
+        </Box>
+        {onNotListed && (
+          <Typography variant="body2" color="text.secondary">
+            Not listed?{' '}
+            <Button size="small" onClick={onNotListed} sx={{ textTransform: 'none', minHeight: { xs: 44, sm: 0 }, p: 0.5 }}>
+              {notListedLabel}
+            </Button>
+          </Typography>
+        )}
+      </Box>
+    )
+  }
+
+  const scopes: PlayerSlotScope[] = [...(hasMatch ? (['match'] as const) : []), ...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : [])]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+      {note && (
+        <Typography variant="caption" color="text.secondary">
+          {note}
+        </Typography>
+      )}
       <CompactToggleGroup<PlayerSlotScope> value={scope} onChange={setScope} ariaLabel="Where to find the player" fullWidth>
         {scopes.map((value) => (
-          <ToggleButton key={value} value={value} aria-label={SCOPE_LABEL[value]} sx={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
+          <ToggleButton key={value} value={value} aria-label={SCOPE_LABEL[value]} sx={{ whiteSpace: 'nowrap' }}>
             {SCOPE_LABEL[value]}
           </ToggleButton>
         ))}
       </CompactToggleGroup>
+
+      {noSelection && scope !== 'guest' && scope !== 'match' && (
+        <Typography variant="caption" color="text.secondary">
+          No team selected for this match
+        </Typography>
+      )}
 
       {scope !== 'guest' && (
         <>
@@ -193,19 +262,19 @@ function PickerBody({
             autoFocus
           />
           <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
-            {(scope === 'squad' ? squadQuery.isError : clubQuery.isError) ? (
+            {(scope === 'match' ? false : scope === 'squad' ? squadQuery.isError : clubQuery.isError) ? (
               <Alert severity="error">We couldn't load the players.</Alert>
-            ) : (scope === 'squad' ? squadQuery.isPending : clubQuery.isPending) ? (
+            ) : (scope === 'match' ? false : scope === 'squad' ? squadQuery.isPending : clubQuery.isPending) ? (
               <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                 Loading players...
               </Typography>
             ) : (
               <PlayerRows
-                people={matching(scope === 'squad' ? squadPeople : clubPeople)}
+                people={matching(scope === 'match' ? (matchSquad ?? []) : scope === 'squad' ? squadPeople : clubPeople)}
                 takenPlayers={takenPlayers}
-                hints={scope === 'squad' ? hints : {}}
+                hints={scope === 'match' || scope === 'squad' ? hints : {}}
                 onPick={onPickPlayer}
-                emptyText={needle ? 'No player matches that search.' : scope === 'squad' ? "This team's squad is empty." : 'No players yet.'}
+                emptyText={needle ? 'No player matches that search.' : scope === 'match' ? 'No players for this match yet.' : scope === 'squad' ? "This team's squad is empty." : 'No players yet.'}
               />
             )}
           </Box>

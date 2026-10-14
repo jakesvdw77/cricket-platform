@@ -87,12 +87,21 @@ beforeEach(() => {
 })
 
 describe('ResultCapturePage', () => {
-  it('offers the four steps in order Result, Toss & field, Scores, Review, starting on Result', async () => {
+  it('offers the steps in order Result, Toss & field, the optional scorecard steps, Scores and margin, Review, starting on Result', async () => {
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Capture result' })).toBeInTheDocument()
     const labels = within(screen.getByRole('list', { name: 'Steps' })).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
-    expect(labels).toEqual(['Step 1: Result', 'Step 2: Toss & field', 'Step 3: Scores', 'Step 4: Review'])
+    expect(labels).toEqual([
+      'Step 1: Result',
+      'Step 2: Toss & field',
+      'Step 3: Our team (optional)',
+      'Step 4: Our batting (optional)',
+      'Step 5: Our bowling and fielding (optional)',
+      'Step 6: Awards (optional)',
+      'Step 7: Scores and margin',
+      'Step 8: Review',
+    ])
     expect(step('Result')).toHaveAttribute('aria-current', 'step')
     expect(screen.getByText('How did the match end?')).toBeInTheDocument()
   })
@@ -104,8 +113,8 @@ describe('ResultCapturePage', () => {
 
     await next(user, 'Toss & field')
     expect(await screen.findByText('Who won the toss?')).toBeInTheDocument()
-    await next(user, 'Scores')
-    expect(await screen.findByText('Innings')).toBeInTheDocument()
+    await next(user, 'Our team')
+    expect(await screen.findByRole('button', { name: 'Populate from the team' })).toBeInTheDocument()
     expect(step('Result', ' (done)')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(await screen.findByText('Who won the toss?')).toBeInTheDocument()
@@ -133,11 +142,18 @@ describe('ResultCapturePage', () => {
     await user.click(screen.getByRole('radio', { name: /^Won/ }))
     expect(screen.getByRole('radiogroup', { name: 'Who won?' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'How was it decided?' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Margin')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('radio', { name: /^Abandoned/ }))
-    expect(screen.queryByRole('radiogroup', { name: 'Who won?' })).not.toBeInTheDocument()
+    // the margin is worked out and set on Scores and margin, not here
     expect(screen.queryByLabelText('Margin')).not.toBeInTheDocument()
+    await user.click(step('Scores and margin'))
+    expect(await screen.findByLabelText('Margin')).toBeInTheDocument()
+    await user.click(step('Result'))
+
+    await user.click(await screen.findByRole('radio', { name: /^Abandoned/ }))
+    expect(screen.queryByRole('radiogroup', { name: 'Who won?' })).not.toBeInTheDocument()
+    await user.click(step('Scores and margin'))
+    await screen.findByText('Innings')
+    expect(screen.queryByLabelText('Margin')).not.toBeInTheDocument()
+    await user.click(step('Result'))
 
     await user.click(screen.getByRole('radio', { name: /^Forfeit/ }))
     expect(screen.getByRole('radiogroup', { name: 'Who received the win?' })).toBeInTheDocument()
@@ -150,12 +166,14 @@ describe('ResultCapturePage', () => {
 
     await user.click(screen.getByRole('radio', { name: /^Won/ }))
     await user.click(screen.getByRole('radio', { name: new RegExp(HOME) }))
-    await user.type(screen.getByLabelText('Margin'), '24')
-    await user.click(screen.getByRole('radio', { name: /^Tie/ }))
+    await user.click(step('Scores and margin'))
+    await user.type(await screen.findByLabelText('Margin'), '24')
+    await user.click(step('Result'))
+    await user.click(await screen.findByRole('radio', { name: /^Tie/ }))
     await next(user, 'Toss & field')
 
-    await waitFor(() => expect(saveResultDraft).toHaveBeenCalledTimes(1))
-    expect(saveResultDraft).toHaveBeenCalledWith(
+    await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
+    expect(saveResultDraft).toHaveBeenLastCalledWith(
       'club-1',
       'match-1',
       expect.objectContaining({ outcomeType: 'TIE', winningSide: null, marginType: null, marginValue: null, decidedBy: 'REGULAR', innings: [] }),
@@ -172,7 +190,7 @@ describe('ResultCapturePage', () => {
     await user.click(screen.getByRole('radio', { name: /^Won/ }))
     await next(user, 'Toss & field')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Choose who won.')
+    expect(await screen.findByText('Choose who won.')).toBeInTheDocument()
     expect(step('Result')).toHaveAttribute('aria-current', 'step')
   })
 
@@ -192,7 +210,7 @@ describe('ResultCapturePage', () => {
 
       await user.click(screen.getByRole('radio', { name: new RegExp(AWAY) }))
       await user.click(screen.getByRole('button', { name: 'Bowl' }))
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
 
       expect(await screen.findByTestId('toss-context')).toHaveTextContent(`${AWAY} won the toss and chose to bowl`)
       const rows = screen.getAllByTestId('innings-row')
@@ -207,7 +225,7 @@ describe('ResultCapturePage', () => {
       const user = userEvent.setup()
       renderPage()
       await toToss(user)
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
 
       expect(await screen.findByText('Who batted first?')).toBeInTheDocument()
       expect(screen.queryByTestId('innings-row')).not.toBeInTheDocument()
@@ -221,13 +239,13 @@ describe('ResultCapturePage', () => {
       await toToss(user)
       await user.click(screen.getByRole('radio', { name: new RegExp(HOME) }))
       await user.click(screen.getByRole('button', { name: 'Bat' }))
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
       await user.type(await screen.findByLabelText(`${HOME} 1st innings runs`), '200')
 
       await user.click(screen.getByRole('button', { name: 'Change toss' }))
       await screen.findByText('Who won the toss?')
       await user.click(screen.getByRole('button', { name: 'Bowl' }))
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
 
       // home chose to bowl now, so the away side bats first and the 200 follows the home side to innings 2
       const rows = await screen.findAllByTestId('innings-row')
@@ -239,7 +257,7 @@ describe('ResultCapturePage', () => {
       const user = userEvent.setup()
       renderPage()
       await toToss(user)
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
       await user.click(await screen.findByRole('radio', { name: new RegExp(HOME) }))
 
       expect(screen.queryByTestId('super-over')).not.toBeInTheDocument()
@@ -253,7 +271,7 @@ describe('ResultCapturePage', () => {
       await user.click(screen.getByRole('radio', { name: /^Won/ }))
       await user.click(screen.getByRole('radio', { name: new RegExp(HOME) }))
       await user.click(screen.getByRole('button', { name: 'Super over' }))
-      await user.click(step('Scores'))
+      await user.click(step('Scores and margin'))
 
       expect(await screen.findAllByTestId('super-over')).toHaveLength(1)
       await user.click(screen.getByRole('button', { name: 'Add super over' }))
@@ -269,7 +287,7 @@ describe('ResultCapturePage', () => {
       await user.click(screen.getByRole('radio', { name: /^Won/ }))
       await user.click(screen.getByRole('button', { name: 'Super over' }))
       await user.click(screen.getByRole('button', { name: 'Normal' }))
-      await user.click(step('Scores'))
+      await user.click(step('Scores and margin'))
       await screen.findByText('Innings')
 
       expect(screen.queryByTestId('super-over')).not.toBeInTheDocument()
@@ -304,7 +322,7 @@ describe('ResultCapturePage', () => {
       await user.clear(screen.getByLabelText('Scheduled overs'))
       await user.type(screen.getByLabelText('Scheduled overs'), '36.4')
       expect(screen.queryByText(/must be 0 to 5/)).not.toBeInTheDocument()
-      await next(user, 'Scores')
+      await user.click(step('Scores and margin'))
 
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalledWith('club-1', 'match-1', expect.objectContaining({ scheduledBalls: 220 })))
     })
@@ -458,5 +476,32 @@ describe('ResultCapturePage', () => {
     renderPage()
 
     expect(await screen.findByText("Couldn't load this match")).toBeInTheDocument()
+  })
+
+  it('Our team lists the selected eleven and the captioned 12th man from the team selection', async () => {
+    const user = userEvent.setup()
+    getScorecardPrefill.mockResolvedValue({
+      sides: [
+        {
+          side: 'HOME',
+          teamId: 'team-1',
+          teamName: '1st XI',
+          players: [
+            { playerProfileId: 'p1', firstName: 'Ann', lastName: 'Ash', plannedBattingOrder: 1, role: 'BATSMAN', substitute: false },
+            { playerProfileId: 'p2', firstName: 'Bob', lastName: 'Bell', plannedBattingOrder: 2, role: 'BOWLER', substitute: false },
+            { playerProfileId: 'p3', firstName: 'Cy', lastName: 'Cox', plannedBattingOrder: null, role: 'BATSMAN', substitute: true },
+          ],
+        },
+      ],
+    })
+    renderPage()
+    await screen.findByRole('heading', { name: 'Capture result' })
+    await user.click(step('Our team'))
+
+    expect(await screen.findByText('Ann Ash')).toBeInTheDocument()
+    expect(screen.getByText('Bob Bell')).toBeInTheDocument()
+    expect(screen.getByText('Cy Cox')).toBeInTheDocument()
+    expect(screen.getByText('2 players + 12th man')).toBeInTheDocument()
+    expect(screen.getByText(/12th man/, { selector: 'span' })).toBeInTheDocument()
   })
 })

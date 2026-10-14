@@ -292,10 +292,10 @@ final class ScorecardRules {
     private static void lineupChecks(ScorecardDto scorecard, Names names, ScorecardContext context, ResultIssues issues) {
         for (ResultSide side : ResultSide.values()) {
             List<ResultPlayerDto> onSide = scorecard.players().stream().filter(p -> p.side() == side).toList();
-            long eleven = onSide.stream().filter(p -> !p.substitute()).count();
+            long eleven = onSide.stream().filter(p -> !p.substitute() && tookPart(scorecard, p)).count();
             if (eleven > LINEUP_SIZE) {
                 issues.warning(WarningCode.LINEUP_TOO_LARGE, ResultWizardStep.OUR_BATTING, side,
-                        names.of(side) + " has " + eleven + " players listed; a side fields " + LINEUP_SIZE
+                        names.of(side) + " has " + eleven + " players who took part; a side fields " + LINEUP_SIZE
                                 + ". Mark the extra ones as substitutes if they only fielded.");
             }
             Set<UUID> squad = context.squadBySide().get(side);
@@ -333,6 +333,19 @@ final class ScorecardRules {
                         p.displayName().trim() + " is also a guest on " + names.of(ResultSide.HOME) + ".");
             }
         }
+    }
+
+    /** Whether a player batted, bowled or fielded; a player listed only as did-not-bat does not count. */
+    private static boolean tookPart(ScorecardDto scorecard, ResultPlayerDto p) {
+        List<String> refs = refs(p);
+        return scorecard.batting().stream().anyMatch(e -> e.howOut() != DismissalType.DID_NOT_BAT
+                        && refersTo(refs, e.resultPlayerId(), e.playerClientKey()))
+                || scorecard.bowling().stream().anyMatch(e -> refersTo(refs, e.resultPlayerId(), e.playerClientKey()))
+                || scorecard.fielding().stream().anyMatch(e -> refersTo(refs, e.resultPlayerId(), e.playerClientKey()));
+    }
+
+    private static boolean refersTo(List<String> refs, UUID id, String clientKey) {
+        return (id != null && refs.contains(id.toString())) || (!blank(clientKey) && refs.contains(clientKey));
     }
 
     private static Set<UUID> profiles(ScorecardDto scorecard, ResultSide side) {

@@ -92,7 +92,7 @@ describe('PlayerSlotPicker', () => {
 
   it('Anyone in the club lists the whole roster, filtered locally', async () => {
     setup()
-    await userEvent.click(screen.getByRole('button', { name: 'Anyone in the club' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Club' }))
 
     expect(await screen.findByRole('button', { name: /Zed Zulu/ })).toBeInTheDocument()
     expect(playerApi.listPlayers).toHaveBeenCalledWith('club-1', { includeInactive: false })
@@ -103,12 +103,12 @@ describe('PlayerSlotPicker', () => {
   it('opens on Anyone in the club when there is no squad to show', async () => {
     setup({ teamId: null })
     expect(await screen.findByRole('button', { name: /Zed Zulu/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: "This team's squad" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: "Team squad" })).not.toBeInTheDocument()
   })
 
   it('adds a guest by name, with the club\'s earlier guest names offered', async () => {
     const { onPickGuest } = setup()
-    await userEvent.click(screen.getByRole('button', { name: 'Guest (name only)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guest' }))
     const name = screen.getByRole('combobox', { name: 'Guest name' })
     await userEvent.type(name, 'Dew')
 
@@ -120,7 +120,7 @@ describe('PlayerSlotPicker', () => {
 
   it('refuses a guest name already on the list', async () => {
     setup({ takenGuests: ['dewald van wyk'] })
-    await userEvent.click(screen.getByRole('button', { name: 'Guest (name only)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guest' }))
     await userEvent.type(screen.getByRole('combobox', { name: 'Guest name' }), 'Dewald  van Wyk')
 
     expect(screen.getByText('A guest with this name is already on this list.')).toBeInTheDocument()
@@ -129,7 +129,7 @@ describe('PlayerSlotPicker', () => {
 
   it('offers "Use this player" when the guest name is a registered player\'s', async () => {
     const { onPickPlayer, onPickGuest } = setup()
-    await userEvent.click(screen.getByRole('button', { name: 'Guest (name only)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guest' }))
     await userEvent.type(screen.getByRole('combobox', { name: 'Guest name' }), 'sam venter')
 
     await userEvent.click(await screen.findByRole('button', { name: 'Use this player' }))
@@ -139,9 +139,30 @@ describe('PlayerSlotPicker', () => {
 
   it('disables "Use this player" when that player is already on the list', async () => {
     setup({ takenPlayers: { p5: 'Already batting at 6' } })
-    await userEvent.click(screen.getByRole('button', { name: 'Guest (name only)' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Guest' }))
     await userEvent.type(screen.getByRole('combobox', { name: 'Guest name' }), 'Sam Venter')
 
     expect(await screen.findByRole('button', { name: 'Use this player' })).toBeDisabled()
+  })
+
+  it('match-only lists the whole side including the 12th man, disables those already bowling and points to Our batting', async () => {
+    const onPickMatchPlayer = vi.fn()
+    const onNotListed = vi.fn()
+    const matchPlayers = [...Array.from({ length: 11 }, (_, i) => ({ key: `k${i}`, firstName: `Pl${i}`, lastName: 'Xx' })), { key: 'k12', firstName: 'Twelfth', lastName: 'Man' }]
+    setup({ matchOnly: true, matchPlayers, takenPlayers: { k0: 'Already bowling' }, hints: { k12: '12th man' }, onPickMatchPlayer, onNotListed })
+
+    expect(await screen.findAllByRole('button', { name: /Xx|Twelfth/ })).toHaveLength(12)
+    expect(screen.getByRole('button', { name: /Twelfth Man/ })).toHaveTextContent('12th man')
+    expect(screen.getByRole('button', { name: /Pl0 Xx/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('button', { name: 'Team squad' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Twelfth Man/ }))
+    expect(onPickMatchPlayer).toHaveBeenCalledWith('k12')
+    await userEvent.click(screen.getByRole('button', { name: 'Add them on Our team' }))
+    expect(onNotListed).toHaveBeenCalled()
+  })
+
+  it('opens on Match squad when given one, and on Team squad with a note when no team was selected', async () => {
+    setup({ matchSquad: [{ playerProfileId: 'm1', firstName: 'Mia', lastName: 'Match' }] })
+    expect(await screen.findByRole('button', { name: /Mia Match/ })).toBeInTheDocument()
   })
 })

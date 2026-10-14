@@ -16,6 +16,10 @@ export interface StepProps {
   // Jumps to another step (saving first); the Scores step uses it to link back to the toss.
   // `side` also opens that side's tab on a scorecard step in a derby.
   onGoToStep?: (id: string, side?: ResultSide) => void
+  // Whether the order of the innings is known (the toss fixes it, or the manager said who batted first, or scores exist),
+  // and how to say it. Until it is known the innings cards are not shown.
+  battingOrderKnown?: boolean
+  onBattingOrder?: (first: ResultSide) => void
   // True when the scorecard steps are part of the wizard for this draft (the Scores step offers them).
   scorecardAvailable?: boolean
   // Saves the draft, then navigates (so leaving the wizard loses no edits); stays put when the save is refused.

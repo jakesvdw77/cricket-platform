@@ -15,12 +15,14 @@ export interface OversInputProps {
   // docs/specs/101: set inside a ScorecardGrid. The field is then a compact cell (no visible label, the label is its
   // accessible name) that the grid's keyboard handling finds by this column.
   gridColumn?: string
+  // The accessible name when it should say more than the visible label ("Overs, A. Smith").
+  ariaLabel?: string
 }
 
 // docs/specs/100-match-results-core.md: the overs field. The manager types "36.4" as on the scorecard; the parent holds
 // balls (220). A ball digit at or above balls per over is refused in plain English ("36.7"), and the parent receives null
 // until the text is valid. The text is local so a half-typed figure is never rewritten under the cursor.
-export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false, gridColumn }: OversInputProps) {
+export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false, gridColumn, ariaLabel }: OversInputProps) {
   const [text, setText] = useState(() => ballsToOvers(value, ballsPerOver))
   const [seenValue, setSeenValue] = useState(value)
 
@@ -58,7 +60,7 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
       }}
       inputProps={{
         inputMode: 'decimal',
-        'aria-label': label,
+        'aria-label': ariaLabel ?? label,
         ...(gridColumn ? { 'data-grid-cell': '', 'data-grid-col': gridColumn, onFocus: (event) => event.target.select() } : {}),
       }}
       sx={{

@@ -52,3 +52,21 @@ export function newRowFill(rows: ReadonlyArray<Pick<FillRow, 'howOut'>>, wickets
   const open = inPlay < initialBattedCount(Number.MAX_SAFE_INTEGER, wickets) && dismissalCount(rows) < wickets
   return open ? { howOut: null } : { howOut: 'DID_NOT_BAT', auto: true }
 }
+
+// The batted window follows the wickets even when they are entered after the rows were built (the innings card on Our
+// batting is where they are now typed): rows beyond the first wickets + 2 that are still undecided and carry no figures
+// become Did not bat (automatic), and automatic Did-not-bat rows that fall back inside the window (wickets raised, a row
+// moved up) return to undecided. Rows the manager set, and rows with figures, are never touched. Unknown wickets: no change.
+export function applyBattedWindow<T extends FillRow & { runs?: number | null; balls?: number | null; fours?: number | null; sixes?: number | null }>(
+  rows: T[],
+  wickets: number | null,
+): T[] {
+  if (wickets === null) return rows
+  const window = initialBattedCount(Number.MAX_SAFE_INTEGER, wickets)
+  return rows.map((row, index) => {
+    const figures = row.runs != null || row.balls != null || row.fours != null || row.sixes != null
+    if (index >= window && row.howOut === null && !figures) return { ...row, howOut: 'DID_NOT_BAT' as const, auto: true }
+    if (index < window && row.howOut === 'DID_NOT_BAT' && row.auto) return { ...row, howOut: null, auto: false }
+    return row
+  })
+}

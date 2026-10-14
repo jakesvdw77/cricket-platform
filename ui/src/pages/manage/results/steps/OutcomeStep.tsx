@@ -1,4 +1,4 @@
-import { Box, ToggleButton, Typography } from '@mui/material'
+import { Alert, Box, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
@@ -7,11 +7,9 @@ import { Input } from '../../../../components/Input'
 import { OutcomeTiles } from '../../../../components/OutcomeTiles'
 import { OversInput } from '../../../../components/OversInput'
 import { SidePicker } from '../../../../components/SidePicker'
-import type { ResultDecidedBy, ResultMarginType, ResultOutcomeType } from '../../../../api/matchResultApi'
-import { checkMargin } from '../../../../utils/marginCheck'
-import { addSuperOver, applySuggestion, superOversOf, withoutSuperOvers } from '../resultDraftHelpers'
+import type { ResultDecidedBy, ResultOutcomeType } from '../../../../api/matchResultApi'
+import { addSuperOver, superOversOf, withoutSuperOvers } from '../resultDraftHelpers'
 import { sidePickerOptions } from './sidePickerOptions'
-import { SuggestedResultLine } from './SuggestedResultLine'
 import type { StepProps } from './stepTypes'
 
 const labelSx = { fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75 } as const
@@ -23,12 +21,11 @@ function toInt(text: string): number | null {
 }
 
 // docs/specs/100-match-results-core.md, step 1 "Result": one outcome tile, then only the fields that outcome needs - the
-// winner (Won, Forfeit), how it was decided (Won), the margin proposed from the scores, and the DLS figures.
+// winner (Won, Forfeit), how it was decided (Won), and the DLS figures (the margin is set on Scores and margin).
 export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: StepProps) {
   const outcome = draft.outcomeType ?? null
   const decidedBy = draft.decidedBy ?? 'REGULAR'
   const won = outcome === 'WON'
-  const names = { home: sides[0].name, away: sides[1].name }
   const options = sidePickerOptions(sides)
   const ballsPerOver = draft.ballsPerOver ?? 6
 
@@ -45,13 +42,13 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
     else onReplace(withoutSuperOvers(patched))
   }
 
-  const check = checkMargin(draft, names)
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Alert severity="info" sx={{ py: 0.25, '& .MuiAlert-message': { fontSize: '0.8125rem' } }}>
+        Start with how the match ended. It decides which steps follow: a normal result opens the scorecard steps (batting, bowling, awards); a forfeit, abandoned match or no result skips them. The scores and winning margin are worked out for you later, once the scorecard is in.
+      </Alert>
       <FormSectionHeading icon={<EmojiEventsOutlinedIcon />} title="How did the match end?" />
       <OutcomeTiles value={outcome} onChange={chooseOutcome} disabled={disabled} />
-      {check.suggestion && <SuggestedResultLine check={check} names={names} onUse={() => onReplace(applySuggestion(draft, check.suggestion!))} disabled={disabled} />}
 
       {(won || outcome === 'FORFEIT') && (
         <Box>
@@ -117,31 +114,6 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
         </Box>
       )}
 
-      {won && decidedBy !== 'SUPER_OVER' && (
-        <Box>
-          <Typography sx={labelSx}>Margin</Typography>
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <Box sx={{ width: 120 }}>
-              <Input
-                label="Margin"
-                type="number"
-                value={draft.marginValue ?? ''}
-                onChange={(event) => onChange({ marginValue: toInt(event.target.value), marginType: draft.marginType ?? 'RUNS' })}
-                disabled={disabled}
-                inputProps={{ min: 0, inputMode: 'numeric' }}
-              />
-            </Box>
-            <CompactToggleGroup<ResultMarginType>
-              value={draft.marginType ?? 'RUNS'}
-              onChange={(next) => onChange({ marginType: next })}
-              ariaLabel="Margin type"
-            >
-              <ToggleButton value="RUNS">Runs</ToggleButton>
-              <ToggleButton value="WICKETS">Wickets</ToggleButton>
-            </CompactToggleGroup>
-          </Box>
-        </Box>
-      )}
     </Box>
   )
 }

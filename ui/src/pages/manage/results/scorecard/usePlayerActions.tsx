@@ -17,6 +17,10 @@ import { linkGuest, swapPlayer } from '../scorecardDraft'
 import type { PlayerIdentity } from '../scorecardDraft'
 import type { OurSide } from '../steps/stepTypes'
 
+// What the name popup offers for taking a player off the list: remove them, set them to Did not bat (they came from the
+// selection or have other figures, so they must stay in the match squad), or explain why they cannot be removed yet.
+export type RemoveKind = { kind: 'remove' } | { kind: 'dnb' } | { kind: 'blocked'; message: string }
+
 export interface PlayerActionsOptions {
   clubId: string
   seasonId: string
@@ -39,7 +43,26 @@ export interface PlayerActionsOptions {
   addTitle?: string
   addTakenPlayers?: Record<string, string>
   addTakenGuests?: string[]
-  onAdd: (identity: PlayerIdentity) => void
+  onAdd?: (identity: PlayerIdentity) => void
+  // The match squad scope of the picker (see matchSquadFor).
+  matchSquad?: PickedPlayer[]
+  // Which items the name popup shows beyond the reorder controls (Our bowling keeps only Remove).
+  menuSwap?: boolean
+  menuLink?: boolean
+  removeKind?: (key: string) => RemoveKind
+  // Extra items for the name popup (Mark as 12th man...), above Swap player.
+  extraItems?: (key: string, close: () => void) => ReactNode[]
+  // The row cannot move (the 12th man is not in the numbered list).
+  movable?: (key: string) => boolean
+  positionDisabledReason?: (key: string) => string | null
+  onSetDidNotBat?: (key: string) => void
+  // Add player from the side's defined list only (Our bowling and fielding): no Team squad / Club / Guest scopes.
+  addFromList?: {
+    players: Array<{ key: string; firstName: string; lastName: string }>
+    hints: Record<string, string>
+    onPick: (key: string) => void
+    onNotListed: () => void
+  }
   disabled?: boolean
 }
 
@@ -60,6 +83,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
   const [menu, setMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null)
   const [picker, setPicker] = useState<{ mode: 'swap' | 'link' | 'add'; key: string } | null>(null)
   const [removeKey, setRemoveKey] = useState<string | null>(null)
+  const [blocked, setBlocked] = useState<string | null>(null)
 
   const player = (key: string | null) => (key ? scorecard.players.find((candidate) => playerRowKey(candidate) === key) : undefined)
   const nameOf = (key: string | null): string => {
@@ -68,6 +92,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
   }
 
   const menuPlayer = player(menu?.key ?? null)
+  const removal: RemoveKind = menu && options.removeKind ? options.removeKind(menu.key) : { kind: 'remove' }
   const closeMenu = () => setMenu(null)
 
   // Swapping needs a person who is not already a (non-substitute) player of the side; the 12th man may step in.
@@ -93,24 +118,31 @@ export function usePlayerActions(options: PlayerActionsOptions) {
         ids={ids}
         onReorder={onReorder}
         positionLabel={positionLabel}
+        positionDisabledReason={menu && options.positionDisabledReason ? options.positionDisabledReason(menu.key) : null}
+        movable={menu && options.movable ? options.movable(menu.key) : undefined}
         after={
           menu && menuPlayer
             ? [
                 <Divider key="divider" />,
-                <MenuItem
-                  key="swap"
-                  disabled={options.disabled}
-                  onClick={() => {
-                    setPicker({ mode: 'swap', key: menu.key })
-                    closeMenu()
-                  }}
-                >
-                  <ListItemIcon>
-                    <SwapHorizIcon fontSize="small" />
-                  </ListItemIcon>
-                  Swap player...
-                </MenuItem>,
-                ...(menuPlayer.playerProfileId
+                ...(options.extraItems?.(menu.key, closeMenu) ?? []),
+                ...(options.menuSwap === false
+                  ? []
+                  : [
+                      <MenuItem
+                        key="swap"
+                        disabled={options.disabled}
+                        onClick={() => {
+                          setPicker({ mode: 'swap', key: menu.key })
+                          closeMenu()
+                        }}
+                      >
+                        <ListItemIcon>
+                          <SwapHorizIcon fontSize="small" />
+                        </ListItemIcon>
+                        Swap player...
+                      </MenuItem>,
+                    ]),
+                ...(menuPlayer.playerProfileId || options.menuLink === false
                   ? []
                   : [
                       <MenuItem
@@ -127,20 +159,37 @@ export function usePlayerActions(options: PlayerActionsOptions) {
                         Link to a registered player...
                       </MenuItem>,
                     ]),
-                <MenuItem
-                  key="remove"
-                  disabled={options.disabled}
-                  onClick={() => {
-                    setRemoveKey(menu.key)
-                    closeMenu()
-                  }}
-                  sx={{ color: 'error.main' }}
-                >
-                  <ListItemIcon sx={{ color: 'inherit' }}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </ListItemIcon>
-                  {options.removeLabel}
-                </MenuItem>,
+                removal.kind === 'dnb' ? (
+                  <MenuItem
+                    key="dnb"
+                    disabled={options.disabled}
+                    onClick={() => {
+                      options.onSetDidNotBat?.(menu.key)
+                      closeMenu()
+                    }}
+                  >
+                    <ListItemIcon>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </ListItemIcon>
+                    Set to Did not bat
+                  </MenuItem>
+                ) : (
+                  <MenuItem
+                    key="remove"
+                    disabled={options.disabled}
+                    onClick={() => {
+                      if (removal.kind === 'blocked') setBlocked(removal.message)
+                      else setRemoveKey(menu.key)
+                      closeMenu()
+                    }}
+                    sx={{ color: 'error.main' }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit' }}>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </ListItemIcon>
+                    {options.removeLabel}
+                  </MenuItem>
+                ),
               ]
             : []
         }
@@ -155,21 +204,39 @@ export function usePlayerActions(options: PlayerActionsOptions) {
         title={picker?.mode === 'swap' ? `Swap ${nameOf(pickerKey)}` : picker?.mode === 'link' ? 'Link to a registered player' : (options.addTitle ?? 'Add player')}
         takenPlayers={picker?.mode === 'add' ? (options.addTakenPlayers ?? {}) : swapTaken}
         takenGuests={picker?.mode === 'add' ? (options.addTakenGuests ?? []) : swapTakenGuests}
-        hints={hints}
+        hints={picker?.mode === 'add' && options.addFromList ? options.addFromList.hints : hints}
         allowGuest={picker?.mode !== 'link'}
+        matchSquad={options.matchSquad}
+        note={picker?.mode === 'swap' ? 'Swap player: the selected player did not play and this person played instead; all their figures move to them. If a player was replaced during the match, keep both and use Add player.' : undefined}
+        matchOnly={picker?.mode === 'add' && Boolean(options.addFromList)}
+        matchPlayers={options.addFromList?.players}
+        onPickMatchPlayer={(key) => {
+          options.addFromList?.onPick(key)
+          closePicker()
+        }}
+        onNotListed={options.addFromList?.onNotListed}
         onPickPlayer={(picked) => {
           const identity = identityOfPicked(picked)
           if (picker?.mode === 'swap') onScorecard(swapPlayer(scorecard, pickerKey, identity))
           else if (picker?.mode === 'link') onScorecard(linkGuest(scorecard, pickerKey, identity))
-          else options.onAdd(identity)
+          else options.onAdd?.(identity)
           closePicker()
         }}
         onPickGuest={(displayName) => {
           const identity: PlayerIdentity = { playerProfileId: null, displayName }
           if (picker?.mode === 'swap') onScorecard(swapPlayer(scorecard, pickerKey, identity))
-          else options.onAdd(identity)
+          else options.onAdd?.(identity)
           closePicker()
         }}
+      />
+
+      <ConfirmDialog
+        open={blocked !== null}
+        title="Can't remove yet"
+        description={blocked ?? ''}
+        acknowledgeOnly
+        confirmLabel="OK"
+        onClose={() => setBlocked(null)}
       />
 
       <ConfirmDialog

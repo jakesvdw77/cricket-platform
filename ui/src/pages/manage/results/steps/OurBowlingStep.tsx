@@ -1,10 +1,10 @@
-import { useEffect, useId, useState } from 'react'
-import { Alert, Box, Chip, IconButton, Typography } from '@mui/material'
+import { useEffect, useId } from 'react'
+import { Box, Chip, IconButton, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
 import SportsHandballOutlinedIcon from '@mui/icons-material/SportsHandballOutlined'
-import type { BowlingEntry, ResultPlayer, Scorecard } from '../../../../api/matchResultApi'
+import type { BowlingEntry, Innings, ResultPlayer, Scorecard } from '../../../../api/matchResultApi'
 import { Button } from '../../../../components/Button'
 import { ExtrasFields } from '../../../../components/ExtrasFields'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
@@ -25,12 +25,17 @@ import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { entryPlayerKey, playerRowKey } from '../../../../utils/scorecardPrefill'
 import { regularInningsOf, updateInnings } from '../resultDraftHelpers'
+import { CorrectedChip } from '../scorecard/CorrectedChip'
+import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
 import { InningsSummaryCard } from '../scorecard/InningsSummaryCard'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
-  addPlayer,
+  applyCalculatedFigure,
+  editInningsFigure,
+  inningsSuggestions,
+  syncInningsFromScorecard,
   duplicatePlayerKeys,
   blankBowlingEntry,
   battingOf,
@@ -38,6 +43,9 @@ import {
   bumpFielding,
   ensureSideFromPrefill,
   fieldingOf,
+  matchPlayersFor,
+  reconcileSubstitutes,
+  figureCorrected,
   patchBowling,
   patchFielding,
   playersByKey,
@@ -48,7 +56,6 @@ import {
   stepIncomplete,
   withScorecard,
 } from '../scorecardDraft'
-import type { PlayerIdentity } from '../scorecardDraft'
 import type { ScorecardStepProps } from './stepTypes'
 
 const FIELDING_FIELDS = [
@@ -91,6 +98,10 @@ export function OurBowlingStep({
   prefillState,
   scorecardSide,
   onScorecardSideChange,
+  battingOrderKnown,
+  onBattingOrder,
+  onGoToStep,
+  sides,
 }: ScorecardStepProps) {
   const ours = oursSides.find((candidate) => candidate.side === scorecardSide) ?? oursSides[0]
   const side = ours.side
@@ -106,10 +117,10 @@ export function OurBowlingStep({
   const rows = bowlingOf(scorecard, side)
   const byKey = playersByKey(scorecard)
   const duplicates = duplicatePlayerKeys(scorecard, side)
-  const [more, setMore] = useState(false)
   const nonBowlerId = useId()
 
-  const commit = (next: Scorecard) => onReplace(withScorecard(draft, next))
+  const selectionSubstitutes = new Set((prefillSide?.players ?? []).filter((candidate) => candidate.substitute).map((candidate) => candidate.playerProfileId))
+  const commit = (next: Scorecard) => onReplace(syncInningsFromScorecard(withScorecard(draft, reconcileSubstitutes(next, selectionSubstitutes))))
 
   // First open: the side's players (if Our batting was never opened) and the line-up's bowlers as blank rows.
   useEffect(() => {
@@ -134,31 +145,19 @@ export function OurBowlingStep({
     commit(setBowling(scorecard, side, order.map((id) => rows.find((entry) => entryPlayerKey(entry) === id) as BowlingEntry)))
   const reorder = useReorderableRows({ ids, onReorder })
 
+  // Our bowling and fielding pick only from the side's list as defined on Our batting: every result player of the side,
+  // whatever their batting status (Did not bat, the 12th man, guests). Someone not listed is added on Our team.
   const bowling = new Set(ids)
+  const matchPlayers = matchPlayersFor(scorecard, side, prefillSide)
   const taken: Record<string, string> = {}
-  const takenGuests: string[] = []
-  for (const player of players) {
-    if (!bowling.has(playerRowKey(player))) continue
-    if (player.playerProfileId) taken[player.playerProfileId] = 'Already bowling'
-    else if (player.displayName) takenGuests.push(player.displayName)
-  }
   const hints: Record<string, string> = {}
-  for (const planned of prefillSide?.players ?? []) if (planned.substitute) hints[planned.playerProfileId] = '12th man'
-
-  // Add bowler: someone already on the side bowls (a row for them), else the person joins the side (not batting) first.
-  const addBowler = (identity: PlayerIdentity) => {
-    const sameName = (player: ResultPlayer) => (player.displayName ?? '').trim().toLowerCase() === (identity.displayName ?? '').trim().toLowerCase()
-    const existing = players.find((player) =>
-      identity.playerProfileId ? player.playerProfileId === identity.playerProfileId && !player.substitute : !player.playerProfileId && sameName(player),
-    )
-    let next = scorecard
-    let player = existing
-    if (!player) {
-      const added = addPlayer(scorecard, side, identity, 'DID_NOT_BAT')
-      next = added.scorecard
-      player = next.players.find((candidate) => playerRowKey(candidate) === added.key) as ResultPlayer
-    }
-    commit(setBowling(next, side, [...bowlingOf(next, side), blankBowlingEntry(side, player, rows.length + 1)]))
+  for (const player of matchPlayers) {
+    if (bowling.has(player.key)) taken[player.key] = 'Already bowling'
+    else if (player.substitute || (byKey.get(player.key)?.playerProfileId && selectionSubstitutes.has(byKey.get(player.key)?.playerProfileId as string))) hints[player.key] = '12th man'
+  }
+  const addBowler = (key: string) => {
+    const player = byKey.get(key)
+    if (player && !bowling.has(key)) commit(setBowling(scorecard, side, [...rows, blankBowlingEntry(side, player, rows.length + 1)]))
   }
 
   const actions = usePlayerActions({
@@ -172,21 +171,24 @@ export function OurBowlingStep({
     view,
     hints,
     onReorder,
+    menuSwap: false,
+    menuLink: false,
     removeLabel: 'Remove bowler',
     removeDescription: (name) => `${name} comes off the bowling list. They stay on the team and any fielding credits stay.`,
     onRemove: (key) => commit(setBowling(scorecard, side, rows.filter((entry) => entryPlayerKey(entry) !== key))),
     addTitle: 'Add bowler',
     addTakenPlayers: taken,
-    addTakenGuests: takenGuests,
-    onAdd: addBowler,
+    addFromList: { players: matchPlayers, hints, onPick: addBowler, onNotListed: () => onGoToStep?.('our-team', side) },
     disabled,
   })
 
   const captionOf = (key: string): string | null => {
     const player = byKey.get(key)
-    if (!player?.replacedPlayerProfileId) return null
+    if (!player) return null
+    const twelfth = player.playerProfileId && selectionSubstitutes.has(player.playerProfileId) ? '12th man' : null
+    if (!player.replacedPlayerProfileId) return twelfth
     const replaced = plannedPeople.get(player.replacedPlayerProfileId)
-    return replaced ? `replaced ${label({ id: replaced.playerProfileId, firstName: replaced.firstName, lastName: replaced.lastName })}` : 'swapped in'
+    return [twelfth, replaced ? `replaced ${label({ id: replaced.playerProfileId, firstName: replaced.firstName, lastName: replaced.lastName })}` : 'swapped in'].filter(Boolean).join(' · ')
   }
 
   // ---- the strips ----
@@ -200,6 +202,20 @@ export function OurBowlingStep({
   const derivedNonBowler = derby && opposingBatting.length > 0 ? opposingBatting.filter((entry) => isNonBowlerWicket(entry.howOut)).length : null
   const nonBowler = derivedNonBowler ?? n(opposition?.nonBowlerWickets)
 
+  const ballsTone = opposition?.balls == null ? 'neutral' : balls === opposition.balls ? 'ok' : balls > opposition.balls ? 'warning' : 'neutral'
+  const runsTone =
+    opposition?.runs == null
+      ? 'neutral'
+      : hasBreakdown
+        ? bowlerRuns + notCharged === opposition.runs
+          ? 'ok'
+          : 'warning'
+        : bowlerRuns <= opposition.runs
+          ? 'neutral'
+          : 'warning'
+  const wicketsTone =
+    opposition?.wickets == null ? 'neutral' : bowlerWickets + nonBowler === opposition.wickets ? 'ok' : bowlerWickets + nonBowler > opposition.wickets ? 'warning' : 'neutral'
+
   const incomplete = Object.fromEntries(oursSides.map((candidate) => [candidate.side, stepIncomplete(draft, candidate.side, 'bowling')]))
 
   // ---- the grid ----
@@ -207,7 +223,7 @@ export function OurBowlingStep({
     id: field,
     header,
     align: 'right',
-    width: 64,
+    width: 76,
     render: (entry) => {
       const key = entryPlayerKey(entry) as string
       return (
@@ -225,7 +241,7 @@ export function OurBowlingStep({
   const columns: ScorecardGridColumn<BowlingEntry>[] = [
     {
       id: 'overs',
-      header: 'O',
+      header: 'Overs',
       align: 'right',
       width: 84,
       render: (entry) => {
@@ -242,10 +258,11 @@ export function OurBowlingStep({
         )
       },
     },
-    numberColumn('maidens', 'M', 'Maidens'),
-    numberColumn('runs', 'R', 'Runs conceded'),
-    numberColumn('wickets', 'W', 'Wickets'),
-    ...(more ? [numberColumn('wides', 'Wd', 'Wides'), numberColumn('noBalls', 'Nb', 'No-balls')] : []),
+    numberColumn('maidens', 'Maidens', 'Maidens'),
+    numberColumn('runs', 'Runs', 'Runs conceded'),
+    numberColumn('wickets', 'Wickets', 'Wickets'),
+    numberColumn('wides', 'Wides', 'Wides'),
+    numberColumn('noBalls', 'No-balls', 'No-balls'),
   ]
 
   const star = (entry: BowlingEntry) => {
@@ -286,58 +303,57 @@ export function OurBowlingStep({
       <ScorecardStepHeader oursSides={oursSides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} />
       <FormSectionHeading icon={<SportsBaseballOutlinedIcon />} title={`${ours.teamName} bowling`} />
 
-      {opposition && (
-        <InningsSummaryCard
-          teamName={oppositionName}
-          innings={opposition}
-          ballsPerOver={ballsPerOver}
-          onChange={(patch) => onReplace(updateInnings(draft, opposition.sequence ?? 2, patch))}
-          disabled={disabled}
-        />
-      )}
-
-      {!opposition || opposition.runs === null ? (
-        <Alert severity="info">Enter the opposition's innings on the Scores step first; the bowling figures are checked against it.</Alert>
+      {!opposition ? null : !battingOrderKnown ? (
+        <BattingOrderPrompt sides={sides} onChoose={(first) => onBattingOrder?.(first)} disabled={disabled} />
       ) : (
         <>
+          <InningsSummaryCard
+            teamName={oppositionName}
+            title={derby ? `Opposition: ${oppositionName}` : 'Opposition'}
+            innings={opposition}
+            ballsPerOver={ballsPerOver}
+            calculated={inningsSuggestions(draft).get(opposition.sequence ?? 2)}
+            onEdit={(field, value) => onReplace(editInningsFigure(draft, opposition.sequence ?? 2, field, value))}
+            onUseCalculated={(field) => onReplace(applyCalculatedFigure(draft, opposition.sequence ?? 2, field))}
+            disabled={disabled}
+          />
+          {/* The card says when the figures are calculated; a strip appears only where the bowling does not add up. */}
+          {(ballsTone === 'warning' || runsTone === 'warning' || wicketsTone === 'warning') && (
           <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
-            <ReconcileStrip
-              tone={opposition.balls === null ? 'neutral' : balls === opposition.balls ? 'ok' : balls > opposition.balls ? 'warning' : 'neutral'}
-              title={opposition.balls === null ? `Balls ${balls}` : `Balls ${balls} of ${opposition.balls}`}
-              status={
-                opposition.balls === null
-                  ? undefined
-                  : balls === opposition.balls
-                    ? 'all bowled'
-                    : balls > opposition.balls
-                      ? `${balls - opposition.balls} too many`
-                      : `${opposition.balls - balls} left`
-              }
-              detail={opposition.balls === null ? undefined : `${ballsToOvers(balls, ballsPerOver)} of ${ballsToOvers(opposition.balls, ballsPerOver)} overs`}
-            />
-            <ReconcileStrip
-              tone={
-                opposition.runs === null
-                  ? 'neutral'
-                  : hasBreakdown
-                    ? bowlerRuns + notCharged === opposition.runs
-                      ? 'ok'
-                      : 'warning'
-                    : bowlerRuns <= opposition.runs
-                      ? 'neutral'
-                      : 'warning'
-              }
-              title={`Runs ${bowlerRuns + notCharged} of ${opposition.runs} conceded`}
-              status={hasBreakdown ? (bowlerRuns + notCharged === opposition.runs ? 'adds up' : `${Math.abs(bowlerRuns + notCharged - opposition.runs)} ${bowlerRuns + notCharged > opposition.runs ? 'too many' : 'short'}`) : 'enter the extras to check the total'}
-              detail={`${bowlerRuns} charged to bowlers + ${notCharged} byes, leg byes and penalty`}
-            />
-            <ReconcileStrip
-              tone={opposition.wickets === null ? 'neutral' : bowlerWickets + nonBowler === opposition.wickets ? 'ok' : bowlerWickets + nonBowler > opposition.wickets ? 'warning' : 'neutral'}
-              title={opposition.wickets === null ? `Wickets ${bowlerWickets} + ${nonBowler}` : `Wickets ${bowlerWickets} + ${nonBowler} = ${bowlerWickets + nonBowler} of ${opposition.wickets}`}
-              status={opposition.wickets === null ? undefined : bowlerWickets + nonBowler === opposition.wickets ? 'adds up' : undefined}
-              detail="Bowlers' wickets + wickets not credited to a bowler"
-            />
+            {ballsTone === 'warning' && (
+              <ReconcileStrip
+                tone={ballsTone}
+                title={opposition.balls === null ? `Balls ${balls}` : `Balls ${balls} of ${opposition.balls}`}
+                status={
+                  opposition.balls === null
+                    ? undefined
+                    : balls === opposition.balls
+                      ? 'all bowled'
+                      : balls > opposition.balls
+                        ? `${balls - opposition.balls} too many`
+                        : `${opposition.balls - balls} left`
+                }
+                detail={opposition.balls === null ? undefined : `${ballsToOvers(balls, ballsPerOver)} of ${ballsToOvers(opposition.balls, ballsPerOver)} overs`}
+              />
+            )}
+            {runsTone === 'warning' && (
+              <ReconcileStrip
+                tone={runsTone}
+                title={opposition.runs === null ? `Runs ${bowlerRuns + notCharged} conceded` : `Runs ${bowlerRuns + notCharged} of ${opposition.runs} conceded`}
+                status={opposition.runs === null ? undefined : hasBreakdown ? (bowlerRuns + notCharged === opposition.runs ? 'adds up' : `${Math.abs(bowlerRuns + notCharged - opposition.runs)} ${bowlerRuns + notCharged > opposition.runs ? 'too many' : 'short'}`) : 'enter the extras to check the total'}
+                detail={`${bowlerRuns} charged to bowlers + ${notCharged} byes, leg byes and penalty`}
+              />
+            )}
+            {wicketsTone === 'warning' && (
+              <ReconcileStrip
+                tone={wicketsTone}
+                title={opposition.wickets === null ? `Wickets ${bowlerWickets} + ${nonBowler}` : `Wickets ${bowlerWickets} + ${nonBowler} = ${bowlerWickets + nonBowler} of ${opposition.wickets}`}
+                status={opposition.wickets === null ? undefined : bowlerWickets + nonBowler === opposition.wickets ? 'adds up' : undefined}
+                detail="Bowlers' wickets + wickets not credited to a bowler"
+              />
+            )}
           </Box>
+          )}
 
           {/* The opposition's extras sit above the rows so they stay put as bowlers are added. */}
           <Box>
@@ -348,10 +364,30 @@ export function OurBowlingStep({
               value={opposition}
               owner={oppositionName}
               disabled={disabled}
-              onChange={(patch) => onReplace(updateInnings(draft, opposition.sequence ?? 2, patch))}
+              onChange={(patch) => {
+                // Wides and no-balls are derived from the bowlers: typing one is an edit (with Reset); the rest are plain inputs.
+                let next = draft
+                for (const [key, value] of Object.entries(patch) as Array<[keyof Innings, number | null]>) {
+                  next = key === 'wides' || key === 'noBalls' ? editInningsFigure(next, opposition.sequence ?? 2, key, value) : updateInnings(next, opposition.sequence ?? 2, { [key]: value })
+                }
+                onReplace(syncInningsFromScorecard(next))
+              }}
+              fieldNote={(key) => {
+                if (key !== 'wides' && key !== 'noBalls') return null
+                const calc = inningsSuggestions(draft).get(opposition.sequence ?? 2)?.[key]
+                if (calc == null || !figureCorrected(opposition, key, calc)) return null
+                return (
+                  <CorrectedChip
+                    label={`${key === 'wides' ? 'wides' : 'no-balls'}, ${oppositionName}`}
+                    calculatedText={String(calc)}
+                    onReset={() => onReplace(applyCalculatedFigure(draft, opposition.sequence ?? 2, key))}
+                    disabled={disabled}
+                  />
+                )
+              }}
             />
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Byes, leg byes and penalty runs are not charged to a bowler. Extras total {extrasTotal(opposition)}.
+              Wides and no-balls add up from the bowlers; byes, leg byes and penalty runs are not charged to a bowler. Extras total {extrasTotal(opposition)}.
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.5, flexWrap: 'wrap' }}>
               <Typography component="label" htmlFor={nonBowlerId} variant="body2" sx={{ fontWeight: 600 }}>
@@ -365,7 +401,7 @@ export function OurBowlingStep({
                 <GridNumberInput
                   id={nonBowlerId}
                   value={opposition.nonBowlerWickets ?? null}
-                  onChange={(value) => onReplace(updateInnings(draft, opposition.sequence ?? 2, { nonBowlerWickets: value }))}
+                  onChange={(value) => onReplace(syncInningsFromScorecard(updateInnings(draft, opposition.sequence ?? 2, { nonBowlerWickets: value })))}
                   ariaLabel="Wickets not credited to a bowler"
                   column="nonBowlerWickets"
                   disabled={disabled}
@@ -402,14 +438,15 @@ export function OurBowlingStep({
                     <Box sx={{ flex: 1, minWidth: 0 }}>{playerCell(entry)}</Box>
                     {star(entry)}
                   </Box>
-                  <OversInput label={`Overs, ${name}`} value={entry.balls} onChange={(value) => edit(key, { balls: value })} ballsPerOver={ballsPerOver} disabled={disabled} />
+                  <OversInput label="Overs" ariaLabel={`Overs, ${name}`} value={entry.balls} onChange={(value) => edit(key, { balls: value })} ballsPerOver={ballsPerOver} disabled={disabled} />
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: 1, justifyContent: 'space-between' }}>
                     {(
                       [
                         ['maidens', 'Maidens'],
                         ['runs', 'Runs conceded'],
                         ['wickets', 'Wickets'],
-                        ...(more ? ([['wides', 'Wides'], ['noBalls', 'No-balls']] as const) : []),
+                        ['wides', 'Wides'],
+                        ['noBalls', 'No-balls'],
                       ] as const
                     ).map(([field, title]) => (
                       <Box key={field}>
@@ -428,9 +465,6 @@ export function OurBowlingStep({
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={actions.openAdd} disabled={disabled}>
               Add bowler
-            </Button>
-            <Button variant="ghost" size="sm" aria-expanded={more} onClick={() => setMore((open) => !open)}>
-              {more ? 'Hide wides and no-balls' : 'More: wides and no-balls'}
             </Button>
           </Box>
         </>
@@ -469,7 +503,7 @@ export function OurBowlingStep({
                     <PlayerName person={scorecardPersonName(player)} view={view} />
                   </Typography>
                   {!player.playerProfileId && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
-                  {player.substitute && <Chip size="small" label="Substitute" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
+                  {(player.substitute || (player.playerProfileId && selectionSubstitutes.has(player.playerProfileId))) && <Chip size="small" label="12th man" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
                 </Box>
                 {FIELDING_FIELDS.map(({ field, label: title }) => (
                   <Box key={field} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>

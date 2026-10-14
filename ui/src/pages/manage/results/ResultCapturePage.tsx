@@ -30,10 +30,12 @@ import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { checkMargin } from '../../../utils/marginCheck'
 import { errorIssues, errorList, errorStatus, isNotFound } from '../../../utils/errorDetail'
 import type { MarginCheck } from '../../../utils/marginCheck'
-import { applySuggestion, draftFromResult, isBlankDraft, scorecardStepsApplicable, toPayload } from './resultDraftHelpers'
+import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromToss, hasRegularFigures, isBlankDraft, scorecardStepsApplicable, toPayload } from './resultDraftHelpers'
 import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
 import { mergeSuggestions, normalizeLoaded } from './scorecardDraft'
+import { withCalculatedMargin } from './calculatedMargin'
 import { AwardsStep } from './steps/AwardsStep'
+import { OurTeamStep } from './steps/OurTeamStep'
 import { OurBattingStep } from './steps/OurBattingStep'
 import { OurBowlingStep } from './steps/OurBowlingStep'
 import { OutcomeStep } from './steps/OutcomeStep'
@@ -71,15 +73,15 @@ interface StepRegistration {
 
 const scorecardApplicable = (draft: ResultDraft, env: { oursSides: number }) => env.oursSides > 0 && scorecardStepsApplicable(draft)
 
-// docs/specs/100-match-results-core.md: the wizard's steps as a registration list. Slices 101 and 102 add their steps
-// (Our batting, Our bowling and fielding, ...) here, after "scores" and before "review", without touching the page or
-// stepper. Toss comes before scores because the toss decides who batted first.
+// docs/specs/100-match-results-core.md: the wizard's steps as a registration list; a new step is a new entry. Toss comes
+// before the scorecard because the toss decides who batted first.
 const RESULT_STEPS: StepRegistration[] = [
   { id: 'outcome', label: 'Result', render: (context) => <OutcomeStep {...context} /> },
   { id: 'toss', label: 'Toss & field', shortLabel: 'Toss', render: (context) => <TossFieldStep {...context} /> },
-  { id: 'scores', label: 'Scores', render: (context) => <ScoresStep {...context} /> },
-  // docs/specs/101: the optional scorecard steps, only once an innings has runs and the match was played.
-  { id: 'our-batting', label: 'Our batting', optional: true, isApplicable: scorecardApplicable, render: (context) => <OurBattingStep {...context} /> },
+  // docs/specs/101 (decision 20): the optional scorecard steps come right after the toss, in the order things happen, and
+  // the innings figures are typed on them; Scores and margin then checks the totals and settles the winner and margin.
+  { id: 'our-team', label: 'Our team', shortLabel: 'Team', optional: true, isApplicable: scorecardApplicable, render: (context) => <OurTeamStep {...context} /> },
+  { id: 'our-batting', label: 'Our batting', shortLabel: 'Batting', optional: true, isApplicable: scorecardApplicable, render: (context) => <OurBattingStep {...context} /> },
   {
     id: 'our-bowling',
     label: 'Our bowling and fielding',
@@ -88,7 +90,8 @@ const RESULT_STEPS: StepRegistration[] = [
     isApplicable: scorecardApplicable,
     render: (context) => <OurBowlingStep {...context} />,
   },
-  { id: 'awards', label: 'Awards', optional: true, isApplicable: scorecardApplicable, render: (context) => <AwardsStep {...context} /> },
+  { id: 'awards', label: 'Awards', shortLabel: 'Awards', optional: true, isApplicable: scorecardApplicable, render: (context) => <AwardsStep {...context} /> },
+  { id: 'scores', label: 'Scores and margin', shortLabel: 'Scores', render: (context) => <ScoresStep {...context} /> },
   {
     id: 'review',
     label: 'Review',
@@ -103,6 +106,7 @@ const STEP_LABEL: Record<string, string> = {
   RESULT: 'Result',
   TOSS: 'Toss & field',
   SCORES: 'Scores',
+  OUR_TEAM: 'Our team',
   OUR_BATTING: 'Our batting',
   OUR_BOWLING: 'Our bowling and fielding',
   AWARDS: 'Awards',
@@ -188,6 +192,8 @@ function CaptureWizard({
   })
   const [field, setField] = useState<FieldPickerValue | null>(() => initialField(match, existing))
   const [stepId, setStepId] = useState(RESULT_STEPS[0].id)
+  // Set once the manager says who batted first (no toss recorded), so the scorecard steps know the innings order.
+  const [orderAsked, setOrderAsked] = useState(false)
   const [scorecardSide, setScorecardSide] = useState<ResultSide>(oursSides[0]?.side ?? 'HOME')
   const [savedAt, setSavedAt] = useState<Date | null>(existing ? new Date(existing.updatedAt) : null)
   const [problems, setProblems] = useState<string[]>([])
@@ -205,7 +211,8 @@ function CaptureWizard({
   const validateMutation = useMutation({ mutationFn: (next: ResultDraft) => validateResult(clubId, matchId, toPayload(next)) })
   const publishMutation = useMutation({ mutationFn: () => publishResult(clubId, matchId, acknowledged) })
 
-  const update = (patch: Partial<ResultDraft>) => setDraft((current) => ({ ...current, ...patch }))
+  // Every edit also keeps the calculated margin of a regular win in step with the scores (unless the manager edited it).
+  const update = (patch: Partial<ResultDraft>) => setDraft((current) => withCalculatedMargin({ ...current, ...patch }, names))
 
   // Saves the draft (nothing is written for a form that is still empty). False when the server refused it.
   const save = async (next: ResultDraft): Promise<boolean> => {
@@ -307,12 +314,18 @@ function CaptureWizard({
     match,
     draft,
     onChange: update,
-    onReplace: setDraft,
+    onReplace: (next) => setDraft(withCalculatedMargin(next, names)),
     sides,
     disabled: busy,
     leagueScheduledBalls,
     onGoToStep: (id, side) => void goTo(id, side),
     scorecardAvailable: scorecardApplicable(draft, stepEnv),
+    battingOrderKnown:
+      firstBatterFromToss(draft) !== null || orderAsked || hasRegularFigures(draft) || (existing?.innings.length ?? 0) > 0,
+    onBattingOrder: (first) => {
+      setOrderAsked(true)
+      setDraft((current) => applyBattingOrder(current, first))
+    },
     onSaveAndNavigate: (to) => {
       const next = withSuggestedMargin(draft, names)
       void save(next).then((saved) => saved && navigate(to))

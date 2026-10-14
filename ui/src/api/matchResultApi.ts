@@ -41,7 +41,7 @@ export type AwardType = 'PLAYER_OF_MATCH' | 'TEAM_PLAYER_OF_MATCH'
 // The manager's edit of a standout suggestion: FEATURE adds a player the rules did not suggest, HIDE removes a
 // suggestion, null follows the suggestion.
 export type FeaturedOverride = 'FEATURE' | 'HIDE'
-export type ResultWizardStep = 'RESULT' | 'TOSS' | 'SCORES' | 'OUR_BATTING' | 'OUR_BOWLING' | 'AWARDS'
+export type ResultWizardStep = 'RESULT' | 'TOSS' | 'SCORES' | 'OUR_TEAM' | 'OUR_BATTING' | 'OUR_BOWLING' | 'AWARDS'
 export type ResultIssueSeverity = 'ERROR' | 'WARNING' | 'INFO'
 export type ScorecardStatus = 'NONE' | 'PARTIAL' | 'COMPLETE'
 
@@ -66,6 +66,14 @@ export interface Innings {
   penaltyRuns?: number | null
   // Wickets not credited to a bowler (run-outs and similar), the opposition's side of the bowling reconciliation.
   nonBowlerWickets?: number | null
+  // Client-only (never sent): true when the manager typed the figure, false when the scorecard calculated it, absent when
+  // unknown (a loaded result). A typed figure that differs from the calculation is "corrected" and is not overwritten.
+  runsCorrected?: boolean
+  wicketsCorrected?: boolean
+  ballsCorrected?: boolean
+  // The same for the extras the bowlers' wides and no-balls add up to.
+  widesCorrected?: boolean
+  noBallsCorrected?: boolean
 }
 
 // docs/specs/101: who played for one of our sides. A new row carries a `clientKey` (entries refer to it by
@@ -227,6 +235,8 @@ export interface ResultDraft {
   innings?: Innings[]
   // docs/specs/101: absent / null = untouched on a save; present replaces our side's whole scorecard.
   scorecard?: Scorecard | null
+  // Client-only (never sent): the manager edited the margin away from what the scores give (see calculatedMargin).
+  marginCorrected?: boolean
 }
 
 // A stored result with its innings in sequence order. outcomeType is null only on a draft.
