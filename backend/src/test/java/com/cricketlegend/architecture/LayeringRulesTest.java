@@ -71,8 +71,11 @@ class LayeringRulesTest {
     void noMatchResultAccessOutsideTheResultServices() {
         ArchRule rule = noClasses().that(DescribedPredicate.not(HasName.Predicates.nameMatching(ownersRegex())))
                 .should().dependOnClassesThat().haveNameMatching(
-                        "com\\.cricketlegend\\.(domain\\.(MatchResult|MatchInnings)"
-                                + "|repository\\.(MatchResultRepository|MatchInningsRepository))(\\$.*)?")
+                        "com\\.cricketlegend\\.(domain\\.(MatchResult|MatchInnings|ResultPlayer|BattingEntry|BowlingEntry"
+                                + "|FieldingEntry|MatchAward)"
+                                + "|repository\\.(MatchResultRepository|MatchInningsRepository|ResultPlayerRepository"
+                                + "|BattingEntryRepository|BowlingEntryRepository|FieldingEntryRepository"
+                                + "|MatchAwardRepository))(\\$.*)?")
                 .allowEmptyShould(true);
         rule.check(CLASSES);
     }
@@ -87,7 +90,7 @@ class LayeringRulesTest {
                 .filter(n -> !n.startsWith("MatchResultRepository"))
                 .collect(java.util.stream.Collectors.toSet());
         org.assertj.core.api.Assertions.assertThat(users)
-                .containsExactlyInAnyOrder("ResultServiceImpl", "ResultStatusResolver");
+                .containsExactlyInAnyOrder("ResultServiceImpl", "ResultStatusResolver", "ScorecardServiceImpl");
     }
 
     @Test
@@ -104,14 +107,16 @@ class LayeringRulesTest {
         rule.check(CLASSES);
     }
 
-    /** The only code allowed to touch the match_result / match_innings tables and entities. */
+    /** The only code allowed to touch the match_result / match_innings tables and entities, and (docs/specs/101) the scorecard's. */
     private static String ownersRegex() {
         return "com\\.cricketlegend\\."
-                + "(service\\.impl\\.ResultServiceImpl"
-                + "|service\\.support\\.ResultStatusResolver"
-                + "|mapper\\.MatchResultMapper(Impl)?"
-                + "|domain\\.(MatchResult|MatchInnings)"
-                + "|repository\\.(MatchResultRepository|MatchInningsRepository|MatchSpecifications|ResultVisibility))"
+                + "(service\\.impl\\.(ResultServiceImpl|ScorecardServiceImpl)"
+                + "|service\\.support\\.(ResultStatusResolver|ScorecardRows)"
+                + "|mapper\\.(MatchResultMapper|ScorecardMapper)(Impl)?"
+                + "|domain\\.(MatchResult|MatchInnings|ResultPlayer|BattingEntry|BowlingEntry|FieldingEntry|MatchAward)"
+                + "|repository\\.(MatchResultRepository|MatchInningsRepository|ResultPlayerRepository"
+                + "|BattingEntryRepository|BowlingEntryRepository|FieldingEntryRepository|MatchAwardRepository"
+                + "|MatchSpecifications|ResultVisibility))"
                 + "(\\$.*)?";
     }
 }

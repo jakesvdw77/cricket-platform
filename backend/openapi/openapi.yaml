@@ -5708,6 +5708,132 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchResultDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/scorecard:
+    get:
+      tags:
+      - match-result-controller
+      operationId: getScorecard
+      description: "Our side's saved scorecard (docs/specs/101): players, per-innings extras and non-bowler wickets, batting, bowling, fielding, awards and each ours side's status. Every entry carries suggested, featuredOverride and featured. 404 if there is no result; an empty scorecard if the result has none."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ScorecardDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/scorecard/prefill:
+    get:
+      tags:
+      - match-result-controller
+      operationId: prefillScorecard
+      description: "The proposed line-up per ours side from the team selection (docs/specs/101): batting order (null orders last), role, 12th man as a substitute, plannedBattingOrder. Works with or without a result; writes nothing; empty lists when no team was selected."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ScorecardPrefillDto"
+  /api/v1/manage/clubs/{clubId}/matches/{matchId}/result/players/{resultPlayerId}/link:
+    post:
+      tags:
+      - match-result-controller
+      operationId: linkResultPlayer
+      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile or a player already linked; 409 when the profile is already on that side's list."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: resultPlayerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkResultPlayerRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultPlayerDto"
+  /api/v1/manage/clubs/{clubId}/results/guest-names:
+    get:
+      tags:
+      - match-result-controller
+      operationId: listGuestNames
+      description: "Distinct guest names the club has used on scorecards, most recently used first, with a count (docs/specs/101). Optionally limited to results of one team and filtered by a contains search. Paged."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageGuestNameDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -10409,6 +10535,26 @@ components:
           type: boolean
         oversDisplay:
           type: string
+        wides:
+          type: integer
+          format: int32
+          description: "Extras breakdown in runs, the batting side's (docs/specs/101). When any part is present, extras is their sum; a total that disagrees is a 400 (EXTRAS_TOTAL_MISMATCH)."
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        nonBowlerWickets:
+          type: integer
+          format: int32
+          description: "Wickets not credited to a bowler in this innings (run-outs and similar); ignored when our batters are on the scorecard, where it is derived from their dismissals (docs/specs/101)."
     ResultDraft:
       type: object
       description: "The canonical result being captured (docs/specs/100); partial values allowed. decidedBy defaults to REGULAR and ballsPerOver to 6."
@@ -10472,6 +10618,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/InningsDto"
+        scorecard:
+          $ref: "#/components/schemas/ScorecardDto"
     MatchResultDto:
       type: object
       description: "A stored result with its innings in sequence order (docs/specs/100). outcomeType is null only on a draft."
@@ -10576,6 +10724,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/InningsDto"
+        hasScorecard:
+          type: boolean
+          description: "True when our side's scorecard has at least one player (docs/specs/101); detailLevel is then OUR_SIDE."
     ResultListItemDto:
       type: object
       description: "One Results list row (docs/specs/100): the match with its result. result is null only if the result vanished between the two reads."
@@ -10584,6 +10735,9 @@ components:
           $ref: "#/components/schemas/MatchDto"
         result:
           $ref: "#/components/schemas/MatchResultDto"
+        playerOfTheMatch:
+          type: string
+          description: "The official player of the match's name, or null when none was recorded (docs/specs/101)."
     PageResultListItemDto:
       type: object
       properties:
@@ -10652,10 +10806,436 @@ components:
           type: array
           items:
             type: string
+        issues:
+          type: array
+          description: "The same errors and warnings plus info lines as typed issues with a stable code, the wizard step to fix them on and (scorecard issues) the side (docs/specs/101). Also a property of the 400 problem body of a refused save or publish."
+          items:
+            $ref: "#/components/schemas/ResultIssueDto"
     PublishResultRequest:
       type: object
       properties:
         acknowledgedWarnings:
+          type: boolean
+    ResultIssueDto:
+      type: object
+      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
+      properties:
+        code:
+          type: string
+        step:
+          type: string
+          enum:
+          - RESULT
+          - TOSS
+          - SCORES
+          - OUR_BATTING
+          - OUR_BOWLING
+          - AWARDS
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        severity:
+          type: string
+          enum:
+          - ERROR
+          - WARNING
+          - INFO
+        message:
+          type: string
+    ResultPlayerDto:
+      type: object
+      description: "Who played for one of our sides (docs/specs/101). On write send id for a player already on the scorecard, or a new clientKey that entries refer to; firstName, lastName, guest, linkedBy and linkedAt are read-only. A guest has no playerProfileId and a displayName."
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientKey:
+          type: string
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        playerProfileId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        plannedBattingOrder:
+          type: integer
+          format: int32
+        replacedPlayerProfileId:
+          type: string
+          format: uuid
+        substitute:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        guest:
+          type: boolean
+        linkedBy:
+          type: string
+          format: uuid
+        linkedAt:
+          type: string
+          format: date-time
+    BattingEntryDto:
+      type: object
+      description: "One batter of our side in the regular innings in which battingSide batted (docs/specs/101). position is the actual batting order. suggested and featured are read-only (the standout rules and the effective value, frozen at publish); the manager writes only featuredOverride. inningsKind SUPER_OVER is refused."
+      properties:
+        id:
+          type: string
+          format: uuid
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        inningsKind:
+          type: string
+          enum:
+          - REGULAR
+          - SUPER_OVER
+        resultPlayerId:
+          type: string
+          format: uuid
+        playerClientKey:
+          type: string
+        position:
+          type: integer
+          format: int32
+        howOut:
+          type: string
+          enum:
+          - NOT_OUT
+          - DID_NOT_BAT
+          - BOWLED
+          - CAUGHT
+          - CAUGHT_AND_BOWLED
+          - LBW
+          - STUMPED
+          - RUN_OUT
+          - HIT_WICKET
+          - HANDLED_BALL
+          - OBSTRUCTING_FIELD
+          - HIT_BALL_TWICE
+          - TIMED_OUT
+          - RETIRED_NOT_OUT
+          - RETIRED_OUT
+        runs:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        fours:
+          type: integer
+          format: int32
+        sixes:
+          type: integer
+          format: int32
+        featuredOverride:
+          type: string
+          enum:
+          - FEATURE
+          - HIDE
+        suggested:
+          type: boolean
+        featured:
+          type: boolean
+    BowlingEntryDto:
+      type: object
+      description: "One bowler of our side in the innings in which battingSide (the other side) batted (docs/specs/101). balls is balls bowled, never decimal overs."
+      properties:
+        id:
+          type: string
+          format: uuid
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        inningsKind:
+          type: string
+          enum:
+          - REGULAR
+          - SUPER_OVER
+        resultPlayerId:
+          type: string
+          format: uuid
+        playerClientKey:
+          type: string
+        bowlingOrder:
+          type: integer
+          format: int32
+        balls:
+          type: integer
+          format: int32
+        maidens:
+          type: integer
+          format: int32
+        runs:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int32
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        featuredOverride:
+          type: string
+          enum:
+          - FEATURE
+          - HIDE
+        suggested:
+          type: boolean
+        featured:
+          type: boolean
+    FieldingEntryDto:
+      type: object
+      description: "One fielder of our side in the innings in which battingSide (the other side) batted (docs/specs/101)."
+      properties:
+        id:
+          type: string
+          format: uuid
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        inningsKind:
+          type: string
+          enum:
+          - REGULAR
+          - SUPER_OVER
+        resultPlayerId:
+          type: string
+          format: uuid
+        playerClientKey:
+          type: string
+        catches:
+          type: integer
+          format: int32
+        stumpings:
+          type: integer
+          format: int32
+        runOuts:
+          type: integer
+          format: int32
+        featuredOverride:
+          type: string
+          enum:
+          - FEATURE
+          - HIDE
+        suggested:
+          type: boolean
+        featured:
+          type: boolean
+    MatchAwardDto:
+      type: object
+      description: "Player of the match (docs/specs/101): PLAYER_OF_MATCH is the official one (one per result), TEAM_PLAYER_OF_MATCH the club team own (one per ours side). resultPlayerId or playerClientKey names one of our players; displayName is free text for an opposition player; playerName is read-only."
+      properties:
+        id:
+          type: string
+          format: uuid
+        awardType:
+          type: string
+          enum:
+          - PLAYER_OF_MATCH
+          - TEAM_PLAYER_OF_MATCH
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        resultPlayerId:
+          type: string
+          format: uuid
+        playerClientKey:
+          type: string
+        displayName:
+          type: string
+        playerName:
+          type: string
+    ScorecardInningsDto:
+      type: object
+      description: "Read-only extras breakdown and non-bowler wickets of one innings as the scorecard read reports them (written through InningsDto on the result)."
+      properties:
+        battingSide:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        wides:
+          type: integer
+          format: int32
+        noBalls:
+          type: integer
+          format: int32
+        byes:
+          type: integer
+          format: int32
+        legByes:
+          type: integer
+          format: int32
+        penaltyRuns:
+          type: integer
+          format: int32
+        extras:
+          type: integer
+          format: int32
+        nonBowlerWickets:
+          type: integer
+          format: int32
+    ScorecardSideStatusDto:
+      type: object
+      description: "How complete one ours side scorecard is (docs/specs/101)."
+      properties:
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        status:
+          type: string
+          enum:
+          - NONE
+          - PARTIAL
+          - COMPLETE
+    ScorecardDto:
+      type: object
+      description: "Our side scorecard (docs/specs/101), one or two ours sides. The optional scorecard of a ResultDraft: absent means untouched, present replaces the whole draft scorecard in one transaction. On write innings and status are ignored."
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResultPlayerDto"
+        batting:
+          type: array
+          items:
+            $ref: "#/components/schemas/BattingEntryDto"
+        bowling:
+          type: array
+          items:
+            $ref: "#/components/schemas/BowlingEntryDto"
+        fielding:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldingEntryDto"
+        awards:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchAwardDto"
+        innings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScorecardInningsDto"
+        status:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScorecardSideStatusDto"
+    ScorecardPrefillPlayerDto:
+      type: object
+      description: "A selected player proposed for the scorecard line-up (docs/specs/101); plannedBattingOrder is null for a player without an order and for the 12th man (substitute true)."
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        plannedBattingOrder:
+          type: integer
+          format: int32
+        role:
+          type: string
+          enum:
+          - BATSMAN
+          - BOWLER
+          - ALL_ROUNDER
+        substitute:
+          type: boolean
+    ScorecardPrefillSideDto:
+      type: object
+      description: "The proposed line-up of one ours side from the team selection, in batting order (docs/specs/101); players is empty when no team was selected."
+      properties:
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScorecardPrefillPlayerDto"
+    ScorecardPrefillDto:
+      type: object
+      description: "The proposed line-up per ours side of a match, from the selection (docs/specs/101): two entries in a derby. Writes nothing."
+      properties:
+        sides:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScorecardPrefillSideDto"
+    LinkResultPlayerRequest:
+      type: object
+      description: "Link an unlinked scorecard player to a registered player of this club (docs/specs/101)."
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+    GuestNameDto:
+      type: object
+      description: "A guest name the club has used before, for the name field suggestions (docs/specs/101)."
+      properties:
+        displayName:
+          type: string
+        uses:
+          type: integer
+          format: int64
+        lastUsed:
+          type: string
+          format: date-time
+    PageGuestNameDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuestNameDto"
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
           type: boolean
     AvailabilityRespondentDto:
       type: object

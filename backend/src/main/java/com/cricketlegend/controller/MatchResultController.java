@@ -3,16 +3,23 @@ package com.cricketlegend.controller;
 import com.cricketlegend.domain.ResultListFocus;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultStatus;
+import com.cricketlegend.dto.GuestNameDto;
+import com.cricketlegend.dto.LinkResultPlayerRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchResultDto;
 import com.cricketlegend.dto.PublishResultRequest;
 import com.cricketlegend.dto.ResultDraft;
+import com.cricketlegend.dto.ResultPlayerDto;
 import com.cricketlegend.dto.ResultListCriteria;
 import com.cricketlegend.dto.ResultListItemDto;
 import com.cricketlegend.dto.ResultValidationDto;
 import com.cricketlegend.dto.ResultsSummaryDto;
+import com.cricketlegend.dto.ScorecardDto;
+import com.cricketlegend.dto.ScorecardPrefillDto;
 import com.cricketlegend.service.ResultService;
+import com.cricketlegend.service.ScorecardService;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -34,14 +41,18 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * docs/specs/100-match-results-core.md: the Results list, counters, filter options and capture picker feed, plus one
  * match's result (get, save draft, validate, publish, unpublish, delete draft). Club-scoped, manager only.
+ * docs/specs/101: also our side's scorecard (prefill from the selection, read, link a guest) and the guest-name
+ * suggestions; the scorecard itself is saved through the result's PUT.
  */
 @RestController
 public class MatchResultController {
 
     private final ResultService resultService;
+    private final ScorecardService scorecardService;
 
-    public MatchResultController(ResultService resultService) {
+    public MatchResultController(ResultService resultService, ScorecardService scorecardService) {
         this.resultService = resultService;
+        this.scorecardService = scorecardService;
     }
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
@@ -169,6 +180,44 @@ public class MatchResultController {
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         resultService.deleteDraft(authentication, clubId, matchId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/result/scorecard/prefill")
+    public ResponseEntity<ScorecardPrefillDto> prefillScorecard(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        return ResponseEntity.ok(scorecardService.prefill(authentication, clubId, matchId));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/result/scorecard")
+    public ResponseEntity<ScorecardDto> scorecard(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        return ResponseEntity.ok(scorecardService.read(authentication, clubId, matchId));
+    }
+
+    /** The one write allowed on a published result: who is credited for a guest row, not any figure. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @PostMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}/result/players/{resultPlayerId}/link")
+    public ResponseEntity<ResultPlayerDto> linkPlayer(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @PathVariable UUID matchId,
+            @PathVariable UUID resultPlayerId,
+            @Valid @RequestBody LinkResultPlayerRequest request) {
+        return ResponseEntity.ok(scorecardService.link(
+                authentication, clubId, matchId, resultPlayerId, request.playerProfileId()));
+    }
+
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/results/guest-names")
+    public ResponseEntity<Page<GuestNameDto>> guestNames(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ResponseEntity.ok(scorecardService.guestNames(authentication, clubId, teamId, q, pageable));
     }
 
     private ResultListCriteria criteria(

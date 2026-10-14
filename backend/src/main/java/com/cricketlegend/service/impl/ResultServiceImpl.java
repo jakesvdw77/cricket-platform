@@ -4,17 +4,21 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchInnings;
+import com.cricketlegend.domain.InningsKind;
 import com.cricketlegend.domain.MatchResult;
 import com.cricketlegend.domain.PlayingArea;
 import com.cricketlegend.domain.ResultDetailLevel;
 import com.cricketlegend.domain.ResultListFocus;
 import com.cricketlegend.domain.ResultOutcomeType;
+import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ResultStatus;
 import com.cricketlegend.domain.Team;
+import com.cricketlegend.dto.InningsDto;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchResultDto;
 import com.cricketlegend.dto.ResultDraft;
+import com.cricketlegend.dto.ResultIssueDto;
 import com.cricketlegend.dto.ResultListCriteria;
 import com.cricketlegend.dto.ResultListItemDto;
 import com.cricketlegend.dto.ResultValidationDto;
@@ -31,14 +35,20 @@ import com.cricketlegend.repository.MatchInningsRepository;
 import com.cricketlegend.repository.MatchResultRepository;
 import com.cricketlegend.repository.MatchSpecifications;
 import com.cricketlegend.repository.PlayingAreaRepository;
+import com.cricketlegend.repository.ResultPlayerRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.ResultService;
+import com.cricketlegend.service.ScorecardService;
 import com.cricketlegend.service.support.MatchSideNames;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultValidator;
 import com.cricketlegend.service.support.ServerClock;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,6 +89,8 @@ public class ResultServiceImpl implements ResultService {
     private final MatchResultMapper mapper;
     private final ResultValidator validator;
     private final AccessService accessService;
+    private final ScorecardService scorecardService;
+    private final ResultPlayerRepository resultPlayerRepository;
 
     public ResultServiceImpl(
             MatchService matchService,
@@ -90,7 +102,9 @@ public class ResultServiceImpl implements ResultService {
             TeamRepository teamRepository,
             MatchResultMapper mapper,
             ResultValidator validator,
-            AccessService accessService) {
+            AccessService accessService,
+            ScorecardService scorecardService,
+            ResultPlayerRepository resultPlayerRepository) {
         this.matchService = matchService;
         this.resultRepository = resultRepository;
         this.inningsRepository = inningsRepository;
@@ -101,6 +115,8 @@ public class ResultServiceImpl implements ResultService {
         this.mapper = mapper;
         this.validator = validator;
         this.accessService = accessService;
+        this.scorecardService = scorecardService;
+        this.resultPlayerRepository = resultPlayerRepository;
     }
 
     // ---- lists ----
@@ -120,7 +136,12 @@ public class ResultServiceImpl implements ResultService {
                 authentication, clubId, criteria.sectionId(), criteria.search(), criteria.leagueId(),
                 criteria.seasonId(), criteria.teamId(), extra, pageable);
         Map<UUID, MatchResultDto> resultsByMatchId = resultsFor(matches.getContent());
-        return matches.map(match -> new ResultListItemDto(match, resultsByMatchId.get(match.id())));
+        Map<UUID, String> playersOfTheMatch = scorecardService.playersOfTheMatch(
+                resultsByMatchId.values().stream().map(MatchResultDto::id).toList());
+        return matches.map(match -> {
+            MatchResultDto result = resultsByMatchId.get(match.id());
+            return new ResultListItemDto(match, result, result == null ? null : playersOfTheMatch.get(result.id()));
+        });
     }
 
     @Override
@@ -208,9 +229,11 @@ public class ResultServiceImpl implements ResultService {
     public MatchResultDto upsertDraft(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft) {
         Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
         assertCapturable(match);
-        List<String> structural = validator.structuralErrors(draft);
+        List<ResultIssueDto> structural = validator.structuralIssueList(draft);
         if (!structural.isEmpty()) {
-            throw new InvalidResultException("The result cannot be saved as entered.", structural, List.of());
+            throw new InvalidResultException(
+                    "The result cannot be saved as entered.", structural.stream().map(ResultIssueDto::message).toList(),
+                    List.of(), structural);
         }
         MatchResult existing = resultRepository.findByMatchId(matchId).orElse(null);
         if (existing != null && existing.getStatus() == ResultStatus.PUBLISHED) {
@@ -232,10 +255,12 @@ public class ResultServiceImpl implements ResultService {
                         .source(SOURCE_MANUAL)
                         .build();
         mapper.applyDraft(withDefaults, result);
+        result.setDetailLevel(detailLevelFor(existing, draft));
         if (chosenField != null) {
             result.setPlayingAreaId(chosenField.getId());
         }
-        result.setUpdatedBy(accessService.resolveCurrentPersonId(authentication));
+        UUID person = accessService.resolveCurrentPersonId(authentication);
+        result.setUpdatedBy(person);
 
         MatchResult saved;
         try {
@@ -243,24 +268,68 @@ public class ResultServiceImpl implements ResultService {
         } catch (DataIntegrityViolationException e) {
             throw new ResultAlreadyExistsException("This match already has a result.");
         }
-        if (existing != null) {
-            inningsRepository.deleteByMatchResultId(saved.getId());
+        List<MatchInnings> innings = reconcileInnings(saved.getId(), withDefaults.innings(), existing != null);
+        if (draft.scorecard() != null) {
+            scorecardService.replace(saved.getId(), clubId, match, draft.scorecard(), person);
         }
-        List<MatchInnings> innings = inningsRepository.saveAll(withDefaults.innings().stream()
-                .map(dto -> {
-                    MatchInnings entity = mapper.toInningsEntity(dto);
-                    entity.setMatchResultId(saved.getId());
-                    return entity;
-                })
-                .toList());
-        return toDto(saved, innings.stream().sorted(java.util.Comparator.comparingInt(MatchInnings::getSequence)).toList());
+        return toDto(saved, innings);
+    }
+
+    /**
+     * Brings the stored innings in line with the draft in place (docs/specs/101): an innings is matched on its kind and
+     * batting side (in sequence order when a side has several), keeps its id and so its scorecard rows, and takes the new
+     * sequence and figures; innings no longer in the draft are deleted with their entries. The sequence uniqueness is
+     * deferred, so a toss-driven resequence needs no ordering.
+     */
+    private List<MatchInnings> reconcileInnings(UUID resultId, List<InningsDto> wanted, boolean hasStored) {
+        Map<String, Deque<MatchInnings>> pool = new HashMap<>();
+        if (hasStored) {
+            for (MatchInnings stored : inningsRepository.findByMatchResultIdOrderBySequence(resultId)) {
+                pool.computeIfAbsent(inningsKey(stored.getKind(), stored.getBattingSide()), k -> new ArrayDeque<>())
+                        .add(stored);
+            }
+        }
+        List<MatchInnings> kept = new ArrayList<>();
+        for (InningsDto dto : wanted) {
+            Deque<MatchInnings> candidates = pool.get(inningsKey(dto.kind(), dto.battingSide()));
+            MatchInnings entity = candidates == null ? null : candidates.poll();
+            if (entity == null) {
+                entity = mapper.toInningsEntity(dto);
+                entity.setMatchResultId(resultId);
+            } else {
+                mapper.updateInnings(dto, entity);
+            }
+            kept.add(entity);
+        }
+        List<MatchInnings> removed = pool.values().stream().flatMap(Deque::stream).toList();
+        if (!removed.isEmpty()) {
+            inningsRepository.deleteAll(removed);
+        }
+        List<MatchInnings> saved = inningsRepository.saveAll(kept);
+        inningsRepository.flush();
+        return saved.stream().sorted(Comparator.comparingInt(MatchInnings::getSequence)).toList();
+    }
+
+    private static String inningsKey(InningsKind kind, ResultSide side) {
+        return kind + ":" + side;
+    }
+
+    /** OUR_SIDE once there is a scorecard, else SUMMARY; FULL (slice 102) is never lowered. */
+    private ResultDetailLevel detailLevelFor(MatchResult existing, ResultDraft draft) {
+        if (existing != null && existing.getDetailLevel() == ResultDetailLevel.FULL) {
+            return ResultDetailLevel.FULL;
+        }
+        boolean hasScorecard = draft.scorecard() != null
+                ? !draft.scorecard().isEmpty()
+                : existing != null && resultPlayerRepository.existsByMatchResultId(existing.getId());
+        return hasScorecard ? ResultDetailLevel.OUR_SIDE : ResultDetailLevel.SUMMARY;
     }
 
     @Override
     @Transactional(readOnly = true)
     public ResultValidationDto validate(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft) {
         Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
-        ResultDraft subject = draft != null ? draft : storedDraft(findResultOrThrow(matchId));
+        ResultDraft subject = draft != null ? draft : storedDraft(findResultOrThrow(matchId), match);
         return validateAgainst(match, subject);
     }
 
@@ -273,20 +342,23 @@ public class ResultServiceImpl implements ResultService {
         if (result.getStatus() == ResultStatus.PUBLISHED) {
             throw new ResultPublishedException("This result is already published.");
         }
-        ResultValidationDto validation = validateAgainst(match, storedDraft(result));
+        ResultValidationDto validation = validateAgainst(match, storedDraft(result, match));
         if (!validation.canPublish()) {
             throw new InvalidResultException(
-                    "This result cannot be published yet.", validation.errors(), validation.warnings());
+                    "This result cannot be published yet.", validation.errors(), validation.warnings(),
+                    validation.issues());
         }
         if (!validation.warnings().isEmpty() && !acknowledgedWarnings) {
             throw new InvalidResultException(
-                    "Acknowledge the warnings to publish this result.", List.of(), validation.warnings());
+                    "Acknowledge the warnings to publish this result.", List.of(), validation.warnings(),
+                    validation.issues());
         }
         UUID person = accessService.resolveCurrentPersonId(authentication);
         result.setStatus(ResultStatus.PUBLISHED);
         result.setPublishedAt(ServerClock.now());
         result.setPublishedBy(person);
         result.setUpdatedBy(person);
+        scorecardService.freezeFeatured(result.getId(), match);
         return toDto(resultRepository.save(result));
     }
 
@@ -302,6 +374,7 @@ public class ResultServiceImpl implements ResultService {
         result.setPublishedAt(null);
         result.setPublishedBy(null);
         result.setUpdatedBy(accessService.resolveCurrentPersonId(authentication));
+        scorecardService.clearFeatured(result.getId());
         return toDto(resultRepository.save(result));
     }
 
@@ -342,11 +415,14 @@ public class ResultServiceImpl implements ResultService {
         Map<UUID, Team> teamsById = teamIds.isEmpty()
                 ? Map.of()
                 : teamRepository.findAllById(teamIds).stream().collect(Collectors.toMap(Team::getId, t -> t));
-        return validator.validate(draft, MatchSideNames.home(match, teamsById), MatchSideNames.away(match, teamsById));
+        return validator.validate(
+                draft, MatchSideNames.home(match, teamsById), MatchSideNames.away(match, teamsById),
+                scorecardService.validationContext(match, draft));
     }
 
-    private ResultDraft storedDraft(MatchResult result) {
-        return mapper.toDraft(result, inningsRepository.findByMatchResultIdOrderBySequence(result.getId()));
+    private ResultDraft storedDraft(MatchResult result, Match match) {
+        return mapper.toDraft(result, inningsRepository.findByMatchResultIdOrderBySequence(result.getId()))
+                .copyWithScorecard(scorecardService.load(result.getId(), match));
     }
 
     /** The league's maximum overs per innings in balls, when the match has a league with that figure on file. */
@@ -367,7 +443,8 @@ public class ResultServiceImpl implements ResultService {
     }
 
     private MatchResultDto toDto(MatchResult result, List<MatchInnings> innings) {
-        MatchResultDto dto = mapper.toDto(result, innings);
+        MatchResultDto dto = mapper.toDto(result, innings)
+                .copyWithHasScorecard(resultPlayerRepository.existsByMatchResultId(result.getId()));
         if (result.getPlayingAreaId() == null) {
             return dto;
         }
@@ -397,8 +474,15 @@ public class ResultServiceImpl implements ResultService {
                 ? Map.of()
                 : playingAreaRepository.findAllById(areaIds).stream()
                         .collect(Collectors.toMap(PlayingArea::getId, PlayingArea::getName));
+        Set<UUID> withScorecard = results.isEmpty()
+                ? Set.of()
+                : resultPlayerRepository.findByMatchResultIdIn(results.stream().map(MatchResult::getId).toList())
+                        .stream()
+                        .map(p -> p.getMatchResultId())
+                        .collect(Collectors.toSet());
         for (MatchResult result : results) {
-            MatchResultDto dto = mapper.toDto(result, inningsByResultId.getOrDefault(result.getId(), List.of()));
+            MatchResultDto dto = mapper.toDto(result, inningsByResultId.getOrDefault(result.getId(), List.of()))
+                    .copyWithHasScorecard(withScorecard.contains(result.getId()));
             byMatchId.put(result.getMatchId(), dto.withPlayingAreaName(
                     result.getPlayingAreaId() == null ? null : areaNames.get(result.getPlayingAreaId())));
         }

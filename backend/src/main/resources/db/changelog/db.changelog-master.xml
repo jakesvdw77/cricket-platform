@@ -48,5 +48,6 @@
     <include file="db/changelog/v1/041-playing-areas.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/042-playing-area-municipal.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/043-match-results.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/044-match-results-our-side-scorecard.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

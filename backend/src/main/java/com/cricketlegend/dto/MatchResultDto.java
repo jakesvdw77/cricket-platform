@@ -14,7 +14,8 @@ import java.util.UUID;
 /**
  * docs/specs/100-match-results-core.md: a stored result with its innings in sequence order. {@code outcomeType} is
  * null only on a draft. {@code playingAreaName} is the chosen field's name (null with no field). All run, wicket and
- * length figures are balls-based; see {@link InningsDto}.
+ * length figures are balls-based; see {@link InningsDto}. {@code hasScorecard} (docs/specs/101) is true when our side's
+ * scorecard has at least one player.
  */
 public record MatchResultDto(
         UUID id,
@@ -43,13 +44,23 @@ public record MatchResultDto(
         Instant createdAt,
         Instant updatedAt,
         UUID updatedBy,
-        List<InningsDto> innings) {
+        List<InningsDto> innings,
+        boolean hasScorecard) {
 
     /** A copy carrying the chosen field's name. */
     public MatchResultDto withPlayingAreaName(String name) {
         return new MatchResultDto(
                 id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
                 dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId, name,
-                note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy, innings);
+                note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy, innings, hasScorecard);
+    }
+
+    /** A copy saying whether our side's scorecard has been captured (docs/specs/101). */
+    public MatchResultDto copyWithHasScorecard(boolean scorecardCaptured) {
+        return new MatchResultDto(
+                id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
+                dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId,
+                playingAreaName, note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy,
+                innings, scorecardCaptured);
     }
 }

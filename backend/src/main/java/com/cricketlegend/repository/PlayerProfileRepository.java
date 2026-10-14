@@ -43,4 +43,15 @@ public interface PlayerProfileRepository extends JpaRepository<PlayerProfile, UU
 
     /** Active players of the club among {@code ids} — the overview figure for a section-scoped caller (079). */
     long countByClubIdAndActiveTrueAndIdIn(UUID clubId, java.util.Collection<UUID> ids);
+
+    /**
+     * The first and last name of every active player of the club, in one joined query (docs/specs/101): the scorecard
+     * checks an unlinked guest name against these (normalised and case-insensitive in the caller).
+     */
+    @Query("""
+            select p.id as playerProfileId, pe.firstName as firstName, pe.lastName as lastName
+            from PlayerProfile p, Person pe
+            where pe.id = p.personId and p.clubId = :clubId and p.active = true
+            """)
+    List<PlayerNameView> findActiveNamesByClubId(@Param("clubId") UUID clubId);
 }
