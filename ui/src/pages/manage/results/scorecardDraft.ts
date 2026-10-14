@@ -15,10 +15,10 @@ import type {
 import type { PickedPlayer } from '../../../components/PlayerSlotPicker'
 import { scorecardPersonName } from '../../../utils/playerDisplayName'
 import type { RemoveKind } from './scorecard/usePlayerActions'
-import { isWicket } from '../../../utils/dismissal'
+import { allowsBowler, allowsFielder, deriveCredits, hasFieldingCredit, isNonBowlerWicket, isWicket, NO_CREDIT } from '../../../utils/dismissal'
 import { extrasTotal, hasExtras } from '../../../utils/battingTotals'
 import { canFeatureBatter, canFeatureBowler } from '../../../utils/standout'
-import { blankBattingEntry, entryPlayerKey, entryRefOf, newClientKey, playerRowKey, prefillSideRows } from '../../../utils/scorecardPrefill'
+import { LINEUP_SIZE, blankBattingEntry, entryPlayerKey, entryRefOf, newClientKey, playerRowKey, prefillSideRows } from '../../../utils/scorecardPrefill'
 
 const opposite = (side: ResultSide): ResultSide => (side === 'HOME' ? 'AWAY' : 'HOME')
 
@@ -75,8 +75,17 @@ export const fieldingOf = (scorecard: Scorecard, ours: ResultSide): FieldingEntr
 
 export const hasCredit = (entry: FieldingEntry): boolean => (entry.catches ?? 0) + (entry.stumpings ?? 0) + (entry.runOuts ?? 0) > 0
 
+// A bowling row carries information once a figure is typed. The wickets of a row that follows the dismissals count only when
+// the dismissals gave the bowler one (a blank derived row is an empty row, not one with 0 wickets).
 export const hasBowlingFigures = (entry: BowlingEntry): boolean =>
-  [entry.balls, entry.maidens, entry.runs, entry.wickets, entry.wides, entry.noBalls].some((value) => value != null)
+  [entry.balls, entry.maidens, entry.runs, entry.wides, entry.noBalls, entry.dots].some((value) => value != null) ||
+  (entry.wicketsSource === 'DERIVED' ? (entry.wickets ?? 0) > 0 : entry.wickets != null)
+
+export const isOppositionPlayer = (player: Pick<ResultPlayer, 'opposition'> | undefined): boolean => Boolean(player?.opposition)
+
+// The names on the opposition's list of `side` (the side that is not ours), in the order typed.
+export const oppositionNamesOf = (scorecard: Scorecard, side: ResultSide): string[] =>
+  playersOfSide(scorecard, side).map((player) => (player.displayName ?? '').trim()).filter(Boolean)
 
 // ---- batting rows ----
 
@@ -115,7 +124,13 @@ export function setBowling(scorecard: Scorecard, ours: ResultSide, rows: Bowling
   }
 }
 
-export function blankBowlingEntry(ours: ResultSide, player: Pick<ResultPlayer, 'id' | 'clientKey'>, order: number): BowlingEntry {
+// A new bowling row follows the dismissals (DERIVED) when the innings already has batting entries, else it is typed.
+export function blankBowlingEntry(
+  ours: ResultSide,
+  player: Pick<ResultPlayer, 'id' | 'clientKey'>,
+  order: number,
+  derived = false,
+): BowlingEntry {
   return {
     battingSide: opposite(ours),
     inningsKind: 'REGULAR',
@@ -127,6 +142,8 @@ export function blankBowlingEntry(ours: ResultSide, player: Pick<ResultPlayer, '
     wickets: null,
     wides: null,
     noBalls: null,
+    dots: null,
+    wicketsSource: derived ? 'DERIVED' : 'MANUAL',
     featuredOverride: null,
   }
 }
@@ -151,6 +168,7 @@ export function bumpFielding(
       catches: 0,
       stumpings: 0,
       runOuts: 0,
+      creditsSource: 'MANUAL',
       featuredOverride: null,
       [field]: 1,
     }
@@ -159,7 +177,7 @@ export function bumpFielding(
   return {
     ...scorecard,
     fielding: scorecard.fielding.map((entry) =>
-      entryPlayerKey(entry) === key ? { ...entry, [field]: Math.max(0, (entry[field] ?? 0) + delta) } : entry,
+      entryPlayerKey(entry) === key ? { ...entry, [field]: Math.max(0, (entry[field] ?? 0) + delta), creditsSource: 'MANUAL' } : entry,
     ),
   }
 }
@@ -176,6 +194,8 @@ export interface PlayerIdentity {
   firstName?: string | null
   lastName?: string | null
   displayName?: string | null
+  // A player of the side that is not ours: a name only, never a guest.
+  opposition?: boolean
 }
 
 const identityFields = (identity: PlayerIdentity) => ({
@@ -183,35 +203,32 @@ const identityFields = (identity: PlayerIdentity) => ({
   displayName: identity.playerProfileId ? null : (identity.displayName ?? null),
   firstName: identity.playerProfileId ? (identity.firstName ?? null) : null,
   lastName: identity.playerProfileId ? (identity.lastName ?? null) : null,
-  guest: !identity.playerProfileId,
+  guest: !identity.playerProfileId && !identity.opposition,
+  opposition: Boolean(identity.opposition),
 })
 
-// Adds a player to a side. A registered player who is already there as a substitute (the 12th man) is promoted instead
-// of added twice. A batting row is created for every non-substitute player so the batting list is the whole line-up.
+const sameName = (a: string | null | undefined, b: string | null | undefined) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+
+// Adds a player to a side. A registered player (or a name) who is already there as a substitute (the 12th man) is promoted
+// instead of added twice. A batting row is created for every non-substitute player so the batting list is the whole line-up.
+// A name already on the side (a registered profile, or a typed name compared without regard to case) is reused, never added
+// twice: "J Smith" typed as a bowler is the batter "J Smith".
 export function addPlayer(
   scorecard: Scorecard,
   side: ResultSide,
   identity: PlayerIdentity,
   howOut: DismissalType | null,
 ): { scorecard: Scorecard; key: string } {
-  const sub = identity.playerProfileId
-    ? scorecard.players.find((player) => player.side === side && player.substitute && player.playerProfileId === identity.playerProfileId)
-    : undefined
-  // A registered player (or a guest name) already on the side is never added twice.
-  const already = scorecard.players.find(
-    (player) =>
-      player.side === side &&
-      !player.substitute &&
-      (identity.playerProfileId
-        ? player.playerProfileId === identity.playerProfileId
-        : !player.playerProfileId && (player.displayName ?? '').trim().toLowerCase() === (identity.displayName ?? '').trim().toLowerCase()),
-  )
-  if (already) return { scorecard, key: playerRowKey(already) }
+  const matches = (player: ResultPlayer) =>
+    player.side === side &&
+    (identity.playerProfileId ? player.playerProfileId === identity.playerProfileId : !player.playerProfileId && sameName(player.displayName, identity.displayName))
+  const found = scorecard.players.find(matches)
+  if (found && !found.substitute) return { scorecard, key: playerRowKey(found) }
   let players = scorecard.players
   let player: ResultPlayer
-  if (sub) {
-    player = { ...sub, substitute: false }
-    players = players.map((candidate) => (candidate === sub ? player : candidate))
+  if (found) {
+    player = { ...found, substitute: false }
+    players = players.map((candidate) => (candidate === found ? player : candidate))
   } else {
     player = {
       clientKey: newClientKey(),
@@ -228,6 +245,25 @@ export function addPlayer(
   return { scorecard: { ...scorecard, players, batting: [...scorecard.batting, entry] }, key: playerRowKey(player) }
 }
 
+// A player who is on the side's list but has no batting row (a promoted 12th man, a player added elsewhere) gets a Did not
+// bat row at the end, so the batting list is the whole line-up. The same scorecard when nothing is missing.
+export function ensureBattingRows(scorecard: Scorecard, side: ResultSide): Scorecard {
+  const present = new Set(battingOf(scorecard, side).map((entry) => entryPlayerKey(entry)))
+  const missing = playersOfSide(scorecard, side).filter((player) => !player.substitute && !present.has(playerRowKey(player)))
+  if (missing.length === 0) return scorecard
+  return setBatting(scorecard, side, [
+    ...battingOf(scorecard, side),
+    ...missing.map((player) => ({ ...blankBattingEntry(side, player, 0), howOut: 'DID_NOT_BAT' as const, auto: true })),
+  ])
+}
+
+// Renames a typed (guest or opposition) player; every row follows because entries point at the player.
+export function renamePlayer(scorecard: Scorecard, key: string, name: string): Scorecard {
+  const trimmed = name.trim()
+  if (trimmed === '') return scorecard
+  return { ...scorecard, players: scorecard.players.map((player) => (playerRowKey(player) === key && !player.playerProfileId ? { ...player, displayName: trimmed } : player)) }
+}
+
 // Drops a player and everything that refers to them (their rows and any award).
 export function removePlayer(scorecard: Scorecard, key: string): Scorecard {
   const keep = <T extends { resultPlayerId?: string | null; playerClientKey?: string | null }>(entry: T) => entryPlayerKey(entry) !== key
@@ -236,7 +272,8 @@ export function removePlayer(scorecard: Scorecard, key: string): Scorecard {
   const next: Scorecard = {
     ...scorecard,
     players,
-    batting: scorecard.batting.filter(keep),
+    // The dismissals that named the removed player lose the name (the server clears them the same way).
+    batting: scorecard.batting.filter(keep).map((entry) => (entry.bowlerPlayerId === key || entry.fielderPlayerId === key ? { ...entry, bowlerPlayerId: entry.bowlerPlayerId === key ? null : entry.bowlerPlayerId, fielderPlayerId: entry.fielderPlayerId === key ? null : entry.fielderPlayerId } : entry)),
     bowling: scorecard.bowling.filter(keep),
     fielding: scorecard.fielding.filter(keep),
     awards: scorecard.awards.filter(keep),
@@ -433,7 +470,8 @@ export function prefillBowlers(scorecard: Scorecard, ours: ResultSide, prefillSi
       return role === 'BOWLER' || role === 'ALL_ROUNDER'
     })
   if (bowlers.length === 0) return null
-  return setBowling(scorecard, ours, bowlers.map((player, index) => blankBowlingEntry(ours, player, index + 1)))
+  const derived = inningsHasDismissals(scorecard, opposite(ours))
+  return setBowling(scorecard, ours, bowlers.map((player, index) => blankBowlingEntry(ours, player, index + 1, derived)))
 }
 
 // The keys of players that appear twice on a side (the same registered profile, or the same guest name), so both rows can
@@ -493,6 +531,120 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
   return out
 }
 
+// ---- credits derived from the dismissals ----
+
+// The batters of the innings `battingSide` batted whose how out is decided: the dismissals the credits come from. Mirrors what
+// the server sees (an undecided row is not sent).
+export const dismissalsOf = (scorecard: Scorecard, battingSide: ResultSide): BattingEntry[] =>
+  scorecard.batting.filter((entry) => entry.battingSide === battingSide && entry.howOut != null)
+
+export const inningsHasDismissals = (scorecard: Scorecard, battingSide: ResultSide): boolean => dismissalsOf(scorecard, battingSide).length > 0
+
+// What the dismissals of the innings `battingSide` batted credit each player of the other side (keyed by player key).
+export const creditsOf = (scorecard: Scorecard, battingSide: ResultSide) =>
+  deriveCredits(dismissalsOf(scorecard, battingSide).map((entry) => ({ howOut: entry.howOut, bowler: entry.bowlerPlayerId, fielder: entry.fielderPlayerId })))
+
+// The wickets of the innings not credited to a bowler, from its batting entries; null while there are none (then the number
+// is typed).
+export const derivedNonBowlerWickets = (scorecard: Scorecard, battingSide: ResultSide): number | null => {
+  const batters = dismissalsOf(scorecard, battingSide)
+  return batters.length === 0 ? null : batters.filter((entry) => isNonBowlerWicket(entry.howOut)).length
+}
+
+// The dismissals' credit of one player of the fielding side, never undefined.
+export const creditFor = (scorecard: Scorecard, battingSide: ResultSide, key: string) => creditsOf(scorecard, battingSide).get(key) ?? NO_CREDIT
+
+// Recomputes what follows the dismissals, as the server does on every save: every DERIVED bowling row's wickets, every
+// DERIVED fielding row's counters (a derived row that falls to nothing goes; a fielder the dismissals credit without a row
+// gets one) and, per innings with batting entries, the wickets not credited to a bowler. MANUAL rows are never touched. The
+// same scorecard when nothing changes.
+export function applyDerivedCredits(scorecard: Scorecard): Scorecard {
+  let next = scorecard
+  for (const batted of ['HOME', 'AWAY'] as const) {
+    if (!inningsHasDismissals(next, batted)) continue
+    const credits = creditsOf(next, batted)
+    let bowling = next.bowling
+    bowling = bowling.map((entry) => {
+      if (entry.battingSide !== batted || entry.wicketsSource !== 'DERIVED') return entry
+      const wickets = (credits.get(entryPlayerKey(entry) ?? '') ?? NO_CREDIT).wickets
+      return entry.wickets === wickets ? entry : { ...entry, wickets }
+    })
+    let fielding: FieldingEntry[] = []
+    const withRow = new Set<string>()
+    for (const entry of next.fielding) {
+      if (entry.battingSide !== batted) {
+        fielding.push(entry)
+        continue
+      }
+      const key = entryPlayerKey(entry) ?? ''
+      withRow.add(key)
+      if (entry.creditsSource !== 'DERIVED') {
+        fielding.push(entry)
+        continue
+      }
+      const credit = credits.get(key) ?? NO_CREDIT
+      if (!hasFieldingCredit(credit)) continue
+      fielding.push(entry.catches === credit.catches && entry.stumpings === credit.stumpings && entry.runOuts === credit.runOuts ? entry : { ...entry, catches: credit.catches, stumpings: credit.stumpings, runOuts: credit.runOuts })
+    }
+    const byKey = playersByKey(next)
+    for (const [key, credit] of credits) {
+      const player = byKey.get(key)
+      if (!hasFieldingCredit(credit) || withRow.has(key) || !player) continue
+      fielding = [
+        ...fielding,
+        { battingSide: batted, inningsKind: 'REGULAR', ...entryRefOf(player), catches: credit.catches, stumpings: credit.stumpings, runOuts: credit.runOuts, creditsSource: 'DERIVED', featuredOverride: null },
+      ]
+    }
+    const bowlingSame = bowling.every((entry, index) => entry === next.bowling[index])
+    const fieldingSame = fielding.length === next.fielding.length && fielding.every((entry, index) => entry === next.fielding[index])
+    if (!bowlingSame || !fieldingSame) next = { ...next, bowling: bowlingSame ? next.bowling : bowling, fielding: fieldingSame ? next.fielding : fielding }
+  }
+  return next
+}
+
+// The scorecard's derived credits, and the innings' non-bowler wickets, brought up to date on the draft. The same draft when
+// nothing changes.
+function applyDerivedToDraft(draft: ResultDraft): ResultDraft {
+  if (!draft.scorecard) return draft
+  const scorecard = applyDerivedCredits(draft.scorecard)
+  let changed = scorecard !== draft.scorecard
+  const innings = (draft.innings ?? []).map((item) => {
+    if (item.kind === 'SUPER_OVER' || !item.battingSide) return item
+    const derived = derivedNonBowlerWickets(scorecard, item.battingSide)
+    if (derived === null || item.nonBowlerWickets === derived) return item
+    changed = true
+    return { ...item, nonBowlerWickets: derived }
+  })
+  return changed ? { ...draft, scorecard, innings } : draft
+}
+
+// The patch for a batter's how out: the bowler and fielder the new dismissal does not allow are cleared with it.
+export const dismissalPatch = (howOut: DismissalType | null): Partial<BattingEntry> => ({
+  howOut,
+  ...(allowsBowler(howOut) ? {} : { bowlerPlayerId: null }),
+  ...(allowsFielder(howOut) ? {} : { fielderPlayerId: null }),
+})
+
+// Players of `bowlingSide` named as a dismissal's bowler who have no bowling row yet ("Add to bowling").
+export function bowlersWithoutRow(scorecard: Scorecard, bowlingSide: ResultSide): ResultPlayer[] {
+  const rows = new Set(bowlingOf(scorecard, bowlingSide).map((entry) => entryPlayerKey(entry)))
+  const byKey = playersByKey(scorecard)
+  const named = new Set(dismissalsOf(scorecard, opposite(bowlingSide)).filter((entry) => allowsBowler(entry.howOut) && entry.bowlerPlayerId).map((entry) => entry.bowlerPlayerId as string))
+  return [...named].filter((key) => !rows.has(key)).map((key) => byKey.get(key)).filter((player): player is ResultPlayer => Boolean(player))
+}
+
+// Switches a bowler's wickets and/or a fielder's counters back to following the dismissals ("Use N"), for one player or, with
+// no `only`, for every row of the innings. `kinds` picks which tables.
+export function followDismissals(scorecard: Scorecard, battingSide: ResultSide, only?: string, kinds: 'bowling' | 'fielding' | 'both' = 'both'): Scorecard {
+  const inScope = (entry: { battingSide: ResultSide; resultPlayerId?: string | null; playerClientKey?: string | null }) =>
+    entry.battingSide === battingSide && (only === undefined || entryPlayerKey(entry) === only)
+  return applyDerivedCredits({
+    ...scorecard,
+    bowling: kinds === 'fielding' ? scorecard.bowling : scorecard.bowling.map((entry) => (inScope(entry) ? { ...entry, wicketsSource: 'DERIVED' as const } : entry)),
+    fielding: kinds === 'bowling' ? scorecard.fielding : scorecard.fielding.map((entry) => (inScope(entry) ? { ...entry, creditsSource: 'DERIVED' as const } : entry)),
+  })
+}
+
 // ---- calculated innings figures, and the manager's corrections ----
 
 export type InningsFigure = 'runs' | 'wickets' | 'balls' | 'wides' | 'noBalls'
@@ -516,7 +668,8 @@ export function figureCorrected(innings: Innings, field: InningsFigure, calculat
 // follow the scorecard unless the manager corrected them. A corrected figure is left alone until it equals the
 // calculation again (runs, balls) or "Use calculated" is clicked (wickets stay the manager's). Returns the same draft when
 // nothing changes.
-export function syncInningsFromScorecard(draft: ResultDraft): ResultDraft {
+export function syncInningsFromScorecard(input: ResultDraft): ResultDraft {
+  const draft = applyDerivedToDraft(input)
   const calculated = inningsSuggestions(draft)
   let changed = false
   const innings = (draft.innings ?? []).map((item) => {
@@ -657,4 +810,14 @@ export function setSubstitute(scorecard: Scorecard, key: string, substitute: boo
   if (substitute) return setBatting(next, target.side, rows.filter((entry) => entryPlayerKey(entry) !== key))
   if (rows.some((entry) => entryPlayerKey(entry) === key)) return next
   return setBatting(next, target.side, [...rows, { ...blankBattingEntry(target.side, target, rows.length + 1), howOut: 'DID_NOT_BAT', auto: true }])
+}
+
+// docs/specs/101-match-results-our-side-scorecard.md (Team not selected is only a notice, decision 23): true when the notice
+// applies to an ours side. The selection is missing or not announced, or the side's list has fewer than eleven
+// non-substitute players. Never a gate.
+export function ourTeamNotSelected(prefillSide: ScorecardPrefillSide | null, scorecard: Scorecard, side: ResultSide, prefillReady: boolean): boolean {
+  if (!prefillReady) return false
+  if (prefillSide?.selectionState === 'NONE' || prefillSide?.selectionState === 'NOT_ANNOUNCED') return true
+  const listed = playersOfSide(scorecard, side).filter((player) => !player.substitute).length
+  return listed > 0 && listed < LINEUP_SIZE
 }

@@ -4,7 +4,7 @@ import { Divider, ListItemIcon, MenuItem } from '@mui/material'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import LinkIcon from '@mui/icons-material/Link'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import type { Scorecard } from '../../../../api/matchResultApi'
+import type { ResultSide, Scorecard } from '../../../../api/matchResultApi'
 import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { PlayerRowMenu } from '../../../../components/PlayerRowMenu'
 import { PlayerSlotPicker } from '../../../../components/PlayerSlotPicker'
@@ -15,7 +15,6 @@ import type { PersonName } from '../../../../utils/playerDisplayName'
 import { playerRowKey } from '../../../../utils/scorecardPrefill'
 import { linkGuest, swapPlayer } from '../scorecardDraft'
 import type { PlayerIdentity } from '../scorecardDraft'
-import type { OurSide } from '../steps/stepTypes'
 
 // What the name popup offers for taking a player off the list: remove them, set them to Did not bat (they came from the
 // selection or have other figures, so they must stay in the match squad), or explain why they cannot be removed yet.
@@ -24,7 +23,8 @@ export type RemoveKind = { kind: 'remove' } | { kind: 'dnb' } | { kind: 'blocked
 export interface PlayerActionsOptions {
   clubId: string
   seasonId: string
-  ours: OurSide
+  // The side whose list the menu works on; `teamId` is null for the opposition (no squad, no Swap or Link).
+  ours: { side: ResultSide; teamId: string | null }
   scorecard: Scorecard
   onScorecard: (next: Scorecard) => void
   // The listed rows' player keys in their current order (the reorder menu works on these).

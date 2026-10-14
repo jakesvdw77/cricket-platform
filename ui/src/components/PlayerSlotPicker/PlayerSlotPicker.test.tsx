@@ -157,7 +157,7 @@ describe('PlayerSlotPicker', () => {
     expect(screen.queryByRole('button', { name: 'Team squad' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Twelfth Man/ }))
     expect(onPickMatchPlayer).toHaveBeenCalledWith('k12')
-    await userEvent.click(screen.getByRole('button', { name: 'Add them on Our team' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add them on Teams' }))
     expect(onNotListed).toHaveBeenCalled()
   })
 

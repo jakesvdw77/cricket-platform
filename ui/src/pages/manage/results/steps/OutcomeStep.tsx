@@ -1,6 +1,7 @@
 import { Alert, Box, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { Input } from '../../../../components/Input'
@@ -20,9 +21,10 @@ function toInt(text: string): number | null {
   return Number.isInteger(value) && value >= 0 ? value : null
 }
 
-// docs/specs/100-match-results-core.md, step 1 "Result": one outcome tile, then only the fields that outcome needs - the
-// winner (Won, Forfeit), how it was decided (Won), and the DLS figures (the margin is set on Scores and margin).
-export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: StepProps) {
+// docs/specs/100-match-results-core.md, step "Result": one outcome tile, then only the fields that outcome needs - the
+// winner (Won, Forfeit), how it was decided (Won), and the DLS figures (the margin is set on Scores and margin). It ends with
+// the quiet prompt to record who batted, bowled and fielded (docs/specs/101, decision 22).
+export function OutcomeStep({ draft, onChange, onReplace, sides, disabled, scorecardAvailable, onGoToStep }: StepProps) {
   const outcome = draft.outcomeType ?? null
   const decidedBy = draft.decidedBy ?? 'REGULAR'
   const won = outcome === 'WON'
@@ -45,7 +47,7 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Alert severity="info" sx={{ py: 0.25, '& .MuiAlert-message': { fontSize: '0.8125rem' } }}>
-        Start with how the match ended. It decides which steps follow: a normal result opens the scorecard steps (batting, bowling, awards); a forfeit, abandoned match or no result skips them. The scores and winning margin are worked out for you later, once the scorecard is in.
+        Now record how the match ended. The teams and the scorecard are optional, and the scores and winning margin are worked out for you later. The result decides which steps follow: a forfeit, abandoned match or no result skips Batting, Bowling and Awards.
       </Alert>
       <FormSectionHeading icon={<EmojiEventsOutlinedIcon />} title="How did the match end?" />
       <OutcomeTiles value={outcome} onChange={chooseOutcome} disabled={disabled} />
@@ -114,6 +116,23 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
         </Box>
       )}
 
+
+      {scorecardAvailable && onGoToStep && (
+        <Box
+          data-testid="scorecard-prompt"
+          sx={{ p: 1.5, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
+            Want to record who batted, bowled and fielded? It is optional.
+          </Typography>
+          <Button variant="secondary" size="sm" onClick={() => onGoToStep('batting')} disabled={disabled}>
+            Add the batting and bowling
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('scores')} disabled={disabled}>
+            Skip to scores
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }

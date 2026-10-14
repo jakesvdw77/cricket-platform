@@ -41,7 +41,11 @@ export type AwardType = 'PLAYER_OF_MATCH' | 'TEAM_PLAYER_OF_MATCH'
 // The manager's edit of a standout suggestion: FEATURE adds a player the rules did not suggest, HIDE removes a
 // suggestion, null follows the suggestion.
 export type FeaturedOverride = 'FEATURE' | 'HIDE'
-export type ResultWizardStep = 'RESULT' | 'TOSS' | 'SCORES' | 'OUR_TEAM' | 'OUR_BATTING' | 'OUR_BOWLING' | 'AWARDS'
+// The wizard step an issue is fixed on. The scorecard steps carry the side in the issue's `side`.
+export type ResultWizardStep = 'RESULT' | 'TOSS' | 'SCORES' | 'TEAMS' | 'BATTING' | 'BOWLING' | 'AWARDS'
+// Whether a bowler's wickets / a fielder's credits are typed (MANUAL) or recomputed by the server from the dismissals.
+export type CreditSource = 'MANUAL' | 'DERIVED'
+export type ScorecardSelectionState = 'NONE' | 'NOT_ANNOUNCED' | 'ANNOUNCED'
 export type ResultIssueSeverity = 'ERROR' | 'WARNING' | 'INFO'
 export type ScorecardStatus = 'NONE' | 'PARTIAL' | 'COMPLETE'
 
@@ -76,9 +80,10 @@ export interface Innings {
   noBallsCorrected?: boolean
 }
 
-// docs/specs/101: who played for one of our sides. A new row carries a `clientKey` (entries refer to it by
+// docs/specs/101: who played for one of the sides. A new row carries a `clientKey` (entries refer to it by
 // `playerClientKey`); a stored one has an `id`. `firstName`, `lastName`, `guest`, `linkedBy` and `linkedAt` are
-// read-only. A guest has no `playerProfileId` and a `displayName`.
+// read-only. A guest has no `playerProfileId` and a `displayName`. `opposition` marks a player of the side that is not
+// ours: a name only (no profile, planned order, replaced player or link).
 export interface ResultPlayer {
   id?: string | null
   clientKey?: string | null
@@ -88,6 +93,7 @@ export interface ResultPlayer {
   plannedBattingOrder: number | null
   replacedPlayerProfileId: string | null
   substitute: boolean
+  opposition?: boolean
   firstName?: string | null
   lastName?: string | null
   guest?: boolean
@@ -116,6 +122,10 @@ export interface BattingEntry extends ScorecardEntryBase {
   balls: number | null
   fours: number | null
   sixes: number | null
+  // The dismissal's bowler and fielder: the key (stored id, else client key) of a player of the FIELDING side, only where
+  // the how out allows them (utils/dismissal allowsBowler / allowsFielder). Optional always.
+  bowlerPlayerId?: string | null
+  fielderPlayerId?: string | null
   // Client-only (never sent): the Not out / Did not bat was set by the wicket fill, not by the manager (utils/wicketFill).
   auto?: boolean
 }
@@ -129,12 +139,24 @@ export interface BowlingEntry extends ScorecardEntryBase {
   wickets: number | null
   wides: number | null
   noBalls: number | null
+  // Optional dot balls, at most `balls`; null is "not on the scorecard".
+  dots?: number | null
+  // DERIVED: `wickets` is recomputed by the server from the dismissals on every save. Absent means MANUAL.
+  wicketsSource?: CreditSource
+  // Read-only: what the dismissals credit this bowler.
+  derivedWickets?: number | null
 }
 
 export interface FieldingEntry extends ScorecardEntryBase {
   catches: number | null
   stumpings: number | null
   runOuts: number | null
+  // One flag for the three counters. Absent means MANUAL.
+  creditsSource?: CreditSource
+  // Read-only: what the dismissals credit this fielder.
+  derivedCatches?: number | null
+  derivedStumpings?: number | null
+  derivedRunOuts?: number | null
 }
 
 // `resultPlayerId` / `playerClientKey` name one of our players; `displayName` is free text for an opposition player.
@@ -159,6 +181,8 @@ export interface ScorecardInnings {
   penaltyRuns: number | null
   extras: number | null
   nonBowlerWickets: number | null
+  // True when the innings has batting entries: the number is derived from the dismissals and read-only.
+  nonBowlerWicketsDerived?: boolean
 }
 
 export interface ScorecardSideStatus {
@@ -166,7 +190,7 @@ export interface ScorecardSideStatus {
   status: ScorecardStatus
 }
 
-// Our side's scorecard (one or two ours sides). On write only players, batting, bowling, fielding and awards are read;
+// The scorecard of either side (one or two ours sides, and the opposition's names). On write only players, batting, bowling, fielding and awards are read;
 // `innings` and `status` are read-only. Absent on a draft means "untouched"; present replaces the whole scorecard.
 export interface Scorecard {
   players: ResultPlayer[]
@@ -194,6 +218,8 @@ export interface ScorecardPrefillSide {
   teamId: string
   teamName: string
   players: ScorecardPrefillPlayer[]
+  // NONE: no selection found; NOT_ANNOUNCED: a selection exists but is not announced. Absent for a squad-built side.
+  selectionState?: ScorecardSelectionState
 }
 
 export interface ScorecardPrefill {
@@ -205,6 +231,13 @@ export interface GuestName {
   displayName: string
   uses: number
   lastUsed: string
+}
+
+// A name used for the opposition in an earlier fixture, a text-only suggestion on the Teams step.
+export interface OppositionName {
+  displayName: string
+  uses: number
+  lastMatchDate: string | null
 }
 
 // One validation issue with a stable `code` (the Review step matches on it, never on the message), the wizard `step` to
@@ -268,8 +301,10 @@ export interface MatchResult {
   updatedAt: string
   updatedBy: string | null
   innings: Innings[]
-  // docs/specs/101: true when our side's scorecard has at least one player (read it with getScorecard).
+  // docs/specs/101: true when the scorecard has at least one player (read it with getScorecard).
   hasScorecard: boolean
+  // True when one of those players is the opposition's.
+  hasOppositionScorecard?: boolean
 }
 
 // One row of the Results list: the match as the Matches list shows it, with its result (draft or published).
@@ -355,6 +390,7 @@ export const resultKeys = {
   scorecard: (clubId: string, matchId: string) => [...resultsKey(clubId), 'scorecard', matchId] as const,
   scorecardPrefill: (clubId: string, matchId: string) => [...resultsKey(clubId), 'scorecard-prefill', matchId] as const,
   guestNames: (clubId: string, params: GuestNamesParams) => [...resultsKey(clubId), 'guest-names', params] as const,
+  oppositionNames: (clubId: string, params: OppositionNamesParams) => [...resultsKey(clubId), 'opposition-names', params] as const,
 }
 
 // Only the filters that are set are sent.
@@ -494,6 +530,26 @@ export async function listGuestNames(
 ): Promise<Page<GuestName>> {
   const { data } = await api.get<Page<GuestName>>(`${resultsPath(clubId)}/guest-names`, {
     params: { page, size, ...(teamId ? { teamId } : {}), ...(q ? { q } : {}) },
+  })
+  return data
+}
+
+export interface OppositionNamesParams {
+  // The match being captured: the server finds the opposing team from it and hides names already on the result's list.
+  matchId?: string
+  q?: string
+  page?: number
+  size?: number
+}
+
+// Names used for this match's opposition in earlier fixtures of the club (most recent first). Suggestions only: text,
+// no identity.
+export async function listOppositionNames(
+  clubId: string,
+  { matchId, q, page = 0, size = 12 }: OppositionNamesParams = {},
+): Promise<Page<OppositionName>> {
+  const { data } = await api.get<Page<OppositionName>>(`${resultsPath(clubId)}/opposition-names`, {
+    params: { page, size, ...(matchId ? { matchId } : {}), ...(q ? { q } : {}) },
   })
   return data
 }

@@ -67,6 +67,9 @@ async function openWizardFor(page: Page, opponentName: string) {
 
 const nextTo = (page: Page, label: string) => page.getByRole('button', { name: `Next: ${label}` });
 
+// The wizard opens on Teams (docs/specs/101, decision 22); the result steps are picked by name, never by number.
+const toStep = (page: Page, label: string) => page.getByRole('button', { name: new RegExp(`^Step \\d+: ${label}`) }).click();
+
 // Fills one innings row (0-based) of the Scores step: runs, wickets, overs as typed on a scorecard.
 async function fillInnings(page: Page, row: number, runs: string, wickets: string, overs: string) {
   const innings = page.getByTestId('innings-row').nth(row);
@@ -95,14 +98,15 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     // --- Results -> Capture result -> the awaiting match. ---
     await openWizardFor(page, opponent);
 
-    // --- Step 1, Result: one tile, the winner. ---
-    await page.getByRole('radio', { name: /^Won/ }).click();
-    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click(); // the home (own) side
-
-    // --- Step 2, Toss and field: the home side won the toss and batted. ---
-    await nextTo(page, 'Toss & field').click();
+    // --- Teams is optional: go to Toss and field, where the home side won the toss and batted. ---
+    await nextTo(page, 'Toss and field').click();
     await page.getByRole('radiogroup', { name: 'Who won the toss?' }).getByRole('radio').first().click();
     await page.getByRole('button', { name: 'Bat', exact: true }).click();
+
+    // --- Result: one tile, the winner. ---
+    await nextTo(page, 'Result').click();
+    await page.getByRole('radio', { name: /^Won/ }).click();
+    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click(); // the home (own) side
 
     // --- Scores and margin (the optional scorecard steps are skipped): home 180/6 in 40 overs, away 150/9 in 38.4 overs; overs as "38.4", not a decimal. ---
     await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
@@ -160,11 +164,11 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await openWizardFor(page, opponent);
 
     // Won, decided by a super over: the first super over pair is offered on the Scores step.
+    await toStep(page, 'Result');
     await page.getByRole('radio', { name: /^Won/ }).click();
     await page.getByRole('button', { name: 'Super over', exact: true }).click();
     await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').nth(1).click(); // the opponent wins it
 
-    await nextTo(page, 'Toss & field').click();
     await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
     // No toss was recorded, so the wizard asks who batted first.
     await page.getByRole('radiogroup', { name: 'Who batted first?' }).getByRole('radio').first().click();

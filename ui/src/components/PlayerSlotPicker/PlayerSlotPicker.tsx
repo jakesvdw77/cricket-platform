@@ -67,7 +67,7 @@ export interface PlayerSlotPickerProps {
   matchPlayers?: Array<{ key: string; firstName: string; lastName: string }>
   onPickMatchPlayer?: (key: string) => void
   onNotListed?: () => void
-  // The link's text; defaults to "Add them on Our team".
+  // The link's text; defaults to "Add them on Teams".
   notListedLabel?: string
   // False when the row can only become a registered player (Link to a registered player...): no Guest scope.
   allowGuest?: boolean
@@ -145,7 +145,7 @@ function PickerBody({
   matchPlayers = [],
   onPickMatchPlayer,
   onNotListed,
-  notListedLabel = 'Add them on Our team',
+  notListedLabel = 'Add them on Teams',
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
   const hasMatch = matchSquad !== undefined

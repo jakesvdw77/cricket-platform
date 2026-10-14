@@ -52,6 +52,54 @@ export const isBowlerCredited = (type: DismissalType | null | undefined): boolea
 export const isNonBowlerWicket = (type: DismissalType | null | undefined): boolean =>
   isWicket(type) && !isBowlerCredited(type)
 
+// docs/specs/101 (dismissal bowler and fielder): which dismissals take a bowler and which a fielder. Mirrors the backend's
+// DismissalType.allowsBowler() / allowsFielder(): a bowler for every bowler-credited dismissal (not a run-out), a fielder
+// for a catch, a stumping and a run-out (a caught-and-bowled has only the bowler).
+export const allowsBowler = (type: DismissalType | null | undefined): boolean => isBowlerCredited(type)
+export const allowsFielder = (type: DismissalType | null | undefined): boolean =>
+  type === 'CAUGHT' || type === 'STUMPED' || type === 'RUN_OUT'
+
+// What the dismissals credit one player, mirroring the server's DismissalCredits (the server is authoritative: this only
+// keeps the screen responsive between saves).
+export interface Credit {
+  wickets: number
+  catches: number
+  stumpings: number
+  runOuts: number
+}
+
+export const NO_CREDIT: Credit = { wickets: 0, catches: 0, stumpings: 0, runOuts: 0 }
+
+export interface Dismissal {
+  howOut: DismissalType | null | undefined
+  bowler: string | null | undefined
+  fielder: string | null | undefined
+}
+
+// The credit of every player named on a dismissal; a player not named is absent.
+export function deriveCredits(dismissals: Dismissal[]): Map<string, Credit> {
+  const credits = new Map<string, Credit>()
+  const add = (key: string, patch: Partial<Credit>) => {
+    const current = credits.get(key) ?? NO_CREDIT
+    credits.set(key, {
+      wickets: current.wickets + (patch.wickets ?? 0),
+      catches: current.catches + (patch.catches ?? 0),
+      stumpings: current.stumpings + (patch.stumpings ?? 0),
+      runOuts: current.runOuts + (patch.runOuts ?? 0),
+    })
+  }
+  for (const { howOut, bowler, fielder } of dismissals) {
+    if (!howOut) continue
+    if (allowsBowler(howOut) && bowler) add(bowler, { wickets: 1, catches: howOut === 'CAUGHT_AND_BOWLED' ? 1 : 0 })
+    if (fielder && allowsFielder(howOut)) {
+      add(fielder, { catches: howOut === 'CAUGHT' ? 1 : 0, stumpings: howOut === 'STUMPED' ? 1 : 0, runOuts: howOut === 'RUN_OUT' ? 1 : 0 })
+    }
+  }
+  return credits
+}
+
+export const hasFieldingCredit = (credit: Credit): boolean => credit.catches + credit.stumpings + credit.runOuts > 0
+
 // Whether the row batted at all: anything but Did not bat. An undecided row (null) is treated as batted.
 export const hasBatted = (type: DismissalType | null | undefined): boolean => type !== 'DID_NOT_BAT'
 

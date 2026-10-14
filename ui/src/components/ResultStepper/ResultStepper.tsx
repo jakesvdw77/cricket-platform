@@ -19,9 +19,10 @@ export interface ResultStepperProps {
   disabled?: boolean
 }
 
-// docs/specs/100-match-results-core.md: the capture wizard's progress strip, data-driven from a list of steps. Steps
+// docs/specs/100-match-results-core.md: the capture wizard's progress strip, data-driven from a list of steps (the short
+// labels show on a desktop strip too, so eight steps fit; the full label is the accessible name). Steps
 // before the active one show a tick; every step can be chosen (the page saves the draft on the way). docs/specs/101:
-// optional steps (the scorecard) have a dashed outline and a legend under the strip, so a manager sees they can skip them.
+// optional steps (Teams and the scorecard) have a dashed outline and a legend under the strip, so a manager sees they can skip them.
 export function ResultStepper({ steps, activeId, onSelect, disabled = false }: ResultStepperProps) {
   const activeIndex = steps.findIndex((step) => step.id === activeId)
   const anyOptional = steps.some((step) => step.optional)
@@ -71,7 +72,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
                 {done ? <CheckIcon sx={{ fontSize: 14 }} /> : index + 1}
               </Box>
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, whiteSpace: 'nowrap' }}>
-                {step.label}
+                {step.shortLabel ?? step.label}
               </Box>
               <Box component="span" sx={{ display: { xs: active ? 'inline' : 'none', sm: 'none' }, whiteSpace: 'nowrap' }}>
                 {step.shortLabel ?? step.label}
@@ -83,7 +84,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
     </Box>
     {anyOptional && (
       <Box component="p" sx={{ m: 0, mt: 0.75, fontSize: '0.75rem', color: 'text.secondary' }}>
-        Scorecard (optional): the dashed steps can be skipped.
+        Optional: the dashed steps can be skipped.
       </Box>
     )}
     </Box>

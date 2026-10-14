@@ -23,6 +23,8 @@ import { LINEUP_SIZE, playerRowKey, resetToSelection } from '../../../../utils/s
 import { newRowFill } from '../../../../utils/wicketFill'
 import { selectTeamPath } from '../../teamSelection/selectionLinks'
 import { regularInningsOf } from '../resultDraftHelpers'
+import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
+import { OppositionTeamList } from '../scorecard/OppositionTeamList'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
@@ -30,8 +32,12 @@ import {
   addPlayer,
   battingOf,
   duplicatePlayerKeys,
+  emptyScorecard,
   ensureSideFromPrefill,
+  hasBowlingFigures,
+  hasCredit,
   matchSquadFor,
+  ourTeamNotSelected,
   playersOfSide,
   playsInMatch,
   reconcileSubstitutes,
@@ -43,28 +49,86 @@ import {
   withScorecard,
   wicketsOwned,
 } from '../scorecardDraft'
-import type { ScorecardStepProps } from './stepTypes'
+import type { OurSide, ScorecardStepProps } from './stepTypes'
 
-// docs/specs/101-match-results-our-side-scorecard.md, step "Our team" (decision 21): who played is settled once, first.
-// Pre-filled from the team selection (the eleven in the announced batting order, the 12th man captioned), with the derby
-// Home | Away switch (each side its own list), a name popup per player (Swap, Link on a guest, Mark as 12th man, Remove),
-// Add player through the four-tab picker, and the Populate from the team / No team selected states. Our batting, Our
-// bowling and fielding and Awards then use only this list.
-export function OurTeamStep({
+// docs/specs/101-match-results-our-side-scorecard.md, step "Teams" (decisions 21 and 22): who is playing, settled first and
+// optional. The side toggle (the Who-won tiles) picks the side. An ours side is pre-filled from the team selection (the
+// eleven in the announced batting order, the 12th man captioned) with a name popup per player (Swap, Link on a guest, Mark as
+// 12th man, Remove), Add player through the four-tab picker, and the Populate from the team / not-selected notice. The
+// opposition is names only (type or paste one per line). The step saves as a draft before the game: a list with no
+// innings and no outcome is a real draft. Batting, Bowling and Awards then work from these lists.
+export function TeamsStep(props: ScorecardStepProps) {
+  const { draft, disabled, oursSides, scorecardSide, onScorecardSideChange, sides, onGoToStep, onReplace } = props
+  const side = scorecardSide
+  const ours = oursSides.find((candidate) => candidate.side === side) ?? null
+  const scorecard = scorecardOf(draft)
+  const opposing = sides.find((candidate) => candidate.side === side)
+  const incomplete = Object.fromEntries(sides.map((candidate) => [candidate.side, playersOfSide(scorecard, candidate.side).length === 0]))
+
+  // Don't capture the team: the lists that were only proposed (nothing else entered) are dropped, and the wizard moves on.
+  const skip = () => {
+    const touched =
+      scorecard.batting.some((entry) => entry.howOut != null && entry.howOut !== 'DID_NOT_BAT') ||
+      scorecard.bowling.some(hasBowlingFigures) ||
+      scorecard.fielding.some(hasCredit) ||
+      scorecard.awards.length > 0
+    if (!touched) {
+      const cleared = withScorecard(draft, emptyScorecard())
+      onReplace(cleared)
+      onGoToStep?.('toss', undefined, cleared)
+    } else onGoToStep?.('toss')
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+      <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} label="Who is playing?" />
+      <FormSectionHeading icon={<GroupsOutlinedIcon />} title={`${ours?.teamName ?? opposing?.name ?? ''}: who played`} />
+      {ours ? (
+        <OurSideTeam {...props} ours={ours} />
+      ) : (
+        <OppositionSideTeam {...props} teamName={opposing?.name ?? 'the opposition'} />
+      )}
+      {onGoToStep && (
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="ghost" size="sm" onClick={skip} disabled={disabled}>
+            Don&apos;t capture the team
+          </Button>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+function OppositionSideTeam({ clubId, match, draft, onReplace, disabled, scorecardSide, teamName }: ScorecardStepProps & { teamName: string }) {
+  const scorecard = scorecardOf(draft)
+  const innings = regularInningsOf(draft).find((item) => item.battingSide === scorecardSide)
+  const wickets = innings && wicketsOwned(innings) ? (innings.wickets ?? null) : null
+  return (
+    <OppositionTeamList
+      clubId={clubId}
+      matchId={match.id}
+      seasonId={match.seasonId}
+      side={scorecardSide}
+      teamName={teamName}
+      scorecard={scorecard}
+      wickets={wickets}
+      commit={(next) => onReplace(syncInningsFromScorecard(withScorecard(draft, next)))}
+      disabled={disabled}
+    />
+  )
+}
+
+function OurSideTeam({
   clubId,
   match,
   draft,
   onReplace,
   disabled,
-  oursSides,
   prefill,
   prefillState,
-  scorecardSide,
-  onScorecardSideChange,
-  onGoToStep,
   onSaveAndNavigate,
-}: ScorecardStepProps) {
-  const ours = oursSides.find((candidate) => candidate.side === scorecardSide) ?? oursSides[0]
+  ours,
+}: ScorecardStepProps & { ours: OurSide }) {
   const side = ours.side
   const scorecard = scorecardOf(draft)
   const innings = regularInningsOf(draft).find((item) => item.battingSide === side)
@@ -98,6 +162,12 @@ export function OurTeamStep({
     if (built) commit(built)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [side, prefillState, players.length])
+
+  const selectTeam = () => {
+    const to = selectTeamPath(match.id, null, side === 'HOME')
+    if (onSaveAndNavigate) onSaveAndNavigate(to)
+    else navigate(to)
+  }
 
   const populate = async () => {
     setPopulateFailed(false)
@@ -223,7 +293,7 @@ export function OurTeamStep({
   const took = players.filter((player) => !player.substitute && tookPart(player)).length
   const countLine = `${team.length} ${team.length === 1 ? 'player' : 'players'}${substitutes.length > 0 ? ` + ${substitutes.length === 1 ? '12th man' : `${substitutes.length} substitutes`}` : ''}`
   const empty = rows.length === 0
-  const incomplete = Object.fromEntries(oursSides.map((candidate) => [candidate.side, playersOfSide(scorecard, candidate.side).length === 0]))
+  const notSelected = ourTeamNotSelected(prefillSide, scorecard, side, prefillState === 'ready')
 
   const typeChips = (player: ResultPlayer) => (
     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -248,8 +318,7 @@ export function OurTeamStep({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      <ScorecardStepHeader oursSides={oursSides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} />
-      <FormSectionHeading icon={<GroupsOutlinedIcon />} title={`${ours.teamName}: who played`} />
+      {notSelected && <NotSelectedBanner onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectTeam={selectTeam} disabled={disabled} />}
 
       {!empty && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
@@ -264,40 +333,23 @@ export function OurTeamStep({
         </Box>
       )}
       <Typography variant="caption" color="text.secondary">
-        {prefillSide && prefillSide.players.length > 0 ? 'From the announced team. ' : ''}
+        {prefillSide && prefillSide.players.length > 0 ? (prefillSide.selectionState === 'NOT_ANNOUNCED' ? 'From the proposed team. ' : 'From the announced team. ') : ''}
         Swap = the selected player did not play, this person played instead. Add anyone who came on during the match.
       </Typography>
       {took > LINEUP_SIZE && (
         <Alert severity="info" sx={{ py: 0 }}>
-          More than eleven players have taken part. If one was replaced, set them to Did not bat on Our batting or move them out of the team.
+          More than eleven players have taken part. If one was replaced, set them to Did not bat on Batting or move them out of the team.
         </Alert>
       )}
 
-      {empty && (
+      {empty && !notSelected && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
           <Button variant="secondary" startIcon={<GroupAddOutlinedIcon />} onClick={() => void populate()} disabled={disabled || populating || prefillState === 'loading'}>
             {populating ? 'Loading the team…' : 'Populate from the team'}
           </Button>
-          {prefillState === 'ready' && !(prefillSide && prefillSide.players.length > 0) && (
-            <Alert
-              severity="info"
-              sx={{ width: '100%' }}
-              action={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => (onSaveAndNavigate ? onSaveAndNavigate(selectTeamPath(match.id, null, side === 'HOME')) : navigate(selectTeamPath(match.id, null, side === 'HOME')))}
-                >
-                  Select the team
-                </Button>
-              }
-            >
-              No team selected for this match: add players or select the team first. Populate will use the team's squad.
-            </Alert>
-          )}
-          {populateFailed && <Alert severity="warning">The team's squad is empty or could not be loaded. Add players with Add player.</Alert>}
         </Box>
       )}
+      {empty && populateFailed && <Alert severity="warning">The team&apos;s squad is empty or could not be loaded. Add players with Add player.</Alert>}
       {fromSquad && !empty && (
         <Typography variant="body2" color="text.secondary">
           No team selection found: using the squad.
@@ -331,11 +383,6 @@ export function OurTeamStep({
         <Button variant="secondary" size="sm" startIcon={<AddIcon />} onClick={actions.openAdd} disabled={disabled}>
           Add player
         </Button>
-        {onGoToStep && (
-          <Button variant="ghost" size="sm" onClick={() => onGoToStep('scores')} disabled={disabled}>
-            Skip to scores
-          </Button>
-        )}
       </Box>
 
       {actions.host}

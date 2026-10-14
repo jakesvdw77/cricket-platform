@@ -14,8 +14,9 @@ export interface StepProps {
   sides: [ResultSideInfo, ResultSideInfo]
   disabled?: boolean
   // Jumps to another step (saving first); the Scores step uses it to link back to the toss.
-  // `side` also opens that side's tab on a scorecard step in a derby.
-  onGoToStep?: (id: string, side?: ResultSide) => void
+  // `side` also opens that side's tab on a scorecard step. `draftOverride` is saved instead of the page's current draft,
+  // for a step that changes the draft and leaves in the same tap (Don't capture the team).
+  onGoToStep?: (id: string, side?: ResultSide, draftOverride?: ResultDraft) => void
   // Whether the order of the innings is known (the toss fixes it, or the manager said who batted first, or scores exist),
   // and how to say it. Until it is known the innings cards are not shown.
   battingOrderKnown?: boolean
@@ -35,13 +36,13 @@ export interface OurSide {
 
 export type PrefillState = 'loading' | 'ready' | 'unavailable'
 
-// docs/specs/101-match-results-our-side-scorecard.md: what the three scorecard steps (Our batting, Our bowling and
-// fielding, Awards) receive on top of the shared step props. The scorecard itself lives in `draft.scorecard`.
+// docs/specs/101-match-results-our-side-scorecard.md: what the scorecard steps (Teams, Batting, Bowling and fielding,
+// Awards) receive on top of the shared step props. The scorecard itself lives in `draft.scorecard`.
 export interface ScorecardStepProps extends StepProps {
   oursSides: OurSide[]
   prefill: ScorecardPrefill | null
   prefillState: PrefillState
-  // The side shown in a derby (the Home | Away switch); the only ours side otherwise.
+  // The side shown on the scorecard steps (the side toggle): an ours side or the opposition.
   scorecardSide: ResultSide
   onScorecardSideChange: (side: ResultSide) => void
 }

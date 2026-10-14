@@ -35,12 +35,12 @@ import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
 import { mergeSuggestions, normalizeLoaded } from './scorecardDraft'
 import { withCalculatedMargin } from './calculatedMargin'
 import { AwardsStep } from './steps/AwardsStep'
-import { OurTeamStep } from './steps/OurTeamStep'
-import { OurBattingStep } from './steps/OurBattingStep'
-import { OurBowlingStep } from './steps/OurBowlingStep'
+import { BattingStep } from './steps/BattingStep'
+import { BowlingStep } from './steps/BowlingStep'
 import { OutcomeStep } from './steps/OutcomeStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { ScoresStep } from './steps/ScoresStep'
+import { TeamsStep } from './steps/TeamsStep'
 import type { OurSide, PrefillState, ScorecardStepProps, StepProps } from './steps/stepTypes'
 import { TossFieldStep } from './steps/TossFieldStep'
 
@@ -73,24 +73,18 @@ interface StepRegistration {
 
 const scorecardApplicable = (draft: ResultDraft, env: { oursSides: number }) => env.oursSides > 0 && scorecardStepsApplicable(draft)
 
-// docs/specs/100-match-results-core.md: the wizard's steps as a registration list; a new step is a new entry. Toss comes
-// before the scorecard because the toss decides who batted first.
+// docs/specs/100-match-results-core.md and docs/specs/101 (decision 22): the wizard's steps as a registration list; a new step
+// is a new entry. Teams comes first because who is playing can be settled before the game, and is optional like the other
+// scorecard steps; Toss then Result are always there (the toss fixes who batted first, and Result leads into Batting); Batting, Bowling and fielding and Awards apply to every match that was
+// played (they are hidden once the outcome is a forfeit, an abandoned match or no result). The innings figures are typed on
+// the scorecard steps; Scores and margin then checks the totals and settles the winner and margin.
 const RESULT_STEPS: StepRegistration[] = [
+  { id: 'teams', label: 'Teams', optional: true, render: (context) => <TeamsStep {...context} /> },
+  { id: 'toss', label: 'Toss and field', shortLabel: 'Toss', render: (context) => <TossFieldStep {...context} /> },
   { id: 'outcome', label: 'Result', render: (context) => <OutcomeStep {...context} /> },
-  { id: 'toss', label: 'Toss & field', shortLabel: 'Toss', render: (context) => <TossFieldStep {...context} /> },
-  // docs/specs/101 (decision 20): the optional scorecard steps come right after the toss, in the order things happen, and
-  // the innings figures are typed on them; Scores and margin then checks the totals and settles the winner and margin.
-  { id: 'our-team', label: 'Our team', shortLabel: 'Team', optional: true, isApplicable: scorecardApplicable, render: (context) => <OurTeamStep {...context} /> },
-  { id: 'our-batting', label: 'Our batting', shortLabel: 'Batting', optional: true, isApplicable: scorecardApplicable, render: (context) => <OurBattingStep {...context} /> },
-  {
-    id: 'our-bowling',
-    label: 'Our bowling and fielding',
-    shortLabel: 'Bowling',
-    optional: true,
-    isApplicable: scorecardApplicable,
-    render: (context) => <OurBowlingStep {...context} />,
-  },
-  { id: 'awards', label: 'Awards', shortLabel: 'Awards', optional: true, isApplicable: scorecardApplicable, render: (context) => <AwardsStep {...context} /> },
+  { id: 'batting', label: 'Batting', optional: true, isApplicable: scorecardApplicable, render: (context) => <BattingStep {...context} /> },
+  { id: 'bowling', label: 'Bowling and fielding', shortLabel: 'Bowling', optional: true, isApplicable: scorecardApplicable, render: (context) => <BowlingStep {...context} /> },
+  { id: 'awards', label: 'Awards', optional: true, isApplicable: scorecardApplicable, render: (context) => <AwardsStep {...context} /> },
   { id: 'scores', label: 'Scores and margin', shortLabel: 'Scores', render: (context) => <ScoresStep {...context} /> },
   {
     id: 'review',
@@ -104,20 +98,20 @@ const RESULTS_PATH = '/manage/results'
 
 const STEP_LABEL: Record<string, string> = {
   RESULT: 'Result',
-  TOSS: 'Toss & field',
+  TOSS: 'Toss and field',
   SCORES: 'Scores',
-  OUR_TEAM: 'Our team',
-  OUR_BATTING: 'Our batting',
-  OUR_BOWLING: 'Our bowling and fielding',
+  TEAMS: 'Teams',
+  BATTING: 'Batting',
+  BOWLING: 'Bowling and fielding',
   AWARDS: 'Awards',
 }
 
-// A refused save or publish, one line per issue naming the step (and, in a derby, the team) it concerns.
-function problemLines(error: unknown, fallback: string, teamNames: Record<string, string> = {}, derby = false): string[] {
+// A refused save or publish, one line per issue naming the step (and, for a scorecard issue, the team) it concerns.
+function problemLines(error: unknown, fallback: string, teamNames: Record<string, string> = {}): string[] {
   const issues = errorIssues(error).filter((issue) => issue.severity !== 'INFO')
   if (issues.length > 0) {
     return issues.map((issue) => {
-      const where = [issue.step ? STEP_LABEL[issue.step] : null, derby && issue.side ? teamNames[issue.side] : null].filter(Boolean).join(', ')
+      const where = [issue.step ? STEP_LABEL[issue.step] : null, issue.side && ['TEAMS', 'BATTING', 'BOWLING', 'AWARDS'].includes(issue.step ?? '') ? teamNames[issue.side] : null].filter(Boolean).join(', ')
       return where ? `${where}: ${issue.message}` : issue.message
     })
   }
@@ -224,7 +218,7 @@ function CaptureWizard({
       refresh()
       return true
     } catch (error) {
-      setProblems(problemLines(error, "The draft couldn't be saved. Please try again.", { HOME: names.home, AWAY: names.away }, oursSides.length > 1))
+      setProblems(problemLines(error, "The draft couldn't be saved. Please try again.", { HOME: names.home, AWAY: names.away }))
       return false
     }
   }
@@ -239,7 +233,7 @@ function CaptureWizard({
     })
   }
 
-  // Only the steps that apply to this draft (the scorecard steps wait for an innings with runs).
+  // Only the steps that apply to this draft (the scorecard steps are hidden for a forfeit, an abandoned match or no result).
   const stepEnv = { oursSides: oursSides.length }
   const visibleSteps = RESULT_STEPS.filter((step) => !step.isApplicable || step.isApplicable(draft, stepEnv))
 
@@ -255,13 +249,13 @@ function CaptureWizard({
     }
   }
 
-  const goTo = async (id: string, side?: ResultSide) => {
+  const goTo = async (id: string, side?: ResultSide, draftOverride?: ResultDraft) => {
     if (!visibleSteps.some((step) => step.id === id)) return
     if (id === stepId) {
       if (side) setScorecardSide(side)
       return
     }
-    const next = withSuggestedMargin(draft, names)
+    const next = withSuggestedMargin(draftOverride ?? draft, names)
     if (next !== draft) setDraft(next)
     if (!(await save(next))) return
     if (side) setScorecardSide(side)
@@ -286,7 +280,7 @@ function CaptureWizard({
       void queryClient.invalidateQueries({ queryKey: resultKeys.detail(clubId, matchId) })
       navigate(RESULTS_PATH)
     } catch (error) {
-      setProblems(problemLines(error, "The result couldn't be published. Please try again.", { HOME: names.home, AWAY: names.away }, oursSides.length > 1))
+      setProblems(problemLines(error, "The result couldn't be published. Please try again.", { HOME: names.home, AWAY: names.away }))
     }
   }
 
@@ -318,7 +312,7 @@ function CaptureWizard({
     sides,
     disabled: busy,
     leagueScheduledBalls,
-    onGoToStep: (id, side) => void goTo(id, side),
+    onGoToStep: (id, side, draftOverride) => void goTo(id, side, draftOverride),
     scorecardAvailable: scorecardApplicable(draft, stepEnv),
     battingOrderKnown:
       firstBatterFromToss(draft) !== null || orderAsked || hasRegularFigures(draft) || (existing?.innings.length ?? 0) > 0,

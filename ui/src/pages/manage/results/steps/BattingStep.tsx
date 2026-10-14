@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Alert, Box, Typography } from '@mui/material'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
-import type { BattingEntry, Scorecard } from '../../../../api/matchResultApi'
+import type { BattingEntry, ResultSide, Scorecard } from '../../../../api/matchResultApi'
 import { Button } from '../../../../components/Button'
 import { ExtrasFields } from '../../../../components/ExtrasFields'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
@@ -14,44 +14,60 @@ import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { canFeatureBatter } from '../../../../utils/standout'
 import { battingTotals } from '../../../../utils/battingTotals'
+import { allowsBowler, allowsFielder } from '../../../../utils/dismissal'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
-import { entryPlayerKey } from '../../../../utils/scorecardPrefill'
-import { dismissalCount, applyBattedWindow, applyWicketFill } from '../../../../utils/wicketFill'
-import { regularInningsOf, updateInnings } from '../resultDraftHelpers'
+import { entryPlayerKey, playerRowKey } from '../../../../utils/scorecardPrefill'
+import { dismissalCount, applyBattedWindow, applyWicketFill, newRowFill } from '../../../../utils/wicketFill'
+import { opposite, regularInningsOf, updateInnings } from '../resultDraftHelpers'
+import { AddPlayerRow } from '../scorecard/AddPlayerRow'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
 import { InningsSummaryCard } from '../scorecard/InningsSummaryCard'
+import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
+import { PlayerPickCombo } from '../scorecard/PlayerPickCombo'
+import type { PickOption } from '../scorecard/PlayerPickCombo'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
+import { useAddPlayerSupport } from '../scorecard/useAddPlayerSupport'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
+  addPlayer,
   applyCalculatedFigure,
-  editInningsFigure,
-  inningsSuggestions,
-  syncInningsFromScorecard,
-  wicketsOwned,
-  duplicatePlayerKeys,
   battingOf,
+  blankBowlingEntry,
+  bowlersWithoutRow,
+  bowlingOf,
+  dismissalPatch,
+  duplicatePlayerKeys,
+  editInningsFigure,
+  ensureBattingRows,
   ensureSideFromPrefill,
-  reconcileSubstitutes,
+  inningsHasDismissals,
+  inningsSuggestions,
+  ourTeamNotSelected,
   patchBatting,
   playersByKey,
   playersOfSide,
+  reconcileSubstitutes,
   scorecardOf,
   setBatting,
+  setBowling,
   stepIncomplete,
+  syncInningsFromScorecard,
   withScorecard,
+  wicketsOwned,
 } from '../scorecardDraft'
 import type { ScorecardStepProps } from './stepTypes'
 
 const sameFill = (a: BattingEntry[], b: BattingEntry[]) => a.every((entry, index) => entry.howOut === b[index].howOut && entry.auto === b[index].auto)
 
-// docs/specs/101-match-results-our-side-scorecard.md, step "Our batting": our side's batters in the order they batted,
-// pre-filled from the team selection (built here, written only by a save), driven by the wickets from the Scores step
-// (once the dismissals equal the wickets the rest become Not out), with the keyboard-first grid, a card per batter on a
-// phone, the totals strip and the extras. Reorder by drag handle or the name popup; Swap, Link and Remove live in the
-// popup.
-export function OurBattingStep({
+// docs/specs/101-match-results-our-side-scorecard.md, step "Batting" (decision 22): the batters of the side shown, in the
+// order they batted, for either side. Rows are the side's Teams list (ours: pre-filled from the selection, built here and
+// written only by a save; the opposition: the typed names); a trailing row types a name to add a player without going back
+// to Teams. Driven by the wickets (once the dismissals equal them the rest become Not out), with the keyboard-first grid, a
+// card per batter on a phone, the dismissal's Fielder and Bowler picked from the OTHER side's list (a new name is added
+// from the control), the totals strip and the extras. Reorder by drag handle or the name popup.
+export function BattingStep({
   clubId,
   match,
   draft,
@@ -67,8 +83,11 @@ export function OurBattingStep({
   sides,
   onGoToStep,
 }: ScorecardStepProps) {
-  const ours = oursSides.find((candidate) => candidate.side === scorecardSide) ?? oursSides[0]
-  const side = ours.side
+  const side: ResultSide = scorecardSide
+  const fieldingSide = opposite(side)
+  const ours = oursSides.find((candidate) => candidate.side === side) ?? null
+  const fieldingOurs = oursSides.some((candidate) => candidate.side === fieldingSide)
+  const teamName = sides.find((candidate) => candidate.side === side)?.name ?? ''
   const scorecard = scorecardOf(draft)
   const innings = regularInningsOf(draft).find((item) => item.battingSide === side)
   // Only wickets the manager typed drive the not-out / did-not-bat fill; calculated wickets just follow the dismissals.
@@ -84,15 +103,16 @@ export function OurBattingStep({
   const commit = (next: Scorecard) => onReplace(syncInningsFromScorecard(withScorecard(draft, reconcileSubstitutes(next, selectionSubstitutes))))
   // Applies the not-out rule to the side's batters after any edit.
   const filled = (next: Scorecard): Scorecard => {
-    const current = battingOf(next, side)
+    const ensured = ensureBattingRows(next, side)
+    const current = battingOf(ensured, side)
     const result = applyWicketFill(applyBattedWindow(current, wickets), wickets)
-    return sameFill(current, result) ? next : setBatting(next, side, result)
+    return sameFill(current, result) ? ensured : setBatting(ensured, side, result)
   }
 
-  // First open of a side: build the grid from the selection; later, keep the not-out rule in step with the Scores step.
+  // First open of an ours side: build the grid from the selection; later, keep the not-out rule in step with the innings.
   useEffect(() => {
     if (players.length === 0) {
-      const built = prefillState === 'ready' ? ensureSideFromPrefill(scorecard, prefillSide, wickets) : null
+      const built = ours && prefillState === 'ready' ? ensureSideFromPrefill(scorecard, prefillSide, wickets) : null
       if (built) commit(built)
       return
     }
@@ -105,7 +125,9 @@ export function OurBattingStep({
     const found = byKey.get(key)
     return found ? scorecardPersonName(found) : { firstName: '', lastName: '' }
   }
-  const view: PersonName[] = players.map((player) => scorecardPersonName(player))
+  // Everyone on screen together: this side's batters and the other side's players in the dismissal pickers.
+  const fielders = playersOfSide(scorecard, fieldingSide)
+  const view: PersonName[] = [...players, ...fielders].map((player) => scorecardPersonName(player))
   const label = usePlayerLabeler(view)
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
@@ -114,14 +136,15 @@ export function OurBattingStep({
   const onReorder = (order: string[]) =>
     commit(filled(setBatting(scorecard, side, order.map((id) => rows.find((entry) => entryPlayerKey(entry) === id) as BattingEntry))))
   const reorder = useReorderableRows({ ids, onReorder })
-  // A how-out chosen by the manager is theirs (not automatic); Did not bat clears the figures the row cannot have.
+  // A how-out chosen by the manager is theirs (not automatic); Did not bat clears the figures the row cannot have, and a
+  // dismissal that does not take a bowler or fielder drops them.
   const changeHowOut = (key: string, value: BattingEntry['howOut']) =>
-    edit(key, { howOut: value, auto: false, ...(value === 'DID_NOT_BAT' ? { runs: null, balls: null, fours: null, sixes: null } : {}) })
+    edit(key, { ...dismissalPatch(value), auto: false, ...(value === 'DID_NOT_BAT' ? { runs: null, balls: null, fours: null, sixes: null } : {}) })
 
   const actions = usePlayerActions({
     clubId,
     seasonId: match.seasonId,
-    ours,
+    ours: { side, teamId: ours?.teamId ?? null },
     scorecard,
     onScorecard: (next) => commit(filled(next)),
     ids,
@@ -137,6 +160,46 @@ export function OurBattingStep({
     onRemove: () => {},
     disabled,
   })
+
+  // ---- typing a name adds the player to the team ----
+  const support = useAddPlayerSupport({ clubId, matchId: match.id, seasonId: match.seasonId, side, ours, scorecard, prefillSide, label })
+  const addTo = (identity: Parameters<typeof addPlayer>[2]) => {
+    commit(filled(addPlayer(scorecard, side, identity, newRowFill(battingOf(scorecard, side), wickets).howOut).scorecard))
+  }
+  const addNames = (names: string[]) => {
+    let next = scorecard
+    for (const name of names) next = addPlayer(next, side, support.nameIdentity(name), newRowFill(battingOf(next, side), wickets).howOut).scorecard
+    commit(filled(next))
+  }
+
+  // ---- the dismissal's Fielder and Bowler: the other side's players ----
+  const bowlerKeys = new Set(bowlingOf(scorecard, fieldingSide).map((entry) => entryPlayerKey(entry)))
+  const fielderOptions: PickOption[] = fielders.map((player) => ({
+    key: playerRowKey(player),
+    label: label(scorecardPersonName(player)),
+    hint: player.substitute ? (fieldingOurs ? '12th man or substitute' : 'Substitute') : undefined,
+  }))
+  const bowlerOptions: PickOption[] = [
+    ...fielderOptions.filter((option) => bowlerKeys.has(option.key)).map((option) => ({ ...option, hint: 'Bowler' })),
+    ...fielderOptions.filter((option) => !bowlerKeys.has(option.key)),
+  ]
+  // Typing a name that is not on the other side's list creates the player there (a new name for the opposition, a guest for
+  // our side) and names them on the dismissal.
+  const nameOnDismissal = (key: string, field: 'bowlerPlayerId' | 'fielderPlayerId', name: string) => {
+    const identity = { playerProfileId: null, displayName: name, opposition: !fieldingOurs }
+    const fieldingWickets = (() => {
+      const other = regularInningsOf(draft).find((item) => item.battingSide === fieldingSide)
+      return other && wicketsOwned(other) ? (other.wickets ?? null) : null
+    })()
+    const added = addPlayer(scorecard, fieldingSide, identity, newRowFill(battingOf(scorecard, fieldingSide), fieldingWickets).howOut)
+    commit(filled(patchBatting(added.scorecard, key, { [field]: added.key })))
+  }
+  const missingBowlers = bowlersWithoutRow(scorecard, fieldingSide)
+  const addMissingBowlers = () => {
+    const current = bowlingOf(scorecard, fieldingSide)
+    const derived = inningsHasDismissals(scorecard, side)
+    commit(filled(setBowling(scorecard, fieldingSide, [...current, ...missingBowlers.map((player, index) => blankBowlingEntry(fieldingSide, player, current.length + index + 1, derived))])))
+  }
 
   const captionOf = (key: string, entry: BattingEntry): string | null => {
     const player = byKey.get(key)
@@ -159,7 +222,27 @@ export function OurBattingStep({
     innings?.runs,
   )
   const out = dismissalCount(rows)
-  const incomplete = Object.fromEntries(oursSides.map((candidate) => [candidate.side, stepIncomplete(draft, candidate.side, 'batting')]))
+  const incomplete = Object.fromEntries(sides.map((candidate) => [candidate.side, stepIncomplete(draft, candidate.side, 'batting')]))
+  const notSelected = ours ? ourTeamNotSelected(prefillSide, scorecard, side, prefillState === 'ready') : false
+
+  const dismissalPicker = (entry: BattingEntry, field: 'fielderPlayerId' | 'bowlerPlayerId', fullWidth = false) => {
+    const key = entryPlayerKey(entry) as string
+    const isFielder = field === 'fielderPlayerId'
+    return (
+      <PlayerPickCombo
+        ariaLabel={`${isFielder ? 'Fielder' : 'Bowler'}, ${label(person(key))}`}
+        value={entry[field] ?? null}
+        options={isFielder ? fielderOptions : bowlerOptions}
+        onPick={(picked) => edit(key, { [field]: picked })}
+        onAddNew={(name) => nameOnDismissal(key, field, name)}
+        addLabel={fieldingOurs ? 'Add as a guest' : 'Add a new name'}
+        placeholder={isFielder ? 'Fielder' : 'Bowler'}
+        column={isFielder ? 'fielder' : 'bowler'}
+        disabled={disabled}
+        fullWidth={fullWidth}
+      />
+    )
+  }
 
   const columns: ScorecardGridColumn<BattingEntry>[] = [
     {
@@ -178,6 +261,8 @@ export function OurBattingStep({
         )
       },
     },
+    { id: 'fielder', header: 'Fielder', render: (entry) => (allowsFielder(entry.howOut) ? dismissalPicker(entry, 'fielderPlayerId') : null) },
+    { id: 'bowler', header: 'Bowler', render: (entry) => (allowsBowler(entry.howOut) ? dismissalPicker(entry, 'bowlerPlayerId') : null) },
     ...(['runs', 'balls', 'fours', 'sixes'] as const).map((field) => ({
       id: field,
       header: { runs: 'Runs', balls: 'Balls', fours: '4s', sixes: '6s' }[field],
@@ -198,8 +283,9 @@ export function OurBattingStep({
     })),
   ]
 
+  // The opposition has no standouts: no star on its rows.
   const star = (entry: BattingEntry) => {
-    if (!canFeatureBatter(entry)) return null
+    if (!ours || !canFeatureBatter(entry)) return null
     const key = entryPlayerKey(entry) as string
     return (
       <StandoutToggle
@@ -218,7 +304,7 @@ export function OurBattingStep({
       <ScorecardPlayerCell
         person={person(key)}
         view={view}
-        guest={!player?.playerProfileId}
+        guest={Boolean(player) && !player?.playerProfileId && !player?.opposition}
         duplicate={duplicates.has(key)}
         caption={captionOf(key, entry)}
         onOpen={(anchor) => actions.openMenu(key, anchor)}
@@ -229,20 +315,16 @@ export function OurBattingStep({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      <ScorecardStepHeader
-        oursSides={oursSides}
-        scorecardSide={side}
-        onSideChange={onScorecardSideChange}
-        incomplete={incomplete}
-      />
-      <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title={`${ours.teamName} batting`} />
+      <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} ariaLabel="Team batting" />
+      <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title={`${teamName} batting`} />
+      {notSelected && <NotSelectedBanner compact onOpenTeams={onGoToStep ? () => onGoToStep('teams', side) : undefined} disabled={disabled} />}
 
       {!innings ? null : !battingOrderKnown ? (
         <BattingOrderPrompt sides={sides} onChoose={(first) => onBattingOrder?.(first)} disabled={disabled} />
       ) : (
         <>
           <InningsSummaryCard
-            teamName={ours.teamName}
+            teamName={teamName}
             innings={innings}
             ballsPerOver={draft.ballsPerOver ?? 6}
             calculated={inningsSuggestions(draft).get(innings.sequence ?? 1)}
@@ -281,27 +363,34 @@ export function OurBattingStep({
             </Typography>
             <ExtrasFields
               value={innings}
-              owner={ours.teamName}
+              owner={teamName}
               disabled={disabled}
               onChange={(patch) => onReplace(syncInningsFromScorecard(updateInnings(draft, innings.sequence ?? 1, patch)))}
             />
           </Box>
 
-          {rows.length === 0 && (
+          {missingBowlers.length > 0 && (
             <Alert
               severity="info"
               action={
-                <Button variant="ghost" size="sm" onClick={() => onGoToStep?.('our-team', side)}>
-                  Open Our team
+                <Button variant="secondary" size="sm" onClick={addMissingBowlers} disabled={disabled}>
+                  Add to bowling
                 </Button>
               }
             >
-              No team yet. Add players on Our team.
+              {missingBowlers.map((player) => label(scorecardPersonName(player))).join(', ')} {missingBowlers.length === 1 ? 'is' : 'are'} named as {missingBowlers.length === 1 ? 'a bowler' : 'bowlers'} but
+              {missingBowlers.length === 1 ? " isn't" : " aren't"} on the bowling list yet.
             </Alert>
           )}
 
+          {rows.length === 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {ours ? 'No team yet. Type a name below, or add players on Teams.' : 'No batters yet. Type their names below, one per line, or paste a list.'}
+            </Typography>
+          )}
+
           <ScorecardGrid<BattingEntry>
-            ariaLabel={`${ours.teamName} batting`}
+            ariaLabel={`${teamName} batting`}
             rows={rows}
             getRowId={(entry) => entryPlayerKey(entry) as string}
             columns={columns}
@@ -310,7 +399,7 @@ export function OurBattingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             isRowMuted={(entry) => entry.howOut === 'DID_NOT_BAT'}
-                        emptyMessage="No batters yet. Add the players who batted."
+            emptyMessage={null}
             renderCard={(entry) => {
               const key = entryPlayerKey(entry) as string
               const dnb = entry.howOut === 'DID_NOT_BAT'
@@ -331,6 +420,26 @@ export function OurBattingStep({
                     ariaLabel={`How out, ${label(person(key))}`}
                     onChange={(value) => changeHowOut(key, value)}
                   />
+                  {(allowsFielder(entry.howOut) || allowsBowler(entry.howOut)) && (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1 }}>
+                      {allowsFielder(entry.howOut) && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            Fielder
+                          </Typography>
+                          {dismissalPicker(entry, 'fielderPlayerId', true)}
+                        </Box>
+                      )}
+                      {allowsBowler(entry.howOut) && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            Bowler
+                          </Typography>
+                          {dismissalPicker(entry, 'bowlerPlayerId', true)}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                   {!dnb && (
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: 1, justifyContent: 'space-between' }}>
                       {(['runs', 'balls', 'fours', 'sixes'] as const).map((field) => (
@@ -355,11 +464,22 @@ export function OurBattingStep({
             }}
           />
 
+          <AddPlayerRow
+            options={support.options}
+            addLabel={support.addLabel}
+            existingNames={players.map((player) => player.displayName ?? '')}
+            onPick={(key) => {
+              const identity = support.identityOf(key)
+              if (identity) addTo(identity)
+            }}
+            onAddName={(name) => addTo(support.nameIdentity(name))}
+            onAddNames={addNames}
+            disabled={disabled}
+          />
         </>
       )}
 
       {actions.host}
-
     </Box>
   )
 }

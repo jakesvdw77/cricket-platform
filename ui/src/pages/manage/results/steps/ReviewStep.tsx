@@ -42,7 +42,7 @@ export interface ReviewStepProps extends ScorecardStepProps {
   fieldName: string | null
 }
 
-function CheckRow({ tone, text, action }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode }) {
+function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode; chip?: string | null }) {
   const icon =
     tone === 'ok' ? <CheckCircleOutlineIcon color="success" fontSize="small" />
     : tone === 'error' ? <ErrorOutlineIcon color="error" fontSize="small" />
@@ -52,6 +52,7 @@ function CheckRow({ tone, text, action }: { tone: 'ok' | 'warning' | 'error' | '
     <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, py: 0.75, listStyle: 'none' }} data-tone={tone}>
       <Box sx={{ display: 'flex', pt: 0.1 }}>{icon}</Box>
       <Typography variant="body2" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+        {chip && <Chip size="small" label={chip} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem', mr: 0.75, verticalAlign: 'text-bottom' }} />}
         {text}
       </Typography>
       {action}
@@ -59,8 +60,10 @@ function CheckRow({ tone, text, action }: { tone: 'ok' | 'warning' | 'error' | '
   )
 }
 
-// docs/specs/100-match-results-core.md, step 4 "Review and publish": the result exactly as the card shows it, then the
-// server's validation - errors block publishing, warnings need a tick. The Publish button lives in the page's footer.
+// docs/specs/100-match-results-core.md, step "Review and publish": the result exactly as the card shows it, the status of
+// each side's scorecard, then the server's validation - errors block publishing, warnings need a tick, INFO lines (a team
+// that was not selected) are quiet. Scorecard issues carry a chip with the team they belong to. The Publish button lives in
+// the page's footer.
 export function ReviewStep({
   match,
   draft,
@@ -104,7 +107,8 @@ export function ReviewStep({
     // wording. Scorecard issues are never matched.
     .filter((issue) => isScorecardStep(issue.step) || issue.side !== null || dedupeWarnings([issue.message], check).length > 0)
   const infos = issues.filter((issue) => issue.severity === 'INFO')
-  const issueText = (issue: ResultIssue) => (derby && issue.side && isScorecardStep(issue.step) ? `${teamNameOf(issue.side)}: ${issue.message}` : issue.message)
+  const issueText = (issue: ResultIssue) => issue.message
+  const issueChip = (issue: ResultIssue) => (issue.side && isScorecardStep(issue.step) ? teamNameOf(issue.side) : null)
   const issueFix = (issue: ResultIssue) => {
     const id = stepIdForIssue(issue.step, issue.code)
     if (!id || !onGoToStep) return undefined
@@ -118,7 +122,7 @@ export function ReviewStep({
   // The scorecard: what has been entered for each of our sides, and the player of the match for the card.
   const scorecard = scorecardOf(draft)
   const byKey = playersByKey(scorecard)
-  const view: PersonName[] = oursSides.flatMap((ours) => playersOfSide(scorecard, ours.side)).map((player) => scorecardPersonName(player))
+  const view: PersonName[] = sides.flatMap((candidate) => playersOfSide(scorecard, candidate.side)).map((player) => scorecardPersonName(player))
   const official = officialAward(scorecard)
   const personFor = (award: { resultPlayerId?: string | null; playerClientKey?: string | null }) => {
     const found = byKey.get(entryPlayerKey(award) ?? '')
@@ -172,25 +176,22 @@ export function ReviewStep({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title="Scorecard" />
           <Box component="ul" aria-label="Scorecard status" sx={{ m: 0, p: 0 }}>
-            {oursSides.map((ours) => {
-              const status = sideStatus(draft, ours.side)
-              const prefix = derby ? `${ours.teamName}: ` : ''
+            {sides.map((info) => {
+              const status = sideStatus(draft, info.side)
               const text =
                 status === 'COMPLETE'
-                  ? derby
-                    ? `${prefix}complete. Batting, bowling and fielding entered`
-                    : 'Our batting, bowling and fielding entered'
+                  ? `${info.name}: complete. Batting, bowling and fielding entered`
                   : status === 'PARTIAL'
-                    ? `${prefix}${derby ? 'partial. ' : ''}${derby ? 'Some of the batting, bowling and fielding is missing' : 'Our scorecard is only partly entered'}`
-                    : `${prefix}${derby ? 'none. ' : ''}Summary only`
+                    ? `${info.name}: partial. Some of the batting, bowling and fielding is missing`
+                    : `${info.name}: none. Summary only`
               return (
                 <CheckRow
-                  key={ours.side}
+                  key={info.side}
                   tone={status === 'COMPLETE' ? 'ok' : 'info'}
                   text={text}
                   action={
                     status !== 'COMPLETE' && onGoToStep ? (
-                      <Button variant="secondary" size="sm" onClick={() => onGoToStep('our-team', ours.side)}>
+                      <Button variant="secondary" size="sm" onClick={() => onGoToStep(status === 'NONE' ? 'teams' : 'batting', info.side)}>
                         {status === 'NONE' ? 'Add' : 'Complete'}
                       </Button>
                     ) : undefined
@@ -213,7 +214,7 @@ export function ReviewStep({
         {validation && (
           <Box component="ul" aria-label="Checks" sx={{ m: 0, p: 0 }}>
             {errors.map((issue, index) => (
-              <CheckRow key={`e-${index}-${issue.message}`} tone="error" text={issueText(issue)} action={issueFix(issue)} />
+              <CheckRow key={`e-${index}-${issue.message}`} tone="error" text={issueText(issue)} chip={issueChip(issue)} action={issueFix(issue)} />
             ))}
             {check.status === 'mismatch' && (
               <CheckRow
@@ -231,10 +232,10 @@ export function ReviewStep({
             {check.status === 'match' && <CheckRow tone="ok" text={check.reason} />}
             {check.status === 'cannot-check' && <CheckRow tone="info" text={check.reason} />}
             {warnings.map((issue, index) => (
-              <CheckRow key={`w-${index}-${issue.message}`} tone="warning" text={issueText(issue)} action={issueFix(issue)} />
+              <CheckRow key={`w-${index}-${issue.message}`} tone="warning" text={issueText(issue)} chip={issueChip(issue)} action={issueFix(issue)} />
             ))}
             {infos.map((issue, index) => (
-              <CheckRow key={`i-${index}-${issue.message}`} tone="info" text={issueText(issue)} />
+              <CheckRow key={`i-${index}-${issue.message}`} tone="info" text={issueText(issue)} chip={issueChip(issue)} />
             ))}
             {errors.length === 0 && warnings.length === 0 && check.status !== 'mismatch' && (
               <CheckRow tone="ok" text="Everything checks out. This result is ready to publish." />

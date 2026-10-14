@@ -215,14 +215,14 @@ export function toPayload(draft: ResultDraft): ResultDraft {
 }
 
 // The scorecard section of a save. Absent means "untouched"; present replaces the whole scorecard. `innings` and
-// `status` are read-only, so they are left out. Rows the server would refuse or that carry no information yet stay in the
-// form but are not sent: a batter whose how out is still undecided, a bowler or fielder with no figures, and every entry
-// of an innings that is not part of this save (its figures are not complete yet). With no regular innings in the save the
-// scorecard is left untouched. A Did not bat row carries no batting position (the order is the batters').
+// `status` are read-only, so they are left out. A list of players with no innings and no outcome is a real draft (a team list
+// saved before the game): the players and awards are sent whatever the innings. Rows the server would refuse or that carry
+// no information yet stay in the form but are not sent: a batter whose how out is still undecided, a bowler or fielder with
+// no figures, and every entry of an innings that is not part of this save (its figures are not complete yet). A Did not bat
+// row carries no batting position (the order is the batters').
 function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings[]): { scorecard?: Scorecard } {
   if (!scorecard) return {}
   const regularSides = new Set(sent.filter((innings) => !isSuperOver(innings)).map((innings) => innings.battingSide))
-  if (regularSides.size === 0) return {}
   const inSave = <T extends { battingSide: ResultSide }>(entry: T) => regularSides.has(entry.battingSide)
   return {
     scorecard: {
@@ -249,9 +249,9 @@ function extrasPayload(innings: Innings): Partial<Innings> {
   return out
 }
 
-// docs/specs/101 (decision 20): the scorecard steps (Our batting, Our bowling and fielding, Awards) come right after the
-// toss and no longer wait for scores: they apply to every match that was played, never to a forfeit, an abandoned match or
-// no result. The innings figures are entered on them.
+// docs/specs/101 (decisions 20 and 22): the scorecard steps Batting, Bowling and fielding and Awards no longer wait for
+// scores: they apply to every match that was played (an unknown outcome included), never to a forfeit, an abandoned match or
+// no result. The innings figures are entered on them. Teams, Result and Toss are always part of the wizard.
 export function scorecardStepsApplicable(draft: Pick<ResultDraft, 'outcomeType'>): boolean {
   return !(draft.outcomeType === 'FORFEIT' || draft.outcomeType === 'ABANDONED' || draft.outcomeType === 'NO_RESULT')
 }

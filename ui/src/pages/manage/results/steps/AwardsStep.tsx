@@ -32,7 +32,7 @@ import {
   teamAward,
   withScorecard,
 } from '../scorecardDraft'
-import type { OurSide, ScorecardStepProps } from './stepTypes'
+import type { ScorecardStepProps } from './stepTypes'
 
 const NONE = 'none'
 const OTHER = 'other'
@@ -86,7 +86,7 @@ function PersonSelect({ label, value, onChange, groups, standoutKeys, view, none
       ...ordered.map((player) => (
         <MenuItem key={playerRowKey(player)} value={playerRowKey(player)} sx={{ minHeight: 44, gap: 1 }}>
           <PlayerName person={scorecardPersonName(player)} view={view} />
-          {!player.playerProfileId && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
+          {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
           {standoutKeys.has(playerRowKey(player)) && <StarOutlineIcon fontSize="small" aria-label="Standout" sx={{ color: 'warning.main', ml: 'auto' }} />}
         </MenuItem>
       )),
@@ -107,32 +107,32 @@ function PersonSelect({ label, value, onChange, groups, standoutKeys, view, none
   )
 }
 
-// docs/specs/101-match-results-our-side-scorecard.md, step "Awards": the standouts the scorecard suggests (a star on
-// each row to remove or add one), the official player of the match (one of our players, someone else by name, or none)
-// and our team's player of the match. In a derby the official pick lists both teams' players and each team has its own
-// pick; the Home | Away switch only chooses which team's standouts are shown.
+// docs/specs/101-match-results-our-side-scorecard.md, step "Awards" (decision 22): the ONE official player of the match for
+// the whole result sits above the side toggle (a player from either side's list, the opposition's included, or someone typed);
+// under the toggle, for an ours side, the standouts the scorecard suggests (a star on each row to remove or add one) and the
+// team's own player of the match. The opposition has neither standouts nor a team award.
 export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSide, onScorecardSideChange, sides, onGoToStep }: ScorecardStepProps) {
-  const ours = oursSides.find((candidate) => candidate.side === scorecardSide) ?? oursSides[0]
+  const side: ResultSide = scorecardSide
+  const ours = oursSides.find((candidate) => candidate.side === side) ?? null
   const derby = oursSides.length > 1
   const scorecard = scorecardOf(draft)
   const ballsPerOver = draft.ballsPerOver ?? 6
   const byKey = playersByKey(scorecard)
-  const allPlayers = oursSides.flatMap((candidate) => playersOfSide(scorecard, candidate.side))
+  const nameOfSide = (forSide: ResultSide) => sides.find((candidate) => candidate.side === forSide)?.name ?? ''
+  const allPlayers = sides.flatMap((candidate) => playersOfSide(scorecard, candidate.side))
   const view: PersonName[] = allPlayers.map((player) => scorecardPersonName(player))
   const label = usePlayerLabeler(view)
   const commit = (next: Scorecard) => onReplace(withScorecard(draft, next))
-  const opposingName = sides.find((side) => side.side === opposite(ours.side))?.name ?? 'the other side'
 
   const personOf = (key: string | null): PersonName => {
     const found = key ? byKey.get(key) : undefined
     return found ? scorecardPersonName(found) : { firstName: '', lastName: '' }
   }
 
-  // ---- standouts of the shown team ----
-  const side = ours.side
-  const batters = battingOf(scorecard, side).filter(canFeatureBatter).filter(listed)
-  const bowlers = bowlingOf(scorecard, side).filter(canFeatureBowler).filter(listed)
-  const fielders = fieldingOf(scorecard, side).filter((entry) => canFeatureFielder(entry) && listed(entry))
+  // ---- standouts of the shown team (ours only) ----
+  const batters = ours ? battingOf(scorecard, side).filter(canFeatureBatter).filter(listed) : []
+  const bowlers = ours ? bowlingOf(scorecard, side).filter(canFeatureBowler).filter(listed) : []
+  const fielders = ours ? fieldingOf(scorecard, side).filter((entry) => canFeatureFielder(entry) && listed(entry)) : []
   const standoutKeys = (forSide: ResultSide) =>
     new Set(
       [
@@ -152,7 +152,7 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
       >
         <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>
           <PlayerName person={personOf(key)} view={view} />
-          {player && !player.playerProfileId && (
+          {player && !player.playerProfileId && !player.opposition && (
             <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem', ml: 0.75 }} />
           )}
         </Typography>
@@ -199,82 +199,18 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
   const setTeam = (forSide: ResultSide, value: string) =>
     commit(setAward(scorecard, 'TEAM_PLAYER_OF_MATCH', forSide, value === NONE ? null : awardFor('TEAM_PLAYER_OF_MATCH', value, forSide)))
 
-  // A free-text name is the other side's player; in a derby (no "other side") it is filed under Home.
-  const otherSide: ResultSide = derby ? 'HOME' : opposite(ours.side)
+  // A free-text name is filed under the side that is not ours; in a derby (no such side) it is filed under Home.
+  const otherSide: ResultSide = derby ? 'HOME' : (oursSides[0] ? opposite(oursSides[0].side) : 'AWAY')
 
-  const officialGroups = oursSides.map((candidate: OurSide) => ({
-    title: candidate.teamName,
-    players: playersOfSide(scorecard, candidate.side),
-  }))
+  // Both sides' lists, the opposition's included.
+  const officialGroups = sides.map((candidate) => ({ title: candidate.name, players: playersOfSide(scorecard, candidate.side) }))
+  const incomplete = Object.fromEntries(sides.map((candidate) => [candidate.side, playersOfSide(scorecard, candidate.side).length === 0]))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      <ScorecardStepHeader oursSides={oursSides} scorecardSide={side} onSideChange={onScorecardSideChange} />
-
-      <InfoCard
-        title="Standouts"
-        icon={<StarOutlineIcon />}
-        note={derby ? ours.teamName : undefined}
-        testId="awards-standouts"
-      >
-        <Typography variant="body2" color="text.secondary">
-          Suggested from the scorecard. Tap the star to remove or add one.
-        </Typography>
-        {batters.length + bowlers.length + fielders.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
-            Nothing stands out yet. Enter the batting, bowling and fielding first, or star a player on those steps.
-          </Typography>
-        )}
-        {group(
-          'Batting',
-          batters.map((entry) =>
-            row(
-              entryPlayerKey(entry) as string,
-              battingFigure(entry),
-              <StandoutToggle
-                suggested={Boolean(entry.suggested)}
-                override={entry.featuredOverride}
-                onChange={(override) => commit(patchBatting(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
-                playerLabel={label(personOf(entryPlayerKey(entry)))}
-              />,
-            ),
-          ),
-        )}
-        {group(
-          'Bowling',
-          bowlers.map((entry) =>
-            row(
-              entryPlayerKey(entry) as string,
-              bowlingFigure(entry, ballsPerOver),
-              <StandoutToggle
-                suggested={Boolean(entry.suggested)}
-                override={entry.featuredOverride}
-                onChange={(override) => commit(patchBowling(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
-                playerLabel={label(personOf(entryPlayerKey(entry)))}
-              />,
-            ),
-          ),
-        )}
-        {group(
-          'Fielding',
-          fielders.map((entry) =>
-            row(
-              entryPlayerKey(entry) as string,
-              fieldingFigure(entry),
-              <StandoutToggle
-                suggested={Boolean(entry.suggested)}
-                override={entry.featuredOverride}
-                onChange={(override) => commit(patchFielding(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
-                playerLabel={label(personOf(entryPlayerKey(entry)))}
-              />,
-            ),
-          ),
-        )}
-      </InfoCard>
-
       <InfoCard title="Player of the match" icon={<EmojiEventsOutlinedIcon />} testId="awards-official">
         <Typography variant="body2" color="text.secondary">
-          The official player of the match{derby ? ', from either team' : ''}.
+          The official player of the match, from either team.
         </Typography>
         <PersonSelect
           label="Player of the match"
@@ -284,12 +220,12 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
           standoutKeys={allStandouts}
           view={view}
           noneLabel="None"
-          otherLabel={derby ? 'Someone else (type a name)' : `Someone from ${opposingName}`}
+          otherLabel="Someone not listed (type a name)"
           disabled={disabled}
         />
         {otherSelected && (
           <Input
-            label={derby ? 'Name' : `Player from ${opposingName}`}
+            label="Name"
             value={official?.displayName ?? ''}
             onChange={(event) => {
               const name = event.target.value
@@ -308,33 +244,98 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
         )}
       </InfoCard>
 
-      <InfoCard title={derby ? "Teams' players of the match" : "Our team's player of the match"} icon={<WorkspacePremiumOutlinedIcon />} testId="awards-team">
-        <Typography variant="body2" color="text.secondary">
-          {derby ? 'Each team can name its own player of the match.' : "The club team's own pick, if it gives one."}
-        </Typography>
-        {oursSides.map((candidate) => {
-          const award = teamAward(scorecard, candidate.side)
-          return (
+      <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} ariaLabel="Team awards" />
+
+      {ours ? (
+        <>
+          <InfoCard title="Standouts" icon={<StarOutlineIcon />} note={nameOfSide(side)} testId="awards-standouts">
+            <Typography variant="body2" color="text.secondary">
+              Suggested from the scorecard. Tap the star to remove or add one.
+            </Typography>
+            {batters.length + bowlers.length + fielders.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Nothing stands out yet. Enter the batting, bowling and fielding first, or star a player on those steps.
+              </Typography>
+            )}
+            {group(
+              'Batting',
+              batters.map((entry) =>
+                row(
+                  entryPlayerKey(entry) as string,
+                  battingFigure(entry),
+                  <StandoutToggle
+                    suggested={Boolean(entry.suggested)}
+                    override={entry.featuredOverride}
+                    onChange={(override) => commit(patchBatting(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
+                    playerLabel={label(personOf(entryPlayerKey(entry)))}
+                  />,
+                ),
+              ),
+            )}
+            {group(
+              'Bowling',
+              bowlers.map((entry) =>
+                row(
+                  entryPlayerKey(entry) as string,
+                  bowlingFigure(entry, ballsPerOver),
+                  <StandoutToggle
+                    suggested={Boolean(entry.suggested)}
+                    override={entry.featuredOverride}
+                    onChange={(override) => commit(patchBowling(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
+                    playerLabel={label(personOf(entryPlayerKey(entry)))}
+                  />,
+                ),
+              ),
+            )}
+            {group(
+              'Fielding',
+              fielders.map((entry) =>
+                row(
+                  entryPlayerKey(entry) as string,
+                  fieldingFigure(entry),
+                  <StandoutToggle
+                    suggested={Boolean(entry.suggested)}
+                    override={entry.featuredOverride}
+                    onChange={(override) => commit(patchFielding(scorecard, entryPlayerKey(entry) as string, { featuredOverride: override }))}
+                    playerLabel={label(personOf(entryPlayerKey(entry)))}
+                  />,
+                ),
+              ),
+            )}
+          </InfoCard>
+
+          <InfoCard title={`${nameOfSide(side)} player of the match`} icon={<WorkspacePremiumOutlinedIcon />} testId="awards-team">
+            <Typography variant="body2" color="text.secondary">
+              The team&apos;s own pick, if it gives one.
+            </Typography>
             <PersonSelect
-              key={candidate.side}
-              label={derby ? `${candidate.teamName} player of the match` : 'Our team player of the match'}
-              value={award ? (entryPlayerKey(award) ?? NONE) : NONE}
-              onChange={(value) => setTeam(candidate.side, value)}
-              groups={[{ title: candidate.teamName, players: playersOfSide(scorecard, candidate.side) }]}
-              standoutKeys={standoutKeys(candidate.side)}
+              label={`${nameOfSide(side)} player of the match`}
+              value={teamAward(scorecard, side) ? (entryPlayerKey(teamAward(scorecard, side) as MatchAward) ?? NONE) : NONE}
+              onChange={(value) => setTeam(side, value)}
+              groups={[{ title: nameOfSide(side), players: playersOfSide(scorecard, side) }]}
+              standoutKeys={standoutKeys(side)}
               view={view}
               noneLabel="None"
               disabled={disabled}
             />
-          )
-        })}
-      </InfoCard>
+          </InfoCard>
+        </>
+      ) : (
+        <InfoCard title="Standouts and team award" icon={<StarOutlineIcon />} note={nameOfSide(side)} testId="awards-opposition">
+          <Typography variant="body2" color="text.secondary">
+            The opposition has no standouts.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            The opposition&apos;s own player of the match is not recorded.
+          </Typography>
+        </InfoCard>
+      )}
 
       {onGoToStep && (
         <Typography variant="body2" color="text.secondary">
           Not listed?{' '}
-          <Button variant="ghost" size="sm" onClick={() => onGoToStep('our-team', ours.side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
-            Add them on Our team
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('teams', side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
+            Add them on Teams
           </Button>
         </Typography>
       )}
