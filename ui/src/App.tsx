@@ -47,6 +47,7 @@ import FieldsPage from './pages/manage/fields/FieldsPage'
 import FieldFormPage from './pages/manage/fields/FieldFormPage'
 import FieldDetailPage from './pages/manage/fields/FieldDetailPage'
 import MatchList from './pages/manage/MatchList'
+import ResultList from './pages/manage/results/ResultList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
 import TeamSelectionHubLayout from './pages/manage/teamSelection/TeamSelectionHubLayout'
@@ -241,7 +242,8 @@ function App() {
               <Route path="fixtures/fields/new" element={<FieldFormPage />} />
               <Route path="fixtures/fields/:fieldId" element={<FieldDetailPage />} />
               <Route path="fixtures/fields/:fieldId/edit" element={<FieldFormPage />} />
-              <Route path="results" element={<EmptyState title="Results" description="Coming soon." />} />
+              {/* docs/specs/100-match-results-core.md: the Results page (the result page and wizard follow). */}
+              <Route path="results" element={<ResultList />} />
               <Route
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}
