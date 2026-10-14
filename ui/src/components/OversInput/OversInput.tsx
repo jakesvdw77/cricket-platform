@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TextField } from '@mui/material'
+import { Input } from '../Input'
 import { ballsToOvers, DEFAULT_BALLS_PER_OVER, parseOvers } from '../../utils/oversFormat'
 
 export interface OversInputProps {
@@ -34,10 +34,8 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
   const error = parsed && parsed.ok === false ? parsed.error : null
 
   return (
-    <TextField
+    <Input
       label={label}
-      size="small"
-      fullWidth
       required={required}
       disabled={disabled}
       value={text}
@@ -52,7 +50,8 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
         setSeenValue(balls)
         onChange(balls)
       }}
-      inputProps={{ inputMode: 'decimal', 'aria-label': label, style: { fontVariantNumeric: 'tabular-nums' } }}
+      inputProps={{ inputMode: 'decimal', 'aria-label': label }}
+      sx={{ '& input': { fontVariantNumeric: 'tabular-nums' } }}
     />
   )
 }

@@ -10,6 +10,7 @@ import com.cricketlegend.dto.InningsDto;
 import com.cricketlegend.dto.ResultDraft;
 import com.cricketlegend.dto.ResultValidationDto;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -68,7 +69,7 @@ public class ResultValidator {
         }
         switch (outcome) {
             case WON -> validateWon(draft, names, errors, warnings);
-            case FORFEIT -> validateForfeit(draft, names, errors);
+            case FORFEIT -> validateForfeit(draft, errors);
             case TIE -> validateNoWinner(draft, "A tie", errors);
             case DRAW -> validateNoWinner(draft, "A draw", errors);
             case NO_RESULT -> validateNoWinner(draft, "A no result", errors);
@@ -123,13 +124,16 @@ public class ResultValidator {
         } else if (!level(regular)) {
             errors.add("A win in a super over needs the regular innings to be level.");
         }
-        if (superOvers(draft).size() < 2) {
+        List<InningsDto> superOvers = superOvers(draft);
+        boolean homeBatted = superOvers.stream().anyMatch(i -> i.battingSide() == ResultSide.HOME);
+        boolean awayBatted = superOvers.stream().anyMatch(i -> i.battingSide() == ResultSide.AWAY);
+        if (!homeBatted || !awayBatted) {
             errors.add("Enter at least one super over (both sides' innings).");
         }
         warnOnSuperOverWinner(draft, names, warnings);
     }
 
-    private void validateForfeit(ResultDraft draft, Names names, List<String> errors) {
+    private void validateForfeit(ResultDraft draft, List<String> errors) {
         if (draft.winningSide() == null) {
             errors.add("Choose which side received the win.");
         }
@@ -354,7 +358,7 @@ public class ResultValidator {
     }
 
     private List<InningsDto> regularInOrder(ResultDraft draft) {
-        return regular(draft).stream().sorted(java.util.Comparator.comparingInt(InningsDto::sequence)).toList();
+        return regular(draft).stream().sorted(Comparator.comparingInt(InningsDto::sequence)).toList();
     }
 
     private boolean scored(InningsDto i) {

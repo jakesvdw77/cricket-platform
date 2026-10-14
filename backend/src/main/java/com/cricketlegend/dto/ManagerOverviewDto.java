@@ -17,7 +17,7 @@ import java.util.List;
  * @param activePlayers active players of the club within the caller's sections
  * @param upcomingMatches at most 5 in-scope matches from the start of today, soonest first
  * @param openPolls at most 5 open in-scope polls, soonest scheduled close first (no close time last)
- * @param recentResults always empty for now: results do not exist yet
+ * @param recentResults always empty for now: results exist (spec 100) but the overview is not yet fed from them
  * @param quickActions which shortcuts the caller may use
  */
 public record ManagerOverviewDto(

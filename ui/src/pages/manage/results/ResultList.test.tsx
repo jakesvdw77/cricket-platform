@@ -233,6 +233,6 @@ describe('ResultList', () => {
 
     const edits = screen.getAllByRole('button', { name: 'Edit' })
     expect(edits.filter((button) => button.hasAttribute('disabled'))).toHaveLength(1)
-    expect(document.querySelector('[title="Unpublish to edit"]')).toBeInTheDocument()
+    expect(screen.getAllByText('Unpublish to edit').length).toBeGreaterThan(0)
   })
 })

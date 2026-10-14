@@ -39,8 +39,6 @@ import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultValidator;
 import com.cricketlegend.service.support.ServerClock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -189,13 +187,9 @@ public class ResultServiceImpl implements ResultService {
 
     /** Inclusive {@code from}/{@code to} server-local days as a half-open instant range. */
     private Specification<Match> dateRange(ResultListCriteria criteria) {
-        Instant from = criteria.from() == null ? null : startOfDay(criteria.from());
-        Instant to = criteria.to() == null ? null : startOfDay(criteria.to().plusDays(1));
+        Instant from = criteria.from() == null ? null : ServerClock.startOfDay(criteria.from());
+        Instant to = criteria.to() == null ? null : ServerClock.startOfDay(criteria.to().plusDays(1));
         return MatchSpecifications.matchDateBetween(from, to);
-    }
-
-    private Instant startOfDay(LocalDate day) {
-        return day.atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     // ---- reads ----

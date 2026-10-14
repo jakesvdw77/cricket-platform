@@ -414,6 +414,14 @@ class ResultValidatorTest {
     }
 
     @Test
+    void aSuperOverWinNeedsAnInningsFromEachSide() {
+        ResultValidationDto result = validate(superOverWin(ResultSide.HOME,
+                inn(ResultSide.HOME, 150, 10), inn(ResultSide.AWAY, 150, 9),
+                innBalls(ResultSide.HOME, 8, 1, 6), innBalls(ResultSide.HOME, 12, 0, 6)));
+        assertThat(result.errors()).containsExactly("Enter at least one super over (both sides' innings).");
+    }
+
+    @Test
     void aSuperOverWinNeedsAWinner() {
         ResultValidationDto result = validate(superOverWin(null,
                 inn(ResultSide.HOME, 150, 10), inn(ResultSide.AWAY, 150, 9),

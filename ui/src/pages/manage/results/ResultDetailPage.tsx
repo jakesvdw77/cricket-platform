@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { isAxiosError } from 'axios'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Box, Button as MuiButton, Chip, Stack, Typography } from '@mui/material'
@@ -27,6 +26,7 @@ import { listTeamsForClub } from '../../../api/teamApi'
 import type { Team } from '../../../api/teamApi'
 import { listLeagues } from '../../../api/leagueApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
+import { isNotFound } from '../../../utils/errorDetail'
 import { ballsToOvers } from '../../../utils/oversFormat'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { inningsFor, resultLine, resultPerspective } from '../../../utils/resultLine'
@@ -83,7 +83,7 @@ export default function ResultDetailPage() {
       try {
         return await getMatchResult(clubId as string, matchId as string)
       } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 404) return null
+        if (isNotFound(error)) return null
         throw error
       }
     },
@@ -141,7 +141,7 @@ export default function ResultDetailPage() {
   if (matchQuery.isLoading || resultQuery.isLoading) return null
 
   if (matchQuery.isError || resultQuery.isError || !matchQuery.data) {
-    const notFound = isAxiosError(matchQuery.error) && matchQuery.error.response?.status === 404
+    const notFound = isNotFound(matchQuery.error)
     return (
       <EmptyState
         title={notFound ? 'Match not found' : "Couldn't load this result"}
@@ -280,10 +280,19 @@ export default function ResultDetailPage() {
               </>
             ) : (
               <>
-                <Box component="span" title={UNPUBLISH_TO_EDIT_REASON} sx={{ display: 'flex' }}>
-                  <MuiButton variant="contained" disabled fullWidth startIcon={<EditOutlinedIcon fontSize="small" />}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <MuiButton
+                    variant="contained"
+                    disabled
+                    fullWidth
+                    aria-describedby="unpublish-to-edit-reason"
+                    startIcon={<EditOutlinedIcon fontSize="small" />}
+                  >
                     Edit
                   </MuiButton>
+                  <Typography id="unpublish-to-edit-reason" variant="caption" color="text.secondary">
+                    {UNPUBLISH_TO_EDIT_REASON}
+                  </Typography>
                 </Box>
                 <MuiButton
                   variant="outlined"

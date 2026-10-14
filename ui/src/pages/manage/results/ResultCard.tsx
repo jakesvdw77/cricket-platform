@@ -1,4 +1,4 @@
-import { Box, Typography } from '@mui/material'
+import { Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
@@ -11,7 +11,7 @@ import { CardTimeStrip } from '../../../components/CardTimeStrip'
 import { DetailLine } from '../../../components/DetailLine'
 import { RecordCard } from '../../../components/RecordCard'
 import type { RecordCardBadge, RecordCardFooterButton } from '../../../components/RecordCard'
-import { ResultScoreLine } from '../../../components/ResultScoreLine'
+import { ResultSummary } from '../../../components/ResultSummary'
 import type { ResultListItem } from '../../../api/matchResultApi'
 import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
@@ -87,33 +87,19 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
         label="Played"
         value={formatMatchDateTime(match.matchDate)}
       />
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }} data-testid="result-sides">
-        {sides.map((side) => {
-          const winner = result.winningSide === side.side && result.outcomeType === 'WON'
-          return (
-            <Box key={side.side} sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-              <TeamLogo logo={side.logo} testId={`result-logo-${side.side.toLowerCase()}`} />
-              <Typography variant="body2" fontWeight={winner ? 700 : 500} noWrap sx={{ flex: 1, minWidth: 0 }}>
-                {side.name}
-              </Typography>
-              <ResultScoreLine
-                innings={inningsFor(result.innings, side.side)}
-                ballsPerOver={result.ballsPerOver}
-                winner={winner}
-              />
-            </Box>
-          )
-        })}
-      </Box>
-      <Typography
-        variant="body2"
-        fontWeight={700}
-        data-testid="result-line"
-        data-perspective={perspective}
-        sx={{ color: PERSPECTIVE_COLOR[perspective] }}
+      <ResultSummary
+        sides={sides.map((side) => ({
+          key: side.side,
+          name: side.name,
+          logo: <TeamLogo logo={side.logo} testId={`result-logo-${side.side.toLowerCase()}`} />,
+          innings: inningsFor(result.innings, side.side),
+          winner: result.winningSide === side.side && result.outcomeType === 'WON',
+        }))}
+        ballsPerOver={result.ballsPerOver}
+        resultLine={resultLine(result, names)}
+        resultColor={PERSPECTIVE_COLOR[perspective]}
+        perspective={perspective}
       >
-        {resultLine(result, names)}
-      </Typography>
       <DetailLine
         icon={<SportsCricketOutlinedIcon fontSize="small" />}
         label="Toss"
@@ -126,6 +112,12 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
         value={field ?? 'Not recorded'}
         muted={!field}
       />
+      {!draft && (
+        <Typography variant="caption" color="text.secondary">
+          {UNPUBLISH_TO_EDIT_REASON}
+        </Typography>
+      )}
+      </ResultSummary>
     </RecordCard>
   )
 }

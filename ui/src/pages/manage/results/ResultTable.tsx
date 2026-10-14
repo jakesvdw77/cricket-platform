@@ -124,7 +124,7 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
         <Chip
           size="small"
           label={draft ? 'Draft' : 'Published'}
-          sx={{ ...badgeSx(draft ? 'warning' : 'positive'), height: 22, fontSize: '0.75rem' }}
+          sx={{ ...badgeSx(draft ? 'warning' : 'active'), height: 22, fontSize: '0.75rem' }}
         />
       </Box>
       <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>

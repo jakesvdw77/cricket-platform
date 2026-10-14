@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Box } from '@mui/material'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MatchForm } from './MatchForm'
 import type { Team } from '../../api/teamApi'
 import type { Season } from '../../api/seasonApi'
@@ -126,10 +127,13 @@ const meta: Meta<typeof MatchForm> = {
   parameters: { layout: 'padded' },
   decorators: [
     // The global decorator already provides the router MatchSideFields' RouterLink needs.
+    // FieldPicker (spec 099) is backed by React Query, so the form sits in a QueryClientProvider.
     (Story) => (
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-        <Story />
-      </Box>
+      <QueryClientProvider client={new QueryClient()}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          <Story />
+        </Box>
+      </QueryClientProvider>
     ),
   ],
 }

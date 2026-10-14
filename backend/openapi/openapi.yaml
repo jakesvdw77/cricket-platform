@@ -8167,7 +8167,7 @@ components:
             $ref: "#/components/schemas/OverviewPollDto"
         recentResults:
           type: array
-          description: Always empty for now, results do not exist yet.
+          description: Always empty for now: results exist (spec 100) but the overview is not yet fed from them.
           items:
             $ref: "#/components/schemas/OverviewResultDto"
         quickActions:

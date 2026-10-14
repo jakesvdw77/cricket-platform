@@ -30,6 +30,11 @@ public final class ServerClock {
                 .toInstant();
     }
 
+    /** Start of the given local calendar day on the server clock. */
+    public static Instant startOfDay(LocalDate day) {
+        return day.atStartOfDay(ZoneId.systemDefault()).toInstant();
+    }
+
     /**
      * The current instant on the server clock. Read once per request that needs several aggregates
      * to agree on "now" (docs/specs/071-league-card-redesign.md's {@code LeagueServiceImpl.list}).

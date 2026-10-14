@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Typography } from '@mui/material'
-import { isAxiosError } from 'axios'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
@@ -27,6 +26,7 @@ import type { Team } from '../../../api/teamApi'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { checkMargin } from '../../../utils/marginCheck'
+import { errorList, errorStatus, isNotFound } from '../../../utils/errorDetail'
 import type { MarginCheck } from '../../../utils/marginCheck'
 import { applySuggestion, draftFromResult, isBlankDraft, toPayload } from './resultDraftHelpers'
 import { resultSides, resultViewTo } from './resultListHelpers'
@@ -77,11 +77,9 @@ const REVIEW_STEP_ID = 'review'
 const RESULTS_PATH = '/manage/results'
 
 function problemLines(error: unknown, fallback: string): string[] {
-  if (isAxiosError(error)) {
-    const errors = (error.response?.data as { errors?: unknown } | undefined)?.errors
-    if (Array.isArray(errors) && errors.length > 0) return errors.map(String)
-    if (error.response?.status === 409) return ['This result has been published. Unpublish it before changing it.']
-  }
+  const errors = errorList(error)
+  if (errors) return errors
+  if (errorStatus(error) === 409) return ['This result has been published. Unpublish it before changing it.']
   return [fallback]
 }
 
@@ -361,7 +359,7 @@ export default function ResultCapturePage() {
       try {
         return await getMatchResult(clubId as string, matchId as string)
       } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 404) return null
+        if (isNotFound(error)) return null
         throw error
       }
     },
@@ -406,7 +404,8 @@ export default function ResultCapturePage() {
     )
   }
 
-  return <CaptureWizard
+  return (
+    <CaptureWizard
       clubId={clubId}
       match={matchQuery.data}
       teams={teamsQuery.data}
@@ -415,4 +414,5 @@ export default function ResultCapturePage() {
         conditionsQuery.data?.maxOversPerInnings ? conditionsQuery.data.maxOversPerInnings * (existing?.ballsPerOver ?? 6) : null
       }
     />
+  )
 }

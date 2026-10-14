@@ -58,7 +58,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.7rem',
-                  bgcolor: active ? 'background.paper' : done ? 'primary.main' : theme.palette.grey[400],
+                  bgcolor: active ? 'background.paper' : done ? 'primary.main' : theme.palette.text.secondary,
                   color: active ? 'primary.main' : 'common.white',
                 })}
               >

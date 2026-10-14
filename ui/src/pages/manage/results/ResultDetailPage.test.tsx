@@ -80,7 +80,8 @@ describe('ResultDetailPage', () => {
 
       const edit = within(actions).getByRole('button', { name: 'Edit' })
       expect(edit).toBeDisabled()
-      expect(edit.closest('[title]')).toHaveAttribute('title', 'Unpublish to edit')
+      expect(edit).toHaveAccessibleDescription('Unpublish to edit')
+      expect(within(actions).getByText('Unpublish to edit')).toBeVisible()
       expect(within(actions).getByRole('button', { name: 'Unpublish' })).toBeEnabled()
       expect(within(actions).queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
       expect(within(actions).queryByRole('button', { name: 'Delete draft' })).not.toBeInTheDocument()

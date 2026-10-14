@@ -1,13 +1,17 @@
-import { Box, Checkbox, Chip, FormControlLabel, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import type { ReactNode } from 'react'
+import { Alert, Box, Checkbox, Chip, FormControlLabel, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
+import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import { Button } from '../../../../components/Button'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
-import { ResultScoreLine } from '../../../../components/ResultScoreLine'
+import { DetailLine } from '../../../../components/DetailLine'
+import { ResultSummary } from '../../../../components/ResultSummary'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { ResultValidation } from '../../../../api/matchResultApi'
 import type { MarginCheck } from '../../../../utils/marginCheck'
@@ -15,6 +19,7 @@ import { inningsFor, resultLine } from '../../../../utils/resultLine'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { tossLine } from '../resultListHelpers'
 import { toPayload } from '../resultDraftHelpers'
+import { dedupeWarnings } from './dedupeWarnings'
 import type { StepProps } from './stepTypes'
 
 export interface ReviewStepProps extends StepProps {
@@ -29,56 +34,7 @@ export interface ReviewStepProps extends StepProps {
   fieldName: string | null
 }
 
-function Notice({ tone, lines }: { tone: 'error' | 'warning'; lines: string[] }) {
-  const color = tone === 'error' ? 'error' : 'warning'
-  return (
-    <Box
-      role={tone === 'error' ? 'alert' : undefined}
-      sx={(theme) => ({
-        display: 'flex',
-        gap: 1.25,
-        alignItems: 'flex-start',
-        borderRadius: 1,
-        border: 1,
-        borderColor: alpha(theme.palette[color].main, 0.4),
-        bgcolor: alpha(theme.palette[color].main, 0.08),
-        px: 1.5,
-        py: 1.25,
-      })}
-    >
-      {tone === 'error' ? <ErrorOutlineIcon color="error" fontSize="small" /> : <WarningAmberOutlinedIcon color="warning" fontSize="small" />}
-      <Box component="ul" sx={{ m: 0, pl: 2, flex: 1 }}>
-        {lines.map((line) => (
-          <Typography key={line} component="li" variant="body2">
-            {line}
-          </Typography>
-        ))}
-      </Box>
-    </Box>
-  )
-}
-
-// The server already words some of what the scores check says (margin against scores, wrong batting side for the margin).
-// When the client check has its own finding for those, the server's version is dropped so each problem is listed once.
-const MARGIN_WARNING_PATTERNS = [
-  /^The scores differ by \d+ runs, but the margin is/,
-  / lost \d+ wickets, but the margin is/,
-  / won by (runs but batted second|wickets but batted first)\.$/,
-  /^The match is recorded as a tie but the two innings are not level\.$/,
-  / scored more, but .* is marked as the winner\.$/,
-  /^The scores are level\. Was it a tie/,
-  / scored more in the super over, but /,
-  /^The super over is level too/,
-  / won chasing a DLS target of /,
-  / reached the DLS target of /,
-]
-
-function dedupeWarnings(warnings: string[], check: MarginCheck): string[] {
-  if (check.status !== 'mismatch') return warnings
-  return warnings.filter((line) => !MARGIN_WARNING_PATTERNS.some((pattern) => pattern.test(line)))
-}
-
-function CheckRow({ tone, text, action }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: import('react').ReactNode }) {
+function CheckRow({ tone, text, action }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode }) {
   const icon =
     tone === 'ok' ? <CheckCircleOutlineIcon color="success" fontSize="small" />
     : tone === 'error' ? <ErrorOutlineIcon color="error" fontSize="small" />
@@ -120,23 +76,20 @@ export function ReviewStep({ match, draft, sides, check, needsAck, onFix, valida
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Chip size="small" label="Draft" sx={{ ...badgeSx('warning'), height: 22, fontSize: '0.75rem' }} />
         </Box>
-        {sides.map((side) => {
-          const winner = payload.outcomeType === 'WON' && payload.winningSide === side.side
-          return (
-            <Box key={side.side} sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-              <Typography variant="body1" fontWeight={winner ? 700 : 600} noWrap sx={{ flex: 1, minWidth: 0 }}>
-                {side.name}
-              </Typography>
-              <ResultScoreLine innings={inningsFor(payload.innings ?? [], side.side)} ballsPerOver={ballsPerOver} winner={winner} />
-            </Box>
-          )
-        })}
-        <Typography variant="body2" fontWeight={700} sx={{ borderTop: 1, borderColor: 'divider', pt: 1, color: 'primary.dark' }}>
-          {line}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {[toss, formatMatchDateTime(match.matchDate), fieldName].filter(Boolean).join(' · ')}
-        </Typography>
+        <ResultSummary
+          sides={sides.map((side) => ({
+            key: side.side,
+            name: side.name,
+            innings: inningsFor(payload.innings ?? [], side.side),
+            winner: payload.outcomeType === 'WON' && payload.winningSide === side.side,
+          }))}
+          ballsPerOver={ballsPerOver}
+          resultLine={line}
+        >
+          <DetailLine icon={<SportsCricketOutlinedIcon fontSize="small" />} label="Toss" value={toss ?? 'Not recorded'} muted={!toss} />
+          <DetailLine icon={<EventOutlinedIcon fontSize="small" />} label="Played" value={formatMatchDateTime(match.matchDate)} />
+          <DetailLine icon={<PlaceOutlinedIcon fontSize="small" />} label="Field" value={fieldName ?? 'Not recorded'} muted={!fieldName} />
+        </ResultSummary>
       </Box>
 
       <Box aria-live="polite" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -146,7 +99,7 @@ export function ReviewStep({ match, draft, sides, check, needsAck, onFix, valida
             Checking the result…
           </Typography>
         )}
-        {validationFailed && <Notice tone="error" lines={["We couldn't check the result. Please try again."]} />}
+        {validationFailed && <Alert severity="error">We couldn't check the result. Please try again.</Alert>}
         {validation && (
           <Box component="ul" aria-label="Checks" sx={{ m: 0, p: 0 }}>
             {validation.errors.map((line) => (

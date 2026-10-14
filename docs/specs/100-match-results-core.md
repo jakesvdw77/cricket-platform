@@ -1,7 +1,7 @@
 # 100 — Match Results: Core Capture and Publish Gate
 
 **Depends on:** `001-tenancy-identity-model.md` (club, section, team, player), `029-league-management.md` (`Match`, `Season`, `League`), `075-match-view-and-edit.md` (match page), `076`/`093` (team selection: `MatchSide`, `MatchSidePlayer` batting order), `087`/`089` (Matches page: counters, toolbar, card, list view, the gold standard this page copies), `097-import-framework.md` (confirm-before-write pipeline the future import adapters plug into), `099-fields-directory.md` (`PlayingArea` for the field override), `docs/standards/*.md`.
-**Status:** draft — written 2026-10-13 from the user's Results brief and answers (limited overs only for now; either club manager can capture and publish; if both teams are ours treat both as ours; league tables out of scope). Not reviewed line by line, not planned, not built. This spec builds **slice 100 only**; slices 101 to 104 are outlined under "Roadmap of the Results module" and each gets its own spec.
+**Status:** built, in review (feature/100-match-results) — written 2026-10-13 from the user's Results brief and answers (limited overs only for now; either club manager can capture and publish; if both teams are ours treat both as ours; league tables out of scope). This spec builds **slice 100 only**; slices 101 to 104 are outlined under "Roadmap of the Results module" and each gets its own spec.
 
 ## Problem & Goals
 
@@ -79,12 +79,12 @@ Migration sketch: `backend/src/main/resources/db/changelog/v1/043-match-results.
 | `created_at`, `updated_at`, `updated_by` | as the other entities | |
 
 **Outcome rules** (enforced in the service, not just the UI):
-- `WON`: `winning_side` required. Regular or DLS wins need a margin (`RUNS` or `WICKETS`). A `SUPER_OVER` win has no margin; the regular innings must be level and at least one `SUPER_OVER` innings pair must exist.
+- `WON`: `winning_side` required. Regular or DLS wins need a margin (`RUNS` or `WICKETS`). A `SUPER_OVER` win has no margin; the regular innings must be level and at least one `SUPER_OVER` innings for each side (a pair) must exist.
 - `TIE`: innings totals must be level when both are present (warning, not a block: official scorers' ties are the truth).
 - `DRAW`, `NO_RESULT`, `ABANDONED`: no winner, no margin.
 - `FORFEIT`: `winning_side` required; no margin, no innings required.
 - `margin_type = WICKETS` implies the winning side batted second; `RUNS` implies it batted first. The service **warns** when the entered scores contradict the margin, never silently overwrites it.
-- **Score-versus-result warnings** (all in `ResultValidator`, run by validate and publish, so import adapters (`104`) get them too; never errors, skipped for `FORFEIT`/`ABANDONED`/`NO_RESULT`/`DRAW` and when an innings is missing runs or batting side): `WINNER_NOT_HIGHER_SCORER` (regular win where the other side scored more; margin is then not checked), `MARGIN_MISMATCH` (runs = difference with the winner batting first; wickets = 10 minus wickets lost with the winner batting second), `TIE_NOT_LEVEL` (a tie with unequal scores, or level scores entered as a regular win), `SUPER_OVER_WINNER_MISMATCH` (winner is not the side with more super-over runs, or the super over is level), and for DLS wins only a plausibility check of the winner against the DLS target. A super over win with unlevel regular innings stays an error. The response carries message strings only; the codes name the rules in code and tests.
+- **Score-versus-result warnings** (all in `ResultValidator`, run by validate and publish, so import adapters (`104`) get them too; never errors, skipped for `FORFEIT`/`ABANDONED`/`NO_RESULT`/`DRAW` and when an innings is missing runs or batting side): `WINNER_NOT_HIGHER_SCORER` (regular win where the other side scored more; margin is then not checked), `MARGIN_MISMATCH` (runs = difference with the winner batting first; wickets = 10 minus wickets lost with the winner batting second), `TIE_NOT_LEVEL` (a tie with unequal scores, or level scores entered as a regular win), `SUPER_OVER_WINNER_MISMATCH` (winner is not the side with more super-over runs, or the super over is level), and for DLS wins only a plausibility check of the winner against the DLS target. A super over win with unlevel regular innings stays an error. **Other warnings** (also acknowledgeable at publish, same rules as above): a win or tie with fewer than two regular innings scores entered (unless decided by super over): "Both innings scores have not been entered."; a DLS win without the revised target or revised overs; an innings longer than the scheduled length; an innings marked all out with fewer than 10 wickets (fewer than eleven batters is legitimate, so only a warning); and the toss disagreeing with the batting order. The response carries message strings only; the codes name the rules in code and tests.
 
 ### `match_innings`
 
@@ -139,7 +139,7 @@ Managed routes, club-scoped, consistent with `MatchController`; all use `@PreAut
 
 **Exceptions** (named subclasses per `backend.md`, extend its table only if a new base is needed; none is): `ResultAlreadyExistsException` (conflict), `ResultPublishedException` (conflict), `InvalidResultException` (validation, carries `errors` and `warnings` as structured `ProblemDetail` properties like `SelectionRejectedException`).
 
-**OpenAPI.** `backend/openapi.yaml` regenerated and committed; contract diff must show only additions.
+**OpenAPI.** `backend/openapi/openapi.yaml` regenerated and committed; contract diff must show only additions.
 
 ## UI Requirements
 
@@ -149,7 +149,7 @@ Compose from existing shared components (`docs/standards/design-system.md`); the
 
 - Header: title, Season pill (`HeaderSeasonSelect`), **Capture result** (filled primary, like Add), Cards | List switch.
 - Counters (quick filters, `PageCounters`): **Played** (matches with a published result), **Won**, **Lost**, **Tied / no result** (tie, draw, no result, abandoned), **Drafts** (amber), **Awaiting result** (past matches without one, amber, shown as an action). "Won / Lost" are per club team (a team filter narrows to that team; a match between two of the club's own teams gives one team a win and the other a loss).
-- Filters: the same as Matches (`FilterBar`: season, league, section, team, date range, search) plus Outcome and Status.
+- Filters: the same as Matches (`FilterBar`: season, league, section, team, date range, search) plus Outcome and Status. In this slice the date range (`from`/`to`) is API-only: the endpoints accept it but `FilterBar` has no date control on the Results page yet (see the roadmap).
 - **Result card** (`RecordCard`): both team names with logos, a score line per side ("212/6 (40.0)"), the result line ("Irene Villagers won by 24 runs", "Match tied — won in super over", "Abandoned — rain"), the toss line, date and field, a **Draft** chip (amber) when unpublished. Footer: **View**, **Edit** (filled primary), and **Publish** on a draft. The card never says "Draft" to a role that cannot see drafts (they cannot reach this page).
 - **List view:** compact zebra table: Date, Match, Result, Scores, Field, Status; row opens the result page.
 - Empty state: "No results yet" with **Capture result**; when matches await a result, a prompt "n matches are waiting for a result".
