@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Link, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Link, Stack, Typography } from '@mui/material'
 import { useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { BrandIcon } from '../../../components/BrandIcon'
@@ -35,6 +35,7 @@ import { useListViewPreference } from '../../../hooks/useListViewPreference'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { cardGridSx } from '../../../utils/cardGrid'
+import { CaptureResultDialog } from './CaptureResultDialog'
 import { ResultCard } from './ResultCard'
 import { ResultTable } from './ResultTable'
 import { usePublishResult } from './usePublishResult'
@@ -68,8 +69,6 @@ const STATUS_OPTIONS: { value: ResultStatus; label: string }[] = [
   { value: 'PUBLISHED', label: 'Published' },
 ]
 
-const CAPTURE_NEXT_STEP = 'Result capture arrives in the next step'
-
 // docs/specs/100-match-results-core.md: the Results page, the Matches page's sibling (docs/specs/087, 089): Season pill,
 // counters, FilterBar (plus Outcome and Status), content line, then result cards or the list view. Every filter is a
 // backend parameter; the counters come from GET /results/summary for the same filters.
@@ -90,6 +89,7 @@ export default function ResultList() {
   const [status, setStatus] = useState<ResultStatus | null>(null)
   const [focus, setFocus] = useState<ResultListFocus | null>(null)
   const [view, setView] = useListViewPreference('resultList:view')
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS)
@@ -260,13 +260,16 @@ export default function ResultList() {
         filterCounter('lost', summary.lost),
         filterCounter('tied-or-none', summary.tiedOrNone, { shortLabel: 'Tied / none' }),
         filterCounter('drafts', summary.drafts, { tone: summary.drafts > 0 ? 'warning' : 'default' }),
-        // Opens the capture picker, which arrives in the next step; until then it is a plain figure.
+        // Opens the capture picker rather than filtering the list below.
         {
           id: 'awaiting',
           value: summary.awaiting,
           label: 'Awaiting result',
           shortLabel: 'Awaiting',
           tone: summary.awaiting > 0 ? 'warning' : 'default',
+          kind: 'drill',
+          hint: 'Pick a match',
+          onSelect: () => setPickerOpen(true),
         },
       ]
     : []
@@ -291,16 +294,7 @@ export default function ResultList() {
             onChange={(next) => setSaved({ seasonId: next })}
           />
         }
-        action={
-          <Tooltip title={CAPTURE_NEXT_STEP}>
-            {/* A disabled button swallows pointer events, so the tooltip sits on a wrapper. */}
-            <span>
-              <Button disabled aria-label={`Capture result. ${CAPTURE_NEXT_STEP}`}>
-                Capture result
-              </Button>
-            </span>
-          </Tooltip>
-        }
+        action={<Button onClick={() => setPickerOpen(true)}>Capture result</Button>}
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
@@ -412,6 +406,7 @@ export default function ResultList() {
               ? `${awaitingCount} ${awaitingCount === 1 ? 'match is' : 'matches are'} waiting for a result.`
               : 'Results you capture for your matches will appear here.'
           }
+          action={<Button onClick={() => setPickerOpen(true)}>Capture result</Button>}
         />
       )}
 
@@ -435,6 +430,13 @@ export default function ResultList() {
       )}
 
       {dialogs}
+      <CaptureResultDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        clubId={clubId}
+        teamsById={teamsById}
+        leaguesById={leaguesById}
+      />
     </Box>
   )
 }

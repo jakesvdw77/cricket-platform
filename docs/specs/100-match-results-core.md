@@ -84,6 +84,7 @@ Migration sketch: `backend/src/main/resources/db/changelog/v1/043-match-results.
 - `DRAW`, `NO_RESULT`, `ABANDONED`: no winner, no margin.
 - `FORFEIT`: `winning_side` required; no margin, no innings required.
 - `margin_type = WICKETS` implies the winning side batted second; `RUNS` implies it batted first. The service **warns** when the entered scores contradict the margin, never silently overwrites it.
+- **Score-versus-result warnings** (all in `ResultValidator`, run by validate and publish, so import adapters (`104`) get them too; never errors, skipped for `FORFEIT`/`ABANDONED`/`NO_RESULT`/`DRAW` and when an innings is missing runs or batting side): `WINNER_NOT_HIGHER_SCORER` (regular win where the other side scored more; margin is then not checked), `MARGIN_MISMATCH` (runs = difference with the winner batting first; wickets = 10 minus wickets lost with the winner batting second), `TIE_NOT_LEVEL` (a tie with unequal scores, or level scores entered as a regular win), `SUPER_OVER_WINNER_MISMATCH` (winner is not the side with more super-over runs, or the super over is level), and for DLS wins only a plausibility check of the winner against the DLS target. A super over win with unlevel regular innings stays an error. The response carries message strings only; the codes name the rules in code and tests.
 
 ### `match_innings`
 
@@ -161,12 +162,14 @@ A searchable list of matches from `results/awaiting`, newest first, grouped by d
 
 A full-page `RecordFormScreen`, mobile-first at 375 px, with a progress stepper; **Save draft** is always available and the page autosaves on step change. In this slice the steps are:
 
-1. **Result:** large outcome tiles (Won, Tie, Draw, No result, Abandoned, Forfeit). Choosing Won shows the side and a "How was it decided" segmented control (Normal | DLS | Super over); a DLS choice reveals revised target and revised overs. The margin is **proposed** after step 2 ("Won by 24 runs") and confirmed or edited here.
-2. **Scores:** one row per innings (1st innings batting side, 2nd innings batting side): Runs, Wickets, Overs (accepts "36.4", validates the ball digit), pre-labelled with the team name; **Add super over** appends a pair of rows (unlimited, each numbered Super over 1, 2…). Running totals and a run-rate are shown read-only.
-3. **Toss and field:** who won the toss (two team buttons) and **Bat / Bowl**; the Field select defaulting to the match's field with an "Edit" affordance and the Fields picker from `099`; optional note; scheduled overs.
-4. **Review and publish:** a summary exactly as the card will show it, the validation list (errors block, warnings need a tick), **Save draft** and **Publish**. Publish uses `ConfirmDialog` ("Players will be able to see this result").
+1. **Result:** large outcome tiles (Won, Tie, Draw, No result, Abandoned, Forfeit). Choosing Won shows the side and a "How was it decided" segmented control (Normal | DLS | Super over); a DLS choice reveals revised target and revised overs. The margin is entered here; when scores already exist a **Suggested result** line offers the computed winner and margin with **Use this**.
+2. **Toss and field:** who won the toss (two team buttons, or **Not known / skip**) and **Bat / Bowl**; the Field defaulting to the match's field with **Change field** and the Fields picker from `099`; **Scheduled overs pre-filled from the league's playing conditions** (editable; a friendly starts blank); optional note. The toss decides who batted first.
+3. **Scores:** the innings are listed in batting order derived from the toss (winner bats: winner first, else the other side), with the toss line shown read-only and a link back to step 2. Without a recorded toss the step asks **Who batted first?**. Changing the toss later re-orders the innings and keeps the entered figures with their side. One row per innings: Runs, Wickets, Overs (accepts "36.4", validates the ball digit), labelled with the team name; run rates read-only. A **Suggested result** line (winner and margin from the scores) offers **Use this**. Super over rows (**Add super over**, any number, numbered 1, 2...) appear only when the result is a win decided by a super over.
+4. **Review and publish:** a summary exactly as the card will show it, a single **Checks** list merging the server's validation with the client's score checks (margin against scores with a **Fix** action, winner against scores, super over winner; errors block, warnings need a tick), **Save draft** and **Publish**. Publish uses `ConfirmDialog` ("Players will be able to see this result").
 
-Later slices insert **Our batting**, **Our bowling and fielding**, **Awards and standouts**, **Opposition scorecard** between steps 3 and 4 depending on detail level; the stepper is data-driven so adding steps is a registration, not a rewrite. The detail-level chooser is not shown in this slice (always `SUMMARY`).
+> **Decision after browser check (2026-10-14):** the step order was first drafted as Result, Scores, Toss and field, Review. The user found it wrong: the toss determines who batted first, so Toss and field now comes before Scores. Scheduled overs are pre-filled from the league, and super over panels appear only for a super over decision.
+
+Later slices insert **Our batting**, **Our bowling and fielding**, **Awards and standouts**, **Opposition scorecard** after Scores (step 3) and before Review (step 4) depending on detail level; the stepper is data-driven so adding steps is a registration, not a rewrite. The detail-level chooser is not shown in this slice (always `SUMMARY`).
 
 ### Result page (`/manage/results/{matchId}`)
 
@@ -200,7 +203,7 @@ Per the user's working rule ("build first, tests after approval"), tests and the
 
 - A club manager can open **Results** from the manager menu and sees counters, filters and Cards / List views matching Matches' layout and behaviour; the list view preference is remembered.
 - **Capture result** lists active matches of the club that have no result, past ones first by default (newest first) with an Include upcoming toggle, and selecting one opens the wizard.
-- Each of won by runs, won by wickets, tie, draw, no result, abandoned, forfeit, won on DLS, and won in a super over can be recorded in no more than the four wizard steps, each in one outcome-tile choice plus its own fields.
+- Each of won by runs, won by wickets, tie, draw, no result, abandoned, forfeit, won on DLS, and won in a super over can be recorded in no more than the four wizard steps (Result, Toss and field, Scores, Review), each in one outcome-tile choice plus its own fields.
 - Entering overs as `36.4` stores 220 balls and displays `36.4`; `36.7` is rejected with a plain-English message.
 - Two or more super overs can be recorded and are displayed in order.
 - After scores are entered the winner and margin are proposed; changing the proposal is possible and a contradiction between margin and scores shows as a warning on review, not a silent change.

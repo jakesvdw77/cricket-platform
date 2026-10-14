@@ -8,10 +8,11 @@ import { logoFor } from '../matches/teamLogoHelpers'
 
 // docs/specs/100-match-results-core.md: small pure helpers shared by the Results card and list view.
 
-// Where a result opens. The result page and the capture wizard arrive in later slices; every link is built here so the
-// route is changed in one place.
+// Where a result opens: the result page (a later slice) and the capture wizard. Every link is built here so the route is
+// changed in one place. Edit and Capture are the same wizard; it loads the stored draft when there is one.
 export const resultViewTo = (matchId: string) => `/manage/results/${matchId}`
-export const resultEditTo = (matchId: string) => `/manage/results/${matchId}`
+export const resultCaptureTo = (matchId: string) => `/manage/results/${matchId}/capture`
+export const resultEditTo = resultCaptureTo
 
 export const UNPUBLISH_TO_EDIT_REASON = 'Unpublish to edit'
 

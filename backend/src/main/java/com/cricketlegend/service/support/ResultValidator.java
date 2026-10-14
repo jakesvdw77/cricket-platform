@@ -95,7 +95,7 @@ public class ResultValidator {
             errors.add("Choose which side won.");
         }
         if (draft.decidedBy() == ResultDecidedBy.SUPER_OVER) {
-            validateSuperOverWin(draft, errors);
+            validateSuperOverWin(draft, names, errors, warnings);
             return;
         }
         if (draft.marginType() == null || draft.marginValue() == null) {
@@ -106,13 +106,14 @@ public class ResultValidator {
         if (draft.decidedBy() == ResultDecidedBy.DLS && (draft.dlsTarget() == null || draft.dlsRevisedBalls() == null)) {
             warnings.add("The DLS revised target and revised overs have not been entered.");
         }
-        if (draft.decidedBy() == ResultDecidedBy.REGULAR && draft.winningSide() != null
-                && draft.marginType() != null && draft.marginValue() != null) {
-            warnOnMarginVersusScores(draft, names, warnings);
+        if (draft.decidedBy() == ResultDecidedBy.DLS) {
+            warnOnDlsVersusScores(draft, names, warnings);
+        } else if (draft.decidedBy() == ResultDecidedBy.REGULAR) {
+            warnOnWinnerVersusScores(draft, names, warnings);
         }
     }
 
-    private void validateSuperOverWin(ResultDraft draft, List<String> errors) {
+    private void validateSuperOverWin(ResultDraft draft, Names names, List<String> errors, List<String> warnings) {
         if (draft.marginType() != null || draft.marginValue() != null) {
             errors.add("A win in a super over has no margin of runs or wickets.");
         }
@@ -125,6 +126,7 @@ public class ResultValidator {
         if (superOvers(draft).size() < 2) {
             errors.add("Enter at least one super over (both sides' innings).");
         }
+        warnOnSuperOverWinner(draft, names, warnings);
     }
 
     private void validateForfeit(ResultDraft draft, Names names, List<String> errors) {
@@ -147,11 +149,99 @@ public class ResultValidator {
 
     // ---- warnings ----
 
-    private void warnOnMarginVersusScores(ResultDraft draft, Names names, List<String> warnings) {
-        List<InningsDto> regular = regular(draft);
-        if (regular.size() < 2 || !complete(regular.get(0)) || !complete(regular.get(1))) {
+    /**
+     * Stable identifiers for the score-versus-result warnings. The response carries plain strings only (unchanged
+     * shape), so these name the rule in code, tests and docs; each rule's message texts are fixed and distinct.
+     */
+    public enum WarningCode {
+        WINNER_NOT_HIGHER_SCORER,
+        MARGIN_MISMATCH,
+        TIE_NOT_LEVEL,
+        SUPER_OVER_WINNER_MISMATCH,
+        DLS_WINNER_MISMATCH
+    }
+
+    /** Regular win (not DLS, not super over): level scores, the wrong winner, then the margin, each reported once. */
+    private void warnOnWinnerVersusScores(ResultDraft draft, Names names, List<String> warnings) {
+        List<InningsDto> regular = regularInOrder(draft);
+        if (regular.size() < 2 || !scored(regular.get(0)) || !scored(regular.get(1))) {
             return;
         }
+        InningsDto first = regular.get(0);
+        InningsDto second = regular.get(1);
+        if (first.runs().equals(second.runs())) {
+            // WARNING TIE_NOT_LEVEL (the other direction): level scores entered as a regular win.
+            warnings.add("The scores are level. Was it a tie, or decided in a super over?");
+            return;
+        }
+        if (draft.winningSide() == null) {
+            return;
+        }
+        ResultSide better = first.runs() > second.runs() ? first.battingSide() : second.battingSide();
+        if (draft.winningSide() != better) {
+            // WARNING WINNER_NOT_HIGHER_SCORER; the margin is relative to the winner, so it is not checked as well.
+            warnings.add(names.of(better) + " scored more, but " + names.of(draft.winningSide())
+                    + " is marked as the winner.");
+            return;
+        }
+        if (draft.marginType() != null && draft.marginValue() != null && complete(first) && complete(second)) {
+            warnOnMarginVersusScores(draft, names, warnings);
+        }
+    }
+
+    /** Super over win: the side with more super-over runs must be the one marked as the winner. */
+    private void warnOnSuperOverWinner(ResultDraft draft, Names names, List<String> warnings) {
+        int home = 0;
+        int away = 0;
+        int count = 0;
+        for (InningsDto i : superOvers(draft)) {
+            if (!scored(i)) {
+                continue;
+            }
+            count++;
+            if (i.battingSide() == ResultSide.HOME) {
+                home += i.runs();
+            } else {
+                away += i.runs();
+            }
+        }
+        if (count < 2 || draft.winningSide() == null) {
+            return;
+        }
+        if (home == away) {
+            warnings.add("The super over is level too; add another super over.");
+            return;
+        }
+        ResultSide better = home > away ? ResultSide.HOME : ResultSide.AWAY;
+        if (draft.winningSide() != better) {
+            warnings.add(names.of(better) + " scored more in the super over, but " + names.of(draft.winningSide())
+                    + " is marked as the winner.");
+        }
+    }
+
+    /** DLS win: no margin arithmetic, only whether the winner fits the revised target (as the wizard checks). */
+    private void warnOnDlsVersusScores(ResultDraft draft, Names names, List<String> warnings) {
+        List<InningsDto> regular = regularInOrder(draft);
+        if (draft.dlsTarget() == null || draft.winningSide() == null || regular.size() < 2
+                || !scored(regular.get(0)) || !scored(regular.get(1))) {
+            return;
+        }
+        InningsDto second = regular.get(1);
+        ResultSide winner = draft.winningSide();
+        boolean chaserWon = winner == second.battingSide();
+        boolean reached = second.runs() >= draft.dlsTarget();
+        if (chaserWon && !reached) {
+            warnings.add(names.of(winner) + " won chasing a DLS target of " + draft.dlsTarget() + ", but scored "
+                    + second.runs() + ".");
+        } else if (!chaserWon && reached) {
+            warnings.add(names.of(second.battingSide()) + " reached the DLS target of " + draft.dlsTarget() + ", but "
+                    + names.of(winner) + " is marked as the winner.");
+        }
+    }
+
+    /** WARNING MARGIN_MISMATCH: the entered margin type/value disagrees with the scores. */
+    private void warnOnMarginVersusScores(ResultDraft draft, Names names, List<String> warnings) {
+        List<InningsDto> regular = regularInOrder(draft);
         InningsDto first = regular.get(0);
         InningsDto second = regular.get(1);
         ResultSide winner = draft.winningSide();
@@ -174,8 +264,9 @@ public class ResultValidator {
         }
     }
 
+    /** WARNING TIE_NOT_LEVEL: recorded as a tie but the regular scores differ. */
     private void warnIfRegularInningsNotLevel(ResultDraft draft, List<String> warnings) {
-        List<InningsDto> regular = regular(draft);
+        List<InningsDto> regular = regularInOrder(draft);
         if (regular.size() == 2 && complete(regular.get(0)) && complete(regular.get(1)) && !level(regular)) {
             warnings.add("The match is recorded as a tie but the two innings are not level.");
         }
@@ -260,6 +351,14 @@ public class ResultValidator {
 
     private List<InningsDto> regular(ResultDraft draft) {
         return draft.innings().stream().filter(i -> i.kind() == InningsKind.REGULAR).toList();
+    }
+
+    private List<InningsDto> regularInOrder(ResultDraft draft) {
+        return regular(draft).stream().sorted(java.util.Comparator.comparingInt(InningsDto::sequence)).toList();
+    }
+
+    private boolean scored(InningsDto i) {
+        return i.runs() != null && i.battingSide() != null;
     }
 
     private List<InningsDto> superOvers(ResultDraft draft) {
