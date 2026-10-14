@@ -81,7 +81,7 @@ function MatchRow({
   const started = kickoff.stage === 'expired'
   const played = resultStateOf(match) === 'published'
   const resultBadge = resultBadgeFor(match)
-  const soon = !started && kickoff.warn
+  const soon = !started && !played && kickoff.warn
   const countdownText = played ? 'Played' : started ? 'Awaiting result' : kickoff.text ? `in ${kickoff.text}` : ''
   const timeColor = soon ? 'warning.dark' : 'text.secondary'
 

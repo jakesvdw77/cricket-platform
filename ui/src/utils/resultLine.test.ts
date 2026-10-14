@@ -70,3 +70,27 @@ describe('inningsScoreText', () => {
     expect(inningsFor(innings, 'HOME').map((item) => item.sequence)).toEqual([1, 4])
   })
 })
+
+describe('resultLine gaps', () => {
+  it('uses singular units for a margin of one', () => {
+    expect(resultLine({ ...base, marginValue: 1 }, names)).toBe('Irene Villagers 1 won by 1 run')
+    expect(resultLine({ ...base, marginType: 'WICKETS', marginValue: 1, winningSide: 'AWAY' }, names)).toBe('Pretoria CC won by 1 wicket')
+  })
+
+  it('degrades gracefully when the margin or the winner is missing', () => {
+    expect(resultLine({ ...base, marginType: null, marginValue: null }, names)).toBe('Irene Villagers 1 won')
+    expect(resultLine({ ...base, winningSide: null }, names)).toBe('Won')
+    expect(resultLine({ ...base, outcomeType: null }, names)).toBe('Result not entered yet')
+  })
+
+  it('writes a DLS win with its margin and the draw / tie / no result outcomes', () => {
+    expect(resultLine({ ...base, decidedBy: 'DLS', marginType: 'WICKETS', marginValue: 3, winningSide: 'AWAY' }, names)).toBe('Pretoria CC won by 3 wickets (DLS)')
+    expect(resultLine({ ...base, outcomeType: 'DRAW' }, names)).toBe('Match drawn')
+    expect(resultLine({ ...base, outcomeType: 'TIE', winningSide: null }, names)).toBe('Match tied')
+    expect(resultLine({ ...base, outcomeType: 'NO_RESULT', winningSide: null }, names)).toBe('No result')
+  })
+
+  it('writes innings scores with a non-six over length and zero wickets', () => {
+    expect(inningsScoreText({ battingSide: 'HOME', runs: 40, wickets: 0, balls: 38 }, 5)).toBe('40/0 (7.3)')
+  })
+})

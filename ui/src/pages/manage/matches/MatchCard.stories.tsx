@@ -58,9 +58,21 @@ export const Derby: Story = {
   },
 }
 
-// A started match (Show past matches): "Played", neutral, no countdown.
+// A started match with a published result (docs/specs/100): "Played", the green Completed badge, View result, no countdown.
 export const Played: Story = {
-  args: { match: makeMatch({ matchDate: fromNow(-72 * HOUR), leagueId: 'league-1', homePickedCount: 11, polls: [squadPoll({ open: false })] }) },
+  args: {
+    match: makeMatch({ matchDate: fromNow(-72 * HOUR), leagueId: 'league-1', homePickedCount: 11, polls: [squadPoll({ open: false })], resultStatus: 'PUBLISHED' }),
+  },
+}
+
+// A started match nobody has captured yet: "Awaiting result" and a Capture result action.
+export const AwaitingResult: Story = {
+  args: { match: makeMatch({ matchDate: fromNow(-72 * HOUR), leagueId: 'league-1', homePickedCount: 11, resultStatus: 'NONE' }) },
+}
+
+// A saved but unpublished result: the amber Result draft badge and Continue result.
+export const ResultDraft: Story = {
+  args: { match: makeMatch({ matchDate: fromNow(-72 * HOUR), leagueId: 'league-1', homePickedCount: 11, resultStatus: 'DRAFT' }) },
 }
 
 // Neither side is one of the club's teams: the note, and Select / Availability / Share disabled.

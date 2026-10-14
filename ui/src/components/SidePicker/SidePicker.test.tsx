@@ -18,4 +18,12 @@ describe('SidePicker', () => {
     await userEvent.click(screen.getByRole('radio', { name: /Pretoria Wanderers/ }))
     expect(onChange).toHaveBeenCalledWith('AWAY')
   })
+
+  it('ignores taps while disabled', async () => {
+    const onChange = vi.fn()
+    render(<SidePicker label="Who won?" options={options} value={null} onChange={onChange} disabled />)
+
+    expect(screen.getByRole('radio', { name: /Pretoria Wanderers/ })).toBeDisabled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

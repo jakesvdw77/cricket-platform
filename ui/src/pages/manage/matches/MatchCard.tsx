@@ -176,11 +176,11 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
       >
         <CardTimeStrip
           testId="match-time-strip"
-          tone={!started && kickoff.warn ? 'warning' : 'neutral'}
+          tone={!started && !played && kickoff.warn ? 'warning' : 'neutral'}
           icon={<EventOutlinedIcon fontSize="small" />}
           label={played ? 'Played' : started ? 'Awaiting result' : 'Starts'}
           value={formatMatchDateTime(match.matchDate)}
-          trailing={started ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
+          trailing={started || played ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
         />
         {match.venue && (
           <DetailLine

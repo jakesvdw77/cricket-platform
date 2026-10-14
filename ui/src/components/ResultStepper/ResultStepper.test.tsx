@@ -19,4 +19,12 @@ describe('ResultStepper', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Step 3: Review' }))
     expect(onSelect).toHaveBeenCalledWith('review')
   })
+
+  it('lets no step be chosen while disabled', async () => {
+    const onSelect = vi.fn()
+    render(<ResultStepper steps={steps} activeId="outcome" onSelect={onSelect} disabled />)
+
+    for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
 })

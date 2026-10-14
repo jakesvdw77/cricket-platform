@@ -52,6 +52,21 @@ describe('MatchTable', () => {
     expect(within(rows[2]).getByTestId('match-row-when')).toHaveTextContent('Played')
   })
 
+  it('says Awaiting result for a started match without a published result, and shows the result chip (docs/specs/100)', () => {
+    renderTable([
+      makeMatch({ id: 'none', matchDate: '2026-10-09T08:00:00' }),
+      makeMatch({ id: 'draft', matchDate: '2026-10-09T08:00:00', resultStatus: 'DRAFT' }),
+      makeMatch({ id: 'done', matchDate: '2026-10-09T08:00:00', resultStatus: 'PUBLISHED' }),
+    ])
+    const rows = screen.getAllByTestId('match-row')
+    expect(within(rows[0]).getByTestId('match-row-when')).toHaveTextContent('Awaiting result')
+    expect(within(rows[0]).queryByTestId('match-row-result')).not.toBeInTheDocument()
+    expect(within(rows[1]).getByTestId('match-row-when')).toHaveTextContent('Awaiting result')
+    expect(within(rows[1]).getByTestId('match-row-result')).toHaveTextContent('Result draft')
+    expect(within(rows[2]).getByTestId('match-row-when')).toHaveTextContent('Played')
+    expect(within(rows[2]).getByTestId('match-row-result')).toHaveTextContent('Completed')
+  })
+
   it('shows the picked count of the club side, both sides for a derby, and a dash with no club side', () => {
     renderTable([
       makeMatch({ id: 'a', homePickedCount: 10, playingXiSize: 12, matchDate: '2026-10-15T07:15:00' }),
