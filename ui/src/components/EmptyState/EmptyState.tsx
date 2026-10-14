@@ -2,12 +2,14 @@ import { Box, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 
 export interface EmptyStateProps {
+  // Optional leading graphic (e.g. a BrandIcon) above the title.
+  icon?: ReactNode
   title: string
   description?: string
   action?: ReactNode
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <Box
       sx={{
@@ -23,6 +25,7 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
         textAlign: 'center',
       }}
     >
+      {icon && <Box sx={{ display: 'flex' }}>{icon}</Box>}
       <Typography variant="body2" fontWeight={600}>
         {title}
       </Typography>

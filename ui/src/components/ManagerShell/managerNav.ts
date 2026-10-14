@@ -70,7 +70,7 @@ export const MANAGER_NAV: NavGroup[] = [
         label: 'Results',
         description: 'Capture and review match results',
         to: '/manage/results',
-        icon: 'nav/match-results',
+        icon: 'nav/result-scorecard',
       },
     ],
   },

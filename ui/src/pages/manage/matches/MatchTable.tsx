@@ -13,6 +13,7 @@ import type { Season } from '../../../api/seasonApi'
 import { initialsFromName } from '../../../utils/initials'
 import { zebraTint } from '../../../utils/zebraTint'
 import { formatMatchDateTime } from '../../../utils/matchDateTime'
+import { resultBadgeFor, resultStateOf } from './matchResultHelpers'
 import { announcedBadges, badgeFor, matchLeagueValue, pollBadgeFor, selectionRows, sideName } from './matchCardHelpers'
 
 export interface MatchTableProps {
@@ -76,9 +77,12 @@ function MatchRow({
   const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${home} vs ${away}`
   const kickoff = useCountdown(match.matchDate)
-  const played = kickoff.stage === 'expired'
-  const soon = !played && kickoff.warn
-  const countdownText = played ? 'Played' : kickoff.text ? `in ${kickoff.text}` : ''
+  // docs/specs/100: Played is the real (published) result state; a started match without one awaits its result.
+  const started = kickoff.stage === 'expired'
+  const played = resultStateOf(match) === 'published'
+  const resultBadge = resultBadgeFor(match)
+  const soon = !started && !played && kickoff.warn
+  const countdownText = played ? 'Played' : started ? 'Awaiting result' : kickoff.text ? `in ${kickoff.text}` : ''
   const timeColor = soon ? 'warning.dark' : 'text.secondary'
 
   // The logo is the club's own side (home first); a match with no own side shows the home side's initials.
@@ -141,6 +145,7 @@ function MatchRow({
             {countdownText ? ` · ${countdownText}` : ''}
           </Typography>
           {inactive && <Chip size="small" label={inactive.label} sx={{ ...badgeSx(inactive.tone), height: 20, fontSize: '0.6875rem', alignSelf: 'flex-start' }} />}
+          {resultBadge && <Chip size="small" label={resultBadge.label} data-testid="match-row-result" sx={{ ...badgeSx(resultBadge.tone), height: 20, fontSize: '0.6875rem', alignSelf: 'flex-start' }} />}
         </Box>
       </Box>
       {/* Cells are placed by DOM order on a desktop (When first); the phone grid hides it. */}

@@ -1,6 +1,7 @@
 package com.cricketlegend.controller;
 
 import com.cricketlegend.domain.MatchListFocus;
+import com.cricketlegend.domain.MatchResultStatus;
 import com.cricketlegend.dto.CreateMatchRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
@@ -51,10 +52,11 @@ public class MatchController {
             @RequestParam(required = false) UUID teamId,
             @RequestParam(required = false) UUID playingAreaId, // docs/specs/099: matches on this field
             @RequestParam(required = false) String focus, // docs/specs/087: this-week | not-announced | no-poll
+            @RequestParam(required = false) MatchResultStatus resultStatus, // docs/specs/100: NONE | DRAFT | PUBLISHED
             Pageable pageable) {
         return ResponseEntity.ok(matchService.list(
                 authentication, clubId, sectionId, upcomingOnly, search, leagueId, seasonId, teamId, playingAreaId,
-                MatchListFocus.parse(focus), pageable));
+                MatchListFocus.parse(focus), resultStatus, pageable));
     }
 
     /**
@@ -72,9 +74,11 @@ public class MatchController {
             @RequestParam(required = false) UUID teamId,
             @RequestParam(required = false) UUID playingAreaId,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false, defaultValue = "false") boolean includePast) {
+            @RequestParam(required = false, defaultValue = "false") boolean includePast,
+            @RequestParam(required = false) MatchResultStatus resultStatus) { // docs/specs/100
         return ResponseEntity.ok(matchService.summary(
-                authentication, clubId, sectionId, leagueId, seasonId, teamId, playingAreaId, search, includePast));
+                authentication, clubId, sectionId, leagueId, seasonId, teamId, playingAreaId, search, includePast,
+                resultStatus));
     }
 
     /**

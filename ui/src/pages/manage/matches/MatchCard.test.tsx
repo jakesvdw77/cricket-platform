@@ -234,12 +234,80 @@ describe('MatchCard', () => {
     })
 
     it('reads Played, neutral and with no countdown once the match has started', () => {
-      renderCard(makeMatch({ matchDate: inHours(-48) }))
+      renderCard(makeMatch({ matchDate: inHours(-48), resultStatus: 'PUBLISHED' }))
 
       const strip = screen.getByTestId('match-time-strip')
       expect(strip).toHaveAttribute('data-tone', 'neutral')
       expect(within(strip).getByText('Played')).toBeInTheDocument()
       expect(within(strip).queryByText('Starts')).not.toBeInTheDocument()
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/100-match-results-core.md, Match integration: the card reads the real result state, not the date.
+  describe('result state (docs/specs/100)', () => {
+    const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000 + 30_000).toISOString()
+    const resultButton = (name: string) => screen.getByRole('button', { name })
+
+    it('offers Capture result and no result badge when the match has none', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ resultStatus: 'NONE' }))
+
+      expect(screen.queryByText('Completed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Result draft')).not.toBeInTheDocument()
+      await user.click(resultButton('Capture result'))
+      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
+    })
+
+    it('treats a match with no resultStatus like one with none', () => {
+      renderCard(makeMatch())
+
+      expect(resultButton('Capture result')).toBeInTheDocument()
+    })
+
+    it('offers Continue result with an amber Result draft badge for a draft', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ resultStatus: 'DRAFT' }))
+
+      expect(screen.getByText('Result draft')).toBeInTheDocument()
+      expect(screen.queryByText('Completed')).not.toBeInTheDocument()
+      await user.click(resultButton('Continue result'))
+      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
+    })
+
+    it('offers View result with a Completed badge for a published result', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ resultStatus: 'PUBLISHED', matchDate: inHours(-48) }))
+
+      expect(screen.getByText('Completed')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Capture result' })).not.toBeInTheDocument()
+      await user.click(resultButton('View result'))
+      expect(await screen.findByText('At: /manage/results/match-1')).toBeInTheDocument()
+    })
+
+    it('offers no capture action for an inactive match, but still shows a published result', () => {
+      const { unmount } = renderCard(makeMatch({ active: false, resultStatus: 'NONE' }))
+      expect(screen.queryByRole('button', { name: /result/i })).not.toBeInTheDocument()
+      unmount()
+
+      renderCard(makeMatch({ active: false, resultStatus: 'PUBLISHED' }))
+      expect(resultButton('View result')).toBeInTheDocument()
+    })
+
+    it('says Awaiting result, not Played, for a started match without a published result', () => {
+      renderCard(makeMatch({ matchDate: inHours(-48), resultStatus: 'DRAFT' }))
+
+      const strip = screen.getByTestId('match-time-strip')
+      expect(within(strip).getByText('Awaiting result')).toBeInTheDocument()
+      expect(within(strip).queryByText('Played')).not.toBeInTheDocument()
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    })
+
+    it('says Played for a published result and no countdown, even when the kickoff is still ahead', () => {
+      renderCard(makeMatch({ matchDate: inHours(72), resultStatus: 'PUBLISHED' }))
+
+      const strip = screen.getByTestId('match-time-strip')
+      expect(within(strip).getByText('Played')).toBeInTheDocument()
       expect(screen.queryByRole('timer')).not.toBeInTheDocument()
     })
   })
@@ -312,7 +380,7 @@ describe('MatchCard', () => {
       const names = within(footer)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
-      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share'])
+      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result'])
     })
 
     it('Edit navigates to the edit route', async () => {

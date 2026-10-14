@@ -1,5 +1,10 @@
 package com.cricketlegend.architecture;
 
+import com.cricketlegend.repository.MatchSpecifications;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaCall;
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -48,5 +53,65 @@ class LayeringRulesTest {
     @Test
     void noClassesAccessStandardStreams() {
         NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS.check(CLASSES);
+    }
+
+    // ---- docs/specs/100-match-results-core.md: the publish gate, enforced structurally ----
+
+    /** Origins allowed to use the unguarded, result-based Match specifications: manager paths only. */
+    private static final DescribedPredicate<HasName> MANAGER_RESULT_QUERY_CALLERS = HasName.Predicates
+            .nameMatching("com\\.cricketlegend\\."
+                    + "(service\\.impl\\.(ResultServiceImpl|MatchServiceImpl)"
+                    + "|repository\\.(MatchSpecifications|ResultVisibility))(\\$.*)?")
+            .as("the manager results service, the manager Matches service, MatchSpecifications and ResultVisibility");
+
+    private static final String RESULT_SPECIFICATIONS =
+            "hasResult|noResult|resultStatus|resultOutcomeIn|wonByOwnSide|lostByOwnSide";
+
+    @Test
+    void noMatchResultAccessOutsideTheResultServices() {
+        ArchRule rule = noClasses().that(DescribedPredicate.not(HasName.Predicates.nameMatching(ownersRegex())))
+                .should().dependOnClassesThat().haveNameMatching(
+                        "com\\.cricketlegend\\.(domain\\.(MatchResult|MatchInnings)"
+                                + "|repository\\.(MatchResultRepository|MatchInningsRepository))(\\$.*)?")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void theResultDataOwnersAreExactlyWhoWeExpect() {
+        // proves the rule above is not vacuous: these two really are the only users of the result repositories
+        java.util.Set<String> users = CLASSES.stream()
+                .filter(c -> c.getDirectDependenciesFromSelf().stream()
+                        .anyMatch(d -> d.getTargetClass().getName().equals("com.cricketlegend.repository.MatchResultRepository")))
+                .map(c -> c.getSimpleName())
+                .filter(n -> !n.startsWith("MatchResultRepository"))
+                .collect(java.util.stream.Collectors.toSet());
+        org.assertj.core.api.Assertions.assertThat(users)
+                .containsExactlyInAnyOrder("ResultServiceImpl", "ResultStatusResolver");
+    }
+
+    @Test
+    void resultBasedMatchQueriesAreOnlyUsedOnManagerPaths() {
+        DescribedPredicate<JavaCall<?>> resultSpec = JavaCall.Predicates
+                .target(HasName.Predicates.nameMatching(RESULT_SPECIFICATIONS))
+                .and(JavaCall.Predicates.target(
+                        com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner(
+                                JavaClass.Predicates.equivalentTo(MatchSpecifications.class))));
+        ArchRule rule = noClasses().that(DescribedPredicate.not(MANAGER_RESULT_QUERY_CALLERS))
+                .should().callMethodWhere(resultSpec)
+                .because("a non-manager read path must go through ResultVisibility so a draft result is never visible")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    /** The only code allowed to touch the match_result / match_innings tables and entities. */
+    private static String ownersRegex() {
+        return "com\\.cricketlegend\\."
+                + "(service\\.impl\\.ResultServiceImpl"
+                + "|service\\.support\\.ResultStatusResolver"
+                + "|mapper\\.MatchResultMapper(Impl)?"
+                + "|domain\\.(MatchResult|MatchInnings)"
+                + "|repository\\.(MatchResultRepository|MatchInningsRepository|MatchSpecifications|ResultVisibility))"
+                + "(\\$.*)?";
     }
 }

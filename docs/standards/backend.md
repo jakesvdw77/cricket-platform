@@ -78,6 +78,11 @@ Don't reintroduce flat role checks for anything club/section/team-scoped — tha
 
 A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `SecurityConfig`) record who acted as the Keycloak subject, `authentication.getName()`, not a `Person` id, because a `platform_admin` may have no `Person` row (`MeAccessDto`): see `verified_by_subject` on a field (spec 099).
 
+## Draft visibility and validation (match results, spec 100)
+
+- **The publish gate.** A `match_result` in `DRAFT` is visible to managers only. Every non-manager read of `match_result` goes through `ResultVisibility`; nothing else filters drafts. Only the result services touch `MatchResultRepository`, so no other service can bypass the gate — enforced by `LayeringRulesTest`.
+- **Warnings and errors.** Result validation returns both. Errors block publishing. Warnings are acknowledgeable: the manager confirms them at publish, and the server checks that they were acknowledged.
+
 ## Enforcement
 
 - **ArchUnit suite** (`backend/src/test/java/com/cricketlegend/architecture/`) — layers depend only downward, no field injection, `service.impl` classes are `@Service`-annotated and suffixed `Impl`. Runs on every build; a violation fails CI the same for an agent's change as a human's.

@@ -80,6 +80,18 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    /**
+     * docs/specs/100-match-results-core.md: an invalid result carries its {@code errors} and {@code warnings} as
+     * properties so the wizard can list them. Wins over the generic {@link ValidationException} handler.
+     */
+    @ExceptionHandler(InvalidResultException.class)
+    ProblemDetail handleInvalidResult(InvalidResultException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setProperty("errors", ex.getErrors());
+        problem.setProperty("warnings", ex.getWarnings());
+        return problem;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ProblemDetail handleBeanValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

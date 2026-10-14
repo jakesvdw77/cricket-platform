@@ -119,3 +119,34 @@ flowchart TD
 **The load-bearing idea:** `PersonService.findOrCreatePerson(email)` is the one resolution point every door into `Person` goes through — a Subscription's responsible party today, self-serve signup tomorrow, a Club Contact's optional login upgrade whenever that's needed. Email is the only key that bridges them; none of these paths ever gain a schema-level FK to each other. A human can arrive at the same `Person` row through any of these doors without the system ever creating a duplicate identity.
 
 **What none of this grants by itself:** a `Person` existing — through any path above — implies zero login and zero administrative capability on its own. Login only exists once `keycloak_user_id` is actually set (self-serve signup, unbuilt). Administrative capability only exists once a `RoleAssignment` row exists (`001`, unbuilt). Both are separate, later, deliberate grants — see `014`'s Non-goals for why this spec stops short of either.
+
+## Match results — how a result hangs off a Match (spec 100)
+
+```mermaid
+erDiagram
+    MATCH ||--o| MATCH_RESULT : "has at most one"
+    MATCH_RESULT ||--o{ MATCH_INNINGS : "has many (regular and super over)"
+    MATCH_INNINGS ||--o{ SCORECARD_ENTRY : "future — 101, scorecards"
+    MATCH_RESULT ||--o{ PLAYER_STATS : "future — 102/103, stats"
+    MATCH_RESULT }o--o| IMPORT_BATCH : "future — 104, import"
+
+    MATCH_RESULT {
+        uuid id
+        uuid match_id "unique — one result per match"
+        string status "DRAFT or PUBLISHED"
+        string source "how it was captured, e.g. MANUAL or an import source"
+        string external_id "nullable — id in the source system, for imports"
+    }
+    MATCH_INNINGS {
+        uuid id
+        uuid match_result_id
+        string kind "REGULAR or SUPER_OVER"
+        int runs
+        int wickets
+        int balls "overs are stored as balls, never as 36.4"
+    }
+```
+
+- **`MATCH_RESULT`** — one row per `MATCH`, starts as `DRAFT` and becomes `PUBLISHED`. A draft is visible to managers only; every other read goes through `ResultVisibility` (`docs/standards/backend.md`). `source` and `external_id` exist so a later import (104) can find and update the result it created instead of duplicating it.
+- **`MATCH_INNINGS`** — regular innings and super-over innings share one table, told apart by `kind` (`REGULAR` or `SUPER_OVER`). Overs are balls at the API and in storage; `ui/src/utils/oversFormat.ts` is the only place balls become "36.4".
+- **Future nodes (dashed in intent, not built):** scorecards (101), player and team stats (102, 103) and results import (104) hang off these two tables; they are named here only so the shape isn't redrawn when they land.

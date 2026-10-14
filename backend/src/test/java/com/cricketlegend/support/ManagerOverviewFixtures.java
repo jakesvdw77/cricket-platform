@@ -355,6 +355,8 @@ public final class ManagerOverviewFixtures {
         String polls = "select id from match_availability_poll where match_id in (" + matches + ")";
         String sides = "select id from match_side where match_id in (" + matches + ")";
         for (String sql : List.of(
+                "delete from match_innings where match_result_id in (select id from match_result where match_id in (" + matches + "))",
+                "delete from match_result where match_id in (" + matches + ")",
                 "delete from match_side_player where match_side_id in (" + sides + ")",
                 "delete from match_side where match_id in (" + matches + ")",
                 "delete from player_availability where poll_id in (" + polls + ")",

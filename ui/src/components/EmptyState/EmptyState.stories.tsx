@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { BrandIcon } from '../BrandIcon'
 import { Button } from '../Button'
 import { EmptyState } from './EmptyState'
 
@@ -27,5 +28,13 @@ export const WithAction: Story = {
     title: 'No matches scheduled yet',
     description: 'Fixtures you add will show up here.',
     action: <Button size="sm">Add match</Button>,
+  },
+}
+
+export const WithIcon: Story = {
+  args: {
+    icon: <BrandIcon name="nav/result-scorecard" size={48} padding={4} />,
+    title: 'No results yet',
+    description: 'Captured results will show up here.',
   },
 }

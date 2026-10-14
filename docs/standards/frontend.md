@@ -56,6 +56,12 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 
 **A "past" switch is labelled "View entire season" only where it is season-scoped** (the selection views and the Availability pages). A switch that is not scoped by season keeps its own wording. The Matches list and League schedule past switches are season-scoped and read "View entire season" (Matches reads "View all seasons" when All seasons is chosen). Availability polls and the hub counters are season-scoped too: both send the hub's season, so counters equal lists.
 
+## Match results (`docs/specs/100-match-results-core.md`)
+
+- **Overs are balls at the API.** `ui/src/utils/oversFormat.ts` is the ONE converter between balls and the "36.4" display/entry form; no component or page parses or builds an overs string itself.
+- **Margin and result checks are pure helpers**, not component logic: `marginCheck.ts` (does the margin agree with the scores) and `resultLine.ts` (the one-line result text). Unit-test them directly; components only call them.
+- **Wizards register their steps as data.** The result wizard declares its steps in a `RESULT_STEPS` list (label, component, validity) and renders from it; a new step is a new entry, not another branch in the wizard.
+
 ## Folder structure
 
 ```

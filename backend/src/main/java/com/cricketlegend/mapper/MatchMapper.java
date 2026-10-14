@@ -24,6 +24,7 @@ public interface MatchMapper {
     @Mapping(target = "polls", ignore = true)
     @Mapping(target = "playingAreaName", ignore = true)
     @Mapping(target = "playingAreaVerificationStatus", ignore = true)
+    @Mapping(target = "resultStatus", ignore = true)
     MatchDto toDto(Match entity);
 
 }

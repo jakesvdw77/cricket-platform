@@ -3,7 +3,12 @@ package com.cricketlegend.repository;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.MatchListFocus;
+import com.cricketlegend.domain.MatchResult;
+import com.cricketlegend.domain.MatchResultStatus;
 import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.ResultOutcomeType;
+import com.cricketlegend.domain.ResultSide;
+import com.cricketlegend.domain.ResultStatus;
 import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
 import com.cricketlegend.domain.Team;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -13,7 +18,10 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.BiFunction;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -245,6 +253,98 @@ public final class MatchSpecifications {
                     cb.not(cb.exists(groupLinks)),
                     cb.not(cb.exists(squadPolls)));
         };
+    }
+
+    // ---- docs/specs/100-match-results-core.md: result-based specs (subqueries on match_result, never joins) ----
+
+    /** {@code matchDate} on or after {@code from} (inclusive) and before {@code to} (exclusive); a null bound is open. */
+    public static Specification<Match> matchDateBetween(Instant from, Instant to) {
+        Specification<Match> spec = Specification.where(null);
+        if (from != null) {
+            spec = spec.and(matchDateOnOrAfter(from));
+        }
+        if (to != null) {
+            spec = spec.and(matchDateBefore(to));
+        }
+        return spec;
+    }
+
+    /** The match has a result, of the given status when {@code status} is non-null, of any status otherwise. */
+    public static Specification<Match> hasResult(ResultStatus status) {
+        return (root, query, cb) -> cb.exists(resultSubquery(root, query, cb, (result, builder) ->
+                status == null ? new Predicate[0] : new Predicate[] {builder.equal(result.get("status"), status)}));
+    }
+
+    /** The Matches list's {@code resultStatus} filter: none, a draft or a published result. */
+    public static Specification<Match> resultStatus(MatchResultStatus status) {
+        return switch (status) {
+            case NONE -> noResult();
+            case DRAFT -> hasResult(ResultStatus.DRAFT);
+            case PUBLISHED -> hasResult(ResultStatus.PUBLISHED);
+        };
+    }
+
+    /** The match has no result at all (draft or published). */
+    public static Specification<Match> noResult() {
+        return (root, query, cb) -> cb.not(cb.exists(resultSubquery(root, query, cb, (result, builder) -> new Predicate[0])));
+    }
+
+    /**
+     * The match has a result whose outcome is one of {@code outcomes} (and whose status is {@code status} when
+     * non-null). A draft without an outcome never matches.
+     */
+    public static Specification<Match> resultOutcomeIn(Collection<ResultOutcomeType> outcomes, ResultStatus status) {
+        return (root, query, cb) -> cb.exists(resultSubquery(root, query, cb, (result, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(result.get("outcomeType").in(outcomes));
+            if (status != null) {
+                predicates.add(builder.equal(result.get("status"), status));
+            }
+            return predicates.toArray(new Predicate[0]);
+        }));
+    }
+
+    /**
+     * A published win or forfeit-win by one of the club's own sides (or by {@code teamId} when set). A match between
+     * two own teams satisfies both this and {@link #lostByOwnSide}: one win and one loss by construction.
+     */
+    public static Specification<Match> wonByOwnSide(UUID clubId, UUID teamId) {
+        return (root, query, cb) -> cb.or(
+                cb.and(publishedWinBy(root, query, cb, ResultSide.HOME), ownSideIs(query, cb, root.get("homeTeamId"), clubId, teamId)),
+                cb.and(publishedWinBy(root, query, cb, ResultSide.AWAY), ownSideIs(query, cb, root.get("awayTeamId"), clubId, teamId)));
+    }
+
+    /** A published win or forfeit-win by the opposite side to one of the club's own sides (or to {@code teamId}). */
+    public static Specification<Match> lostByOwnSide(UUID clubId, UUID teamId) {
+        return (root, query, cb) -> cb.or(
+                cb.and(publishedWinBy(root, query, cb, ResultSide.HOME), ownSideIs(query, cb, root.get("awayTeamId"), clubId, teamId)),
+                cb.and(publishedWinBy(root, query, cb, ResultSide.AWAY), ownSideIs(query, cb, root.get("homeTeamId"), clubId, teamId)));
+    }
+
+    private static Predicate publishedWinBy(Root<Match> root, CriteriaQuery<?> query, CriteriaBuilder cb, ResultSide winner) {
+        return cb.exists(resultSubquery(root, query, cb, (result, builder) -> new Predicate[] {
+                builder.equal(result.get("status"), ResultStatus.PUBLISHED),
+                result.get("outcomeType").in(ResultOutcomeType.WON, ResultOutcomeType.FORFEIT),
+                builder.equal(result.get("winningSide"), winner)}));
+    }
+
+    /** The side is the given team when {@code teamId} is set, otherwise any real team of the club. */
+    private static Predicate ownSideIs(
+            CriteriaQuery<?> query, CriteriaBuilder cb, Path<UUID> sideTeamId, UUID clubId, UUID teamId) {
+        return teamId != null ? cb.equal(sideTeamId, teamId) : ownSide(query, cb, sideTeamId, clubId, Optional.empty());
+    }
+
+    private static Subquery<UUID> resultSubquery(
+            Root<Match> root,
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            BiFunction<Root<MatchResult>, CriteriaBuilder, Predicate[]> extra) {
+        Subquery<UUID> results = query.subquery(UUID.class);
+        Root<MatchResult> result = results.from(MatchResult.class);
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(result.get("matchId"), root.get("id")));
+        predicates.addAll(List.of(extra.apply(result, cb)));
+        return results.select(result.get("id")).where(predicates.toArray(new Predicate[0]));
     }
 
     /** The side's team is a real team of {@code clubId} (and in {@code sections} when the caller is restricted). */

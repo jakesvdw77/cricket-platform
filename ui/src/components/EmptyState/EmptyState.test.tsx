@@ -15,4 +15,10 @@ describe('EmptyState', () => {
 
     expect(screen.getByRole('button', { name: 'Add match' })).toBeInTheDocument()
   })
+
+  it('renders an icon above the title when provided', () => {
+    render(<EmptyState icon={<span data-testid="empty-icon" />} title="No results yet" />)
+
+    expect(screen.getByTestId('empty-icon')).toBeInTheDocument()
+  })
 })
