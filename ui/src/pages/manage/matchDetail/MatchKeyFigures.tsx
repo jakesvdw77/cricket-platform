@@ -5,6 +5,7 @@ import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { KeyFigureTile } from '../../../components/KeyFigureTile'
 import { useCountdown } from '../../../components/Countdown'
+import type { MatchResultStatus } from '../../../api/matchResultApi'
 import type { MatchPoll } from '../../../api/matchApi'
 import type { FieldVerificationStatus } from '../../../api/playingAreaApi'
 import { formatMatchDateTime } from '../availability/pollHelpers'
@@ -24,6 +25,8 @@ export interface MatchKeyFiguresProps {
   polls: MatchPoll[]
   // The scheduled close of the one open squad poll, when exactly one open squad poll has it (group polls have none).
   pollClosesAt: string | null
+  // docs/specs/100: the match's real result state; "Played" now means a published result.
+  resultStatus?: MatchResultStatus | null
 }
 
 const NOT_KNOWN = '–'
@@ -47,13 +50,14 @@ function pollCaption(polls: MatchPoll[], closesAt: string | null): string {
 
 // docs/specs/089 (A): the four things a manager reads first on the match page - when it starts (with the card's live
 // countdown, amber within 24 hours, "Played" once it has started), where, in which league and season, and the poll.
-export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt }: MatchKeyFiguresProps) {
+export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus }: MatchKeyFiguresProps) {
   const kickoff = useCountdown(matchDate)
-  const played = kickoff.stage === 'expired'
+  const started = kickoff.stage === 'expired'
+  const played = resultStatus === 'PUBLISHED'
   const start = new Date(matchDate)
   const dateText = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
   const timeText = start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  const startsCaption = played ? `Played · ${timeText}` : kickoff.text ? `${timeText} · in ${kickoff.text}` : timeText
+  const startsCaption = played ? `Played · ${timeText}` : started ? `Awaiting result · ${timeText}` : kickoff.text ? `${timeText} · in ${kickoff.text}` : timeText
 
   return (
     <Box
@@ -65,7 +69,7 @@ export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVe
         icon={<EventOutlinedIcon />}
         value={dateText}
         label={startsCaption}
-        tone={!played && kickoff.warn ? 'warning' : 'neutral'}
+        tone={!started && kickoff.warn ? 'warning' : 'neutral'}
         textValue
       />
       <KeyFigureTile

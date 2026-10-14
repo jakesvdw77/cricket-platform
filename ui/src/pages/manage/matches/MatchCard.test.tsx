@@ -234,7 +234,7 @@ describe('MatchCard', () => {
     })
 
     it('reads Played, neutral and with no countdown once the match has started', () => {
-      renderCard(makeMatch({ matchDate: inHours(-48) }))
+      renderCard(makeMatch({ matchDate: inHours(-48), resultStatus: 'PUBLISHED' }))
 
       const strip = screen.getByTestId('match-time-strip')
       expect(strip).toHaveAttribute('data-tone', 'neutral')
@@ -312,7 +312,7 @@ describe('MatchCard', () => {
       const names = within(footer)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
-      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share'])
+      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result'])
     })
 
     it('Edit navigates to the edit route', async () => {

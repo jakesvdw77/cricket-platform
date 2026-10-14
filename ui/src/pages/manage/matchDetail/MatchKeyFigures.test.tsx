@@ -37,7 +37,7 @@ describe('MatchKeyFigures', () => {
   })
 
   it('says Played once the match has started, with no countdown', () => {
-    render(<MatchKeyFigures {...base} matchDate="2026-10-09T08:00:00" />)
+    render(<MatchKeyFigures {...base} matchDate="2026-10-09T08:00:00" resultStatus="PUBLISHED" />)
     expect(screen.getByText(/^Played/)).toBeInTheDocument()
     expect(screen.getByTestId('match-figure-starts')).toHaveAttribute('data-tone', 'neutral')
   })

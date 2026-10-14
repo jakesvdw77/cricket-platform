@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
 import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -32,6 +33,7 @@ import { listMatchSides } from '../../api/matchSideApi'
 import type { MatchSide } from '../../api/matchSideApi'
 import { listPolls } from '../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
+import { resultActionFor, resultBadgeFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
@@ -215,6 +217,8 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const title = `${homeName} vs ${awayName}`
 
   const inactive = badgeFor(match)
+  const resultBadge = resultBadgeFor(match)
+  const resultAction = resultActionFor(match)
 
   const logos = [
     logoFor(match.homeTeamId, match.homeTeamLogoUrl, homeName, teamsById),
@@ -289,6 +293,11 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                   Watch live
                 </MuiButton>
               )}
+              {resultAction && (
+                <MuiButton component={RouterLink} to={resultAction.to} variant="outlined" startIcon={<SportsScoreOutlinedIcon fontSize="small" />}>
+                  {resultAction.label}
+                </MuiButton>
+              )}
               <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>
                 Edit
               </MuiButton>
@@ -325,6 +334,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               {logos[1].src && <TeamLogo logo={logos[1]} testId="match-logo-away" />}
               <span>{awayName}</span>
               {inactive && <Chip size="small" label={inactive.label} sx={badgeSx(inactive.tone)} data-testid="match-inactive-badge" />}
+              {resultBadge && <Chip size="small" label={resultBadge.label} sx={badgeSx(resultBadge.tone)} data-testid="match-result-badge" />}
             </Typography>
 
             {/* The match workflow, right-aligned like the poll page's actions; all disabled with a reason when none of
@@ -417,6 +427,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         pollsReady={pollsReady}
         polls={overlay.polls}
         pollClosesAt={pollClosesAt}
+        resultStatus={match.resultStatus}
       />
 
       {own.length === 0 ? (

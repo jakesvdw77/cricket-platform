@@ -48,6 +48,7 @@ import FieldFormPage from './pages/manage/fields/FieldFormPage'
 import FieldDetailPage from './pages/manage/fields/FieldDetailPage'
 import MatchList from './pages/manage/MatchList'
 import ResultCapturePage from './pages/manage/results/ResultCapturePage'
+import ResultDetailPage from './pages/manage/results/ResultDetailPage'
 import ResultList from './pages/manage/results/ResultList'
 import MatchFormPage from './pages/manage/MatchFormPage'
 import MatchDetailPage from './pages/manage/MatchDetailPage'
@@ -245,6 +246,7 @@ function App() {
               <Route path="fixtures/fields/:fieldId/edit" element={<FieldFormPage />} />
               {/* docs/specs/100-match-results-core.md: the Results page (the result page and wizard follow). */}
               <Route path="results" element={<ResultList />} />
+              <Route path="results/:matchId" element={<ResultDetailPage />} />
               <Route path="results/:matchId/capture" element={<ResultCapturePage />} />
               <Route
                 path="permissions"

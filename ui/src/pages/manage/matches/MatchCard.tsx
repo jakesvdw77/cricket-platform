@@ -4,6 +4,7 @@ import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
+import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
@@ -19,6 +20,7 @@ import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
 import { formatMatchDateTime } from '../availability/pollHelpers'
+import { resultActionFor, resultBadgeFor, resultStateOf } from './matchResultHelpers'
 import { SelectionBlock } from './SelectionBlock'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { useTeamSheetShare } from './useTeamSheetShare'
@@ -73,12 +75,19 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
   // The strip reads the kickoff: a countdown and the amber tone before it, "Played" (neutral, no countdown) after.
   const kickoff = useCountdown(match.matchDate)
-  const played = kickoff.stage === 'expired'
+  // docs/specs/100: "played" is the real result state, not the date. A started match with no published result reads
+  // "Awaiting result".
+  const resultState = resultStateOf(match)
+  const played = resultState === 'published'
+  const started = kickoff.stage === 'expired'
+  const resultAction = resultActionFor(match)
+  const resultBadge = resultBadgeFor(match)
 
   const inactive = badgeFor(match)
   const badges: RecordCardBadge[] = [
     ...announcedBadges(match, teamsById),
     ...(inactive ? [inactive] : []),
+    ...(resultBadge ? [resultBadge] : []),
     pollBadgeFor(match.polls),
   ]
 
@@ -153,15 +162,25 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
             onClick: openShare,
             ...disabledProps,
           },
+          ...(resultAction
+            ? [
+                {
+                  label: resultAction.caption,
+                  ariaLabel: resultAction.label,
+                  icon: <SportsScoreOutlinedIcon fontSize="small" />,
+                  onClick: () => navigate(resultAction.to),
+                },
+              ]
+            : []),
         ]}
       >
         <CardTimeStrip
           testId="match-time-strip"
-          tone={!played && kickoff.warn ? 'warning' : 'neutral'}
+          tone={!started && kickoff.warn ? 'warning' : 'neutral'}
           icon={<EventOutlinedIcon fontSize="small" />}
-          label={played ? 'Played' : 'Starts'}
+          label={played ? 'Played' : started ? 'Awaiting result' : 'Starts'}
           value={formatMatchDateTime(match.matchDate)}
-          trailing={played ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
+          trailing={started ? undefined : <Countdown target={match.matchDate} phrase="to go" ariaPrefix="Starts in" />}
         />
         {match.venue && (
           <DetailLine

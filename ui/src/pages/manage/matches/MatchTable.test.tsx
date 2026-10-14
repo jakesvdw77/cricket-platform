@@ -43,7 +43,7 @@ describe('MatchTable', () => {
     renderTable([
       makeMatch({ id: 'soon', matchDate: '2026-10-09T18:00:00' }),
       makeMatch({ id: 'later', matchDate: '2026-10-15T07:15:00' }),
-      makeMatch({ id: 'past', matchDate: '2026-10-09T08:00:00' }),
+      makeMatch({ id: 'past', matchDate: '2026-10-09T08:00:00', resultStatus: 'PUBLISHED' }),
     ])
     const rows = screen.getAllByTestId('match-row')
     expect(rows[0]).toHaveAttribute('data-tone', 'warning')
