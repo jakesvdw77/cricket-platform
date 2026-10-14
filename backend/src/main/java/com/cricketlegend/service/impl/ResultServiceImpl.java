@@ -43,6 +43,7 @@ import com.cricketlegend.service.ScorecardService;
 import com.cricketlegend.service.support.MatchSideNames;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultValidator;
+import com.cricketlegend.service.support.ScorecardContext;
 import com.cricketlegend.service.support.ServerClock;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -229,7 +230,10 @@ public class ResultServiceImpl implements ResultService {
     public MatchResultDto upsertDraft(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft) {
         Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
         assertCapturable(match);
-        List<ResultIssueDto> structural = validator.structuralIssueList(draft);
+        Map<UUID, Team> sideTeams = teamsOf(match);
+        List<ResultIssueDto> structural = validator.structuralIssueList(
+                draft, MatchSideNames.home(match, sideTeams), MatchSideNames.away(match, sideTeams),
+                draft.scorecard() == null ? ScorecardContext.none() : scorecardService.validationContext(match, draft));
         if (!structural.isEmpty()) {
             throw new InvalidResultException(
                     "The result cannot be saved as entered.", structural.stream().map(ResultIssueDto::message).toList(),
@@ -404,7 +408,7 @@ public class ResultServiceImpl implements ResultService {
                 .orElseThrow(() -> new NotFoundException("No result for match: " + matchId));
     }
 
-    private ResultValidationDto validateAgainst(Match match, ResultDraft draft) {
+    private Map<UUID, Team> teamsOf(Match match) {
         Set<UUID> teamIds = new HashSet<>();
         if (match.getHomeTeamId() != null) {
             teamIds.add(match.getHomeTeamId());
@@ -412,9 +416,13 @@ public class ResultServiceImpl implements ResultService {
         if (match.getAwayTeamId() != null) {
             teamIds.add(match.getAwayTeamId());
         }
-        Map<UUID, Team> teamsById = teamIds.isEmpty()
+        return teamIds.isEmpty()
                 ? Map.of()
                 : teamRepository.findAllById(teamIds).stream().collect(Collectors.toMap(Team::getId, t -> t));
+    }
+
+    private ResultValidationDto validateAgainst(Match match, ResultDraft draft) {
+        Map<UUID, Team> teamsById = teamsOf(match);
         return validator.validate(
                 draft, MatchSideNames.home(match, teamsById), MatchSideNames.away(match, teamsById),
                 scorecardService.validationContext(match, draft));

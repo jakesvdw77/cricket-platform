@@ -45,10 +45,21 @@ public class ResultValidator {
 
     /** Structural issues with their codes, steps and sides (docs/specs/101): what a save refuses, as typed issues. */
     public List<com.cricketlegend.dto.ResultIssueDto> structuralIssueList(ResultDraft draft) {
-        return structuralIssues(draft).all();
+        return structuralIssues(draft, "", "", ScorecardContext.none()).all();
+    }
+
+    /** As above, naming the sides and players in the scorecard messages. */
+    public List<com.cricketlegend.dto.ResultIssueDto> structuralIssueList(
+            ResultDraft draft, String homeName, String awayName, ScorecardContext context) {
+        return structuralIssues(draft, homeName, awayName, context).all();
     }
 
     private ResultIssues structuralIssues(ResultDraft draft) {
+        return structuralIssues(draft, "", "", ScorecardContext.none());
+    }
+
+    private ResultIssues structuralIssues(
+            ResultDraft draft, String homeName, String awayName, ScorecardContext context) {
         ResultIssues issues = new ResultIssues();
         if (draft.ballsPerOver() < 1 || draft.ballsPerOver() > MAX_BALLS_PER_OVER) {
             issues.error(ErrorCode.BALLS_PER_OVER_INVALID, ResultWizardStep.SCORES, null,
@@ -67,7 +78,7 @@ public class ResultValidator {
                     "A win by wickets cannot be by more than " + MAX_WICKETS + " wickets.");
         }
         inningsStructure(draft, issues);
-        ScorecardRules.structure(draft, issues);
+        ScorecardRules.structure(draft, homeName, awayName, context, issues);
         return issues;
     }
 
@@ -79,7 +90,7 @@ public class ResultValidator {
     /** As {@link #validate(ResultDraft, String, String)}, with the context the scorecard rules need (docs/specs/101). */
     public ResultValidationDto validate(
             ResultDraft draft, String homeName, String awayName, ScorecardContext context) {
-        ResultIssues issues = structuralIssues(draft);
+        ResultIssues issues = structuralIssues(draft, homeName, awayName, context);
         Names names = new Names(homeName, awayName);
 
         ResultOutcomeType outcome = draft.outcomeType();

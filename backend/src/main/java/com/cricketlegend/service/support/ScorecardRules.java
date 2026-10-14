@@ -45,11 +45,18 @@ final class ScorecardRules {
     // ---- structure (what a save refuses) ----
 
     static void structure(ResultDraft draft, ResultIssues issues) {
+        structure(draft, "", "", ScorecardContext.none(), issues);
+    }
+
+    /** As above; the side names and the club's player names make a duplicate-player message say who and where. */
+    static void structure(
+            ResultDraft draft, String homeName, String awayName, ScorecardContext context, ResultIssues issues) {
         ScorecardDto scorecard = draft.scorecard();
         if (scorecard == null) {
             return;
         }
-        Map<String, ResultPlayerDto> players = playersByRef(scorecard, issues);
+        Map<String, ResultPlayerDto> players = playersByRef(
+                scorecard, new Names(homeName, awayName), context == null ? ScorecardContext.none() : context, issues);
         boolean anyRegular = draft.innings().stream().anyMatch(i -> i.kind() == InningsKind.REGULAR);
         if (!scorecard.players().isEmpty() && !anyRegular) {
             issues.error(ErrorCode.SCORECARD_NO_INNINGS, ResultWizardStep.SCORES, null,
@@ -127,7 +134,8 @@ final class ScorecardRules {
         awardStructure(scorecard, players, issues);
     }
 
-    private static Map<String, ResultPlayerDto> playersByRef(ScorecardDto scorecard, ResultIssues issues) {
+    private static Map<String, ResultPlayerDto> playersByRef(
+            ScorecardDto scorecard, Names names, ScorecardContext context, ResultIssues issues) {
         Map<String, ResultPlayerDto> byRef = new HashMap<>();
         Set<String> profileKeys = new HashSet<>();
         Set<String> guestKeys = new HashSet<>();
@@ -153,7 +161,7 @@ final class ScorecardRules {
             } else if (p.playerProfileId() != null) {
                 if (!profileKeys.add(p.side() + ":" + p.playerProfileId())) {
                     issues.error(ErrorCode.SCORECARD_PLAYER_DUPLICATE, ResultWizardStep.OUR_BATTING, p.side(),
-                            "The same player is on the scorecard twice for one side.");
+                            label(p, context) + " is on the scorecard twice for the " + names.sideLabel(p.side()) + ".");
                 }
             } else if (!guestKeys.add(p.side() + ":" + ScorecardContext.normalise(p.displayName()))) {
                 issues.error(ErrorCode.SCORECARD_PLAYER_DUPLICATE, ResultWizardStep.OUR_BATTING, p.side(),
@@ -513,6 +521,12 @@ final class ScorecardRules {
     }
 
     private record Names(String home, String away) {
+        /** "Irene Villagers 1 side", or "home side" when the team has no name. */
+        String sideLabel(ResultSide side) {
+            String name = side == ResultSide.HOME ? home : away;
+            return name == null || name.isBlank() ? (side == ResultSide.HOME ? "home side" : "away side") : name + " side";
+        }
+
         String of(ResultSide side) {
             String name = side == ResultSide.HOME ? home : away;
             return name == null || name.isBlank() ? (side == ResultSide.HOME ? "The home side" : "The away side") : name;

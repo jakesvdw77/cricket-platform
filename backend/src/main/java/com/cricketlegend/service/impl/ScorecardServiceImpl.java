@@ -182,14 +182,21 @@ public class ScorecardServiceImpl implements ScorecardService {
                 continue;
             }
             List<ScorecardPrefillDto.Player> players = new ArrayList<>();
+            MatchSide matchSide = sidesByTeam.get(teamId);
+            UUID twelfth = matchSide == null ? null : matchSide.getTwelfthManPlayerId();
+            Set<UUID> listed = new HashSet<>();
             for (MatchSidePlayer p : selected.getOrDefault(side, List.of())) {
+                if (!listed.add(p.getPlayerProfileId())) {
+                    continue;
+                }
                 PlayerInfo info = names.get(p.getPlayerProfileId());
+                boolean isTwelfth = p.getPlayerProfileId().equals(twelfth);
                 players.add(new ScorecardPrefillDto.Player(
                         p.getPlayerProfileId(), info == null ? null : info.firstName(),
-                        info == null ? null : info.lastName(), p.getBattingOrder(), p.getRole(), false));
+                        info == null ? null : info.lastName(), isTwelfth ? null : p.getBattingOrder(), p.getRole(),
+                        isTwelfth));
             }
-            MatchSide matchSide = sidesByTeam.get(teamId);
-            if (matchSide != null && matchSide.getTwelfthManPlayerId() != null) {
+            if (twelfth != null && !listed.contains(twelfth)) {
                 PlayerInfo info = names.get(matchSide.getTwelfthManPlayerId());
                 players.add(new ScorecardPrefillDto.Player(
                         matchSide.getTwelfthManPlayerId(), info == null ? null : info.firstName(),
@@ -401,9 +408,9 @@ public class ScorecardServiceImpl implements ScorecardService {
     public void freezeFeatured(UUID matchResultId, Match match) {
         ScorecardRows loaded = load(matchResultId);
         Set<UUID> suggested = suggestions(loaded);
-        loaded.batting().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()))));
-        loaded.bowling().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()))));
-        loaded.fielding().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()))));
+        loaded.batting().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
+        loaded.bowling().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
+        loaded.fielding().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), true)));
         battingRepository.saveAll(loaded.batting());
         bowlingRepository.saveAll(loaded.bowling());
         fieldingRepository.saveAll(loaded.fielding());
@@ -504,18 +511,18 @@ public class ScorecardServiceImpl implements ScorecardService {
                 .sorted(Comparator.comparing((BattingEntry e) -> sequenceByInnings.get(e.getMatchInningsId()))
                         .thenComparing(BattingEntry::getPosition, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(e -> mapper.toBattingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()))))
+                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))))
                 .toList();
         List<BowlingEntryDto> bowling = loaded.bowling().stream()
                 .sorted(Comparator.comparing((BowlingEntry e) -> sequenceByInnings.get(e.getMatchInningsId()))
                         .thenComparing(BowlingEntry::getBowlingOrder, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(e -> mapper.toBowlingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()))))
+                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))))
                 .toList();
         List<FieldingEntryDto> fielding = loaded.fielding().stream()
                 .sorted(Comparator.comparing((FieldingEntry e) -> sequenceByInnings.get(e.getMatchInningsId())))
                 .map(e -> mapper.toFieldingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()))))
+                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), true)))
                 .toList();
         List<MatchAwardDto> awardDtos = awards.stream().map(a -> {
             ResultPlayer player = a.getResultPlayerId() == null ? null : playersById.get(a.getResultPlayerId());
@@ -527,13 +534,24 @@ public class ScorecardServiceImpl implements ScorecardService {
                 statuses(match, loaded));
     }
 
-    private static boolean shown(boolean frozen, Boolean stored, FeaturedOverride override, boolean suggested) {
-        return frozen && stored != null ? stored : effective(override, suggested);
+    private static boolean shown(boolean frozen, Boolean stored, FeaturedOverride override, boolean suggested,
+            boolean canBeFeatured) {
+        return frozen && stored != null ? stored && canBeFeatured : effective(override, suggested, canBeFeatured);
     }
 
-    private static boolean effective(FeaturedOverride override, boolean suggested) {
+    /** A batter who did not bat or scored no run, and a bowler who bowled no ball, can never be featured. */
+    private static boolean canBeFeatured(BattingEntry e) {
+        return e.getHowOut() != null && e.getHowOut().batted() && e.getRuns() != null && e.getRuns() > 0;
+    }
+
+    private static boolean canBeFeatured(BowlingEntry e) {
+        return e.getBalls() > 0;
+    }
+
+    /** A stored FEATURE override on an entry that cannot be featured is ignored; HIDE is unaffected. */
+    private static boolean effective(FeaturedOverride override, boolean suggested, boolean canBeFeatured) {
         if (override == FeaturedOverride.FEATURE) {
-            return true;
+            return canBeFeatured;
         }
         if (override == FeaturedOverride.HIDE) {
             return false;

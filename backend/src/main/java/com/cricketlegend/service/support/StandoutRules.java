@@ -39,7 +39,8 @@ public final class StandoutRules {
      * #BATTING_SHARE} of {@code inningsRuns}, or the top scorer when they scored at least one run.
      */
     public static <K> Set<K> battingSuggestions(List<Batter<K>> batters, int inningsRuns) {
-        List<Batter<K>> ranked = new ArrayList<>(batters);
+        // a batter without a run is never featured, whatever the innings total
+        List<Batter<K>> ranked = new ArrayList<>(batters.stream().filter(b -> b.runs() > 0).toList());
         ranked.sort(Comparator.<Batter<K>>comparingInt(b -> -b.runs())
                 .thenComparingInt(b -> b.balls() == null ? Integer.MAX_VALUE : b.balls()));
         Set<K> suggested = new HashSet<>();
@@ -64,7 +65,8 @@ public final class StandoutRules {
      * the innings run rate. Economy and run rate compare runs per ball, so the over length cancels out.
      */
     public static <K> Set<K> bowlingSuggestions(List<Bowler<K>> bowlers, int inningsRuns, int inningsBalls) {
-        List<Bowler<K>> ranked = new ArrayList<>(bowlers);
+        // a bowler who bowled no ball is never featured
+        List<Bowler<K>> ranked = new ArrayList<>(bowlers.stream().filter(b -> b.balls() > 0).toList());
         ranked.sort(Comparator.<Bowler<K>>comparingInt(b -> -b.wickets())
                 .thenComparingDouble(StandoutRules::runsPerBall));
         Set<K> suggested = new HashSet<>();
