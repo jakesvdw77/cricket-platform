@@ -44,6 +44,11 @@ public class FieldingEntry {
     @Column(name = "run_outs", nullable = false)
     private int runOuts;
 
+    /** DERIVED: the three counters are recomputed from the dismissals on every save; MANUAL: typed, never touched. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "credits_source", nullable = false)
+    private CreditSource creditsSource;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "featured_override")
     private FeaturedOverride featuredOverride;

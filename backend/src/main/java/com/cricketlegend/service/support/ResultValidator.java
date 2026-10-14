@@ -96,6 +96,8 @@ public class ResultValidator {
         ResultOutcomeType outcome = draft.outcomeType();
         if (outcome == null) {
             issues.error(ErrorCode.OUTCOME_MISSING, ResultWizardStep.RESULT, null, "Choose how the match ended.");
+            // a team list saved before the game has no outcome yet; its own checks still apply
+            ScorecardRules.validate(draft, null, homeName, awayName, context, issues);
             return ResultValidationDto.of(issues.all());
         }
         if (draft.decidedBy() != ResultDecidedBy.REGULAR && outcome != ResultOutcomeType.WON) {
@@ -222,8 +224,13 @@ public class ResultValidator {
         PLAYER_NOT_IN_SQUAD,
         GUEST_NAME_MATCHES_PLAYER,
         PLAYER_ON_BOTH_SIDES,
+        DISMISSAL_BOWLER_NOT_IN_BOWLING_LIST,
+        BOWLER_WICKETS_DIFFER_FROM_DISMISSALS,
+        FIELDING_DIFFERS_FROM_DISMISSALS,
         /** Reported with severity INFO: never blocks, nothing to acknowledge. */
-        GUEST_ON_BOTH_SIDES
+        GUEST_ON_BOTH_SIDES,
+        /** Reported with severity INFO: our team has no (announced, full) selection; friendlies are normal. */
+        OUR_TEAM_NOT_SELECTED
     }
 
     /** Stable identifiers for the errors (docs/specs/101): the rules that block a save or a publish. */
@@ -255,7 +262,6 @@ public class ResultValidator {
         SUPER_OVER_INNINGS_MISSING,
         // our side's scorecard (docs/specs/101)
         SCORECARD_SUPER_OVER_NOT_SUPPORTED,
-        SCORECARD_NO_INNINGS,
         SCORECARD_INNINGS_MISSING,
         SCORECARD_PLAYER_KEY_MISSING,
         SCORECARD_PLAYER_KEY_DUPLICATE,
@@ -278,7 +284,15 @@ public class ResultValidator {
         AWARD_PLAYER_MISSING,
         AWARD_DUPLICATE_OFFICIAL,
         AWARD_DUPLICATE_TEAM,
-        AWARD_SIDE_NOT_OURS
+        AWARD_SIDE_NOT_OURS,
+        DOTS_EXCEED_BALLS,
+        // the opposition and the dismissals (docs/specs/101, formerly 102)
+        OPPOSITION_NOT_ALLOWED,
+        OPPOSITION_PLAYER_INVALID,
+        OPPOSITION_NO_STANDOUTS,
+        OPPOSITION_WITHOUT_OUR_SCORECARD,
+        DISMISSAL_DETAIL_NOT_ALLOWED,
+        DISMISSAL_PLAYER_WRONG_SIDE
     }
 
     /** Regular win (not DLS, not super over): level scores, the wrong winner, then the margin, each reported once. */

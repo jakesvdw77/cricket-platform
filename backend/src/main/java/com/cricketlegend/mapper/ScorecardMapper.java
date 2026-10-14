@@ -13,6 +13,7 @@ import com.cricketlegend.dto.FieldingEntryDto;
 import com.cricketlegend.dto.MatchAwardDto;
 import com.cricketlegend.dto.ResultPlayerDto;
 import com.cricketlegend.dto.ScorecardInningsDto;
+import com.cricketlegend.service.support.DismissalCredits;
 import java.util.UUID;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -55,6 +56,8 @@ public interface ScorecardMapper {
     @Mapping(target = "battingSide", source = "side")
     @Mapping(target = "inningsKind", constant = "REGULAR")
     @Mapping(target = "playerClientKey", ignore = true)
+    @Mapping(target = "bowlerPlayerId", source = "entry.bowlerResultPlayerId")
+    @Mapping(target = "fielderPlayerId", source = "entry.fielderResultPlayerId")
     @Mapping(target = "suggested", source = "suggestedFlag")
     @Mapping(target = "featured", source = "effective")
     BattingEntryDto toBattingDto(BattingEntry entry, ResultSide side, Boolean suggestedFlag, Boolean effective);
@@ -64,7 +67,9 @@ public interface ScorecardMapper {
     @Mapping(target = "resultPlayerId", source = "playerId")
     @Mapping(target = "featured", ignore = true)
     @Mapping(target = "howOut", source = "dto.howOut")
-    BattingEntry toBattingEntity(BattingEntryDto dto, UUID inningsId, UUID playerId);
+    @Mapping(target = "bowlerResultPlayerId", source = "bowlerId")
+    @Mapping(target = "fielderResultPlayerId", source = "fielderId")
+    BattingEntry toBattingEntity(BattingEntryDto dto, UUID inningsId, UUID playerId, UUID bowlerId, UUID fielderId);
 
     @Mapping(target = "id", source = "entry.id")
     @Mapping(target = "battingSide", source = "side")
@@ -72,7 +77,8 @@ public interface ScorecardMapper {
     @Mapping(target = "playerClientKey", ignore = true)
     @Mapping(target = "suggested", source = "suggestedFlag")
     @Mapping(target = "featured", source = "effective")
-    BowlingEntryDto toBowlingDto(BowlingEntry entry, ResultSide side, Boolean suggestedFlag, Boolean effective);
+    BowlingEntryDto toBowlingDto(
+            BowlingEntry entry, ResultSide side, Boolean suggestedFlag, Boolean effective, Integer derivedWickets);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "matchInningsId", source = "inningsId")
@@ -82,6 +88,7 @@ public interface ScorecardMapper {
     @Mapping(target = "maidens", source = "dto.maidens", defaultValue = "0")
     @Mapping(target = "runs", source = "dto.runs", defaultValue = "0")
     @Mapping(target = "wickets", source = "dto.wickets", defaultValue = "0")
+    @Mapping(target = "wicketsSource", source = "dto.wicketsSource", defaultValue = "MANUAL")
     BowlingEntry toBowlingEntity(BowlingEntryDto dto, UUID inningsId, UUID playerId);
 
     @Mapping(target = "id", source = "entry.id")
@@ -90,7 +97,14 @@ public interface ScorecardMapper {
     @Mapping(target = "playerClientKey", ignore = true)
     @Mapping(target = "suggested", source = "suggestedFlag")
     @Mapping(target = "featured", source = "effective")
-    FieldingEntryDto toFieldingDto(FieldingEntry entry, ResultSide side, Boolean suggestedFlag, Boolean effective);
+    @Mapping(target = "catches", source = "entry.catches")
+    @Mapping(target = "stumpings", source = "entry.stumpings")
+    @Mapping(target = "runOuts", source = "entry.runOuts")
+    @Mapping(target = "derivedCatches", source = "derived.catches")
+    @Mapping(target = "derivedStumpings", source = "derived.stumpings")
+    @Mapping(target = "derivedRunOuts", source = "derived.runOuts")
+    FieldingEntryDto toFieldingDto(
+            FieldingEntry entry, ResultSide side, Boolean suggestedFlag, Boolean effective, DismissalCredits.Credit derived);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "matchInningsId", source = "inningsId")
@@ -99,6 +113,7 @@ public interface ScorecardMapper {
     @Mapping(target = "catches", source = "dto.catches", defaultValue = "0")
     @Mapping(target = "stumpings", source = "dto.stumpings", defaultValue = "0")
     @Mapping(target = "runOuts", source = "dto.runOuts", defaultValue = "0")
+    @Mapping(target = "creditsSource", source = "dto.creditsSource", defaultValue = "MANUAL")
     FieldingEntry toFieldingEntity(FieldingEntryDto dto, UUID inningsId, UUID playerId);
 
     @Mapping(target = "playerClientKey", ignore = true)
@@ -110,6 +125,6 @@ public interface ScorecardMapper {
     @Mapping(target = "resultPlayerId", source = "playerId")
     MatchAward toAwardEntity(MatchAwardDto dto, UUID resultId, UUID playerId);
 
-    @Mapping(target = "extras", source = "extras")
-    ScorecardInningsDto toInningsDto(MatchInnings innings);
+    @Mapping(target = "extras", source = "innings.extras")
+    ScorecardInningsDto toInningsDto(MatchInnings innings, boolean nonBowlerWicketsDerived);
 }

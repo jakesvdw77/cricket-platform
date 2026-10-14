@@ -46,6 +46,16 @@ public enum DismissalType {
         return wicket && !bowlerCredited;
     }
 
+    /** Whether a bowler may be named on this dismissal (docs/specs/101: not for a run-out or the non-bowler wickets). */
+    public boolean allowsBowler() {
+        return bowlerCredited;
+    }
+
+    /** Whether a fielder may be named: the catcher, the keeper who stumped, or the fielder in a run-out. */
+    public boolean allowsFielder() {
+        return this == CAUGHT || this == STUMPED || this == RUN_OUT;
+    }
+
     /** Whether the row batted at all: everything except {@link #DID_NOT_BAT}. */
     public boolean batted() {
         return this != DID_NOT_BAT;

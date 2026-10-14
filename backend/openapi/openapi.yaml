@@ -5765,7 +5765,7 @@ paths:
       tags:
       - match-result-controller
       operationId: linkResultPlayer
-      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile or a player already linked; 409 when the profile is already on that side's list."
+      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable); 409 when the profile is already on that side's list."
       parameters:
       - name: clubId
         in: path
@@ -5834,6 +5834,59 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageGuestNameDto"
+  /api/v1/manage/clubs/{clubId}/results/opposition-names:
+    get:
+      tags:
+      - match-result-controller
+      operationId: oppositionNames
+      description: "Suggestions only (docs/specs/101): distinct names from earlier opposition players of this club against the same opposition (leagueTeamId when given or found on the match, else the normalised opposition team name), most recent first, with a count and the latest fixture date. With matchId the opposition is read from that match when not given and names already on its result are left out. Optionally limited to fixtures of one of our teams and filtered by a contains search. Paged. Never returns another club's rows; no identity is implied."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueTeamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: opposition
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageOppositionNameDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -8293,7 +8346,7 @@ components:
             $ref: "#/components/schemas/OverviewPollDto"
         recentResults:
           type: array
-          description: Always empty for now: results exist (spec 100) but the overview is not yet fed from them.
+          description: "Always empty for now: results exist (spec 100) but the overview is not yet fed from them."
           items:
             $ref: "#/components/schemas/OverviewResultDto"
         quickActions:
@@ -10726,7 +10779,10 @@ components:
             $ref: "#/components/schemas/InningsDto"
         hasScorecard:
           type: boolean
-          description: "True when our side's scorecard has at least one player (docs/specs/101); detailLevel is then OUR_SIDE."
+          description: "True when the scorecard has at least one player (docs/specs/101); detailLevel is then OUR_SIDE or FULL."
+        hasOppositionScorecard:
+          type: boolean
+          description: "True when the scorecard holds at least one opposition player (docs/specs/101); detailLevel is then FULL."
     ResultListItemDto:
       type: object
       description: "One Results list row (docs/specs/100): the match with its result. result is null only if the result vanished between the two reads."
@@ -10828,8 +10884,9 @@ components:
           - RESULT
           - TOSS
           - SCORES
-          - OUR_BATTING
-          - OUR_BOWLING
+          - TEAMS
+          - BATTING
+          - BOWLING
           - AWARDS
         side:
           type: string
@@ -10846,7 +10903,7 @@ components:
           type: string
     ResultPlayerDto:
       type: object
-      description: "Who played for one of our sides (docs/specs/101). On write send id for a player already on the scorecard, or a new clientKey that entries refer to; firstName, lastName, guest, linkedBy and linkedAt are read-only. A guest has no playerProfileId and a displayName."
+      description: "Who played for a side (docs/specs/101): one of our sides, or the opposition as typed names. On write send id for a player already on the scorecard, or a new clientKey that entries refer to; firstName, lastName, guest, linkedBy and linkedAt are read-only. A guest has no playerProfileId and a displayName."
       properties:
         id:
           type: string
@@ -10871,6 +10928,9 @@ components:
           format: uuid
         substitute:
           type: boolean
+        opposition:
+          type: boolean
+          description: "True for a player of the side that is not ours: a name only (no playerProfileId, plannedBattingOrder or replacedPlayerProfileId), validated against the match; never linkable. guest is false for one."
         firstName:
           type: string
         lastName:
@@ -10938,6 +10998,12 @@ components:
         sixes:
           type: integer
           format: int32
+        bowlerPlayerId:
+          type: string
+          description: "The dismissal's bowler: the id of a player on the scorecard, or the clientKey of a new player in the same body, or null. A player of the fielding side of the innings, and only where howOut allows a bowler (BOWLED, CAUGHT, CAUGHT_AND_BOWLED, LBW, STUMPED, HIT_WICKET). On read an id."
+        fielderPlayerId:
+          type: string
+          description: "The dismissal's fielder (catcher, keeper who stumped, run-out fielder): an id or a clientKey as bowlerPlayerId. Only for CAUGHT, STUMPED and RUN_OUT. On read an id."
         featuredOverride:
           type: string
           enum:
@@ -10990,6 +11056,16 @@ components:
         noBalls:
           type: integer
           format: int32
+        dots:
+          type: integer
+          format: int32
+          description: "Dot balls bowled, optional; at most balls (DOTS_EXCEED_BALLS on save)."
+        wicketsSource:
+          type: string
+          enum:
+          - MANUAL
+          - DERIVED
+          description: "DERIVED: wickets is recomputed from the dismissals on every save (the sent number is ignored); MANUAL (default): never touched."
         featuredOverride:
           type: string
           enum:
@@ -10999,6 +11075,10 @@ components:
           type: boolean
         featured:
           type: boolean
+        derivedWickets:
+          type: integer
+          format: int32
+          description: "Read-only: the wickets the dismissals credit this bowler, always computed."
     FieldingEntryDto:
       type: object
       description: "One fielder of our side in the innings in which battingSide (the other side) batted (docs/specs/101)."
@@ -11030,6 +11110,12 @@ components:
         runOuts:
           type: integer
           format: int32
+        creditsSource:
+          type: string
+          enum:
+          - MANUAL
+          - DERIVED
+          description: "DERIVED: the three counters are recomputed from the dismissals on every save (a row whose credits fall to zero is removed); MANUAL (default): never touched."
         featuredOverride:
           type: string
           enum:
@@ -11039,9 +11125,19 @@ components:
           type: boolean
         featured:
           type: boolean
+        derivedCatches:
+          type: integer
+          format: int32
+          description: "Read-only: the catches the dismissals credit this fielder (a caught-and-bowled credits the bowler)."
+        derivedStumpings:
+          type: integer
+          format: int32
+        derivedRunOuts:
+          type: integer
+          format: int32
     MatchAwardDto:
       type: object
-      description: "Player of the match (docs/specs/101): PLAYER_OF_MATCH is the official one (one per result), TEAM_PLAYER_OF_MATCH the club team own (one per ours side). resultPlayerId or playerClientKey names one of our players; displayName is free text for an opposition player; playerName is read-only."
+      description: "Player of the match (docs/specs/101): PLAYER_OF_MATCH is the official one (one per result), TEAM_PLAYER_OF_MATCH the club team own (one per ours side). resultPlayerId or playerClientKey names a player on the scorecard (the official award may name an opposition player; the team award is ours only); displayName is free text for anyone not on a list, and on save the server always copies the named player's name into it so the award keeps the name if the row is removed; playerName is read-only."
       properties:
         id:
           type: string
@@ -11095,9 +11191,12 @@ components:
         nonBowlerWickets:
           type: integer
           format: int32
+        nonBowlerWicketsDerived:
+          type: boolean
+          description: "True when the innings has batting entries: nonBowlerWickets is then derived from the dismissals on every save and the input is read-only."
     ScorecardSideStatusDto:
       type: object
-      description: "How complete one ours side scorecard is (docs/specs/101)."
+      description: "How complete one side scorecard is (docs/specs/101); both sides are reported. A team list alone is PARTIAL."
       properties:
         side:
           type: string
@@ -11112,7 +11211,7 @@ components:
           - COMPLETE
     ScorecardDto:
       type: object
-      description: "Our side scorecard (docs/specs/101), one or two ours sides. The optional scorecard of a ResultDraft: absent means untouched, present replaces the whole draft scorecard in one transaction. On write innings and status are ignored."
+      description: "The scorecard (docs/specs/101): our side(s) and, as typed names, the opposition. The optional scorecard of a ResultDraft: absent means untouched, present replaces the whole draft scorecard in one transaction. On write innings and status are ignored."
       properties:
         players:
           type: array
@@ -11182,6 +11281,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScorecardPrefillPlayerDto"
+        selectionState:
+          type: string
+          enum:
+          - NONE
+          - NOT_ANNOUNCED
+          - ANNOUNCED
+          description: "NONE: no selection found for this team; NOT_ANNOUNCED: a selection exists but is not announced; ANNOUNCED. Drives the not-selected notice."
     ScorecardPrefillDto:
       type: object
       description: "The proposed line-up per ours side of a match, from the selection (docs/specs/101): two entries in a derby. Writes nothing."
@@ -11209,6 +11315,46 @@ components:
         lastUsed:
           type: string
           format: date-time
+    OppositionNameDto:
+      type: object
+      description: "An opposition name used in an earlier fixture of this club against the same opposition, offered as a suggestion on the Teams step (docs/specs/101). Text only: no identity, no statistics."
+      properties:
+        displayName:
+          type: string
+        uses:
+          type: integer
+          format: int64
+        lastMatchDate:
+          type: string
+          format: date-time
+    PageOppositionNameDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/OppositionNameDto"
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        empty:
+          type: boolean
     PageGuestNameDto:
       type: object
       properties:

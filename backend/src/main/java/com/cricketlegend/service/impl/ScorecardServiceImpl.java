@@ -4,6 +4,7 @@ import com.cricketlegend.config.AccessService;
 import com.cricketlegend.domain.AwardType;
 import com.cricketlegend.domain.BattingEntry;
 import com.cricketlegend.domain.BowlingEntry;
+import com.cricketlegend.domain.CreditSource;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.FeaturedOverride;
 import com.cricketlegend.domain.FieldingEntry;
@@ -21,6 +22,7 @@ import com.cricketlegend.domain.ResultPlayer;
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ResultStatus;
 import com.cricketlegend.domain.ResultWizardStep;
+import com.cricketlegend.domain.ScorecardSelectionState;
 import com.cricketlegend.domain.ScorecardStatus;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.dto.BattingEntryDto;
@@ -28,6 +30,7 @@ import com.cricketlegend.dto.BowlingEntryDto;
 import com.cricketlegend.dto.FieldingEntryDto;
 import com.cricketlegend.dto.GuestNameDto;
 import com.cricketlegend.dto.MatchAwardDto;
+import com.cricketlegend.dto.OppositionNameDto;
 import com.cricketlegend.dto.ResultDraft;
 import com.cricketlegend.dto.ResultIssueDto;
 import com.cricketlegend.dto.ResultPlayerDto;
@@ -36,6 +39,7 @@ import com.cricketlegend.dto.ScorecardPrefillDto;
 import com.cricketlegend.dto.ScorecardSideStatusDto;
 import com.cricketlegend.exception.InvalidResultException;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.exception.OppositionPlayerNotLinkableException;
 import com.cricketlegend.exception.PlayerAlreadyInResultException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.ScorecardMapper;
@@ -55,6 +59,9 @@ import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.ScorecardService;
+import com.cricketlegend.service.support.DismissalCredits;
+import com.cricketlegend.service.support.DismissalCredits.Credit;
+import com.cricketlegend.service.support.DismissalCredits.Dismissal;
 import com.cricketlegend.service.support.ResultValidator.ErrorCode;
 import com.cricketlegend.service.support.ScorecardRows;
 import com.cricketlegend.service.support.SelectionEligibility;
@@ -82,11 +89,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * docs/specs/101-match-results-our-side-scorecard.md. Our side's scorecard hangs off the result's regular innings (which
- * the result upsert reconciles in place, so rows survive a re-save). A whole-scorecard save deletes the entries and the
+ * docs/specs/101-match-results-our-side-scorecard.md. The scorecard (ours and, as typed names, the opposition's) hangs
+ * off the result's regular innings (which the result upsert reconciles in place, so rows survive a re-save). A whole-scorecard save deletes the entries and the
  * awards, reconciles the players by id (so a swap or a link stays one row) and re-inserts the entries, all inside the
- * result's own transaction. Standout suggestions are computed on every read by {@link StandoutRules}; only the
- * manager's override is stored on a draft, and the effective value is frozen at publish.
+ * result's own transaction, then recomputes what the dismissals decide (the non-bowler wickets of an innings with batting
+ * entries, DERIVED bowling and fielding rows) with {@link DismissalCredits}. Standout suggestions are computed on every
+ * read by {@link StandoutRules} for our players only; only the manager's override is stored on a draft, and the
+ * effective value is frozen at publish.
  */
 @Service
 public class ScorecardServiceImpl implements ScorecardService {
@@ -203,7 +212,8 @@ public class ScorecardServiceImpl implements ScorecardService {
                         info == null ? null : info.lastName(), null, null, true));
             }
             Team team = teams.get(teamId);
-            sides.add(new ScorecardPrefillDto.Side(side, teamId, team == null ? null : team.getName(), players));
+            sides.add(new ScorecardPrefillDto.Side(side, teamId, team == null ? null : team.getName(), players,
+                    selectionState(matchSide, !selected.getOrDefault(side, List.of()).isEmpty())));
         }
         return new ScorecardPrefillDto(sides);
     }
@@ -266,13 +276,51 @@ public class ScorecardServiceImpl implements ScorecardService {
                 .map(v -> new GuestNameDto(v.getDisplayName(), v.getUses(), v.getLastUsed()));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OppositionNameDto> oppositionNames(
+            Authentication authentication, UUID clubId, UUID matchId, UUID teamId, UUID leagueTeamId, String opposition,
+            String q, Pageable pageable) {
+        UUID leagueTeam = leagueTeamId;
+        String name = opposition;
+        Set<String> excluded = new HashSet<>();
+        if (matchId != null) {
+            Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
+            if (leagueTeam == null && (name == null || name.isBlank())) {
+                if (match.getHomeTeamId() == null) {
+                    leagueTeam = match.getHomeLeagueTeamId();
+                    name = match.getHomeTeamName();
+                } else if (match.getAwayTeamId() == null) {
+                    leagueTeam = match.getAwayLeagueTeamId();
+                    name = match.getAwayTeamName();
+                }
+            }
+            resultRepository.findByMatchId(matchId).ifPresent(result -> playerRepository
+                    .findByMatchResultIdOrderByCreatedAtAscIdAsc(result.getId()).stream()
+                    .filter(ResultPlayer::isOpposition)
+                    .forEach(p -> excluded.add(ScorecardContext.normalise(p.getDisplayName()))));
+        }
+        String normalisedName = ScorecardContext.normalise(name);
+        if (leagueTeam == null && normalisedName.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        excluded.add("<none>"); // never empty: an empty IN list is not valid SQL
+        Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return playerRepository
+                .findOppositionNames(
+                        clubId, teamId == null, teamId == null ? new UUID(0, 0) : teamId, leagueTeam != null,
+                        leagueTeam == null ? new UUID(0, 0) : leagueTeam, normalisedName, excluded,
+                        q == null ? "" : q.trim(), unsorted)
+                .map(v -> new OppositionNameDto(v.getDisplayName(), v.getUses(), v.getLastMatchDate()));
+    }
+
     // ---- writes ----
 
     @Override
     @Transactional
     public void replace(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy) {
         Map<ResultSide, UUID> ours = oursSides(match);
-        checkSidesAreOurs(scorecard, ours);
+        checkSides(scorecard, ours);
         checkProfilesBelongToClub(scorecard, clubId);
 
         List<MatchInnings> innings = inningsRepository.findByMatchResultIdOrderBySequence(matchResultId);
@@ -307,7 +355,7 @@ public class ScorecardServiceImpl implements ScorecardService {
             if (dto.id() != null) {
                 player = existing.get(dto.id());
                 if (player == null) {
-                    throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.OUR_BATTING, dto.side(),
+                    throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.TEAMS, dto.side(),
                             "A player on the scorecard does not belong to this result.");
                 }
                 mapper.applyPlayer(dto, player);
@@ -336,21 +384,33 @@ public class ScorecardServiceImpl implements ScorecardService {
         List<BattingEntry> batting = new ArrayList<>();
         for (BattingEntryDto dto : scorecard.batting()) {
             BattingEntry entry = mapper.toBattingEntity(
-                    dto, regularBySide.get(dto.battingSide()), resolve(playerIdByRef, dto.resultPlayerId(), dto.playerClientKey()));
+                    dto, regularBySide.get(dto.battingSide()),
+                    resolve(playerIdByRef, dto.resultPlayerId(), dto.playerClientKey()),
+                    resolveOptional(playerIdByRef, dto.bowlerPlayerId()),
+                    resolveOptional(playerIdByRef, dto.fielderPlayerId()));
             if (entry.getHowOut() == DismissalType.DID_NOT_BAT) {
                 entry.setPosition(null);
             }
             batting.add(entry);
         }
-        battingRepository.saveAll(batting);
-        bowlingRepository.saveAll(scorecard.bowling().stream()
+        List<BowlingEntry> bowling = scorecard.bowling().stream()
                 .map(dto -> mapper.toBowlingEntity(dto, regularBySide.get(dto.battingSide()),
                         resolve(playerIdByRef, dto.resultPlayerId(), dto.playerClientKey())))
-                .toList());
-        fieldingRepository.saveAll(scorecard.fielding().stream()
+                .collect(Collectors.toCollection(ArrayList::new));
+        List<FieldingEntry> fielding = scorecard.fielding().stream()
                 .map(dto -> mapper.toFieldingEntity(dto, regularBySide.get(dto.battingSide()),
                         resolve(playerIdByRef, dto.resultPlayerId(), dto.playerClientKey())))
-                .toList());
+                .collect(Collectors.toCollection(ArrayList::new));
+        List<MatchInnings> regular = innings.stream().filter(i -> i.getKind() == InningsKind.REGULAR).toList();
+        fielding = recomputeFromDismissals(regular, batting, bowling, fielding);
+        inningsRepository.saveAll(regular);
+        battingRepository.saveAll(batting);
+        bowlingRepository.saveAll(bowling);
+        fieldingRepository.saveAll(fielding);
+
+        Map<UUID, ResultPlayer> playersById = persisted.stream().collect(Collectors.toMap(ResultPlayer::getId, p -> p));
+        Map<UUID, PlayerInfo> infos = eligibility.loadPlayers(persisted.stream()
+                .map(ResultPlayer::getPlayerProfileId).filter(Objects::nonNull).collect(Collectors.toSet()));
         List<MatchAward> awards = new ArrayList<>();
         for (MatchAwardDto dto : scorecard.awards()) {
             if (dto.awardType() == AwardType.TEAM_PLAYER_OF_MATCH && !ours.containsKey(dto.side())) {
@@ -361,12 +421,94 @@ public class ScorecardServiceImpl implements ScorecardService {
                     ? null
                     : resolve(playerIdByRef, dto.resultPlayerId(), dto.playerClientKey());
             MatchAward award = mapper.toAwardEntity(dto, matchResultId, playerId);
-            award.setDisplayName(dto.displayName() == null || dto.displayName().isBlank()
-                    ? null : dto.displayName().trim());
+            ResultPlayer awarded = playerId == null ? null : playersById.get(playerId);
+            if (awarded != null) {
+                // the name is always copied and refreshed, so the award keeps it if an opposition row is removed later
+                award.setDisplayName(nameOf(awarded, infos));
+                if (dto.awardType() == AwardType.PLAYER_OF_MATCH) {
+                    award.setSide(awarded.getSide());
+                }
+            } else {
+                award.setDisplayName(dto.displayName() == null || dto.displayName().isBlank()
+                        ? null : dto.displayName().trim());
+            }
             awards.add(award);
         }
         awardRepository.saveAll(awards);
         awardRepository.flush();
+    }
+
+    /**
+     * Writes what the dismissals decide, per innings that has batting entries: its non-bowler wickets, the wickets of
+     * every DERIVED bowling row and the credits of every DERIVED fielding row (a DERIVED fielding row whose credits fall
+     * to zero is dropped, and one is added for a fielder the dismissals credit who has no row). MANUAL rows are never
+     * touched. An innings without batting entries has nothing to derive from, so its rows keep their values. Returns
+     * the fielding rows to store.
+     */
+    private List<FieldingEntry> recomputeFromDismissals(
+            List<MatchInnings> regular, List<BattingEntry> batting, List<BowlingEntry> bowling,
+            List<FieldingEntry> fielding) {
+        List<FieldingEntry> stored = new ArrayList<>();
+        Set<UUID> derivedInnings = new HashSet<>();
+        for (MatchInnings innings : regular) {
+            List<BattingEntry> batters = batting.stream()
+                    .filter(e -> innings.getId().equals(e.getMatchInningsId())).toList();
+            if (batters.isEmpty()) {
+                continue;
+            }
+            derivedInnings.add(innings.getId());
+            innings.setNonBowlerWickets(
+                    (int) batters.stream().filter(e -> e.getHowOut() != null && e.getHowOut().isNonBowlerWicket()).count());
+            Map<UUID, Credit> credits = DismissalCredits.derive(batters.stream()
+                    .map(e -> new Dismissal<>(e.getHowOut(), e.getBowlerResultPlayerId(), e.getFielderResultPlayerId()))
+                    .toList());
+            bowling.stream()
+                    .filter(b -> innings.getId().equals(b.getMatchInningsId()) && b.getWicketsSource() == CreditSource.DERIVED)
+                    .forEach(b -> b.setWickets(credits.getOrDefault(b.getResultPlayerId(), Credit.NONE).wickets()));
+            Set<UUID> withRow = new HashSet<>();
+            for (FieldingEntry f : fielding) {
+                if (!innings.getId().equals(f.getMatchInningsId())) {
+                    continue;
+                }
+                withRow.add(f.getResultPlayerId());
+                if (f.getCreditsSource() == CreditSource.DERIVED) {
+                    Credit c = credits.getOrDefault(f.getResultPlayerId(), Credit.NONE);
+                    f.setCatches(c.catches());
+                    f.setStumpings(c.stumpings());
+                    f.setRunOuts(c.runOuts());
+                }
+            }
+            credits.forEach((playerId, c) -> {
+                if (c.hasFielding() && !withRow.contains(playerId)) {
+                    stored.add(FieldingEntry.builder()
+                            .matchInningsId(innings.getId()).resultPlayerId(playerId)
+                            .catches(c.catches()).stumpings(c.stumpings()).runOuts(c.runOuts())
+                            .creditsSource(CreditSource.DERIVED).build());
+                }
+            });
+        }
+        for (FieldingEntry f : fielding) {
+            boolean empty = f.getCatches() == 0 && f.getStumpings() == 0 && f.getRunOuts() == 0;
+            if (!(f.getCreditsSource() == CreditSource.DERIVED && derivedInnings.contains(f.getMatchInningsId()) && empty)) {
+                stored.add(f);
+            }
+        }
+        return stored;
+    }
+
+    @Override
+    @Transactional
+    public void refreshNonBowlerWickets(UUID matchResultId) {
+        ScorecardRows loaded = load(matchResultId);
+        for (MatchInnings innings : loaded.innings()) {
+            List<BattingEntry> batters = loaded.batting().stream()
+                    .filter(e -> innings.getId().equals(e.getMatchInningsId())).toList();
+            if (!batters.isEmpty()) {
+                innings.setNonBowlerWickets(
+                        (int) batters.stream().filter(e -> e.getHowOut() != null && e.getHowOut().isNonBowlerWicket()).count());
+            }
+        }
+        inningsRepository.saveAll(loaded.innings());
     }
 
     @Override
@@ -381,6 +523,10 @@ public class ScorecardServiceImpl implements ScorecardService {
                 .findById(resultPlayerId)
                 .filter(p -> p.getMatchResultId().equals(result.getId()))
                 .orElseThrow(() -> new NotFoundException("No such player on this result: " + resultPlayerId));
+        if (player.isOpposition()) {
+            throw new OppositionPlayerNotLinkableException(
+                    "An opposition player is a name only and cannot be linked to a registered player.");
+        }
         if (player.getPlayerProfileId() != null) {
             throw new ValidationException("This player is already linked to a registered player.");
         }
@@ -408,9 +554,13 @@ public class ScorecardServiceImpl implements ScorecardService {
     public void freezeFeatured(UUID matchResultId, Match match) {
         ScorecardRows loaded = load(matchResultId);
         Set<UUID> suggested = suggestions(loaded);
-        loaded.batting().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
-        loaded.bowling().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
-        loaded.fielding().forEach(e -> e.setFeatured(effective(e.getFeaturedOverride(), suggested.contains(e.getId()), true)));
+        Set<UUID> opposition = oppositionPlayerIds(loaded);
+        loaded.batting().forEach(e -> e.setFeatured(opposition.contains(e.getResultPlayerId()) ? null
+                : effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
+        loaded.bowling().forEach(e -> e.setFeatured(opposition.contains(e.getResultPlayerId()) ? null
+                : effective(e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))));
+        loaded.fielding().forEach(e -> e.setFeatured(opposition.contains(e.getResultPlayerId()) ? null
+                : effective(e.getFeaturedOverride(), suggested.contains(e.getId()), true)));
         battingRepository.saveAll(loaded.batting());
         bowlingRepository.saveAll(loaded.bowling());
         fieldingRepository.saveAll(loaded.fielding());
@@ -455,7 +605,7 @@ public class ScorecardServiceImpl implements ScorecardService {
             }
         });
         Map<String, UUID> registered = new HashMap<>();
-        if (scorecard.players().stream().anyMatch(p -> p.playerProfileId() == null)) {
+        if (scorecard.players().stream().anyMatch(p -> p.playerProfileId() == null && !p.opposition())) {
             for (PlayerNameView view : playerProfileRepository.findActiveNamesByClubId(match.getClubId())) {
                 registered.putIfAbsent(
                         ScorecardContext.normalise(view.getFirstName() + " " + view.getLastName()),
@@ -471,7 +621,17 @@ public class ScorecardServiceImpl implements ScorecardService {
                 names.put(id, info.fullName());
             }
         });
-        return new ScorecardContext(maxBalls, squads, registered, names);
+        Map<ResultSide, ScorecardSelectionState> selection = new HashMap<>();
+        Map<UUID, MatchSide> sidesByTeam = matchSideRepository.findByMatchId(match.getId()).stream()
+                .collect(Collectors.toMap(MatchSide::getTeamId, side -> side, (a, b) -> a));
+        oursSides(match).forEach((side, teamId) -> {
+            if (scorecard.players().stream().anyMatch(p -> p.side() == side)) {
+                MatchSide matchSide = sidesByTeam.get(teamId);
+                selection.put(side, selectionState(
+                        matchSide, matchSide != null && matchSidePlayerRepository.countByMatchSideId(matchSide.getId()) > 0));
+            }
+        });
+        return new ScorecardContext(maxBalls, squads, registered, names, selection);
     }
 
     // ---- building the read model ----
@@ -500,6 +660,12 @@ public class ScorecardServiceImpl implements ScorecardService {
                 .map(ResultPlayer::getPlayerProfileId).filter(Objects::nonNull).collect(Collectors.toSet()));
         Map<UUID, ResultPlayer> playersById = loaded.players().stream()
                 .collect(Collectors.toMap(ResultPlayer::getId, p -> p));
+        Set<UUID> opposition = oppositionPlayerIds(loaded);
+        Map<UUID, Map<UUID, Credit>> creditsByInnings = new HashMap<>();
+        loaded.batting().stream().collect(Collectors.groupingBy(BattingEntry::getMatchInningsId))
+                .forEach((inningsId, rows) -> creditsByInnings.put(inningsId, DismissalCredits.derive(rows.stream()
+                        .map(e -> new Dismissal<>(e.getHowOut(), e.getBowlerResultPlayerId(), e.getFielderResultPlayerId()))
+                        .toList())));
 
         List<ResultPlayerDto> players = loaded.players().stream().map(p -> {
             PlayerInfo info = p.getPlayerProfileId() == null ? null : names.get(p.getPlayerProfileId());
@@ -510,19 +676,35 @@ public class ScorecardServiceImpl implements ScorecardService {
         List<BattingEntryDto> batting = loaded.batting().stream()
                 .sorted(Comparator.comparing((BattingEntry e) -> sequenceByInnings.get(e.getMatchInningsId()))
                         .thenComparing(BattingEntry::getPosition, Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(e -> mapper.toBattingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))))
+                .map(e -> opposition.contains(e.getResultPlayerId())
+                        ? mapper.toBattingDto(e, sideByInnings.get(e.getMatchInningsId()), null, null)
+                        : mapper.toBattingDto(e, sideByInnings.get(e.getMatchInningsId()),
+                                suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))))
                 .toList();
         List<BowlingEntryDto> bowling = loaded.bowling().stream()
                 .sorted(Comparator.comparing((BowlingEntry e) -> sequenceByInnings.get(e.getMatchInningsId()))
                         .thenComparing(BowlingEntry::getBowlingOrder, Comparator.nullsLast(Comparator.naturalOrder())))
-                .map(e -> mapper.toBowlingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e))))
+                .map(e -> {
+                    int derivedWickets = creditsByInnings.getOrDefault(e.getMatchInningsId(), Map.of())
+                            .getOrDefault(e.getResultPlayerId(), Credit.NONE).wickets();
+                    return opposition.contains(e.getResultPlayerId())
+                            ? mapper.toBowlingDto(e, sideByInnings.get(e.getMatchInningsId()), null, null, derivedWickets)
+                            : mapper.toBowlingDto(e, sideByInnings.get(e.getMatchInningsId()),
+                                    suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), canBeFeatured(e)),
+                                    derivedWickets);
+                })
                 .toList();
         List<FieldingEntryDto> fielding = loaded.fielding().stream()
                 .sorted(Comparator.comparing((FieldingEntry e) -> sequenceByInnings.get(e.getMatchInningsId())))
-                .map(e -> mapper.toFieldingDto(e, sideByInnings.get(e.getMatchInningsId()),
-                        suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), true)))
+                .map(e -> {
+                    Credit derived = creditsByInnings.getOrDefault(e.getMatchInningsId(), Map.of())
+                            .getOrDefault(e.getResultPlayerId(), Credit.NONE);
+                    return opposition.contains(e.getResultPlayerId())
+                            ? mapper.toFieldingDto(e, sideByInnings.get(e.getMatchInningsId()), null, null, derived)
+                            : mapper.toFieldingDto(e, sideByInnings.get(e.getMatchInningsId()),
+                                    suggested.contains(e.getId()), shown(frozen, e.getFeatured(), e.getFeaturedOverride(), suggested.contains(e.getId()), true),
+                                    derived);
+                })
                 .toList();
         List<MatchAwardDto> awardDtos = awards.stream().map(a -> {
             ResultPlayer player = a.getResultPlayerId() == null ? null : playersById.get(a.getResultPlayerId());
@@ -530,8 +712,10 @@ public class ScorecardServiceImpl implements ScorecardService {
         }).toList();
         return new ScorecardDto(
                 players, batting, bowling, fielding, awardDtos,
-                loaded.innings().stream().map(mapper::toInningsDto).toList(),
-                statuses(match, loaded));
+                loaded.innings().stream()
+                        .map(i -> mapper.toInningsDto(i, creditsByInnings.containsKey(i.getId())))
+                        .toList(),
+                statuses(loaded));
     }
 
     private static boolean shown(boolean frozen, Boolean stored, FeaturedOverride override, boolean suggested,
@@ -562,20 +746,24 @@ public class ScorecardServiceImpl implements ScorecardService {
     /** The ids of the entries the standout rules suggest, per innings (entry ids are unique across tables). */
     private Set<UUID> suggestions(ScorecardRows loaded) {
         Set<UUID> suggested = new HashSet<>();
+        Set<UUID> opposition = oppositionPlayerIds(loaded);
         for (MatchInnings innings : loaded.innings()) {
             List<StandoutRules.Batter<UUID>> batters = loaded.batting().stream()
                     .filter(e -> e.getMatchInningsId().equals(innings.getId())
+                            && !opposition.contains(e.getResultPlayerId())
                             && e.getHowOut() != null && e.getHowOut().batted() && e.getRuns() != null)
                     .map(e -> new StandoutRules.Batter<>(e.getId(), e.getRuns(), e.getBalls()))
                     .toList();
             suggested.addAll(StandoutRules.battingSuggestions(batters, innings.getRuns()));
             List<StandoutRules.Bowler<UUID>> bowlers = loaded.bowling().stream()
-                    .filter(e -> e.getMatchInningsId().equals(innings.getId()))
+                    .filter(e -> e.getMatchInningsId().equals(innings.getId())
+                            && !opposition.contains(e.getResultPlayerId()))
                     .map(e -> new StandoutRules.Bowler<>(e.getId(), e.getBalls(), e.getRuns(), e.getWickets()))
                     .toList();
             suggested.addAll(StandoutRules.bowlingSuggestions(bowlers, innings.getRuns(), innings.getBalls()));
             List<StandoutRules.Fielder<UUID>> fielders = loaded.fielding().stream()
-                    .filter(e -> e.getMatchInningsId().equals(innings.getId()))
+                    .filter(e -> e.getMatchInningsId().equals(innings.getId())
+                            && !opposition.contains(e.getResultPlayerId()))
                     .map(e -> new StandoutRules.Fielder<>(e.getId(), e.getCatches() + e.getStumpings() + e.getRunOuts()))
                     .toList();
             suggested.addAll(StandoutRules.fieldingSuggestions(fielders));
@@ -583,10 +771,13 @@ public class ScorecardServiceImpl implements ScorecardService {
         return suggested;
     }
 
-    /** NONE with no players; COMPLETE when each innings the side batted or bowled in has its rows; else PARTIAL. */
-    private List<ScorecardSideStatusDto> statuses(Match match, ScorecardRows loaded) {
+    /**
+     * Per side (the opposition's too): NONE with no players; COMPLETE when the side has at least one innings and each
+     * innings it batted or bowled in has its rows; else PARTIAL (a team list alone is partial).
+     */
+    private List<ScorecardSideStatusDto> statuses(ScorecardRows loaded) {
         List<ScorecardSideStatusDto> statuses = new ArrayList<>();
-        for (ResultSide side : oursSides(match).keySet().stream().sorted().toList()) {
+        for (ResultSide side : ResultSide.values()) {
             boolean hasPlayers = loaded.players().stream().anyMatch(p -> p.getSide() == side);
             if (!hasPlayers) {
                 statuses.add(new ScorecardSideStatusDto(side, ScorecardStatus.NONE));
@@ -600,7 +791,9 @@ public class ScorecardServiceImpl implements ScorecardService {
                     || loaded.batting().stream().anyMatch(e -> ownBatting.contains(e.getMatchInningsId()));
             boolean bowled = ownBowling.isEmpty()
                     || loaded.bowling().stream().anyMatch(e -> ownBowling.contains(e.getMatchInningsId()));
-            statuses.add(new ScorecardSideStatusDto(side, batted && bowled ? ScorecardStatus.COMPLETE : ScorecardStatus.PARTIAL));
+            boolean anyInnings = !ownBatting.isEmpty() || !ownBowling.isEmpty();
+            statuses.add(new ScorecardSideStatusDto(
+                    side, anyInnings && batted && bowled ? ScorecardStatus.COMPLETE : ScorecardStatus.PARTIAL));
         }
         return statuses;
     }
@@ -619,13 +812,35 @@ public class ScorecardServiceImpl implements ScorecardService {
         return ours;
     }
 
-    private void checkSidesAreOurs(ScorecardDto scorecard, Map<ResultSide, UUID> ours) {
+    /**
+     * A player of one of our sides is not marked as the opposition; a player of the other side must be, and only in a
+     * match with exactly one ours side (a derby has none).
+     */
+    private void checkSides(ScorecardDto scorecard, Map<ResultSide, UUID> ours) {
         for (ResultPlayerDto player : scorecard.players()) {
-            if (!ours.containsKey(player.side())) {
-                throw reject(ErrorCode.SCORECARD_PLAYER_NOT_OURS, ResultWizardStep.OUR_BATTING, player.side(),
-                        "Only a side that is one of this club's teams can have a scorecard.");
+            boolean oursSide = ours.containsKey(player.side());
+            if (player.opposition() && (oursSide || ours.size() != 1)) {
+                throw reject(ErrorCode.OPPOSITION_NOT_ALLOWED, ResultWizardStep.TEAMS, player.side(),
+                        "Only the other side of a match against an outside team can hold opposition players.");
+            }
+            if (!player.opposition() && !oursSide) {
+                throw reject(ErrorCode.SCORECARD_PLAYER_NOT_OURS, ResultWizardStep.TEAMS, player.side(),
+                        "A player of a side that is not one of this club's teams must be marked as the opposition.");
             }
         }
+    }
+
+    private static Set<UUID> oppositionPlayerIds(ScorecardRows loaded) {
+        return loaded.players().stream().filter(ResultPlayer::isOpposition).map(ResultPlayer::getId)
+                .collect(Collectors.toSet());
+    }
+
+    /** NONE with no selection rows (or no selection), NOT_ANNOUNCED for an unannounced one, else ANNOUNCED. */
+    private static ScorecardSelectionState selectionState(MatchSide matchSide, boolean hasPlayers) {
+        if (matchSide == null || !hasPlayers) {
+            return ScorecardSelectionState.NONE;
+        }
+        return matchSide.isAnnounced() ? ScorecardSelectionState.ANNOUNCED : ScorecardSelectionState.NOT_ANNOUNCED;
     }
 
     private void checkProfilesBelongToClub(ScorecardDto scorecard, UUID clubId) {
@@ -646,16 +861,29 @@ public class ScorecardServiceImpl implements ScorecardService {
         for (UUID id : profileIds) {
             PlayerProfile profile = profiles.get(id);
             if (profile == null || !profile.getClubId().equals(clubId)) {
-                throw reject(ErrorCode.SCORECARD_PLAYER_OTHER_CLUB, ResultWizardStep.OUR_BATTING, null,
+                throw reject(ErrorCode.SCORECARD_PLAYER_OTHER_CLUB, ResultWizardStep.TEAMS, null,
                         "A player on the scorecard does not belong to this club.");
             }
         }
     }
 
+    /** A dismissal's bowler or fielder: an id or a client key of a player in the body, or null for none. */
+    private static UUID resolveOptional(Map<String, UUID> playerIdByRef, String ref) {
+        if (ref == null || ref.isBlank()) {
+            return null;
+        }
+        UUID resolved = playerIdByRef.get(ref);
+        if (resolved == null) {
+            throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.BATTING, null,
+                    "A dismissal names a player who is not on the scorecard.");
+        }
+        return resolved;
+    }
+
     private static UUID resolve(Map<String, UUID> playerIdByRef, UUID id, String clientKey) {
         UUID resolved = id != null ? playerIdByRef.get(id.toString()) : (clientKey == null ? null : playerIdByRef.get(clientKey));
         if (resolved == null) {
-            throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.OUR_BATTING, null,
+            throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.TEAMS, null,
                     "A scorecard row refers to a player who is not on the scorecard.");
         }
         return resolved;

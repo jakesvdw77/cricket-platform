@@ -22,6 +22,7 @@ public interface MatchResultMapper {
 
     @Mapping(target = "playingAreaName", ignore = true)
     @Mapping(target = "hasScorecard", ignore = true)
+    @Mapping(target = "hasOppositionScorecard", ignore = true)
     @Mapping(target = "innings", expression = "java(toInningsDtos(innings, result.getBallsPerOver()))")
     MatchResultDto toDto(MatchResult result, List<MatchInnings> innings);
 

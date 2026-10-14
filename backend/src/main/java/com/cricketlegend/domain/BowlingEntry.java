@@ -58,6 +58,14 @@ public class BowlingEntry {
     @Column(name = "no_balls")
     private Integer noBalls;
 
+    /** Dot balls bowled, optional: at most {@link #balls}. */
+    private Integer dots;
+
+    /** DERIVED: {@link #wickets} is recomputed from the dismissals on every save; MANUAL: typed, never touched. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wickets_source", nullable = false)
+    private CreditSource wicketsSource;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "featured_override")
     private FeaturedOverride featuredOverride;

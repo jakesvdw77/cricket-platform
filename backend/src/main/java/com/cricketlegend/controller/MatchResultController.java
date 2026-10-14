@@ -8,6 +8,7 @@ import com.cricketlegend.dto.LinkResultPlayerRequest;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchResultDto;
+import com.cricketlegend.dto.OppositionNameDto;
 import com.cricketlegend.dto.PublishResultRequest;
 import com.cricketlegend.dto.ResultDraft;
 import com.cricketlegend.dto.ResultPlayerDto;
@@ -41,8 +42,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * docs/specs/100-match-results-core.md: the Results list, counters, filter options and capture picker feed, plus one
  * match's result (get, save draft, validate, publish, unpublish, delete draft). Club-scoped, manager only.
- * docs/specs/101: also our side's scorecard (prefill from the selection, read, link a guest) and the guest-name
- * suggestions; the scorecard itself is saved through the result's PUT.
+ * docs/specs/101: also the scorecard (prefill from the selection, read, link a guest) and the guest-name and
+ * opposition-name suggestions; the scorecard itself is saved through the result's PUT.
  */
 @RestController
 public class MatchResultController {
@@ -218,6 +219,22 @@ public class MatchResultController {
             @RequestParam(required = false) String q,
             Pageable pageable) {
         return ResponseEntity.ok(scorecardService.guestNames(authentication, clubId, teamId, q, pageable));
+    }
+
+    /** Suggestions of the opposition's names from earlier fixtures of this club (text only, no identity). */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/results/opposition-names")
+    public ResponseEntity<Page<OppositionNameDto>> oppositionNames(
+            Authentication authentication,
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) UUID matchId,
+            @RequestParam(required = false) UUID teamId,
+            @RequestParam(required = false) UUID leagueTeamId,
+            @RequestParam(required = false) String opposition,
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ResponseEntity.ok(scorecardService.oppositionNames(
+                authentication, clubId, matchId, teamId, leagueTeamId, opposition, q, pageable));
     }
 
     private ResultListCriteria criteria(

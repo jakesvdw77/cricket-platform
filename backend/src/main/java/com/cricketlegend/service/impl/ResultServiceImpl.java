@@ -7,6 +7,7 @@ import com.cricketlegend.domain.MatchInnings;
 import com.cricketlegend.domain.InningsKind;
 import com.cricketlegend.domain.MatchResult;
 import com.cricketlegend.domain.PlayingArea;
+import com.cricketlegend.domain.ResultPlayer;
 import com.cricketlegend.domain.ResultDetailLevel;
 import com.cricketlegend.domain.ResultListFocus;
 import com.cricketlegend.domain.ResultOutcomeType;
@@ -275,6 +276,8 @@ public class ResultServiceImpl implements ResultService {
         List<MatchInnings> innings = reconcileInnings(saved.getId(), withDefaults.innings(), existing != null);
         if (draft.scorecard() != null) {
             scorecardService.replace(saved.getId(), clubId, match, draft.scorecard(), person);
+        } else if (existing != null) {
+            scorecardService.refreshNonBowlerWickets(saved.getId());
         }
         return toDto(saved, innings);
     }
@@ -318,15 +321,27 @@ public class ResultServiceImpl implements ResultService {
         return kind + ":" + side;
     }
 
-    /** OUR_SIDE once there is a scorecard, else SUMMARY; FULL (slice 102) is never lowered. */
+    /**
+     * Set by the server from the team lists (docs/specs/101): SUMMARY with no players, OUR_SIDE with ours only (always
+     * the case in a derby), FULL once the opposition has players too. An opposition-only list (a draft that cannot be
+     * published) is FULL as well: it holds the opposition's scorecard.
+     */
     private ResultDetailLevel detailLevelFor(MatchResult existing, ResultDraft draft) {
-        if (existing != null && existing.getDetailLevel() == ResultDetailLevel.FULL) {
+        boolean ours;
+        boolean opposition;
+        if (draft.scorecard() != null) {
+            ours = draft.scorecard().players().stream().anyMatch(p -> !p.opposition());
+            opposition = draft.scorecard().players().stream().anyMatch(p -> p.opposition());
+        } else if (existing != null) {
+            ours = resultPlayerRepository.existsByMatchResultIdAndOpposition(existing.getId(), false);
+            opposition = resultPlayerRepository.existsByMatchResultIdAndOpposition(existing.getId(), true);
+        } else {
+            return ResultDetailLevel.SUMMARY;
+        }
+        if (opposition) {
             return ResultDetailLevel.FULL;
         }
-        boolean hasScorecard = draft.scorecard() != null
-                ? !draft.scorecard().isEmpty()
-                : existing != null && resultPlayerRepository.existsByMatchResultId(existing.getId());
-        return hasScorecard ? ResultDetailLevel.OUR_SIDE : ResultDetailLevel.SUMMARY;
+        return ours ? ResultDetailLevel.OUR_SIDE : ResultDetailLevel.SUMMARY;
     }
 
     @Override
@@ -452,7 +467,9 @@ public class ResultServiceImpl implements ResultService {
 
     private MatchResultDto toDto(MatchResult result, List<MatchInnings> innings) {
         MatchResultDto dto = mapper.toDto(result, innings)
-                .copyWithHasScorecard(resultPlayerRepository.existsByMatchResultId(result.getId()));
+                .copyWithScorecardFlags(
+                        resultPlayerRepository.existsByMatchResultId(result.getId()),
+                        resultPlayerRepository.existsByMatchResultIdAndOpposition(result.getId(), true));
         if (result.getPlayingAreaId() == null) {
             return dto;
         }
@@ -482,15 +499,15 @@ public class ResultServiceImpl implements ResultService {
                 ? Map.of()
                 : playingAreaRepository.findAllById(areaIds).stream()
                         .collect(Collectors.toMap(PlayingArea::getId, PlayingArea::getName));
-        Set<UUID> withScorecard = results.isEmpty()
-                ? Set.of()
-                : resultPlayerRepository.findByMatchResultIdIn(results.stream().map(MatchResult::getId).toList())
-                        .stream()
-                        .map(p -> p.getMatchResultId())
-                        .collect(Collectors.toSet());
+        List<ResultPlayer> listed = results.isEmpty()
+                ? List.of()
+                : resultPlayerRepository.findByMatchResultIdIn(results.stream().map(MatchResult::getId).toList());
+        Set<UUID> withScorecard = listed.stream().map(ResultPlayer::getMatchResultId).collect(Collectors.toSet());
+        Set<UUID> withOpposition = listed.stream().filter(ResultPlayer::isOpposition)
+                .map(ResultPlayer::getMatchResultId).collect(Collectors.toSet());
         for (MatchResult result : results) {
             MatchResultDto dto = mapper.toDto(result, inningsByResultId.getOrDefault(result.getId(), List.of()))
-                    .copyWithHasScorecard(withScorecard.contains(result.getId()));
+                    .copyWithScorecardFlags(withScorecard.contains(result.getId()), withOpposition.contains(result.getId()));
             byMatchId.put(result.getMatchId(), dto.withPlayingAreaName(
                     result.getPlayingAreaId() == null ? null : areaNames.get(result.getPlayingAreaId())));
         }

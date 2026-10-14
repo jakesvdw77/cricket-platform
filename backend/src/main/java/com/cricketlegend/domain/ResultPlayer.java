@@ -22,7 +22,7 @@ import lombok.Setter;
  * docs/specs/101-match-results-our-side-scorecard.md: who played for one of our sides in a result, once. A registered
  * player has {@link #playerProfileId}; a guest or borrowed player has only {@link #displayName} (the name as written,
  * kept after linking). Batting, bowling, fielding rows and awards point at this row, so a swap or a link is one update.
- * Only the result services touch it.
+ * Only the result services touch it. {@link #opposition} rows are the other side's typed names.
  */
 @Entity
 @Table(name = "result_player")
@@ -67,6 +67,13 @@ public class ResultPlayer {
     @Column(nullable = false)
     private boolean substitute;
 
+    /**
+     * True for a player of the side that is not ours: a name only, never a profile, never linked, never in a statistic
+     * (docs/specs/101; the table's CHECK holds the same rule).
+     */
+    @Column(nullable = false)
+    private boolean opposition;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -93,6 +100,6 @@ public class ResultPlayer {
     }
 
     public boolean isGuest() {
-        return playerProfileId == null;
+        return playerProfileId == null && !opposition;
     }
 }

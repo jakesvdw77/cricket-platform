@@ -2,6 +2,7 @@ package com.cricketlegend.service;
 
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.dto.GuestNameDto;
+import com.cricketlegend.dto.OppositionNameDto;
 import com.cricketlegend.dto.ResultDraft;
 import com.cricketlegend.dto.ResultPlayerDto;
 import com.cricketlegend.dto.ScorecardDto;
@@ -15,8 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 
 /**
- * docs/specs/101-match-results-our-side-scorecard.md: our side's scorecard of a match result (who played, batting,
- * bowling, fielding, awards). The manager-facing methods go through the Matches per-match administrable check; the
+ * docs/specs/101-match-results-our-side-scorecard.md: the scorecard of a match result, for either side (who played,
+ * batting, bowling, fielding, awards; the opposition's players are typed names). The manager-facing methods go through the Matches per-match administrable check; the
  * collaboration methods are called by {@link ResultService} inside its own transaction so the scorecard is saved,
  * validated, published and unpublished together with the result. Rows are only ever read by the result services (the
  * publish gate), so there is no non-manager read path.
@@ -45,6 +46,16 @@ public interface ScorecardService {
     Page<GuestNameDto> guestNames(
             Authentication authentication, UUID clubId, UUID teamId, String q, Pageable pageable);
 
+    /**
+     * Suggestions for the opposition's names: distinct names from earlier opposition players of this club against the
+     * same opposition (the league team id when given or found on the match, else the normalised team name), most recent
+     * first with a count, optionally for one of our teams and filtered by {@code q}. With {@code matchId} the opposition
+     * is read from that match when not given and the names already on its result are left out. Text only: no identity.
+     */
+    Page<OppositionNameDto> oppositionNames(
+            Authentication authentication, UUID clubId, UUID matchId, UUID teamId, UUID leagueTeamId, String opposition,
+            String q, Pageable pageable);
+
     // ---- collaboration with ResultService (same transaction) ----
 
     /**
@@ -53,6 +64,12 @@ public interface ScorecardService {
      * ours or a profile of another club.
      */
     void replace(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy);
+
+    /**
+     * Re-derives the non-bowler wickets of every innings that has batting entries from those entries. A save that left
+     * the scorecard untouched calls this so a client-sent figure cannot overwrite the derived one.
+     */
+    void refreshNonBowlerWickets(UUID matchResultId);
 
     /** The stored scorecard as part of a {@link ResultDraft}; an empty scorecard when there is none. */
     ScorecardDto load(UUID matchResultId, Match match);

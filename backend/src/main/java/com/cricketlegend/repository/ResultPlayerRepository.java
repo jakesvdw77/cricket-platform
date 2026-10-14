@@ -17,6 +17,9 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
 
     boolean existsByMatchResultId(UUID matchResultId);
 
+    /** Whether the result has an opposition ({@code true}) or an ours ({@code false}) player. */
+    boolean existsByMatchResultIdAndOpposition(UUID matchResultId, boolean opposition);
+
     List<ResultPlayer> findByMatchResultIdIn(Collection<UUID> matchResultIds);
 
     /**
@@ -29,7 +32,7 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             select rp.displayName as displayName, count(rp) as uses, max(rp.createdAt) as lastUsed
             from ResultPlayer rp, MatchResult r, Match m
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
-              and rp.playerProfileId is null and rp.displayName is not null
+              and rp.playerProfileId is null and rp.opposition = false and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
               and lower(rp.displayName) like lower(concat('%', :q, '%'))
             group by rp.displayName
@@ -39,7 +42,7 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             select count(distinct rp.displayName)
             from ResultPlayer rp, MatchResult r, Match m
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
-              and rp.playerProfileId is null and rp.displayName is not null
+              and rp.playerProfileId is null and rp.opposition = false and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
               and lower(rp.displayName) like lower(concat('%', :q, '%'))
             """)
@@ -47,4 +50,60 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             @Param("clubId") UUID clubId,
             @Param("anyTeam") boolean anyTeam,
             @Param("teamId") UUID teamId, @Param("q") String q, Pageable pageable);
+
+    /**
+     * Suggestions only: the distinct names (case-insensitive, most recently used first, with a count and the latest
+     * fixture date) of earlier opposition players of this club against the same opposition. The opposition is the
+     * league team when {@code byLeagueTeam} (the side's league team id equals {@code leagueTeamId}), else the side's
+     * team name equal to {@code oppositionName} (already lower-cased and trimmed). The optional {@code teamId} limits
+     * to fixtures of our team ({@code anyTeam} false); {@code excluded} (lower-cased, never empty: pass a blank
+     * sentinel) drops names already on the current list; {@code q} is a case-insensitive contains filter. Scoped to
+     * the club through the result; no identity is implied and nothing is read from another club.
+     */
+    @Query(value = """
+            select min(rp.displayName) as displayName, count(rp) as uses, max(m.matchDate) as lastMatchDate
+            from ResultPlayer rp, MatchResult r, Match m
+            where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
+              and rp.opposition = true and rp.displayName is not null
+              and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and ((:byLeagueTeam = true and (
+                        (rp.side = com.cricketlegend.domain.ResultSide.HOME and m.homeLeagueTeamId = :leagueTeamId)
+                     or (rp.side = com.cricketlegend.domain.ResultSide.AWAY and m.awayLeagueTeamId = :leagueTeamId)))
+                or (:byLeagueTeam = false and (
+                        (rp.side = com.cricketlegend.domain.ResultSide.HOME
+                            and lower(trim(m.homeTeamName)) = :oppositionName)
+                     or (rp.side = com.cricketlegend.domain.ResultSide.AWAY
+                            and lower(trim(m.awayTeamName)) = :oppositionName))))
+              and lower(rp.displayName) not in :excluded
+              and lower(rp.displayName) like lower(concat('%', :q, '%'))
+            group by lower(rp.displayName)
+            order by max(m.matchDate) desc, min(rp.displayName) asc
+            """,
+            countQuery = """
+            select count(distinct lower(rp.displayName))
+            from ResultPlayer rp, MatchResult r, Match m
+            where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
+              and rp.opposition = true and rp.displayName is not null
+              and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and ((:byLeagueTeam = true and (
+                        (rp.side = com.cricketlegend.domain.ResultSide.HOME and m.homeLeagueTeamId = :leagueTeamId)
+                     or (rp.side = com.cricketlegend.domain.ResultSide.AWAY and m.awayLeagueTeamId = :leagueTeamId)))
+                or (:byLeagueTeam = false and (
+                        (rp.side = com.cricketlegend.domain.ResultSide.HOME
+                            and lower(trim(m.homeTeamName)) = :oppositionName)
+                     or (rp.side = com.cricketlegend.domain.ResultSide.AWAY
+                            and lower(trim(m.awayTeamName)) = :oppositionName))))
+              and lower(rp.displayName) not in :excluded
+              and lower(rp.displayName) like lower(concat('%', :q, '%'))
+            """)
+    Page<OppositionNameView> findOppositionNames(
+            @Param("clubId") UUID clubId,
+            @Param("anyTeam") boolean anyTeam,
+            @Param("teamId") UUID teamId,
+            @Param("byLeagueTeam") boolean byLeagueTeam,
+            @Param("leagueTeamId") UUID leagueTeamId,
+            @Param("oppositionName") String oppositionName,
+            @Param("excluded") Collection<String> excluded,
+            @Param("q") String q,
+            Pageable pageable);
 }

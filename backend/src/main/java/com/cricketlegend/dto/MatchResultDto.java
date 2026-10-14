@@ -14,8 +14,8 @@ import java.util.UUID;
 /**
  * docs/specs/100-match-results-core.md: a stored result with its innings in sequence order. {@code outcomeType} is
  * null only on a draft. {@code playingAreaName} is the chosen field's name (null with no field). All run, wicket and
- * length figures are balls-based; see {@link InningsDto}. {@code hasScorecard} (docs/specs/101) is true when our side's
- * scorecard has at least one player.
+ * length figures are balls-based; see {@link InningsDto}. {@code hasScorecard} (docs/specs/101) is true when the
+ * scorecard has at least one player; {@code hasOppositionScorecard} when one of them is the opposition's.
  */
 public record MatchResultDto(
         UUID id,
@@ -45,22 +45,27 @@ public record MatchResultDto(
         Instant updatedAt,
         UUID updatedBy,
         List<InningsDto> innings,
-        boolean hasScorecard) {
+        boolean hasScorecard,
+        boolean hasOppositionScorecard) {
 
     /** A copy carrying the chosen field's name. */
     public MatchResultDto withPlayingAreaName(String name) {
         return new MatchResultDto(
                 id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
                 dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId, name,
-                note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy, innings, hasScorecard);
+                note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy, innings, hasScorecard,
+                hasOppositionScorecard);
     }
 
-    /** A copy saying whether our side's scorecard has been captured (docs/specs/101). */
-    public MatchResultDto copyWithHasScorecard(boolean scorecardCaptured) {
+    /**
+     * A copy saying whether a scorecard (any player list) has been captured and whether it holds the opposition's
+     * players (docs/specs/101).
+     */
+    public MatchResultDto copyWithScorecardFlags(boolean scorecardCaptured, boolean oppositionCaptured) {
         return new MatchResultDto(
                 id, clubId, matchId, status, detailLevel, outcomeType, decidedBy, winningSide, marginType, marginValue,
                 dlsTarget, dlsRevisedBalls, scheduledBalls, ballsPerOver, tossWonBy, tossDecision, playingAreaId,
                 playingAreaName, note, source, externalId, publishedAt, publishedBy, createdAt, updatedAt, updatedBy,
-                innings, scorecardCaptured);
+                innings, scorecardCaptured, oppositionCaptured);
     }
 }

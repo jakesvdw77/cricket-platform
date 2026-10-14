@@ -55,6 +55,14 @@ public class BattingEntry {
 
     private Integer sixes;
 
+    /** The player credited with the dismissal (a player of the fielding side's list); null when not recorded. */
+    @Column(name = "bowler_result_player_id")
+    private UUID bowlerResultPlayerId;
+
+    /** The catcher, the keeper who stumped or the fielder credited with the run-out; null when not recorded. */
+    @Column(name = "fielder_result_player_id")
+    private UUID fielderResultPlayerId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "featured_override")
     private FeaturedOverride featuredOverride;
