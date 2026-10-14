@@ -227,13 +227,16 @@ Spec approved, planned and built on branch `feat/099-fields-directory` (`plans/0
 
 ## Deferred by `101`: Our-side scorecard
 
-- **`105` super-over scorecards**, with the open question of whether super-over runs and wickets count toward player statistics and how such rows are marked.
+- **`105` super-over scorecards** (number confirmed), with the open question (stays open in `105`, no longer in `101`) of whether super-over runs and wickets count toward player statistics and how such rows are marked.
 - **Create a guest profile, and bulk-link a guest name across past matches**, deferred with the player-linking item.
 - **Rotation rules** still need their own spec; the data now exists (`result_player.planned_batting_order`, `batting_entry.position`).
-- **`102` reuses** `result_player`, `ScorecardGrid` and the dismissal enum, and replaces the single `non_bowler_wickets` number with per-batter dismissals.
+- **`102` reuses** `result_player`, `ScorecardGrid` and the dismissal enum, replaces the single `non_bowler_wickets` number with per-batter dismissals, and adds the dismissing bowler and fielder on batters (omitted in 101 by decision, 2026-10-14).
 - Fall of wickets, partnerships, dot balls, minutes and dropped catches are not captured, on purpose.
-- A general club settings screen is later (101 adds only `club_result_settings` for standout thresholds).
-- Stable warning codes: 101 proposes `code` and `step` on validation issues.
+- **Per-league, format-aware standout thresholds** (decided 2026-10-14): 101 suggests standouts by relative rules in code (no club-wide number, no `club_result_settings`), because thresholds depend on format and age group. A later spec can refine them per league using league playing conditions (format, overs).
+- **Match graphics** (a scoreboard-style strip showing the top batters and bowler) will read the per-entry featured flags that 101 stores. Not specced.
+- A general club settings screen is still later; 101 no longer adds any club settings.
+- Stable warning codes for results: **resolved by 101** (2026-10-14): `code` and `step` on every validation issue, built on `ResultValidator.WarningCode`. Follow-up: drop message-text dedupe (`ReviewStep` `dedupeWarnings`) once the UI reads `code`.
+- Captain and wicketkeeper flags on the scorecard were dropped (not needed).
 
 ## Deferred by `097` and `098`: Import framework and league schedule import
 
