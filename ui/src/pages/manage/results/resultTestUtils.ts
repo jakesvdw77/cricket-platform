@@ -44,13 +44,14 @@ export function makeResult(overrides: Partial<MatchResult> = {}): MatchResult {
     updatedAt: '2026-10-04T09:30:00Z',
     updatedBy: null,
     innings: [innings(1, 'HOME', 200), innings(2, 'AWAY', 176, 9)],
+    hasScorecard: false,
     ...overrides,
   }
 }
 
 export function makeListItem(matchOverrides: Partial<Match> = {}, resultOverrides: Partial<MatchResult> = {}) {
   const match = makeMatch({ id: 'match-1', ...matchOverrides })
-  return { match, result: makeResult({ matchId: match.id, ...resultOverrides }) }
+  return { match, result: makeResult({ matchId: match.id, ...resultOverrides }), playerOfTheMatch: null }
 }
 
 export function makePage<T>(content: T[], overrides: Partial<Page<T>> = {}): Page<T> {

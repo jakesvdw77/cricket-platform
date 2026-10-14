@@ -1,5 +1,5 @@
 import type { SuggestedResult } from '../../../utils/marginCheck'
-import type { Innings, MatchResult, ResultDraft, ResultSide } from '../../../api/matchResultApi'
+import type { Innings, MatchResult, ResultDraft, ResultSide, Scorecard } from '../../../api/matchResultApi'
 import { DEFAULT_BALLS_PER_OVER } from '../../../utils/oversFormat'
 
 // docs/specs/100-match-results-core.md: pure helpers around the one ResultDraft the capture wizard edits. The form state
@@ -58,7 +58,9 @@ export function emptyDraft(): ResultDraft {
   }
 }
 
-export function draftFromResult(result: MatchResult | null): ResultDraft {
+// `scorecard` is the stored scorecard (api getScorecard) when the caller has it: the result itself carries only
+// `hasScorecard`. Left out, the draft holds no scorecard and a save leaves the stored one untouched.
+export function draftFromResult(result: MatchResult | null, scorecard?: Scorecard | null): ResultDraft {
   if (!result) return emptyDraft()
   return {
     outcomeType: result.outcomeType,
@@ -75,6 +77,7 @@ export function draftFromResult(result: MatchResult | null): ResultDraft {
     playingAreaId: result.playingAreaId,
     note: result.note,
     innings: withRegularInnings(result.innings),
+    ...(scorecard ? { scorecard } : {}),
   }
 }
 
@@ -166,7 +169,8 @@ export function isBlankDraft(draft: ResultDraft): boolean {
     !draft.note &&
     !draft.playingAreaId &&
     draft.scheduledBalls === null &&
-    (draft.innings ?? []).every((innings) => innings.runs === null && innings.wickets === null && innings.balls === null)
+    (draft.innings ?? []).every((innings) => innings.runs === null && innings.wickets === null && innings.balls === null) &&
+    !draft.scorecard?.players?.length
   )
 }
 
@@ -194,6 +198,44 @@ export function toPayload(draft: ResultDraft): ResultDraft {
     innings: (draft.innings ?? [])
       .filter(hasFigures)
       .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
-      .map(({ sequence, kind, battingSide, runs, wickets, balls }) => ({ sequence, kind, battingSide, runs, wickets, balls })),
+      .map((innings) => ({
+        sequence: innings.sequence,
+        kind: innings.kind,
+        battingSide: innings.battingSide,
+        runs: innings.runs,
+        wickets: innings.wickets,
+        balls: innings.balls,
+        // The extras breakdown travels on the innings when the form holds one (`extras` itself is the server's sum and
+        // is never sent); an innings that never had it keeps the summary-level shape of spec 100.
+        ...extrasPayload(innings),
+      })),
+    ...scorecardPayload(draft.scorecard),
   }
+}
+
+// The scorecard section of a save. Absent means "untouched"; present replaces the whole scorecard. `innings` and
+// `status` are read-only, so they are left out; a scorecard without players is the same as none and is still sent so a
+// cleared scorecard is cleared on the server.
+function scorecardPayload(scorecard: Scorecard | null | undefined): { scorecard?: Scorecard } {
+  if (!scorecard) return {}
+  return {
+    scorecard: {
+      players: scorecard.players ?? [],
+      // `auto` is client-only (the wicket fill's marker), not part of the API.
+      batting: (scorecard.batting ?? []).map(({ auto: _auto, ...entry }) => entry),
+      bowling: scorecard.bowling ?? [],
+      fielding: scorecard.fielding ?? [],
+      awards: scorecard.awards ?? [],
+    },
+  }
+}
+
+const EXTRAS_KEYS = ['wides', 'noBalls', 'byes', 'legByes', 'penaltyRuns', 'nonBowlerWickets'] as const
+
+function extrasPayload(innings: Innings): Partial<Innings> {
+  const out: Partial<Innings> = {}
+  for (const key of EXTRAS_KEYS) {
+    if (innings[key] !== undefined) out[key] = innings[key]
+  }
+  return out
 }

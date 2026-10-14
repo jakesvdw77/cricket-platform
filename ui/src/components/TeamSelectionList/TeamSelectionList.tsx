@@ -1,19 +1,19 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { DragEvent, MouseEvent } from 'react'
-import { ButtonBase, Box, Card, Chip, Divider, IconButton, Menu, MenuItem, TextField, Tooltip, Typography } from '@mui/material'
+import { ButtonBase, Box, Card, Chip, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import HighlightOffIcon from '@mui/icons-material/HighlightOff'
 import { zebraTint } from '../../utils/zebraTint'
+import { useReorderableRows } from '../../hooks/useReorderableRows'
+import { PlayerRowMenu } from '../PlayerRowMenu'
 import type { PlayingRole, SelectionLimits } from '../../api/matchSideApi'
 import type { SelectionAvailability } from '../../api/matchSelectionApi'
 
@@ -171,11 +171,6 @@ export function TeamSelectionList({
   const [roleAnchor, setRoleAnchor] = useState<HTMLElement | null>(null)
   // The menu a clicked badge opens: the role badge lists the roles, the Captain and Wicketkeeper badges offer Remove.
   const [badgeMenu, setBadgeMenu] = useState<{ anchor: HTMLElement; playerId: string; kind: 'role' | 'captain' | 'keeper' } | null>(null)
-  const [positionDraft, setPositionDraft] = useState('')
-  const positionCommittedRef = useRef(false)
-  const [dragId, setDragId] = useState<string | null>(null)
-  const [dropIndex, setDropIndex] = useState<number | null>(null)
-  const [holdingOver, setHoldingOver] = useState(false)
 
   const twelfthMan = players.find((player) => player.playerProfileId === twelfthManPlayerId) ?? null
   const rest = players.filter((player) => player.playerProfileId !== twelfthManPlayerId)
@@ -186,7 +181,10 @@ export function TeamSelectionList({
     .filter((player) => player.battingOrder == null)
     .sort((a, b) => a.name.localeCompare(b.name))
   const positionedIds = positioned.map((player) => player.playerProfileId)
-  const placesFull = positioned.length >= limits.battingPlaces
+  // Drag state and the move / drop operations are shared with the scorecard's batting and bowling order (docs/specs/101).
+  const reorder = useReorderableRows({ ids: positionedIds, maxPlaces: limits.battingPlaces, onReorder })
+  const { dragId, dropIndex, holdingOver, setDropIndex, setHoldingOver } = reorder
+  const placesFull = reorder.full
   const showTwelfthRow = limits.twelfthManAllowed || twelfthMan !== null
 
   const menuPlayer = menu ? (players.find((player) => player.playerProfileId === menu.playerId) ?? null) : null
@@ -197,76 +195,8 @@ export function TeamSelectionList({
   }
 
   const openMenu = (anchor: HTMLElement, player: TeamSelectionPlayer) => {
-    positionCommittedRef.current = false
-    setPositionDraft('')
     setRoleAnchor(null)
     setMenu({ anchor, playerId: player.playerProfileId })
-  }
-
-  const commitPosition = (player: TeamSelectionPlayer, text: string) => {
-    if (positionCommittedRef.current) {
-      return
-    }
-    const parsed = Number(text)
-    if (text.trim() === '' || !Number.isFinite(parsed)) {
-      return
-    }
-    const isPositioned = player.battingOrder != null && player.playerProfileId !== twelfthManPlayerId
-    const maxPosition = Math.min(limits.battingPlaces, positioned.length + (isPositioned ? 0 : 1))
-    const target = Math.min(Math.max(Math.trunc(parsed), 1), Math.max(maxPosition, 1))
-    if (isPositioned && positionedIds.indexOf(player.playerProfileId) === target - 1) {
-      return
-    }
-    positionCommittedRef.current = true
-    const ids = positionedIds.filter((id) => id !== player.playerProfileId)
-    ids.splice(target - 1, 0, player.playerProfileId)
-    onReorder(ids)
-  }
-
-  const move = (playerId: string, direction: -1 | 1) => {
-    const index = positionedIds.indexOf(playerId)
-    const target = index + direction
-    if (index === -1 || target < 0 || target >= positionedIds.length) {
-      return
-    }
-    const ids = [...positionedIds]
-    ids.splice(index, 1)
-    ids.splice(target, 0, playerId)
-    onReorder(ids)
-  }
-
-  const resetDrag = () => {
-    setDragId(null)
-    setDropIndex(null)
-    setHoldingOver(false)
-  }
-
-  // index is the target slot among the numbered places as drawn (0..positioned.length).
-  const dropAt = (index: number) => {
-    if (!dragId) {
-      return
-    }
-    const from = positionedIds.indexOf(dragId)
-    if (from === -1 && placesFull) {
-      resetDrag()
-      return
-    }
-    const target = from !== -1 && from < index ? index - 1 : index
-    resetDrag()
-    if (from === target) {
-      return
-    }
-    const ids = positionedIds.filter((id) => id !== dragId)
-    ids.splice(target, 0, dragId)
-    onReorder(ids)
-  }
-
-  const dropIntoHolding = () => {
-    const id = dragId
-    resetDrag()
-    if (id && positionedIds.includes(id)) {
-      onReorder(positionedIds.filter((candidate) => candidate !== id))
-    }
   }
 
   const renderRow = (player: TeamSelectionPlayer, kind: RowKind, index: number) => {
@@ -281,30 +211,7 @@ export function TeamSelectionList({
       <Box
         key={player.playerProfileId}
         data-testid={`selection-row-${player.playerProfileId}`}
-        draggable={!dragDisabled}
-        onDragStart={(event: DragEvent<HTMLElement>) => {
-          event.dataTransfer.effectAllowed = 'move'
-          event.dataTransfer.setData('text/plain', player.playerProfileId)
-          setDragId(player.playerProfileId)
-        }}
-        onDragEnd={resetDrag}
-        onDragOver={(event: DragEvent<HTMLElement>) => {
-          if (!dragId || kind !== 'positioned') {
-            return
-          }
-          event.preventDefault()
-          const rect = event.currentTarget.getBoundingClientRect()
-          setHoldingOver(false)
-          setDropIndex(event.clientY < rect.top + rect.height / 2 ? index : index + 1)
-        }}
-        onDrop={(event: DragEvent<HTMLElement>) => {
-          if (!dragId || kind !== 'positioned') {
-            return
-          }
-          event.preventDefault()
-          event.stopPropagation()
-          dropAt(dropIndex ?? index)
-        }}
+        {...reorder.rowDragProps(player.playerProfileId, { index, accepts: kind === 'positioned' }, dragDisabled)}
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -426,9 +333,7 @@ export function TeamSelectionList({
 
   const menuIsTwelfth = menuPlayer?.playerProfileId === twelfthManPlayerId
   const menuIsPositioned = Boolean(menuPlayer) && !menuIsTwelfth && menuPlayer?.battingOrder != null
-  const menuIndex = menuPlayer ? positionedIds.indexOf(menuPlayer.playerProfileId) : -1
   const spinnerDisabled = Boolean(menuPlayer) && !menuIsPositioned && placesFull
-  const spinnerMax = Math.max(1, Math.min(limits.battingPlaces, positioned.length + (menuIsPositioned ? 0 : 1)))
   const fullReason = limits.twelfthManAllowed
     ? `All ${limits.battingPlaces} places are filled. Remove a player or make someone 12th man first.`
     : `All ${limits.battingPlaces} places are filled. Remove a player first.`
@@ -460,7 +365,7 @@ export function TeamSelectionList({
                 onDrop={(event: DragEvent<HTMLElement>) => {
                   event.preventDefault()
                   event.stopPropagation()
-                  dropAt(positioned.length)
+                  reorder.dropAt(positioned.length)
                 }}
                 sx={{
                   mt: 0.5,
@@ -507,7 +412,7 @@ export function TeamSelectionList({
               onDrop={(event: DragEvent<HTMLElement>) => {
                 if (dragId && positionedIds.includes(dragId)) {
                   event.preventDefault()
-                  dropIntoHolding()
+                  reorder.dropOut()
                 }
               }}
               sx={{
@@ -522,147 +427,113 @@ export function TeamSelectionList({
         </>
       )}
 
-      <Menu
-        anchorEl={menu?.anchor ?? null}
-        open={Boolean(menu && menuPlayer)}
+      <PlayerRowMenu
+        anchor={menuPlayer ? (menu?.anchor ?? null) : null}
         onClose={closeMenu}
-        slotProps={{ paper: { sx: { minWidth: 240, maxWidth: 'calc(100vw - 32px)' } } }}
-      >
-        {menuPlayer && !menuIsTwelfth && (
-          <MenuItem
-            onClick={() => {
-              onSetCaptain(menuPlayer.playerProfileId === captainPlayerId ? null : menuPlayer.playerProfileId)
-              closeMenu()
-            }}
-          >
-            {menuPlayer.playerProfileId === captainPlayerId ? 'Remove as captain' : 'Make captain'}
-          </MenuItem>
-        )}
-        {menuPlayer && !menuIsTwelfth && (
-          <MenuItem
-            role="menuitemcheckbox"
-            aria-checked={menuPlayer.playerProfileId === wicketKeeperPlayerId}
-            onClick={() => {
-              onSetWicketKeeper(menuPlayer.playerProfileId === wicketKeeperPlayerId ? null : menuPlayer.playerProfileId)
-              closeMenu()
-            }}
-            sx={{ justifyContent: 'space-between', gap: 2 }}
-          >
-            Wicketkeeper
-            {menuPlayer.playerProfileId === wicketKeeperPlayerId && <CheckIcon fontSize="small" />}
-          </MenuItem>
-        )}
-        {menuPlayer && (
-          <MenuItem
-            component="div"
-            disableRipple
-            onClick={(event) => event.stopPropagation()}
-            sx={{ cursor: 'default', flexDirection: 'column', alignItems: 'stretch', gap: 0.5, '&:hover': { bgcolor: 'transparent' } }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-              <Typography variant="body2" component="label" htmlFor="batting-position-input">
-                Batting position
-              </Typography>
-              <TextField
-                id="batting-position-input"
-                type="number"
-                size="small"
-                value={positionDraft}
-                placeholder={menuIsPositioned ? String((menuPlayer.battingOrder as number) ?? '') : '–'}
-                disabled={spinnerDisabled}
-                onChange={(event) => setPositionDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  event.stopPropagation()
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    commitPosition(menuPlayer, positionDraft)
+        playerId={menuPlayer?.playerProfileId ?? ''}
+        playerName={menuPlayer?.name ?? ''}
+        ids={positionedIds}
+        maxPlaces={limits.battingPlaces}
+        onReorder={onReorder}
+        positionLabel="Batting position"
+        currentPosition={menuPlayer?.battingOrder ?? null}
+        positionDisabledReason={spinnerDisabled ? fullReason : null}
+        movable={menuIsPositioned}
+        before={
+          menuPlayer && !menuIsTwelfth
+            ? [
+                <MenuItem
+                  key="captain"
+                  onClick={() => {
+                    onSetCaptain(menuPlayer.playerProfileId === captainPlayerId ? null : menuPlayer.playerProfileId)
                     closeMenu()
-                  }
-                }}
-                onBlur={() => commitPosition(menuPlayer, positionDraft)}
-                inputProps={{
-                  min: 1,
-                  max: spinnerMax,
-                  step: 1,
-                  'aria-label': `Batting position for ${menuPlayer.name}`,
-                  'aria-describedby': spinnerDisabled ? 'batting-position-full' : undefined,
-                }}
-                sx={{ width: 84, flex: 'none' }}
-              />
-            </Box>
-            {spinnerDisabled && (
-              <Typography id="batting-position-full" variant="caption" color="text.secondary" sx={{ whiteSpace: 'normal' }}>
-                {fullReason}
-              </Typography>
-            )}
-          </MenuItem>
-        )}
-        {menuPlayer && limits.twelfthManAllowed && !menuIsTwelfth && (
-          <MenuItem
-            onClick={() => {
-              onMakeTwelfthMan(menuPlayer.playerProfileId)
-              closeMenu()
-            }}
-          >
-            Make 12th man
-          </MenuItem>
-        )}
-        {menuPlayer && menuIsTwelfth && (
-          <MenuItem
-            disabled={placesFull}
-            onClick={() => {
-              onReorder([...positionedIds, menuPlayer.playerProfileId])
-              closeMenu()
-            }}
-          >
-            <Box>
-              <Typography variant="body2">Move into the batting order</Typography>
-              {placesFull && (
-                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'normal', display: 'block' }}>
-                  {fullReason}
-                </Typography>
-              )}
-            </Box>
-          </MenuItem>
-        )}
-        {menuPlayer && (
-          <MenuItem
-            aria-haspopup="menu"
-            onClick={(event) => setRoleAnchor(event.currentTarget)}
-            sx={{ justifyContent: 'space-between', gap: 2 }}
-          >
-            {`Role: ${ROLE_LABEL[menuPlayer.role]}`}
-            <ChevronRightIcon fontSize="small" />
-          </MenuItem>
-        )}
-        {menuPlayer && menuIsPositioned && (
-          <MenuItem disabled={menuIndex <= 0} onClick={() => { move(menuPlayer.playerProfileId, -1); closeMenu() }}>
-            <KeyboardArrowUpIcon fontSize="small" sx={{ mr: 1 }} />
-            Move up
-          </MenuItem>
-        )}
-        {menuPlayer && menuIsPositioned && (
-          <MenuItem
-            disabled={menuIndex === positionedIds.length - 1}
-            onClick={() => { move(menuPlayer.playerProfileId, 1); closeMenu() }}
-          >
-            <KeyboardArrowDownIcon fontSize="small" sx={{ mr: 1 }} />
-            Move down
-          </MenuItem>
-        )}
-        {menuPlayer && <Divider />}
-        {menuPlayer && (
-          <MenuItem
-            onClick={() => {
-              onRemove(menuPlayer.playerProfileId)
-              closeMenu()
-            }}
-            sx={{ color: 'error.main' }}
-          >
-            Remove from team
-          </MenuItem>
-        )}
-      </Menu>
+                  }}
+                >
+                  {menuPlayer.playerProfileId === captainPlayerId ? 'Remove as captain' : 'Make captain'}
+                </MenuItem>,
+                <MenuItem
+                  key="keeper"
+                  role="menuitemcheckbox"
+                  aria-checked={menuPlayer.playerProfileId === wicketKeeperPlayerId}
+                  onClick={() => {
+                    onSetWicketKeeper(menuPlayer.playerProfileId === wicketKeeperPlayerId ? null : menuPlayer.playerProfileId)
+                    closeMenu()
+                  }}
+                  sx={{ justifyContent: 'space-between', gap: 2 }}
+                >
+                  Wicketkeeper
+                  {menuPlayer.playerProfileId === wicketKeeperPlayerId && <CheckIcon fontSize="small" />}
+                </MenuItem>,
+              ]
+            : []
+        }
+        afterPosition={
+          menuPlayer
+            ? [
+                ...(limits.twelfthManAllowed && !menuIsTwelfth
+                  ? [
+                      <MenuItem
+                        key="twelfth"
+                        onClick={() => {
+                          onMakeTwelfthMan(menuPlayer.playerProfileId)
+                          closeMenu()
+                        }}
+                      >
+                        Make 12th man
+                      </MenuItem>,
+                    ]
+                  : []),
+                ...(menuIsTwelfth
+                  ? [
+                      <MenuItem
+                        key="into-order"
+                        disabled={placesFull}
+                        onClick={() => {
+                          onReorder([...positionedIds, menuPlayer.playerProfileId])
+                          closeMenu()
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="body2">Move into the batting order</Typography>
+                          {placesFull && (
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'normal', display: 'block' }}>
+                              {fullReason}
+                            </Typography>
+                          )}
+                        </Box>
+                      </MenuItem>,
+                    ]
+                  : []),
+                <MenuItem
+                  key="role"
+                  aria-haspopup="menu"
+                  onClick={(event) => setRoleAnchor(event.currentTarget)}
+                  sx={{ justifyContent: 'space-between', gap: 2 }}
+                >
+                  {`Role: ${ROLE_LABEL[menuPlayer.role]}`}
+                  <ChevronRightIcon fontSize="small" />
+                </MenuItem>,
+              ]
+            : []
+        }
+        after={
+          menuPlayer
+            ? [
+                <Divider key="divider" />,
+                <MenuItem
+                  key="remove"
+                  onClick={() => {
+                    onRemove(menuPlayer.playerProfileId)
+                    closeMenu()
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  Remove from team
+                </MenuItem>,
+              ]
+            : []
+        }
+      />
 
       <Menu anchorEl={badgeMenu?.anchor ?? null} open={Boolean(badgeMenu)} onClose={() => setBadgeMenu(null)}>
         {badgeMenu?.kind === 'role' &&
