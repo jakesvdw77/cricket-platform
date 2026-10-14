@@ -28,3 +28,10 @@ export function errorList(error: unknown): string[] | null {
   const errors = (error.response?.data as { errors?: unknown } | undefined)?.errors
   return Array.isArray(errors) && errors.length > 0 ? errors.map(String) : null
 }
+
+// The typed `issues` (code, step, side, severity, message) a failed result save or publish carries; empty when absent.
+export function errorIssues(error: unknown): Array<{ code: string; step: string | null; side: string | null; severity: string; message: string }> {
+  if (!isAxiosError(error)) return []
+  const issues = (error.response?.data as { issues?: unknown } | undefined)?.issues
+  return Array.isArray(issues) ? (issues as ReturnType<typeof errorIssues>).filter((issue) => issue && typeof issue.message === 'string') : []
+}

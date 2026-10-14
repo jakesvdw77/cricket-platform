@@ -1,6 +1,7 @@
 import type { SuggestedResult } from '../../../utils/marginCheck'
 import type { Innings, MatchResult, ResultDraft, ResultSide, Scorecard } from '../../../api/matchResultApi'
 import { DEFAULT_BALLS_PER_OVER } from '../../../utils/oversFormat'
+import { hasBowlingFigures, hasCredit } from './scorecardDraft'
 
 // docs/specs/100-match-results-core.md: pure helpers around the one ResultDraft the capture wizard edits. The form state
 // may hold half-filled innings and stale choices (a margin left over after switching to a tie); toPayload() is the one
@@ -181,6 +182,9 @@ export function toPayload(draft: ResultDraft): ResultDraft {
   const won = outcome === 'WON'
   const decidedBy = won ? (draft.decidedBy ?? 'REGULAR') : 'REGULAR'
   const margin = won && decidedBy !== 'SUPER_OVER' && draft.marginType && draft.marginValue !== null
+  const sentInnings = (draft.innings ?? [])
+    .filter(hasFigures)
+    .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
   return {
     outcomeType: outcome,
     decidedBy,
@@ -195,10 +199,7 @@ export function toPayload(draft: ResultDraft): ResultDraft {
     tossDecision: draft.tossWonBy ? (draft.tossDecision ?? null) : null,
     playingAreaId: draft.playingAreaId ?? null,
     note: draft.note?.trim() ? draft.note.trim() : null,
-    innings: (draft.innings ?? [])
-      .filter(hasFigures)
-      .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
-      .map((innings) => ({
+    innings: sentInnings.map((innings) => ({
         sequence: innings.sequence,
         kind: innings.kind,
         battingSide: innings.battingSide,
@@ -209,22 +210,30 @@ export function toPayload(draft: ResultDraft): ResultDraft {
         // is never sent); an innings that never had it keeps the summary-level shape of spec 100.
         ...extrasPayload(innings),
       })),
-    ...scorecardPayload(draft.scorecard),
+    ...scorecardPayload(draft.scorecard, sentInnings),
   }
 }
 
 // The scorecard section of a save. Absent means "untouched"; present replaces the whole scorecard. `innings` and
-// `status` are read-only, so they are left out; a scorecard without players is the same as none and is still sent so a
-// cleared scorecard is cleared on the server.
-function scorecardPayload(scorecard: Scorecard | null | undefined): { scorecard?: Scorecard } {
+// `status` are read-only, so they are left out. Rows the server would refuse or that carry no information yet stay in the
+// form but are not sent: a batter whose how out is still undecided, a bowler or fielder with no figures, and every entry
+// of an innings that is not part of this save (its figures are not complete yet). With no regular innings in the save the
+// scorecard is left untouched. A Did not bat row carries no batting position (the order is the batters').
+function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings[]): { scorecard?: Scorecard } {
   if (!scorecard) return {}
+  const regularSides = new Set(sent.filter((innings) => !isSuperOver(innings)).map((innings) => innings.battingSide))
+  if (regularSides.size === 0) return {}
+  const inSave = <T extends { battingSide: ResultSide }>(entry: T) => regularSides.has(entry.battingSide)
   return {
     scorecard: {
       players: scorecard.players ?? [],
-      // `auto` is client-only (the wicket fill's marker), not part of the API.
-      batting: (scorecard.batting ?? []).map(({ auto: _auto, ...entry }) => entry),
-      bowling: scorecard.bowling ?? [],
-      fielding: scorecard.fielding ?? [],
+      batting: (scorecard.batting ?? [])
+        .filter(inSave)
+        .filter((entry) => entry.howOut !== null && entry.howOut !== undefined)
+        // `auto` is client-only (the wicket fill's marker), not part of the API.
+        .map(({ auto: _auto, ...entry }) => (entry.howOut === 'DID_NOT_BAT' ? { ...entry, position: null } : entry)),
+      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures),
+      fielding: (scorecard.fielding ?? []).filter(inSave).filter(hasCredit),
       awards: scorecard.awards ?? [],
     },
   }
@@ -238,4 +247,11 @@ function extrasPayload(innings: Innings): Partial<Innings> {
     if (innings[key] !== undefined) out[key] = innings[key]
   }
   return out
+}
+
+// docs/specs/101: the scorecard steps (Our batting, Our bowling and fielding, Awards) apply once at least one regular
+// innings has runs, and never to a forfeit, an abandoned match or no result.
+export function scorecardStepsApplicable(draft: Pick<ResultDraft, 'outcomeType' | 'innings'>): boolean {
+  if (draft.outcomeType === 'FORFEIT' || draft.outcomeType === 'ABANDONED' || draft.outcomeType === 'NO_RESULT') return false
+  return (draft.innings ?? []).some((innings) => !isSuperOver(innings) && innings.runs !== null)
 }

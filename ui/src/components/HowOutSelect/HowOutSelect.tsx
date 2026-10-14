@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { Box, InputBase, Paper } from '@mui/material'
+import { Box, InputBase, Paper, Popper } from '@mui/material'
 import type { DismissalType } from '../../api/matchResultApi'
 import { bestDismissal, dismissalLabel, matchDismissals } from '../../utils/dismissal'
 
@@ -33,6 +33,8 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
   // Read by the blur that follows an Enter in the same tick, before React has re-rendered.
   const queryRef = useRef<string | null>(null)
   const highlightRef = useRef(0)
+  // The list is a portalled Popper anchored here, so the grid's scroll box cannot clip it.
+  const anchorRef = useRef<HTMLDivElement>(null)
 
   const setQ = (next: string | null) => {
     queryRef.current = next
@@ -91,7 +93,7 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
   const shown = open ? query : dismissalLabel(value)
 
   return (
-    <Box sx={{ position: 'relative', width: fullWidth ? '100%' : 148 }}>
+    <Box ref={anchorRef} sx={{ position: 'relative', width: fullWidth ? '100%' : 132 }}>
       <InputBase
         value={shown}
         disabled={disabled}
@@ -123,7 +125,8 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
         }}
         sx={{
           width: '100%',
-          height: fullWidth ? 44 : 34,
+          height: fullWidth ? 44 : 30,
+          fontSize: fullWidth ? undefined : 12,
           border: 1,
           borderColor: 'divider',
           borderRadius: 1.5,
@@ -136,13 +139,18 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
           '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
         }}
       />
-      {open && options.length > 0 && (
+      <Popper
+        open={open && options.length > 0}
+        anchorEl={anchorRef.current}
+        placement="bottom-start"
+        sx={(theme) => ({ zIndex: theme.zIndex.modal + 1 })}
+      >
         <Paper
           id={listId}
           role="listbox"
           aria-label={`${ariaLabel}, options`}
           elevation={4}
-          sx={{ position: 'absolute', zIndex: 5, top: '100%', left: 0, mt: 0.5, width: 230, maxHeight: 260, overflowY: 'auto', p: 0.5 }}
+          sx={{ mt: 0.5, width: 230, maxHeight: 260, overflowY: 'auto', p: 0.5 }}
         >
           {options.map((option, index) => (
             <Box
@@ -163,7 +171,7 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
                 alignItems: 'center',
                 borderRadius: 1,
                 cursor: 'pointer',
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: index === highlight ? 700 : 400,
                 bgcolor: index === highlight ? 'action.selected' : undefined,
                 '&:hover': { bgcolor: 'action.hover' },
@@ -176,7 +184,7 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
             </Box>
           ))}
         </Paper>
-      )}
+      </Popper>
     </Box>
   )
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DismissalType } from '../api/matchResultApi'
-import { applyWicketFill, dismissalCount, initialBattedCount, initialRows } from './wicketFill'
+import { applyWicketFill, dismissalCount, initialBattedCount, initialRows, newRowFill } from './wicketFill'
 import type { FillRow } from './wicketFill'
 
 const howOuts = (rows: FillRow[]) => rows.map((row) => row.howOut)
@@ -87,5 +87,24 @@ describe('wicketFill', () => {
   it('fills nothing while the wickets are not known', () => {
     const rows = mark(initialRows(3, null), 0, 'CAUGHT')
     expect(howOuts(applyWicketFill(rows, null))).toEqual(['CAUGHT', null, null])
+  })
+
+  it('adds a row as Did not bat once wickets + 2 batters are in play', () => {
+    // 1 wicket: 3 in play, the 4th is Did not bat.
+    expect(newRowFill(initialRows(3, 1), 1)).toEqual({ howOut: 'DID_NOT_BAT', auto: true })
+  })
+
+  it('adds an editable row while fewer than wickets + 2 are in play', () => {
+    // A line-up cut short: 2 in play with 1 wicket, so a third is still editable.
+    expect(newRowFill(initialRows(2, 1), 1)).toEqual({ howOut: null })
+  })
+
+  it('adds a Did not bat row once the dismissals equal the wickets, never an automatic Not out', () => {
+    const rows = mark(initialRows(2, 1), 0, 'CAUGHT')
+    expect(newRowFill(rows, 1)).toEqual({ howOut: 'DID_NOT_BAT', auto: true })
+  })
+
+  it('adds an undecided row when the wickets are not known', () => {
+    expect(newRowFill(initialRows(5, null), null)).toEqual({ howOut: null })
   })
 })

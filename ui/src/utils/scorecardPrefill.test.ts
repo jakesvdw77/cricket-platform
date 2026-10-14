@@ -68,4 +68,13 @@ describe('scorecardPrefill', () => {
     const reset = resetToSelection(withGuest, side([prefillPlayer('a', 1)]), key)
     expect(reset.players).toHaveLength(2)
   })
+
+  it('keeps one entry per profile, as the 12th man if either entry is a substitute', () => {
+    const ordered = lineupOrder([prefillPlayer('a', 1), prefillPlayer('t', 2), prefillPlayer('t', null, true)])
+    expect(ordered.map((p) => p.playerProfileId)).toEqual(['a', 't'])
+    expect(ordered[1].substitute).toBe(true)
+    const rows = prefillSideRows(side([prefillPlayer('a', 1), prefillPlayer('t', 2), prefillPlayer('t', null, true)]), 1, key)
+    expect(rows.players.filter((p) => p.playerProfileId === 't')).toHaveLength(1)
+    expect(rows.batting).toHaveLength(1)
+  })
 })

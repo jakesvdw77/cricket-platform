@@ -7,6 +7,8 @@ export interface ResultStep {
   label: string
   // Shorter label for a phone, when the full one would not fit.
   shortLabel?: string
+  // docs/specs/101: a step the result can be published without (the scorecard steps). Drawn with a dashed outline.
+  optional?: boolean
 }
 
 export interface ResultStepperProps {
@@ -18,10 +20,13 @@ export interface ResultStepperProps {
 }
 
 // docs/specs/100-match-results-core.md: the capture wizard's progress strip, data-driven from a list of steps. Steps
-// before the active one show a tick; every step can be chosen (the page saves the draft on the way).
+// before the active one show a tick; every step can be chosen (the page saves the draft on the way). docs/specs/101:
+// optional steps (the scorecard) have a dashed outline and a legend under the strip, so a manager sees they can skip them.
 export function ResultStepper({ steps, activeId, onSelect, disabled = false }: ResultStepperProps) {
   const activeIndex = steps.findIndex((step) => step.id === activeId)
+  const anyOptional = steps.some((step) => step.optional)
   return (
+    <Box>
     <Box component="ol" aria-label="Steps" sx={{ display: 'flex', gap: 0.75, listStyle: 'none', m: 0, p: 0 }}>
       {steps.map((step, index) => {
         const active = index === activeIndex
@@ -32,7 +37,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
               disabled={disabled}
               onClick={() => onSelect(step.id)}
               aria-current={active ? 'step' : undefined}
-              aria-label={`Step ${index + 1}: ${step.label}${done ? ' (done)' : ''}`}
+              aria-label={`Step ${index + 1}: ${step.label}${step.optional ? ' (optional)' : ''}${done ? ' (done)' : ''}`}
               sx={(theme) => ({
                 width: '100%',
                 minHeight: 44,
@@ -41,6 +46,7 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
                 borderRadius: 1,
                 fontSize: '0.78rem',
                 fontWeight: 600,
+                border: step.optional && !active ? `1px dashed ${theme.palette.text.secondary}` : '1px solid transparent',
                 bgcolor: active ? 'primary.main' : alpha(theme.palette.primary.main, 0.08),
                 color: active ? 'primary.contrastText' : 'text.secondary',
                 '&.Mui-focusVisible': { outline: `2px solid ${theme.palette.primary.dark}`, outlineOffset: 2 },
@@ -74,6 +80,12 @@ export function ResultStepper({ steps, activeId, onSelect, disabled = false }: R
           </Box>
         )
       })}
+    </Box>
+    {anyOptional && (
+      <Box component="p" sx={{ m: 0, mt: 0.75, fontSize: '0.75rem', color: 'text.secondary' }}>
+        Scorecard (optional): the dashed steps can be skipped.
+      </Box>
+    )}
     </Box>
   )
 }

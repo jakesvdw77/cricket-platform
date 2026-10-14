@@ -282,11 +282,11 @@ export function ScorecardGrid<R>({
                     : {})}
                   sx={{
                     opacity: reorder?.dragId === id ? 0.5 : 1,
-                    '& > td': { bgcolor: background, borderBottom: 1, borderColor: 'divider', px: CELL_PX, py: 0.5, boxShadow: dropLine },
+                    '& > td': { bgcolor: background, borderBottom: 1, borderColor: 'divider', px: CELL_PX, py: 0.25, boxShadow: dropLine, fontSize: 12 },
                     '& > td:first-of-type': { ...STICKY_FIRST_COL, boxShadow: (theme: Theme) => dropLine(theme) ?? (STICKY_FIRST_COL.boxShadow as (theme: Theme) => string)(theme) },
                     '&:focus-within > td': { bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.07) },
                     color: isRowMuted?.(row) ? 'text.disabled' : 'text.primary',
-                    minHeight: 48,
+                    minHeight: 38,
                   }}
                 >
                   <TableCell>
@@ -299,7 +299,7 @@ export function ScorecardGrid<R>({
                           onPointerUp={() => setArmedId(null)}
                           sx={{
                             width: 24,
-                            height: 36,
+                            height: 30,
                             flex: 'none',
                             display: 'grid',
                             placeItems: 'center',

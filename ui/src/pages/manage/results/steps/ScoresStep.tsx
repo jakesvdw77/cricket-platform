@@ -112,7 +112,7 @@ const ordinal = (n: number) => (n === 1 ? '1st innings' : '2nd innings')
 
 // docs/specs/100-match-results-core.md, step 3 "Scores": a row per innings (runs, wickets, overs as "36.4"), the run
 // rates read-only, and any number of super over pairs.
-export function ScoresStep({ draft, onReplace, sides, disabled, onGoToStep }: StepProps) {
+export function ScoresStep({ draft, onReplace, sides, disabled, onGoToStep, scorecardAvailable }: StepProps) {
   const ballsPerOver = draft.ballsPerOver ?? 6
   // The toss fixes the batting order. Without one, the manager says who batted first (kept once chosen, or once scores
   // already exist for a loaded draft).
@@ -224,6 +224,23 @@ export function ScoresStep({ draft, onReplace, sides, disabled, onGoToStep }: St
           {pair.map((innings) => rowFor(innings, `Super over ${index + 1}`, MAX_SUPER_OVER_WICKETS))}
         </Box>
       ))}
+
+      {scorecardAvailable && onGoToStep && (
+        <Box
+          data-testid="scorecard-prompt"
+          sx={{ mt: 1.5, p: 1.5, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
+            Want to record who batted, bowled and fielded? It is optional.
+          </Typography>
+          <Button variant="secondary" size="sm" onClick={() => onGoToStep('our-batting')} disabled={disabled}>
+            Add our scorecard
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('review')} disabled={disabled}>
+            Skip to review
+          </Button>
+        </Box>
+      )}
 
       {showSuperOvers && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>

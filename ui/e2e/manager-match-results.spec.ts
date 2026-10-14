@@ -127,7 +127,7 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     // --- Continue the draft from the card, review, and publish. ---
     await card.getByRole('button', { name: 'Edit' }).click();
     await expect(page.getByRole('heading', { name: 'Edit result' })).toBeVisible();
-    await page.getByRole('button', { name: 'Step 4: Review' }).click();
+    await page.getByRole('button', { name: /^Step \d+: Review/ }).click();
     await expect(page.getByTestId('result-preview')).toContainText('won by 30 runs');
     await expect(page.getByText('The margin of 30 runs matches the scores.')).toBeVisible();
     // Any warning must be ticked before Publish unlocks (none are expected on this result, so the box may be absent).
@@ -178,7 +178,7 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await expect(page.getByTestId('suggested-result')).toContainText('won in the super over');
 
     // Review: the result reads as a tie won in the super over and is clean.
-    await page.getByRole('button', { name: 'Step 4: Review' }).click();
+    await page.getByRole('button', { name: /^Step \d+: Review/ }).click();
     await expect(page.getByTestId('result-preview')).toContainText('Tied');
     await expect(page.getByTestId('result-preview')).toContainText('won in the super over');
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeEnabled();

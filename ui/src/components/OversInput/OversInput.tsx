@@ -12,12 +12,15 @@ export interface OversInputProps {
   // Optional hint under the field while it is valid.
   helperText?: string
   required?: boolean
+  // docs/specs/101: set inside a ScorecardGrid. The field is then a compact cell (no visible label, the label is its
+  // accessible name) that the grid's keyboard handling finds by this column.
+  gridColumn?: string
 }
 
 // docs/specs/100-match-results-core.md: the overs field. The manager types "36.4" as on the scorecard; the parent holds
 // balls (220). A ball digit at or above balls per over is refused in plain English ("36.7"), and the parent receives null
 // until the text is valid. The text is local so a half-typed figure is never rewritten under the cursor.
-export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false }: OversInputProps) {
+export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false, gridColumn }: OversInputProps) {
   const [text, setText] = useState(() => ballsToOvers(value, ballsPerOver))
   const [seenValue, setSeenValue] = useState(value)
 
@@ -35,12 +38,15 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
 
   return (
     <Input
-      label={label}
+      label={gridColumn ? '' : label}
+      hiddenLabel={Boolean(gridColumn)}
       required={required}
       disabled={disabled}
       value={text}
       error={Boolean(error)}
-      helperText={error ?? helperText}
+      helperText={gridColumn ? undefined : (error ?? helperText)}
+      title={gridColumn ? (error ?? undefined) : undefined}
+      fullWidth={!gridColumn}
       FormHelperTextProps={{ sx: { whiteSpace: 'normal', overflowWrap: 'anywhere', mx: 0 } }}
       onChange={(event) => {
         const next = event.target.value
@@ -50,8 +56,15 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
         setSeenValue(balls)
         onChange(balls)
       }}
-      inputProps={{ inputMode: 'decimal', 'aria-label': label }}
-      sx={{ '& input': { fontVariantNumeric: 'tabular-nums' } }}
+      inputProps={{
+        inputMode: 'decimal',
+        'aria-label': label,
+        ...(gridColumn ? { 'data-grid-cell': '', 'data-grid-col': gridColumn, onFocus: (event) => event.target.select() } : {}),
+      }}
+      sx={{
+        '& input': { fontVariantNumeric: 'tabular-nums', ...(gridColumn ? { textAlign: 'right', py: 0, height: 30, fontSize: 12, boxSizing: 'border-box', px: 1, fontWeight: 600 } : {}) },
+        ...(gridColumn ? { width: 64, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } } : {}),
+      }}
     />
   )
 }

@@ -54,6 +54,8 @@ export interface PlayerSlotPickerProps {
   hints?: Record<string, string>
   onPickPlayer: (player: PickedPlayer) => void
   onPickGuest: (displayName: string) => void
+  // False when the row can only become a registered player (Link to a registered player...): no Guest scope.
+  allowGuest?: boolean
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -120,6 +122,7 @@ function PickerBody({
   hints = {},
   onPickPlayer,
   onPickGuest,
+  allowGuest = true,
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
   const [scope, setScope] = useState<PlayerSlotScope>(hasSquad ? 'squad' : 'club')
@@ -167,7 +170,7 @@ function PickerBody({
   const registeredMatch = guestName === '' ? undefined : clubPeople.find((p) => norm(fullName(p)) === norm(guestName))
   const registeredTaken = registeredMatch ? takenPlayers[registeredMatch.playerProfileId] : undefined
 
-  const scopes: PlayerSlotScope[] = hasSquad ? ['squad', 'club', 'guest'] : ['club', 'guest']
+  const scopes: PlayerSlotScope[] = [...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : [])]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>

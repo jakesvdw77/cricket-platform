@@ -15,6 +15,8 @@ const saveResultDraft = vi.fn()
 const validateResult = vi.fn()
 const publishResult = vi.fn()
 const getPlayingConditions = vi.fn()
+const getScorecard = vi.fn()
+const getScorecardPrefill = vi.fn()
 
 vi.mock('../../../api/matchApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../api/matchApi')>()
@@ -28,6 +30,8 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
     saveResultDraft: (clubId: string, matchId: string, body: unknown) => saveResultDraft(clubId, matchId, body),
     validateResult: (clubId: string, matchId: string, body: unknown) => validateResult(clubId, matchId, body),
     publishResult: (clubId: string, matchId: string, ack: boolean) => publishResult(clubId, matchId, ack),
+    getScorecard: (clubId: string, matchId: string) => getScorecard(clubId, matchId),
+    getScorecardPrefill: (clubId: string, matchId: string) => getScorecardPrefill(clubId, matchId),
   }
 })
 vi.mock('../../../api/leaguePlayingConditionsApi', () => ({
@@ -64,7 +68,10 @@ const HOME = '1st XI'
 const AWAY = 'Riverside Occasionals'
 const CLEAN = { canPublish: true, errors: [], warnings: [] }
 
-const step = (n: number, label: string, suffix = '') => screen.getByRole('button', { name: `Step ${n}: ${label}${suffix}` })
+// Steps are found by name, not number: the optional scorecard steps shift Review's place once scores exist.
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const step = (label: string, suffix = '') =>
+  screen.getByRole('button', { name: new RegExp(`^Step \\d+: ${escape(label)}${suffix ? escape(suffix) : '(?: \\((?:done|optional)\\))*'}$`) })
 const next = (user: ReturnType<typeof userEvent.setup>, label: string) => user.click(screen.getByRole('button', { name: `Next: ${label}` }))
 
 beforeEach(() => {
@@ -75,6 +82,8 @@ beforeEach(() => {
   saveResultDraft.mockImplementation((_c: string, _m: string, body: object) => Promise.resolve(makeResult({ status: 'DRAFT', ...body })))
   validateResult.mockResolvedValue(CLEAN)
   publishResult.mockResolvedValue(makeResult())
+  getScorecardPrefill.mockResolvedValue({ sides: [] })
+  getScorecard.mockResolvedValue({ players: [], batting: [], bowling: [], fielding: [], awards: [] })
 })
 
 describe('ResultCapturePage', () => {
@@ -84,7 +93,7 @@ describe('ResultCapturePage', () => {
     expect(await screen.findByRole('heading', { name: 'Capture result' })).toBeInTheDocument()
     const labels = within(screen.getByRole('list', { name: 'Steps' })).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
     expect(labels).toEqual(['Step 1: Result', 'Step 2: Toss & field', 'Step 3: Scores', 'Step 4: Review'])
-    expect(step(1, 'Result')).toHaveAttribute('aria-current', 'step')
+    expect(step('Result')).toHaveAttribute('aria-current', 'step')
     expect(screen.getByText('How did the match end?')).toBeInTheDocument()
   })
 
@@ -97,7 +106,7 @@ describe('ResultCapturePage', () => {
     expect(await screen.findByText('Who won the toss?')).toBeInTheDocument()
     await next(user, 'Scores')
     expect(await screen.findByText('Innings')).toBeInTheDocument()
-    expect(step(1, 'Result', ' (done)')).toBeInTheDocument()
+    expect(step('Result', ' (done)')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(await screen.findByText('Who won the toss?')).toBeInTheDocument()
   })
@@ -164,7 +173,7 @@ describe('ResultCapturePage', () => {
     await next(user, 'Toss & field')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Choose who won.')
-    expect(step(1, 'Result')).toHaveAttribute('aria-current', 'step')
+    expect(step('Result')).toHaveAttribute('aria-current', 'step')
   })
 
   describe('toss and scores', () => {
@@ -244,7 +253,7 @@ describe('ResultCapturePage', () => {
       await user.click(screen.getByRole('radio', { name: /^Won/ }))
       await user.click(screen.getByRole('radio', { name: new RegExp(HOME) }))
       await user.click(screen.getByRole('button', { name: 'Super over' }))
-      await user.click(step(3, 'Scores'))
+      await user.click(step('Scores'))
 
       expect(await screen.findAllByTestId('super-over')).toHaveLength(1)
       await user.click(screen.getByRole('button', { name: 'Add super over' }))
@@ -260,7 +269,7 @@ describe('ResultCapturePage', () => {
       await user.click(screen.getByRole('radio', { name: /^Won/ }))
       await user.click(screen.getByRole('button', { name: 'Super over' }))
       await user.click(screen.getByRole('button', { name: 'Normal' }))
-      await user.click(step(3, 'Scores'))
+      await user.click(step('Scores'))
       await screen.findByText('Innings')
 
       expect(screen.queryByTestId('super-over')).not.toBeInTheDocument()
@@ -312,7 +321,7 @@ describe('ResultCapturePage', () => {
 
     const toReview = async (user: ReturnType<typeof userEvent.setup>) => {
       await screen.findByRole('heading', { name: 'Edit result' })
-      await user.click(step(4, 'Review'))
+      await user.click(step('Review'))
       await screen.findByText('This is how the result will look')
     }
 

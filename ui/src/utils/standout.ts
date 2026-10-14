@@ -1,4 +1,4 @@
-import type { FeaturedOverride } from '../api/matchResultApi'
+import type { BattingEntry, BowlingEntry, FeaturedOverride, FieldingEntry } from '../api/matchResultApi'
 
 // docs/specs/101-match-results-our-side-scorecard.md (Standout icon toggle): the star on a scorecard row. The server
 // suggests standouts (`suggested`) and stores the manager's edit (`featuredOverride`) apart from the computed value;
@@ -19,3 +19,15 @@ export function toggledOverride(
   if (featured) return suggested ? 'HIDE' : null
   return suggested ? null : 'FEATURE'
 }
+
+// docs/specs/101 (decision 2026-10-14): the obvious cases that never get a star. A batter who did not bat or scored no
+// runs, a bowler who bowled no balls and a fielder with no credit cannot be featured; the server never suggests them
+// either. One function per table, used by the entry steps, the Awards standouts and the result page. (Thresholds stay a
+// later concept.)
+export const canFeatureBatter = (entry: Pick<BattingEntry, 'howOut' | 'runs'>): boolean =>
+  entry.howOut !== 'DID_NOT_BAT' && (entry.runs ?? 0) > 0
+
+export const canFeatureBowler = (entry: Pick<BowlingEntry, 'balls'>): boolean => (entry.balls ?? 0) > 0
+
+export const canFeatureFielder = (entry: Pick<FieldingEntry, 'catches' | 'stumpings' | 'runOuts'>): boolean =>
+  (entry.catches ?? 0) + (entry.stumpings ?? 0) + (entry.runOuts ?? 0) > 0

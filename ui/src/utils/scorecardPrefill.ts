@@ -4,6 +4,8 @@ import { initialRows } from './wicketFill'
 // docs/specs/101-match-results-our-side-scorecard.md (Our batting, "Pre-fill"): turns the team selection
 // (GET .../scorecard/prefill) into the rows of the batting grid. Built locally; nothing is written until a save.
 
+export const LINEUP_SIZE = 11
+
 let keyCounter = 0
 // A client key for a new row (entries refer to a new player by it until the server gives the player an id).
 export function newClientKey(): string {
@@ -64,9 +66,24 @@ export function blankBattingEntry(side: ResultSide, player: Pick<ResultPlayer, '
 
 // The proposed lines in batting order: players with a planned order first (by it), then those without, with the 12th man
 // (a substitute) last. The server already sends them this way; this keeps the rule in one place for a re-sort.
-export function lineupOrder(players: ScorecardPrefillPlayer[]): ScorecardPrefillPlayer[] {
+export function lineupOrder(input: ScorecardPrefillPlayer[]): ScorecardPrefillPlayer[] {
+  // One profile is one result player: a profile listed twice (the 12th man also in the selection) keeps its first entry,
+  // flagged as a substitute if either entry was.
+  const seen = new Map<string, ScorecardPrefillPlayer>()
+  const players: ScorecardPrefillPlayer[] = []
+  for (const player of input) {
+    const earlier = seen.get(player.playerProfileId)
+    if (!earlier) {
+      seen.set(player.playerProfileId, player)
+      players.push(player)
+    } else if (player.substitute && !earlier.substitute) {
+      const merged = { ...earlier, substitute: true, plannedBattingOrder: null }
+      players[players.indexOf(earlier)] = merged
+      seen.set(player.playerProfileId, merged)
+    }
+  }
   const rank = (player: ScorecardPrefillPlayer) => (player.substitute ? 2 : player.plannedBattingOrder == null ? 1 : 0)
-  return players
+  const sorted = players
     .map((player, index) => ({ player, index }))
     .sort(
       (a, b) =>
@@ -75,6 +92,13 @@ export function lineupOrder(players: ScorecardPrefillPlayer[]): ScorecardPrefill
         a.index - b.index,
     )
     .map(({ player }) => player)
+  // The eleven are the first LINEUP_SIZE batting positions; anyone beyond them is listed after as a substitute.
+  let batting = 0
+  return sorted.map((player) => {
+    if (player.substitute) return player
+    batting += 1
+    return batting > LINEUP_SIZE ? { ...player, substitute: true } : player
+  })
 }
 
 // The grid of one ours side as first opened: a row per player in the planned order, the first `wickets + 2` as batted

@@ -25,7 +25,7 @@ const digits = /^\d*$/
 // The number cell of the scorecard grids: a real, labelled input (not a custom widget) that selects its content on focus
 // and asks a phone for the numeric keypad. `data-grid-cell` and `data-grid-col` are what ScorecardGrid's keyboard
 // handling finds it by, so the same cell works in the batting, bowling and extras rows.
-export function GridNumberInput({ value, onChange, ariaLabel, column, disabled = false, max, stepper = false, width = 56, id }: GridNumberInputProps) {
+export function GridNumberInput({ value, onChange, ariaLabel, column, disabled = false, max, stepper = false, width = 52, id }: GridNumberInputProps) {
   const set = (next: number | null) => onChange(next === null ? null : max != null ? Math.min(next, max) : next)
 
   const field = (
@@ -48,12 +48,13 @@ export function GridNumberInput({ value, onChange, ariaLabel, column, disabled =
       }}
       sx={{
         width: stepper ? 56 : width,
-        height: stepper ? 44 : 34,
+        height: stepper ? 44 : 30,
         border: 1,
         borderColor: 'divider',
         borderRadius: 1.5,
         bgcolor: 'background.paper',
         fontWeight: 600,
+        fontSize: stepper ? undefined : 12,
         fontVariantNumeric: 'tabular-nums',
         '& input': { textAlign: stepper ? 'center' : 'right', px: 1, height: '100%', boxSizing: 'border-box' },
         '&.Mui-focused': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: 1, borderColor: 'primary.main' },

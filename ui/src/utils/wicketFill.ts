@@ -41,3 +41,14 @@ export function applyWicketFill<T extends FillRow>(rows: T[], wickets: number | 
   if (wickets === null || dismissalCount(reverted) !== wickets) return reverted
   return reverted.map((row) => (row.howOut === null ? { ...row, howOut: 'NOT_OUT' as const, auto: true } : row))
 }
+
+// The how-out a newly added row starts with (Add player, a picked player or a guest): appended after the existing rows, it
+// is an undecided, editable row only while fewer than wickets + 2 batters are in play and the dismissals marked are still
+// below the wickets; otherwise it is Did not bat (never an automatic Not out). Wickets not known: undecided, as before. A
+// Did not bat row stays editable, and applyWicketFill never overwrites a row the manager set.
+export function newRowFill(rows: ReadonlyArray<Pick<FillRow, 'howOut'>>, wickets: number | null): FillRow {
+  if (wickets === null) return { howOut: null }
+  const inPlay = rows.filter((row) => row.howOut !== 'DID_NOT_BAT').length
+  const open = inPlay < initialBattedCount(Number.MAX_SAFE_INTEGER, wickets) && dismissalCount(rows) < wickets
+  return open ? { howOut: null } : { howOut: 'DID_NOT_BAT', auto: true }
+}
