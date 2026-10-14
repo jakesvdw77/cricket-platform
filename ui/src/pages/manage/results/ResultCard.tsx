@@ -2,6 +2,7 @@ import { Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
@@ -112,6 +113,14 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
         value={field ?? 'Not recorded'}
         muted={!field}
       />
+      {item.playerOfTheMatch && (
+        <DetailLine
+          icon={<EmojiEventsOutlinedIcon fontSize="small" />}
+          label="Player of the match"
+          value={item.playerOfTheMatch}
+          labelWidth={130}
+        />
+      )}
       {!draft && (
         <Typography variant="caption" color="text.secondary">
           {UNPUBLISH_TO_EDIT_REASON}

@@ -118,3 +118,39 @@ export function matchDismissals(text: string): DismissalInfo[] {
 
 // The dismissal that Enter accepts for the typed text, or null when nothing matches.
 export const bestDismissal = (text: string): DismissalType | null => matchDismissals(text)[0]?.type ?? null
+
+// docs/specs/101 (result page): how a batter's innings ended, written as a scorecard line from the already-labelled
+// names of the fielder and bowler (labels come from PlayerName's labeler, so the Full name / First name choice applies).
+// A missing name falls back to the plain word with the names that are known: "caught b Jones".
+export function dismissalText(
+  howOut: DismissalType | null | undefined,
+  bowler?: string | null,
+  fielder?: string | null,
+): string {
+  const by = bowler ? ` b ${bowler}` : ''
+  switch (howOut) {
+    case undefined:
+    case null:
+      return ''
+    case 'CAUGHT':
+      return fielder ? `c ${fielder}${by}` : `caught${by}`
+    case 'CAUGHT_AND_BOWLED':
+      return bowler ? `c & b ${bowler}` : 'caught and bowled'
+    case 'STUMPED':
+      return fielder ? `st ${fielder}${by}` : `stumped${by}`
+    case 'BOWLED':
+      return bowler ? `b ${bowler}` : 'bowled'
+    case 'LBW':
+      return `lbw${by}`
+    case 'RUN_OUT':
+      return fielder ? `run out (${fielder})` : 'run out'
+    case 'HIT_WICKET':
+      return `hit wicket${by}`
+    case 'NOT_OUT':
+      return 'not out'
+    case 'DID_NOT_BAT':
+      return 'did not bat'
+    default:
+      return dismissalLabel(howOut).toLowerCase()
+  }
+}

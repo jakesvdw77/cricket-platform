@@ -100,6 +100,11 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
         <Typography variant="body2" fontWeight={600} sx={{ color: PERSPECTIVE_COLOR[perspective] }}>
           {line}
         </Typography>
+        {item.playerOfTheMatch && (
+          <Typography variant="caption" color="text.secondary" component="div" noWrap data-testid="result-row-potm">
+            Player of the match: {item.playerOfTheMatch}
+          </Typography>
+        )}
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', gap: 0.25 }} {...DESKTOP_ONLY} data-testid="result-row-scores">
         {sides.map((side) => (
