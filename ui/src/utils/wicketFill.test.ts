@@ -34,7 +34,14 @@ describe('wicketFill', () => {
     rows = mark(rows, 0, 'CAUGHT')
     rows = mark(rows, 2, 'BOWLED')
     rows = mark(rows, 3, 'NOT_OUT')
-    expect(howOuts(applyWicketFill(rows, 2))).toEqual(['CAUGHT', 'DID_NOT_BAT', 'BOWLED', 'NOT_OUT', 'NOT_OUT', 'NOT_OUT'])
+    // Batting is in order: the row between two batted rows batted too, so its how out is still to choose (null), not Did not bat.
+    expect(howOuts(applyWicketFill(rows, 2))).toEqual(['CAUGHT', null, 'BOWLED', 'NOT_OUT', 'NOT_OUT', 'NOT_OUT'])
+  })
+
+  it('never leaves Did not bat before a row that batted: the earlier rows are batted with the how out still to choose', () => {
+    const rows: FillRow[] = [{ howOut: 'BOWLED' }, ...initialRows(4, null).map((row, i) => (i === 2 ? { ...row, runs: 70 } : row))]
+    const filled = applyWicketFill(rows, null)
+    expect(filled.map((row) => row.howOut)).toEqual(['BOWLED', null, null, null, 'DID_NOT_BAT'])
   })
 
   it('handles 10 wickets: ten dismissals and the last batter not out', () => {
@@ -86,7 +93,8 @@ describe('wicketFill', () => {
     const blank: FillRow[] = [{ howOut: null }, { howOut: null }]
     expect(howOuts(applyWicketFill(blank, null))).toEqual(['DID_NOT_BAT', 'DID_NOT_BAT'])
     const typed = applyWicketFill(initialRows(2, null).map((row, i) => (i === 1 ? { ...row, runs: 7 } : row)), null)
-    expect(typed[0]).toMatchObject({ howOut: 'DID_NOT_BAT', auto: true })
+    // The row before the one with a figure batted too (batting is in order): how out still to choose.
+    expect(typed[0]).toMatchObject({ howOut: null, auto: false })
     expect(typed[1]).toMatchObject({ howOut: null, auto: false })
   })
 

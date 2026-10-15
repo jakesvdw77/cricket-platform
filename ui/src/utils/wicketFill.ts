@@ -46,6 +46,12 @@ export function applyWicketFill<T extends FigureRow>(rows: T[], wickets: number 
   })
   const lastOut = released.reduce((last, row, index) => (isWicket(row.howOut) ? index : last), -1)
   const settled = wickets !== null && dismissalCount(released) === wickets
+  // Batting is in order: every batter before the last one who batted (a how out other than Did not bat, or typed figures)
+  // batted too, so none of them can be Did not bat; their how out is still to be chosen.
+  const lastBatted = released.reduce(
+    (last, row, index) => ((row.howOut !== null && row.howOut !== 'DID_NOT_BAT') || hasFigures(row) ? index : last),
+    -1,
+  )
   let given = 0
   const settledRows = released.map((row, index) => {
     if (row.howOut !== null) return row
@@ -55,6 +61,7 @@ export function applyWicketFill<T extends FigureRow>(rows: T[], wickets: number 
       given += 1
       return { ...row, howOut: 'NOT_OUT' as const, auto: true }
     }
+    if (index < lastBatted) return row
     return { ...row, howOut: 'DID_NOT_BAT' as const, auto: true }
   })
   // A row that came out the same as it went in stays the very same object, so an unchanged card is detected as unchanged.
@@ -78,7 +85,6 @@ export function normalizeBatterFigures<T extends FigureRow & { bowlerPlayerId?: 
       return clean ? row : { ...row, runs: null, balls: null, fours: null, sixes: null, bowlerPlayerId: null, fielderPlayerId: null, featuredOverride: null, untouched: false }
     }
     const typed = FIGURE_KEYS.some((key) => row[key] != null)
-    if (row.howOut === null && !typed) return row
     if (FIGURE_KEYS.every((key) => row[key] != null)) return row
     return { ...row, runs: row.runs ?? 0, balls: row.balls ?? 0, fours: row.fours ?? 0, sixes: row.sixes ?? 0, untouched: typed ? row.untouched : true }
   })

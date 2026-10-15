@@ -89,8 +89,9 @@ export function BattingStep({
   const innings = regularInningsOf(draft).find((item) => item.battingSide === side)
   // Only wickets the manager typed drive the not-out / did-not-bat fill; calculated wickets just follow the dismissals.
   const wickets = innings && wicketsOwned(innings) ? (innings.wickets ?? null) : null
-  // The Not outs follow the wickets whether typed or calculated from the dismissals.
-  const fillWickets = innings?.wickets ?? null
+  // The automatic Not outs follow only the wickets the manager typed: calculated wickets equal the dismissals by construction,
+  // so using them would hand out Not outs as soon as the first dismissal is marked.
+  const fillWickets = wickets
   const prefillSide = prefill?.sides.find((candidate) => candidate.side === side) ?? null
   const players = playersOfSide(scorecard, side)
   const rows = battingOf(scorecard, side)
