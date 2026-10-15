@@ -327,6 +327,7 @@ public class ResultImportProcessor {
         List<ImportedResultDto.Batting> rows = orEmpty(innings.batting());
         boolean givenPositionsUsable = positionsUsable(rows);
         int order = 0;
+        int notOutNoBalls = 0;
         for (ImportedResultDto.Batting row : rows) {
             Person person = batters.of(row.player());
             if (person == null || !onBatting.add(person.clientKey())) {
@@ -335,6 +336,9 @@ public class ResultImportProcessor {
                 continue;
             }
             order++;
+            if (row.howOut() == DismissalType.NOT_OUT && isZeroOrNull(row.runs()) && isZeroOrNull(row.balls())) {
+                notOutNoBalls++;
+            }
             Person bowler = row.bowler() == null ? null : fielders.of(row.bowler());
             Person fielder = row.fielder() == null ? null : fielders.of(row.fielder());
             batting.add(new BattingEntryDto(
@@ -345,6 +349,13 @@ public class ResultImportProcessor {
             worst = worst(worst, person.level());
             worst = worst(worst, bowler == null ? ImportExactness.EXACT : bowler.level());
             worst = worst(worst, fielder == null ? ImportExactness.EXACT : fielder.level());
+        }
+        if (notOutNoBalls > 0) {
+            // Only a nudge: the rows are imported as the file says. CricClubs has no did-not-bat marker, so a 0 (0) not out
+            // may be someone who never batted. No names here, the manager sees the rows in the wizard.
+            notes.add(ImportNoteDto.of("NOT_OUT_NO_BALLS", ImportNoteSeverity.WARNING, section,
+                    (notOutNoBalls == 1 ? "1 batter is" : notOutNoBalls + " batters are")
+                            + " not out with 0 balls faced. If they did not bat, set them to Did not bat."));
         }
         for (String name : orEmpty(innings.didNotBat())) {
             Person person = batters.of(name);
@@ -375,6 +386,10 @@ public class ResultImportProcessor {
             worst = worst(worst, person.level());
         }
         return worst;
+    }
+
+    private static boolean isZeroOrNull(Integer value) {
+        return value == null || value == 0;
     }
 
     private static boolean positionsUsable(List<ImportedResultDto.Batting> rows) {
