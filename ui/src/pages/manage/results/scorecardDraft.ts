@@ -532,13 +532,9 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
       runs = bowlers.reduce((sum, entry) => sum + n(entry.runs), 0) + n(innings.byes) + n(innings.legByes) + n(innings.penaltyRuns)
       wickets = bowlers.reduce((sum, entry) => sum + n(entry.wickets), 0) + n(innings.nonBowlerWickets)
     }
-    // Legal balls of the innings: our bowlers' balls when they are entered, else what the batting card shows. Every ball a batter
-    // faced counts once (byes and leg byes are runs off deliveries the striker already faced, so they add nothing), a no-ball
-    // is faced but is not a legal delivery, and wides are never faced: sum of balls faced - no-balls. Only when every batted
-    // row has its balls.
-    const bowlersBalls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
-    const battersBalls = batters.length > 0 && batters.every((entry) => entry.balls != null) ? Math.max(0, batters.reduce((sum, entry) => sum + n(entry.balls), 0) - n(innings.noBalls)) : 0
-    const balls = bowlersBalls > 0 ? bowlersBalls : battersBalls
+    // The innings' overs come only from the bowling card (the sum of the bowlers' balls); the batters' balls never feed them,
+    // because scorers differ on byes and leg byes.
+    const balls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
     // Wides and no-balls are charged to the bowler: they are inside the bowlers' runs already (never added to the runs again)
     // and add up to the innings' wides and no-balls extras.
     const sum = (pick: (entry: BowlingEntry) => number | null | undefined) => (bowlers.some((entry) => pick(entry) != null) ? bowlers.reduce((total, entry) => total + n(pick(entry)), 0) : null)

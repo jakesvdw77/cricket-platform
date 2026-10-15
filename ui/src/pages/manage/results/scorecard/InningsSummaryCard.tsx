@@ -101,6 +101,7 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
                 onChange={(balls) => onEdit('balls', balls)}
                 ballsPerOver={ballsPerOver}
                 disabled={disabled}
+                helperText={calculated?.balls == null && innings.balls === null ? 'Overs are worked out from the bowling card; type them here if you have the official figure' : undefined}
               />
             </Box>
           </Box>

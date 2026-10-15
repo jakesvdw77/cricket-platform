@@ -177,28 +177,3 @@ describe('bowling rows from dismissals', () => {
     expect(applyDerivedCredits(typed).bowling).toHaveLength(1)
   })
 })
-
-describe('innings balls from the batting card', () => {
-  const draftFor = (balls: Array<number | null>, noBalls: number | null, byes: number | null): ResultDraft => ({
-    innings: [{ sequence: 1, kind: 'REGULAR', battingSide: 'HOME', runs: null, wickets: null, balls: null, noBalls, byes }],
-    scorecard: {
-      players: [],
-      batting: balls.map((b, i) => ({ ...batter(`p${i}`, 10, 'CAUGHT'), balls: b })),
-      bowling: [],
-      fielding: [],
-      awards: [],
-    },
-  })
-
-  it('is the sum of the balls faced when there are no no-balls (STUMPS 1st innings: 180 = 30.0 overs)', () => {
-    expect(inningsSuggestions(draftFor([60, 50, 40, 30], null, null)).get(1)?.balls).toBe(180)
-  })
-
-  it('takes the no-balls off and ignores byes (STUMPS 2nd innings: 107 faced, 1 no-ball, 4 byes = 106 = 17.4 overs)', () => {
-    expect(inningsSuggestions(draftFor([57, 50], 1, 4)).get(1)?.balls).toBe(106)
-  })
-
-  it('suggests nothing while a batter has no balls entered', () => {
-    expect(inningsSuggestions(draftFor([60, null], null, null)).get(1)?.balls ?? null).toBeNull()
-  })
-})
