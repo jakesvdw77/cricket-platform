@@ -169,7 +169,8 @@ const hasAnyFigure = (innings: Innings) => innings.runs !== null || innings.wick
 function hasEntriesFor(scorecard: Scorecard | null | undefined, side: ResultSide | null): boolean {
   if (!scorecard || !side) return false
   return (
-    scorecard.batting.some((entry) => entry.battingSide === side && entry.howOut != null) ||
+    // An automatic Did not bat (a team list with nobody batting yet) is not an entry: a players-only draft sends no innings.
+    scorecard.batting.some((entry) => entry.battingSide === side && entry.howOut != null && entry.howOut !== 'DID_NOT_BAT') ||
     scorecard.bowling.some((entry) => entry.battingSide === side && hasBowlingFigures(entry)) ||
     scorecard.fielding.some((entry) => entry.battingSide === side && hasCredit(entry))
   )

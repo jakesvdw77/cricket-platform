@@ -215,3 +215,31 @@ describe('toPayload batting rows without a how out', () => {
     expect(batting[1]).toMatchObject({ howOut: 'CAUGHT', bowlerPlayerId: 'x', fielderPlayerId: null })
   })
 })
+
+describe('toPayload scorecard sections', () => {
+  const player = (key: string, patch: object = {}) => ({ clientKey: key, side: 'HOME' as const, playerProfileId: 'p-' + key, displayName: null, plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, ...patch })
+
+  it('sends a players-only scorecard with no innings and no outcome', () => {
+    const payload = toPayload({ ...emptyDraft(), scorecard: { players: [player('a'), player('b', { substitute: true })], batting: [], bowling: [], fielding: [], awards: [] } })
+    expect(payload.innings ?? []).toEqual([])
+    expect(payload.outcomeType ?? null).toBeNull()
+    expect(payload.scorecard?.players).toHaveLength(2)
+    expect(isBlankDraft({ ...emptyDraft(), scorecard: { players: [player('a')], batting: [], bowling: [], fielding: [], awards: [] } })).toBe(false)
+  })
+
+  it('keeps the opposition flag on its players and sends nothing for a draft with no scorecard', () => {
+    const opp = player('x', { side: 'AWAY', playerProfileId: null, displayName: 'Sam Jones', opposition: true })
+    const payload = toPayload(won({ scorecard: { players: [opp], batting: [], bowling: [], fielding: [], awards: [] } }))
+    expect(payload.scorecard?.players[0]).toMatchObject({ opposition: true, displayName: 'Sam Jones' })
+    expect(toPayload(won()).scorecard).toBeUndefined()
+  })
+
+  it('leaves out bowlers and fielders without figures, the client-only flags, and a Did not bat position', () => {
+    const batting = { battingSide: 'HOME' as const, inningsKind: 'REGULAR' as const, playerClientKey: 'a', position: 4, howOut: 'DID_NOT_BAT' as const, runs: null, balls: null, fours: null, sixes: null, featuredOverride: null, auto: true }
+    const bowlRow = { battingSide: 'AWAY' as const, inningsKind: 'REGULAR' as const, playerClientKey: 'b', bowlingOrder: 1, balls: null, maidens: 0, runs: 0, wickets: 0, wides: 0, noBalls: 0, featuredOverride: null, untouched: true }
+    const payload = toPayload(won({ scorecard: { players: [player('a'), player('b')], batting: [batting], bowling: [bowlRow], fielding: [], awards: [] } }))
+    expect(payload.scorecard?.batting[0]).toMatchObject({ howOut: 'DID_NOT_BAT', position: null })
+    expect(payload.scorecard?.batting[0]).not.toHaveProperty('auto')
+    expect(payload.scorecard?.bowling).toEqual([])
+  })
+})

@@ -5,7 +5,9 @@ import { test, expect } from '@playwright/test';
  * manager creates a (past-dated) match, opens Results, taps Capture result, picks the awaiting match, records a
  * won-by-runs result with the toss and both scores in the four wizard steps, saves a draft, sees it as a draft on the
  * Results page, publishes it, and sees the match as Completed on the Matches page. A second, short test records a tie
- * decided by a super over. Both run at the desktop and the mobile viewport (the two projects in playwright.config.ts).
+ * decided by a super over. docs/specs/101's scorecard wizard is covered by two more tests: the Teams-first golden path
+ * (opposition pasted, toss, result, a batting dismissal, the bowling row created from it, awards, review, publish) and a
+ * short derby. All run at the desktop and the mobile viewport (the two projects in playwright.config.ts).
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-fields-directory.spec.ts:
@@ -186,5 +188,88 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await expect(page.getByTestId('result-preview')).toContainText('Tied');
     await expect(page.getByTestId('result-preview')).toContainText('won in the super over');
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeEnabled();
+  });
+  test('manager captures the full scorecard from Teams to a published result (101)', async ({ page }) => {
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const opponent = `E2E Scorecard Opponents ${uniqueSuffix}`;
+
+    await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await createPastMatch(page, opponent, 5);
+    await openWizardFor(page, opponent);
+
+    // --- Teams: both sides get a logo tile. Our side is pre-filled from the selection (or built with Populate). ---
+    const sidePicker = page.getByRole('radiogroup', { name: 'Who is playing?' });
+    await expect(sidePicker.getByRole('radio')).toHaveCount(2);
+    const populate = page.getByRole('button', { name: 'Populate from the team' });
+    if (await populate.count()) await populate.click();
+
+    // The opposition: names pasted one per line, list numbers dropped.
+    await sidePicker.getByRole('radio').nth(1).click();
+    await page.getByLabel('Type or paste names, one per line').fill('1. Sam Jones\n2) Tom Brown\n3. Ali Khan');
+    await page.getByRole('button', { name: 'Add names' }).click();
+    await expect(page.getByLabel('Name, Sam Jones')).toBeVisible();
+
+    // --- Toss and field: the home side won the toss and batted. ---
+    await nextTo(page, 'Toss and field').click();
+    await page.getByRole('radiogroup', { name: 'Who won the toss?' }).getByRole('radio').first().click();
+    await page.getByRole('button', { name: 'Bat', exact: true }).click();
+
+    // --- Result: won by the home side. ---
+    await nextTo(page, 'Result').click();
+    await page.getByRole('radio', { name: /^Won/ }).click();
+    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click();
+
+    // --- Batting (opens on the side batting first): the first batter is caught off the opposition's bowler. ---
+    await nextTo(page, 'Batting').click();
+    const firstHowOut = page.getByRole('textbox', { name: /^How out, / }).first();
+    await firstHowOut.click();
+    await firstHowOut.pressSequentially('b');
+    await firstHowOut.press('Enter');
+    const bowlerPick = page.getByRole('combobox', { name: /^Bowler, / }).first();
+    await bowlerPick.click();
+    await page.getByRole('option', { name: 'Sam Jones' }).click();
+
+    // --- Bowling and fielding opens on the side bowling first; the dismissal created Sam Jones's row with a derived wicket. ---
+    await nextTo(page, 'Bowling and fielding').click();
+    await expect(page.getByLabel('Overs, Sam Jones')).toBeVisible();
+    await expect(page.getByLabel('Wickets, Sam Jones')).toHaveValue('1');
+
+    // --- Awards: the official player of the match, from either list. ---
+    await nextTo(page, 'Awards').click();
+    await expect(page.getByTestId('awards-official')).toBeVisible();
+
+    // --- Scores and margin, then Review. ---
+    await nextTo(page, 'Scores and margin').click();
+    await fillInnings(page, 0, '180', '6', '40');
+    await fillInnings(page, 1, '150', '9', '38.4');
+    await nextTo(page, 'Review').click();
+    await expect(page.getByTestId('result-preview')).toContainText('won by 30 runs');
+    // Typed issues carry a team chip and a Fix; any warning is ticked, the not-selected info line needs no tick.
+    const acknowledge = page.getByRole('checkbox', { name: /I have checked these warnings/ });
+    if (await acknowledge.count()) await acknowledge.check();
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Publish', exact: true }).click();
+    await expect(page).toHaveURL(/\/manage\/results$/);
+
+    // --- The result page shows the scorecard with the dismissal written as a scorecard line. ---
+    await page.locator('.MuiCard-root').filter({ hasText: opponent }).getByRole('heading').click();
+    await expect(page.getByTestId('scorecard-home')).toBeVisible();
+    await expect(page.getByTestId('scorecard-away')).toContainText('Sam Jones');
+  });
+
+  test('a derby shows the same side toggle with both teams as our sides (101)', async ({ page }) => {
+    test.skip(!process.env.E2E_DERBY_MATCH_ID, 'needs a club with two own teams: set E2E_DERBY_MATCH_ID to a past derby match without a result');
+    await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await page.goto(`http://${ROOT_DOMAIN}/manage/results/${process.env.E2E_DERBY_MATCH_ID}/capture`);
+    await expect(page.getByRole('heading', { name: /(Capture|Edit) result/ })).toBeVisible();
+
+    // The same two-tile toggle as every match; each side is an ours side with its own team list.
+    const sidePicker = page.getByRole('radiogroup', { name: 'Who is playing?' });
+    await expect(sidePicker.getByRole('radio')).toHaveCount(2);
+    await sidePicker.getByRole('radio').nth(1).click();
+    await expect(page.getByRole('button', { name: 'Add player' })).toBeVisible();
+    await expect(page.getByLabel('Type or paste names, one per line')).toHaveCount(0);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BattingEntry, BowlingEntry, ResultDraft } from '../../../api/matchResultApi'
 import type { MatchAward, ResultPlayer, Scorecard, ScorecardPrefillSide } from '../../../api/matchResultApi'
-import { applyDerivedCredits, matchPlayersFor, reconcileSubstitutes, removalOf, swapPlayer, applyCalculatedFigure, editInningsFigure, figureCorrected, inningsSuggestions, syncInningsFromScorecard, wicketsOwned } from './scorecardDraft'
+import { addPlayer, defaultSideFor, normalizeLoaded, applyDerivedCredits, matchPlayersFor, reconcileSubstitutes, removalOf, swapPlayer, applyCalculatedFigure, editInningsFigure, figureCorrected, inningsSuggestions, syncInningsFromScorecard, wicketsOwned } from './scorecardDraft'
 
 const batter = (key: string, runs: number | null, howOut: BattingEntry['howOut']): BattingEntry => ({
   battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: null, playerClientKey: key, position: 1, howOut, runs, balls: null, fours: null, sixes: null, featuredOverride: null,
@@ -192,5 +192,119 @@ describe('bowling rows start at zero but say nothing until touched', () => {
     const sugg = inningsSuggestions({ innings: [{ sequence: 1, kind: 'REGULAR', battingSide: 'HOME', runs: null, wickets: null, balls: null }], scorecard: { ...made, batting: [] } })
     expect(sugg.get(1)?.wides ?? null).toBeNull()
     expect(sugg.get(1)?.runs ?? null).toBeNull()
+  })
+})
+
+describe('inningsSuggestions: untouched zeros and overs', () => {
+  const inningsOnly = (): ResultDraft => ({ innings: [{ sequence: 1, kind: 'REGULAR', battingSide: 'HOME', runs: null, wickets: null, balls: null }], scorecard: { players: [], batting: [], bowling: [], fielding: [], awards: [] } })
+
+  it('ignores batters still on their untouched zeros', () => {
+    const d = inningsOnly()
+    d.scorecard!.batting = [{ ...batter('a', 0, 'NOT_OUT'), untouched: true }, { ...batter('b', 0, 'NOT_OUT'), untouched: true }]
+    expect(inningsSuggestions(d).get(1)).toBeUndefined()
+  })
+
+  it('counts a typed 0 once the manager touched the row', () => {
+    const d = inningsOnly()
+    d.scorecard!.batting = [batter('a', 0, 'BOWLED'), batter('b', 12, 'NOT_OUT')]
+    expect(inningsSuggestions(d).get(1)).toMatchObject({ runs: 12, wickets: 1 })
+  })
+
+  it('takes the overs from the bowlers only, never from the batters\' balls', () => {
+    const d = inningsOnly()
+    d.scorecard!.batting = [{ ...batter('a', 30, 'BOWLED'), balls: 25 }]
+    expect(inningsSuggestions(d).get(1)?.balls ?? null).toBeNull()
+    d.scorecard!.bowling = [{ ...bowler('x', 18, 20, 1), battingSide: 'HOME' }, { ...bowler('y', 12, 9, 0), battingSide: 'HOME' }]
+    expect(inningsSuggestions(d).get(1)?.balls).toBe(30)
+  })
+})
+
+describe('defaultSideFor', () => {
+  const ours = [{ side: 'HOME' as const }]
+  const toss = (tossWonBy: 'HOME' | 'AWAY', tossDecision: 'BAT' | 'BOWL'): ResultDraft => ({ tossWonBy, tossDecision, innings: [] })
+
+  it('opens Batting on the side that bats first and Bowling on the side that bowls first', () => {
+    expect(defaultSideFor('batting', toss('AWAY', 'BAT'), ours)).toBe('AWAY')
+    expect(defaultSideFor('bowling', toss('AWAY', 'BAT'), ours)).toBe('HOME')
+    expect(defaultSideFor('batting', toss('AWAY', 'BOWL'), ours)).toBe('HOME')
+  })
+
+  it('falls back to the first innings once started, else Home, and to the first ours side on other steps', () => {
+    const started: ResultDraft = { innings: [{ sequence: 1, kind: 'REGULAR', battingSide: 'AWAY', runs: 100, wickets: null, balls: null }] }
+    expect(defaultSideFor('batting', started, ours)).toBe('AWAY')
+    expect(defaultSideFor('batting', { innings: [] }, ours)).toBe('HOME')
+    expect(defaultSideFor('teams', toss('HOME', 'BAT'), [{ side: 'AWAY' }])).toBe('AWAY')
+  })
+})
+
+describe('addPlayer', () => {
+  const empty = (): Scorecard => ({ players: [], batting: [], bowling: [], fielding: [], awards: [] })
+
+  it('adds a registered player with a batting row and reuses them the second time', () => {
+    const first = addPlayer(empty(), 'HOME', { playerProfileId: 'p1', firstName: 'A', lastName: 'Smith' }, 'DID_NOT_BAT')
+    expect(first.scorecard.players).toHaveLength(1)
+    expect(first.scorecard.batting).toHaveLength(1)
+    const again = addPlayer(first.scorecard, 'HOME', { playerProfileId: 'p1', firstName: 'A', lastName: 'Smith' }, 'DID_NOT_BAT')
+    expect(again.scorecard.players).toHaveLength(1)
+    expect(again.key).toBe(first.key)
+  })
+
+  it('reuses a typed name without regard to case, but a same name on the other side is a different player', () => {
+    const first = addPlayer(empty(), 'AWAY', { playerProfileId: null, displayName: 'Sam Jones', opposition: true }, null)
+    const again = addPlayer(first.scorecard, 'AWAY', { playerProfileId: null, displayName: ' sam jones ', opposition: true }, null)
+    expect(again.scorecard.players).toHaveLength(1)
+    expect(again.key).toBe(first.key)
+    const other = addPlayer(again.scorecard, 'HOME', { playerProfileId: null, displayName: 'Sam Jones' }, null)
+    expect(other.scorecard.players).toHaveLength(2)
+    expect(other.scorecard.players[1]).toMatchObject({ guest: true, opposition: false })
+    expect(first.scorecard.players[0]).toMatchObject({ opposition: true, guest: false })
+  })
+
+  it('promotes the 12th man instead of adding them twice', () => {
+    const base: Scorecard = { ...empty(), players: [player('t', 'p12', { substitute: true })] }
+    const next = addPlayer(base, 'HOME', { playerProfileId: 'p12', firstName: 'T', lastName: 'M' }, null)
+    expect(next.scorecard.players).toHaveLength(1)
+    expect(next.scorecard.players[0].substitute).toBe(false)
+  })
+})
+
+describe('normalizeLoaded', () => {
+  it('gives every non-substitute player a batting row, an automatic Did not bat when missing, and leaves the 12th man without one', () => {
+    const loaded: Scorecard = {
+      players: [player('a', 'pa'), player('b', 'pb'), player('t', 'pt', { substitute: true })],
+      batting: [batter('a', 20, 'CAUGHT')],
+      bowling: [], fielding: [], awards: [],
+    }
+    const rows = normalizeLoaded(loaded).batting
+    expect(rows.map((row) => row.playerClientKey)).toEqual(['a', 'b'])
+    expect(rows[1]).toMatchObject({ howOut: 'DID_NOT_BAT', auto: true })
+    expect(rows[0].howOut).toBe('CAUGHT')
+  })
+
+  it('marks a saved Did not bat as automatic again so it is re-derived', () => {
+    const loaded: Scorecard = { players: [player('a', 'pa')], batting: [batter('a', null, 'DID_NOT_BAT')], bowling: [], fielding: [], awards: [] }
+    expect(normalizeLoaded(loaded).batting[0].auto).toBe(true)
+  })
+})
+
+describe('applyDerivedCredits: fielding', () => {
+  const card = (howOut: BattingEntry['howOut'], fielder: string | null, fielding: Scorecard['fielding'] = []): Scorecard => ({
+    players: [player('f', null, { side: 'AWAY', opposition: true }), player('b', 'pb')],
+    batting: [{ ...batter('b', 10, howOut), fielderPlayerId: fielder, bowlerPlayerId: null }],
+    bowling: [], fielding, awards: [],
+  })
+
+  it('creates a DERIVED fielding row at one credit and removes it again at none', () => {
+    const made = applyDerivedCredits(card('CAUGHT', 'f'))
+    expect(made.fielding).toHaveLength(1)
+    expect(made.fielding[0]).toMatchObject({ playerClientKey: 'f', catches: 1, creditsSource: 'DERIVED' })
+    const gone = applyDerivedCredits({ ...made, batting: made.batting.map((e) => ({ ...e, howOut: 'NOT_OUT' as const })) })
+    expect(gone.fielding).toHaveLength(0)
+  })
+
+  it('never touches a MANUAL fielding row', () => {
+    const manual = { battingSide: 'HOME' as const, inningsKind: 'REGULAR' as const, playerClientKey: 'f', catches: 5, stumpings: 0, runOuts: 0, featuredOverride: null }
+    const kept = applyDerivedCredits(card('CAUGHT', 'f', [manual]))
+    expect(kept.fielding).toEqual([manual])
   })
 })

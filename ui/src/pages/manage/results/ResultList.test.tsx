@@ -114,6 +114,15 @@ describe('ResultList', () => {
     expect(screen.getAllByText(/Showing 2 results/).length).toBeGreaterThan(0)
   })
 
+  it('shows the player of the match on a card that has one, and nothing on a card that has not', async () => {
+    listResults.mockResolvedValue(
+      makePage([{ ...published, playerOfTheMatch: 'Ann Ash' }, draft]),
+    )
+    renderPage()
+    expect(await screen.findByText('Ann Ash')).toBeInTheDocument()
+    expect(screen.getAllByText('Player of the match')).toHaveLength(1)
+  })
+
   it('remembers the List view and shows a table row per result', async () => {
     const user = userEvent.setup()
     const { unmount } = renderPage()

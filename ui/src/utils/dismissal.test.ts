@@ -8,6 +8,7 @@ import {
   isNonBowlerWicket,
   isWicket,
   matchDismissals,
+  dismissalText,
 } from './dismissal'
 
 describe('dismissal (mirrors the backend DismissalType)', () => {
@@ -59,5 +60,36 @@ describe('dismissal (mirrors the backend DismissalType)', () => {
 
   it('also matches by the start of the label', () => {
     expect(matchDismissals('stu').map((d) => d.type)).toEqual(['STUMPED'])
+  })
+})
+
+describe('dismissalText', () => {
+  it('writes each type as a scorecard line', () => {
+    expect(dismissalText('CAUGHT', 'Jones', 'Smith')).toBe('c Smith b Jones')
+    expect(dismissalText('CAUGHT_AND_BOWLED', 'Jones', null)).toBe('c & b Jones')
+    expect(dismissalText('STUMPED', 'Jones', 'Smith')).toBe('st Smith b Jones')
+    expect(dismissalText('BOWLED', 'Jones')).toBe('b Jones')
+    expect(dismissalText('LBW', 'Jones')).toBe('lbw b Jones')
+    expect(dismissalText('RUN_OUT', null, 'Smith')).toBe('run out (Smith)')
+    expect(dismissalText('HIT_WICKET', 'Jones')).toBe('hit wicket b Jones')
+    expect(dismissalText('NOT_OUT')).toBe('not out')
+    expect(dismissalText('DID_NOT_BAT')).toBe('did not bat')
+  })
+
+  it('falls back to the plain word with the names that are known', () => {
+    expect(dismissalText('CAUGHT', 'Jones', null)).toBe('caught b Jones')
+    expect(dismissalText('CAUGHT', null, null)).toBe('caught')
+    expect(dismissalText('CAUGHT_AND_BOWLED')).toBe('caught and bowled')
+    expect(dismissalText('STUMPED', null, null)).toBe('stumped')
+    expect(dismissalText('BOWLED', null)).toBe('bowled')
+    expect(dismissalText('LBW')).toBe('lbw')
+    expect(dismissalText('RUN_OUT')).toBe('run out')
+  })
+
+  it('is empty for an undecided row and uses the lower-cased label for the rarer types', () => {
+    expect(dismissalText(null)).toBe('')
+    expect(dismissalText(undefined)).toBe('')
+    expect(dismissalText('RETIRED_NOT_OUT')).toBe(dismissalText('RETIRED_NOT_OUT').toLowerCase())
+    expect(dismissalText('TIMED_OUT')).toMatch(/timed out/)
   })
 })
