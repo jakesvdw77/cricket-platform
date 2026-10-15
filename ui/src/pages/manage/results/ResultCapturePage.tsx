@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Alert, Box, Typography } from '@mui/material'
+import { Alert, Box, IconButton, Typography } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
@@ -36,7 +37,8 @@ import { defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDr
 import { withCalculatedMargin } from './calculatedMargin'
 import { ImportedChip } from './import/ImportedChip'
 import { ImportReviewContext } from './import/importReviewContext'
-import { readImportNotes } from './import/importNotesStore'
+import { readImportNotes, readOtherImportNotes } from './import/importNotesStore'
+import { ImportNotesList } from './import/ImportNotesList'
 import { importedProvider } from './import/importSource'
 import { AwardsStep } from './steps/AwardsStep'
 import { BattingStep } from './steps/BattingStep'
@@ -206,6 +208,7 @@ function CaptureWizard({
   // docs/specs/104: an imported draft's provider (from its source) and what the import said about each name; a manual result
   // gets the empty default and shows no chips. The notes were left by the import page for this match (sessionStorage).
   const [importNotes] = useState(() => readImportNotes(clubId, matchId))
+  const [otherNotes] = useState(() => readOtherImportNotes(clubId, matchId))
   const importProvider = importedProvider(existing?.source)
 
   const refresh = () => {
@@ -400,8 +403,19 @@ function CaptureWizard({
       <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
         <ImportedChip source={existing?.source} />
         {importedNoticeOpen && importProvider && (
-          <Alert severity="success" onClose={() => setImportedNoticeOpen(false)}>
-            Draft created from the import. Nothing is published yet: check the names marked Guess, then review and publish.
+          <Alert
+            severity="success"
+            sx={{ alignItems: 'flex-start' }}
+            action={
+              <IconButton aria-label="Dismiss" onClick={() => setImportedNoticeOpen(false)} sx={{ width: 44, height: 44, mt: -0.5, mr: -0.5 }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            }
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span>Draft created from the import. Nothing is published yet: check the names marked Guess, then review and publish.</span>
+              <ImportNotesList notes={otherNotes} />
+            </Box>
           </Alert>
         )}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>

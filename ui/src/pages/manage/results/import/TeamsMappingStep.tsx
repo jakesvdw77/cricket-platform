@@ -12,6 +12,7 @@ import { Input } from '../../../../components/Input'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { AcknowledgementTick } from './AcknowledgementTick'
+import { ImportNotesList } from './ImportNotesList'
 import { ImportProblemAlert } from './ImportProblemAlert'
 import { checksSentence, EXACTNESS_WORDS, resolvedSentence } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
@@ -179,6 +180,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
           <Typography variant="body2" color="text.secondary">
             {checksSentence(resolved.validation)}
           </Typography>
+          <ImportNotesList notes={resolved.notes} />
           <Box sx={{ display: 'flex' }}>
             <Button onClick={onReview} sx={{ minHeight: 44, flex: { xs: 1, md: 'none' } }}>
               Review in the result wizard
