@@ -27,15 +27,14 @@ describe('scorecardPrefill', () => {
     expect(ordered.map((p) => p.playerProfileId)).toEqual(['a', 'b', 'd', 't'])
   })
 
-  it('builds batting rows: wickets + 2 batted, the rest did not bat, the 12th man a player without a row', () => {
+  it('builds batting rows: everyone starts as an automatic Did not bat, the 12th man a player without a row', () => {
     const players = Array.from({ length: 11 }, (_, i) => prefillPlayer(`p${i + 1}`, i + 1))
     const { players: result, batting } = prefillSideRows(side([...players, prefillPlayer('twelfth', null, true)]), 4, key)
     expect(result).toHaveLength(12)
     expect(result[11]).toMatchObject({ playerProfileId: 'twelfth', substitute: true })
     expect(batting).toHaveLength(11)
     expect(batting.map((entry) => entry.position)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-    expect(batting.slice(0, 6).every((entry) => entry.howOut === null)).toBe(true)
-    expect(batting.slice(6).every((entry) => entry.howOut === 'DID_NOT_BAT')).toBe(true)
+    expect(batting.every((entry) => entry.howOut === 'DID_NOT_BAT' && entry.auto === true)).toBe(true)
     expect(batting[0]).toMatchObject({ battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: null })
     expect(batting[0].playerClientKey).toBe(result[0].clientKey)
     expect(result[2].plannedBattingOrder).toBe(3)

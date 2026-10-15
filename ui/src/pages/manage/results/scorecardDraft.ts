@@ -366,12 +366,11 @@ export function normalizeLoaded(scorecard: Scorecard): Scorecard {
   for (const side of ['HOME', 'AWAY'] as const) {
     const present = new Set(battingOf(next, side).map((entry) => entryPlayerKey(entry)))
     const missing = playersOfSide(next, side).filter((player) => !player.substitute && !present.has(playerRowKey(player)))
-    // A player who bowls or fields but never had a batting row (a promoted 12th man) did not bat; anyone else is undecided.
-    const plays = (player: ResultPlayer) =>
-      next.bowling.some((entry) => entryPlayerKey(entry) === playerRowKey(player)) || next.fielding.some((entry) => entryPlayerKey(entry) === playerRowKey(player))
+    // A row with no saved entry comes back as an automatic Did not bat (there is no blank state), and so does a saved Did not
+    // bat: the batting step re-derives the Not outs from the dismissals.
     const rows = [
-      ...battingOf(next, side),
-      ...missing.map((player) => (plays(player) ? { ...blankBattingEntry(side, player, 0), howOut: 'DID_NOT_BAT' as const } : blankBattingEntry(side, player, 0))),
+      ...battingOf(next, side).map((entry) => (entry.howOut === 'DID_NOT_BAT' ? { ...entry, auto: true } : entry)),
+      ...missing.map((player) => ({ ...blankBattingEntry(side, player, 0), howOut: 'DID_NOT_BAT' as const, auto: true })),
     ]
     if (rows.length > 0) next = setBatting(next, side, rows)
   }

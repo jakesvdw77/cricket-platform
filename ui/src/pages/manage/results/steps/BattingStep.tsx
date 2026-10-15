@@ -18,7 +18,7 @@ import { allowsBowler, allowsFielder } from '../../../../utils/dismissal'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { entryPlayerKey, playerRowKey } from '../../../../utils/scorecardPrefill'
-import { dismissalCount, applyBattedWindow, applyWicketFill, newRowFill } from '../../../../utils/wicketFill'
+import { dismissalCount, applyWicketFill, newRowFill } from '../../../../utils/wicketFill'
 import { opposite, regularInningsOf, updateInnings } from '../resultDraftHelpers'
 import { AddPlayerRow } from '../scorecard/AddPlayerRow'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
@@ -92,6 +92,8 @@ export function BattingStep({
   const innings = regularInningsOf(draft).find((item) => item.battingSide === side)
   // Only wickets the manager typed drive the not-out / did-not-bat fill; calculated wickets just follow the dismissals.
   const wickets = innings && wicketsOwned(innings) ? (innings.wickets ?? null) : null
+  // The Not outs follow the wickets whether typed or calculated from the dismissals.
+  const fillWickets = innings?.wickets ?? null
   const prefillSide = prefill?.sides.find((candidate) => candidate.side === side) ?? null
   const players = playersOfSide(scorecard, side)
   const rows = battingOf(scorecard, side)
@@ -105,7 +107,7 @@ export function BattingStep({
   const filled = (next: Scorecard): Scorecard => {
     const ensured = ensureBattingRows(next, side)
     const current = battingOf(ensured, side)
-    const result = applyWicketFill(applyBattedWindow(current, wickets), wickets)
+    const result = applyWicketFill(current, fillWickets)
     return sameFill(current, result) ? ensured : setBatting(ensured, side, result)
   }
 
@@ -119,7 +121,7 @@ export function BattingStep({
     const next = filled(scorecard)
     if (next !== scorecard) commit(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [side, wickets, prefillState, players.length])
+  }, [side, fillWickets, prefillState, players.length])
 
   const person = (key: string): PersonName => {
     const found = byKey.get(key)
@@ -276,7 +278,7 @@ export function BattingStep({
             onChange={(value) => edit(key, { [field]: value })}
             ariaLabel={`${{ runs: 'Runs', balls: 'Balls', fours: 'Fours', sixes: 'Sixes' }[field]}, ${label(person(key))}`}
             column={field}
-            disabled={disabled || entry.howOut === 'DID_NOT_BAT'}
+            disabled={disabled || (entry.howOut === 'DID_NOT_BAT' && !entry.auto)}
           />
         )
       },
@@ -337,7 +339,7 @@ export function BattingStep({
             <ReconcileStrip
               tone={out > wickets ? 'warning' : 'neutral'}
               title={`Out ${out} of ${wickets}`}
-              status={out > wickets ? `${out - wickets} more than the result says` : `${wickets - out} still to mark`}
+              status={out > wickets ? `${out - wickets} more than the result says` : `${wickets - out} more to mark`}
               progress={{ value: out, max: Math.max(wickets, 1), ariaLabel: 'Batters out', valueText: `${out} of ${wickets} wickets` }}
             />
           )}
@@ -402,7 +404,8 @@ export function BattingStep({
             emptyMessage={null}
             renderCard={(entry) => {
               const key = entryPlayerKey(entry) as string
-              const dnb = entry.howOut === 'DID_NOT_BAT'
+              // Only an explicit Did not bat hides the figures: an automatic one flips as soon as a figure is typed.
+              const dnb = entry.howOut === 'DID_NOT_BAT' && !entry.auto
               return (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
