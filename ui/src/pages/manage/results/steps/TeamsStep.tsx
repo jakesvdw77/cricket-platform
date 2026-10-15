@@ -27,6 +27,7 @@ import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { OppositionTeamList } from '../scorecard/OppositionTeamList'
 import { ImportGuessBanner } from '../import/ImportGuessBanner'
 import { confirmRuleBased } from '../import/guessSummary'
+import { useImportReview } from '../import/importReviewContext'
 import { UseClosestButton } from '../import/UseClosestButton'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
@@ -229,6 +230,7 @@ function OurSideTeam({
   const view: PersonName[] = players.map((player) => scorecardPersonName(player))
   const label = usePlayerLabeler(view)
   // docs/specs/104: the Guess chips of an imported draft (nothing for any other result).
+  const importReview = useImportReview()
   const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
@@ -300,7 +302,8 @@ function OurSideTeam({
       const replaced = plannedPeople.get(player.replacedPlayerProfileId)
       parts.push(replaced ? `replaced ${label({ id: replaced.playerProfileId, firstName: replaced.firstName, lastName: replaced.lastName })}` : 'swapped in')
     }
-    if (player.plannedBattingOrder != null && !player.substitute) parts.push(`planned ${player.plannedBattingOrder}`)
+    // An import builds the list in the file's order, so a planned number would read as a mistake beside it.
+    if (player.plannedBattingOrder != null && !player.substitute && importReview.provider === null) parts.push(`planned ${player.plannedBattingOrder}`)
     return parts.length > 0 ? parts.join(' · ') : null
   }
 
