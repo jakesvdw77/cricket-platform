@@ -228,6 +228,8 @@ Spec approved, planned and built on branch `feat/099-fields-directory` (`plans/0
 
 ## Deferred by `101`: Our-side scorecard
 
+- **Build order decision (2026-10-14/15, user): `104` (import adapters) BEFORE `103` (stats).** The user wants to import real scorecards (STUMPS PDF first, deterministic adapter plus Claude fallback for names and messy text, always ending in the wizard draft and Review, never publishing) to prove that every rule in the wizard holds up against real data, and the imports also exercise the result page. `103` stays basic when it comes (it gives managers a payoff for capturing results); the deeper stats requirements become later specs. Approach and sample notes: see the `104` import approach in the project memory; real samples live in the gitignored `docs/samples/` (anonymised copies only if committed).
+
 - **`105` super-over scorecards** (number confirmed), with the open question (stays open in `105`, no longer in `101`) of whether super-over runs and wickets count toward player statistics and how such rows are marked.
 - **Create a guest profile, and bulk-link a guest name across past matches**, deferred with the player-linking item.
 - **Rotation rules** still need their own spec; the data now exists (`result_player.planned_batting_order`, `batting_entry.position`).
