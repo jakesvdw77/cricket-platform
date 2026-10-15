@@ -5,6 +5,7 @@ import {
   Button,
   Collapse,
   Table,
+  Tooltip,
   TableBody,
   TableCell,
   TableHead,
@@ -16,6 +17,7 @@ import {
 import type { SxProps, Theme } from '@mui/material/styles'
 import { alpha } from '@mui/material/styles'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import KeyboardOutlinedIcon from '@mui/icons-material/KeyboardOutlined'
 import type { ReorderableRows } from '../../hooks/useReorderableRows'
 import { zebraTint } from '../../utils/zebraTint'
@@ -48,6 +50,9 @@ export interface ScorecardGridProps<R> {
   // Drag and drop with a handle (desktop): pass the useReorderableRows result for the listed rows. Omitted, no handle.
   reorder?: ReorderableRows
   reorderDisabled?: boolean
+  // A soft problem with the row ("Choose how out"): the row gets an amber tint and a warning icon at its end with the reason
+  // (a line under the name on a phone card). Never blocks.
+  rowProblem?: (row: R) => string | null
   // A row drawn quiet (Did not bat).
   isRowMuted?: (row: R) => boolean
   // `/` on a cell: open the player picker for that row.
@@ -121,6 +126,7 @@ export function ScorecardGrid<R>({
   reorder,
   reorderDisabled = false,
   isRowMuted,
+  rowProblem,
   onPickPlayer,
   emptyMessage,
   hideHelp = false,
@@ -220,14 +226,19 @@ export function ScorecardGrid<R>({
             data-grid-row={getRowId(row)}
             sx={{
               border: 1,
-              borderColor: 'divider',
               borderRadius: 2,
-              bgcolor: isRowMuted?.(row) ? 'action.hover' : 'background.paper',
+              bgcolor: rowProblem?.(row) ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : isRowMuted?.(row) ? 'action.hover' : 'background.paper',
+              borderColor: rowProblem?.(row) ? 'warning.main' : 'divider',
               p: 1.5,
               minWidth: 0,
             }}
           >
             {renderCard(row, index)}
+            {rowProblem?.(row) && (
+              <Typography variant="caption" role="note" sx={{ display: 'block', mt: 0.5, color: 'warning.dark', fontWeight: 600 }}>
+                {rowProblem(row)}
+              </Typography>
+            )}
           </Box>
         ))}
       </Box>
@@ -255,12 +266,14 @@ export function ScorecardGrid<R>({
                 </TableCell>
               ))}
               {renderTrailing && <TableCell sx={{ ...HEAD_CELL, borderBottom: 1, borderColor: 'divider' }} />}
+              {rowProblem && <TableCell sx={{ ...HEAD_CELL, borderBottom: 1, borderColor: 'divider', width: 32 }} />}
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row, index) => {
               const id = getRowId(row)
-              const background = index % 2 === 1 ? zebraTint : 'background.paper'
+              const problem = rowProblem?.(row) ?? null
+              const background = problem ? (theme: Theme) => alpha(theme.palette.warning.main, index % 2 === 1 ? 0.18 : 0.12) : index % 2 === 1 ? zebraTint : 'background.paper'
               const dropBefore = reorder?.dragId != null && reorder.dropIndex === index
               const dropAfter = reorder?.dragId != null && reorder.dropIndex === rows.length && index === rows.length - 1
               const drag = reorder?.rowDragProps(id, { index, accepts: true }, reorderDisabled || armedId !== id)
@@ -330,6 +343,15 @@ export function ScorecardGrid<R>({
                     </TableCell>
                   ))}
                   {renderTrailing && <TableCell align="right">{renderTrailing(row, index)}</TableCell>}
+                  {rowProblem && (
+                    <TableCell align="center">
+                      {problem && (
+                        <Tooltip title={problem}>
+                          <WarningAmberOutlinedIcon fontSize="small" role="img" aria-label={problem} sx={{ color: 'warning.main', display: 'block' }} />
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               )
             })}

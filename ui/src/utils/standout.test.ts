@@ -29,10 +29,11 @@ describe('canFeature', () => {
     expect(canFeatureBatter({ howOut: 'CAUGHT', runs: null })).toBe(false)
   })
 
-  it('a bowler needs balls bowled', () => {
-    expect(canFeatureBowler({ balls: 6 })).toBe(true)
-    expect(canFeatureBowler({ balls: 0 })).toBe(false)
-    expect(canFeatureBowler({ balls: null })).toBe(false)
+  it('a bowler needs balls bowled or a wicket', () => {
+    expect(canFeatureBowler({ balls: 6, wickets: null })).toBe(true)
+    expect(canFeatureBowler({ balls: null, wickets: 2 })).toBe(true)
+    expect(canFeatureBowler({ balls: 0, wickets: 0 })).toBe(false)
+    expect(canFeatureBowler({ balls: null, wickets: null })).toBe(false)
   })
 
   it('a fielder needs a credit', () => {

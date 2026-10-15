@@ -1,4 +1,6 @@
 import { Box, IconButton, InputBase } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 
@@ -15,6 +17,8 @@ export interface GridNumberInputProps {
   max?: number
   // Phone cards: a minus and a plus button either side of the field (44 px) on top of the numeric keypad.
   stepper?: boolean
+  // A soft warning: an amber border and tint (never blocks).
+  warn?: boolean
   width?: number
   // The input's id, so a visible <label htmlFor> can point at it.
   id?: string
@@ -25,7 +29,7 @@ const digits = /^\d*$/
 // The number cell of the scorecard grids: a real, labelled input (not a custom widget) that selects its content on focus
 // and asks a phone for the numeric keypad. `data-grid-cell` and `data-grid-col` are what ScorecardGrid's keyboard
 // handling finds it by, so the same cell works in the batting, bowling and extras rows.
-export function GridNumberInput({ value, onChange, ariaLabel, column, disabled = false, max, stepper = false, width = 52, id }: GridNumberInputProps) {
+export function GridNumberInput({ value, onChange, ariaLabel, column, disabled = false, max, stepper = false, warn = false, width = 52, id }: GridNumberInputProps) {
   const set = (next: number | null) => onChange(next === null ? null : max != null ? Math.min(next, max) : next)
 
   const field = (
@@ -50,9 +54,9 @@ export function GridNumberInput({ value, onChange, ariaLabel, column, disabled =
         width: stepper ? 40 : width,
         height: stepper ? 42 : 30,
         border: stepper ? 0 : 1,
-        borderColor: 'divider',
+        borderColor: warn ? 'warning.main' : 'divider',
         borderRadius: stepper ? 0 : 1.5,
-        bgcolor: stepper ? 'transparent' : 'background.paper',
+        bgcolor: stepper ? 'transparent' : warn ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : 'background.paper',
         fontWeight: 600,
         fontSize: stepper ? undefined : 12,
         fontVariantNumeric: 'tabular-nums',

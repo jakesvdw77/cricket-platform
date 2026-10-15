@@ -16,6 +16,8 @@ export interface ExtrasFieldsProps {
   hideTotal?: boolean
   // A small note under one field ("Edited. Calculated: 12" with a Reset), for figures derived elsewhere.
   fieldNote?: (key: (typeof FIELDS)[number]['key']) => React.ReactNode
+  // A field tinted amber (its typed figure differs from what the bowlers add up to).
+  flagged?: (key: (typeof FIELDS)[number]['key']) => boolean
 }
 
 const FIELDS = [
@@ -30,7 +32,7 @@ const FIELDS = [
 // panel (the opposition's): Wides, No-balls, Byes, Leg byes, Penalty and their sum, which the server stores as the
 // innings' `extras`. The number cells join the grid's keyboard flow (Enter moves on). Wides and no-balls are charged to
 // bowlers; byes, leg byes and penalty runs are not.
-export function ExtrasFields({ value, onChange, disabled = false, owner, hideTotal = false, fieldNote }: ExtrasFieldsProps) {
+export function ExtrasFields({ value, onChange, disabled = false, owner, hideTotal = false, fieldNote, flagged }: ExtrasFieldsProps) {
   const prefix = useId()
   const total = extrasTotal(value)
   return (
@@ -51,6 +53,7 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
               ariaLabel={owner ? `${label}, ${owner}` : label}
               column={`extras-${key}`}
               disabled={disabled}
+              warn={flagged?.(key) ?? false}
               width={72}
             />
             <Box sx={{ minHeight: { xs: 32, sm: 18 }, display: 'flex', alignItems: 'center' }}>{fieldNote?.(key)}</Box>

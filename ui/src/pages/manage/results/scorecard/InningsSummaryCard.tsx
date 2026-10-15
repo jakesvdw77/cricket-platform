@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Box, Chip, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import type { Innings } from '../../../../api/matchResultApi'
 import { Button } from '../../../../components/Button'
 import { Input } from '../../../../components/Input'
@@ -24,6 +26,8 @@ export interface InningsSummaryCardProps {
   onEdit: (field: InningsFigure, value: number | null) => void
   onUseCalculated: (field: InningsFigure) => void
   disabled?: boolean
+  // A short reason the figures look wrong against the scorecard: the card gets an amber tint and the reason in its row.
+  warning?: string | null
 }
 
 const MAX_WICKETS = 10
@@ -35,7 +39,7 @@ const toInt = (text: string): number | null => (text.trim() === '' || !/^\d+$/.t
 // top of Our batting and Our bowling and fielding: "Team: 212 / 6 in 38.4 overs", a Calculated / Edited chip and Edit. Edit
 // opens one row of three equal fields (Runs, Wickets, Overs) that change the SAME draft innings as the Scores step. It
 // starts open only when a figure was edited or the score cannot be worked out from the scorecard yet.
-export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, calculated, onEdit, onUseCalculated, disabled = false }: InningsSummaryCardProps) {
+export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, calculated, onEdit, onUseCalculated, disabled = false, warning = null }: InningsSummaryCardProps) {
   const correctedFields = FIGURES.filter((field) => calculated?.[field] != null && figureCorrected(innings, field, calculated[field]))
   const derivable = calculated?.runs != null
   const [open, setOpen] = useState(correctedFields.length > 0 || (innings.runs === null && !derivable))
@@ -50,12 +54,17 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
     <Box
       role="group"
       aria-label={`${teamName} innings`}
-      sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', px: 1.5, py: 0.75, display: 'flex', flexDirection: 'column', gap: 1 }}
+      sx={{ border: 1, borderColor: warning ? 'warning.main' : 'divider', borderRadius: 2, bgcolor: warning ? (theme: Theme) => alpha(theme.palette.warning.main, 0.1) : 'background.paper', px: 1.5, py: 0.75, display: 'flex', flexDirection: 'column', gap: 1 }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minHeight: 36 }}>
         <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere' }}>
           {title ?? teamName}: {summary}
         </Typography>
+        {warning && (
+          <Typography variant="caption" role="note" sx={{ color: 'warning.dark', fontWeight: 600 }}>
+            {warning}
+          </Typography>
+        )}
         {correctedFields.length > 0 ? (
           <Chip size="small" label="Edited" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />
         ) : follows ? (

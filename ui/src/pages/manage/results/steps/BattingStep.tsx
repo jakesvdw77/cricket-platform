@@ -11,6 +11,7 @@ import type { ScorecardGridColumn } from '../../../../components/ScorecardGrid'
 import { StandoutToggle } from '../../../../components/StandoutToggle'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
+import { battingRowProblem } from '../../../../utils/scorecardRowChecks'
 import { canFeatureBatter } from '../../../../utils/standout'
 import { battingTotals, extrasTotal } from '../../../../utils/battingTotals'
 import { allowsBowler, allowsFielder } from '../../../../utils/dismissal'
@@ -320,6 +321,7 @@ export function BattingStep({
             innings={innings}
             ballsPerOver={draft.ballsPerOver ?? 6}
             calculated={inningsSuggestions(draft).get(innings.sequence ?? 1)}
+            warning={totals.status === 'mismatch' ? 'Runs differ from the batting card' : null}
             onEdit={(field, value) => onReplace(editInningsFigure(draft, innings.sequence ?? 1, field, value))}
             onUseCalculated={(field) => onReplace(applyCalculatedFigure(draft, innings.sequence ?? 1, field))}
             disabled={disabled}
@@ -377,6 +379,7 @@ export function BattingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             isRowMuted={(entry) => entry.howOut === 'DID_NOT_BAT'}
+            rowProblem={battingRowProblem}
             emptyMessage={null}
             renderCard={(entry) => {
               const key = entryPlayerKey(entry) as string

@@ -18,6 +18,7 @@ import type { ScorecardGridColumn } from '../../../../components/ScorecardGrid'
 import { StandoutToggle } from '../../../../components/StandoutToggle'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
+import { bowlingRowProblem, wicketsFullyAttributed } from '../../../../utils/scorecardRowChecks'
 import { canFeatureBowler, canFeatureFielder } from '../../../../utils/standout'
 import { extrasTotal } from '../../../../utils/battingTotals'
 import { ballsToOvers } from '../../../../utils/oversFormat'
@@ -47,6 +48,7 @@ import {
   bumpFielding,
   creditFor,
   derivedNonBowlerWickets,
+  dismissalsOf,
   duplicatePlayerKeys,
   editInningsFigure,
   ensureSideFromPrefill,
@@ -410,9 +412,7 @@ export function BowlingStep({
     const key = playerRowKey(player)
     const credit = creditFor(scorecard, batted, key)
     const says = credit.catches + credit.stumpings + credit.runOuts
-    const derived = entry?.creditsSource === 'DERIVED'
-    if (derived) return <DerivedMarker derived dismissalsSay={null} current={0} onUse={() => {}} subject={name} />
-    if (!entry || says === 0) return null
+    if (!entry || entry.creditsSource === 'DERIVED' || says === 0) return null
     const differs = credit.catches !== n(entry.catches) || credit.stumpings !== n(entry.stumpings) || credit.runOuts !== n(entry.runOuts)
     if (!differs) return null
     const parts = [
@@ -424,14 +424,9 @@ export function BowlingStep({
       .map(([count, word]) => `${count} ${word}`)
       .join(', ')
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-        <Typography component="span" sx={{ fontSize: '0.6875rem', color: 'text.secondary' }}>
-          dismissals say {parts}
-        </Typography>
-        <Button variant="ghost" size="sm" onClick={() => commit(followDismissals(scorecard, batted, key, 'fielding'))} disabled={disabled} aria-label={`Use the dismissals, fielding of ${name}`}>
-          Use these
-        </Button>
-      </Box>
+      <Button variant="ghost" size="sm" onClick={() => commit(followDismissals(scorecard, batted, key, 'fielding'))} disabled={disabled} aria-label={`Use the dismissals, fielding of ${name}`} title={`The dismissals say ${parts}`}>
+        Use dismissals
+      </Button>
     )
   }
 
@@ -452,6 +447,7 @@ export function BowlingStep({
             innings={against}
             ballsPerOver={ballsPerOver}
             calculated={inningsSuggestions(draft).get(against.sequence ?? 2)}
+            warning={against.balls != null && balls > 0 && against.balls !== balls ? 'Overs differ from the bowlers\' balls' : null}
             onEdit={(field, value) => onReplace(editInningsFigure(draft, against.sequence ?? 2, field, value))}
             onUseCalculated={(field) => onReplace(applyCalculatedFigure(draft, against.sequence ?? 2, field))}
             disabled={disabled}
@@ -523,6 +519,7 @@ export function BowlingStep({
             </Box>
             <ExtrasFields
               hideTotal
+              flagged={(key) => (key === 'wides' || key === 'noBalls') && (() => { const calc = inningsSuggestions(draft).get(against.sequence ?? 2)?.[key]; return calc != null && figureCorrected(against, key, calc) })()}
               value={against}
               owner={battingName}
               disabled={disabled}
@@ -584,6 +581,12 @@ export function BowlingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             emptyMessage=""
+            rowProblem={(entry) =>
+              bowlingRowProblem(entry, {
+                ballsPerOver,
+                dismissalWickets: wicketsFullyAttributed(dismissalsOf(scorecard, batted)) ? creditFor(scorecard, batted, entryPlayerKey(entry) as string).wickets : null,
+              })
+            }
             renderCard={(entry) => {
               const key = entryPlayerKey(entry) as string
               const name = label(person(key))
@@ -705,7 +708,7 @@ export function BowlingStep({
                   />
                 )}
               </Box>
-              <Box sx={{ flexBasis: '100%', pl: { sm: 0 } }}>{fieldingMarker(player, entry, name)}</Box>
+              {fieldingMarker(player, entry, name) && <Box sx={{ flexBasis: '100%' }}>{fieldingMarker(player, entry, name)}</Box>}
             </Box>
           )
         })}
