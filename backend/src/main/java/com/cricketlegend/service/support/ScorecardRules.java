@@ -368,8 +368,8 @@ final class ScorecardRules {
     }
 
     /**
-     * An INFO line (never blocks, nothing to acknowledge) for our side being captured when the team is not properly
-     * selected: no selection found, a selection that is not announced, or fewer than eleven non-substitutes listed.
+     * An INFO line (never blocks, nothing to acknowledge) for our side being captured when there is no selection at
+     * all, or fewer than eleven non-substitutes are listed. Whether it was announced is irrelevant.
      */
     private static void teamSelectionChecks(
             ScorecardDto scorecard, Names names, ScorecardContext context, ResultIssues issues) {
@@ -380,11 +380,12 @@ final class ScorecardRules {
             }
             ScorecardSelectionState state = context.selectionBySide().get(side);
             long listed = onSide.stream().filter(p -> !p.substitute()).count();
-            boolean unselected = state == ScorecardSelectionState.NONE || state == ScorecardSelectionState.NOT_ANNOUNCED;
-            if (unselected || listed < LINEUP_SIZE) {
+            if (state == ScorecardSelectionState.NONE) {
                 issues.info(WarningCode.OUR_TEAM_NOT_SELECTED, ResultWizardStep.TEAMS, side,
-                        "Our team is not selected for this match (some random friendly?). You can still capture the "
-                                + "scorecard; names you enter become guests unless they match a registered player.");
+                        "Our team is not selected for this match.");
+            } else if (listed < LINEUP_SIZE) {
+                issues.info(WarningCode.OUR_TEAM_NOT_SELECTED, ResultWizardStep.TEAMS, side,
+                        "Only " + listed + " players are on " + names.of(side) + "'s team list.");
             }
         }
     }
