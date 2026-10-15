@@ -514,7 +514,12 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
   const out = new Map<number, InningsSuggestion>()
   for (const innings of (draft.innings ?? []).filter((item) => item.kind !== 'SUPER_OVER')) {
     if (!innings.battingSide || innings.sequence == null) continue
-    const batters = battingOf(scorecard, innings.battingSide).filter((entry) => entry.howOut !== null && entry.howOut !== 'DID_NOT_BAT')
+    // A row batted when it has a how out other than Did not bat, or when figures were typed on it before the how out was chosen.
+    const batters = battingOf(scorecard, innings.battingSide).filter(
+      (entry) =>
+        entry.howOut !== 'DID_NOT_BAT' &&
+        (entry.howOut !== null || entry.runs != null || entry.balls != null || entry.fours != null || entry.sixes != null),
+    )
     const bowlers = bowlingOf(scorecard, opposite(innings.battingSide)).filter(hasBowlingFigures)
     const n = (value: number | null | undefined) => value ?? 0
     let runs: number | null = null
@@ -527,7 +532,13 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
       runs = bowlers.reduce((sum, entry) => sum + n(entry.runs), 0) + n(innings.byes) + n(innings.legByes) + n(innings.penaltyRuns)
       wickets = bowlers.reduce((sum, entry) => sum + n(entry.wickets), 0) + n(innings.nonBowlerWickets)
     }
-    const balls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
+    // Legal balls of the innings: our bowlers' balls when they are entered, else what the batting card shows. Every ball a batter
+    // faced counts once (byes and leg byes are runs off deliveries the striker already faced, so they add nothing), a no-ball
+    // is faced but is not a legal delivery, and wides are never faced: sum of balls faced - no-balls. Only when every batted
+    // row has its balls.
+    const bowlersBalls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
+    const battersBalls = batters.length > 0 && batters.every((entry) => entry.balls != null) ? Math.max(0, batters.reduce((sum, entry) => sum + n(entry.balls), 0) - n(innings.noBalls)) : 0
+    const balls = bowlersBalls > 0 ? bowlersBalls : battersBalls
     // Wides and no-balls are charged to the bowler: they are inside the bowlers' runs already (never added to the runs again)
     // and add up to the innings' wides and no-balls extras.
     const sum = (pick: (entry: BowlingEntry) => number | null | undefined) => (bowlers.some((entry) => pick(entry) != null) ? bowlers.reduce((total, entry) => total + n(pick(entry)), 0) : null)
