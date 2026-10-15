@@ -34,9 +34,10 @@ const won = (patch: Partial<ResultDraft> = {}): ResultDraft => ({
 })
 
 describe('toPayload', () => {
-  it('drops innings that are missing any of runs, wickets or balls', () => {
+  it('sends a partial regular innings with its missing figures null, but a super over only with all three', () => {
     const payload = toPayload(won({ innings: [inn(1, 'HOME', 200), inn(2, 'AWAY', 176, null), inn(3, 'HOME', null)] }))
-    expect(payload.innings?.map((item) => item.sequence)).toEqual([1])
+    expect(payload.innings?.map((item) => item.sequence)).toEqual([1, 2])
+    expect(payload.innings?.[1]).toMatchObject({ runs: 176, wickets: null })
   })
 
   it('sends only the innings fields the server accepts', () => {

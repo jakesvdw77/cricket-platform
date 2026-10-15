@@ -161,6 +161,18 @@ export const hasRegularFigures = (draft: ResultDraft): boolean =>
   regularInningsOf(draft).some((item) => item.runs !== null || item.wickets !== null || item.balls !== null)
 
 const hasFigures = (innings: Innings) => innings.runs !== null && innings.wickets !== null && innings.balls !== null
+const hasAnyFigure = (innings: Innings) => innings.runs !== null || innings.wickets !== null || innings.balls !== null
+
+// Whether the scorecard holds anything that would be saved for the innings `side` batted: a decided batting row, or a bowling
+// or fielding row of the other side against it.
+function hasEntriesFor(scorecard: Scorecard | null | undefined, side: ResultSide | null): boolean {
+  if (!scorecard || !side) return false
+  return (
+    scorecard.batting.some((entry) => entry.battingSide === side && entry.howOut != null) ||
+    scorecard.bowling.some((entry) => entry.battingSide === side && hasBowlingFigures(entry)) ||
+    scorecard.fielding.some((entry) => entry.battingSide === side && hasCredit(entry))
+  )
+}
 
 export function isBlankDraft(draft: ResultDraft): boolean {
   return (
@@ -175,15 +187,18 @@ export function isBlankDraft(draft: ResultDraft): boolean {
   )
 }
 
-// What the server stores. Only innings with all three figures are sent (a half-typed row is kept in the form but not
-// saved); a margin, winner or DLS figure that the chosen outcome does not use is dropped.
+// What the server stores. A regular innings is sent with whatever figures it has (see below); a margin, winner or DLS figure that the chosen outcome does not use is dropped.
 export function toPayload(draft: ResultDraft): ResultDraft {
   const outcome = draft.outcomeType ?? null
   const won = outcome === 'WON'
   const decidedBy = won ? (draft.decidedBy ?? 'REGULAR') : 'REGULAR'
   const margin = won && decidedBy !== 'SUPER_OVER' && draft.marginType && draft.marginValue !== null
+  // docs/specs/101 (migration 046): a regular innings is saved with whatever figures exist (the rest null) as soon as any
+  // figure is typed, the scorecard holds entries for it, or the toss fixes who batted first (then both innings exist), so
+  // its batting, bowling and fielding entries are kept on a partial innings. A super over still needs all three figures.
+  const tossKnown = firstBatterFromToss(draft) !== null
   const sentInnings = (draft.innings ?? [])
-    .filter(hasFigures)
+    .filter((innings) => (isSuperOver(innings) ? hasFigures(innings) : innings.battingSide != null && (tossKnown || hasAnyFigure(innings) || hasEntriesFor(draft.scorecard, innings.battingSide))))
     .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
   return {
     outcomeType: outcome,
