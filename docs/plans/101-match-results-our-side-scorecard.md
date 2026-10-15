@@ -85,3 +85,20 @@ Per the user's rule, no tests or standards review per step. Then: backend unit (
 
 - Backend: scratch copy compiles; Liquibase 044 + Hibernate validate; PUT/GET scorecard, prefill, validate (issues carry code/step/side), publish (freezes `featured`), unpublish, link on a published result via curl; innings re-save keeps entries; no non-manager path exposes scorecard rows.
 - Frontend (`nvm use 22.12.0`): `npm run build`, `lint`, `test`, `test:storybook`; hand-walk: pre-filled Our team (swap, add guest, remove, 12th man), then Our batting from the team list, keyboard entry, reorder by drag and by name popup, swap, guest + "Use this player", wickets-driven not-out fill, bowling reconcile strips, standout star, awards, Review warnings and Fix, publish; derby Home | Away with two team awards; name toggle (Sam V / Sam vdW) on all steps and the result page; compare with the mockup boards.
+
+## What was built
+
+Commits on `feature/101-our-side-scorecard`, in order:
+
+1. `bd6372d` plan; `cc58258` backend our-side scorecard (migration 044); `09eb87f` UI foundations and shared components; `cda645a` standout fix; `2700aff` wizard steps (batting, bowling, awards, review); `5c42b3a` Our team step, calculated innings.
+2. `aa57a5c` spec rewritten: 101 and 102 merged, Teams first.
+3. `8dc6989` backend opposition scorecard, dismissal credits, dots (migration 045); `a03446c` wizard reworked for the merged two-sided flow; `f3425f3` scorecard on the result page, guest linking, player of the match.
+4. Hardening and browser-check fixes: `89189a4`, `f19f2c9`, `a91f0ce`, `98b1af5` (migration 046), `7c5d9f0`, `850d6c5`, `0878294`, `ab773fc` (migration 047), `8e09ede`, `31c6c35`, `54df718`, `8356a51`, `ed60cf4`, `34b519e`, `ca7c116`, `98f8ee2`, `266150c`.
+
+Deviations from the plan:
+
+- **The Our team step was replaced by Teams**, and the wizard order is now Teams, Toss and field, Result, Batting, Bowling and fielding, Awards, Scores and margin, Review (the "Our" prefixes went; scorecard steps do not wait for scores).
+- **Partial innings and nullable `how_out` were added** (migrations 046 and 047): the scorecard is entered before the Scores step, and figures are typed before the dismissal is chosen. Publish still enforces both.
+- **The opposition was merged in from 102** (migration 045): full opposition batting, bowling, fielding, name-only opposition players, dismissals with bowler and fielder, derived credits, dots.
+- Row-level warnings, sanitised numeric fields and auto-created bowling rows from dismissals were added during the browser checks.
+- Tests and the standards review followed after the user's check; docs (this step) are the last item before the PR.
