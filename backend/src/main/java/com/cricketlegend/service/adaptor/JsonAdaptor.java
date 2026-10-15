@@ -199,15 +199,16 @@ public class JsonAdaptor extends AbstractAdaptor {
      * numbers in a parse error still match what the manager sees.
      */
     private static String withoutCodeFence(String text) {
-        String trimmed = text.strip();
-        if (!trimmed.startsWith("```")) {
+        int fence = text.indexOf("```");
+        if (fence < 0 || !text.substring(0, fence).isBlank()) {
             return text;
         }
-        int firstLineEnd = trimmed.indexOf('\n');
+        int firstLineEnd = text.indexOf('\n', fence);
         if (firstLineEnd < 0) {
             return text;
         }
-        String body = trimmed.substring(firstLineEnd);
+        // Keep the line breaks that came before the fence, so a parse error still reports the line the manager sees.
+        String body = text.substring(0, fence).replaceAll("[^\\n]", "") + text.substring(firstLineEnd);
         if (body.stripTrailing().endsWith("```")) {
             body = body.stripTrailing();
             body = body.substring(0, body.length() - 3);

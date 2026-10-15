@@ -75,7 +75,8 @@ public final class NameSimilarity {
         if (Math.min(a.length(), b.length()) < MIN_FORM_LENGTH) {
             return 0;
         }
-        int allowed = (int) Math.floor((1 - MIN_SCORE) * longer);
+        // The small addend keeps an exact-threshold score (2 edits in 10 letters is 0.80) from losing an edit to floating point.
+        int allowed = (int) Math.floor((1 - MIN_SCORE) * longer + 1e-9);
         int distance = PlayerNameMatcher.editDistance(a, b, allowed);
         return distance > allowed ? 0 : 1.0 - (double) distance / longer;
     }
