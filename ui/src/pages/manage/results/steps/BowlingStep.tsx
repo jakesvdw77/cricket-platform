@@ -506,7 +506,7 @@ export function BowlingStep({
 
           {/* The batting side's extras sit above the rows so they stay put as bowlers are added. */}
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mb: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: 1.5, mb: 0.75 }}>
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Extras conceded by {teamName}
                 <Typography component="span" sx={{ fontSize: '0.6875rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, ml: 0.5 }}>

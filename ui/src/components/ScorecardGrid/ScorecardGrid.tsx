@@ -28,6 +28,8 @@ export interface ScorecardGridColumn<R> {
   align?: 'left' | 'right' | 'center'
   // Fixed column width in px (the number columns); omitted, the column takes what it needs.
   width?: number
+  // A flexible column: it takes the spare width but never less than this many px (the Fielder and Bowler pickers).
+  minWidth?: number
   // The cell. Put GridNumberInput / HowOutSelect here: they carry the attributes the keyboard handling looks for.
   render: (row: R, index: number) => ReactNode
 }
@@ -260,7 +262,7 @@ export function ScorecardGrid<R>({
                   component="th"
                   scope="col"
                   align={column.align ?? 'left'}
-                  sx={{ ...HEAD_CELL, width: column.width, borderBottom: 1, borderColor: 'divider' }}
+                  sx={{ ...HEAD_CELL, width: column.width, minWidth: column.minWidth, borderBottom: 1, borderColor: 'divider' }}
                 >
                   {column.header}
                 </TableCell>

@@ -6,7 +6,7 @@ import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
 import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
-import { Input } from '../../../../components/Input'
+import { CountField, RunsField, WicketsField } from '../../../../components/IntegerField'
 import { OversInput } from '../../../../components/OversInput'
 import { checkMargin } from '../../../../utils/marginCheck'
 import { SidePicker } from '../../../../components/SidePicker'
@@ -36,12 +36,6 @@ const labelSx = { fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary',
 const MAX_WICKETS = 10
 const MAX_SUPER_OVER_WICKETS = 2
 
-function toInt(text: string): number | null {
-  if (text.trim() === '') return null
-  const value = Number(text)
-  return Number.isInteger(value) && value >= 0 ? value : null
-}
-
 function runRate(innings: Innings, ballsPerOver: number): string | null {
   if (innings.runs === null || innings.balls === null || innings.balls <= 0) return null
   return (innings.runs / (innings.balls / ballsPerOver)).toFixed(2)
@@ -63,7 +57,6 @@ interface InningsRowProps {
 }
 
 function InningsRow({ innings, title, name, initials, logoSrc, ballsPerOver, maxWickets, disabled, suggestion, onChange, onReset }: InningsRowProps) {
-  const wicketsTooMany = innings.wickets !== null && innings.wickets > maxWickets
   const calcOf = (field: 'runs' | 'wickets' | 'balls') => suggestion?.[field] ?? null
   const corrected = (field: 'runs' | 'wickets' | 'balls') => figureCorrected(innings, field, calcOf(field))
   // A figure that follows the scorecard says so under the field.
@@ -91,24 +84,22 @@ function InningsRow({ innings, title, name, initials, logoSrc, ballsPerOver, max
         </Box>
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: '120px 120px 180px' }, gap: 1.25 }}>
-        <Input
+        <RunsField
           label="Runs"
-          type="number"
-          value={innings.runs ?? ''}
-          onChange={(event) => onChange({ runs: toInt(event.target.value) })}
+          ariaLabel={`${name} ${title} runs`}
+          value={innings.runs}
+          onChange={(runs) => onChange({ runs })}
           disabled={disabled}
           helperText={auto('runs') ? 'Calculated from the scorecard' : undefined}
-          inputProps={{ min: 0, inputMode: 'numeric', 'aria-label': `${name} ${title} runs` }}
         />
-        <Input
+        <WicketsField
           label="Wickets"
-          type="number"
-          value={innings.wickets ?? ''}
-          onChange={(event) => onChange({ wickets: toInt(event.target.value) })}
+          ariaLabel={`${name} ${title} wickets`}
+          max={maxWickets}
+          value={innings.wickets}
+          onChange={(wickets) => onChange({ wickets })}
           disabled={disabled}
-          error={wicketsTooMany}
-          helperText={wicketsTooMany ? `0 to ${maxWickets}` : auto('wickets') ? 'Calculated from the scorecard' : undefined}
-          inputProps={{ min: 0, max: maxWickets, inputMode: 'numeric', 'aria-label': `${name} ${title} wickets` }}
+          helperText={auto('wickets') ? 'Calculated from the scorecard' : undefined}
         />
         <Box sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
           <OversInput
@@ -274,17 +265,13 @@ export function ScoresStep({ draft, onChange, onReplace, sides, disabled, onGoTo
           <Typography sx={labelSx}>Margin</Typography>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <Box sx={{ width: 120 }}>
-              <Input
+              <CountField
                 label="Margin"
-                type="number"
-                value={draft.marginValue ?? ''}
-                onChange={(event) => {
-                  const value = toInt(event.target.value)
-                  onChange({ marginValue: value, marginType: draft.marginType ?? 'RUNS', marginCorrected: value !== null })
-                }}
+                ariaLabel="Margin"
+                value={draft.marginValue ?? null}
+                onChange={(value) => onChange({ marginValue: value, marginType: draft.marginType ?? 'RUNS', marginCorrected: value !== null })}
                 helperText={!marginIsEdited && calcMargin ? 'Calculated from the scores' : undefined}
                 disabled={disabled}
-                inputProps={{ min: 0, inputMode: 'numeric' }}
               />
             </Box>
             <CompactToggleGroup<ResultMarginType>

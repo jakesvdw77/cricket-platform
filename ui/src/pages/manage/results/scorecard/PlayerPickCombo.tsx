@@ -49,10 +49,11 @@ export function PlayerPickCombo({ ariaLabel, value, options, onPick, onAddNew, a
   }
 
   return (
-    <Box onKeyDown={onKeyDown} sx={{ width: fullWidth ? '100%' : 150 }}>
+    <Box onKeyDown={onKeyDown} sx={{ width: '100%', minWidth: fullWidth ? 0 : 140 }}>
       <Autocomplete<Choice>
         size="small"
         disabled={disabled}
+        slotProps={{ popper: { sx: { minWidth: 220 } } }}
         options={options}
         value={selected}
         open={open}
@@ -98,7 +99,7 @@ export function PlayerPickCombo({ ariaLabel, value, options, onPick, onAddNew, a
           <TextField
             {...params}
             placeholder={placeholder ?? 'Choose'}
-            inputProps={{ ...params.inputProps, 'aria-label': ariaLabel, 'data-grid-cell': '', 'data-grid-col': column, autoComplete: 'off' }}
+            inputProps={{ ...params.inputProps, 'aria-label': ariaLabel, title: selected?.label, 'data-grid-cell': '', 'data-grid-col': column, autoComplete: 'off' }}
             sx={{
               '& .MuiOutlinedInput-root': { height, fontSize: fullWidth ? undefined : 12, fontWeight: 600, borderRadius: 1.5, py: 0, bgcolor: 'background.paper' },
               '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0, px: 0.5 },

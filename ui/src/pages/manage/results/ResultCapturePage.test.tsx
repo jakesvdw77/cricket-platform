@@ -259,7 +259,7 @@ describe('ResultCapturePage', () => {
       // home chose to bowl now, so the away side bats first and the 200 follows the home side to innings 2
       const rows = await screen.findAllByTestId('innings-row')
       expect(rows[0]).toHaveTextContent(AWAY)
-      expect(screen.getByLabelText(`${HOME} 2nd innings runs`)).toHaveValue(200)
+      expect(screen.getByLabelText(`${HOME} 2nd innings runs`)).toHaveValue('200')
     })
 
     it('shows no super over panel for a normal win', async () => {
@@ -321,13 +321,14 @@ describe('ResultCapturePage', () => {
       expect(screen.getByLabelText('Scheduled overs')).toHaveValue('')
     })
 
-    it('rejects 36.7 in plain English and accepts 36.4', async () => {
+    it('ignores 36.7 as it is typed and accepts 36.4', async () => {
       const user = userEvent.setup()
       renderPage()
       await toToss(user)
 
       await user.type(screen.getByLabelText('Scheduled overs'), '36.7')
-      expect(screen.getByText(/must be 0 to 5/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Scheduled overs')).toHaveValue('36.')
+      expect(screen.queryByText(/must be 0 to 5/)).not.toBeInTheDocument()
       await user.clear(screen.getByLabelText('Scheduled overs'))
       await user.type(screen.getByLabelText('Scheduled overs'), '36.4')
       expect(screen.queryByText(/must be 0 to 5/)).not.toBeInTheDocument()

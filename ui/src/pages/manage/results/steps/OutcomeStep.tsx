@@ -4,7 +4,7 @@ import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
-import { Input } from '../../../../components/Input'
+import { CountField } from '../../../../components/IntegerField'
 import { OutcomeTiles } from '../../../../components/OutcomeTiles'
 import { OversInput } from '../../../../components/OversInput'
 import { SidePicker } from '../../../../components/SidePicker'
@@ -14,12 +14,6 @@ import { sidePickerOptions } from './sidePickerOptions'
 import type { StepProps } from './stepTypes'
 
 const labelSx = { fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75 } as const
-
-function toInt(text: string): number | null {
-  if (text.trim() === '') return null
-  const value = Number(text)
-  return Number.isInteger(value) && value >= 0 ? value : null
-}
 
 // docs/specs/100-match-results-core.md, step "Result": one outcome tile, then only the fields that outcome needs - the
 // winner (Won, Forfeit), how it was decided (Won), and the DLS figures (the margin is set on Scores and margin). It ends with
@@ -98,14 +92,7 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled, score
           <Typography variant="caption" sx={{ gridColumn: '1 / -1', fontWeight: 600, color: 'warning.dark' }}>
             Duckworth-Lewis-Stern: the revised target and the revised innings length
           </Typography>
-          <Input
-            label="Revised target"
-            type="number"
-            value={draft.dlsTarget ?? ''}
-            onChange={(event) => onChange({ dlsTarget: toInt(event.target.value) })}
-            disabled={disabled}
-            inputProps={{ min: 0, inputMode: 'numeric' }}
-          />
+          <CountField label="Revised target" ariaLabel="Revised target" value={draft.dlsTarget ?? null} onChange={(dlsTarget) => onChange({ dlsTarget })} disabled={disabled} />
           <OversInput
             label="Revised overs"
             value={draft.dlsRevisedBalls ?? null}

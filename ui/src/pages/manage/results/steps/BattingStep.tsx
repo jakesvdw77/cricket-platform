@@ -253,8 +253,8 @@ export function BattingStep({
         )
       },
     },
-    { id: 'fielder', header: 'Fielder', render: (entry) => (allowsFielder(entry.howOut) ? dismissalPicker(entry, 'fielderPlayerId') : null) },
-    { id: 'bowler', header: 'Bowler', render: (entry) => (allowsBowler(entry.howOut) ? dismissalPicker(entry, 'bowlerPlayerId') : null) },
+    { id: 'fielder', header: 'Fielder', minWidth: 170, render: (entry) => (allowsFielder(entry.howOut) ? dismissalPicker(entry, 'fielderPlayerId') : null) },
+    { id: 'bowler', header: 'Bowler', minWidth: 170, render: (entry) => (allowsBowler(entry.howOut) ? dismissalPicker(entry, 'bowlerPlayerId') : null) },
     ...(['runs', 'balls', 'fours', 'sixes'] as const).map((field) => ({
       id: field,
       header: { runs: 'Runs', balls: 'Balls', fours: '4s', sixes: '6s' }[field],
@@ -346,7 +346,7 @@ export function BattingStep({
           )}
 
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mb: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: 1.5, mb: 0.75 }}>
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Extras
               </Typography>

@@ -4,7 +4,7 @@ import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { Innings } from '../../../../api/matchResultApi'
 import { Button } from '../../../../components/Button'
-import { Input } from '../../../../components/Input'
+import { RunsField, WicketsField } from '../../../../components/IntegerField'
 import { OversInput } from '../../../../components/OversInput'
 import { badgeSx } from '../../../../components/RecordCard'
 import { ballsToOvers } from '../../../../utils/oversFormat'
@@ -33,7 +33,6 @@ export interface InningsSummaryCardProps {
 const MAX_WICKETS = 10
 const FIGURES = ['runs', 'wickets', 'balls'] as const
 
-const toInt = (text: string): number | null => (text.trim() === '' || !/^\d+$/.test(text.trim()) ? null : Number(text.trim()))
 
 // docs/specs/101-match-results-our-side-scorecard.md: the innings the scorecard is checked against, one quiet line at the
 // top of Our batting and Our bowling and fielding: "Team: 212 / 6 in 38.4 overs", a Calculated / Edited chip and Edit. Edit
@@ -85,23 +84,8 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
       {open && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, pb: 0.75 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, 150px)' }, gap: 1.25, alignItems: 'start' }}>
-            <Input
-              label="Runs"
-              value={innings.runs ?? ''}
-              onChange={(event) => onEdit('runs', toInt(event.target.value))}
-              disabled={disabled}
-              inputProps={{ inputMode: 'numeric', 'aria-label': `Runs, ${teamName} innings` }}
-            />
-            <Input
-              label="Wickets"
-              value={innings.wickets ?? ''}
-              onChange={(event) => {
-                const next = toInt(event.target.value)
-                onEdit('wickets', next === null ? null : Math.min(next, MAX_WICKETS))
-              }}
-              disabled={disabled}
-              inputProps={{ inputMode: 'numeric', 'aria-label': `Wickets, ${teamName} innings` }}
-            />
+            <RunsField label="Runs" ariaLabel={`Runs, ${teamName} innings`} value={innings.runs} onChange={(value) => onEdit('runs', value)} disabled={disabled} />
+            <WicketsField label="Wickets" ariaLabel={`Wickets, ${teamName} innings`} max={MAX_WICKETS} value={innings.wickets} onChange={(value) => onEdit('wickets', value)} disabled={disabled} />
             <Box sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
               <OversInput
                 label="Overs"

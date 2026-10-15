@@ -1,8 +1,7 @@
-import { Box, IconButton, InputBase } from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
+import { Box, IconButton } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import { IntegerField } from '../IntegerField'
 
 export interface GridNumberInputProps {
   // Null while empty.
@@ -24,47 +23,15 @@ export interface GridNumberInputProps {
   id?: string
 }
 
-const digits = /^\d*$/
-
 // The number cell of the scorecard grids: a real, labelled input (not a custom widget) that selects its content on focus
 // and asks a phone for the numeric keypad. `data-grid-cell` and `data-grid-col` are what ScorecardGrid's keyboard
 // handling finds it by, so the same cell works in the batting, bowling and extras rows.
 export function GridNumberInput({ value, onChange, ariaLabel, column, disabled = false, max, stepper = false, warn = false, width = 52, id }: GridNumberInputProps) {
   const set = (next: number | null) => onChange(next === null ? null : max != null ? Math.min(next, max) : next)
 
+  // The cell itself is the shared IntegerField (digits only, capped at `max`); this component adds the stepper pill.
   const field = (
-    <InputBase
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(event) => {
-        const text = event.target.value
-        if (!digits.test(text)) return
-        set(text === '' ? null : Number(text))
-      }}
-      onFocus={(event) => event.target.select()}
-      inputProps={{
-        id,
-        inputMode: 'numeric',
-        pattern: '[0-9]*',
-        'aria-label': ariaLabel,
-        'data-grid-cell': '',
-        'data-grid-col': column,
-      }}
-      sx={{
-        width: stepper ? 40 : width,
-        height: stepper ? 42 : 30,
-        border: stepper ? 0 : 1,
-        borderColor: warn ? 'warning.main' : 'divider',
-        borderRadius: stepper ? 0 : 1.5,
-        bgcolor: stepper ? 'transparent' : warn ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : 'background.paper',
-        fontWeight: 600,
-        fontSize: stepper ? undefined : 12,
-        fontVariantNumeric: 'tabular-nums',
-        '& input': { textAlign: stepper ? 'center' : 'right', px: 1, height: '100%', boxSizing: 'border-box' },
-        '&.Mui-focused': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: stepper ? -2 : 1, borderColor: 'primary.main' },
-        '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
-      }}
-    />
+    <IntegerField variant="cell" value={value} onChange={(next) => set(next)} ariaLabel={ariaLabel} column={column} disabled={disabled} max={max} warn={warn} bare={stepper} width={width} id={id} />
   )
 
   if (!stepper) return field

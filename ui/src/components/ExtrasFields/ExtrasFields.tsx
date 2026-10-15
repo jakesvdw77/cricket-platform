@@ -37,12 +37,12 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
   const total = extrasTotal(value)
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap' }} role="group" aria-label={owner ? `Extras, ${owner}` : 'Extras'}>
-      {/* Five equal columns from sm (three on a phone); every field has one fixed caption line so nothing shifts. */}
-      <Box sx={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(5, minmax(0, 1fr))' }, columnGap: 1.5, rowGap: 0.5 }}>
+      {/* Compact fixed-width cells (three to a row on a phone); every field has one fixed caption line so nothing shifts. */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5, maxWidth: { xs: 276, sm: 'none' } }}>
       {FIELDS.map(({ key, label }) => {
         const id = `${prefix}-${key}`
         return (
-          <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
+          <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: 84 }}>
             <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
               {label}
             </Typography>

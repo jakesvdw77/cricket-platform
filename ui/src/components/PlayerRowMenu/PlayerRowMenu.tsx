@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { Box, Menu, MenuItem, TextField, Typography } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import { maxPositionFor, moveId, placeAtPosition } from '../../utils/reorderRows'
+import { sanitizeInteger } from '../../utils/numericInput'
+import { moveId, placeAtPosition } from '../../utils/reorderRows'
 
 export interface PlayerRowMenuProps {
   // The element the menu opens from; null keeps it closed.
@@ -85,12 +86,11 @@ function PositionItem({
         </Typography>
         <TextField
           id={inputId}
-          type="number"
           size="small"
           value={draft}
           placeholder={placeholder}
           disabled={disabled}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => setDraft(sanitizeInteger(event.target.value, { maxLength: 3 }, draft))}
           onKeyDown={(event) => {
             event.stopPropagation()
             if (event.key === 'Enter') {
@@ -101,9 +101,10 @@ function PositionItem({
           }}
           onBlur={() => commit(draft)}
           inputProps={{
-            min: 1,
-            max: maxPositionFor(ids, playerId, maxPlaces),
-            step: 1,
+            inputMode: 'numeric',
+            pattern: '[0-9]*',
+            enterKeyHint: 'done',
+            autoComplete: 'off',
             'aria-label': `${label} for ${playerName}`,
             'aria-describedby': disabled ? reasonId : undefined,
           }}
