@@ -78,6 +78,8 @@ export const hasCredit = (entry: FieldingEntry): boolean => (entry.catches ?? 0)
 // A bowling row carries information once a figure is typed. The wickets of a row that follows the dismissals count only when
 // the dismissals gave the bowler one (a blank derived row is an empty row, not one with 0 wickets).
 export const hasBowlingFigures = (entry: BowlingEntry): boolean =>
+  // A row still on its zero defaults carries information only through overs or the wickets the dismissals gave it.
+  entry.untouched ? entry.balls != null || (entry.wickets ?? 0) > 0 :
   [entry.balls, entry.maidens, entry.runs, entry.wides, entry.noBalls, entry.dots].some((value) => value != null) ||
   (entry.wicketsSource === 'DERIVED' ? (entry.wickets ?? 0) > 0 : entry.wickets != null)
 
@@ -99,7 +101,9 @@ export function setBatting(scorecard: Scorecard, side: ResultSide, rows: Batting
 export function patchBatting(scorecard: Scorecard, key: string, patch: Partial<BattingEntry>): Scorecard {
   // A row that can no longer be featured (Did not bat, no runs) drops any star the manager had set.
   const apply = (entry: BattingEntry): BattingEntry => {
-    const next = { ...entry, ...patch }
+    // Typing a figure ends the untouched state of the zeros the fill put in.
+    const typed = ['runs', 'balls', 'fours', 'sixes'].some((field) => field in patch)
+    const next = { ...entry, ...patch, ...(typed ? { untouched: false } : {}) }
     return canFeatureBatter(next) ? next : { ...next, featuredOverride: null }
   }
   return { ...scorecard, batting: scorecard.batting.map((entry) => (entryPlayerKey(entry) === key ? apply(entry) : entry)) }
@@ -107,7 +111,9 @@ export function patchBatting(scorecard: Scorecard, key: string, patch: Partial<B
 
 export function patchBowling(scorecard: Scorecard, key: string, patch: Partial<BowlingEntry>): Scorecard {
   const apply = (entry: BowlingEntry): BowlingEntry => {
-    const next = { ...entry, ...patch }
+    // Any edit but the star ends the untouched state of the zero defaults.
+    const starOnly = Object.keys(patch).every((field) => field === 'featuredOverride')
+    const next = { ...entry, ...patch, ...(starOnly ? {} : { untouched: false }) }
     return canFeatureBowler(next) ? next : { ...next, featuredOverride: null }
   }
   return { ...scorecard, bowling: scorecard.bowling.map((entry) => (entryPlayerKey(entry) === key ? apply(entry) : entry)) }
@@ -137,12 +143,14 @@ export function blankBowlingEntry(
     ...entryRefOf(player),
     bowlingOrder: order,
     balls: null,
-    maidens: null,
-    runs: null,
-    wickets: null,
-    wides: null,
-    noBalls: null,
-    dots: null,
+    // Everything but the overs starts at 0 (the overs stay blank until typed); the zeros count as untouched.
+    maidens: 0,
+    runs: 0,
+    wickets: 0,
+    wides: 0,
+    noBalls: 0,
+    dots: 0,
+    untouched: true,
     wicketsSource: derived ? 'DERIVED' : 'MANUAL',
     featuredOverride: null,
   }
@@ -520,15 +528,16 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
         entry.howOut !== 'DID_NOT_BAT' &&
         (entry.howOut !== null || entry.runs != null || entry.balls != null || entry.fours != null || entry.sixes != null),
     )
-    const bowlers = bowlingOf(scorecard, opposite(innings.battingSide)).filter(hasBowlingFigures)
+    // Rows still on their zero defaults say nothing about runs, wides or no-balls.
+    const bowlers = bowlingOf(scorecard, opposite(innings.battingSide)).filter(hasBowlingFigures).filter((entry) => !entry.untouched)
     const n = (value: number | null | undefined) => value ?? 0
     let runs: number | null = null
     let wickets: number | null = null
-    const hasRuns = batters.some((entry) => entry.runs != null)
+    const hasRuns = batters.some((entry) => !entry.untouched && entry.runs != null)
     if (batters.length > 0 && (hasRuns || hasExtras(innings) || batters.some((entry) => isWicket(entry.howOut)))) {
       runs = hasRuns || hasExtras(innings) ? batters.reduce((sum, entry) => sum + n(entry.runs), 0) + extrasTotal(innings) : null
       wickets = batters.length > 0 ? batters.filter((entry) => isWicket(entry.howOut)).length : null
-    } else if (bowlers.length > 0) {
+    } else if (bowlers.some((entry) => n(entry.runs) > 0)) {
       runs = bowlers.reduce((sum, entry) => sum + n(entry.runs), 0) + n(innings.byes) + n(innings.legByes) + n(innings.penaltyRuns)
       wickets = bowlers.reduce((sum, entry) => sum + n(entry.wickets), 0) + n(innings.nonBowlerWickets)
     }
@@ -537,7 +546,7 @@ export function inningsSuggestions(draft: ResultDraft): Map<number, InningsSugge
     const balls = bowlers.reduce((sum, entry) => sum + n(entry.balls), 0)
     // Wides and no-balls are charged to the bowler: they are inside the bowlers' runs already (never added to the runs again)
     // and add up to the innings' wides and no-balls extras.
-    const sum = (pick: (entry: BowlingEntry) => number | null | undefined) => (bowlers.some((entry) => pick(entry) != null) ? bowlers.reduce((total, entry) => total + n(pick(entry)), 0) : null)
+    const sum = (pick: (entry: BowlingEntry) => number | null | undefined) => (bowlers.some((entry) => n(pick(entry)) > 0) ? bowlers.reduce((total, entry) => total + n(pick(entry)), 0) : null)
     const wides = sum((entry) => entry.wides)
     const noBalls = sum((entry) => entry.noBalls)
     if (runs !== null || balls > 0 || wides !== null || noBalls !== null) out.set(innings.sequence, { runs, wickets, balls: balls > 0 ? balls : null, wides, noBalls })
@@ -604,9 +613,9 @@ export function applyDerivedCredits(scorecard: Scorecard): Scorecard {
           !(
             entry.battingSide === batted &&
             entry.auto &&
+            entry.untouched !== false &&
             entry.wicketsSource === 'DERIVED' &&
-            (credits.get(entryPlayerKey(entry) ?? '') ?? NO_CREDIT).wickets === 0 &&
-            ![entry.balls, entry.maidens, entry.runs, entry.wides, entry.noBalls, entry.dots].some((value) => value != null)
+            (credits.get(entryPlayerKey(entry) ?? '') ?? NO_CREDIT).wickets === 0
           ),
       ),
       ...created,

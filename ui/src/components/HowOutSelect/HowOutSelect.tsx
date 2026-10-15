@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Box, InputBase, Paper, Popper } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import type { DismissalType } from '../../api/matchResultApi'
 import { bestDismissal, dismissalLabel, matchDismissals } from '../../utils/dismissal'
 
@@ -17,6 +19,8 @@ export interface HowOutSelectProps {
   auto?: boolean
   // Phone cards: full width and 44 px high.
   fullWidth?: boolean
+  // A soft amber warning (figures typed but no how out); never blocks.
+  warn?: boolean
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Our batting, keyboard-first): the How out field. A real text input
@@ -25,7 +29,7 @@ export interface HowOutSelectProps {
 // (or leaving the field) accepts the highlighted one, so a scorer never touches the mouse. A click or tap opens the whole
 // list. Arrow keys move the highlight while the list is open and otherwise move between rows (the grid's handling).
 // Clearing the field and leaving it makes the row undecided again.
-export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', disabled = false, auto = false, fullWidth = false }: HowOutSelectProps) {
+export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', disabled = false, auto = false, fullWidth = false, warn = false }: HowOutSelectProps) {
   const listId = useId()
   // The text being typed; null while the field shows the chosen dismissal.
   const [query, setQuery] = useState<string | null>(null)
@@ -128,9 +132,9 @@ export function HowOutSelect({ value, onChange, ariaLabel, column = 'howOut', di
           height: fullWidth ? 44 : 30,
           fontSize: fullWidth ? undefined : 12,
           border: 1,
-          borderColor: 'divider',
+          borderColor: warn ? 'warning.main' : 'divider',
           borderRadius: 1.5,
-          bgcolor: 'background.paper',
+          bgcolor: warn ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : 'background.paper',
           fontWeight: 600,
           fontStyle: auto && !open ? 'italic' : 'normal',
           color: value === null && !open ? 'text.secondary' : 'text.primary',

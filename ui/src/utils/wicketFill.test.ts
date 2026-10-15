@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DismissalType } from '../api/matchResultApi'
-import { applyWicketFill, dismissalCount, initialRows, newRowFill } from './wicketFill'
+import { applyWicketFill, dismissalCount, initialRows, newRowFill, normalizeBatterFigures } from './wicketFill'
 import type { FillRow } from './wicketFill'
 
 const howOuts = (rows: FillRow[]) => rows.map((row) => row.howOut)
@@ -107,5 +107,28 @@ describe('wicketFill', () => {
     expect(filled[1]).toMatchObject({ howOut: null, runs: 9 })
     expect(dismissalCount(filled)).toBe(1)
     expect(filled.slice(2, 4).map((row) => row.howOut)).toEqual(['NOT_OUT', 'NOT_OUT'])
+  })
+
+  it('fills zeros on a batted row, marks them untouched, and empties a Did not bat row', () => {
+    type Row = FillRow & { runs?: number | null; balls?: number | null; fours?: number | null; sixes?: number | null; untouched?: boolean; bowlerPlayerId?: string | null }
+    const rows: Row[] = [
+      { howOut: 'BOWLED', auto: false, runs: null, balls: null, fours: null, sixes: null },
+      { howOut: null, auto: false, runs: 7, balls: null, fours: null, sixes: null },
+      { howOut: 'DID_NOT_BAT', auto: false, runs: 3, balls: 2, fours: 0, sixes: 0, bowlerPlayerId: 'x' },
+    ]
+    const out = normalizeBatterFigures(rows)
+    expect(out[0]).toMatchObject({ runs: 0, balls: 0, fours: 0, sixes: 0, untouched: true })
+    expect(out[1]).toMatchObject({ runs: 7, balls: 0, fours: 0, sixes: 0 })
+    expect(out[1].untouched).toBeFalsy()
+    expect(out[2]).toMatchObject({ runs: null, balls: null, bowlerPlayerId: null })
+  })
+
+  it('takes the zeros of an automatic Not out away again when the dismissals change', () => {
+    let rows: Array<FillRow & { runs?: number | null; balls?: number | null; fours?: number | null; sixes?: number | null; untouched?: boolean }> = initialRows(4, 1)
+    rows = mark(rows, 0, 'CAUGHT')
+    rows = normalizeBatterFigures(applyWicketFill(rows, 1))
+    expect(rows[1]).toMatchObject({ howOut: 'NOT_OUT', auto: true, untouched: true, runs: 0 })
+    rows = normalizeBatterFigures(applyWicketFill(mark(rows, 0, 'DID_NOT_BAT'), 1))
+    expect(rows[1]).toMatchObject({ howOut: 'DID_NOT_BAT', runs: null })
   })
 })

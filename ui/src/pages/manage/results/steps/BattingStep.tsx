@@ -11,14 +11,14 @@ import type { ScorecardGridColumn } from '../../../../components/ScorecardGrid'
 import { StandoutToggle } from '../../../../components/StandoutToggle'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
-import { battingRowProblem } from '../../../../utils/scorecardRowChecks'
+import { battingRowChecks } from '../../../../utils/scorecardRowChecks'
 import { canFeatureBatter } from '../../../../utils/standout'
 import { battingTotals, extrasTotal } from '../../../../utils/battingTotals'
 import { allowsBowler, allowsFielder } from '../../../../utils/dismissal'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { entryPlayerKey, playerRowKey } from '../../../../utils/scorecardPrefill'
-import { dismissalCount, applyWicketFill, newRowFill } from '../../../../utils/wicketFill'
+import { dismissalCount, applyWicketFill, newRowFill, normalizeBatterFigures } from '../../../../utils/wicketFill'
 import { opposite, regularInningsOf, updateInnings } from '../resultDraftHelpers'
 import { AddPlayerRow } from '../scorecard/AddPlayerRow'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
@@ -56,7 +56,7 @@ import {
 } from '../scorecardDraft'
 import type { ScorecardStepProps } from './stepTypes'
 
-const sameFill = (a: BattingEntry[], b: BattingEntry[]) => a.every((entry, index) => entry.howOut === b[index].howOut && entry.auto === b[index].auto)
+const sameFill = (a: BattingEntry[], b: BattingEntry[]) => a.every((entry, index) => entry === b[index])
 
 // docs/specs/101-match-results-our-side-scorecard.md, step "Batting" (decision 22): the batters of the side shown, in the
 // order they batted, for either side. Rows are the side's Teams list (ours: pre-filled from the selection, built here and
@@ -104,7 +104,7 @@ export function BattingStep({
   const filled = (next: Scorecard): Scorecard => {
     const ensured = ensureBattingRows(next, side)
     const current = battingOf(ensured, side)
-    const result = applyWicketFill(current, fillWickets)
+    const result = normalizeBatterFigures(applyWicketFill(current, fillWickets))
     return sameFill(current, result) ? ensured : setBatting(ensured, side, result)
   }
 
@@ -232,6 +232,7 @@ export function BattingStep({
         column={isFielder ? 'fielder' : 'bowler'}
         disabled={disabled}
         fullWidth={fullWidth}
+        warn={battingRowChecks(entry).cells.has(isFielder ? 'fielder' : 'bowler')}
       />
     )
   }
@@ -246,6 +247,7 @@ export function BattingStep({
           <HowOutSelect
             value={entry.howOut}
             auto={entry.auto}
+            warn={battingRowChecks(entry).cells.has('howOut')}
             disabled={disabled}
             ariaLabel={`How out, ${label(person(key))}`}
             onChange={(value) => changeHowOut(key, value)}
@@ -268,6 +270,7 @@ export function BattingStep({
             onChange={(value) => edit(key, { [field]: value })}
             ariaLabel={`${{ runs: 'Runs', balls: 'Balls', fours: 'Fours', sixes: 'Sixes' }[field]}, ${label(person(key))}`}
             column={field}
+            warn={(field === 'runs' || field === 'balls') && battingRowChecks(entry).cells.has(field)}
             disabled={disabled || (entry.howOut === 'DID_NOT_BAT' && !entry.auto)}
           />
         )
@@ -379,7 +382,7 @@ export function BattingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             isRowMuted={(entry) => entry.howOut === 'DID_NOT_BAT'}
-            rowProblem={battingRowProblem}
+            rowProblem={(entry) => battingRowChecks(entry).reasons.join('. ') || null}
             emptyMessage={null}
             renderCard={(entry) => {
               const key = entryPlayerKey(entry) as string
@@ -398,6 +401,7 @@ export function BattingStep({
                     fullWidth
                     value={entry.howOut}
                     auto={entry.auto}
+                    warn={battingRowChecks(entry).cells.has('howOut')}
                     disabled={disabled}
                     ariaLabel={`How out, ${label(person(key))}`}
                     onChange={(value) => changeHowOut(key, value)}
@@ -435,6 +439,7 @@ export function BattingStep({
                             onChange={(value) => edit(key, { [field]: value })}
                             ariaLabel={`${{ runs: 'Runs', balls: 'Balls', fours: 'Fours', sixes: 'Sixes' }[field]}, ${label(person(key))}`}
                             column={field}
+                            warn={(field === 'runs' || field === 'balls') && battingRowChecks(entry).cells.has(field)}
                             disabled={disabled}
                           />
                         </Box>

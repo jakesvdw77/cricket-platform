@@ -346,6 +346,7 @@ export function BowlingStep({
           <OversInput
             label={`Overs, ${label(person(key))}`}
             gridColumn="overs"
+            warn={entry.balls == null}
             value={entry.balls}
             onChange={(value) => edit(key, { balls: value })}
             ballsPerOver={ballsPerOver}
@@ -599,7 +600,7 @@ export function BowlingStep({
                     <Box sx={{ flex: 1, minWidth: 0 }}>{playerCell(entry)}</Box>
                     {star(entry)}
                   </Box>
-                  <OversInput label="Overs" ariaLabel={`Overs, ${name}`} value={entry.balls} onChange={(value) => edit(key, { balls: value })} ballsPerOver={ballsPerOver} disabled={disabled} />
+                  <OversInput label="Overs" warn={entry.balls == null} ariaLabel={`Overs, ${name}`} value={entry.balls} onChange={(value) => edit(key, { balls: value })} ballsPerOver={ballsPerOver} disabled={disabled} />
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: 1, justifyContent: 'space-between' }}>
                     {(
                       [

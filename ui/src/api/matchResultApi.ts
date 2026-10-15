@@ -126,6 +126,9 @@ export interface BattingEntry extends ScorecardEntryBase {
   // the how out allows them (utils/dismissal allowsBowler / allowsFielder). Optional always.
   bowlerPlayerId?: string | null
   fielderPlayerId?: string | null
+  // Client-only (never sent): the zero figures were filled in when the row became a batted row and the manager has not typed
+  // any figure on it yet (cleared on the first edit); such a row counts as batted but says nothing about runs.
+  untouched?: boolean
   // Client-only (never sent): the Not out / Did not bat was set by the wicket fill, not by the manager (utils/wicketFill).
   auto?: boolean
 }
@@ -148,6 +151,8 @@ export interface BowlingEntry extends ScorecardEntryBase {
   // Client-only (never sent): the row was created from a dismissal that names this bowler; it goes again if that dismissal
   // changes and nothing else was typed on it.
   auto?: boolean
+  // Client-only (never sent): a row whose zero defaults the manager has not touched yet (cleared on the first edit).
+  untouched?: boolean
 }
 
 export interface FieldingEntry extends ScorecardEntryBase {

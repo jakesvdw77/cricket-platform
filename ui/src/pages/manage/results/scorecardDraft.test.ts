@@ -166,14 +166,31 @@ describe('bowling rows from dismissals', () => {
   it('creates a DERIVED bowling row for a named bowler and removes it again while it is still empty', () => {
     const made = applyDerivedCredits(sc('x'))
     expect(made.bowling).toHaveLength(1)
-    expect(made.bowling[0]).toMatchObject({ playerClientKey: 'x', wicketsSource: 'DERIVED', wickets: 1, bowlingOrder: 1, balls: null })
+    expect(made.bowling[0]).toMatchObject({ playerClientKey: 'x', wicketsSource: 'DERIVED', wickets: 1, bowlingOrder: 1, balls: null, runs: 0, maidens: 0, untouched: true })
     const gone = applyDerivedCredits({ ...made, batting: made.batting.map((e) => ({ ...e, bowlerPlayerId: null })) })
     expect(gone.bowling).toHaveLength(0)
   })
 
   it('never removes a row with typed figures', () => {
     const made = applyDerivedCredits(sc('x'))
-    const typed = { ...made, bowling: made.bowling.map((e) => ({ ...e, balls: 12 })), batting: made.batting.map((e) => ({ ...e, bowlerPlayerId: null })) }
+    const typed = { ...made, bowling: made.bowling.map((e) => ({ ...e, balls: 12, untouched: false })), batting: made.batting.map((e) => ({ ...e, bowlerPlayerId: null })) }
     expect(applyDerivedCredits(typed).bowling).toHaveLength(1)
+  })
+})
+
+describe('bowling rows start at zero but say nothing until touched', () => {
+  it('an auto-created row has zero defaults, blank overs, and no calculated runs, wides or no-balls', () => {
+    const base: Scorecard = {
+      players: [player('x', null, { side: 'AWAY', opposition: true }), player('b', 'pb')],
+      batting: [{ ...batter('b', 10, 'BOWLED'), bowlerPlayerId: 'x' }],
+      bowling: [],
+      fielding: [],
+      awards: [],
+    }
+    const made = applyDerivedCredits(base)
+    expect(made.bowling[0]).toMatchObject({ balls: null, maidens: 0, runs: 0, dots: 0, wides: 0, noBalls: 0, wickets: 1, untouched: true })
+    const sugg = inningsSuggestions({ innings: [{ sequence: 1, kind: 'REGULAR', battingSide: 'HOME', runs: null, wickets: null, balls: null }], scorecard: { ...made, batting: [] } })
+    expect(sugg.get(1)?.wides ?? null).toBeNull()
+    expect(sugg.get(1)?.runs ?? null).toBeNull()
   })
 })

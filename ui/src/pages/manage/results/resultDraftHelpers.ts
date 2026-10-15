@@ -250,7 +250,7 @@ function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings
         .filter((entry) => (entry.howOut !== null && entry.howOut !== undefined) || [entry.runs, entry.balls, entry.fours, entry.sixes].some((value) => value != null))
         // `auto` is client-only (the wicket fill's marker), not part of the API. A bowler or fielder is only sent where the
         // how out allows one (never on a row with no how out).
-        .map(({ auto: _auto, ...entry }) => {
+        .map(({ auto: _auto, untouched: _untouched, ...entry }) => {
           const howOut = entry.howOut ?? null
           const clean = {
             ...entry,
@@ -261,7 +261,7 @@ function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings
           return howOut === 'DID_NOT_BAT' ? { ...clean, position: null } : clean
         }),
       // `auto` is client-only (a row created from a dismissal), not part of the API.
-      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures).map(({ auto: _auto, ...entry }) => entry),
+      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures).map(({ auto: _auto, untouched: _untouched, ...entry }) => entry),
       fielding: (scorecard.fielding ?? []).filter(inSave).filter(hasCredit),
       awards: scorecard.awards ?? [],
     },

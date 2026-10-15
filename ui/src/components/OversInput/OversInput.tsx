@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { Input } from '../Input'
 import { sanitizeOvers } from '../../utils/numericInput'
 import { ballsToOvers, DEFAULT_BALLS_PER_OVER, parseOvers } from '../../utils/oversFormat'
@@ -18,6 +20,8 @@ export interface OversInputProps {
   gridColumn?: string
   // The accessible name when it should say more than the visible label ("Overs, A. Smith").
   ariaLabel?: string
+  // A soft amber warning on the field (the value is missing or looks wrong; never blocks).
+  warn?: boolean
 }
 
 // docs/specs/100-match-results-core.md: the overs field, hardened (docs/specs/101, input hardening). The manager types "36.4" as on
@@ -26,7 +30,7 @@ export interface OversInputProps {
 // So nothing invalid can be typed and there is no error state. The parent receives balls as soon as the text is a figure
 // ("36" or "36.4"), or null when emptied. The text is local so a half-typed "36." is never rewritten under the cursor; on blur
 // (or Enter) it settles to the committed figure ("36.0"), or to empty when cleared.
-export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false, gridColumn, ariaLabel }: OversInputProps) {
+export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALLS_PER_OVER, disabled = false, helperText, required = false, gridColumn, ariaLabel, warn = false }: OversInputProps) {
   const [text, setText] = useState(() => ballsToOvers(value, ballsPerOver))
   const [seenValue, setSeenValue] = useState(value)
 
@@ -75,6 +79,7 @@ export function OversInput({ label, value, onChange, ballsPerOver = DEFAULT_BALL
       sx={{
         '& input': { fontVariantNumeric: 'tabular-nums', ...(gridColumn ? { textAlign: 'right', py: 0, height: 30, fontSize: 12, boxSizing: 'border-box', px: 1, fontWeight: 600 } : {}) },
         ...(gridColumn ? { width: 64, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } } : {}),
+        ...(warn ? { '& .MuiOutlinedInput-root': { ...(gridColumn ? { borderRadius: 1.5 } : {}), bgcolor: (theme: Theme) => alpha(theme.palette.warning.main, 0.12) }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'warning.main' } } : {}),
       }}
     />
   )
