@@ -173,6 +173,7 @@ public class JsonAdaptor extends AbstractAdaptor {
         if (text == null || text.isBlank()) {
             throw new UnreadableImportInputException("The input is empty.");
         }
+        text = withoutCodeFence(text);
         JsonNode tree;
         try {
             tree = STRICT.readTree(text);
@@ -190,6 +191,28 @@ public class JsonAdaptor extends AbstractAdaptor {
         } catch (JsonProcessingException ex) {
             throw new UnreadableImportInputException("The JSON could not be read" + where(ex.getLocation()) + ".");
         }
+    }
+
+    /**
+     * Ignores a markdown code fence wrapped around the whole document, as an AI chat adds when its reply is copied
+     * rather than its code block ({@code ```json ... ```}). The opening fence line is blanked, not removed, so line
+     * numbers in a parse error still match what the manager sees.
+     */
+    private static String withoutCodeFence(String text) {
+        String trimmed = text.strip();
+        if (!trimmed.startsWith("```")) {
+            return text;
+        }
+        int firstLineEnd = trimmed.indexOf('\n');
+        if (firstLineEnd < 0) {
+            return text;
+        }
+        String body = trimmed.substring(firstLineEnd);
+        if (body.stripTrailing().endsWith("```")) {
+            body = body.stripTrailing();
+            body = body.substring(0, body.length() - 3);
+        }
+        return body;
     }
 
     /** Removes every {@code x-} prefixed property at any depth. */
