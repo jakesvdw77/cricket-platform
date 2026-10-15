@@ -66,8 +66,8 @@ public final class StandoutRules {
      * the innings run rate. Economy and run rate compare runs per ball, so the over length cancels out.
      */
     public static <K> Set<K> bowlingSuggestions(List<Bowler<K>> bowlers, Integer inningsRuns, Integer inningsBalls) {
-        // a bowler who bowled no ball is never featured
-        List<Bowler<K>> ranked = new ArrayList<>(bowlers.stream().filter(b -> b.balls() > 0).toList());
+        // a bowler with neither a ball nor a wicket is never featured; one with wickets only ranks by wickets, economy unknown (last among equals)
+        List<Bowler<K>> ranked = new ArrayList<>(bowlers.stream().filter(b -> b.balls() > 0 || b.wickets() > 0).toList());
         ranked.sort(Comparator.<Bowler<K>>comparingInt(b -> -b.wickets())
                 .thenComparingDouble(StandoutRules::runsPerBall));
         Set<K> suggested = new HashSet<>();

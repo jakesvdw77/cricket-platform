@@ -723,13 +723,13 @@ public class ScorecardServiceImpl implements ScorecardService {
         return frozen && stored != null ? stored && canBeFeatured : effective(override, suggested, canBeFeatured);
     }
 
-    /** A batter who did not bat or scored no run, and a bowler who bowled no ball, can never be featured. */
+    /** A batter who did not bat or scored no run, and a bowler with neither a ball nor a wicket, can never be featured. */
     private static boolean canBeFeatured(BattingEntry e) {
         return e.getHowOut() != null && e.getHowOut().batted() && e.getRuns() != null && e.getRuns() > 0;
     }
 
     private static boolean canBeFeatured(BowlingEntry e) {
-        return e.getBalls() > 0;
+        return e.getBalls() > 0 || e.getWickets() > 0;
     }
 
     /** A stored FEATURE override on an entry that cannot be featured is ignored; HIDE is unaffected. */
