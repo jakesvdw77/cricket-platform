@@ -501,7 +501,9 @@ export default function ResultCapturePage() {
   if (!clubId) {
     return <EmptyState title="Not authorized" description="No club is associated with your account." />
   }
-  if (matchQuery.isError || resultQuery.isError || teamsQuery.isError || scorecardQuery.isError) {
+  // The scorecard query only counts while it is enabled: it shares its key with the result page, whose refetch after a delete
+  // leaves a cached 404 behind, and a disabled query still reports that old error.
+  if (matchQuery.isError || resultQuery.isError || teamsQuery.isError || (hasScorecard === true && scorecardQuery.isError)) {
     return <EmptyState title="Couldn't load this match" description="Something went wrong loading the match. Please try again." />
   }
   // A league's playing conditions that fail to load only lose the pre-filled overs, so they never block the wizard.

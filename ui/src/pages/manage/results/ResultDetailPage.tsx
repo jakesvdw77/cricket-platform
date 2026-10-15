@@ -128,8 +128,10 @@ export default function ResultDetailPage() {
     mutationFn: () => deleteResultDraft(clubId as string, matchId as string),
     onSuccess: () => {
       setConfirm(null)
-      refresh()
+      // The scorecard of a deleted draft is gone: leave no cached 404 behind for the wizard that is opened next.
+      queryClient.removeQueries({ queryKey: resultKeys.scorecard(clubId as string, matchId as string) })
       navigate(RESULTS_PATH)
+      refresh()
     },
     onError: () => {
       setConfirm(null)
