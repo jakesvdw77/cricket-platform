@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlayerSlotPicker } from './PlayerSlotPicker'
@@ -164,5 +164,55 @@ describe('PlayerSlotPicker', () => {
   it('opens on Match squad when given one, and on Team squad with a note when no team was selected', async () => {
     setup({ matchSquad: [{ playerProfileId: 'm1', firstName: 'Mia', lastName: 'Match' }] })
     expect(await screen.findByRole('button', { name: /Mia Match/ })).toBeInTheDocument()
+  })
+
+  // docs/specs/104: what an import's file said, the ranked closest players, and the Guest name prefilled.
+  describe('for an imported name', () => {
+    const suggestion = (id: string, first: string, last: string, score: number) => ({ player: { playerProfileId: id, firstName: first, lastName: last }, score })
+
+    it('shows what the file said and the closest players best first with their similarity, and a tap picks one', async () => {
+      const user = userEvent.setup()
+      const { onPickPlayer } = setup({
+        importedName: 'Dihandre V',
+        suggestions: [suggestion('p2', 'Bob', 'Birch', 0.82), suggestion('p3', 'Cal', 'Cedar', 0.4)],
+      })
+
+      expect(await screen.findByText(/File said:/)).toHaveTextContent('Dihandre V')
+      const list = screen.getByRole('list', { name: 'Closest players' })
+      const rows = within(list).getAllByRole('button')
+      expect(rows[0]).toHaveTextContent('Bob Birch')
+      expect(rows[0]).toHaveTextContent('82%')
+      expect(rows[1]).toHaveTextContent('Cal Cedar')
+
+      await user.click(rows[0])
+      expect(onPickPlayer).toHaveBeenCalledWith({ playerProfileId: 'p2', firstName: 'Bob', lastName: 'Birch' })
+    })
+
+    it('greys out a closest player who is already taken, with the reason, and cannot pick them', async () => {
+      const user = userEvent.setup({ pointerEventsCheck: 0 })
+      const { onPickPlayer } = setup({
+        importedName: 'Dihandre V',
+        suggestions: [suggestion('p2', 'Bob', 'Birch', 0.82)],
+        takenPlayers: { p2: 'Already on this side' },
+      })
+
+      const row = (await screen.findByRole('list', { name: 'Closest players' })).querySelector('[role="button"]') as HTMLElement
+      expect(row).toHaveAttribute('aria-disabled', 'true')
+      await user.click(row)
+      expect(onPickPlayer).not.toHaveBeenCalled()
+    })
+
+    it('prefills the Guest name with the file spelling so keeping a guest is one tap', async () => {
+      const user = userEvent.setup()
+      setup({ importedName: 'Dihandre V' })
+      await user.click(await screen.findByRole('button', { name: 'Guest' }))
+      expect(screen.getByDisplayValue('Dihandre V')).toBeInTheDocument()
+    })
+
+    it('shows no import header for an ordinary pick', async () => {
+      setup()
+      await screen.findByText('Ann Ash')
+      expect(screen.queryByText(/File said:/)).not.toBeInTheDocument()
+    })
   })
 })

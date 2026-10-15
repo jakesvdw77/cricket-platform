@@ -285,6 +285,26 @@ describe('MatchCard', () => {
       expect(await screen.findByText('At: /manage/results/match-1')).toBeInTheDocument()
     })
 
+    // docs/specs/104: Import result opens the import wizard with this match chosen; only for a match that has started.
+    it('offers Import for a started match without a published result, and opens the wizard for this match', async () => {
+      const user = userEvent.setup()
+      renderCard(makeMatch({ resultStatus: 'NONE', matchDate: inHours(-48) }))
+
+      await user.click(resultButton('Import result'))
+      expect(await screen.findByText('At: /manage/results/import?matchId=match-1')).toBeInTheDocument()
+    })
+
+    it('offers no Import before the match starts, once a result is published, or for an inactive match', () => {
+      const { unmount } = renderCard(makeMatch({ resultStatus: 'NONE', matchDate: inHours(48) }))
+      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
+      unmount()
+      const published = renderCard(makeMatch({ resultStatus: 'PUBLISHED', matchDate: inHours(-48) }))
+      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
+      published.unmount()
+      renderCard(makeMatch({ active: false, resultStatus: 'NONE', matchDate: inHours(-48) }))
+      expect(screen.queryByRole('button', { name: 'Import result' })).not.toBeInTheDocument()
+    })
+
     it('offers no capture action for an inactive match, but still shows a published result', () => {
       const { unmount } = renderCard(makeMatch({ active: false, resultStatus: 'NONE' }))
       expect(screen.queryByRole('button', { name: /result/i })).not.toBeInTheDocument()
@@ -373,14 +393,25 @@ describe('MatchCard', () => {
   })
 
   describe('footer', () => {
-    it('renders Edit, Select, Availability, Share buttons in that order', () => {
-      renderCard(makeMatch())
+    it('renders Edit, Select, Availability, Share buttons in that order, then the result actions', () => {
+      // A match that has not started yet, so no Import (docs/specs/104) is offered; the started case follows.
+      renderCard(makeMatch({ matchDate: new Date(Date.now() + 48 * 3_600_000).toISOString() }))
 
       const footer = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement
       const names = within(footer)
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
       expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result'])
+    })
+
+    it('adds Import result after Capture result once the match has started (docs/specs/104)', () => {
+      renderCard(makeMatch({ matchDate: new Date(Date.now() - 48 * 3_600_000).toISOString() }))
+
+      const footer = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement
+      const names = within(footer)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label'))
+      expect(names).toEqual(['Edit', 'Select', 'Availability', 'Share', 'Capture result', 'Import result'])
     })
 
     it('Edit navigates to the edit route', async () => {

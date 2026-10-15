@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DocumentUpload } from './DocumentUpload'
@@ -154,6 +154,50 @@ describe('DocumentUpload', () => {
       await user.upload(screen.getByLabelText('Playing Conditions file'), file)
       await waitFor(() => expect(onUploaded).toHaveBeenCalledWith('/media/new.pdf'))
       expect(onUpload).toHaveBeenCalledWith(file)
+    })
+  })
+
+  // docs/specs/104: mode="select" only holds the chosen file for the import wizard; nothing is uploaded.
+  describe('select mode', () => {
+    const renderSelect = (props: { file?: File | null; accept?: string[]; maxBytes?: number } = {}) => {
+      const onFileChange = vi.fn()
+      render(<DocumentUpload mode="select" label="Result file" accept={props.accept ?? ['.json']} maxBytes={props.maxBytes ?? 100} file={props.file ?? null} onFileChange={onFileChange} />)
+      return onFileChange
+    }
+
+    it('holds a chosen file of an accepted extension, whatever its case, without uploading anything', async () => {
+      const user = userEvent.setup({ applyAccept: false })
+      const onFileChange = renderSelect()
+      const file = new File(['{}'], 'Match.JSON', { type: '' })
+      await user.upload(screen.getByLabelText('Result file file'), file)
+      expect(onFileChange).toHaveBeenCalledWith(file)
+    })
+
+    it('refuses a file of another type or over the size limit, in words, and never replaces the held file', async () => {
+      const user = userEvent.setup({ applyAccept: false })
+      const onFileChange = renderSelect({ maxBytes: 4 })
+      await user.upload(screen.getByLabelText('Result file file'), new File(['x'], 'notes.txt', { type: 'text/plain' }))
+      expect(screen.getByRole('alert')).toHaveTextContent('"notes.txt" isn\'t a supported document type. Upload a .json file instead.')
+      await user.upload(screen.getByLabelText('Result file file'), new File(['0123456789'], 'big.json'))
+      expect(screen.getByRole('alert')).toHaveTextContent('"big.json" is 10 B, over the 4 B limit.')
+      expect(onFileChange).not.toHaveBeenCalled()
+    })
+
+    it('shows the chosen file with its size and lets it be removed', async () => {
+      const user = userEvent.setup()
+      const onFileChange = renderSelect({ file: new File([new Uint8Array(2048)], 'match.json') })
+      expect(screen.getByText('match.json')).toBeInTheDocument()
+      expect(screen.getByText('2 KB')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Remove' }))
+      expect(onFileChange).toHaveBeenCalledWith(null)
+    })
+
+    it('accepts a file dropped on it, under the same rules', () => {
+      const onFileChange = renderSelect()
+      const file = new File(['{}'], 'dropped.json')
+      const zone = screen.getByText('Result file').closest('div[class*="MuiBox"]')?.parentElement as HTMLElement
+      fireEvent.drop(zone, { dataTransfer: { files: [file] } })
+      expect(onFileChange).toHaveBeenCalledWith(file)
     })
   })
 })

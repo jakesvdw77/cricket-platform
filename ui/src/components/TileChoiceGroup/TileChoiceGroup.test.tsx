@@ -50,4 +50,39 @@ describe('TileChoiceGroup', () => {
 
     for (const tile of screen.getAllByRole('radio')) expect(tile).toBeDisabled()
   })
+
+  describe('a disabled option (docs/specs/104: a published match cannot be chosen)', () => {
+    const withDisabled = [
+      { value: 'a', content: 'Alpha' },
+      { value: 'b', content: 'Beta', disabled: true },
+      { value: 'c', content: 'Gamma' },
+    ]
+
+    it('cannot be clicked, and the rest of the group still works', async () => {
+      const user = userEvent.setup({ pointerEventsCheck: 0 })
+      const onChange = vi.fn()
+      render(<TileChoiceGroup label="Pick" options={withDisabled} value={null} onChange={onChange} columns="1fr" />)
+
+      expect(screen.getByRole('radio', { name: 'Beta' })).toBeDisabled()
+      await user.click(screen.getByRole('radio', { name: 'Beta' }))
+      expect(onChange).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('radio', { name: 'Gamma' }))
+      expect(onChange).toHaveBeenCalledWith('c')
+    })
+
+    it('is skipped by the arrow keys, and the tab stop is the first tile that can be chosen', async () => {
+      const onChange = vi.fn()
+      render(<TileChoiceGroup label="Pick" options={withDisabled} value="a" onChange={onChange} columns="1fr" />)
+      screen.getByRole('radio', { name: 'Alpha' }).focus()
+      await userEvent.keyboard('{ArrowRight}')
+      expect(onChange).toHaveBeenLastCalledWith('c')
+      await userEvent.keyboard('{ArrowLeft}')
+      expect(onChange).toHaveBeenLastCalledWith('a')
+    })
+
+    it('does not put the tab stop on a disabled first tile', () => {
+      render(<TileChoiceGroup<string> label="Pick" options={[{ value: 'a', content: 'Alpha', disabled: true }, { value: 'b', content: 'Beta' }]} value={null} onChange={vi.fn()} columns="1fr" />)
+      expect(screen.getAllByRole('radio').map((tile) => tile.tabIndex)).toEqual([-1, 0])
+    })
+  })
 })
