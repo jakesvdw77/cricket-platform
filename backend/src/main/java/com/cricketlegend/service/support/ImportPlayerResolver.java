@@ -11,6 +11,7 @@ import com.cricketlegend.dto.ImportNoteSuggestionDto;
 import com.cricketlegend.service.support.ImportCandidateLoader.OurCandidate;
 import com.cricketlegend.service.support.ImportCandidateLoader.SideCandidates;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -393,10 +394,21 @@ public class ImportPlayerResolver {
 
     private static NameCandidate asCandidate(int index, String name) {
         String trimmed = name.trim();
-        int cut = trimmed.lastIndexOf(' ');
         UUID marker = new UUID(0, index + 1L);
-        return cut < 0 ? new NameCandidate(marker, "", trimmed)
-                : new NameCandidate(marker, trimmed.substring(0, cut), trimmed.substring(cut + 1));
+        String[] words = trimmed.split("\\s+");
+        if (words.length < 2) {
+            return new NameCandidate(marker, "", trimmed);
+        }
+        // The surname starts at the first particle after the given name ("Willem" + "Van Der Nest"), else at the last word.
+        int cut = words.length - 1;
+        for (int i = 1; i < words.length - 1; i++) {
+            if (NameTokens.isParticle(words[i])) {
+                cut = i;
+                break;
+            }
+        }
+        return new NameCandidate(marker, String.join(" ", Arrays.copyOfRange(words, 0, cut)),
+                String.join(" ", Arrays.copyOfRange(words, cut, words.length)));
     }
 
     private static int markerIndex(UUID marker) {
