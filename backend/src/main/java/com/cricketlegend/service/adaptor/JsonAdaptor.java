@@ -118,8 +118,8 @@ public class JsonAdaptor extends AbstractAdaptor {
     private static String conversionPrompt() {
         return """
                 I am attaching a cricket match scorecard (a file or pasted text). Please convert it into one JSON \
-                document in the format described below, and reply with ONLY that JSON document. Do not add any \
-                commentary, explanation or markdown code fences.
+                document in the format described below, and reply with ONLY that JSON document, in a single \
+                code block that I can copy. Do not add any commentary or explanation.
 
                 Rules of the format
                 - "schemaVersion" is 1.
