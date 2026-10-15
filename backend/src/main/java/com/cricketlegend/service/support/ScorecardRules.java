@@ -372,6 +372,7 @@ final class ScorecardRules {
         }
         Names names = new Names(homeName, awayName);
         lineupChecks(scorecard, names, context, issues);
+        importChecks(scorecard, context, issues);
         awardChecks(scorecard, issues);
         oppositionChecks(scorecard, names, issues);
         if (outcome != null && NO_PLAY.contains(outcome)) {
@@ -427,6 +428,22 @@ final class ScorecardRules {
                 issues.info(WarningCode.OUR_TEAM_NOT_SELECTED, ResultWizardStep.TEAMS, side,
                         "Only " + listed + " players are on " + names.of(side) + "'s team list.");
             }
+        }
+    }
+
+    /**
+     * docs/specs/104: an imported player linked by a rule that is a guess blocks publishing until the manager confirms
+     * or changes it. Publish-time only (a save keeps the flag); never raised for guests, exact or aliased matches,
+     * opposition names or a pick the manager made, none of which carry the flag.
+     */
+    private static void importChecks(ScorecardDto scorecard, ScorecardContext context, ResultIssues issues) {
+        for (ResultPlayerDto p : scorecard.players()) {
+            if (p.importMatch() == null || p.opposition()) {
+                continue;
+            }
+            String said = blank(p.displayName()) ? "a name" : "'" + p.displayName().trim() + "'";
+            issues.error(ResultValidator.ErrorCode.IMPORTED_NAME_UNCONFIRMED, ResultWizardStep.TEAMS, p.side(),
+                    "File said " + said + ", matched to " + label(p, context) + ". Confirm or change this player.");
         }
     }
 

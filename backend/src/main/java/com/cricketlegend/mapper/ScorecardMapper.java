@@ -23,7 +23,8 @@ import org.mapstruct.MappingTarget;
  * docs/specs/101-match-results-our-side-scorecard.md. Stored scorecard rows map to their read DTOs (the innings the row
  * belongs to arrives as its batting side; the suggestion and the effective featured flag are computed by the service
  * and passed in), and incoming DTOs map to new rows. Identity and tenancy (match innings, result, player ids) are
- * always set by the service, never taken from the body; {@code featured} stays null on a draft.
+ * always set by the service, never taken from the body; {@code featured} stays null on a draft. docs/specs/104: {@code
+ * importMatch} is never mapped from a body: the service sets or clears it explicitly (a client can only keep or clear it).
  */
 @Mapper(componentModel = "spring")
 public interface ScorecardMapper {
@@ -38,6 +39,7 @@ public interface ScorecardMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "importMatch", ignore = true)
     ResultPlayer toPlayerEntity(ResultPlayerDto dto);
 
     /** Applies an incoming player onto the stored row: who they are, never the link audit or the creation time. */
@@ -48,6 +50,7 @@ public interface ScorecardMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "importMatch", ignore = true)
     @Mapping(target = "plannedBattingOrder", expression =
             "java(dto.plannedBattingOrder() != null ? dto.plannedBattingOrder() : player.getPlannedBattingOrder())")
     void applyPlayer(ResultPlayerDto dto, @MappingTarget ResultPlayer player);

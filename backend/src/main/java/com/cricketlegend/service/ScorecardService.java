@@ -66,6 +66,13 @@ public interface ScorecardService {
     void replace(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy);
 
     /**
+     * As {@link #replace}, for the import path only (docs/specs/104, called through {@code ResultService.saveImportedDraft}):
+     * the guess flag ({@code importMatch}) the Result Processor set on a new row is kept, which {@link #replace} never
+     * does (a client can only keep or clear a stored flag, never set one).
+     */
+    void replaceImported(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy);
+
+    /**
      * Re-derives the non-bowler wickets of every innings that has batting entries from those entries. A save that left
      * the scorecard untouched calls this so a client-sent figure cannot overwrite the derived one.
      */

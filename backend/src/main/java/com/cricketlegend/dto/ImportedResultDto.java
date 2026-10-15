@@ -103,4 +103,33 @@ public record ImportedResultDto(
                 schemaVersion, new Source(adaptor, given.provider(), given.externalMatchId(), fileName), match, teams,
                 toss, result, innings, players, awards);
     }
+
+    /**
+     * A copy with the exactness the server computed for match, teams (by key), toss and result (docs/specs/104, preview).
+     * Never raises: where the document already carried a worse level that one is kept, so exactness only ever gets
+     * lower. {@code toss} and {@code result} are ignored when the document has none.
+     */
+    public ImportedResultDto withPreviewExactness(
+            ImportExactness matchLevel, java.util.Map<String, ImportExactness> teamLevels, ImportExactness tossLevel,
+            ImportExactness resultLevel) {
+        Match givenMatch = match == null ? new Match(null, null, null, null, null, null) : match;
+        Match newMatch = new Match(
+                givenMatch.matchId(), givenMatch.date(), givenMatch.startTime(), givenMatch.venue(),
+                givenMatch.competition(), lower(givenMatch.exactness(), matchLevel));
+        List<Team> newTeams = teams == null ? null : teams.stream()
+                .map(t -> new Team(t.key(), t.name(), t.shortName(), lower(t.exactness(), teamLevels.get(t.key()))))
+                .toList();
+        Toss newToss = toss == null ? null : new Toss(toss.wonBy(), toss.decision(), lower(toss.exactness(), tossLevel));
+        Result newResult = result == null ? null : new Result(
+                result.outcome(), result.winner(), result.decidedBy(), result.margin(), result.dls(),
+                result.scheduledOvers(), result.ballsPerOver(), result.note(), lower(result.exactness(), resultLevel));
+        return new ImportedResultDto(schemaVersion, source, newMatch, newTeams, newToss, newResult, innings, players, awards);
+    }
+
+    private static ImportExactness lower(ImportExactness received, ImportExactness computed) {
+        if (received == null) {
+            return computed;
+        }
+        return computed == null || received.ordinal() >= computed.ordinal() ? received : computed;
+    }
 }

@@ -5907,6 +5907,68 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AdaptorCatalogueDto"
+  /api/v1/manage/clubs/{clubId}/results/import/preview:
+    post:
+      tags:
+      - result-import-controller
+      operationId: preview
+      description: "Runs the chosen adaptor over a file or pasted content, then proposes the matches in the club's fixtures it could belong to and the side of each file team (docs/specs/104). Multipart: the JSON part request and an optional file part; exactly one of the file and request.content (paste, text based formats only). Reads and proposes; writes nothing. 400 for an unsupported format, an unreadable input or a document that does not follow the common import format (errors, totalErrors); 404 for a matchId of another club."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: "#/components/schemas/ImportPreviewRequest"
+                file:
+                  type: string
+                  format: binary
+              required:
+              - request
+            encoding:
+              request:
+                contentType: application/json
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportPreviewDto"
+  /api/v1/manage/clubs/{clubId}/results/import/resolve:
+    post:
+      tags:
+      - result-import-controller
+      operationId: resolve
+      description: "The explicit confirm (docs/specs/104): re-validates the document, resolves the names and saves one DRAFT result for the chosen match. Never publishes. 409 when the match has a published result (ImportMatchAlreadyHasResultException), when it has a draft and replaceExistingDraft is false (ImportWouldOverwriteDraftException) or when the provider match id is already on another match (ImportExternalIdAlreadyUsedException, otherMatchId); 400 for an invalid document or team mapping; 404 for a match of another club; 403 for a match outside the caller's sections."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportResolveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportResolveDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -10915,7 +10977,7 @@ components:
           type: boolean
     ResultIssueDto:
       type: object
-      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
+      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
       properties:
         code:
           type: string
@@ -10984,6 +11046,12 @@ components:
         linkedAt:
           type: string
           format: date-time
+        importMatch:
+          type: string
+          enum:
+          - NORMALISED
+          - AI_SUGGESTED
+          description: "docs/specs/104: set by an import on one of our players linked by a rule other than an exact match or a remembered alias (a guess to confirm before publishing, ResultValidator error IMPORTED_NAME_UNCONFIRMED). Read; on write it can only be kept or cleared (null): a client can never set or raise it. Confirming, changing the player, linking or removing the row clears it. AI_SUGGESTED is reserved and never produced."
     BattingEntryDto:
       type: object
       description: "One batter of our side in the regular innings in which battingSide batted (docs/specs/101). position is the actual batting order. suggested and featured are read-only (the standout rules and the effective value, frozen at publish); the manager writes only featuredOverride. inningsKind SUPER_OVER is refused."
@@ -11444,6 +11512,469 @@ components:
           type: string
         message:
           type: string
+    ImportExactness:
+      type: string
+      description: "How exactly a section of an import was taken or matched (docs/specs/104). Output-only, recomputed by the server and never raised. AI_SUGGESTED is reserved and never produced."
+      enum:
+      - EXACT
+      - NORMALISED
+      - AI_SUGGESTED
+      - UNRESOLVED
+    ImportedResultDto:
+      type: object
+      description: "The common import format, version 1 (docs/specs/104): the one document an adaptor produces and the Result Processor accepts. Names, not ids; teams are referenced by key. Cricket arithmetic is ResultValidator's, not checked here. Every exactness is output-only."
+      properties:
+        schemaVersion:
+          type: integer
+          format: int32
+          description: "1."
+        source:
+          type: object
+          properties:
+            adaptor:
+              type: string
+              enum:
+              - JSON
+            provider:
+              type: string
+              maxLength: 40
+            externalMatchId:
+              type: string
+              maxLength: 255
+            fileName:
+              type: string
+        match:
+          type: object
+          properties:
+            matchId:
+              type: string
+              format: uuid
+            date:
+              type: string
+              format: date
+            startTime:
+              type: string
+              example: "09:00"
+            venue:
+              type: string
+            competition:
+              type: string
+            exactness:
+              $ref: "#/components/schemas/ImportExactness"
+        teams:
+          type: array
+          description: "Exactly two."
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: "1 to 8 characters of letters, digits, underscore or hyphen."
+              name:
+                type: string
+              shortName:
+                type: string
+              exactness:
+                $ref: "#/components/schemas/ImportExactness"
+        toss:
+          type: object
+          properties:
+            wonBy:
+              type: string
+            decision:
+              type: string
+              enum:
+              - BAT
+              - BOWL
+            exactness:
+              $ref: "#/components/schemas/ImportExactness"
+        result:
+          type: object
+          properties:
+            outcome:
+              type: string
+              enum:
+              - WON
+              - TIE
+              - DRAW
+              - NO_RESULT
+              - ABANDONED
+              - FORFEIT
+            winner:
+              type: string
+            decidedBy:
+              type: string
+              enum:
+              - REGULAR
+              - DLS
+              - SUPER_OVER
+            margin:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - RUNS
+                  - WICKETS
+                value:
+                  type: integer
+                  format: int32
+            dls:
+              type: object
+              properties:
+                target:
+                  type: integer
+                  format: int32
+                revisedOvers:
+                  type: integer
+                  format: int32
+            scheduledOvers:
+              type: integer
+              format: int32
+            ballsPerOver:
+              type: integer
+              format: int32
+            note:
+              type: string
+            exactness:
+              $ref: "#/components/schemas/ImportExactness"
+        innings:
+          type: array
+          items:
+            type: object
+            properties:
+              battingTeam:
+                type: string
+              kind:
+                type: string
+                enum:
+                - REGULAR
+                - SUPER_OVER
+              runs:
+                type: integer
+                format: int32
+              wickets:
+                type: integer
+                format: int32
+              overs:
+                type: string
+                example: "36.4"
+              extras:
+                type: object
+                properties:
+                  wides:
+                    type: integer
+                    format: int32
+                  noBalls:
+                    type: integer
+                    format: int32
+                  byes:
+                    type: integer
+                    format: int32
+                  legByes:
+                    type: integer
+                    format: int32
+                  penalty:
+                    type: integer
+                    format: int32
+              batting:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    player:
+                      type: string
+                    position:
+                      type: integer
+                      format: int32
+                    howOut:
+                      type: string
+                      description: "A DismissalType."
+                    bowler:
+                      type: string
+                    fielder:
+                      type: string
+                    runs:
+                      type: integer
+                      format: int32
+                    balls:
+                      type: integer
+                      format: int32
+                    fours:
+                      type: integer
+                      format: int32
+                    sixes:
+                      type: integer
+                      format: int32
+              didNotBat:
+                type: array
+                items:
+                  type: string
+              bowling:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    player:
+                      type: string
+                    overs:
+                      type: string
+                    maidens:
+                      type: integer
+                      format: int32
+                    runs:
+                      type: integer
+                      format: int32
+                    wickets:
+                      type: integer
+                      format: int32
+                    wides:
+                      type: integer
+                      format: int32
+                    noBalls:
+                      type: integer
+                      format: int32
+                    dots:
+                      type: integer
+                      format: int32
+              fallOfWickets:
+                description: "Accepted and ignored."
+              overByOver:
+                description: "Accepted and ignored."
+              exactness:
+                $ref: "#/components/schemas/ImportExactness"
+        players:
+          type: array
+          items:
+            type: object
+            properties:
+              team:
+                type: string
+              name:
+                type: string
+              substitute:
+                type: boolean
+        awards:
+          type: object
+          properties:
+            playerOfMatch:
+              type: object
+              properties:
+                name:
+                  type: string
+                team:
+                  type: string
+            exactness:
+              $ref: "#/components/schemas/ImportExactness"
+    ExistingResultDto:
+      type: object
+      description: "A result that already exists for a match (docs/specs/104): its status and origin, whether it holds a scorecard and when it last changed."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        source:
+          type: string
+          description: "MANUAL or IMPORT:<PROVIDER>."
+        hasScorecard:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    MatchCandidateDto:
+      type: object
+      description: "A match of the club an import could belong to, with its evidence (docs/specs/104). Nothing is ever chosen for the manager."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        matchDate:
+          type: string
+          format: date-time
+        homeName:
+          type: string
+        awayName:
+          type: string
+        leagueName:
+          type: string
+        venue:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+            enum:
+            - EXTERNAL_ID
+            - GIVEN
+            - DATE
+            - TEAMS
+            - VENUE
+            - COMPETITION
+        existingResult:
+          $ref: "#/components/schemas/ExistingResultDto"
+    TeamMappingDto:
+      type: object
+      description: "Which side of the chosen match a file team is (docs/specs/104). In a preview the server proposes it (side null when the team cannot be placed). In a resolve request only fileKey and side are read; the two teams must map to HOME and AWAY once each."
+      properties:
+        fileKey:
+          type: string
+        fileName:
+          type: string
+        side:
+          type: string
+          enum:
+          - HOME
+          - AWAY
+        exactness:
+          $ref: "#/components/schemas/ImportExactness"
+        reason:
+          type: string
+    ImportNoteSuggestionDto:
+      type: object
+      description: "A ranked fuzzy suggestion for a name that could not be placed (docs/specs/104). Never linked automatically."
+      properties:
+        playerProfileId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        score:
+          type: number
+          format: double
+    ImportNoteDto:
+      type: object
+      description: "One thing the import wants the manager to know (docs/specs/104). code is a stable upper-case reason; section says where it arose (match, teams, players, innings[n], awards). For a name, fileText is what the file said, candidateName who it became, level how firmly, and suggestions the ranked closest players for an unresolved name."
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+          enum:
+          - INFO
+          - WARNING
+        section:
+          type: string
+        message:
+          type: string
+        fileText:
+          type: string
+        candidateName:
+          type: string
+        level:
+          $ref: "#/components/schemas/ImportExactness"
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportNoteSuggestionDto"
+    ImportCountsDto:
+      type: object
+      description: "How many of our players' names were placed at each level (docs/specs/104)."
+      properties:
+        exact:
+          type: integer
+          format: int32
+        normalised:
+          type: integer
+          format: int32
+        aiSuggested:
+          type: integer
+          format: int32
+        unresolved:
+          type: integer
+          format: int32
+    ImportPreviewRequest:
+      type: object
+      description: "The request part of a preview (docs/specs/104). Exactly one of the file part and content (a paste, text based formats only). matchId when the import is launched from a match."
+      properties:
+        adaptor:
+          type: string
+          enum:
+          - JSON
+        format:
+          type: string
+          enum:
+          - JSON
+          - CSV
+          - EXCEL
+          - PDF
+        content:
+          type: string
+        matchId:
+          type: string
+          format: uuid
+      required:
+      - adaptor
+      - format
+    ImportPreviewDto:
+      type: object
+      description: "The read-only outcome of a preview (docs/specs/104). document carries exactness for match, teams, toss and result; teamMapping is proposed for the match the request launched from or the strongest candidate; existingForExternalId is the result this provider id was already imported onto."
+      properties:
+        document:
+          $ref: "#/components/schemas/ImportedResultDto"
+        matchCandidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchCandidateDto"
+        teamMapping:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMappingDto"
+        existingForExternalId:
+          $ref: "#/components/schemas/ExistingResultDto"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportNoteDto"
+    ImportResolveRequest:
+      type: object
+      description: "The explicit confirm (docs/specs/104). document is as the preview returned it and is fully re-validated; matchId and teamMapping are the manager's choices; replaceExistingDraft must be true when the match already has a draft result."
+      properties:
+        document:
+          $ref: "#/components/schemas/ImportedResultDto"
+        matchId:
+          type: string
+          format: uuid
+        teamMapping:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMappingDto"
+        replaceExistingDraft:
+          type: boolean
+      required:
+      - document
+      - matchId
+      - teamMapping
+    ImportResolveDto:
+      type: object
+      description: "The outcome of a resolve, which saved one DRAFT (docs/specs/104). exactness is per section (match, teams, toss, result, innings[n], awards, players); counts are our players' names by level; validation is the unchanged result validation of the saved draft, including an unconfirmed guess as an IMPORTED_NAME_UNCONFIRMED error."
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        resultStatus:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        exactness:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ImportExactness"
+        counts:
+          $ref: "#/components/schemas/ImportCountsDto"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportNoteDto"
+        validation:
+          $ref: "#/components/schemas/ResultValidationDto"
     OppositionNameDto:
       type: object
       description: "An opposition name used in an earlier fixture of this club against the same opposition, offered as a suggestion on the Teams step (docs/specs/101). Text only: no identity, no statistics."

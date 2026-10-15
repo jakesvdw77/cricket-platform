@@ -8,6 +8,7 @@ import com.cricketlegend.domain.CreditSource;
 import com.cricketlegend.domain.DismissalType;
 import com.cricketlegend.domain.FeaturedOverride;
 import com.cricketlegend.domain.FieldingEntry;
+import com.cricketlegend.domain.ImportMatchLevel;
 import com.cricketlegend.domain.InningsKind;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.Match;
@@ -16,6 +17,7 @@ import com.cricketlegend.domain.MatchInnings;
 import com.cricketlegend.domain.MatchResult;
 import com.cricketlegend.domain.MatchSide;
 import com.cricketlegend.domain.MatchSidePlayer;
+import com.cricketlegend.domain.NameAliasKind;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.ResultIssueSeverity;
 import com.cricketlegend.domain.ResultPlayer;
@@ -62,6 +64,8 @@ import com.cricketlegend.service.ScorecardService;
 import com.cricketlegend.service.support.DismissalCredits;
 import com.cricketlegend.service.support.DismissalCredits.Credit;
 import com.cricketlegend.service.support.DismissalCredits.Dismissal;
+import com.cricketlegend.service.support.NameAliases;
+import com.cricketlegend.service.support.PlayerNameMatcher;
 import com.cricketlegend.service.support.ResultValidator.ErrorCode;
 import com.cricketlegend.service.support.ScorecardRows;
 import com.cricketlegend.service.support.SelectionEligibility;
@@ -118,6 +122,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     private final SelectionEligibility eligibility;
     private final ScorecardMapper mapper;
     private final AccessService accessService;
+    private final NameAliases nameAliases;
 
     public ScorecardServiceImpl(
             MatchService matchService,
@@ -136,7 +141,8 @@ public class ScorecardServiceImpl implements ScorecardService {
             LeaguePlayingConditionsRepository playingConditionsRepository,
             SelectionEligibility eligibility,
             ScorecardMapper mapper,
-            AccessService accessService) {
+            AccessService accessService,
+            NameAliases nameAliases) {
         this.matchService = matchService;
         this.resultRepository = resultRepository;
         this.inningsRepository = inningsRepository;
@@ -154,6 +160,7 @@ public class ScorecardServiceImpl implements ScorecardService {
         this.eligibility = eligibility;
         this.mapper = mapper;
         this.accessService = accessService;
+        this.nameAliases = nameAliases;
     }
 
     // ---- prefill ----
@@ -348,6 +355,17 @@ public class ScorecardServiceImpl implements ScorecardService {
     @Override
     @Transactional
     public void replace(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy) {
+        doReplace(matchResultId, clubId, match, scorecard, updatedBy, false);
+    }
+
+    @Override
+    @Transactional
+    public void replaceImported(UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy) {
+        doReplace(matchResultId, clubId, match, scorecard, updatedBy, true);
+    }
+
+    private void doReplace(
+            UUID matchResultId, UUID clubId, Match match, ScorecardDto scorecard, UUID updatedBy, boolean imported) {
         Map<ResultSide, UUID> ours = oursSides(match);
         checkSides(scorecard, ours);
         checkProfilesBelongToClub(scorecard, clubId);
@@ -379,14 +397,21 @@ public class ScorecardServiceImpl implements ScorecardService {
 
         Map<String, UUID> playerIdByRef = new HashMap<>();
         List<ResultPlayer> saved = new ArrayList<>();
+        List<ResultPlayer> aliasWrites = new ArrayList<>();
+        boolean importSourced = !imported && resultRepository.findById(matchResultId)
+                .map(r -> r.getSource() != null && r.getSource().startsWith("IMPORT:")).orElse(false);
         for (ResultPlayerDto dto : scorecard.players()) {
             ResultPlayer player;
+            ImportMatchLevel flagBefore = null;
+            UUID profileBefore = null;
             if (dto.id() != null) {
                 player = existing.get(dto.id());
                 if (player == null) {
                     throw reject(ErrorCode.SCORECARD_PLAYER_UNKNOWN, ResultWizardStep.TEAMS, dto.side(),
                             "A player on the scorecard does not belong to this result.");
                 }
+                flagBefore = player.getImportMatch();
+                profileBefore = player.getPlayerProfileId();
                 mapper.applyPlayer(dto, player);
             } else {
                 player = mapper.toPlayerEntity(dto);
@@ -395,6 +420,16 @@ public class ScorecardServiceImpl implements ScorecardService {
             player.setDisplayName(dto.displayName() == null || dto.displayName().isBlank()
                     ? null : dto.displayName().trim());
             player.setUpdatedBy(updatedBy);
+            ImportMatchLevel flag = importFlag(imported, dto, player, flagBefore, profileBefore);
+            player.setImportMatch(flag);
+            if (!imported && dto.id() != null && player.getPlayerProfileId() != null && !player.isOpposition()
+                    && player.getDisplayName() != null) {
+                boolean confirmed = flagBefore != null && flag == null;
+                boolean changed = !Objects.equals(profileBefore, player.getPlayerProfileId());
+                if (confirmed || (changed && importSourced)) {
+                    aliasWrites.add(player);
+                }
+            }
             saved.add(player);
         }
         List<ResultPlayer> persisted = playerRepository.saveAll(saved);
@@ -440,6 +475,7 @@ public class ScorecardServiceImpl implements ScorecardService {
         Map<UUID, ResultPlayer> playersById = persisted.stream().collect(Collectors.toMap(ResultPlayer::getId, p -> p));
         Map<UUID, PlayerInfo> infos = eligibility.loadPlayers(persisted.stream()
                 .map(ResultPlayer::getPlayerProfileId).filter(Objects::nonNull).collect(Collectors.toSet()));
+        rememberNames(clubId, aliasWrites, infos, updatedBy);
         List<MatchAward> awards = new ArrayList<>();
         for (MatchAwardDto dto : scorecard.awards()) {
             if (dto.awardType() == AwardType.TEAM_PLAYER_OF_MATCH && !ours.containsKey(dto.side())) {
@@ -465,6 +501,42 @@ public class ScorecardServiceImpl implements ScorecardService {
         }
         awardRepository.saveAll(awards);
         awardRepository.flush();
+    }
+
+    /**
+     * The guess flag a saved row carries (docs/specs/104). Only the import path may set it, and only on one of our
+     * linked players. On any other save a stored flag is kept when the client still sends one and the player is
+     * unchanged, and cleared otherwise (confirmed, swapped, unlinked); nothing a client sends can set or raise it.
+     */
+    private static ImportMatchLevel importFlag(
+            boolean imported, ResultPlayerDto dto, ResultPlayer player, ImportMatchLevel before, UUID profileBefore) {
+        boolean flaggable = player.getPlayerProfileId() != null && !player.isOpposition();
+        if (!flaggable) {
+            return null;
+        }
+        if (imported) {
+            return dto.importMatch();
+        }
+        boolean unchanged = dto.id() != null && Objects.equals(profileBefore, player.getPlayerProfileId());
+        return unchanged && dto.importMatch() != null ? before : null;
+    }
+
+    /**
+     * Remembers, for the club, the file spelling of each row the manager confirmed or changed in an imported draft
+     * (docs/specs/104, "Aliases"): written by the server inside the save, so a client cannot write an alias for something
+     * it did not save. A spelling equal to the player's own name is not worth remembering.
+     */
+    private void rememberNames(UUID clubId, List<ResultPlayer> rows, Map<UUID, PlayerInfo> infos, UUID createdBy) {
+        for (ResultPlayer row : rows) {
+            PlayerInfo info = infos.get(row.getPlayerProfileId());
+            if (info == null || !clubId.equals(info.clubId())) {
+                continue;
+            }
+            if (PlayerNameMatcher.canonical(row.getDisplayName()).equals(PlayerNameMatcher.canonical(info.fullName()))) {
+                continue;
+            }
+            nameAliases.remember(clubId, NameAliasKind.PLAYER, row.getDisplayName(), row.getPlayerProfileId(), createdBy);
+        }
     }
 
     /**
@@ -570,11 +642,15 @@ public class ScorecardServiceImpl implements ScorecardService {
         }
         UUID person = accessService.resolveCurrentPersonId(authentication);
         player.setPlayerProfileId(profile.getId());
+        player.setImportMatch(null);
         player.setLinkedBy(person);
         player.setLinkedAt(ServerClock.now());
         player.setUpdatedBy(person);
         ResultPlayer saved = playerRepository.saveAndFlush(player);
         PlayerInfo info = eligibility.loadPlayers(List.of(profile.getId())).get(profile.getId());
+        if (result.getSource() != null && result.getSource().startsWith("IMPORT:") && info != null) {
+            rememberNames(clubId, List.of(saved), Map.of(profile.getId(), info), person);
+        }
         return mapper.toPlayerDto(saved, info == null ? null : info.firstName(), info == null ? null : info.lastName());
     }
 

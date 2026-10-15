@@ -1,5 +1,7 @@
 package com.cricketlegend.service;
 
+import com.cricketlegend.dto.ExistingResultDto;
+import com.cricketlegend.dto.ImportOrigin;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchResultDto;
@@ -8,6 +10,9 @@ import com.cricketlegend.dto.ResultListCriteria;
 import com.cricketlegend.dto.ResultListItemDto;
 import com.cricketlegend.dto.ResultValidationDto;
 import com.cricketlegend.dto.ResultsSummaryDto;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +57,26 @@ public interface ResultService {
      * inactive.
      */
     MatchResultDto upsertDraft(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft);
+
+    /**
+     * docs/specs/104-match-results-import-adaptors.md: {@link #upsertDraft} plus the origin of an import, the only way a
+     * result gets {@code source = IMPORT:<provider>} and an {@code external_id} (the normal save never takes them from a
+     * client). Same structural validation, refuses a published result ({@code ResultPublishedException}), replaces the
+     * draft's content in place on a re-import. The provider id already on another match of the club is {@code
+     * ImportExternalIdAlreadyUsedException}. Only {@code ResultImportServiceImpl} calls this. The raw payload is never kept.
+     */
+    MatchResultDto saveImportedDraft(
+            Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft, ImportOrigin origin);
+
+    /**
+     * docs/specs/104: for each of these matches of the club that has a result, a summary of it (status, source, whether
+     * it has a scorecard, when it last changed). Read only, no access check: the caller has already narrowed the matches
+     * to ones it may see. Matches without a result are absent.
+     */
+    Map<UUID, ExistingResultDto> existingResults(UUID clubId, Collection<UUID> matchIds);
+
+    /** docs/specs/104: the result of the club imported with this source and provider match id, if any. Read only. */
+    Optional<ExistingResultDto> findImported(UUID clubId, String source, String externalId);
 
     /** Dry run of {@code draft} (or the stored result when {@code null}); writes nothing. */
     ResultValidationDto validate(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft);
