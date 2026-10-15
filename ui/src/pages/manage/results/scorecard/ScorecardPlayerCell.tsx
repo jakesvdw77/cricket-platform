@@ -21,13 +21,15 @@ export interface ScorecardPlayerCellProps {
   // docs/specs/104: an imported name that needs checking (a guess, or a name nobody matched): the Guess chip (or a tappable
   // Guest chip) replaces the plain Guest chip and the caption says what the file said.
   guess?: GuessInfo
+  // False when the page shows the Change to button itself (the Teams list, in its status column).
+  useClosestInCell?: boolean
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Our batting item 6): the player in a scorecard row. The name is a
 // button that opens the row's popup menu (the route to reorder, swap, link and remove on a phone and for the keyboard);
 // a Guest chip marks a name-only player; a small caption says "planned 3" or "replaced A. Smith".
-export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess }: ScorecardPlayerCellProps) {
-  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && !guess.onUseClosest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
+export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess, useClosestInCell = true }: ScorecardPlayerCellProps) {
+  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && !(useClosestInCell && guess.onUseClosest) ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
   const captionText = [caption, guessCaption].filter(Boolean).join(' · ') || null
   return (
     <Box sx={{ minWidth: 0 }}>
@@ -69,7 +71,7 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
           guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
         )}
       </Box>
-      {guess?.onUseClosest && guess.closest && <UseClosestButton guess={guess} disabled={disabled} />}
+      {useClosestInCell && guess?.onUseClosest && guess.closest && <UseClosestButton guess={guess} disabled={disabled} />}
       {captionText && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { sm: '0.75rem' } }}>
           {captionText}

@@ -27,6 +27,7 @@ import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { OppositionTeamList } from '../scorecard/OppositionTeamList'
 import { ImportGuessBanner } from '../import/ImportGuessBanner'
 import { confirmRuleBased } from '../import/guessSummary'
+import { UseClosestButton } from '../import/UseClosestButton'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { useGuessActions } from '../scorecard/useGuessActions'
@@ -314,6 +315,10 @@ function OurSideTeam({
       {duplicates.has(playerRowKey(player)) && (
         <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
       )}
+      {(() => {
+        const guess = guesses.guessOf(player)
+        return guess?.onUseClosest && guess.closest ? <UseClosestButton guess={guess} disabled={disabled} /> : null
+      })()}
     </Box>
   )
 
@@ -327,6 +332,7 @@ function OurSideTeam({
       duplicate={false}
       disabled={disabled}
       guess={guesses.guessOf(player)}
+      useClosestInCell={false}
     />
   )
 

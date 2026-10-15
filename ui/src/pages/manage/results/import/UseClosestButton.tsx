@@ -1,7 +1,7 @@
 import { Button } from '../../../../components/Button'
 import type { GuessInfo } from './guessSummary'
 
-// docs/specs/104-match-results-import-adaptors.md: the one-tap "Use Henk Smit" under an unresolved (Guest) name that the
+// docs/specs/104-match-results-import-adaptors.md: the one-tap "Change to Henk Smit" under an unresolved (Guest) name that the
 // resolve step ranked a closest player for. Only the manager's tap links the row (never automatic); the rest of the
 // suggestions stay behind the Guest chip's picker. The label truncates, the accessible name carries the full player.
 export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo; disabled?: boolean }) {
@@ -13,7 +13,7 @@ export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo
       size="sm"
       disabled={disabled}
       onClick={guess.onUseClosest}
-      aria-label={`Use ${name} for ${guess.importedName}`}
+      aria-label={`Change to ${name} for ${guess.importedName}`}
       data-testid="use-closest"
       sx={{
         minHeight: { xs: 44, sm: 28 },
@@ -25,7 +25,7 @@ export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo
         '& .use-closest-label': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
       }}
     >
-      <span className="use-closest-label">Use {name}</span>
+      <span className="use-closest-label">Change to {name}</span>
     </Button>
   )
 }
