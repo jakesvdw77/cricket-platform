@@ -27,6 +27,8 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 
   **An exception may carry structured detail for the client**, as a `ProblemDetail` property set by its own `GlobalExceptionHandler` method (a more specific type wins over `ConflictException`): `SelectionRejectedException` carries `rejections` and `DuplicateFieldException` (spec 099) carries `existingPlayingAreaId`, so the screen can offer the existing record instead of only showing a message.
 
+  Spec 104 adds `InvalidImportInputException` (abstract, extends `ValidationException`) with `UnsupportedImportFormatException` (carries `supported`), `UnreadableImportInputException` and `ImportInputValidationException` (carries `errors` and `totalErrors`), and three `ConflictException` subclasses, `ImportMatchAlreadyHasResultException`, `ImportExternalIdAlreadyUsedException` (carries `otherMatchId`) and `ImportWouldOverwriteDraftException`. No new base type or status.
+
 - Every `@Service` method carrying a business rule ships with a unit test in the same PR; every custom repository query ships with a Testcontainers-backed integration test in the same PR (base class: `com.cricketlegend.AbstractIntegrationTest`).
 - **Shared logic lives in one place.** Business logic needed by two or more services is extracted into a shared service/utility before the second use is written — never copy-pasted. Same for validation rules, mapping helpers, and query specifications (reusable `Specification<T>` classes over hand-rolled duplicate queries).
 - **Pagination is backend-driven, never client-side.** Any list endpoint whose result set can grow unbounded returns a Spring Data `Page<T>` (`Pageable` request param — `page`/`size`/`sort`), fetched with a real `LIMIT`/`OFFSET` (or keyset) query — never the full table handed to the frontend to slice, filter, or paginate in memory. The whole point is keeping that memory and scalability cost on the server, where it's one tunable query, not duplicated per browser tab. See `docs/standards/frontend.md`'s matching rule for how the client consumes this.
@@ -65,6 +67,8 @@ class MatchServiceImpl implements MatchService {
 ```
 
 Package layout: `controller` / `service` + `service.impl` / `repository` / `domain` / `dto` (flat, no subpackages) / `mapper` / `config`.
+
+Spec 104 adds `service.adaptor`, a sibling of `service.impl` and `service.support`: import adaptors (stateless beans extending `AbstractAdaptor`, found by `AdaptorRegistry`) that turn an input into the common `ImportedResultDto`. They never touch a repository, a result service or the processor.
 
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 

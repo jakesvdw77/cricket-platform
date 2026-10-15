@@ -5887,6 +5887,26 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageOppositionNameDto"
+  /api/v1/manage/clubs/{clubId}/results/import/adaptors:
+    get:
+      tags:
+      - result-import-controller
+      operationId: adaptors
+      description: "The registered result import adaptors, sorted by display name, and the import limits (docs/specs/104). Reads no data of the club; the club id is only the access check. Adding an adaptor changes nothing here."
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AdaptorCatalogueDto"
   /api/v1/manage/clubs/{clubId}/availability-polls/open:
     get:
       tags:
@@ -6755,6 +6775,24 @@ components:
         retryAfterSeconds:
           type: integer
           format: int64
+        errors:
+          type: array
+          description: "On a 400 for an import document that is readable but wrong (docs/specs/104): up to 50 ImportErrorDto, each with path, code and message."
+          items:
+            $ref: "#/components/schemas/ImportErrorDto"
+        totalErrors:
+          type: integer
+          format: int32
+          description: "On an import validation 400: how many errors there were before errors was capped at 50."
+        supported:
+          type: array
+          description: "On an import 400 for an unsupported format: the formats the adaptor accepts."
+          items:
+            type: string
+        otherMatchId:
+          type: string
+          format: uuid
+          description: "On a 409 because the provider's match id is already imported (docs/specs/104): the match that has it."
     PublicVerifyRequest:
       type: object
       properties:
@@ -11321,6 +11359,91 @@ components:
         lastUsed:
           type: string
           format: date-time
+    AdaptorCatalogueDto:
+      type: object
+      description: "The registered import adaptors (by display name) and the import limits (docs/specs/104)."
+      properties:
+        adaptors:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdaptorDescriptorDto"
+        limits:
+          $ref: "#/components/schemas/ImportLimitsDto"
+    AdaptorDescriptorDto:
+      type: object
+      description: "What the UI needs to offer one import adaptor (docs/specs/104). aiAllowed is always false in this revision; example is a short sample input for a text format, or null."
+      properties:
+        type:
+          type: string
+          enum:
+          - JSON
+        displayName:
+          type: string
+        description:
+          type: string
+        inputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/InputFormatDto"
+        aiAllowed:
+          type: boolean
+        example:
+          type: string
+          nullable: true
+    InputFormatDto:
+      type: object
+      description: "One input format an adaptor accepts (docs/specs/104). acceptsPaste equals textBased; maxBytes is the largest upload."
+      properties:
+        format:
+          type: string
+          enum:
+          - JSON
+          - CSV
+          - EXCEL
+          - PDF
+        textBased:
+          type: boolean
+        extensions:
+          type: array
+          items:
+            type: string
+        maxBytes:
+          type: integer
+          format: int64
+        acceptsPaste:
+          type: boolean
+    ImportLimitsDto:
+      type: object
+      description: "The import size caps (docs/specs/104), so the UI never hard-codes them."
+      properties:
+        maxPasteCharacters:
+          type: integer
+          format: int32
+        maxFileBytes:
+          type: integer
+          format: int64
+        maxPlayersPerSide:
+          type: integer
+          format: int32
+        maxRegularInnings:
+          type: integer
+          format: int32
+        maxNameLength:
+          type: integer
+          format: int32
+        maxReportedErrors:
+          type: integer
+          format: int32
+    ImportErrorDto:
+      type: object
+      description: "One problem in an import input, in plain English (docs/specs/104). path locates it in the document (empty for the whole input); code is a stable reason."
+      properties:
+        path:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
     OppositionNameDto:
       type: object
       description: "An opposition name used in an earlier fixture of this club against the same opposition, offered as a suggestion on the Teams step (docs/specs/101). Text only: no identity, no statistics."

@@ -48,6 +48,17 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /**
+     * docs/specs/104-match-results-import-adaptors.md: the provider id is already on another match; carries {@code
+     * otherMatchId}. Wins over the generic {@link ConflictException} handler.
+     */
+    @ExceptionHandler(ImportExternalIdAlreadyUsedException.class)
+    ProblemDetail handleImportExternalIdAlreadyUsed(ImportExternalIdAlreadyUsedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("otherMatchId", ex.getOtherMatchId());
+        return problem;
+    }
+
     /** 077: the single generic verify failure, with the tries left on the key. */
     @ExceptionHandler(PublicVerificationFailedException.class)
     ProblemDetail handlePublicVerificationFailed(PublicVerificationFailedException ex) {
@@ -90,6 +101,23 @@ public class GlobalExceptionHandler {
         problem.setProperty("errors", ex.getErrors());
         problem.setProperty("warnings", ex.getWarnings());
         problem.setProperty("issues", ex.getIssues());
+        return problem;
+    }
+
+    /**
+     * docs/specs/104-match-results-import-adaptors.md: an unusable import input carries {@code errors} (with {@code
+     * totalErrors}) for a document that is readable but wrong, or {@code supported} formats for an unsupported one.
+     * Wins over the generic {@link ValidationException} handler.
+     */
+    @ExceptionHandler(InvalidImportInputException.class)
+    ProblemDetail handleInvalidImportInput(InvalidImportInputException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        if (ex instanceof ImportInputValidationException validation) {
+            problem.setProperty("errors", validation.getErrors());
+            problem.setProperty("totalErrors", validation.getTotalErrors());
+        } else if (ex instanceof UnsupportedImportFormatException unsupported) {
+            problem.setProperty("supported", unsupported.getSupported());
+        }
         return problem;
     }
 
