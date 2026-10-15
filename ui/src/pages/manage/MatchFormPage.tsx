@@ -1,4 +1,3 @@
-import { useCallback, useState } from 'react'
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,12 +15,7 @@ import {
   reactivateMatch,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
-import { listTeamsForClub } from '../../api/teamApi'
-import { listSeasons } from '../../api/seasonApi'
-import { listLeagues } from '../../api/leagueApi'
-import { listLeagueAffiliations } from '../../api/leagueAffiliationApi'
-import { leagueTeamsQueryKey, listLeagueTeams } from '../../api/leagueTeamApi'
-import { activateSession } from '../../api/meApi'
+import { useMatchFormData } from '../../hooks/useMatchFormData'
 import { errorDetail } from '../../utils/errorDetail'
 import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
 import { selectTeamPath } from './teamSelection/selectionLinks'
@@ -57,62 +51,7 @@ export default function MatchFormPage() {
     enabled: Boolean(clubId) && Boolean(matchId) && isEdit,
   })
 
-  const teamsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'teams'],
-    queryFn: () => listTeamsForClub(clubId as string),
-    enabled: Boolean(clubId),
-  })
-
-  const seasonsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'seasons'],
-    queryFn: () => listSeasons(clubId as string),
-    enabled: Boolean(clubId),
-  })
-
-  const leaguesQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'leagues'],
-    queryFn: () => listLeagues(clubId as string),
-    enabled: Boolean(clubId),
-  })
-
-  // docs/specs/029-league-management.md left "season options/filtering exact behaviour" for
-  // MatchForm's Home/Away team pickers unresolved at build time — they've always listed every one
-  // of the club's teams regardless of the selected League/Season, even though LeagueAffiliation
-  // (which teams are actually entered into which League for which Season) already exists and is
-  // already exposed per-league. Fetched club-wide here (one call per already-loaded League,
-  // affiliations endpoints are nested under their own League per 029's own design) rather than via
-  // a new endpoint — the club's League count is small, and this matches the existing
-  // eagerly-load-everything-then-narrow-client-side pattern teams/seasons/leagues above already use.
-  const affiliationsQuery = useQuery({
-    queryKey: ['managed-club', clubId, 'leagues', 'affiliations', (leaguesQuery.data ?? []).map((l) => l.id)],
-    queryFn: () =>
-      Promise.all((leaguesQuery.data ?? []).map((l) => listLeagueAffiliations(clubId as string, l.id))).then(
-        (results) => results.flat(),
-      ),
-    enabled: Boolean(clubId) && Boolean(leaguesQuery.data),
-  })
-
-  // docs/specs/070-league-teams.md: the League team option (and its list endpoint) is club-admin
-  // only. MeAccess.clubAdminClubIds holds only CLUB-scope CLUB_ADMIN assignments (MeServiceImpl), so
-  // a section manager never matches. Same query key ManagerHome/PostLoginRedirect use.
-  const meQuery = useQuery({ queryKey: ['me', 'activate'], queryFn: activateSession })
-  const canUseLeagueTeams = Boolean(
-    clubId && meQuery.data && (meQuery.data.platformAdmin || meQuery.data.clubAdminClubIds.includes(clubId)),
-  )
-
-  // MatchForm owns the chosen League/Season; it reports them so the matching league teams (all,
-  // including inactive, so an already-held inactive pick still shows) can be fetched here.
-  const [formScope, setFormScope] = useState({ leagueId: '', seasonId: '' })
-  const handleScopeChange = useCallback(
-    (leagueId: string, seasonId: string) =>
-      setFormScope((prev) => (prev.leagueId === leagueId && prev.seasonId === seasonId ? prev : { leagueId, seasonId })),
-    [],
-  )
-  const leagueTeamsQuery = useQuery({
-    queryKey: leagueTeamsQueryKey(clubId as string, formScope.leagueId, formScope.seasonId),
-    queryFn: () => listLeagueTeams(clubId as string, formScope.leagueId, formScope.seasonId),
-    enabled: Boolean(clubId) && canUseLeagueTeams && Boolean(formScope.leagueId) && Boolean(formScope.seasonId),
-  })
+  const { formProps } = useMatchFormData(clubId)
 
   const saveMutation = useMutation({
     mutationFn: (payload: MatchPayload) => {
@@ -262,14 +201,7 @@ export default function MatchFormPage() {
               ? { leagueId: prefillLeagueId ?? undefined, seasonId: prefillSeasonId ?? undefined }
               : undefined
         }
-        teams={teamsQuery.data ?? []}
-        seasons={seasonsQuery.data ?? []}
-        leagues={leaguesQuery.data ?? []}
-        affiliations={affiliationsQuery.data ?? []}
-        leagueTeams={leagueTeamsQuery.data ?? []}
-        leagueTeamsLoading={leagueTeamsQuery.isFetching}
-        canUseLeagueTeams={canUseLeagueTeams}
-        onScopeChange={handleScopeChange}
+        {...formProps}
         onSubmit={(payload) => saveMutation.mutate(payload)}
       />
     </RecordFormScreen>

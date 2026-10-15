@@ -1,3 +1,4 @@
+import type { MatchPayload } from '../../../../api/matchApi'
 import type { ImportCounts, ImportedResult, ImportExactness } from '../../../../api/resultImportApi'
 import type { ResultValidation } from '../../../../api/matchResultApi'
 
@@ -14,6 +15,27 @@ export function fileDateTime(document: ImportedResult): string | null {
   const day = `${Number(parts[3])} ${MONTHS[Number(parts[2]) - 1] ?? ''} ${parts[1]}`.replace('  ', ' ')
   const time = document.match?.startTime
   return time ? `${day}, ${time}` : day
+}
+
+// What the Add match dialog opens with, from the file. Conservative: the two team names go in as free text (the file does not
+// say which side is the club's, so the manager picks), the venue as text, the date and start time as written (no start time
+// reads as 00:00 for the manager to correct). Nothing is set that the file does not say.
+export function matchPrefill(document: ImportedResult): Partial<MatchPayload> {
+  const values: Partial<MatchPayload> = {}
+  const date = document.match?.date
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const time = document.match?.startTime
+    const local = new Date(`${date}T${time && /^\d{2}:\d{2}$/.test(time) ? time : '00:00'}`)
+    if (!Number.isNaN(local.getTime())) values.matchDate = local.toISOString()
+  }
+  const venue = document.match?.venue?.trim()
+  if (venue) values.venue = venue
+  const [home, away] = document.teams ?? []
+  if (document.teams?.length === 2 && home.name.trim() && away.name.trim()) {
+    values.homeTeamName = home.name.trim()
+    values.awayTeamName = away.name.trim()
+  }
+  return values
 }
 
 export function fileTeamsLine(document: ImportedResult): string | null {

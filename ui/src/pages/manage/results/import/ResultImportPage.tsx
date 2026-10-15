@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { readImportProblem } from '../../../../api/importErrors'
 import type { ImportProblem } from '../../../../api/importErrors'
+import type { Match } from '../../../../api/matchApi'
 import { resultsKey } from '../../../../api/matchResultApi'
 import type { ResultSide } from '../../../../api/matchResultApi'
 import { getImportCatalogue, importKeys, previewImport, resolveImport } from '../../../../api/resultImportApi'
-import type { ImportCatalogue, ImportPreview, ImportResolved } from '../../../../api/resultImportApi'
+import type { ImportCatalogue, ImportPreview, ImportResolved, MatchCandidate } from '../../../../api/resultImportApi'
 import { Button } from '../../../../components/Button'
 import { EmptyState } from '../../../../components/EmptyState'
 import { ManageScreenHeader } from '../../../../components/ManageScreenHeader'
@@ -158,6 +159,35 @@ export default function ResultImportPage() {
     )
   }
 
+  // A match added from the Match step's dialog: the preview is made again for it (the new proposed mapping), the candidates
+  // are the server's, with the new match added when the server did not rank it, and it is chosen. The document is kept as it was.
+  const onMatchCreated = (match: Match) => {
+    if (!preview) return
+    void queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+    const added: MatchCandidate = {
+      matchId: match.id,
+      label: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}`,
+      matchDate: match.matchDate,
+      homeName: match.homeTeamName ?? '',
+      awayName: match.awayTeamName ?? '',
+      leagueName: null,
+      venue: match.venue,
+      reasons: [],
+      existingResult: null,
+    }
+    const choose = (data: ImportPreview | null) => {
+      const ranked = data?.matchCandidates ?? preview.matchCandidates
+      const candidates = ranked.some((item) => item.matchId === match.id) ? ranked : [...ranked, added]
+      setPreview({ ...(data ?? preview), document: preview.document, matchCandidates: candidates })
+      setBasisMatchId(match.id)
+      setMatchId(match.id)
+      setReplaceAck(false)
+      setMatchProblem(null)
+      if (data) setMapping(mappingFrom(data))
+    }
+    previewMutation.mutate({ forMatchId: match.id }, { onSuccess: choose, onError: () => choose(null) })
+  }
+
   const onCreate = () => {
     if (!preview || !matchId) return
     const teams = preview.document.teams ?? []
@@ -200,6 +230,7 @@ export default function ResultImportPage() {
       setReplaceAck(false)
       setMatchProblem(null)
     },
+    onMatchCreated,
     matchPending: previewMutation.isPending && stepId === 'match',
     matchProblem,
     onMatchNext,

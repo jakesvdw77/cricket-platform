@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ImportProblem } from '../../../../api/importErrors'
+import type { Match } from '../../../../api/matchApi'
 import type { ResultSide } from '../../../../api/matchResultApi'
 import type { ImportCatalogue, ImportPreview, ImportResolved } from '../../../../api/resultImportApi'
 
@@ -31,6 +32,8 @@ export interface ImportStepContext {
   launchedMatchId: string | null
   matchId: string | null
   onMatchChange: (matchId: string) => void
+  // A match was added from the Match step's dialog: it joins the candidates, is chosen, and the wizard stays on this step.
+  onMatchCreated: (match: Match) => void
   matchPending: boolean
   matchProblem: ImportProblem | null
   onMatchNext: () => void

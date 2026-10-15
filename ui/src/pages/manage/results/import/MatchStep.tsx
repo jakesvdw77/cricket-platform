@@ -4,15 +4,16 @@ import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import { Link as RouterLink } from 'react-router-dom'
+import { useState } from 'react'
 import type { ImportMatchReason, MatchCandidate } from '../../../../api/resultImportApi'
 import { Button } from '../../../../components/Button'
+import { MatchFormDialog } from '../../../../components/MatchFormDialog'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { ImportProblemAlert } from './ImportProblemAlert'
-import { fileDateTime, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
+import { fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 
 const REASON_WORDS: Record<ImportMatchReason, string> = {
@@ -96,7 +97,8 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { preview, matchId, onMatchChange, launchedMatchId, matchPending, matchProblem, onMatchNext, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, launchedMatchId, matchPending, matchProblem, onMatchNext, onBack } = context
+  const [adding, setAdding] = useState(false)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
   // Warn when the manager came from a match the file does not look like (neither its date nor its teams matched).
@@ -124,9 +126,9 @@ export function MatchStep(context: ImportStepContext) {
                 No match in your fixtures looks like this file.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Create the match first, then import the result onto it. It opens in a new tab so what you gave is kept here: when the match is saved, come back, press Back, then Continue.
+                Add the match here, then import the result onto it. What you gave is kept.
               </Typography>
-              <MuiButton component={RouterLink} to="/manage/fixtures/matches/new" target="_blank" rel="noopener noreferrer" variant="outlined" sx={{ minHeight: 44 }}>
+              <MuiButton onClick={() => setAdding(true)} variant="outlined" sx={{ minHeight: 44 }}>
                 Add match
               </MuiButton>
             </Box>
@@ -177,13 +179,23 @@ export function MatchStep(context: ImportStepContext) {
                   }
                 })}
               />
-              <MuiButton component={RouterLink} to="/manage/fixtures/matches/new" target="_blank" rel="noopener noreferrer" variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
+              <MuiButton onClick={() => setAdding(true)} variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
                 Match not listed? Add the match first
               </MuiButton>
             </>
           )}
         </Box>
       </Box>
+
+      <MatchFormDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        clubId={clubId}
+        onCreated={onMatchCreated}
+        initialValues={preview ? matchPrefill(preview.document) : undefined}
+        inferSeason
+        hint="Filled in from the file where it could be. Check each box, and choose which side is your team."
+      />
 
       {matchProblem && (
         <Box sx={{ maxWidth: { md: 720 } }}>
