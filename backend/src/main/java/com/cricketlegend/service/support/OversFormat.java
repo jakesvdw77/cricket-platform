@@ -8,7 +8,11 @@ public final class OversFormat {
 
     private OversFormat() {}
 
-    public static String display(int balls, int ballsPerOver) {
+    /** Null when the balls have not been entered. */
+    public static String display(Integer balls, int ballsPerOver) {
+        if (balls == null) {
+            return null;
+        }
         return (balls / ballsPerOver) + "." + (balls % ballsPerOver);
     }
 }

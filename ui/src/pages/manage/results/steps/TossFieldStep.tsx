@@ -28,8 +28,9 @@ export interface TossFieldStepProps extends StepProps {
   onFieldChange: (field: FieldPickerValue | null) => void
 }
 
-// docs/specs/100-match-results-core.md, step 2 "Toss and field": who won the toss and chose to bat or bowl, the field
-// (the match's, with Change field opening the Fields picker), the scheduled overs and an optional note.
+// docs/specs/100-match-results-core.md, step "Toss and field": who won the toss and chose to bat or bowl, the field
+// (the match's, with Change field opening the Fields picker), the scheduled overs and an optional note. Everything is
+// optional: with no toss recorded the step is passed through and the scorecard steps ask who batted first.
 export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disabled, field, fieldChanged, onFieldChange, leagueScheduledBalls }: TossFieldStepProps) {
   const [picking, setPicking] = useState(false)
   const ballsPerOver = draft.ballsPerOver ?? 6
@@ -145,6 +146,7 @@ export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disab
           inputProps={{ maxLength: NOTE_MAX }}
         />
       </Box>
+
     </Box>
   )
 }

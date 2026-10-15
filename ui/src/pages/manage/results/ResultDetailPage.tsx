@@ -40,6 +40,8 @@ import {
   tossLine,
   UNPUBLISH_TO_EDIT_REASON,
 } from './resultListHelpers'
+import { ResultScorecard } from './ResultScorecard'
+import { ResultSection } from './ResultSection'
 import { usePublishResult } from './usePublishResult'
 
 const RESULTS_PATH = '/manage/results'
@@ -126,8 +128,10 @@ export default function ResultDetailPage() {
     mutationFn: () => deleteResultDraft(clubId as string, matchId as string),
     onSuccess: () => {
       setConfirm(null)
-      refresh()
+      // The scorecard of a deleted draft is gone: leave no cached 404 behind for the wizard that is opened next.
+      queryClient.removeQueries({ queryKey: resultKeys.scorecard(clubId as string, matchId as string) })
       navigate(RESULTS_PATH)
+      refresh()
     },
     onError: () => {
       setConfirm(null)
@@ -312,13 +316,17 @@ export default function ResultDetailPage() {
 
       <KeyFigures result={result} names={names} toss={toss} />
 
-      <Section title="Innings">
+      <ResultSection title="Innings">
         <InningsTable result={result} names={names} />
-      </Section>
+      </ResultSection>
 
-      <Section title="Details">
+      {result.hasScorecard && (
+        <ResultScorecard clubId={clubId} match={match} result={result} names={names} ours={ownSidesOf(match, teamsById)} toss={toss} />
+      )}
+
+      <ResultSection title="Details">
         <Details result={result} toss={toss} field={field} />
-      </Section>
+      </ResultSection>
 
       <ConfirmDialog
         open={confirm === 'unpublish'}
@@ -387,20 +395,6 @@ function KeyFigures({ result, names, toss }: { result: MatchResult; names: Names
         label={`Toss · ${oversText === '–' ? 'overs not set' : `${oversText} overs`}`}
         textValue
       />
-    </Box>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Box
-      component="section"
-      sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, p: { xs: 1.5, md: 2 }, boxShadow: 1 }}
-    >
-      <Typography variant="subtitle1" component="h2" fontWeight={700} sx={{ mb: 1.5 }}>
-        {title}
-      </Typography>
-      {children}
     </Box>
   )
 }

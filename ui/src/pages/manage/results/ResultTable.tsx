@@ -77,7 +77,7 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
         <Avatar
           variant="rounded"
           src={logoSide.logo.src ?? undefined}
-          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.7rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
+          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.75rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
         >
           {logoSide.logo.initials}
         </Avatar>
@@ -100,6 +100,11 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
         <Typography variant="body2" fontWeight={600} sx={{ color: PERSPECTIVE_COLOR[perspective] }}>
           {line}
         </Typography>
+        {item.playerOfTheMatch && (
+          <Typography variant="caption" color="text.secondary" component="div" noWrap data-testid="result-row-potm">
+            Player of the match: {item.playerOfTheMatch}
+          </Typography>
+        )}
       </Box>
       <Box role="cell" sx={{ ...desktopOnly, display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', gap: 0.25 }} {...DESKTOP_ONLY} data-testid="result-row-scores">
         {sides.map((side) => (
@@ -154,7 +159,7 @@ export function ResultTable({ items, teamsById }: ResultTableProps) {
           bgcolor: 'background.paper',
           borderBottom: 1,
           borderColor: 'divider',
-          fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+          fontSize: { xs: '0.75rem', sm: '0.75rem' },
           fontWeight: 700,
           letterSpacing: '0.04em',
           textTransform: 'uppercase',

@@ -120,14 +120,24 @@ flowchart TD
 
 **What none of this grants by itself:** a `Person` existing — through any path above — implies zero login and zero administrative capability on its own. Login only exists once `keycloak_user_id` is actually set (self-serve signup, unbuilt). Administrative capability only exists once a `RoleAssignment` row exists (`001`, unbuilt). Both are separate, later, deliberate grants — see `014`'s Non-goals for why this spec stops short of either.
 
-## Match results — how a result hangs off a Match (spec 100)
+## Match results — how a result hangs off a Match (specs 100 and 101)
 
 ```mermaid
 erDiagram
     MATCH ||--o| MATCH_RESULT : "has at most one"
     MATCH_RESULT ||--o{ MATCH_INNINGS : "has many (regular and super over)"
-    MATCH_INNINGS ||--o{ SCORECARD_ENTRY : "future — 101, scorecards"
-    MATCH_RESULT ||--o{ PLAYER_STATS : "future — 102/103, stats"
+    MATCH_RESULT ||--o{ RESULT_PLAYER : "team sheet, both sides (101)"
+    MATCH_RESULT ||--o{ MATCH_AWARD : "one official, one per ours side (101)"
+    MATCH_INNINGS ||--o{ BATTING_ENTRY : "regular innings only"
+    MATCH_INNINGS ||--o{ BOWLING_ENTRY : "regular innings only"
+    MATCH_INNINGS ||--o{ FIELDING_ENTRY : "regular innings only"
+    RESULT_PLAYER ||--o{ BATTING_ENTRY : "who batted"
+    RESULT_PLAYER ||--o{ BOWLING_ENTRY : "who bowled"
+    RESULT_PLAYER ||--o{ FIELDING_ENTRY : "who fielded"
+    RESULT_PLAYER ||--o{ MATCH_AWARD : "who won it, name kept if row removed"
+    RESULT_PLAYER }o--o| PLAYER_PROFILE : "linked registered player, null for a guest or the opposition"
+    BATTING_ENTRY }o--o| RESULT_PLAYER : "dismissing bowler and fielder"
+    MATCH_RESULT ||--o{ PLAYER_STATS : "future — 103, stats"
     MATCH_RESULT }o--o| IMPORT_BATCH : "future — 104, import"
 
     MATCH_RESULT {
@@ -136,17 +146,53 @@ erDiagram
         string status "DRAFT or PUBLISHED"
         string source "how it was captured, e.g. MANUAL or an import source"
         string external_id "nullable — id in the source system, for imports"
+        string detail_level "SUMMARY, OUR_SIDE or FULL"
     }
     MATCH_INNINGS {
         uuid id
         uuid match_result_id
         string kind "REGULAR or SUPER_OVER"
-        int runs
-        int wickets
-        int balls "overs are stored as balls, never as 36.4"
+        int runs "nullable in a draft, required to publish"
+        int wickets "nullable in a draft, required to publish"
+        int balls "nullable in a draft, overs are stored as balls, never as 36.4"
+        int wides_no_balls_byes_leg_byes_penalty "extras parts, nullable"
+        int non_bowler_wickets "single number, used only while the innings has no batting entries"
+    }
+    RESULT_PLAYER {
+        uuid id
+        string side "HOME or AWAY"
+        uuid player_profile_id "null for a guest or opposition player"
+        string display_name "guest or opposition name"
+        boolean opposition "name-only, never linked, never stats"
+        boolean substitute "12th man or substitute"
+        int planned_batting_order "from the selection, ours only"
+    }
+    BATTING_ENTRY {
+        string how_out "nullable in a draft, required to publish"
+        uuid bowler_result_player_id "nullable, SET NULL on removal"
+        uuid fielder_result_player_id "nullable, SET NULL on removal"
+    }
+    BOWLING_ENTRY {
+        int balls
+        int dots "nullable, at most balls"
+        string wickets_source "MANUAL or DERIVED"
+    }
+    FIELDING_ENTRY {
+        string credits_source "MANUAL or DERIVED"
+    }
+    MATCH_AWARD {
+        string award_type "official player of the match or a team award"
+        string side
+        string display_name "refreshed on every save"
     }
 ```
 
-- **`MATCH_RESULT`** — one row per `MATCH`, starts as `DRAFT` and becomes `PUBLISHED`. A draft is visible to managers only; every other read goes through `ResultVisibility` (`docs/standards/backend.md`). `source` and `external_id` exist so a later import (104) can find and update the result it created instead of duplicating it.
-- **`MATCH_INNINGS`** — regular innings and super-over innings share one table, told apart by `kind` (`REGULAR` or `SUPER_OVER`). Overs are balls at the API and in storage; `ui/src/utils/oversFormat.ts` is the only place balls become "36.4".
-- **Future nodes (dashed in intent, not built):** scorecards (101), player and team stats (102, 103) and results import (104) hang off these two tables; they are named here only so the shape isn't redrawn when they land.
+- **`MATCH_RESULT`** — one row per `MATCH`, starts as `DRAFT` and becomes `PUBLISHED`. A draft is visible to managers only; every other read goes through `ResultVisibility` (`docs/standards/backend.md`). `source` and `external_id` exist so a later import (104) can find and update the result it created instead of duplicating it. `detail_level` is set by the server from what was captured.
+- **`MATCH_INNINGS`** — regular innings and super-over innings share one table, told apart by `kind` (`REGULAR` or `SUPER_OVER`). Overs are balls at the API and in storage; `ui/src/utils/oversFormat.ts` is the only place balls become "36.4". Since 101 it also carries the extras parts and `non_bowler_wickets` (migration 044), and a draft innings may hold only some figures: `runs`, `wickets` and `balls` are nullable (migration 046) because the scorecard is entered before the Scores step; publishing still requires them. Innings are reconciled in place on save, never deleted and recreated, so scorecard rows survive a re-save or a toss-driven resequence.
+- **`RESULT_PLAYER`** — "who played", once per side (migration 044). Batting, bowling and fielding rows and awards point at it, so a swap or a link to a registered player is one update. An ours player is either linked to a `PLAYER_PROFILE` or a guest (name only, linkable later); an opposition player (`opposition = true`, migration 045) is a name, a side and an optional substitute marker, never linked and never fed to statistics.
+- **`BATTING_ENTRY` / `BOWLING_ENTRY` / `FIELDING_ENTRY`** — rows per regular innings, for both sides. A batting entry names the dismissing bowler and fielder (045); bowler wickets and fielding credits are derived from those dismissals server-side (`DismissalCredits`), marked `DERIVED`, while a `MANUAL` row is never touched. `how_out` is nullable in a draft (migration 047: figures typed before the dismissal is chosen) and enforced at publish. Super-over innings never carry scorecard rows (super-over scorecards are `105`).
+- **`MATCH_AWARD`** — one official player of the match plus one team award per ours side; it keeps the name when the player's row is removed (045).
+- **Future (not built):** player and team stats (`103`) and results import (`104`) hang off these tables. **Decided order: `104` (import) is built before `103` (stats)**, so real scorecards prove the wizard rules first; see `docs/roadmap.md`.
+- **Validation issues** carry a stable `code`, the wizard `step`, the `side` and a `severity`, built on `ResultValidator.WarningCode`/`ErrorCode`.
+- **Capture picker gaps:** the awaiting-match picker lacks the team's section on each row and a "show all seasons" toggle.
+- Open review questions are listed in `100`'s and `101`'s Rollout Notes.

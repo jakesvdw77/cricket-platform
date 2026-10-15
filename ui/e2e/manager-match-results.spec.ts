@@ -5,7 +5,9 @@ import { test, expect } from '@playwright/test';
  * manager creates a (past-dated) match, opens Results, taps Capture result, picks the awaiting match, records a
  * won-by-runs result with the toss and both scores in the four wizard steps, saves a draft, sees it as a draft on the
  * Results page, publishes it, and sees the match as Completed on the Matches page. A second, short test records a tie
- * decided by a super over. Both run at the desktop and the mobile viewport (the two projects in playwright.config.ts).
+ * decided by a super over. docs/specs/101's scorecard wizard is covered by two more tests: the Teams-first golden path
+ * (opposition pasted, toss, result, a batting dismissal, the bowling row created from it, awards, review, publish) and a
+ * short derby. All run at the desktop and the mobile viewport (the two projects in playwright.config.ts).
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
  * — start all of these before running, same as ui/e2e/manager-fields-directory.spec.ts:
@@ -67,6 +69,9 @@ async function openWizardFor(page: Page, opponentName: string) {
 
 const nextTo = (page: Page, label: string) => page.getByRole('button', { name: `Next: ${label}` });
 
+// The wizard opens on Teams (docs/specs/101, decision 22); the result steps are picked by name, never by number.
+const toStep = (page: Page, label: string) => page.getByRole('button', { name: new RegExp(`^Step \\d+: ${label}`) }).click();
+
 // Fills one innings row (0-based) of the Scores step: runs, wickets, overs as typed on a scorecard.
 async function fillInnings(page: Page, row: number, runs: string, wickets: string, overs: string) {
   const innings = page.getByTestId('innings-row').nth(row);
@@ -95,17 +100,18 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     // --- Results -> Capture result -> the awaiting match. ---
     await openWizardFor(page, opponent);
 
-    // --- Step 1, Result: one tile, the winner. ---
-    await page.getByRole('radio', { name: /^Won/ }).click();
-    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click(); // the home (own) side
-
-    // --- Step 2, Toss and field: the home side won the toss and batted. ---
-    await nextTo(page, 'Toss & field').click();
+    // --- Teams is optional: go to Toss and field, where the home side won the toss and batted. ---
+    await nextTo(page, 'Toss and field').click();
     await page.getByRole('radiogroup', { name: 'Who won the toss?' }).getByRole('radio').first().click();
     await page.getByRole('button', { name: 'Bat', exact: true }).click();
 
-    // --- Step 3, Scores: home 180/6 in 40 overs, away 150/9 in 38.4 overs; overs as "38.4", not a decimal. ---
-    await nextTo(page, 'Scores').click();
+    // --- Result: one tile, the winner. ---
+    await nextTo(page, 'Result').click();
+    await page.getByRole('radio', { name: /^Won/ }).click();
+    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click(); // the home (own) side
+
+    // --- Scores and margin (the optional scorecard steps are skipped): home 180/6 in 40 overs, away 150/9 in 38.4 overs; overs as "38.4", not a decimal. ---
+    await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
     await expect(page.getByTestId('toss-context')).toBeVisible();
     await fillInnings(page, 0, '180', '6', '40');
     await fillInnings(page, 1, '150', '9', '38.4');
@@ -127,7 +133,7 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     // --- Continue the draft from the card, review, and publish. ---
     await card.getByRole('button', { name: 'Edit' }).click();
     await expect(page.getByRole('heading', { name: 'Edit result' })).toBeVisible();
-    await page.getByRole('button', { name: 'Step 4: Review' }).click();
+    await page.getByRole('button', { name: /^Step \d+: Review/ }).click();
     await expect(page.getByTestId('result-preview')).toContainText('won by 30 runs');
     await expect(page.getByText('The margin of 30 runs matches the scores.')).toBeVisible();
     // Any warning must be ticked before Publish unlocks (none are expected on this result, so the box may be absent).
@@ -160,12 +166,12 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await openWizardFor(page, opponent);
 
     // Won, decided by a super over: the first super over pair is offered on the Scores step.
+    await toStep(page, 'Result');
     await page.getByRole('radio', { name: /^Won/ }).click();
     await page.getByRole('button', { name: 'Super over', exact: true }).click();
     await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').nth(1).click(); // the opponent wins it
 
-    await nextTo(page, 'Toss & field').click();
-    await nextTo(page, 'Scores').click();
+    await page.getByRole('button', { name: /^Step \d+: Scores and margin/ }).click();
     // No toss was recorded, so the wizard asks who batted first.
     await page.getByRole('radiogroup', { name: 'Who batted first?' }).getByRole('radio').first().click();
 
@@ -178,9 +184,92 @@ test.describe('Match results golden path (100-match-results-core.md)', () => {
     await expect(page.getByTestId('suggested-result')).toContainText('won in the super over');
 
     // Review: the result reads as a tie won in the super over and is clean.
-    await page.getByRole('button', { name: 'Step 4: Review' }).click();
+    await page.getByRole('button', { name: /^Step \d+: Review/ }).click();
     await expect(page.getByTestId('result-preview')).toContainText('Tied');
     await expect(page.getByTestId('result-preview')).toContainText('won in the super over');
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeEnabled();
+  });
+  test('manager captures the full scorecard from Teams to a published result (101)', async ({ page }) => {
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const opponent = `E2E Scorecard Opponents ${uniqueSuffix}`;
+
+    await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await createPastMatch(page, opponent, 5);
+    await openWizardFor(page, opponent);
+
+    // --- Teams: both sides get a logo tile. Our side is pre-filled from the selection (or built with Populate). ---
+    const sidePicker = page.getByRole('radiogroup', { name: 'Who is playing?' });
+    await expect(sidePicker.getByRole('radio')).toHaveCount(2);
+    const populate = page.getByRole('button', { name: 'Populate from the team' });
+    if (await populate.count()) await populate.click();
+
+    // The opposition: names pasted one per line, list numbers dropped.
+    await sidePicker.getByRole('radio').nth(1).click();
+    await page.getByLabel('Type or paste names, one per line').fill('1. Sam Jones\n2) Tom Brown\n3. Ali Khan');
+    await page.getByRole('button', { name: 'Add names' }).click();
+    await expect(page.getByLabel('Name, Sam Jones')).toBeVisible();
+
+    // --- Toss and field: the home side won the toss and batted. ---
+    await nextTo(page, 'Toss and field').click();
+    await page.getByRole('radiogroup', { name: 'Who won the toss?' }).getByRole('radio').first().click();
+    await page.getByRole('button', { name: 'Bat', exact: true }).click();
+
+    // --- Result: won by the home side. ---
+    await nextTo(page, 'Result').click();
+    await page.getByRole('radio', { name: /^Won/ }).click();
+    await page.getByRole('radiogroup', { name: 'Who won?' }).getByRole('radio').first().click();
+
+    // --- Batting (opens on the side batting first): the first batter is caught off the opposition's bowler. ---
+    await nextTo(page, 'Batting').click();
+    const firstHowOut = page.getByRole('textbox', { name: /^How out, / }).first();
+    await firstHowOut.click();
+    await firstHowOut.pressSequentially('b');
+    await firstHowOut.press('Enter');
+    const bowlerPick = page.getByRole('combobox', { name: /^Bowler, / }).first();
+    await bowlerPick.click();
+    await page.getByRole('option', { name: 'Sam Jones' }).click();
+
+    // --- Bowling and fielding opens on the side bowling first; the dismissal created Sam Jones's row with a derived wicket. ---
+    await nextTo(page, 'Bowling and fielding').click();
+    await expect(page.getByLabel('Overs, Sam Jones')).toBeVisible();
+    await expect(page.getByLabel('Wickets, Sam Jones')).toHaveValue('1');
+
+    // --- Awards: the official player of the match, from either list. ---
+    await nextTo(page, 'Awards').click();
+    await expect(page.getByTestId('awards-official')).toBeVisible();
+
+    // --- Scores and margin, then Review. ---
+    await nextTo(page, 'Scores and margin').click();
+    await fillInnings(page, 0, '180', '6', '40');
+    await fillInnings(page, 1, '150', '9', '38.4');
+    await nextTo(page, 'Review').click();
+    await expect(page.getByTestId('result-preview')).toContainText('won by 30 runs');
+    // Typed issues carry a team chip and a Fix; any warning is ticked, the not-selected info line needs no tick.
+    const acknowledge = page.getByRole('checkbox', { name: /I have checked these warnings/ });
+    if (await acknowledge.count()) await acknowledge.check();
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Publish', exact: true }).click();
+    await expect(page).toHaveURL(/\/manage\/results$/);
+
+    // --- The result page shows the scorecard with the dismissal written as a scorecard line. ---
+    await page.locator('.MuiCard-root').filter({ hasText: opponent }).getByRole('heading').click();
+    await expect(page.getByTestId('scorecard-home')).toBeVisible();
+    await expect(page.getByTestId('scorecard-away')).toContainText('Sam Jones');
+  });
+
+  test('a derby shows the same side toggle with both teams as our sides (101)', async ({ page }) => {
+    test.skip(!process.env.E2E_DERBY_MATCH_ID, 'needs a club with two own teams: set E2E_DERBY_MATCH_ID to a past derby match without a result');
+    await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
+    await expect(page).toHaveURL(new RegExp('/manage$'));
+    await page.goto(`http://${ROOT_DOMAIN}/manage/results/${process.env.E2E_DERBY_MATCH_ID}/capture`);
+    await expect(page.getByRole('heading', { name: /(Capture|Edit) result/ })).toBeVisible();
+
+    // The same two-tile toggle as every match; each side is an ours side with its own team list.
+    const sidePicker = page.getByRole('radiogroup', { name: 'Who is playing?' });
+    await expect(sidePicker.getByRole('radio')).toHaveCount(2);
+    await sidePicker.getByRole('radio').nth(1).click();
+    await expect(page.getByRole('button', { name: 'Add player' })).toBeVisible();
+    await expect(page.getByLabel('Type or paste names, one per line')).toHaveCount(0);
   });
 });

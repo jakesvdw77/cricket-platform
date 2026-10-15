@@ -174,7 +174,7 @@ function PickerBody({ clubId, teamsById, leaguesById, onPicked }: Omit<CaptureRe
                         sx={{
                           width: 32,
                           height: 32,
-                          fontSize: '0.7rem',
+                          fontSize: '0.75rem',
                           fontWeight: 600,
                           bgcolor: (theme) => alpha(theme.palette.primary.main, index === 0 ? 0.14 : 0.2),
                           color: 'primary.dark',

@@ -83,6 +83,16 @@ A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `Security
 - **The publish gate.** A `match_result` in `DRAFT` is visible to managers only. Every non-manager read of `match_result` goes through `ResultVisibility`; nothing else filters drafts. Only the result services touch `MatchResultRepository`, so no other service can bypass the gate — enforced by `LayeringRulesTest`.
 - **Warnings and errors.** Result validation returns both. Errors block publishing. Warnings are acknowledgeable: the manager confirms them at publish, and the server checks that they were acknowledged.
 
+## Scorecard rows (spec 101)
+
+- **Scorecard rows never belong to a super-over innings in 101.** Batting, bowling and fielding entries attach to `REGULAR` innings only; a super-over entry is rejected (`SCORECARD_SUPER_OVER_NOT_SUPPORTED`). Super-over scorecards are `105`.
+- **Innings are reconciled in place**, matched on `(kind, battingSide)`, never deleted and recreated, so the innings ids, and the scorecard attached to them, survive a re-save or a toss-driven resequence. **Only innings ids are stable.** The scorecard section of a save deletes and re-inserts the batting, bowling, fielding and award entry rows (their ids change on every save); `result_player` ids are kept. Never hold or expose an entry id as a durable reference; reference players by `result_player.id`. `ux_match_innings_sequence` is deferrable for this reason.
+- **Drafts are lenient, publish is strict.** Draft innings `runs`, `wickets` and `balls` and a batting entry's `how_out` are nullable (migrations 046, 047); `ResultValidator` enforces them at publish.
+- **Opposition rows are name-only** (`result_player.opposition`): never linked to a profile, never fed to statistics.
+- **Derived credits are recomputed server-side on every save** (`DismissalCredits`): `DERIVED` bowling wickets and fielding credits follow the dismissals; **`MANUAL` rows are never touched**.
+- **Validation issue shape:** `ResultIssueDto` with `code`, `step`, `side`, `severity` (and message), built on `WarningCode`/`ErrorCode`; clients read `code`, never message text.
+- **Migrations:** `044-match-results-our-side-scorecard` (result_player, batting/bowling/fielding entries, match_award, extras, deferrable sequence), `045-match-results-opposition-scorecard` (opposition flag, dismissal bowler/fielder, credit sources, dots, award keeps its name), `046-match-innings-partial-figures` (nullable runs/wickets/balls), `047-batting-entry-how-out-nullable`.
+
 ## Enforcement
 
 - **ArchUnit suite** (`backend/src/test/java/com/cricketlegend/architecture/`) — layers depend only downward, no field injection, `service.impl` classes are `@Service`-annotated and suffixed `Impl`. Runs on every build; a violation fails CI the same for an agent's change as a human's.

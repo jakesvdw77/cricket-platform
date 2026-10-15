@@ -1,6 +1,8 @@
 import type { SuggestedResult } from '../../../utils/marginCheck'
-import type { Innings, MatchResult, ResultDraft, ResultSide } from '../../../api/matchResultApi'
+import type { Innings, MatchResult, ResultDraft, ResultSide, Scorecard } from '../../../api/matchResultApi'
 import { DEFAULT_BALLS_PER_OVER } from '../../../utils/oversFormat'
+import { allowsBowler, allowsFielder } from '../../../utils/dismissal'
+import { hasBowlingFigures, hasCredit } from './scorecardDraft'
 
 // docs/specs/100-match-results-core.md: pure helpers around the one ResultDraft the capture wizard edits. The form state
 // may hold half-filled innings and stale choices (a margin left over after switching to a tie); toPayload() is the one
@@ -58,7 +60,9 @@ export function emptyDraft(): ResultDraft {
   }
 }
 
-export function draftFromResult(result: MatchResult | null): ResultDraft {
+// `scorecard` is the stored scorecard (api getScorecard) when the caller has it: the result itself carries only
+// `hasScorecard`. Left out, the draft holds no scorecard and a save leaves the stored one untouched.
+export function draftFromResult(result: MatchResult | null, scorecard?: Scorecard | null): ResultDraft {
   if (!result) return emptyDraft()
   return {
     outcomeType: result.outcomeType,
@@ -75,6 +79,7 @@ export function draftFromResult(result: MatchResult | null): ResultDraft {
     playingAreaId: result.playingAreaId,
     note: result.note,
     innings: withRegularInnings(result.innings),
+    ...(scorecard ? { scorecard } : {}),
   }
 }
 
@@ -157,6 +162,19 @@ export const hasRegularFigures = (draft: ResultDraft): boolean =>
   regularInningsOf(draft).some((item) => item.runs !== null || item.wickets !== null || item.balls !== null)
 
 const hasFigures = (innings: Innings) => innings.runs !== null && innings.wickets !== null && innings.balls !== null
+const hasAnyFigure = (innings: Innings) => innings.runs !== null || innings.wickets !== null || innings.balls !== null
+
+// Whether the scorecard holds anything that would be saved for the innings `side` batted: a decided batting row, or a bowling
+// or fielding row of the other side against it.
+function hasEntriesFor(scorecard: Scorecard | null | undefined, side: ResultSide | null): boolean {
+  if (!scorecard || !side) return false
+  return (
+    // An automatic Did not bat (a team list with nobody batting yet) is not an entry: a players-only draft sends no innings.
+    scorecard.batting.some((entry) => entry.battingSide === side && entry.howOut != null && entry.howOut !== 'DID_NOT_BAT') ||
+    scorecard.bowling.some((entry) => entry.battingSide === side && hasBowlingFigures(entry)) ||
+    scorecard.fielding.some((entry) => entry.battingSide === side && hasCredit(entry))
+  )
+}
 
 export function isBlankDraft(draft: ResultDraft): boolean {
   return (
@@ -166,17 +184,24 @@ export function isBlankDraft(draft: ResultDraft): boolean {
     !draft.note &&
     !draft.playingAreaId &&
     draft.scheduledBalls === null &&
-    (draft.innings ?? []).every((innings) => innings.runs === null && innings.wickets === null && innings.balls === null)
+    (draft.innings ?? []).every((innings) => innings.runs === null && innings.wickets === null && innings.balls === null) &&
+    !draft.scorecard?.players?.length
   )
 }
 
-// What the server stores. Only innings with all three figures are sent (a half-typed row is kept in the form but not
-// saved); a margin, winner or DLS figure that the chosen outcome does not use is dropped.
+// What the server stores. A regular innings is sent with whatever figures it has (see below); a margin, winner or DLS figure that the chosen outcome does not use is dropped.
 export function toPayload(draft: ResultDraft): ResultDraft {
   const outcome = draft.outcomeType ?? null
   const won = outcome === 'WON'
   const decidedBy = won ? (draft.decidedBy ?? 'REGULAR') : 'REGULAR'
   const margin = won && decidedBy !== 'SUPER_OVER' && draft.marginType && draft.marginValue !== null
+  // docs/specs/101 (migration 046): a regular innings is saved with whatever figures exist (the rest null) as soon as any
+  // figure is typed, the scorecard holds entries for it, or the toss fixes who batted first (then both innings exist), so
+  // its batting, bowling and fielding entries are kept on a partial innings. A super over still needs all three figures.
+  const tossKnown = firstBatterFromToss(draft) !== null
+  const sentInnings = (draft.innings ?? [])
+    .filter((innings) => (isSuperOver(innings) ? hasFigures(innings) : innings.battingSide != null && (tossKnown || hasAnyFigure(innings) || hasEntriesFor(draft.scorecard, innings.battingSide))))
+    .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
   return {
     outcomeType: outcome,
     decidedBy,
@@ -191,9 +216,72 @@ export function toPayload(draft: ResultDraft): ResultDraft {
     tossDecision: draft.tossWonBy ? (draft.tossDecision ?? null) : null,
     playingAreaId: draft.playingAreaId ?? null,
     note: draft.note?.trim() ? draft.note.trim() : null,
-    innings: (draft.innings ?? [])
-      .filter(hasFigures)
-      .filter((innings) => decidedBy === 'SUPER_OVER' || !isSuperOver(innings))
-      .map(({ sequence, kind, battingSide, runs, wickets, balls }) => ({ sequence, kind, battingSide, runs, wickets, balls })),
+    innings: sentInnings.map((innings) => ({
+        sequence: innings.sequence,
+        kind: innings.kind,
+        battingSide: innings.battingSide,
+        runs: innings.runs,
+        wickets: innings.wickets,
+        balls: innings.balls,
+        // The extras breakdown travels on the innings when the form holds one (`extras` itself is the server's sum and
+        // is never sent); an innings that never had it keeps the summary-level shape of spec 100.
+        ...extrasPayload(innings),
+      })),
+    ...scorecardPayload(draft.scorecard, sentInnings),
   }
+}
+
+// The scorecard section of a save. Absent means "untouched"; present replaces the whole scorecard. `innings` and
+// `status` are read-only, so they are left out. A list of players with no innings and no outcome is a real draft (a team list
+// saved before the game): the players and awards are sent whatever the innings. Rows the server would refuse or that carry
+// no information yet stay in the form but are not sent: a batter whose how out is still undecided, a bowler or fielder with
+// no figures, and every entry of an innings that is not part of this save (its figures are not complete yet). A Did not bat
+// row carries no batting position (the order is the batters').
+function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings[]): { scorecard?: Scorecard } {
+  if (!scorecard) return {}
+  const regularSides = new Set(sent.filter((innings) => !isSuperOver(innings)).map((innings) => innings.battingSide))
+  const inSave = <T extends { battingSide: ResultSide }>(entry: T) => regularSides.has(entry.battingSide)
+  return {
+    scorecard: {
+      players: scorecard.players ?? [],
+      batting: (scorecard.batting ?? [])
+        .filter(inSave)
+        // A row with figures but no how out yet is saved with howOut null (a draft); a row with neither is an automatic Did
+        // not bat and has nothing to save.
+        .filter((entry) => (entry.howOut !== null && entry.howOut !== undefined) || [entry.runs, entry.balls, entry.fours, entry.sixes].some((value) => value != null))
+        // `auto` is client-only (the wicket fill's marker), not part of the API. A bowler or fielder is only sent where the
+        // how out allows one (never on a row with no how out).
+        .map(({ auto: _auto, untouched: _untouched, ...entry }) => {
+          const howOut = entry.howOut ?? null
+          const clean = {
+            ...entry,
+            howOut,
+            bowlerPlayerId: allowsBowler(howOut) ? (entry.bowlerPlayerId ?? null) : null,
+            fielderPlayerId: allowsFielder(howOut) ? (entry.fielderPlayerId ?? null) : null,
+          }
+          return howOut === 'DID_NOT_BAT' ? { ...clean, position: null } : clean
+        }),
+      // `auto` is client-only (a row created from a dismissal), not part of the API.
+      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures).map(({ auto: _auto, untouched: _untouched, ...entry }) => entry),
+      fielding: (scorecard.fielding ?? []).filter(inSave).filter(hasCredit),
+      awards: scorecard.awards ?? [],
+    },
+  }
+}
+
+const EXTRAS_KEYS = ['wides', 'noBalls', 'byes', 'legByes', 'penaltyRuns', 'nonBowlerWickets'] as const
+
+function extrasPayload(innings: Innings): Partial<Innings> {
+  const out: Partial<Innings> = {}
+  for (const key of EXTRAS_KEYS) {
+    if (innings[key] !== undefined) out[key] = innings[key]
+  }
+  return out
+}
+
+// docs/specs/101 (decisions 20 and 22): the scorecard steps Batting, Bowling and fielding and Awards no longer wait for
+// scores: they apply to every match that was played (an unknown outcome included), never to a forfeit, an abandoned match or
+// no result. The innings figures are entered on them. Teams, Result and Toss are always part of the wizard.
+export function scorecardStepsApplicable(draft: Pick<ResultDraft, 'outcomeType'>): boolean {
+  return !(draft.outcomeType === 'FORFEIT' || draft.outcomeType === 'ABANDONED' || draft.outcomeType === 'NO_RESULT')
 }

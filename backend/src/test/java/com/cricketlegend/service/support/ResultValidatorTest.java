@@ -137,11 +137,16 @@ class ResultValidatorTest {
     }
 
     @Test
-    void inningsMustHaveFiguresAndASide() {
+    void inningsMustHaveASideButMayHoldPartialFigures() {
         ResultDraft d = draft(null, null, null, null, null,
                 new InningsDto(1, InningsKind.REGULAR, null, null, 3, 60, null, null, null));
-        assertThat(validator.structuralErrors(d))
-                .contains("Innings 1 needs the batting side.", "Innings 1 needs runs, wickets and overs.");
+        assertThat(validator.structuralErrors(d)).containsExactly("Innings 1 needs the batting side.");
+        ResultDraft onlyRuns = draft(null, null, null, null, null,
+                new InningsDto(1, InningsKind.REGULAR, ResultSide.HOME, 120, null, null, null, null, null));
+        assertThat(validator.structuralErrors(onlyRuns)).isEmpty();
+        ResultDraft noFigures = draft(null, null, null, null, null,
+                new InningsDto(1, InningsKind.REGULAR, ResultSide.HOME, null, null, null, null, null, null));
+        assertThat(validator.structuralErrors(noFigures)).isEmpty();
     }
 
     @Test
@@ -310,7 +315,7 @@ class ResultValidatorTest {
 
     @Test
     void marginIsNotCheckedWhileTheInningsFiguresAreIncomplete() {
-        // an innings without wickets or overs is a structural error, but no margin warning is layered on it
+        // an innings without wickets or overs cannot be published, but no margin warning is layered on it
         ResultDraft d = wonByRuns(ResultSide.HOME, 40,
                 new InningsDto(1, InningsKind.REGULAR, ResultSide.HOME, 200, null, null, null, null, null),
                 inn(ResultSide.AWAY, 150, 10));

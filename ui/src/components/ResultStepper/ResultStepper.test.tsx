@@ -27,4 +27,12 @@ describe('ResultStepper', () => {
     for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
     expect(onSelect).not.toHaveBeenCalled()
   })
+
+  it('names an optional step as optional and explains the dashed steps; no legend when none is optional', () => {
+    const { rerender } = render(<ResultStepper steps={[{ id: 'teams', label: 'Teams', optional: true }, ...steps]} activeId="outcome" onSelect={() => undefined} />)
+    expect(screen.getByRole('button', { name: 'Step 1: Teams (optional) (done)' })).toBeInTheDocument()
+    expect(screen.getByText(/dashed steps can be skipped/i)).toBeInTheDocument()
+    rerender(<ResultStepper steps={steps} activeId="outcome" onSelect={() => undefined} />)
+    expect(screen.queryByText(/dashed steps can be skipped/i)).not.toBeInTheDocument()
+  })
 })

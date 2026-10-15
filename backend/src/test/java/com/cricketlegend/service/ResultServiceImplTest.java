@@ -24,6 +24,7 @@ import com.cricketlegend.domain.InningsKind;
 import com.cricketlegend.dto.InningsDto;
 import com.cricketlegend.dto.MatchResultDto;
 import com.cricketlegend.dto.ResultDraft;
+import com.cricketlegend.dto.ScorecardDto;
 import com.cricketlegend.dto.ResultListCriteria;
 import com.cricketlegend.dto.ResultValidationDto;
 import com.cricketlegend.dto.ResultsSummaryDto;
@@ -38,10 +39,12 @@ import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
 import com.cricketlegend.repository.MatchInningsRepository;
 import com.cricketlegend.repository.MatchResultRepository;
 import com.cricketlegend.repository.PlayingAreaRepository;
+import com.cricketlegend.repository.ResultPlayerRepository;
 import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.service.impl.ResultServiceImpl;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultValidator;
+import com.cricketlegend.service.support.ScorecardContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +100,12 @@ class ResultServiceImplTest {
     @Mock
     private AccessService accessService;
 
+    @Mock
+    private ScorecardService scorecardService;
+
+    @Mock
+    private ResultPlayerRepository resultPlayerRepository;
+
     private ResultServiceImpl service;
 
     private final UUID clubId = UUID.randomUUID();
@@ -109,7 +118,10 @@ class ResultServiceImplTest {
     void setUp() {
         service = new ResultServiceImpl(matchService, resultRepository, inningsRepository, playingAreaRepository,
                 playingAreaMatchResolver, playingConditionsRepository, teamRepository,
-                Mappers.getMapper(MatchResultMapper.class), new ResultValidator(), accessService);
+                Mappers.getMapper(MatchResultMapper.class), new ResultValidator(), accessService,
+                scorecardService, resultPlayerRepository);
+        when(scorecardService.validationContext(any(), any())).thenReturn(ScorecardContext.none());
+        when(scorecardService.load(any(), any())).thenReturn(new ScorecardDto(null, null, null, null, null, null, null));
         match = Match.builder().id(matchId).clubId(clubId).homeTeamName("Riverside").awayTeamName("Hillside")
                 .seasonId(UUID.randomUUID()).matchDate(Instant.now()).active(true).build();
         when(matchService.requireAdministrableMatch(auth, clubId, matchId)).thenReturn(match);
@@ -185,12 +197,12 @@ class ResultServiceImplTest {
     }
 
     @Test
-    void savingOverAnExistingDraftReplacesItsInningsAndKeepsTheSameRow() {
+    void savingOverAnExistingDraftReconcilesItsInningsInPlaceAndKeepsTheSameRow() {
         MatchResult existing = stored(ResultStatus.DRAFT, draft(null, null, null, null));
 
         service.upsertDraft(auth, clubId, matchId, cleanWin());
 
-        verify(inningsRepository).deleteByMatchResultId(existing.getId());
+        verify(inningsRepository, never()).deleteByMatchResultId(any());
         ArgumentCaptor<MatchResult> saved = ArgumentCaptor.forClass(MatchResult.class);
         verify(resultRepository).saveAndFlush(saved.capture());
         assertThat(saved.getValue()).isSameAs(existing);

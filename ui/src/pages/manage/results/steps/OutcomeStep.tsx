@@ -1,34 +1,27 @@
-import { Box, ToggleButton, Typography } from '@mui/material'
+import { Alert, Box, ToggleButton, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
+import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
-import { Input } from '../../../../components/Input'
+import { CountField } from '../../../../components/IntegerField'
 import { OutcomeTiles } from '../../../../components/OutcomeTiles'
 import { OversInput } from '../../../../components/OversInput'
 import { SidePicker } from '../../../../components/SidePicker'
-import type { ResultDecidedBy, ResultMarginType, ResultOutcomeType } from '../../../../api/matchResultApi'
-import { checkMargin } from '../../../../utils/marginCheck'
-import { addSuperOver, applySuggestion, superOversOf, withoutSuperOvers } from '../resultDraftHelpers'
+import type { ResultDecidedBy, ResultOutcomeType } from '../../../../api/matchResultApi'
+import { addSuperOver, superOversOf, withoutSuperOvers } from '../resultDraftHelpers'
 import { sidePickerOptions } from './sidePickerOptions'
-import { SuggestedResultLine } from './SuggestedResultLine'
 import type { StepProps } from './stepTypes'
 
 const labelSx = { fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75 } as const
 
-function toInt(text: string): number | null {
-  if (text.trim() === '') return null
-  const value = Number(text)
-  return Number.isInteger(value) && value >= 0 ? value : null
-}
-
-// docs/specs/100-match-results-core.md, step 1 "Result": one outcome tile, then only the fields that outcome needs - the
-// winner (Won, Forfeit), how it was decided (Won), the margin proposed from the scores, and the DLS figures.
-export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: StepProps) {
+// docs/specs/100-match-results-core.md, step "Result": one outcome tile, then only the fields that outcome needs - the
+// winner (Won, Forfeit), how it was decided (Won), and the DLS figures (the margin is set on Scores and margin). It ends with
+// the quiet prompt to record who batted, bowled and fielded (docs/specs/101, decision 22).
+export function OutcomeStep({ draft, onChange, onReplace, sides, disabled, scorecardAvailable, onGoToStep }: StepProps) {
   const outcome = draft.outcomeType ?? null
   const decidedBy = draft.decidedBy ?? 'REGULAR'
   const won = outcome === 'WON'
-  const names = { home: sides[0].name, away: sides[1].name }
   const options = sidePickerOptions(sides)
   const ballsPerOver = draft.ballsPerOver ?? 6
 
@@ -45,13 +38,13 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
     else onReplace(withoutSuperOvers(patched))
   }
 
-  const check = checkMargin(draft, names)
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Alert severity="info" sx={{ py: 0.25, '& .MuiAlert-message': { fontSize: '0.8125rem' } }}>
+        Now record how the match ended. The teams and the scorecard are optional, and the scores and winning margin are worked out for you later. The result decides which steps follow: a forfeit, abandoned match or no result skips Batting, Bowling and Awards.
+      </Alert>
       <FormSectionHeading icon={<EmojiEventsOutlinedIcon />} title="How did the match end?" />
       <OutcomeTiles value={outcome} onChange={chooseOutcome} disabled={disabled} />
-      {check.suggestion && <SuggestedResultLine check={check} names={names} onUse={() => onReplace(applySuggestion(draft, check.suggestion!))} disabled={disabled} />}
 
       {(won || outcome === 'FORFEIT') && (
         <Box>
@@ -99,14 +92,7 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
           <Typography variant="caption" sx={{ gridColumn: '1 / -1', fontWeight: 600, color: 'warning.dark' }}>
             Duckworth-Lewis-Stern: the revised target and the revised innings length
           </Typography>
-          <Input
-            label="Revised target"
-            type="number"
-            value={draft.dlsTarget ?? ''}
-            onChange={(event) => onChange({ dlsTarget: toInt(event.target.value) })}
-            disabled={disabled}
-            inputProps={{ min: 0, inputMode: 'numeric' }}
-          />
+          <CountField label="Revised target" ariaLabel="Revised target" value={draft.dlsTarget ?? null} onChange={(dlsTarget) => onChange({ dlsTarget })} disabled={disabled} />
           <OversInput
             label="Revised overs"
             value={draft.dlsRevisedBalls ?? null}
@@ -117,29 +103,21 @@ export function OutcomeStep({ draft, onChange, onReplace, sides, disabled }: Ste
         </Box>
       )}
 
-      {won && decidedBy !== 'SUPER_OVER' && (
-        <Box>
-          <Typography sx={labelSx}>Margin</Typography>
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <Box sx={{ width: 120 }}>
-              <Input
-                label="Margin"
-                type="number"
-                value={draft.marginValue ?? ''}
-                onChange={(event) => onChange({ marginValue: toInt(event.target.value), marginType: draft.marginType ?? 'RUNS' })}
-                disabled={disabled}
-                inputProps={{ min: 0, inputMode: 'numeric' }}
-              />
-            </Box>
-            <CompactToggleGroup<ResultMarginType>
-              value={draft.marginType ?? 'RUNS'}
-              onChange={(next) => onChange({ marginType: next })}
-              ariaLabel="Margin type"
-            >
-              <ToggleButton value="RUNS">Runs</ToggleButton>
-              <ToggleButton value="WICKETS">Wickets</ToggleButton>
-            </CompactToggleGroup>
-          </Box>
+
+      {scorecardAvailable && onGoToStep && (
+        <Box
+          data-testid="scorecard-prompt"
+          sx={{ p: 1.5, border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 220px' }}>
+            Want to record who batted, bowled and fielded? It is optional.
+          </Typography>
+          <Button variant="secondary" size="sm" onClick={() => onGoToStep('batting')} disabled={disabled}>
+            Add the batting and bowling
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('scores')} disabled={disabled}>
+            Skip to scores
+          </Button>
         </Box>
       )}
     </Box>

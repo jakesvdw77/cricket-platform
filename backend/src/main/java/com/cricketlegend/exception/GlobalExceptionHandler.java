@@ -81,7 +81,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * docs/specs/100-match-results-core.md: an invalid result carries its {@code errors} and {@code warnings} as
+     * docs/specs/100-match-results-core.md: an invalid result carries its {@code errors}, {@code warnings} and (docs/specs/101) typed {@code issues} as
      * properties so the wizard can list them. Wins over the generic {@link ValidationException} handler.
      */
     @ExceptionHandler(InvalidResultException.class)
@@ -89,6 +89,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setProperty("errors", ex.getErrors());
         problem.setProperty("warnings", ex.getWarnings());
+        problem.setProperty("issues", ex.getIssues());
         return problem;
     }
 

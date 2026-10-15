@@ -22,3 +22,6 @@ ui/storybook-static/
 # Env
 .env
 .env.local
+
+# Real match reports used as import samples (contain real player names, including juniors): never commit
+docs/samples/

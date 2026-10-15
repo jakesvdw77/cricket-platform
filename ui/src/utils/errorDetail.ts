@@ -1,4 +1,5 @@
 import { isAxiosError } from 'axios'
+import type { ResultIssue } from '../api/matchResultApi'
 
 // The backend's GlobalExceptionHandler returns RFC 7807 ProblemDetail bodies — { detail: "..." }
 // carries the specific reason (e.g. a reserved slug, a duplicate slug). Falls back to a generic
@@ -27,4 +28,11 @@ export function errorList(error: unknown): string[] | null {
   if (!isAxiosError(error)) return null
   const errors = (error.response?.data as { errors?: unknown } | undefined)?.errors
   return Array.isArray(errors) && errors.length > 0 ? errors.map(String) : null
+}
+
+// The typed `issues` (code, step, side, severity, message) a failed result save or publish carries; empty when absent.
+export function errorIssues(error: unknown): ResultIssue[] {
+  if (!isAxiosError<{ issues?: unknown }>(error)) return []
+  const issues = error.response?.data?.issues
+  return Array.isArray(issues) ? (issues as ResultIssue[]).filter((issue) => issue && typeof issue.message === 'string') : []
 }

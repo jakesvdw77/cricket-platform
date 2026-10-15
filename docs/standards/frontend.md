@@ -62,6 +62,18 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 - **Margin and result checks are pure helpers**, not component logic: `marginCheck.ts` (does the margin agree with the scores) and `resultLine.ts` (the one-line result text). Unit-test them directly; components only call them.
 - **Wizards register their steps as data.** The result wizard declares its steps in a `RESULT_STEPS` list (label, component, validity) and renders from it; a new step is a new entry, not another branch in the wizard.
 
+## Scorecard (`docs/specs/101-match-results-our-side-scorecard.md`)
+
+- **Keyboard grid contract (`ScorecardGrid`).** Enter moves to the next row in the same column and wraps to the top of the next column at the end; arrow keys move between cells; **Alt+Arrow is not used** (browsers use it for history); Tab keeps its native behaviour and is never intercepted. Cells are real inputs in a real table; on a phone the same rows render as cards.
+- **Numeric fields only through `IntegerField`, `RunsField`, `WicketsField`, `CountField` and `OversField` (`OversInput`).** They sanitise at the keystroke (digits only, length and maximum) so a bad value cannot be typed; never an ad-hoc `type="number"` input.
+- **Balls versus overs:** the API and state hold balls; display and entry go through `oversFormat` only.
+- **`utils/dismissal.ts` mirrors the backend `DismissalType`** (and its wicket and bowler-credited flags); change both together.
+- **Scorecard entry ids are not stable.** Innings ids and `result_player` ids survive a save, but batting, bowling, fielding and award entry ids are replaced on every save (the server deletes and re-inserts them). Key rows, dirty state and links by the player (`result_player.id`, or the `clientKey` of a new row) and the innings, never by an entry `id`, and re-read the result after a save instead of keeping old entry objects.
+- **Row-level soft warnings** come from the pure helper `scorecardRowChecks` (highlighting the row or the cell), not from component logic. They are conveniences; the server's validation (`code`, `step`, `side`, `severity`) is authoritative and Review shows it.
+- **Derived credits mirror the server** (`DismissalCredits`): the client may pre-fill bowler wickets and fielding credits from dismissals so the grid feels live, but the server recomputes on save and never touches `MANUAL` rows.
+- **Name toggle is display-only:** names render through `PlayerName` / `playerDisplayName` (initial style, for example "Sam V" or "Sam vdW"); the stored data never changes.
+- **No business rules in the client beyond conveniences** (pre-fill, defaults such as "Did not bat", counters); anything that can reject a save or block publishing lives on the server.
+
 ## Folder structure
 
 ```

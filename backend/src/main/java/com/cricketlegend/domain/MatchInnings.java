@@ -46,17 +46,34 @@ public class MatchInnings {
     @Column(name = "batting_side", nullable = false)
     private ResultSide battingSide;
 
-    @Column(nullable = false)
-    private int runs;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer runs;
 
-    @Column(nullable = false)
-    private int wickets;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer wickets;
 
-    @Column(nullable = false)
-    private int balls;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer balls;
 
-    /** Filled by slice 101 when a scorecard exists. */
+    /** The stored total: the sum of the breakdown below when any part is present (docs/specs/101). */
     private Integer extras;
+
+    private Integer wides;
+
+    @Column(name = "no_balls")
+    private Integer noBalls;
+
+    private Integer byes;
+
+    @Column(name = "leg_byes")
+    private Integer legByes;
+
+    @Column(name = "penalty_runs")
+    private Integer penaltyRuns;
+
+    /** Wickets not credited to a bowler in this innings when the batters are not on our scorecard (docs/specs/101). */
+    @Column(name = "non_bowler_wickets")
+    private Integer nonBowlerWickets;
 
     @Column(name = "all_out", nullable = false)
     private boolean allOut;

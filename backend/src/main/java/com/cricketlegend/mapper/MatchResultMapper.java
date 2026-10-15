@@ -21,10 +21,13 @@ import org.mapstruct.MappingTarget;
 public interface MatchResultMapper {
 
     @Mapping(target = "playingAreaName", ignore = true)
+    @Mapping(target = "hasScorecard", ignore = true)
+    @Mapping(target = "hasOppositionScorecard", ignore = true)
     @Mapping(target = "innings", expression = "java(toInningsDtos(innings, result.getBallsPerOver()))")
     MatchResultDto toDto(MatchResult result, List<MatchInnings> innings);
 
     @Mapping(target = "innings", expression = "java(toInningsDtos(innings, result.getBallsPerOver()))")
+    @Mapping(target = "scorecard", ignore = true)
     ResultDraft toDraft(MatchResult result, List<MatchInnings> innings);
 
     @Mapping(target = "id", ignore = true)
@@ -52,4 +55,9 @@ public interface MatchResultMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "matchResultId", ignore = true)
     MatchInnings toInningsEntity(InningsDto dto);
+
+    /** Updates a stored innings in place from its reconciled counterpart in the draft (docs/specs/101: identity kept). */
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "matchResultId", ignore = true)
+    void updateInnings(InningsDto dto, @MappingTarget MatchInnings innings);
 }

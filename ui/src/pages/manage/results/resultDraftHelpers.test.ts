@@ -34,9 +34,10 @@ const won = (patch: Partial<ResultDraft> = {}): ResultDraft => ({
 })
 
 describe('toPayload', () => {
-  it('drops innings that are missing any of runs, wickets or balls', () => {
+  it('sends a partial regular innings with its missing figures null, but a super over only with all three', () => {
     const payload = toPayload(won({ innings: [inn(1, 'HOME', 200), inn(2, 'AWAY', 176, null), inn(3, 'HOME', null)] }))
-    expect(payload.innings?.map((item) => item.sequence)).toEqual([1])
+    expect(payload.innings?.map((item) => item.sequence)).toEqual([1, 2])
+    expect(payload.innings?.[1]).toMatchObject({ runs: 176, wickets: null })
   })
 
   it('sends only the innings fields the server accepts', () => {
@@ -200,5 +201,45 @@ describe('draftFromResult and isBlankDraft', () => {
       [2, 'AWAY', 100],
     ])
     expect(draftFromResult(null)).toEqual(emptyDraft())
+  })
+})
+
+describe('toPayload batting rows without a how out', () => {
+  const row = (key: string, patch: object) => ({ battingSide: 'HOME' as const, inningsKind: 'REGULAR' as const, playerClientKey: key, resultPlayerId: null, position: 1, howOut: null, runs: null, balls: null, fours: null, sixes: null, featuredOverride: null, ...patch })
+
+  it('sends a row with figures and no how out (howOut null, no bowler or fielder) and skips a row with neither', () => {
+    const draft = won({ scorecard: { players: [], bowling: [], fielding: [], awards: [], batting: [row('a', { runs: 12, bowlerPlayerId: 'x', fielderPlayerId: 'y' }), row('b', {}), row('c', { howOut: 'CAUGHT', runs: 3, bowlerPlayerId: 'x' })] } })
+    const batting = toPayload(draft).scorecard?.batting ?? []
+    expect(batting.map((entry) => entry.playerClientKey)).toEqual(['a', 'c'])
+    expect(batting[0]).toMatchObject({ howOut: null, runs: 12, bowlerPlayerId: null, fielderPlayerId: null })
+    expect(batting[1]).toMatchObject({ howOut: 'CAUGHT', bowlerPlayerId: 'x', fielderPlayerId: null })
+  })
+})
+
+describe('toPayload scorecard sections', () => {
+  const player = (key: string, patch: object = {}) => ({ clientKey: key, side: 'HOME' as const, playerProfileId: 'p-' + key, displayName: null, plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, ...patch })
+
+  it('sends a players-only scorecard with no innings and no outcome', () => {
+    const payload = toPayload({ ...emptyDraft(), scorecard: { players: [player('a'), player('b', { substitute: true })], batting: [], bowling: [], fielding: [], awards: [] } })
+    expect(payload.innings ?? []).toEqual([])
+    expect(payload.outcomeType ?? null).toBeNull()
+    expect(payload.scorecard?.players).toHaveLength(2)
+    expect(isBlankDraft({ ...emptyDraft(), scorecard: { players: [player('a')], batting: [], bowling: [], fielding: [], awards: [] } })).toBe(false)
+  })
+
+  it('keeps the opposition flag on its players and sends nothing for a draft with no scorecard', () => {
+    const opp = player('x', { side: 'AWAY', playerProfileId: null, displayName: 'Sam Jones', opposition: true })
+    const payload = toPayload(won({ scorecard: { players: [opp], batting: [], bowling: [], fielding: [], awards: [] } }))
+    expect(payload.scorecard?.players[0]).toMatchObject({ opposition: true, displayName: 'Sam Jones' })
+    expect(toPayload(won()).scorecard).toBeUndefined()
+  })
+
+  it('leaves out bowlers and fielders without figures, the client-only flags, and a Did not bat position', () => {
+    const batting = { battingSide: 'HOME' as const, inningsKind: 'REGULAR' as const, playerClientKey: 'a', position: 4, howOut: 'DID_NOT_BAT' as const, runs: null, balls: null, fours: null, sixes: null, featuredOverride: null, auto: true }
+    const bowlRow = { battingSide: 'AWAY' as const, inningsKind: 'REGULAR' as const, playerClientKey: 'b', bowlingOrder: 1, balls: null, maidens: 0, runs: 0, wickets: 0, wides: 0, noBalls: 0, featuredOverride: null, untouched: true }
+    const payload = toPayload(won({ scorecard: { players: [player('a'), player('b')], batting: [batting], bowling: [bowlRow], fielding: [], awards: [] } }))
+    expect(payload.scorecard?.batting[0]).toMatchObject({ howOut: 'DID_NOT_BAT', position: null })
+    expect(payload.scorecard?.batting[0]).not.toHaveProperty('auto')
+    expect(payload.scorecard?.bowling).toEqual([])
   })
 })

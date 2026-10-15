@@ -29,3 +29,7 @@ export const Empty: Story = {
 export const Complete: Story = {
   args: { value: 11, max: 11, ariaLabel: 'Selection', valueText: '11 of 11 picked' },
 }
+
+export const Warning: Story = {
+  args: { value: 6, max: 6, ariaLabel: 'Out', valueText: '7 of 6 out', tone: 'warning' },
+}

@@ -1,6 +1,8 @@
+import { ThemeProvider } from '@mui/material'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { CardProgressBar } from './CardProgressBar'
+import { baseTheme } from '../../theme'
 
 describe('CardProgressBar', () => {
   it('exposes progressbar attributes and a proportional fill', () => {
@@ -25,5 +27,15 @@ describe('CardProgressBar', () => {
     render(<CardProgressBar value={0} max={0} ariaLabel="x" valueText="none" />)
 
     expect(screen.getByTestId('selection-bar-fill')).toHaveStyle({ width: '0%' })
+  })
+
+  it('draws the fill in the warning colour for the amber tone', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <CardProgressBar value={7} max={6} ariaLabel="Out" valueText="7 of 6" tone="warning" />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByTestId('selection-bar-fill')).toHaveStyle({ backgroundColor: baseTheme.palette.warning.main })
   })
 })

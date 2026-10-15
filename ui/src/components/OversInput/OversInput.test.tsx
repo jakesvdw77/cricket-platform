@@ -21,11 +21,13 @@ describe('OversInput', () => {
     expect(screen.getByTestId('balls')).toHaveTextContent('220')
   })
 
-  it('refuses a ball digit at or above balls per over', async () => {
+  it('ignores a ball digit at or above balls per over and anything that is not a digit or one point', async () => {
     render(<Harness />)
-    await userEvent.type(screen.getByLabelText('Overs'), '36.7')
-    expect(screen.getByTestId('balls')).toHaveTextContent('none')
-    expect(screen.getByText(/must be 0 to 5/)).toBeInTheDocument()
+    const field = screen.getByLabelText('Overs')
+    await userEvent.type(field, '-3x6.7.')
+    expect(field).toHaveValue('36.')
+    expect(screen.getByTestId('balls')).toHaveTextContent('216')
+    expect(screen.queryByText(/must be/)).not.toBeInTheDocument()
   })
 
   it('shows an existing value as overs', () => {
@@ -45,7 +47,7 @@ describe('OversInput', () => {
     await userEvent.type(screen.getByLabelText('Overs'), '10.7')
     expect(screen.getByTestId('balls')).toHaveTextContent('87')
     await userEvent.type(screen.getByLabelText('Overs'), '{backspace}8')
-    expect(screen.getByTestId('balls')).toHaveTextContent('none')
-    expect(screen.getByText(/must be 0 to 7/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Overs')).toHaveValue('10.')
+    expect(screen.getByTestId('balls')).toHaveTextContent('80')
   })
 })
