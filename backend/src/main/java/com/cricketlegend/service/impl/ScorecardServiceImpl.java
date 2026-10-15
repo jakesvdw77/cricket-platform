@@ -77,6 +77,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -271,8 +272,14 @@ public class ScorecardServiceImpl implements ScorecardService {
             Authentication authentication, UUID clubId, UUID teamId, String q, Pageable pageable) {
         Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         String filter = q == null ? "" : q.trim();
+        Optional<Set<UUID>> scope = authorizedTeamIds(authentication, clubId, teamId);
+        if (scope.isPresent() && scope.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
         return playerRepository
-                .findGuestNames(clubId, teamId == null, teamId == null ? new UUID(0, 0) : teamId, filter, unsorted)
+                .findGuestNames(
+                        clubId, teamId == null, teamId == null ? new UUID(0, 0) : teamId,
+                        scope.isPresent(), scope.orElse(Set.of(new UUID(0, 0))), filter, unsorted)
                 .map(v -> new GuestNameDto(v.getDisplayName(), v.getUses(), v.getLastUsed()));
     }
 
@@ -283,6 +290,7 @@ public class ScorecardServiceImpl implements ScorecardService {
             String q, Pageable pageable) {
         UUID leagueTeam = leagueTeamId;
         String name = opposition;
+        Optional<Set<UUID>> scope = authorizedTeamIds(authentication, clubId, teamId);
         Set<String> excluded = new HashSet<>();
         if (matchId != null) {
             Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
@@ -301,17 +309,38 @@ public class ScorecardServiceImpl implements ScorecardService {
                     .forEach(p -> excluded.add(ScorecardContext.normalise(p.getDisplayName()))));
         }
         String normalisedName = ScorecardContext.normalise(name);
-        if (leagueTeam == null && normalisedName.isEmpty()) {
+        if ((leagueTeam == null && normalisedName.isEmpty()) || (scope.isPresent() && scope.get().isEmpty())) {
             return Page.empty(pageable);
         }
         excluded.add("<none>"); // never empty: an empty IN list is not valid SQL
         Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         return playerRepository
                 .findOppositionNames(
-                        clubId, teamId == null, teamId == null ? new UUID(0, 0) : teamId, leagueTeam != null,
+                        clubId, teamId == null, teamId == null ? new UUID(0, 0) : teamId,
+                        scope.isPresent(), scope.orElse(Set.of(new UUID(0, 0))), leagueTeam != null,
                         leagueTeam == null ? new UUID(0, 0) : leagueTeam, normalisedName, excluded,
                         q == null ? "" : q.trim(), unsorted)
                 .map(v -> new OppositionNameDto(v.getDisplayName(), v.getUses(), v.getLastMatchDate()));
+    }
+
+    /**
+     * The teams whose fixtures the caller may read names from: empty Optional for a club-wide caller, else the club's
+     * teams in the caller's accessible sections (possibly none). A given {@code teamId} must be a team of this club in
+     * a section the caller can administer, else 404 / 403.
+     */
+    private Optional<Set<UUID>> authorizedTeamIds(Authentication authentication, UUID clubId, UUID teamId) {
+        if (teamId != null) {
+            Team team = teamRepository
+                    .findById(teamId)
+                    .filter(t -> clubId.equals(t.getClubId()))
+                    .orElseThrow(() -> new NotFoundException("Team not found: " + teamId));
+            accessService.assertCanAdministerSection(authentication, clubId, team.getSectionId());
+        }
+        return accessService.accessibleSectionIds(authentication, clubId).map(sections -> teamRepository
+                .findByClubId(clubId).stream()
+                .filter(t -> sections.contains(t.getSectionId()))
+                .map(Team::getId)
+                .collect(Collectors.toSet()));
     }
 
     // ---- writes ----

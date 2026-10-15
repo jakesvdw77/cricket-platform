@@ -47,7 +47,40 @@ final class ScorecardRules {
     private static final Set<ResultOutcomeType> NO_PLAY = Set.of(
             ResultOutcomeType.FORFEIT, ResultOutcomeType.ABANDONED, ResultOutcomeType.NO_RESULT);
 
+    /** Free text is stored in VARCHAR(255) columns; list sizes bound a save (a side fields eleven plus a few). */
+    static final int MAX_NAME_LENGTH = 255;
+    static final int MAX_PLAYERS = 60;
+    static final int MAX_ENTRY_ROWS = 200;
+
     private ScorecardRules() {}
+
+    /** Size and length limits, checked before anything else so an oversized payload is a 400, never a database error. */
+    private static boolean withinLimits(ScorecardDto scorecard, ResultIssues issues) {
+        boolean ok = true;
+        if (scorecard.players().size() > MAX_PLAYERS) {
+            issues.error(ErrorCode.SCORECARD_TOO_MANY_PLAYERS, ResultWizardStep.TEAMS, null,
+                    "A scorecard can list at most " + MAX_PLAYERS + " players.");
+            ok = false;
+        }
+        if (scorecard.batting().size() > MAX_ENTRY_ROWS || scorecard.bowling().size() > MAX_ENTRY_ROWS
+                || scorecard.fielding().size() > MAX_ENTRY_ROWS) {
+            issues.error(ErrorCode.SCORECARD_TOO_MANY_ROWS, ResultWizardStep.BATTING, null,
+                    "A scorecard can hold at most " + MAX_ENTRY_ROWS + " batting, bowling or fielding rows each.");
+            ok = false;
+        }
+        boolean longName = scorecard.players().stream().anyMatch(p -> tooLong(p.displayName()))
+                || scorecard.awards().stream().anyMatch(a -> tooLong(a.displayName()));
+        if (longName) {
+            issues.error(ErrorCode.SCORECARD_NAME_TOO_LONG, ResultWizardStep.TEAMS, null,
+                    "A name can be at most " + MAX_NAME_LENGTH + " characters.");
+            ok = false;
+        }
+        return ok;
+    }
+
+    private static boolean tooLong(String name) {
+        return name != null && name.trim().length() > MAX_NAME_LENGTH;
+    }
 
     // ---- structure (what a save refuses) ----
 
@@ -60,6 +93,9 @@ final class ScorecardRules {
             ResultDraft draft, String homeName, String awayName, ScorecardContext context, ResultIssues issues) {
         ScorecardDto scorecard = draft.scorecard();
         if (scorecard == null) {
+            return;
+        }
+        if (!withinLimits(scorecard, issues)) {
             return;
         }
         Map<String, ResultPlayerDto> players = playersByRef(
@@ -368,8 +404,9 @@ final class ScorecardRules {
     }
 
     /**
-     * An INFO line (never blocks, nothing to acknowledge) for our side being captured when there is no selection at
-     * all, or fewer than eleven non-substitutes are listed. Whether it was announced is irrelevant.
+     * An INFO line (never blocks, nothing to acknowledge) for our side being captured with fewer than eleven
+     * non-substitutes listed; eleven or more never raises it, whatever the selection state. Whether the team was
+     * announced is irrelevant.
      */
     private static void teamSelectionChecks(
             ScorecardDto scorecard, Names names, ScorecardContext context, ResultIssues issues) {
@@ -380,10 +417,13 @@ final class ScorecardRules {
             }
             ScorecardSelectionState state = context.selectionBySide().get(side);
             long listed = onSide.stream().filter(p -> !p.substitute()).count();
+            if (listed >= LINEUP_SIZE) {
+                continue;
+            }
             if (state == ScorecardSelectionState.NONE) {
                 issues.info(WarningCode.OUR_TEAM_NOT_SELECTED, ResultWizardStep.TEAMS, side,
                         "Our team is not selected for this match.");
-            } else if (listed < LINEUP_SIZE) {
+            } else {
                 issues.info(WarningCode.OUR_TEAM_NOT_SELECTED, ResultWizardStep.TEAMS, side,
                         "Only " + listed + " players are on " + names.of(side) + "'s team list.");
             }

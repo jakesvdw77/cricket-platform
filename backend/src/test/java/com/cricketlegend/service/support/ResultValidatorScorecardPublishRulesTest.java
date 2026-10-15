@@ -621,10 +621,20 @@ class ResultValidatorScorecardPublishRulesTest {
     }
 
     @Test
-    void noSelectionAtAllIsNotedEvenWhenElevenArelisted() {
+    void noSelectionIsNotedWithTheNotSelectedWordingOnlyWhenFewerThanElevenAreListed() {
+        ScorecardCard x = ScorecardCard.oursBat().remove("b11").context(selection(ScorecardSelectionState.NONE));
+
+        ResultValidationDto dto = validate(x);
+        assertNotSelected(dto, H);
+        assertThat(withCode(dto, WarningCode.OUR_TEAM_NOT_SELECTED)).singleElement()
+                .extracting(ResultIssueDto::message).isEqualTo("Our team is not selected for this match.");
+    }
+
+    @Test
+    void elevenListedNeverRaisesItEvenWithNoSelection() {
         ScorecardCard x = ScorecardCard.oursBat().context(selection(ScorecardSelectionState.NONE));
 
-        assertNotSelected(validate(x), H);
+        assertNoIssue(validate(x), WarningCode.OUR_TEAM_NOT_SELECTED);
     }
 
     @Test
@@ -635,7 +645,10 @@ class ResultValidatorScorecardPublishRulesTest {
             }
             ScorecardCard x = ScorecardCard.oursBat().remove("b11").context(selection(state));
 
-            assertNotSelected(validate(x), H);
+            ResultValidationDto dto = validate(x);
+            assertNotSelected(dto, H);
+            assertThat(withCode(dto, WarningCode.OUR_TEAM_NOT_SELECTED)).singleElement()
+                    .extracting(ResultIssueDto::message).asString().startsWith("Only 10 players are on ");
         }
         // the 12th man does not make up the eleven
         ScorecardCard sub = ScorecardCard.oursBat().remove("b11").context(selection(ScorecardSelectionState.ANNOUNCED));
@@ -680,7 +693,7 @@ class ResultValidatorScorecardPublishRulesTest {
 
     @Test
     void aDerbyNotesEachOursSideThatIsNotSelected() {
-        ScorecardCard x = ScorecardCard.derby().remove("b11").context(new ScorecardContext(null, Map.of(), Map.of(),
+        ScorecardCard x = ScorecardCard.derby().remove("b11").remove("w11").context(new ScorecardContext(null, Map.of(), Map.of(),
                 Map.of(), Map.of(H, ScorecardSelectionState.ANNOUNCED, A, ScorecardSelectionState.NONE)));
 
         assertThat(withCode(validate(x), WarningCode.OUR_TEAM_NOT_SELECTED)).extracting(ResultIssueDto::side)

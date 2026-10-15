@@ -306,4 +306,72 @@ class ScorecardQueriesIntegrationTest {
         assertThat(scorecardService.oppositionNames(admin, clubId, null, w.seniors2().getId(), null, "Hillside CC", null,
                 PageRequest.of(0, 10)).getTotalElements()).isZero();
     }
+
+    // ---- section narrowing ----
+
+    private Match juniorsMatch(int daysAgo) {
+        return fixtures.match(w, w.juniorsTeam(), null, Instant.now().minus(Duration.ofDays(daysAgo)));
+    }
+
+    private Match juniorsAgainst(String teamName, int daysAgo) {
+        Match m = juniorsMatch(daysAgo);
+        m.setAwayTeamName(teamName);
+        return matchRepository.save(m);
+    }
+
+    @Test
+    void guestNamesAreNarrowedToTheCallersSectionsAndClubAdminsSeeAll() {
+        saveList(match(2), guest(H, "g1", "Sam Senior"));
+        saveList(juniorsMatch(1), guest(H, "g1", "Kid Junior"));
+        Authentication seniorsManager = new TestingAuthenticationToken(
+                fixtures.sectionManagerSubject(w.seniors()), "n/a", "ROLE_manager");
+        Authentication juniorsManager = new TestingAuthenticationToken(
+                fixtures.sectionManagerSubject(w.juniors()), "n/a", "ROLE_manager");
+
+        assertThat(scorecardService.guestNames(seniorsManager, clubId, null, null, PageRequest.of(0, 10)).getContent())
+                .extracting(GuestNameDto::displayName).containsExactly("Sam Senior");
+        assertThat(scorecardService.guestNames(juniorsManager, clubId, null, null, PageRequest.of(0, 10)).getContent())
+                .extracting(GuestNameDto::displayName).containsExactly("Kid Junior");
+        assertThat(scorecardService.guestNames(admin, clubId, null, null, PageRequest.of(0, 10)).getTotalElements())
+                .isEqualTo(2);
+    }
+
+    @Test
+    void aSectionManagerCannotNameATeamOutsideTheirSectionsOrOfAnotherClub() {
+        Authentication juniorsManager = new TestingAuthenticationToken(
+                fixtures.sectionManagerSubject(w.juniors()), "n/a", "ROLE_manager");
+        World other = fixtures.world();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> scorecardService.guestNames(
+                        juniorsManager, clubId, w.seniors1().getId(), null, PageRequest.of(0, 10)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> scorecardService.oppositionNames(
+                        juniorsManager, clubId, null, w.seniors1().getId(), null, "Hillside CC", null,
+                        PageRequest.of(0, 10)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> scorecardService.guestNames(
+                        admin, clubId, other.seniors1().getId(), null, PageRequest.of(0, 10)))
+                .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
+        assertThat(scorecardService.guestNames(juniorsManager, clubId, w.juniorsTeam().getId(), null,
+                PageRequest.of(0, 10)).getContent()).isEmpty();
+    }
+
+    @Test
+    void oppositionNamesAreNarrowedToTheCallersSections() {
+        saveOpposition(against(w, null, "Hillside CC", 3), "Senior Opp");
+        saveOpposition(juniorsAgainst("Hillside CC", 2), "Junior Opp");
+        Authentication seniorsManager = new TestingAuthenticationToken(
+                fixtures.sectionManagerSubject(w.seniors()), "n/a", "ROLE_manager");
+        Authentication juniorsManager = new TestingAuthenticationToken(
+                fixtures.sectionManagerSubject(w.juniors()), "n/a", "ROLE_manager");
+
+        assertThat(scorecardService.oppositionNames(seniorsManager, clubId, null, null, null, "Hillside CC", null,
+                PageRequest.of(0, 10)).getContent()).extracting(OppositionNameDto::displayName)
+                .containsExactly("Senior Opp");
+        assertThat(scorecardService.oppositionNames(juniorsManager, clubId, null, null, null, "Hillside CC", null,
+                PageRequest.of(0, 10)).getContent()).extracting(OppositionNameDto::displayName)
+                .containsExactly("Junior Opp");
+        assertThat(scorecardService.oppositionNames(admin, clubId, null, null, null, "Hillside CC", null,
+                PageRequest.of(0, 10)).getTotalElements()).isEqualTo(2);
+    }
 }

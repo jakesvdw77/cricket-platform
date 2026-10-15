@@ -26,7 +26,8 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
      * Distinct guest names the club has used (most recently used first, with a count), for the name field's
      * suggestions. A guest is a row with no linked profile; the optional {@code teamId} limits to results where that
      * team was the home or away side ({@code anyTeam} false; otherwise {@code teamId} is ignored), and {@code q} is a
-     * case-insensitive contains filter (pass an empty string for none).
+     * case-insensitive contains filter (pass an empty string for none). When {@code restricted} (a section-scoped caller),
+     * only fixtures where one of our teams is in {@code sectionTeamIds} (never empty: pass a sentinel) are read.
      */
     @Query(value = """
             select rp.displayName as displayName, count(rp) as uses, max(rp.createdAt) as lastUsed
@@ -34,6 +35,7 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
               and rp.playerProfileId is null and rp.opposition = false and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and (:restricted = false or m.homeTeamId in :sectionTeamIds or m.awayTeamId in :sectionTeamIds)
               and lower(rp.displayName) like lower(concat('%', :q, '%'))
             group by rp.displayName
             order by max(rp.createdAt) desc, rp.displayName asc
@@ -44,12 +46,17 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
               and rp.playerProfileId is null and rp.opposition = false and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and (:restricted = false or m.homeTeamId in :sectionTeamIds or m.awayTeamId in :sectionTeamIds)
               and lower(rp.displayName) like lower(concat('%', :q, '%'))
             """)
     Page<GuestNameView> findGuestNames(
             @Param("clubId") UUID clubId,
             @Param("anyTeam") boolean anyTeam,
-            @Param("teamId") UUID teamId, @Param("q") String q, Pageable pageable);
+            @Param("teamId") UUID teamId,
+            @Param("restricted") boolean restricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("q") String q,
+            Pageable pageable);
 
     /**
      * Suggestions only: the distinct names (case-insensitive, most recently used first, with a count and the latest
@@ -66,6 +73,7 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
               and rp.opposition = true and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and (:restricted = false or m.homeTeamId in :sectionTeamIds or m.awayTeamId in :sectionTeamIds)
               and ((:byLeagueTeam = true and (
                         (rp.side = com.cricketlegend.domain.ResultSide.HOME and m.homeLeagueTeamId = :leagueTeamId)
                      or (rp.side = com.cricketlegend.domain.ResultSide.AWAY and m.awayLeagueTeamId = :leagueTeamId)))
@@ -85,6 +93,7 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             where rp.matchResultId = r.id and r.matchId = m.id and r.clubId = :clubId
               and rp.opposition = true and rp.displayName is not null
               and (:anyTeam = true or m.homeTeamId = :teamId or m.awayTeamId = :teamId)
+              and (:restricted = false or m.homeTeamId in :sectionTeamIds or m.awayTeamId in :sectionTeamIds)
               and ((:byLeagueTeam = true and (
                         (rp.side = com.cricketlegend.domain.ResultSide.HOME and m.homeLeagueTeamId = :leagueTeamId)
                      or (rp.side = com.cricketlegend.domain.ResultSide.AWAY and m.awayLeagueTeamId = :leagueTeamId)))
@@ -100,6 +109,8 @@ public interface ResultPlayerRepository extends JpaRepository<ResultPlayer, UUID
             @Param("clubId") UUID clubId,
             @Param("anyTeam") boolean anyTeam,
             @Param("teamId") UUID teamId,
+            @Param("restricted") boolean restricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
             @Param("byLeagueTeam") boolean byLeagueTeam,
             @Param("leagueTeamId") UUID leagueTeamId,
             @Param("oppositionName") String oppositionName,

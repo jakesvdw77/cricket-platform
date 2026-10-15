@@ -5712,7 +5712,7 @@ paths:
     get:
       tags:
       - match-result-controller
-      operationId: getScorecard
+      operationId: scorecard
       description: "Our side's saved scorecard (docs/specs/101): players, per-innings extras and non-bowler wickets, batting, bowling, fielding, awards and each ours side's status. Every entry carries suggested, featuredOverride and featured. 404 if there is no result; an empty scorecard if the result has none."
       parameters:
       - name: clubId
@@ -5764,7 +5764,7 @@ paths:
     post:
       tags:
       - match-result-controller
-      operationId: linkResultPlayer
+      operationId: linkPlayer
       description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable); 409 when the profile is already on that side's list."
       parameters:
       - name: clubId
@@ -5802,7 +5802,7 @@ paths:
     get:
       tags:
       - match-result-controller
-      operationId: listGuestNames
+      operationId: guestNames
       description: "Distinct guest names the club has used on scorecards, most recently used first, with a count (docs/specs/101). Optionally limited to results of one team and filtered by a contains search. Paged."
       parameters:
       - name: clubId

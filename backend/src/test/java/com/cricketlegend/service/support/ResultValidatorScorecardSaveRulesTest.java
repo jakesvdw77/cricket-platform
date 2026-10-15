@@ -415,4 +415,47 @@ class ResultValidatorScorecardSaveRulesTest {
 
         assertThat(withCode(save(card), ErrorCode.DISMISSAL_DETAIL_NOT_ALLOWED)).hasSize(1);
     }
+
+    // ---- limits (free text is VARCHAR(255); a save is bounded) ----
+
+    @Test
+    void aPlayerOrAwardNameOver255CharactersAfterTrimIsRefusedButExactly255Saves() {
+        String ok = "x".repeat(255);
+        ScorecardCard fits = ScorecardCard.oursBat();
+        fits.players.add(guest(H, "g1", "  " + ok + "  "));
+        assertThat(withCode(save(fits), ErrorCode.SCORECARD_NAME_TOO_LONG)).isEmpty();
+
+        ScorecardCard player = ScorecardCard.oursBat();
+        player.players.add(guest(H, "g1", "x".repeat(256)));
+        assertOneError(save(player), ErrorCode.SCORECARD_NAME_TOO_LONG, ResultWizardStep.TEAMS, null);
+
+        ScorecardCard award = ScorecardCard.oursBat();
+        award.awards.add(com.cricketlegend.support.ScorecardDtos.namedAward(AwardType.PLAYER_OF_MATCH, A, "y".repeat(256)));
+        assertOneError(save(award), ErrorCode.SCORECARD_NAME_TOO_LONG, ResultWizardStep.TEAMS, null);
+    }
+
+    @Test
+    void moreThanSixtyPlayersInOneSaveIsRefused() {
+        ScorecardCard card = ScorecardCard.oursBat();
+        for (int i = 0; card.players.size() <= 60; i++) {
+            card.players.add(guest(H, "extra" + i, "Extra " + i));
+        }
+
+        assertOneError(save(card), ErrorCode.SCORECARD_TOO_MANY_PLAYERS, ResultWizardStep.TEAMS, null);
+    }
+
+    @Test
+    void moreThanTwoHundredBattingBowlingOrFieldingRowsIsRefused() {
+        ScorecardCard batting = ScorecardCard.oursBat();
+        for (int i = 0; batting.batting.size() <= 200; i++) {
+            batting.batting.add(batting.batting.get(0));
+        }
+        assertOneError(save(batting), ErrorCode.SCORECARD_TOO_MANY_ROWS, ResultWizardStep.BATTING, null);
+
+        ScorecardCard fielding = ScorecardCard.oursBat();
+        for (int i = 0; i < 201; i++) {
+            fielding.fielding.add(field(H, "w1", 1, 0, 0));
+        }
+        assertOneError(save(fielding), ErrorCode.SCORECARD_TOO_MANY_ROWS, ResultWizardStep.BATTING, null);
+    }
 }
