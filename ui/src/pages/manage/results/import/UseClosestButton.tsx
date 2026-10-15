@@ -18,6 +18,7 @@ export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo
       sx={{
         minHeight: { xs: 44, sm: 28 },
         maxWidth: '100%',
+        minWidth: 0,
         justifyContent: 'flex-start',
         textTransform: 'none',
         fontWeight: 600,

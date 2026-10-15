@@ -21,7 +21,7 @@ export interface ScorecardPlayerCellProps {
   // docs/specs/104: an imported name that needs checking (a guess, or a name nobody matched): the Guess chip (or a tappable
   // Guest chip) replaces the plain Guest chip and the caption says what the file said.
   guess?: GuessInfo
-  // False when the page shows the Change to button itself (the Teams list, in its status column).
+  // False when the page shows the closest player itself (the Teams list, in its status column): no button and no Closest caption here.
   useClosestInCell?: boolean
 }
 
@@ -29,7 +29,7 @@ export interface ScorecardPlayerCellProps {
 // button that opens the row's popup menu (the route to reorder, swap, link and remove on a phone and for the keyboard);
 // a Guest chip marks a name-only player; a small caption says "planned 3" or "replaced A. Smith".
 export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess, useClosestInCell = true }: ScorecardPlayerCellProps) {
-  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && !(useClosestInCell && guess.onUseClosest) ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
+  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && useClosestInCell && !guess.onUseClosest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
   const captionText = [caption, guessCaption].filter(Boolean).join(' · ') || null
   return (
     <Box sx={{ minWidth: 0 }}>

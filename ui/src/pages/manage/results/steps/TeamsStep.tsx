@@ -310,14 +310,20 @@ function OurSideTeam({
   const notice = ourTeamNotice(prefillSide, scorecard, side, prefillState === 'ready')
 
   const typeChips = (player: ResultPlayer) => (
-    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: { xs: 'wrap', sm: 'nowrap' }, minWidth: 0 }}>
+      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
       {duplicates.has(playerRowKey(player)) && (
         <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
       )}
       {(() => {
         const guess = guesses.guessOf(player)
-        return guess?.onUseClosest && guess.closest ? <UseClosestButton guess={guess} disabled={disabled} /> : null
+        if (!guess?.closest) return null
+        if (guess.onUseClosest) return <UseClosestButton guess={guess} disabled={disabled} />
+        return (
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: '0.75rem' }}>
+            Closest: {guess.closest.displayName}
+          </Typography>
+        )
       })()}
     </Box>
   )
