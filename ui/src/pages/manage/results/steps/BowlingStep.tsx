@@ -38,6 +38,7 @@ import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { useAddPlayerSupport } from '../scorecard/useAddPlayerSupport'
+import { UseClosestButton } from '../import/UseClosestButton'
 import { useGuessActions } from '../scorecard/useGuessActions'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
@@ -692,7 +693,7 @@ export function BowlingStep({
                 bgcolor: (theme) => (index % 2 === 1 ? theme.palette.action.hover : 'transparent'),
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: { xs: '100%', sm: 200 }, flex: { sm: 1 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75, minWidth: { xs: '100%', sm: 200 }, flex: { sm: 1 } }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   <PlayerName person={scorecardPersonName(player)} view={view} />
                 </Typography>
@@ -712,6 +713,10 @@ export function BowlingStep({
                   ) : (
                     !player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
                   )
+                })()}
+                {(() => {
+                  const guess = guesses.guessOf(player)
+                  return guess?.onUseClosest && guess.closest ? <UseClosestButton guess={guess} disabled={disabled} /> : null
                 })()}
                 {(player.substitute || (player.playerProfileId && selectionSubstitutes.has(player.playerProfileId))) && (
                   <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />

@@ -45,6 +45,8 @@ export function useGuessActions({ clubId, seasonId, oursSides, prefill, scorecar
     const key = playerRowKey(player)
     const note = noteFor(review.notes, player.displayName)
     const suggestions = note?.suggestions ?? []
+    const top = level === 'UNRESOLVED' ? (suggestions[0] ?? null) : null
+    const topTaken = top ? scorecard.players.some((other) => other.side === player.side && !other.substitute && playerRowKey(other) !== key && other.playerProfileId === top.playerProfileId) : false
     return {
       key,
       importedName: player.displayName,
@@ -54,6 +56,7 @@ export function useGuessActions({ clubId, seasonId, oursSides, prefill, scorecar
       closest: suggestions[0] ?? null,
       suggestions,
       onConfirm: level === 'UNRESOLVED' ? undefined : () => onScorecard(confirmGuess(scorecard, key)),
+      onUseClosest: top && !topTaken ? () => onScorecard(resolveImportedRow(scorecard, key, asPicked(top))) : undefined,
       onChange: () => setPickerKey(key),
     }
   }

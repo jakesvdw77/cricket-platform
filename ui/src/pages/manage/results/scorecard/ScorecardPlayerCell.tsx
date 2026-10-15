@@ -4,6 +4,7 @@ import { GuessChip } from '../../../../components/GuessChip'
 import { PlayerName } from '../../../../components/PlayerName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import type { GuessInfo } from '../import/guessSummary'
+import { UseClosestButton } from '../import/UseClosestButton'
 
 export interface ScorecardPlayerCellProps {
   person: PersonName
@@ -26,7 +27,7 @@ export interface ScorecardPlayerCellProps {
 // button that opens the row's popup menu (the route to reorder, swap, link and remove on a phone and for the keyboard);
 // a Guest chip marks a name-only player; a small caption says "planned 3" or "replaced A. Smith".
 export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess }: ScorecardPlayerCellProps) {
-  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
+  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && !guess.onUseClosest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
   const captionText = [caption, guessCaption].filter(Boolean).join(' · ') || null
   return (
     <Box sx={{ minWidth: 0 }}>
@@ -68,6 +69,7 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
           guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
         )}
       </Box>
+      {guess?.onUseClosest && guess.closest && <UseClosestButton guess={guess} disabled={disabled} />}
       {captionText && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { sm: '0.75rem' } }}>
           {captionText}

@@ -44,6 +44,9 @@ export interface GuessInfo {
   suggestions: ImportNoteSuggestion[]
   // Only for a guess (an unresolved name has nothing to confirm).
   onConfirm?: () => void
+  // Only for an unresolved name with a ranked suggestion (and that player not already on the side): links the row to the top
+  // suggestion, the same write as choosing that player in the picker.
+  onUseClosest?: () => void
   // Opens the picker.
   onChange: () => void
 }
