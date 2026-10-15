@@ -319,6 +319,12 @@ Per `docs/standards/testing.md`. Per the user's working rule ("build first, test
 
 **Configuration (new):** none in this revision. No change to `spring.servlet.multipart.*`. No AI key (the decision to read a later AI key from an environment variable first, with no editable settings screen, is recorded under "Deferred: AI tier").
 
+### Measurement result (2026-10-15, slice 4a)
+
+The deterministic matcher was run over three real reports (gitignored `docs/samples/`: an Irene Villagers 1 CricClubs export, an Irene Villagers U15 STUMPS report, and a Villagers 2 CricClubs export used for the within-file spellings) against the registered squad. Results for **our** side: 23 names across the two matches with a registered squad, **0 wrong matches**. STUMPS names were all EXACT (including accent and capital differences). CricClubs full names were EXACT, with "Jaco Vd Westhuizen", "Emile Van Der Merwe" and "Anton De Villiers" EXACT once case and particle form (vd, van der, van den, de) were treated as equivalent. Short forms ("Sai V", "Hari K", "Jaco V") resolve as flagged guesses through the given-name-plus-surname-initial rule. A scoring-app typo ("Henk Smith" for registered "Henk Smit") stays unresolved with a ranked suggestion, as intended. Conclusion: the deterministic matcher is sufficient for these sources; an AI tier is not justified by this data (small sample, revisit if real imports leave many names unresolved).
+
+Decisions taken from the measurement, confirmed by the user 2026-10-15: differences of case, spacing, accents or particle form alone are level EXACT (reason `NORMALISED_EXACT`) and not flagged; the tier 4 threshold is 0.80; a new tier 3 rule (`SURNAME_INITIAL`) covers a given name plus one or two letters of the surname.
+
 ### Deferred: AI tier
 
 Not part of this revision (decision 2026-10-15); also listed in `docs/roadmap.md`, "Deferred by `104`". Revisit only if the measurement at the start of the processor slice shows the deterministic matcher leaves too many names unresolved. Open points to settle then:
