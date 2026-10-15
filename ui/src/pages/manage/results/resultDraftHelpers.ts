@@ -1,6 +1,7 @@
 import type { SuggestedResult } from '../../../utils/marginCheck'
 import type { Innings, MatchResult, ResultDraft, ResultSide, Scorecard } from '../../../api/matchResultApi'
 import { DEFAULT_BALLS_PER_OVER } from '../../../utils/oversFormat'
+import { allowsBowler, allowsFielder } from '../../../utils/dismissal'
 import { hasBowlingFigures, hasCredit } from './scorecardDraft'
 
 // docs/specs/100-match-results-core.md: pure helpers around the one ResultDraft the capture wizard edits. The form state
@@ -244,9 +245,21 @@ function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings
       players: scorecard.players ?? [],
       batting: (scorecard.batting ?? [])
         .filter(inSave)
-        .filter((entry) => entry.howOut !== null && entry.howOut !== undefined)
-        // `auto` is client-only (the wicket fill's marker), not part of the API.
-        .map(({ auto: _auto, ...entry }) => (entry.howOut === 'DID_NOT_BAT' ? { ...entry, position: null } : entry)),
+        // A row with figures but no how out yet is saved with howOut null (a draft); a row with neither is an automatic Did
+        // not bat and has nothing to save.
+        .filter((entry) => (entry.howOut !== null && entry.howOut !== undefined) || [entry.runs, entry.balls, entry.fours, entry.sixes].some((value) => value != null))
+        // `auto` is client-only (the wicket fill's marker), not part of the API. A bowler or fielder is only sent where the
+        // how out allows one (never on a row with no how out).
+        .map(({ auto: _auto, ...entry }) => {
+          const howOut = entry.howOut ?? null
+          const clean = {
+            ...entry,
+            howOut,
+            bowlerPlayerId: allowsBowler(howOut) ? (entry.bowlerPlayerId ?? null) : null,
+            fielderPlayerId: allowsFielder(howOut) ? (entry.fielderPlayerId ?? null) : null,
+          }
+          return howOut === 'DID_NOT_BAT' ? { ...clean, position: null } : clean
+        }),
       // `auto` is client-only (a row created from a dismissal), not part of the API.
       bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures).map(({ auto: _auto, ...entry }) => entry),
       fielding: (scorecard.fielding ?? []).filter(inSave).filter(hasCredit),

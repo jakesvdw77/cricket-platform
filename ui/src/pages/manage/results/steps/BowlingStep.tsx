@@ -54,7 +54,7 @@ import {
   followDismissals,
   inningsHasDismissals,
   inningsSuggestions,
-  ourTeamNotSelected,
+  ourTeamNotice,
   patchBowling,
   patchFielding,
   playersByKey,
@@ -267,7 +267,7 @@ export function BowlingStep({
     against?.wickets == null ? 'neutral' : bowlerWickets + nonBowler === against.wickets ? 'ok' : bowlerWickets + nonBowler > against.wickets ? 'warning' : 'neutral'
 
   const incomplete = Object.fromEntries(sides.map((candidate) => [candidate.side, stepIncomplete(draft, candidate.side, 'bowling')]))
-  const notSelected = ours ? ourTeamNotSelected(prefillSide, scorecard, side, prefillState === 'ready') : false
+  const notice = ours ? ourTeamNotice(prefillSide, scorecard, side, prefillState === 'ready') : null
 
   // ---- what the dismissals say ----
   const saysWickets = (key: string): number | null => {
@@ -438,7 +438,7 @@ export function BowlingStep({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
       <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} ariaLabel="Team bowling" />
       <FormSectionHeading icon={<SportsBaseballOutlinedIcon />} title={`${teamName} bowling`} />
-      {notSelected && <NotSelectedBanner compact onOpenTeams={onGoToStep ? () => onGoToStep('teams', side) : undefined} disabled={disabled} />}
+      {notice && <NotSelectedBanner notice={notice} onOpenTeams={onGoToStep ? () => onGoToStep('teams', side) : undefined} disabled={disabled} />}
 
       {!against ? null : !battingOrderKnown ? (
         <BattingOrderPrompt sides={sides} onChoose={(first) => onBattingOrder?.(first)} disabled={disabled} />

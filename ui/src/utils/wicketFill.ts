@@ -42,11 +42,13 @@ export function applyWicketFill<T extends FigureRow>(rows: T[], wickets: number 
   let given = 0
   return released.map((row, index) => {
     if (row.howOut !== null) return row
+    // A batted row with figures and no how out yet is neither a wicket nor Not out until the manager chooses.
+    if (hasFigures(row)) return row
     if (settled && index > lastOut && given < 2) {
       given += 1
       return { ...row, howOut: 'NOT_OUT' as const, auto: true }
     }
-    return hasFigures(row) ? row : { ...row, howOut: 'DID_NOT_BAT' as const, auto: true }
+    return { ...row, howOut: 'DID_NOT_BAT' as const, auto: true }
   })
 }
 

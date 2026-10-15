@@ -37,7 +37,7 @@ import {
   hasBowlingFigures,
   hasCredit,
   matchSquadFor,
-  ourTeamNotSelected,
+  ourTeamNotice,
   playersOfSide,
   playsInMatch,
   reconcileSubstitutes,
@@ -293,7 +293,7 @@ function OurSideTeam({
   const took = players.filter((player) => !player.substitute && tookPart(player)).length
   const countLine = `${team.length} ${team.length === 1 ? 'player' : 'players'}${substitutes.length > 0 ? ` + ${substitutes.length === 1 ? '12th man' : `${substitutes.length} substitutes`}` : ''}`
   const empty = rows.length === 0
-  const notSelected = ourTeamNotSelected(prefillSide, scorecard, side, prefillState === 'ready')
+  const notice = ourTeamNotice(prefillSide, scorecard, side, prefillState === 'ready')
 
   const typeChips = (player: ResultPlayer) => (
     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -318,7 +318,7 @@ function OurSideTeam({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      {notSelected && <NotSelectedBanner onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectTeam={selectTeam} disabled={disabled} />}
+      {notice && <NotSelectedBanner notice={notice} onPopulate={empty ? () => void populate() : undefined} populating={populating} onSelectTeam={selectTeam} disabled={disabled} />}
 
       {!empty && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
@@ -342,7 +342,7 @@ function OurSideTeam({
         </Alert>
       )}
 
-      {empty && !notSelected && (
+      {empty && !notice && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
           <Button variant="secondary" startIcon={<GroupAddOutlinedIcon />} onClick={() => void populate()} disabled={disabled || populating || prefillState === 'loading'}>
             {populating ? 'Loading the team…' : 'Populate from the team'}

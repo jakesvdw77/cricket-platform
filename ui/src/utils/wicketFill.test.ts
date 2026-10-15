@@ -98,4 +98,14 @@ describe('wicketFill', () => {
   it('starts a newly added row as an automatic Did not bat', () => {
     expect(newRowFill()).toEqual({ howOut: 'DID_NOT_BAT', auto: true })
   })
+
+  it('never makes a batted row with figures but no how out a Not out or a wicket', () => {
+    let rows: Array<FillRow & { runs?: number | null }> = initialRows(5, 1)
+    rows = mark(rows, 0, 'CAUGHT')
+    rows = rows.map((row, i) => (i === 1 ? { ...row, howOut: null, auto: false, runs: 9 } : row))
+    const filled = applyWicketFill(rows, 1)
+    expect(filled[1]).toMatchObject({ howOut: null, runs: 9 })
+    expect(dismissalCount(filled)).toBe(1)
+    expect(filled.slice(2, 4).map((row) => row.howOut)).toEqual(['NOT_OUT', 'NOT_OUT'])
+  })
 })

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Alert, Box } from '@mui/material'
+import type { TeamNotice } from '../scorecardDraft'
 import { Button } from '../../../../components/Button'
 
 export interface NotSelectedBannerProps {
-  // One line, for the top of Batting and Bowling; the full sentence on Teams.
-  compact?: boolean
+  notice: TeamNotice
   // Teams only: build the list from the team's squad, and open the Select team page (the page saves first).
   onPopulate?: () => void
   populating?: boolean
@@ -14,12 +14,12 @@ export interface NotSelectedBannerProps {
   disabled?: boolean
 }
 
-const FULL_MESSAGE =
+const NONE_MESSAGE =
   'Our team is not selected for this match (a random friendly?). You can still capture the scorecard; names you enter become guests unless they match a registered player.'
-const SHORT_MESSAGE = 'Our team is not selected for this match. Names you enter become guests unless they match a registered player.'
+const shortMessage = (count: number) => `Only ${count} ${count === 1 ? 'player is' : 'players are'} on our team list for this match. You can add the rest on Teams.`
 
 // The gentle "our team is not selected" notice: an info alert, dismissible for the visit, never blocking.
-export function NotSelectedBanner({ compact = false, onPopulate, populating = false, onSelectTeam, onOpenTeams, disabled = false }: NotSelectedBannerProps) {
+export function NotSelectedBanner({ notice, onPopulate, populating = false, onSelectTeam, onOpenTeams, disabled = false }: NotSelectedBannerProps) {
   const [dismissed, setDismissed] = useState(false)
   if (dismissed) return null
   return (
@@ -29,7 +29,7 @@ export function NotSelectedBanner({ compact = false, onPopulate, populating = fa
       onClose={() => setDismissed(true)}
       sx={{ '& .MuiAlert-message': { width: '100%', minWidth: 0 } }}
     >
-      {compact ? SHORT_MESSAGE : FULL_MESSAGE}
+      {notice.kind === 'none' ? NONE_MESSAGE : shortMessage(notice.count)}
       {(onPopulate || onSelectTeam || onOpenTeams) && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.75 }}>
           {onPopulate && (

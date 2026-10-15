@@ -857,14 +857,17 @@ export function setSubstitute(scorecard: Scorecard, key: string, substitute: boo
   return setBatting(next, target.side, [...rows, { ...blankBattingEntry(target.side, target, rows.length + 1), howOut: 'DID_NOT_BAT', auto: true }])
 }
 
-// docs/specs/101-match-results-our-side-scorecard.md (Team not selected is only a notice, decision 23): true when the notice
-// applies to an ours side. The selection is missing or not announced, or the side's list has fewer than eleven
-// non-substitute players. Never a gate.
-export function ourTeamNotSelected(prefillSide: ScorecardPrefillSide | null, scorecard: Scorecard, side: ResultSide, prefillReady: boolean): boolean {
-  if (!prefillReady) return false
-  if (prefillSide?.selectionState === 'NONE' || prefillSide?.selectionState === 'NOT_ANNOUNCED') return true
+// docs/specs/101-match-results-our-side-scorecard.md (Team not selected is only a notice, decisions 23 and 2026-10-14): what the
+// notice for an ours side says, or null for none. 'none': the match has no selection for the side at all. 'short': the side's
+// list has fewer than eleven non-substitute players (`count` of them). A selection of eleven or more never warns, announced
+// or not. Never a gate.
+export type TeamNotice = { kind: 'none' } | { kind: 'short'; count: number }
+
+export function ourTeamNotice(prefillSide: ScorecardPrefillSide | null, scorecard: Scorecard, side: ResultSide, prefillReady: boolean): TeamNotice | null {
+  if (!prefillReady) return null
+  if (prefillSide?.selectionState === 'NONE') return { kind: 'none' }
   const listed = playersOfSide(scorecard, side).filter((player) => !player.substitute).length
-  return listed > 0 && listed < LINEUP_SIZE
+  return listed > 0 && listed < LINEUP_SIZE ? { kind: 'short', count: listed } : null
 }
 
 // The side a scorecard step opens on (the side toggle's default each time the step is entered). Batting opens on the side

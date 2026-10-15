@@ -203,3 +203,15 @@ describe('draftFromResult and isBlankDraft', () => {
     expect(draftFromResult(null)).toEqual(emptyDraft())
   })
 })
+
+describe('toPayload batting rows without a how out', () => {
+  const row = (key: string, patch: object) => ({ battingSide: 'HOME' as const, inningsKind: 'REGULAR' as const, playerClientKey: key, resultPlayerId: null, position: 1, howOut: null, runs: null, balls: null, fours: null, sixes: null, featuredOverride: null, ...patch })
+
+  it('sends a row with figures and no how out (howOut null, no bowler or fielder) and skips a row with neither', () => {
+    const draft = won({ scorecard: { players: [], bowling: [], fielding: [], awards: [], batting: [row('a', { runs: 12, bowlerPlayerId: 'x', fielderPlayerId: 'y' }), row('b', {}), row('c', { howOut: 'CAUGHT', runs: 3, bowlerPlayerId: 'x' })] } })
+    const batting = toPayload(draft).scorecard?.batting ?? []
+    expect(batting.map((entry) => entry.playerClientKey)).toEqual(['a', 'c'])
+    expect(batting[0]).toMatchObject({ howOut: null, runs: 12, bowlerPlayerId: null, fielderPlayerId: null })
+    expect(batting[1]).toMatchObject({ howOut: 'CAUGHT', bowlerPlayerId: 'x', fielderPlayerId: null })
+  })
+})
