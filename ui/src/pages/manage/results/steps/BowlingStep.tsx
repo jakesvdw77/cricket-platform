@@ -30,6 +30,7 @@ import { AddPlayerRow } from '../scorecard/AddPlayerRow'
 import { CorrectedChip } from '../scorecard/CorrectedChip'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
 import { DerivedMarker } from '../scorecard/DerivedMarker'
+import { InningsHintBanner } from '../scorecard/InningsHintBanner'
 import { InningsSummaryCard } from '../scorecard/InningsSummaryCard'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
@@ -439,6 +440,7 @@ export function BowlingStep({
       <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} ariaLabel="Team bowling" />
       <FormSectionHeading icon={<SportsBaseballOutlinedIcon />} title={`${teamName} bowling`} />
       {notice && <NotSelectedBanner notice={notice} onOpenTeams={onGoToStep ? () => onGoToStep('teams', side) : undefined} disabled={disabled} />}
+      <InningsHintBanner />
 
       {!against ? null : !battingOrderKnown ? (
         <BattingOrderPrompt sides={sides} onChoose={(first) => onBattingOrder?.(first)} disabled={disabled} />

@@ -101,13 +101,12 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
                 onChange={(balls) => onEdit('balls', balls)}
                 ballsPerOver={ballsPerOver}
                 disabled={disabled}
-                helperText={calculated?.balls == null && innings.balls === null ? 'Overs are worked out from the bowling card; type them here if you have the official figure' : undefined}
               />
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            {correctedFields.length > 0 ? (
-              correctedFields.map((field) => (
+          {correctedFields.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+              {correctedFields.map((field) => (
                 <CorrectedChip
                   key={field}
                   label={`${field === 'balls' ? 'overs' : field}, ${teamName} innings`}
@@ -115,17 +114,9 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
                   onReset={() => onUseCalculated(field)}
                   disabled={disabled}
                 />
-              ))
-            ) : follows ? (
-              <Typography variant="caption" color="text.secondary">
-                Calculated from the scorecard
-              </Typography>
-            ) : (
-              <Typography variant="caption" color="text.secondary">
-                Type the score, or fill in the scorecard and it is worked out for you.
-              </Typography>
-            )}
-          </Box>
+              ))}
+            </Box>
+          )}
         </Box>
       )}
     </Box>

@@ -21,6 +21,7 @@ import { dismissalCount, applyWicketFill, newRowFill } from '../../../../utils/w
 import { opposite, regularInningsOf, updateInnings } from '../resultDraftHelpers'
 import { AddPlayerRow } from '../scorecard/AddPlayerRow'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
+import { InningsHintBanner } from '../scorecard/InningsHintBanner'
 import { InningsSummaryCard } from '../scorecard/InningsSummaryCard'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { PlayerPickCombo } from '../scorecard/PlayerPickCombo'
@@ -308,6 +309,7 @@ export function BattingStep({
       <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} ariaLabel="Team batting" />
       <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title={`${teamName} batting`} />
       {notice && <NotSelectedBanner notice={notice} onOpenTeams={onGoToStep ? () => onGoToStep('teams', side) : undefined} disabled={disabled} />}
+      <InningsHintBanner />
 
       {!innings ? null : !battingOrderKnown ? (
         <BattingOrderPrompt sides={sides} onChoose={(first) => onBattingOrder?.(first)} disabled={disabled} />
@@ -331,12 +333,6 @@ export function BattingStep({
               progress={{ value: out, max: Math.max(wickets, 1), ariaLabel: 'Batters out', valueText: `${out} of ${wickets} wickets` }}
             />
           )}
-          {wickets === null && out === 0 && (
-            <Typography variant="caption" color="text.secondary">
-              Wickets follow the dismissals. Type them above to fill the rest.
-            </Typography>
-          )}
-
           {/* Extras and the total sit above the rows so they stay put as players are added. */}
           {/* Only a card that does not add up to the innings total needs a strip; a calculated total says so in the card. */}
           {totals.status === 'mismatch' && (
