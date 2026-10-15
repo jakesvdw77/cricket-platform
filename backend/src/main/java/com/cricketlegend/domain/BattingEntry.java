@@ -43,8 +43,9 @@ public class BattingEntry {
     @Column(name = "position")
     private Integer position;
 
+    /** Null in a draft: the row batted but how it ended is not chosen yet (migration 047). */
     @Enumerated(EnumType.STRING)
-    @Column(name = "how_out", nullable = false)
+    @Column(name = "how_out")
     private DismissalType howOut;
 
     private Integer runs;

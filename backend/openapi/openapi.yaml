@@ -10972,7 +10972,10 @@ components:
           type: integer
           format: int32
         howOut:
-          type: string
+          type:
+          - string
+          - "null"
+          description: "Null in a draft means batted, how out not chosen yet; such a row blocks publishing (HOW_OUT_MISSING)."
           enum:
           - NOT_OUT
           - DID_NOT_BAT

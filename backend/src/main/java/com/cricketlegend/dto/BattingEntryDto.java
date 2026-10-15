@@ -15,6 +15,9 @@ import java.util.UUID;
  * <p>{@code bowlerPlayerId} and {@code fielderPlayerId} name the dismissal's bowler and fielder: the {@code id} of a
  * player already on the scorecard, or the {@code clientKey} of a new player in the same body, or null. They must be
  * players of the fielding side of the innings, and only where {@code howOut} allows them. On read they are ids.
+ *
+ * <p>{@code howOut} may be null in a draft (read and write): the batter batted but how out is not chosen yet. Such a
+ * row is not a wicket, takes no bowler or fielder, and blocks publishing ({@code HOW_OUT_MISSING}) if it has figures.
  */
 public record BattingEntryDto(
         UUID id,

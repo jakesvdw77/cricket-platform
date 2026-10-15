@@ -51,5 +51,6 @@
     <include file="db/changelog/v1/044-match-results-our-side-scorecard.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/045-match-results-opposition-scorecard.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/046-match-innings-partial-figures.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/047-batting-entry-how-out-nullable.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

@@ -79,10 +79,6 @@ final class ScorecardRules {
                     ResultWizardStep.BATTING, issues);
             noStandoutOnOpposition(player, e.featuredOverride(), ResultWizardStep.BATTING, issues);
             dismissalStructure(e, players, issues);
-            if (e.howOut() == null) {
-                issues.error(ErrorCode.SCORECARD_HOW_OUT_MISSING, ResultWizardStep.BATTING, e.battingSide(),
-                        "Choose how " + label(player, null) + " was out, or mark not out or did not bat.");
-            }
             if (negative(e.runs()) || negative(e.balls()) || negative(e.fours()) || negative(e.sixes())) {
                 issues.error(ErrorCode.SCORECARD_NEGATIVE_FIGURE, ResultWizardStep.BATTING, e.battingSide(),
                         "A batter's figures cannot be negative.");
@@ -295,9 +291,9 @@ final class ScorecardRules {
     private static void dismissalStructure(
             BattingEntryDto e, Map<String, ResultPlayerDto> players, ResultIssues issues) {
         ResultSide fielding = other(e.battingSide());
-        dismissalPlayer(e.bowlerPlayerId(), "bowler", e.howOut() != null && !e.howOut().allowsBowler(), e, fielding,
+        dismissalPlayer(e.bowlerPlayerId(), "bowler", e.howOut() == null || !e.howOut().allowsBowler(), e, fielding,
                 players, issues);
-        dismissalPlayer(e.fielderPlayerId(), "fielder", e.howOut() != null && !e.howOut().allowsFielder(), e, fielding,
+        dismissalPlayer(e.fielderPlayerId(), "fielder", e.howOut() == null || !e.howOut().allowsFielder(), e, fielding,
                 players, issues);
     }
 
@@ -319,7 +315,9 @@ final class ScorecardRules {
         }
         if (notAllowed) {
             issues.error(ErrorCode.DISMISSAL_DETAIL_NOT_ALLOWED, ResultWizardStep.BATTING, e.battingSide(),
-                    "A dismissal of this kind (" + e.howOut() + ") has no " + role + ".");
+                    e.howOut() == null
+                            ? "Choose how the batter was out before naming a " + role + "."
+                            : "A dismissal of this kind (" + e.howOut() + ") has no " + role + ".");
         }
     }
 
@@ -482,10 +480,21 @@ final class ScorecardRules {
         int wicketCount = 0;
         int notOut = 0;
         for (BattingEntryDto e : inn.batting) {
+            String who = label(inn.players.get(ref(e.resultPlayerId(), e.playerClientKey())), null);
             if (e.howOut() == null) {
+                // batted, how out not chosen yet: no figures at all is the same as did-not-bat and is ignored
+                if (e.runs() != null || e.balls() != null || e.fours() != null || e.sixes() != null) {
+                    issues.error(ErrorCode.HOW_OUT_MISSING, step, side, who + " has runs but no How out.");
+                    batterRuns += zero(e.runs());
+                    if (zero(e.fours()) * 4 + zero(e.sixes()) * 6 > zero(e.runs())) {
+                        issues.error(ErrorCode.BOUNDARIES_EXCEED_RUNS, step, side,
+                                who + " has " + (zero(e.fours()) * 4 + zero(e.sixes()) * 6)
+                                        + " runs in boundaries but only " + zero(e.runs()) + " runs.");
+                    }
+                    notOut++;
+                }
                 continue;
             }
-            String who = label(inn.players.get(ref(e.resultPlayerId(), e.playerClientKey())), null);
             if (e.howOut() == DismissalType.DID_NOT_BAT) {
                 if (e.runs() != null || e.balls() != null || e.fours() != null || e.sixes() != null) {
                     issues.error(ErrorCode.DID_NOT_BAT_WITH_FIGURES, step, side,
