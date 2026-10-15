@@ -37,6 +37,9 @@ export interface ImportStepContext {
   matchPending: boolean
   matchProblem: ImportProblem | null
   onMatchNext: () => void
+  // The required tick when the chosen match is more than a day away from the file's date; reset with each choice of match.
+  dateAck: boolean
+  onDateAckChange: (ticked: boolean) => void
 
   // Step 3, Teams.
   mapping: Record<string, ResultSide | null>

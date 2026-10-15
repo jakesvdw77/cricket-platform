@@ -1,10 +1,12 @@
 import { Box, Button as MuiButton, Chip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import type { ImportMatchReason, MatchCandidate } from '../../../../api/resultImportApi'
 import { Button } from '../../../../components/Button'
 import { MatchFormDialog } from '../../../../components/MatchFormDialog'
@@ -12,8 +14,9 @@ import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
+import { AcknowledgementTick } from './AcknowledgementTick'
 import { ImportProblemAlert } from './ImportProblemAlert'
-import { fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
+import { dateMismatch, fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 
 const REASON_WORDS: Record<ImportMatchReason, string> = {
@@ -33,6 +36,19 @@ function statusOf(candidate: MatchCandidate, importedBefore: boolean): { label: 
   if (importedBefore) return { label: 'Imported from this id before', tone: 'side' }
   if (candidate.existingResult?.status === 'DRAFT') return { label: 'Draft result exists', tone: 'warning' }
   return null
+}
+
+// An amber note, icon plus words (never colour alone).
+function WarningNote({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      role="status"
+      sx={(theme) => ({ bgcolor: alpha(theme.palette.warning.main, 0.12), border: 1, borderColor: alpha(theme.palette.warning.main, 0.4), borderRadius: 2, p: 1.25, fontSize: '0.8125rem', maxWidth: { md: 720 }, display: 'flex', gap: 1, alignItems: 'flex-start' })}
+    >
+      <WarningAmberIcon aria-hidden fontSize="small" sx={{ flex: 'none', color: 'warning.main' }} />
+      <Box sx={{ minWidth: 0 }}>{children}</Box>
+    </Box>
+  )
 }
 
 function FileSummary({ context }: { context: ImportStepContext }) {
@@ -97,12 +113,13 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { clubId, preview, matchId, onMatchChange, onMatchCreated, launchedMatchId, matchPending, matchProblem, onMatchNext, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
   const [adding, setAdding] = useState(false)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
   // Warn when the manager came from a match the file does not look like (neither its date nor its teams matched).
   const mismatch = chosen !== null && launchedMatchId === chosen.matchId && (!chosen.reasons.includes('DATE') || !chosen.reasons.includes('TEAMS'))
+  const dateGap = chosen && preview ? dateMismatch(preview.document, chosen.matchDate) : null
   const importedBeforeId = preview?.existingForExternalId?.matchId ?? null
 
   return (
@@ -203,20 +220,22 @@ export function MatchStep(context: ImportStepContext) {
         </Box>
       )}
 
-      {mismatch && (
-        <Box
-          role="status"
-          sx={(theme) => ({ bgcolor: alpha(theme.palette.warning.main, 0.12), border: 1, borderColor: alpha(theme.palette.warning.main, 0.4), borderRadius: 2, p: 1.25, fontSize: '0.8125rem', maxWidth: { md: 720 } })}
-        >
-          The file&apos;s teams do not look like the sides of the match you chose.
-        </Box>
+      {mismatch && <WarningNote>The file&apos;s teams do not look like the sides of the match you chose.</WarningNote>}
+
+      {dateGap && (
+        <>
+          <WarningNote>
+            The file says {dateGap.fileDay} but this match is on {dateGap.matchDay}.
+          </WarningNote>
+          <AcknowledgementTick id="date-check" title="I have checked this is the right match" checked={dateAck} onChange={onDateAckChange} disabled={matchPending} />
+        </>
       )}
 
       <Box sx={{ display: 'flex', gap: 1.25, flexDirection: 'row' }}>
         <Button variant="secondary" onClick={onBack} disabled={matchPending} sx={{ flex: { xs: 1, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
           Back
         </Button>
-        <Button onClick={onMatchNext} disabled={!chosen || matchPending} sx={{ flex: { xs: 2, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
+        <Button onClick={onMatchNext} disabled={!chosen || matchPending || (dateGap !== null && !dateAck)} sx={{ flex: { xs: 2, md: 'none' }, minHeight: 44, minWidth: { md: 110 } }}>
           {matchPending ? 'Checking…' : 'Next'}
         </Button>
       </Box>

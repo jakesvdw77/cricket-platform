@@ -1,4 +1,4 @@
-import { Box, Button as MuiButton, Checkbox, Chip, MenuItem, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Chip, MenuItem, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import EastIcon from '@mui/icons-material/East'
@@ -11,6 +11,7 @@ import { Button } from '../../../../components/Button'
 import { Input } from '../../../../components/Input'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
+import { AcknowledgementTick } from './AcknowledgementTick'
 import { ImportProblemAlert } from './ImportProblemAlert'
 import { checksSentence, EXACTNESS_WORDS, resolvedSentence } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
@@ -142,25 +143,14 @@ export function TeamsMappingStep(context: ImportStepContext) {
       </Box>
 
       {draftExists && candidate.existingResult && (
-        <Box
-          sx={(theme) => ({ border: 1, borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06), borderRadius: 2, p: { xs: 1.25, md: 1.75 }, display: 'flex', gap: 1, alignItems: 'flex-start', maxWidth: { md: 560 } })}
-        >
-          <Checkbox
-            checked={replaceAck}
-            onChange={(event) => onReplaceAckChange(event.target.checked)}
-            disabled={locked}
-            inputProps={{ 'aria-labelledby': 'replace-draft-title', 'aria-describedby': 'replace-draft-detail' }}
-            sx={{ p: 1, mt: -0.5, ml: -0.5 }}
-          />
-          <Box sx={{ minWidth: 0 }}>
-            <Typography id="replace-draft-title" variant="body2" fontWeight={700}>
-              Replace the existing draft
-            </Typography>
-            <Typography id="replace-draft-detail" variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-              This match already has a draft, last edited {lastEdited(candidate.existingResult.updatedAt)}. Importing replaces it. A published result is never touched.
-            </Typography>
-          </Box>
-        </Box>
+        <AcknowledgementTick
+          id="replace-draft"
+          title="Replace the existing draft"
+          detail={`This match already has a draft, last edited ${lastEdited(candidate.existingResult.updatedAt)}. Importing replaces it. A published result is never touched.`}
+          checked={replaceAck}
+          onChange={onReplaceAckChange}
+          disabled={locked}
+        />
       )}
 
       {createProblem && (

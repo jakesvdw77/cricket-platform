@@ -96,3 +96,25 @@ export const EXACTNESS_WORDS: Record<ImportExactness, string> = {
   AI_SUGGESTED: 'Suggested',
   UNRESOLVED: 'Unresolved',
 }
+
+const DAY_PARTS = /^(\d{4})-(\d{2})-(\d{2})$/
+
+// Whole calendar days as a number, so a daylight-saving change never turns a day into 23 or 25 hours.
+const dayNumber = (year: number, month: number, day: number) => Math.round(Date.UTC(year, month, day) / 86_400_000)
+
+export interface DateMismatch {
+  fileDay: string
+  matchDay: string
+}
+
+// The match's local calendar day against the file's date (read as written). Returns both days in words when they are MORE than
+// one calendar day apart, else null (also null with no or unreadable file date). A convenience only: the server does not check.
+export function dateMismatch(document: ImportedResult, matchDate: string): DateMismatch | null {
+  const parts = DAY_PARTS.exec(document.match?.date ?? '')
+  const match = new Date(matchDate)
+  if (!parts || Number.isNaN(match.getTime())) return null
+  const [year, month, day] = [Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])]
+  const apart = Math.abs(dayNumber(year, month, day) - dayNumber(match.getFullYear(), match.getMonth(), match.getDate()))
+  if (apart <= 1) return null
+  return { fileDay: `${day} ${MONTHS[month] ?? ''} ${year}`, matchDay: `${match.getDate()} ${MONTHS[match.getMonth()]} ${match.getFullYear()}` }
+}

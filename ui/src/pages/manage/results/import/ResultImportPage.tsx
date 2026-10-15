@@ -78,6 +78,7 @@ export default function ResultImportPage() {
   const [matchId, setMatchId] = useState<string | null>(null)
   const [mapping, setMapping] = useState<Record<string, ResultSide | null>>({})
   const [replaceAck, setReplaceAck] = useState(false)
+  const [dateAck, setDateAck] = useState(false)
   const [resolved, setResolved] = useState<ImportResolved | null>(null)
   const [sourceProblem, setSourceProblem] = useState<ImportProblem | null>(null)
   const [matchProblem, setMatchProblem] = useState<ImportProblem | null>(null)
@@ -125,6 +126,7 @@ export default function ResultImportPage() {
           setMatchId(initialSelection(data, launchedMatchId))
           setMapping(mappingFrom(data))
           setReplaceAck(false)
+          setDateAck(false)
           setResolved(null)
           setMatchProblem(null)
           setCreateProblem(null)
@@ -182,6 +184,7 @@ export default function ResultImportPage() {
       setBasisMatchId(match.id)
       setMatchId(match.id)
       setReplaceAck(false)
+      setDateAck(false)
       setMatchProblem(null)
       if (data) setMapping(mappingFrom(data))
     }
@@ -228,12 +231,15 @@ export default function ResultImportPage() {
     onMatchChange: (next) => {
       setMatchId(next)
       setReplaceAck(false)
+      setDateAck(false)
       setMatchProblem(null)
     },
     onMatchCreated,
     matchPending: previewMutation.isPending && stepId === 'match',
     matchProblem,
     onMatchNext,
+    dateAck,
+    onDateAckChange: setDateAck,
 
     mapping,
     onMappingChange: (fileKey, side) => {
