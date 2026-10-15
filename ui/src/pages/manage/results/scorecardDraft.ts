@@ -821,3 +821,20 @@ export function ourTeamNotSelected(prefillSide: ScorecardPrefillSide | null, sco
   const listed = playersOfSide(scorecard, side).filter((player) => !player.substitute).length
   return listed > 0 && listed < LINEUP_SIZE
 }
+
+// The side a scorecard step opens on (the side toggle's default each time the step is entered). Batting opens on the side
+// that bats first (from the toss, else from innings figures already entered, else Home); Bowling and fielding on the side that
+// bowls first, so the same first innings is entered from both angles. Everything else opens on the first ours side.
+export function defaultSideFor(stepId: string, draft: ResultDraft, oursSides: ReadonlyArray<{ side: ResultSide }>): ResultSide {
+  const firstOurs = oursSides[0]?.side ?? 'HOME'
+  if (stepId !== 'batting' && stepId !== 'bowling') return firstOurs
+  let first: ResultSide | null = null
+  if (draft.tossWonBy && draft.tossDecision) first = draft.tossDecision === 'BAT' ? draft.tossWonBy : opposite(draft.tossWonBy)
+  else {
+    const regular = (draft.innings ?? []).filter((item) => item.kind !== 'SUPER_OVER')
+    const started = regular.some((item) => item.runs !== null || item.wickets !== null || item.balls !== null)
+    first = started ? (regular.find((item) => item.sequence === 1)?.battingSide ?? null) : null
+  }
+  const batFirst = first ?? 'HOME'
+  return stepId === 'batting' ? batFirst : opposite(batFirst)
+}

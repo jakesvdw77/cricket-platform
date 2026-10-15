@@ -32,7 +32,7 @@ import { errorIssues, errorList, errorStatus, isNotFound } from '../../../utils/
 import type { MarginCheck } from '../../../utils/marginCheck'
 import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromToss, hasRegularFigures, isBlankDraft, scorecardStepsApplicable, toPayload } from './resultDraftHelpers'
 import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
-import { mergeSuggestions, normalizeLoaded } from './scorecardDraft'
+import { defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDraft'
 import { withCalculatedMargin } from './calculatedMargin'
 import { AwardsStep } from './steps/AwardsStep'
 import { BattingStep } from './steps/BattingStep'
@@ -258,7 +258,8 @@ function CaptureWizard({
     const next = withSuggestedMargin(draftOverride ?? draft, names)
     if (next !== draft) setDraft(next)
     if (!(await save(next))) return
-    if (side) setScorecardSide(side)
+    // Each scorecard step opens on its logical side (who bats first, who bowls first) unless a side was asked for.
+    setScorecardSide(side ?? defaultSideFor(id, next, oursSides))
     if (id === 'awards') await refreshSuggestions(next)
     else void refreshSuggestions(next)
     setStepId(id)
