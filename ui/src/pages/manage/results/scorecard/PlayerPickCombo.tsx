@@ -3,6 +3,8 @@ import type { KeyboardEvent } from 'react'
 import { Autocomplete, Box, TextField } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
+import { GuessChip } from '../../../../components/GuessChip'
+import type { GuessInfo } from '../import/guessSummary'
 
 export interface PickOption {
   key: string
@@ -31,6 +33,8 @@ export interface PlayerPickComboProps {
   fullWidth?: boolean
   // A soft amber warning (nothing chosen yet where the dismissal expects someone); never blocks.
   warn?: boolean
+  // docs/specs/104: the chosen player is an imported guess: an amber field with the Guess chip inside it (44 px target).
+  guess?: GuessInfo
 }
 
 interface Choice extends PickOption {
@@ -41,11 +45,12 @@ interface Choice extends PickOption {
 // over the OTHER side's players. A name that is not on the list can be added from the control itself ("Add a new name" as
 // the last option), so nobody has to leave the step. A real input in the grid (`data-grid-cell`), so Enter / Arrow keys
 // navigate like every other cell; while the list is open the arrows pick from it instead.
-export function PlayerPickCombo({ ariaLabel, value, options, onPick, onAddNew, addLabel = 'Add a new name', placeholder, column = 'dismissal', disabled = false, fullWidth = false, warn = false }: PlayerPickComboProps) {
+export function PlayerPickCombo({ ariaLabel, value, options, onPick, onAddNew, addLabel = 'Add a new name', placeholder, column = 'dismissal', disabled = false, fullWidth = false, warn = false, guess }: PlayerPickComboProps) {
   const [open, setOpen] = useState(false)
   const openRef = useRef(false)
   const selected: Choice | null = options.find((option) => option.key === value) ?? null
   const height = fullWidth ? 44 : 30
+  const flagged = warn || Boolean(guess)
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     // The list is open: the arrows pick from it, they do not move to another row of the grid.
@@ -103,10 +108,30 @@ export function PlayerPickCombo({ ariaLabel, value, options, onPick, onAddNew, a
           <TextField
             {...params}
             placeholder={placeholder ?? 'Choose'}
+            InputProps={{
+              ...params.InputProps,
+              endAdornment: (
+                <>
+                  {guess && (
+                    <GuessChip
+                      importedName={guess.importedName}
+                      level={guess.level}
+                      matchedName={guess.matchedName}
+                      reason={guess.reason}
+                      onConfirm={guess.onConfirm}
+                      onChange={guess.onChange}
+                      guessKey={`${guess.key}:${column}`}
+                      disabled={disabled}
+                    />
+                  )}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            }}
             inputProps={{ ...params.inputProps, 'aria-label': ariaLabel, title: selected?.label, 'data-grid-cell': '', 'data-grid-col': column, autoComplete: 'off' }}
             sx={{
-              '& .MuiOutlinedInput-root': { height, fontSize: fullWidth ? undefined : 12, fontWeight: 600, borderRadius: 1.5, py: 0, bgcolor: warn ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : 'background.paper' },
-              ...(warn ? { '& .MuiOutlinedInput-notchedOutline': { borderColor: 'warning.main' } } : {}),
+              '& .MuiOutlinedInput-root': { height, fontSize: fullWidth ? undefined : 12, fontWeight: 600, borderRadius: 1.5, py: 0, bgcolor: flagged ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : 'background.paper' },
+              ...(flagged ? { '& .MuiOutlinedInput-notchedOutline': { borderColor: 'warning.main' } } : {}),
               '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0, px: 0.5 },
             }}
           />

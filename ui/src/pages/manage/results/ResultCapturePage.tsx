@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Typography } from '@mui/material'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
@@ -34,6 +34,10 @@ import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromTos
 import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
 import { defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDraft'
 import { withCalculatedMargin } from './calculatedMargin'
+import { ImportedChip } from './import/ImportedChip'
+import { ImportReviewContext } from './import/importReviewContext'
+import { readImportNotes } from './import/importNotesStore'
+import { importedProvider } from './import/importSource'
 import { AwardsStep } from './steps/AwardsStep'
 import { BattingStep } from './steps/BattingStep'
 import { BowlingStep } from './steps/BowlingStep'
@@ -154,6 +158,7 @@ function CaptureWizard({
   prefill,
   prefillState,
   leagueScheduledBalls,
+  justImported,
 }: {
   clubId: string
   match: Match
@@ -165,6 +170,8 @@ function CaptureWizard({
   prefillState: PrefillState
   // The league's overs per innings in balls, or null for a friendly or a league with no overs set.
   leagueScheduledBalls: number | null
+  // docs/specs/104: the manager has just come from the import wizard (`?imported=1`).
+  justImported: boolean
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -195,6 +202,11 @@ function CaptureWizard({
   const [validationFailed, setValidationFailed] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [importedNoticeOpen, setImportedNoticeOpen] = useState(justImported)
+  // docs/specs/104: an imported draft's provider (from its source) and what the import said about each name; a manual result
+  // gets the empty default and shows no chips. The notes were left by the import page for this match (sessionStorage).
+  const [importNotes] = useState(() => readImportNotes(clubId, matchId))
+  const importProvider = importedProvider(existing?.source)
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: resultsKey(clubId) })
@@ -356,6 +368,7 @@ function CaptureWizard({
     .join(' · ')
 
   return (
+    <ImportReviewContext.Provider value={{ provider: importProvider, notes: importNotes }}>
     <RecordFormScreen
       title={existing ? 'Edit result' : 'Capture result'}
       backTo={RESULTS_PATH}
@@ -385,6 +398,12 @@ function CaptureWizard({
       }
     >
       <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        <ImportedChip source={existing?.source} />
+        {importedNoticeOpen && importProvider && (
+          <Alert severity="success" onClose={() => setImportedNoticeOpen(false)}>
+            Draft created from the import. Nothing is published yet: check the names marked Guess, then review and publish.
+          </Alert>
+        )}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
           <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
             {subtitle}
@@ -429,6 +448,7 @@ function CaptureWizard({
         onClose={() => setConfirmOpen(false)}
       />
     </RecordFormScreen>
+    </ImportReviewContext.Provider>
   )
 }
 
@@ -438,6 +458,7 @@ export default function ResultCapturePage() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const { matchId } = useParams<{ matchId: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   useDocumentTitle('Capture result')
 
   const matchQuery = useQuery({
@@ -536,6 +557,7 @@ export default function ResultCapturePage() {
       initialScorecard={scorecardQuery.data ? normalizeLoaded(scorecardQuery.data) : null}
       prefill={prefillQuery.data ?? null}
       prefillState={prefillQuery.isPending ? 'loading' : prefillQuery.isError ? 'unavailable' : 'ready'}
+      justImported={searchParams.get('imported') === '1'}
       leagueScheduledBalls={
         conditionsQuery.data?.maxOversPerInnings ? conditionsQuery.data.maxOversPerInnings * (existing?.ballsPerOver ?? 6) : null
       }

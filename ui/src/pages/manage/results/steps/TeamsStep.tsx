@@ -25,8 +25,11 @@ import { selectTeamPath } from '../../teamSelection/selectionLinks'
 import { regularInningsOf } from '../resultDraftHelpers'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { OppositionTeamList } from '../scorecard/OppositionTeamList'
+import { ImportGuessBanner } from '../import/ImportGuessBanner'
+import { confirmRuleBased } from '../import/guessSummary'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
+import { useGuessActions } from '../scorecard/useGuessActions'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
   addPlayer,
@@ -81,6 +84,13 @@ export function TeamsStep(props: ScorecardStepProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+      <ImportGuessBanner
+        players={scorecard.players}
+        scorecardSide={side}
+        onScorecardSideChange={onScorecardSideChange}
+        onConfirmAll={() => onReplace(withScorecard(draft, { ...scorecard, players: confirmRuleBased(scorecard.players) }))}
+        disabled={disabled}
+      />
       <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} label="Who is playing?" />
       <FormSectionHeading icon={<GroupsOutlinedIcon />} title={`${ours?.teamName ?? opposing?.name ?? ''}: who played`} />
       {ours ? (
@@ -127,6 +137,7 @@ function OurSideTeam({
   prefill,
   prefillState,
   onSaveAndNavigate,
+  oursSides,
   ours,
 }: ScorecardStepProps & { ours: OurSide }) {
   const side = ours.side
@@ -216,6 +227,8 @@ function OurSideTeam({
 
   const view: PersonName[] = players.map((player) => scorecardPersonName(player))
   const label = usePlayerLabeler(view)
+  // docs/specs/104: the Guess chips of an imported draft (nothing for any other result).
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
   const onReorder = (nextIds: string[]) => {
@@ -313,6 +326,7 @@ function OurSideTeam({
       onOpen={(anchor) => actions.openMenu(playerRowKey(player), anchor)}
       duplicate={false}
       disabled={disabled}
+      guess={guesses.guessOf(player)}
     />
   )
 
@@ -364,6 +378,7 @@ function OurSideTeam({
         columns={[{ id: 'type', header: 'Type', render: typeChips }]}
         renderPlayer={nameCell}
         renderPosition={(player, index) => (player.substitute ? '–' : index + 1)}
+        isRowFlagged={(player) => guesses.guessOf(player) !== undefined}
         reorder={reorder}
         reorderDisabled={disabled}
         hideHelp
@@ -386,6 +401,7 @@ function OurSideTeam({
       </Box>
 
       {actions.host}
+      {guesses.host}
 
       <ConfirmDialog
         open={resetOpen}

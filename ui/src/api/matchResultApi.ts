@@ -99,7 +99,13 @@ export interface ResultPlayer {
   guest?: boolean
   linkedBy?: string | null
   linkedAt?: string | null
+  // docs/specs/104: set by an import on one of our players linked by a rule that is a guess (NORMALISED), to be confirmed
+  // or changed before publishing. Read; on write it can only be kept or cleared (null): the server ignores any raise.
+  // AI_SUGGESTED is reserved and never produced.
+  importMatch?: ImportMatchLevel | null
 }
+
+export type ImportMatchLevel = 'NORMALISED' | 'AI_SUGGESTED'
 
 // Fields every entry shares. `suggested` and `featured` are read-only (the rules' suggestion and the effective value,
 // frozen at publish); the manager writes only `featuredOverride`.

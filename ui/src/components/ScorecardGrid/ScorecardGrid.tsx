@@ -57,6 +57,8 @@ export interface ScorecardGridProps<R> {
   rowProblem?: (row: R) => string | null
   // A row drawn quiet (Did not bat).
   isRowMuted?: (row: R) => boolean
+  // docs/specs/104: a row to look at but not a problem (an imported guess): a light amber tint, no icon and no reason line.
+  isRowFlagged?: (row: R) => boolean
   // `/` on a cell: open the player picker for that row.
   onPickPlayer?: (rowId: string) => void
   emptyMessage?: ReactNode
@@ -128,6 +130,7 @@ export function ScorecardGrid<R>({
   reorder,
   reorderDisabled = false,
   isRowMuted,
+  isRowFlagged,
   rowProblem,
   onPickPlayer,
   emptyMessage,
@@ -229,8 +232,14 @@ export function ScorecardGrid<R>({
             sx={{
               border: 1,
               borderRadius: 2,
-              bgcolor: rowProblem?.(row) ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12) : isRowMuted?.(row) ? 'action.hover' : 'background.paper',
-              borderColor: rowProblem?.(row) ? 'warning.main' : 'divider',
+              bgcolor: rowProblem?.(row)
+                ? (theme: Theme) => alpha(theme.palette.warning.main, 0.12)
+                : isRowFlagged?.(row)
+                  ? (theme: Theme) => alpha(theme.palette.warning.main, 0.07)
+                  : isRowMuted?.(row)
+                    ? 'action.hover'
+                    : 'background.paper',
+              borderColor: rowProblem?.(row) || isRowFlagged?.(row) ? 'warning.main' : 'divider',
               p: 1.5,
               minWidth: 0,
             }}
@@ -275,7 +284,14 @@ export function ScorecardGrid<R>({
             {rows.map((row, index) => {
               const id = getRowId(row)
               const problem = rowProblem?.(row) ?? null
-              const background = problem ? (theme: Theme) => alpha(theme.palette.warning.main, index % 2 === 1 ? 0.18 : 0.12) : index % 2 === 1 ? zebraTint : 'background.paper'
+              const flagged = isRowFlagged?.(row) ?? false
+              const background = problem
+                ? (theme: Theme) => alpha(theme.palette.warning.main, index % 2 === 1 ? 0.18 : 0.12)
+                : flagged
+                  ? (theme: Theme) => alpha(theme.palette.warning.main, 0.07)
+                  : index % 2 === 1
+                    ? zebraTint
+                    : 'background.paper'
               const dropBefore = reorder?.dragId != null && reorder.dropIndex === index
               const dropAfter = reorder?.dragId != null && reorder.dropIndex === rows.length && index === rows.length - 1
               const drag = reorder?.rowDragProps(id, { index, accepts: true }, reorderDisabled || armedId !== id)

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 import { DocumentUpload } from './DocumentUpload'
+import type { DocumentUploadModeProps } from './DocumentUpload'
 
 const meta: Meta<typeof DocumentUpload> = {
   title: 'Components/DocumentUpload',
@@ -32,8 +33,17 @@ export const InlinePopulated: Story = {
   },
 }
 
+const inlinePopulated: DocumentUploadModeProps = {
+  label: 'Playing Conditions',
+  displayName: 'Playing Conditions.pdf',
+  layout: 'inline',
+  value: { documentUrl: '/media/2f6a1c9e-playing-conditions.pdf', uploadedAt: '2026-02-01T09:00:00Z' },
+  onUpload: () => Promise.resolve('/media/2f6a1c9e-playing-conditions.pdf'),
+  onUploaded: () => undefined,
+}
+
 export const InlineEmpty: Story = {
-  args: { ...InlinePopulated.args, value: null },
+  args: { ...inlinePopulated, value: null },
 }
 
 export const Populated: Story = {
@@ -46,7 +56,7 @@ export const Populated: Story = {
 }
 
 export const WithDisplayName: Story = {
-  args: { ...Populated.args, displayName: 'Playing Conditions.pdf' },
+  args: { ...inlinePopulated, layout: 'card' },
 }
 
 // Uploading is local state only reachable via interaction, not a settable prop, the play
@@ -102,4 +112,29 @@ export const TabletViewport: Story = {
 export const DesktopViewport: Story = {
   args: Populated.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
+}
+
+// docs/specs/104: `mode="select"` holds the chosen file and uploads nothing (the import wizard's Source step).
+export const SelectEmpty: Story = {
+  args: {
+    mode: 'select',
+    label: 'Result file',
+    accept: ['.json'],
+    maxBytes: 2 * 1024 * 1024,
+    helperText: 'Accepts .json files up to 2 MB. Drop a file here or choose one.',
+    file: null,
+    onFileChange: () => undefined,
+  },
+}
+
+export const SelectChosen: Story = {
+  args: {
+    mode: 'select',
+    label: 'Result file',
+    accept: ['.json'],
+    maxBytes: 2 * 1024 * 1024,
+    helperText: 'Accepts .json files up to 2 MB. Drop a file here or choose one.',
+    file: new File(['{}'], 'match-1.json', { type: 'application/json' }),
+    onFileChange: () => undefined,
+  },
 }

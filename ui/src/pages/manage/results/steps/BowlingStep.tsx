@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { ExtrasFields } from '../../../../components/ExtrasFields'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { OversInput } from '../../../../components/OversInput'
+import { GuessChip } from '../../../../components/GuessChip'
 import { PlayerName } from '../../../../components/PlayerName'
 import { badgeSx } from '../../../../components/RecordCard'
 import { ReconcileStrip } from '../../../../components/ReconcileStrip'
@@ -37,6 +38,7 @@ import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { useAddPlayerSupport } from '../scorecard/useAddPlayerSupport'
+import { useGuessActions } from '../scorecard/useGuessActions'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
   addFielder,
@@ -236,6 +238,9 @@ export function BowlingStep({
     disabled,
   })
 
+  // docs/specs/104: the Guess chips of an imported draft, on the bowler rows and the fielding list.
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
+
   const captionOf = (key: string): string | null => {
     const player = byKey.get(key)
     if (!player) return null
@@ -389,6 +394,7 @@ export function BowlingStep({
         caption={captionOf(key)}
         onOpen={(anchor) => actions.openMenu(key, anchor)}
         disabled={disabled}
+        guess={guesses.guessOf(player)}
       />
     )
   }
@@ -582,6 +588,7 @@ export function BowlingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             emptyMessage=""
+            isRowFlagged={(entry) => guesses.guessOf(byKey.get(entryPlayerKey(entry) as string)) !== undefined}
             rowProblem={(entry) =>
               bowlingRowProblem(entry, {
                 ballsPerOver,
@@ -689,7 +696,23 @@ export function BowlingStep({
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   <PlayerName person={scorecardPersonName(player)} view={view} />
                 </Typography>
-                {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />}
+                {(() => {
+                  const guess = guesses.guessOf(player)
+                  return guess ? (
+                    <GuessChip
+                      importedName={guess.importedName}
+                      level={guess.level}
+                      matchedName={guess.matchedName}
+                      reason={guess.reason}
+                      onConfirm={guess.onConfirm}
+                      onChange={guess.onChange}
+                      guessKey={`${guess.key}:fielding`}
+                      disabled={disabled}
+                    />
+                  ) : (
+                    !player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
+                  )
+                })()}
                 {(player.substitute || (player.playerProfileId && selectionSubstitutes.has(player.playerProfileId))) && (
                   <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
                 )}
@@ -742,6 +765,7 @@ export function BowlingStep({
       )}
 
       {actions.host}
+      {guesses.host}
 
       <ConfirmDialog
         open={bulkOpen}

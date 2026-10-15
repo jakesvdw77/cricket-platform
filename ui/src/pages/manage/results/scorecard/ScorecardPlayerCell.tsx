@@ -1,7 +1,9 @@
 import { Box, ButtonBase, Chip, Typography } from '@mui/material'
 import { badgeSx } from '../../../../components/RecordCard'
+import { GuessChip } from '../../../../components/GuessChip'
 import { PlayerName } from '../../../../components/PlayerName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
+import type { GuessInfo } from '../import/guessSummary'
 
 export interface ScorecardPlayerCellProps {
   person: PersonName
@@ -15,12 +17,17 @@ export interface ScorecardPlayerCellProps {
   // The same player is on the side twice: marks the row so it can be found and one removed.
   duplicate?: boolean
   disabled?: boolean
+  // docs/specs/104: an imported name that needs checking (a guess, or a name nobody matched): the Guess chip (or a tappable
+  // Guest chip) replaces the plain Guest chip and the caption says what the file said.
+  guess?: GuessInfo
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Our batting item 6): the player in a scorecard row. The name is a
 // button that opens the row's popup menu (the route to reorder, swap, link and remove on a phone and for the keyboard);
 // a Guest chip marks a name-only player; a small caption says "planned 3" or "replaced A. Smith".
-export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false }: ScorecardPlayerCellProps) {
+export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess }: ScorecardPlayerCellProps) {
+  const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
+  const captionText = [caption, guessCaption].filter(Boolean).join(' · ') || null
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
@@ -46,11 +53,24 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
           </span>
         </ButtonBase>
         {duplicate && <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
-        {guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
+        {guess ? (
+          <GuessChip
+            importedName={guess.importedName}
+            level={guess.level}
+            matchedName={guess.matchedName}
+            reason={guess.reason}
+            onConfirm={guess.onConfirm}
+            onChange={guess.onChange}
+            guessKey={guess.key}
+            disabled={disabled}
+          />
+        ) : (
+          guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
+        )}
       </Box>
-      {caption && (
+      {captionText && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { sm: '0.75rem' } }}>
-          {caption}
+          {captionText}
         </Typography>
       )}
     </Box>

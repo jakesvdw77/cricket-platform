@@ -40,6 +40,7 @@ import {
   tossLine,
   UNPUBLISH_TO_EDIT_REASON,
 } from './resultListHelpers'
+import { ImportedChip } from './import/ImportedChip'
 import { ResultScorecard } from './ResultScorecard'
 import { ResultSection } from './ResultSection'
 import { usePublishResult } from './usePublishResult'
@@ -246,6 +247,7 @@ export default function ResultDetailPage() {
               sx={badgeSx(draft ? 'warning' : 'active')}
               data-testid="result-status-chip"
             />
+            <ImportedChip source={result.source} />
           </Box>
 
           {failed && (

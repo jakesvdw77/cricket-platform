@@ -4,6 +4,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -25,6 +26,7 @@ import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { fullName } from '../../utils/playerDisplayName'
 import type { PersonName } from '../../utils/playerDisplayName'
+import { alpha } from '@mui/material/styles'
 import { BottomSheet } from '../BottomSheet'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { usePlayerLabeler } from '../../hooks/usePlayerLabeler'
@@ -33,6 +35,12 @@ export interface PickedPlayer {
   playerProfileId: string
   firstName: string
   lastName: string
+}
+
+// docs/specs/104: a ranked closest player for a name an import could not place (score 0 to 1).
+export interface PickerSuggestion {
+  player: PickedPlayer
+  score: number
 }
 
 export type PlayerSlotScope = 'match' | 'squad' | 'club' | 'guest'
@@ -71,6 +79,11 @@ export interface PlayerSlotPickerProps {
   notListedLabel?: string
   // False when the row can only become a registered player (Link to a registered player...): no Guest scope.
   allowGuest?: boolean
+  // docs/specs/104: the name as an imported file wrote it. Shown at the top ("File said: Dihandre V"), and prefills the
+  // Guest name so keeping it as a guest is one tap.
+  importedName?: string
+  // docs/specs/104: the closest registered players for that name, best first, offered as one-tap picks above the scopes.
+  suggestions?: PickerSuggestion[]
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -129,6 +142,59 @@ function PlayerRows({
   )
 }
 
+// docs/specs/104: what the file said and, for a name that was not placed, the closest players as one-tap picks.
+function ImportedName({
+  name,
+  suggestions,
+  takenPlayers,
+  onPick,
+}: {
+  name: string
+  suggestions: PickerSuggestion[]
+  takenPlayers: Record<string, string>
+  onPick: (player: PickedPlayer) => void
+}) {
+  const view: PersonName[] = suggestions.map((s) => ({ id: s.player.playerProfileId, firstName: s.player.firstName, lastName: s.player.lastName }))
+  const label = usePlayerLabeler(view)
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Typography variant="body2" sx={{ px: 1.25, py: 1, borderRadius: 1, bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12) }}>
+        File said: <b>{name}</b>
+      </Typography>
+      {suggestions.length > 0 && (
+        <>
+          <Typography variant="caption" component="h3" sx={{ fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Closest players
+          </Typography>
+          <List disablePadding aria-label="Closest players">
+            {suggestions.map(({ player, score }) => {
+              const reason = takenPlayers[player.playerProfileId]
+              return (
+                <ListItemButton
+                  key={player.playerProfileId}
+                  disabled={Boolean(reason)}
+                  onClick={() => !reason && onPick(player)}
+                  sx={{ minHeight: 56, borderRadius: 1, border: 1, borderColor: 'divider', mb: 1 }}
+                >
+                  <ListItemText
+                    primary={label({ id: player.playerProfileId, firstName: player.firstName, lastName: player.lastName })}
+                    secondary={reason}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                  />
+                  <Chip size="small" label={`${Math.round(score * 100)}%`} aria-label={`${Math.round(score * 100)} percent similar`} sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12), color: 'primary.dark', fontWeight: 600 }} />
+                </ListItemButton>
+              )
+            })}
+          </List>
+          <Typography variant="caption" color="text.secondary">
+            Tapping a name picks that player and remembers it for your club.
+          </Typography>
+        </>
+      )}
+    </Box>
+  )
+}
+
 function PickerBody({
   clubId,
   teamId,
@@ -146,13 +212,15 @@ function PickerBody({
   onPickMatchPlayer,
   onNotListed,
   notListedLabel = 'Add them on Teams',
+  importedName,
+  suggestions = [],
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
   const hasMatch = matchSquad !== undefined
   const noSelection = hasMatch && matchSquad.length === 0
   const [scope, setScope] = useState<PlayerSlotScope>(hasMatch && !noSelection ? 'match' : hasSquad ? 'squad' : 'club')
   const [search, setSearch] = useState('')
-  const [guest, setGuest] = useState('')
+  const [guest, setGuest] = useState(importedName ?? '')
   const debouncedGuest = useDebouncedValue(guest, 250)
 
   const squadQuery = useQuery({
@@ -228,10 +296,13 @@ function PickerBody({
     )
   }
 
+  const importedHeader = importedName ? <ImportedName name={importedName} suggestions={suggestions} takenPlayers={takenPlayers} onPick={onPickPlayer} /> : null
+
   const scopes: PlayerSlotScope[] = [...(hasMatch ? (['match'] as const) : []), ...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : [])]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+      {importedHeader}
       {note && (
         <Typography variant="caption" color="text.secondary">
           {note}
