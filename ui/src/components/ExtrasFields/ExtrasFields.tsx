@@ -34,11 +34,13 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
   const prefix = useId()
   const total = extrasTotal(value)
   return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, flexWrap: 'wrap' }} role="group" aria-label={owner ? `Extras, ${owner}` : 'Extras'}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap' }} role="group" aria-label={owner ? `Extras, ${owner}` : 'Extras'}>
+      {/* Five equal columns from sm (three on a phone); every field has one fixed caption line so nothing shifts. */}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(5, minmax(0, 1fr))' }, columnGap: 1.5, rowGap: 0.5 }}>
       {FIELDS.map(({ key, label }) => {
         const id = `${prefix}-${key}`
         return (
-          <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
             <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
               {label}
             </Typography>
@@ -51,12 +53,13 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
               disabled={disabled}
               width={72}
             />
-            {fieldNote?.(key)}
+            <Box sx={{ minHeight: { xs: 32, sm: 18 }, display: 'flex', alignItems: 'center' }}>{fieldNote?.(key)}</Box>
           </Box>
         )
       })}
+      </Box>
       {!hideTotal && (
-        <Typography variant="body2" sx={{ fontWeight: 700, ml: { sm: 'auto' }, pb: 0.75, fontVariantNumeric: 'tabular-nums' }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, ml: { sm: 'auto' }, pt: 2.5, fontVariantNumeric: 'tabular-nums' }}>
           {`Extras ${total}`}
         </Typography>
       )}

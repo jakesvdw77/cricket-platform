@@ -12,7 +12,7 @@ import { StandoutToggle } from '../../../../components/StandoutToggle'
 import { useReorderableRows } from '../../../../hooks/useReorderableRows'
 import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { canFeatureBatter } from '../../../../utils/standout'
-import { battingTotals } from '../../../../utils/battingTotals'
+import { battingTotals, extrasTotal } from '../../../../utils/battingTotals'
 import { allowsBowler, allowsFielder } from '../../../../utils/dismissal'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
@@ -344,10 +344,16 @@ export function BattingStep({
           )}
 
           <Box>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75 }}>
-              Extras
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mb: 0.75 }}>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Extras
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
+                Total {extrasTotal(innings)}
+              </Typography>
+            </Box>
             <ExtrasFields
+              hideTotal
               value={innings}
               owner={teamName}
               disabled={disabled}

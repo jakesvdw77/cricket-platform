@@ -510,10 +510,19 @@ export function BowlingStep({
 
           {/* The batting side's extras sit above the rows so they stay put as bowlers are added. */}
           <Box>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.75 }}>
-              {battingName} extras
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mb: 0.75 }}>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Extras conceded by {teamName}
+                <Typography component="span" sx={{ fontSize: '0.6875rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, ml: 0.5 }}>
+                  (to {battingName})
+                </Typography>
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
+                Total {extrasTotal(against)}
+              </Typography>
+            </Box>
             <ExtrasFields
+              hideTotal
               value={against}
               owner={battingName}
               disabled={disabled}
@@ -539,9 +548,6 @@ export function BowlingStep({
                 )
               }}
             />
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Wides and no-balls add up from the bowlers; byes, leg byes and penalty runs are not charged to a bowler. Extras total {extrasTotal(against)}.
-            </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.5, flexWrap: 'wrap' }}>
               <Typography component="label" htmlFor={nonBowlerId} variant="body2" sx={{ fontWeight: 600 }}>
                 Wickets not credited to a bowler

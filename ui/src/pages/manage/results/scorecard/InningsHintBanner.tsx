@@ -31,6 +31,8 @@ export function InningsHintBanner() {
       }}
     >
       Runs and wickets are worked out from the batting card and overs from the bowling card. Type a figure to override it with the official score.
+      <br />
+      Wides and no-balls add up from the bowlers; byes, leg byes and penalty runs are not charged to a bowler.
     </Alert>
   )
 }
