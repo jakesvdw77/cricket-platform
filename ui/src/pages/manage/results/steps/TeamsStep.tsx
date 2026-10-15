@@ -297,9 +297,9 @@ function OurSideTeam({
 
   const typeChips = (player: ResultPlayer) => (
     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.7rem' }} />
+      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
       {duplicates.has(playerRowKey(player)) && (
-        <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.7rem' }} />
+        <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
       )}
     </Box>
   )

@@ -199,7 +199,7 @@ export function OppositionTeamList({ clubId, matchId, seasonId, side, teamName, 
   const nameCell = (player: ResultPlayer) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
       <NameInput player={player} onRename={(name) => rename(playerRowKey(player), name)} onEnter={() => focusAfter(playerRowKey(player))} disabled={disabled} />
-      {player.substitute && <Chip size="small" label="Substitute" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.7rem', flex: 'none' }} />}
+      {player.substitute && <Chip size="small" label="Substitute" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
     </Box>
   )
   const menuButton = (player: ResultPlayer) => (
@@ -254,7 +254,7 @@ export function OppositionTeamList({ clubId, matchId, seasonId, side, teamName, 
                 label={suggestion.uses > 1 ? `${suggestion.displayName} · ${suggestion.uses}` : suggestion.displayName}
                 onClick={() => addNames([suggestion.displayName])}
                 variant="outlined"
-                sx={{ minHeight: 36 }}
+                sx={{ minHeight: { xs: 44, sm: 36 } }}
               />
             ))}
           </Box>

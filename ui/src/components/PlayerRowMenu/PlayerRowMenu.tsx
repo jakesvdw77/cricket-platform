@@ -1,9 +1,9 @@
 import { useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, Menu, MenuItem, TextField, Typography } from '@mui/material'
+import { Box, Menu, MenuItem, Typography } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import { sanitizeInteger } from '../../utils/numericInput'
+import { IntegerField } from '../IntegerField'
 import { moveId, placeAtPosition } from '../../utils/reorderRows'
 
 export interface PlayerRowMenuProps {
@@ -84,32 +84,28 @@ function PositionItem({
         <Typography variant="body2" component="label" htmlFor={inputId}>
           {label}
         </Typography>
-        <TextField
-          id={inputId}
-          size="small"
-          value={draft}
-          placeholder={placeholder}
-          disabled={disabled}
-          onChange={(event) => setDraft(sanitizeInteger(event.target.value, { maxLength: 3 }, draft))}
-          onKeyDown={(event) => {
-            event.stopPropagation()
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              commit(draft)
-              onClose()
-            }
-          }}
-          onBlur={() => commit(draft)}
-          inputProps={{
-            inputMode: 'numeric',
-            pattern: '[0-9]*',
-            enterKeyHint: 'done',
-            autoComplete: 'off',
-            'aria-label': `${label} for ${playerName}`,
-            'aria-describedby': disabled ? reasonId : undefined,
-          }}
-          sx={{ width: 84, flex: 'none' }}
-        />
+        <Box sx={{ width: 84, flex: 'none' }}>
+          <IntegerField
+            id={inputId}
+            value={draft === '' ? null : Number(draft)}
+            onChange={(value) => setDraft(value === null ? '' : String(value))}
+            ariaLabel={`${label} for ${playerName}`}
+            label={label}
+            maxLength={3}
+            placeholder={placeholder}
+            disabled={disabled}
+            describedBy={disabled ? reasonId : undefined}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                commit(draft)
+                onClose()
+              }
+            }}
+            onBlur={() => commit(draft)}
+          />
+        </Box>
       </Box>
       {disabledReason && (
         <Typography id={reasonId} variant="caption" color="text.secondary" sx={{ whiteSpace: 'normal' }}>

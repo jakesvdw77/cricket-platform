@@ -25,7 +25,7 @@ import {
 } from '../resultDraftHelpers'
 import { tossLine } from '../resultListHelpers'
 import { calculatedMargin, marginCorrected } from '../calculatedMargin'
-import { CorrectedChip } from '../scorecard/CorrectedChip'
+import { CorrectedChip } from '../../../../components/CorrectedChip'
 import { applyCalculatedFigure, editInningsFigure, figureCorrected, inningsSuggestions, syncInningsFromScorecard } from '../scorecardDraft'
 import type { InningsSuggestion } from '../scorecardDraft'
 import { sidePickerOptions } from './sidePickerOptions'
@@ -70,7 +70,7 @@ function InningsRow({ innings, title, name, initials, logoSrc, ballsPerOver, max
           src={logoSrc ?? undefined}
           alt=""
           aria-hidden
-          sx={{ width: 28, height: 28, fontSize: '0.7rem', fontWeight: 600, bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: 'primary.dark' }}
+          sx={{ width: 28, height: 28, fontSize: '0.75rem', fontWeight: 600, bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: 'primary.dark' }}
         >
           {initials}
         </Avatar>

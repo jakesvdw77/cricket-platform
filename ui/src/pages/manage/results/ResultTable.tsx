@@ -77,7 +77,7 @@ function ResultRow({ item, teamsById }: { item: ResultListItem; teamsById: Map<s
         <Avatar
           variant="rounded"
           src={logoSide.logo.src ?? undefined}
-          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.7rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
+          sx={{ width: 36, height: 36, flex: 'none', fontSize: '0.75rem', fontWeight: 700, bgcolor: 'background.paper', color: 'primary.main', border: 1, borderColor: 'divider', borderRadius: 1.25 }}
         >
           {logoSide.logo.initials}
         </Avatar>
@@ -159,7 +159,7 @@ export function ResultTable({ items, teamsById }: ResultTableProps) {
           bgcolor: 'background.paper',
           borderBottom: 1,
           borderColor: 'divider',
-          fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+          fontSize: { xs: '0.75rem', sm: '0.75rem' },
           fontWeight: 700,
           letterSpacing: '0.04em',
           textTransform: 'uppercase',

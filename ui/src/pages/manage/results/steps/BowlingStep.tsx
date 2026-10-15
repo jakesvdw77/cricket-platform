@@ -28,9 +28,9 @@ import { entryPlayerKey, playerRowKey } from '../../../../utils/scorecardPrefill
 import { newRowFill } from '../../../../utils/wicketFill'
 import { opposite, regularInningsOf, updateInnings } from '../resultDraftHelpers'
 import { AddPlayerRow } from '../scorecard/AddPlayerRow'
-import { CorrectedChip } from '../scorecard/CorrectedChip'
+import { CorrectedChip } from '../../../../components/CorrectedChip'
 import { BattingOrderPrompt } from '../scorecard/BattingOrderPrompt'
-import { DerivedMarker } from '../scorecard/DerivedMarker'
+import { DerivedMarker } from '../../../../components/DerivedMarker'
 import { InningsHintBanner } from '../scorecard/InningsHintBanner'
 import { InningsSummaryCard } from '../scorecard/InningsSummaryCard'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
@@ -84,13 +84,13 @@ const n = (value: number | null | undefined) => value ?? 0
 // docs/specs/101 mockup: the label above in small capitals, then one bordered pill holding "– 2 +" (green minus and plus, the
 // value centred). 44 px high on a phone, compact from sm.
 function Counter({ label, title, value, onChange, disabled }: { label: string; title: string; value: number; onChange: (delta: 1 | -1) => void; disabled?: boolean }) {
-  const button = { width: { xs: 40, sm: 28 }, height: { xs: 40, sm: 30 }, color: 'primary.main' }
+  const button = { width: { xs: 44, sm: 28 }, height: { xs: 44, sm: 30 }, color: 'primary.main' }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.125 }} role="group" aria-label={label}>
-      <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>
+      <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>
         {title}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', border: 1, borderColor: 'divider', borderRadius: '8px', height: { xs: 44, sm: 32 }, bgcolor: 'background.paper', px: 0.25 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', border: 1, borderColor: 'divider', borderRadius: '8px', height: { xs: 46, sm: 32 }, bgcolor: 'background.paper', px: 0.25 }}>
         <IconButton aria-label={`Decrease ${label}`} size="small" disabled={disabled || value <= 0} onClick={() => onChange(-1)} sx={button}>
           <RemoveIcon fontSize="small" />
         </IconButton>
@@ -510,7 +510,7 @@ export function BowlingStep({
             <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: 1.5, mb: 0.75 }}>
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Extras conceded by {teamName}
-                <Typography component="span" sx={{ fontSize: '0.6875rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, ml: 0.5 }}>
+                <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, ml: 0.5 }}>
                   (to {battingName})
                 </Typography>
               </Typography>
@@ -613,7 +613,7 @@ export function BowlingStep({
                       ] as const
                     ).map(([field, title]) => (
                       <Box key={field}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.75rem' }}>
                           {title}
                         </Typography>
                         {field === 'wickets' ? (
@@ -689,9 +689,9 @@ export function BowlingStep({
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   <PlayerName person={scorecardPersonName(player)} view={view} />
                 </Typography>
-                {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
+                {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />}
                 {(player.substitute || (player.playerProfileId && selectionSubstitutes.has(player.playerProfileId))) && (
-                  <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />
+                  <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
                 )}
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ml: { sm: 'auto' } }}>

@@ -8,7 +8,7 @@ import { RunsField, WicketsField } from '../../../../components/IntegerField'
 import { OversInput } from '../../../../components/OversInput'
 import { badgeSx } from '../../../../components/RecordCard'
 import { ballsToOvers } from '../../../../utils/oversFormat'
-import { CorrectedChip } from './CorrectedChip'
+import { CorrectedChip } from '../../../../components/CorrectedChip'
 import { figureCorrected } from '../scorecardDraft'
 import type { InningsFigure, InningsSuggestion } from '../scorecardDraft'
 
@@ -65,9 +65,9 @@ export function InningsSummaryCard({ teamName, title, innings, ballsPerOver, cal
           </Typography>
         )}
         {correctedFields.length > 0 ? (
-          <Chip size="small" label="Edited" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />
+          <Chip size="small" label="Edited" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
         ) : follows ? (
-          <Chip size="small" label="Calculated" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />
+          <Chip size="small" label="Calculated" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />
         ) : null}
         <Button
           variant="ghost"

@@ -86,7 +86,7 @@ function PersonSelect({ label, value, onChange, groups, standoutKeys, view, none
       ...ordered.map((player) => (
         <MenuItem key={playerRowKey(player)} value={playerRowKey(player)} sx={{ minHeight: 44, gap: 1 }}>
           <PlayerName person={scorecardPersonName(player)} view={view} />
-          {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />}
+          {!player.playerProfileId && !player.opposition && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem' }} />}
           {standoutKeys.has(playerRowKey(player)) && <StarOutlineIcon fontSize="small" aria-label="Standout" sx={{ color: 'warning.main', ml: 'auto' }} />}
         </MenuItem>
       )),
@@ -153,7 +153,7 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
         <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>
           <PlayerName person={personOf(key)} view={view} />
           {player && !player.playerProfileId && !player.opposition && (
-            <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem', ml: 0.75 }} />
+            <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem', ml: 0.75 }} />
           )}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -250,7 +250,7 @@ export function AwardsStep({ draft, onReplace, disabled, oursSides, scorecardSid
         <>
           <InfoCard title="Standouts" icon={<StarOutlineIcon />} note={nameOfSide(side)} testId="awards-standouts">
             <Typography variant="body2" color="text.secondary">
-              Suggested from the scorecard. Tap the star to remove or add one.
+              Suggested from the scorecard. Tap a star to remove or add one: a faint filled star is a suggestion, a solid star is featured, an outline star is not featured.
             </Typography>
             {batters.length + bowlers.length + fielders.length === 0 && (
               <Typography variant="body2" color="text.secondary">

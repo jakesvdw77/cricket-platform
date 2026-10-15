@@ -45,11 +45,11 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
             <PlayerName person={person} view={view} />
           </span>
         </ButtonBase>
-        {duplicate && <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.7rem', flex: 'none' }} />}
-        {guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.7rem', flex: 'none' }} />}
+        {duplicate && <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
+        {guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
       </Box>
       {caption && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { sm: '0.6875rem' } }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { sm: '0.75rem' } }}>
           {caption}
         </Typography>
       )}

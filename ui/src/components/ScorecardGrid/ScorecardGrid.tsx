@@ -89,7 +89,7 @@ const STICKY_FIRST_COL = {
 const HEAD_CELL: SxProps<Theme> = {
   bgcolor: 'background.paper',
   color: 'text.secondary',
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
   letterSpacing: '0.05em',
   textTransform: 'uppercase',
@@ -186,7 +186,7 @@ export function ScorecardGrid<R>({
           startIcon={<KeyboardOutlinedIcon sx={{ fontSize: 16 }} />}
           aria-expanded={helpOpen}
           onClick={() => setHelpOpen((open) => !open)}
-          sx={{ textTransform: 'none', color: 'text.secondary', fontSize: 11.5, minHeight: 0, py: 0.25 }}
+          sx={{ textTransform: 'none', color: 'text.secondary', fontSize: 12, minHeight: 0, py: 0.25 }}
         >
           Keyboard shortcuts (?)
         </Button>
@@ -304,7 +304,7 @@ export function ScorecardGrid<R>({
                     '& > td:first-of-type': { ...STICKY_FIRST_COL, boxShadow: (theme: Theme) => dropLine(theme) ?? (STICKY_FIRST_COL.boxShadow as (theme: Theme) => string)(theme) },
                     '&:focus-within > td': { bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.07) },
                     color: isRowMuted?.(row) ? 'text.disabled' : 'text.primary',
-                    minHeight: 38,
+                    minHeight: { xs: 44, sm: 38 },
                   }}
                 >
                   <TableCell>
@@ -349,7 +349,7 @@ export function ScorecardGrid<R>({
                     <TableCell align="center">
                       {problem && (
                         <Tooltip title={problem}>
-                          <WarningAmberOutlinedIcon fontSize="small" role="img" aria-label={problem} sx={{ color: 'warning.main', display: 'block' }} />
+                          <WarningAmberOutlinedIcon fontSize="small" role="img" aria-label={problem} tabIndex={0} sx={{ color: 'warning.main', display: 'block' }} />
                         </Tooltip>
                       )}
                     </TableCell>

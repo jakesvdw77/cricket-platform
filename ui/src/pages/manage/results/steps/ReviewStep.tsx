@@ -52,7 +52,7 @@ function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'erro
     <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, py: 0.75, listStyle: 'none' }} data-tone={tone}>
       <Box sx={{ display: 'flex', pt: 0.1 }}>{icon}</Box>
       <Typography variant="body2" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
-        {chip && <Chip size="small" label={chip} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem', mr: 0.75, verticalAlign: 'text-bottom' }} />}
+        {chip && <Chip size="small" label={chip} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.75rem', mr: 0.75, verticalAlign: 'text-bottom' }} />}
         {text}
       </Typography>
       {action}

@@ -43,7 +43,7 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
         const id = `${prefix}-${key}`
         return (
           <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: 84 }}>
-            <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
+            <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.75rem' }}>
               {label}
             </Typography>
             <GridNumberInput
@@ -56,7 +56,7 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
               warn={flagged?.(key) ?? false}
               width={72}
             />
-            <Box sx={{ minHeight: { xs: 32, sm: 18 }, display: 'flex', alignItems: 'center' }}>{fieldNote?.(key)}</Box>
+            <Box sx={{ minHeight: { xs: 44, sm: 18 }, display: 'flex', alignItems: 'center' }}>{fieldNote?.(key)}</Box>
           </Box>
         )
       })}

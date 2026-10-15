@@ -29,13 +29,19 @@ export interface IntegerFieldProps {
   // 'cell': a soft amber warning (the value is valid but looks wrong).
   warn?: boolean
   id?: string
+  // 'field' only: shown while empty, and the field's own key and blur handling (e.g. Enter commits).
+  placeholder?: string
+  onKeyDown?: (event: React.KeyboardEvent<HTMLElement>) => void
+  onBlur?: () => void
+  // 'field' only: describes the field for assistive technology (e.g. why it is disabled).
+  describedBy?: string
 }
 
 // docs/specs/101 (input hardening): the ONE integer field. Digits only: a minus, a point, 'e', letters or a pasted "1,234 runs" are
 // filtered as they are typed or pasted (utils/numericInput), so an invalid figure cannot be entered. The value is the parent's
 // number (or null while empty); the text shown is derived from it, so there is nothing to get out of step. The numeric keypad
 // on a phone, no spinner, select on focus.
-export function IntegerField({ value, onChange, ariaLabel, variant = 'field', label, max, maxLength, disabled = false, error = false, helperText, column, width = 52, bare = false, warn = false, id }: IntegerFieldProps) {
+export function IntegerField({ value, onChange, ariaLabel, variant = 'field', label, max, maxLength, disabled = false, error = false, helperText, column, width = 52, bare = false, warn = false, id, placeholder, onKeyDown, onBlur, describedBy }: IntegerFieldProps) {
   const text = value === null ? '' : String(value)
   const handle = (raw: string) => {
     const next = sanitizeInteger(raw, { max, maxLength }, text)
@@ -50,6 +56,7 @@ export function IntegerField({ value, onChange, ariaLabel, variant = 'field', la
     enterKeyHint: 'next' as const,
     autoComplete: 'off',
     'aria-label': ariaLabel,
+    'aria-describedby': describedBy,
   }
 
   if (variant === 'field') {
@@ -60,6 +67,9 @@ export function IntegerField({ value, onChange, ariaLabel, variant = 'field', la
         disabled={disabled}
         error={error}
         helperText={helperText}
+        placeholder={placeholder}
+        onKeyDown={onKeyDown}
+        onBlur={onBlur}
         onChange={(event) => handle(event.target.value)}
         inputProps={{ ...inputProps, onFocus: (event: React.FocusEvent<HTMLInputElement>) => event.target.select() }}
         sx={{ '& input': { fontVariantNumeric: 'tabular-nums' } }}

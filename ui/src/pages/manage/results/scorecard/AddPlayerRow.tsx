@@ -102,7 +102,7 @@ export function AddPlayerRow({ label = 'Type a name to add a player', options, a
                   {option.label}
                 </Box>
                 {option.hint && (
-                  <Box component="span" sx={{ display: 'block', fontSize: 11, color: 'text.secondary' }}>
+                  <Box component="span" sx={{ display: 'block', fontSize: 12, color: 'text.secondary' }}>
                     {option.hint}
                   </Box>
                 )}

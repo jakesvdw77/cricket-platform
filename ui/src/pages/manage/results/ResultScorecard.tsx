@@ -61,7 +61,7 @@ function ScoreTable<T>({ label, columns, rows, rowKey, phone }: { label: string;
       <Box role="table" aria-label={label} sx={{ minWidth: phone ? 420 : 0 }}>
         <Box
           role="row"
-          sx={{ ...rowSx, minHeight: 36, bgcolor: 'action.hover', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'text.secondary' }}
+          sx={{ ...rowSx, minHeight: 36, bgcolor: 'action.hover', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'text.secondary' }}
         >
           {shown.map((column) => (
             <Box key={column.key} role="columnheader" sx={{ textAlign: column.numeric ? 'right' : 'left' }}>
@@ -199,7 +199,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
             <Typography variant="body2" fontWeight={600} component="span" sx={{ overflowWrap: 'anywhere' }}>
               <PlayerName person={person} view={view} />
             </Typography>
-            {guest && <Chip size="small" label="Guest" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />}
+            {guest && <Chip size="small" label="Guest" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />}
             {isOurs && featuredOf(entry) && <StandoutToggle suggested readOnly override={null} onChange={() => {}} playerLabel={label(person)} />}
           </Box>
           {extra}

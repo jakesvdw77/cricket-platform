@@ -411,7 +411,7 @@ export function BattingStep({
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1 }}>
                       {allowsFielder(entry.howOut) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.75rem' }}>
                             Fielder
                           </Typography>
                           {dismissalPicker(entry, 'fielderPlayerId', true)}
@@ -419,7 +419,7 @@ export function BattingStep({
                       )}
                       {allowsBowler(entry.howOut) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.75rem' }}>
                             Bowler
                           </Typography>
                           {dismissalPicker(entry, 'bowlerPlayerId', true)}
@@ -431,7 +431,7 @@ export function BattingStep({
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: 1, justifyContent: 'space-between' }}>
                       {(['runs', 'balls', 'fours', 'sixes'] as const).map((field) => (
                         <Box key={field}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.75rem' }}>
                             {{ runs: 'Runs', balls: 'Balls', fours: '4s', sixes: '6s' }[field]}
                           </Typography>
                           <GridNumberInput
