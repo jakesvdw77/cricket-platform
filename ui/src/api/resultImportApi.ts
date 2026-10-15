@@ -24,6 +24,8 @@ export interface ImportAdaptor {
   inputs: ImportInputFormat[]
   aiAllowed: boolean
   example: string | null
+  // The prompt a manager copies into their own AI chat with their scorecard; null or absent when the source has none.
+  conversionPrompt?: string | null
 }
 
 export interface ImportLimits {

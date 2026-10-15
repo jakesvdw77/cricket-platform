@@ -10,6 +10,7 @@ import { badgeSx } from '../../../../components/RecordCard'
 import { viewTabSx, viewTabsSx } from '../../../../utils/viewTabs'
 import { formatBytes } from '../../../../utils/formatBytes'
 import type { ImportAdaptor } from '../../../../api/resultImportApi'
+import { ConvertWithAiHelper } from './ConvertWithAiHelper'
 import { ImportProblemAlert } from './ImportProblemAlert'
 import { chosenInput } from './importSource'
 import type { ImportStepContext } from './importWizardTypes'
@@ -97,6 +98,12 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
           ),
         }))}
       />
+
+      {adaptor?.conversionPrompt && (
+        <Box sx={{ maxWidth: { sm: 560, md: 640 } }}>
+          <ConvertWithAiHelper prompt={adaptor.conversionPrompt} />
+        </Box>
+      )}
 
       {adaptor && adaptor.inputs.length > 1 && (
         <CompactToggleGroup<string> value={input?.format ?? ''} onChange={(format) => onSourceChange({ format, file: null })} ariaLabel="File format" fullWidthOnPhone>
