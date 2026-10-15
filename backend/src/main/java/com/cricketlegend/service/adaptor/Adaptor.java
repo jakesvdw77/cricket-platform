@@ -26,6 +26,12 @@ public interface Adaptor {
     /** A short sample input for a text format so the UI can offer "Insert example", or null. */
     String getExample();
 
+    /**
+     * Plain-English text a manager copies into their own AI chat together with their scorecard, asking for a document in
+     * this adaptor's format, or null. The platform sends it nowhere.
+     */
+    String getConversionPrompt();
+
     /** The largest upload this adaptor accepts for the format, never above the global multipart limit. */
     long maxBytes(ImportInputFormat format);
 

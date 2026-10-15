@@ -87,6 +87,12 @@ public abstract class AbstractAdaptor implements Serializable, Adaptor {
     }
 
     @Override
+    @JsonProperty(value = "conversionPrompt", access = JsonProperty.Access.READ_ONLY)
+    public String getConversionPrompt() {
+        return null;
+    }
+
+    @Override
     public long maxBytes(ImportInputFormat format) {
         return Math.min(format.getDefaultMaxBytes(), ResultImportLimits.GLOBAL_MAX_FILE_BYTES);
     }

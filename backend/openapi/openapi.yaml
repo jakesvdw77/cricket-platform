@@ -11458,6 +11458,10 @@ components:
         example:
           type: string
           nullable: true
+        conversionPrompt:
+          type: string
+          nullable: true
+          description: "Text a manager copies into their own AI chat with their scorecard to get a document in this format, or null. The platform sends it nowhere."
     InputFormatDto:
       type: object
       description: "One input format an adaptor accepts (docs/specs/104). acceptsPaste equals textBased; maxBytes is the largest upload."

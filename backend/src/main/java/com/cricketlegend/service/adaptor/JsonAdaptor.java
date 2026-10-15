@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.cricketlegend.domain.DismissalType;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -98,6 +99,60 @@ public class JsonAdaptor extends AbstractAdaptor {
     @Override
     public String getExample() {
         return EXAMPLE;
+    }
+
+    @Override
+    public String getConversionPrompt() {
+        return conversionPrompt();
+    }
+
+    /** The howOut values a scorecard may use, generated from {@link DismissalType} so the prompt never drifts. */
+    private static String dismissals(java.util.function.Predicate<DismissalType> filter) {
+        return Arrays.stream(DismissalType.values())
+                .filter(type -> type != DismissalType.DID_NOT_BAT)
+                .filter(filter)
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
+    }
+
+    private static String conversionPrompt() {
+        return """
+                I am attaching a cricket match scorecard (a file or pasted text). Please convert it into one JSON \
+                document in the format described below, and reply with ONLY that JSON document. Do not add any \
+                commentary, explanation or markdown code fences.
+
+                Rules of the format
+                - "schemaVersion" is 1.
+                - There are exactly two teams, in "teams", with the keys "A" and "B". Each has a "key" and a "name".
+                - Copy every name exactly as it is written in the scorecard. Do not correct, expand or invent names, \
+                dates, scores or players.
+                - If something is not in the scorecard, use null for it. Never guess.
+                - "match.date" is written yyyy-MM-dd, for example 2026-10-10.
+                - Overs are always a string, for example "12.3" (12 overs and 3 balls) or "40.0".
+                - "innings" has one entry per innings, in batting order. Each has: "battingTeam" (the key "A" or "B"), \
+                "runs", "wickets", "overs", an "extras" object ("wides", "noBalls", "byes", "legByes", "penalty"), \
+                "batting" (one row per batter who batted), "didNotBat" and "bowling" (one row per bowler).
+                - A batting row has "player", "howOut", "bowler", "fielder", "runs", "balls", "fours" and "sixes".
+                - "didNotBat" is a list of names of the players who did not bat. Never put them in "batting" with \
+                zero figures. A batter with no dismissal who faced no balls did not bat.
+                - If the catcher is also the bowler, use CAUGHT_AND_BOWLED and leave "fielder" null.
+                - A bowling row has "player", "overs", "maidens", "runs", "wickets" and "dots".
+                - "howOut" must be exactly one of: %s.
+                - Only these dismissals may name a bowler: %s.
+                - Only these dismissals may name a fielder: %s. Leave "bowler" and "fielder" null \
+                where the dismissal does not allow them.
+                - "result.outcome" must be one of: WON, TIE, DRAW, NO_RESULT, ABANDONED, FORFEIT. When a side won, \
+                "result.winner" is its key, and "result.margin" is { "type": "RUNS" or "WICKETS", "value": number }. \
+                If the scorecard does not say, leave the margin null.
+                - Leave any part you cannot find in the scorecard as null.
+
+                Example of the format
+                %s
+                """.formatted(
+                        dismissals(type -> true),
+                        dismissals(DismissalType::allowsBowler),
+                        dismissals(DismissalType::allowsFielder),
+                        EXAMPLE.strip());
     }
 
     @Override
