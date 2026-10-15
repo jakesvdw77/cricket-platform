@@ -37,6 +37,7 @@ import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { useAddPlayerSupport } from '../scorecard/useAddPlayerSupport'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
+  addFielder,
   addPlayer,
   applyCalculatedFigure,
   battingOf,
@@ -70,25 +71,33 @@ import {
 import type { ScorecardStepProps } from './stepTypes'
 
 const FIELDING_FIELDS = [
-  { field: 'catches', label: 'Catches', derivedKey: 'catches' },
-  { field: 'stumpings', label: 'Stumpings', derivedKey: 'stumpings' },
-  { field: 'runOuts', label: 'Run-outs', derivedKey: 'runOuts' },
+  { field: 'catches', label: 'Catches' },
+  { field: 'stumpings', label: 'Stumpings' },
+  { field: 'runOuts', label: 'Run-outs' },
 ] as const
 
 const n = (value: number | null | undefined) => value ?? 0
 
-function Counter({ label, value, onChange, disabled }: { label: string; value: number; onChange: (delta: 1 | -1) => void; disabled?: boolean }) {
+// docs/specs/101 mockup: the label above in small capitals, then one bordered pill holding "– 2 +" (green minus and plus, the
+// value centred). 44 px high on a phone, compact from sm.
+function Counter({ label, title, value, onChange, disabled }: { label: string; title: string; value: number; onChange: (delta: 1 | -1) => void; disabled?: boolean }) {
+  const button = { width: { xs: 40, sm: 28 }, height: { xs: 40, sm: 30 }, color: 'primary.main' }
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} role="group" aria-label={label}>
-      <IconButton aria-label={`Decrease ${label}`} size="small" disabled={disabled || value <= 0} onClick={() => onChange(-1)} sx={{ width: 36, height: 36, border: 1, borderColor: 'divider' }}>
-        <RemoveIcon fontSize="small" />
-      </IconButton>
-      <Typography component="span" aria-live="polite" sx={{ minWidth: 20, textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-        {value}
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.125 }} role="group" aria-label={label}>
+      <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>
+        {title}
       </Typography>
-      <IconButton aria-label={`Increase ${label}`} size="small" disabled={disabled} onClick={() => onChange(1)} sx={{ width: 36, height: 36, border: 1, borderColor: 'divider' }}>
-        <AddIcon fontSize="small" />
-      </IconButton>
+      <Box sx={{ display: 'flex', alignItems: 'center', border: 1, borderColor: 'divider', borderRadius: '8px', height: { xs: 44, sm: 32 }, bgcolor: 'background.paper', px: 0.25 }}>
+        <IconButton aria-label={`Decrease ${label}`} size="small" disabled={disabled || value <= 0} onClick={() => onChange(-1)} sx={button}>
+          <RemoveIcon fontSize="small" />
+        </IconButton>
+        <Typography component="span" aria-live="polite" sx={{ minWidth: 22, textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </Typography>
+        <IconButton aria-label={`Increase ${label}`} size="small" disabled={disabled} onClick={() => onChange(1)} sx={button}>
+          <AddIcon fontSize="small" />
+        </IconButton>
+      </Box>
     </Box>
   )
 }
@@ -145,6 +154,13 @@ export function BowlingStep({
     if (withBowlers !== scorecard) commit(withBowlers)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [side, prefillState])
+
+  // Opening the step for a draft that already has dismissals: the bowlers they name get their rows.
+  useEffect(() => {
+    const synced = syncInningsFromScorecard(draft)
+    if (synced !== draft) onReplace(synced)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [side])
 
   const person = (key: string): PersonName => {
     const found = byKey.get(key)
@@ -373,10 +389,20 @@ export function BowlingStep({
     )
   }
 
-  // Fielding: the line-up in batting order, then anyone else (the 12th man, a substitute).
-  const batters = battingOf(scorecard, side).map((entry) => byKey.get(entryPlayerKey(entry) as string)).filter((player): player is ResultPlayer => Boolean(player))
-  const fielders = [...batters, ...players.filter((player) => !batters.includes(player))]
+  // Fielding: only players with a credit row (derived from the dismissals, or added by the manager).
   const fieldingByKey = new Map(fieldingOf(scorecard, side).map((entry) => [entryPlayerKey(entry), entry]))
+  const fielders = fieldingOf(scorecard, side).map((entry) => byKey.get(entryPlayerKey(entry) as string)).filter((player): player is ResultPlayer => Boolean(player))
+  const fielderOptions = [
+    ...players
+      .filter((player) => !fieldingByKey.has(playerRowKey(player)))
+      .map((player) => ({ key: `f:${playerRowKey(player)}`, label: label(scorecardPersonName(player)), hint: 'On the team' })),
+    ...support.options,
+  ]
+  const fielderFor = (identity: Parameters<typeof addPlayer>[2], from: Scorecard = scorecard): Scorecard => {
+    const added = addPlayer(from, side, identity, newRowFill().howOut)
+    const player = added.scorecard.players.find((candidate) => playerRowKey(candidate) === added.key)
+    return player ? addFielder(added.scorecard, side, player) : added.scorecard
+  }
 
   const fieldingMarker = (player: ResultPlayer, entry: FieldingEntry | undefined, name: string) => {
     if (!hasDismissals) return null
@@ -575,7 +601,7 @@ export function BowlingStep({
                       ] as const
                     ).map(([field, title]) => (
                       <Box key={field}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
                           {title}
                         </Typography>
                         {field === 'wickets' ? (
@@ -621,12 +647,12 @@ export function BowlingStep({
 
       <FormSectionHeading icon={<SportsHandballOutlinedIcon />} title={`${teamName} fielding`} />
       <Typography variant="body2" color="text.secondary" sx={{ mt: -1 }}>
-        Catches, stumpings and run-outs follow the dismissals once the batting card names the fielders. Tap + to type your own. Only players with a credit are saved.
+        Credits appear when you name a fielder on the batting card. Add anyone who was missed; only players with a credit are saved.
       </Typography>
       <Box role="list" aria-label={`${teamName} fielding`} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', overflow: 'hidden' }}>
         {fielders.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-            No players yet. Add the team on Teams, or type a bowler&apos;s name above.
+            No catches, stumpings or run-outs yet. Credits appear when you name a fielder on the batting card; add anyone missed.
           </Typography>
         )}
         {fielders.map((player, index) => {
@@ -656,14 +682,11 @@ export function BowlingStep({
                   <Chip size="small" label={ours ? '12th man' : 'Substitute'} sx={{ ...badgeSx('neutral'), height: 20, fontSize: '0.7rem' }} />
                 )}
               </Box>
-              {FIELDING_FIELDS.map(({ field, label: title }) => (
-                <Box key={field} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ width: 64 }}>
-                    {title}
-                  </Typography>
-                  <Counter label={`${title}, ${name}`} value={n(entry?.[field])} disabled={disabled} onChange={(delta) => commit(bumpFielding(scorecard, side, player, field, delta))} />
-                </Box>
-              ))}
+              <Box sx={{ display: 'flex', gap: 1, ml: { sm: 'auto' } }}>
+                {FIELDING_FIELDS.map(({ field, label: title }) => (
+                  <Counter key={field} label={`${title}, ${name}`} title={title} value={n(entry?.[field])} disabled={disabled} onChange={(delta) => commit(bumpFielding(scorecard, side, player, field, delta))} />
+                ))}
+              </Box>
               <Box sx={{ width: 44, display: 'flex', justifyContent: 'center' }}>
                 {ours && entry && canFeatureFielder(entry) && (
                   <StandoutToggle
@@ -679,6 +702,32 @@ export function BowlingStep({
           )
         })}
       </Box>
+      <AddPlayerRow
+        label="Type a name to add a fielder"
+        options={fielderOptions}
+        addLabel={support.addLabel}
+        existingNames={players.map((player) => player.displayName ?? '')}
+        onPick={(key) => {
+          if (key.startsWith('f:')) {
+            const player = byKey.get(key.slice(2))
+            if (player) commit(addFielder(scorecard, side, player))
+            return
+          }
+          const identity = support.identityOf(key)
+          if (identity) commit(fielderFor(identity))
+        }}
+        onAddName={(name) => commit(fielderFor(support.nameIdentity(name)))}
+        onAddNames={(names) => commit(names.reduce((from, name) => fielderFor(support.nameIdentity(name), from), scorecard))}
+        disabled={disabled}
+      />
+      {onGoToStep && (
+        <Typography variant="body2" color="text.secondary">
+          Not listed?{' '}
+          <Button variant="ghost" size="sm" onClick={() => onGoToStep('teams', side)} sx={{ minHeight: { xs: 44, sm: 0 } }}>
+            Add them on Teams
+          </Button>
+        </Typography>
+      )}
 
       {actions.host}
 

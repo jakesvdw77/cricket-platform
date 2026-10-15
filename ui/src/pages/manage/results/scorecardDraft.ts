@@ -182,6 +182,14 @@ export function bumpFielding(
   }
 }
 
+// Add fielder: a manual row at zero, kept in the form while the manager edits it (a row at nothing is dropped from the save).
+export function addFielder(scorecard: Scorecard, ours: ResultSide, player: Pick<ResultPlayer, 'id' | 'clientKey'>): Scorecard {
+  const key = playerRowKey(player)
+  if (scorecard.fielding.some((entry) => entryPlayerKey(entry) === key && entry.battingSide === opposite(ours))) return scorecard
+  const created: FieldingEntry = { battingSide: opposite(ours), inningsKind: 'REGULAR', ...entryRefOf(player), catches: 0, stumpings: 0, runOuts: 0, creditsSource: 'MANUAL', featuredOverride: null }
+  return { ...scorecard, fielding: [...scorecard.fielding, created] }
+}
+
 export function patchFielding(scorecard: Scorecard, key: string, patch: Partial<FieldingEntry>): Scorecard {
   return { ...scorecard, fielding: scorecard.fielding.map((entry) => (entryPlayerKey(entry) === key ? { ...entry, ...patch } : entry)) }
 }
@@ -568,6 +576,34 @@ export function applyDerivedCredits(scorecard: Scorecard): Scorecard {
       const wickets = (credits.get(entryPlayerKey(entry) ?? '') ?? NO_CREDIT).wickets
       return entry.wickets === wickets ? entry : { ...entry, wickets }
     })
+    // A bowler a dismissal names gets a bowling row (DERIVED, in the order of their first dismissal); a row that was created
+    // that way and is still empty goes again when no dismissal names the bowler any more. Typed rows are never removed.
+    const byPlayer = playersByKey(next)
+    const hasBowlRow = new Set(bowling.filter((entry) => entry.battingSide === batted).map((entry) => entryPlayerKey(entry)))
+    let order = bowling.filter((entry) => entry.battingSide === batted).reduce((max, entry) => Math.max(max, entry.bowlingOrder ?? 0), 0)
+    const created: BowlingEntry[] = []
+    for (const entry of battingOf(next, batted)) {
+      const key = entry.bowlerPlayerId
+      if (!key || entry.howOut == null || !allowsBowler(entry.howOut) || hasBowlRow.has(key)) continue
+      const player = byPlayer.get(key)
+      if (!player) continue
+      hasBowlRow.add(key)
+      order += 1
+      created.push({ ...blankBowlingEntry(opposite(batted), player, order, true), wickets: credits.get(key)?.wickets ?? 0, auto: true })
+    }
+    bowling = [
+      ...bowling.filter(
+        (entry) =>
+          !(
+            entry.battingSide === batted &&
+            entry.auto &&
+            entry.wicketsSource === 'DERIVED' &&
+            (credits.get(entryPlayerKey(entry) ?? '') ?? NO_CREDIT).wickets === 0 &&
+            ![entry.balls, entry.maidens, entry.runs, entry.wides, entry.noBalls, entry.dots].some((value) => value != null)
+          ),
+      ),
+      ...created,
+    ]
     let fielding: FieldingEntry[] = []
     const withRow = new Set<string>()
     for (const entry of next.fielding) {
@@ -585,16 +621,15 @@ export function applyDerivedCredits(scorecard: Scorecard): Scorecard {
       if (!hasFieldingCredit(credit)) continue
       fielding.push(entry.catches === credit.catches && entry.stumpings === credit.stumpings && entry.runOuts === credit.runOuts ? entry : { ...entry, catches: credit.catches, stumpings: credit.stumpings, runOuts: credit.runOuts })
     }
-    const byKey = playersByKey(next)
     for (const [key, credit] of credits) {
-      const player = byKey.get(key)
+      const player = byPlayer.get(key)
       if (!hasFieldingCredit(credit) || withRow.has(key) || !player) continue
       fielding = [
         ...fielding,
         { battingSide: batted, inningsKind: 'REGULAR', ...entryRefOf(player), catches: credit.catches, stumpings: credit.stumpings, runOuts: credit.runOuts, creditsSource: 'DERIVED', featuredOverride: null },
       ]
     }
-    const bowlingSame = bowling.every((entry, index) => entry === next.bowling[index])
+    const bowlingSame = bowling.length === next.bowling.length && bowling.every((entry, index) => entry === next.bowling[index])
     const fieldingSame = fielding.length === next.fielding.length && fielding.every((entry, index) => entry === next.fielding[index])
     if (!bowlingSame || !fieldingSame) next = { ...next, bowling: bowlingSame ? next.bowling : bowling, fielding: fieldingSame ? next.fielding : fielding }
   }

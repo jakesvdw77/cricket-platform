@@ -145,6 +145,9 @@ export interface BowlingEntry extends ScorecardEntryBase {
   wicketsSource?: CreditSource
   // Read-only: what the dismissals credit this bowler.
   derivedWickets?: number | null
+  // Client-only (never sent): the row was created from a dismissal that names this bowler; it goes again if that dismissal
+  // changes and nothing else was typed on it.
+  auto?: boolean
 }
 
 export interface FieldingEntry extends ScorecardEntryBase {

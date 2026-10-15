@@ -1,8 +1,7 @@
 import { useEffect } from 'react'
-import { Alert, Box, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import type { BattingEntry, ResultSide, Scorecard } from '../../../../api/matchResultApi'
-import { Button } from '../../../../components/Button'
 import { ExtrasFields } from '../../../../components/ExtrasFields'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { HowOutSelect } from '../../../../components/HowOutSelect'
@@ -34,15 +33,12 @@ import {
   addPlayer,
   applyCalculatedFigure,
   battingOf,
-  blankBowlingEntry,
-  bowlersWithoutRow,
   bowlingOf,
   dismissalPatch,
   duplicatePlayerKeys,
   editInningsFigure,
   ensureBattingRows,
   ensureSideFromPrefill,
-  inningsHasDismissals,
   inningsSuggestions,
   ourTeamNotSelected,
   patchBatting,
@@ -51,7 +47,6 @@ import {
   reconcileSubstitutes,
   scorecardOf,
   setBatting,
-  setBowling,
   stepIncomplete,
   syncInningsFromScorecard,
   withScorecard,
@@ -196,13 +191,6 @@ export function BattingStep({
     const added = addPlayer(scorecard, fieldingSide, identity, newRowFill(battingOf(scorecard, fieldingSide), fieldingWickets).howOut)
     commit(filled(patchBatting(added.scorecard, key, { [field]: added.key })))
   }
-  const missingBowlers = bowlersWithoutRow(scorecard, fieldingSide)
-  const addMissingBowlers = () => {
-    const current = bowlingOf(scorecard, fieldingSide)
-    const derived = inningsHasDismissals(scorecard, side)
-    commit(filled(setBowling(scorecard, fieldingSide, [...current, ...missingBowlers.map((player, index) => blankBowlingEntry(fieldingSide, player, current.length + index + 1, derived))])))
-  }
-
   const captionOf = (key: string, entry: BattingEntry): string | null => {
     const player = byKey.get(key)
     if (!player) return null
@@ -371,20 +359,6 @@ export function BattingStep({
             />
           </Box>
 
-          {missingBowlers.length > 0 && (
-            <Alert
-              severity="info"
-              action={
-                <Button variant="secondary" size="sm" onClick={addMissingBowlers} disabled={disabled}>
-                  Add to bowling
-                </Button>
-              }
-            >
-              {missingBowlers.map((player) => label(scorecardPersonName(player))).join(', ')} {missingBowlers.length === 1 ? 'is' : 'are'} named as {missingBowlers.length === 1 ? 'a bowler' : 'bowlers'} but
-              {missingBowlers.length === 1 ? " isn't" : " aren't"} on the bowling list yet.
-            </Alert>
-          )}
-
           {rows.length === 0 && (
             <Typography variant="body2" color="text.secondary">
               {ours ? 'No team yet. Type a name below, or add players on Teams.' : 'No batters yet. Type their names below, one per line, or paste a list.'}
@@ -427,7 +401,7 @@ export function BattingStep({
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1 }}>
                       {allowsFielder(entry.howOut) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
                             Fielder
                           </Typography>
                           {dismissalPicker(entry, 'fielderPlayerId', true)}
@@ -435,7 +409,7 @@ export function BattingStep({
                       )}
                       {allowsBowler(entry.howOut) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
                             Bowler
                           </Typography>
                           {dismissalPicker(entry, 'bowlerPlayerId', true)}
@@ -447,7 +421,7 @@ export function BattingStep({
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: 1, justifyContent: 'space-between' }}>
                       {(['runs', 'balls', 'fours', 'sixes'] as const).map((field) => (
                         <Box key={field}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
                             {{ runs: 'Runs', balls: 'Balls', fours: '4s', sixes: '6s' }[field]}
                           </Typography>
                           <GridNumberInput

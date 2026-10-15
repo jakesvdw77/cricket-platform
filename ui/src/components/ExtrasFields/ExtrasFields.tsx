@@ -39,7 +39,7 @@ export function ExtrasFields({ value, onChange, disabled = false, owner, hideTot
         const id = `${prefix}-${key}`
         return (
           <Box key={key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+            <Typography component="label" htmlFor={id} variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem' }}>
               {label}
             </Typography>
             <GridNumberInput

@@ -247,7 +247,8 @@ function scorecardPayload(scorecard: Scorecard | null | undefined, sent: Innings
         .filter((entry) => entry.howOut !== null && entry.howOut !== undefined)
         // `auto` is client-only (the wicket fill's marker), not part of the API.
         .map(({ auto: _auto, ...entry }) => (entry.howOut === 'DID_NOT_BAT' ? { ...entry, position: null } : entry)),
-      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures),
+      // `auto` is client-only (a row created from a dismissal), not part of the API.
+      bowling: (scorecard.bowling ?? []).filter(inSave).filter(hasBowlingFigures).map(({ auto: _auto, ...entry }) => entry),
       fielding: (scorecard.fielding ?? []).filter(inSave).filter(hasCredit),
       awards: scorecard.awards ?? [],
     },

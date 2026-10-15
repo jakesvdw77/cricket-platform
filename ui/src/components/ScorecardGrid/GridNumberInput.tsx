@@ -47,17 +47,17 @@ export function GridNumberInput({ value, onChange, ariaLabel, column, disabled =
         'data-grid-col': column,
       }}
       sx={{
-        width: stepper ? 56 : width,
-        height: stepper ? 44 : 30,
-        border: 1,
+        width: stepper ? 40 : width,
+        height: stepper ? 42 : 30,
+        border: stepper ? 0 : 1,
         borderColor: 'divider',
-        borderRadius: 1.5,
-        bgcolor: 'background.paper',
+        borderRadius: stepper ? 0 : 1.5,
+        bgcolor: stepper ? 'transparent' : 'background.paper',
         fontWeight: 600,
         fontSize: stepper ? undefined : 12,
         fontVariantNumeric: 'tabular-nums',
         '& input': { textAlign: stepper ? 'center' : 'right', px: 1, height: '100%', boxSizing: 'border-box' },
-        '&.Mui-focused': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: 1, borderColor: 'primary.main' },
+        '&.Mui-focused': { outline: 2, outlineStyle: 'solid', outlineColor: 'primary.main', outlineOffset: stepper ? -2 : 1, borderColor: 'primary.main' },
         '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
       }}
     />
@@ -65,13 +65,14 @@ export function GridNumberInput({ value, onChange, ariaLabel, column, disabled =
 
   if (!stepper) return field
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+    // docs/specs/101 mockup: one bordered pill holding "– 2 +", green minus and plus, the value centred.
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', border: 1, borderColor: 'divider', borderRadius: '8px', height: 44, bgcolor: 'background.paper', px: 0.25 }}>
       <IconButton
         aria-label={`Decrease ${ariaLabel}`}
         size="small"
         disabled={disabled || (value ?? 0) <= 0}
         onClick={() => set(Math.max(0, (value ?? 0) - 1))}
-        sx={{ width: 44, height: 44, border: 1, borderColor: 'divider' }}
+        sx={{ width: 40, height: 40, color: 'primary.main' }}
       >
         <RemoveIcon fontSize="small" />
       </IconButton>
@@ -81,7 +82,7 @@ export function GridNumberInput({ value, onChange, ariaLabel, column, disabled =
         size="small"
         disabled={disabled}
         onClick={() => set((value ?? 0) + 1)}
-        sx={{ width: 44, height: 44, border: 1, borderColor: 'divider' }}
+        sx={{ width: 40, height: 40, color: 'primary.main' }}
       >
         <AddIcon fontSize="small" />
       </IconButton>

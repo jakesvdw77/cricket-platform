@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BattingEntry, BowlingEntry, ResultDraft } from '../../../api/matchResultApi'
 import type { MatchAward, ResultPlayer, Scorecard, ScorecardPrefillSide } from '../../../api/matchResultApi'
-import { matchPlayersFor, reconcileSubstitutes, removalOf, swapPlayer, applyCalculatedFigure, editInningsFigure, figureCorrected, inningsSuggestions, syncInningsFromScorecard, wicketsOwned } from './scorecardDraft'
+import { applyDerivedCredits, matchPlayersFor, reconcileSubstitutes, removalOf, swapPlayer, applyCalculatedFigure, editInningsFigure, figureCorrected, inningsSuggestions, syncInningsFromScorecard, wicketsOwned } from './scorecardDraft'
 
 const batter = (key: string, runs: number | null, howOut: BattingEntry['howOut']): BattingEntry => ({
   battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: null, playerClientKey: key, position: 1, howOut, runs, balls: null, fours: null, sixes: null, featuredOverride: null,
@@ -151,5 +151,29 @@ describe('swap, the 12th man and the side list', () => {
     expect(removalOf(sc, 'a', new Set(['pa']), 'A')).toEqual({ kind: 'dnb' })
     expect(removalOf(sc, 'm', new Set(), 'Guest m').kind).toBe('blocked')
     expect(removalOf(sc, 'b', new Set(), 'B')).toEqual({ kind: 'remove' })
+  })
+})
+
+describe('bowling rows from dismissals', () => {
+  const sc = (bowlerOf: string | null): Scorecard => ({
+    players: [player('x', null, { side: 'AWAY', opposition: true }), player('b', 'pb')],
+    batting: [{ ...batter('b', 10, 'BOWLED'), bowlerPlayerId: bowlerOf }],
+    bowling: [],
+    fielding: [],
+    awards: [],
+  })
+
+  it('creates a DERIVED bowling row for a named bowler and removes it again while it is still empty', () => {
+    const made = applyDerivedCredits(sc('x'))
+    expect(made.bowling).toHaveLength(1)
+    expect(made.bowling[0]).toMatchObject({ playerClientKey: 'x', wicketsSource: 'DERIVED', wickets: 1, bowlingOrder: 1, balls: null })
+    const gone = applyDerivedCredits({ ...made, batting: made.batting.map((e) => ({ ...e, bowlerPlayerId: null })) })
+    expect(gone.bowling).toHaveLength(0)
+  })
+
+  it('never removes a row with typed figures', () => {
+    const made = applyDerivedCredits(sc('x'))
+    const typed = { ...made, bowling: made.bowling.map((e) => ({ ...e, balls: 12 })), batting: made.batting.map((e) => ({ ...e, bowlerPlayerId: null })) }
+    expect(applyDerivedCredits(typed).bowling).toHaveLength(1)
   })
 })
