@@ -46,14 +46,14 @@ public class MatchInnings {
     @Column(name = "batting_side", nullable = false)
     private ResultSide battingSide;
 
-    @Column(nullable = false)
-    private int runs;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer runs;
 
-    @Column(nullable = false)
-    private int wickets;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer wickets;
 
-    @Column(nullable = false)
-    private int balls;
+    /** Null while the figure has not been entered (a draft may hold scorecard entries before the scores). */
+    private Integer balls;
 
     /** The stored total: the sum of the breakdown below when any part is present (docs/specs/101). */
     private Integer extras;

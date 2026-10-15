@@ -10557,7 +10557,7 @@ components:
           format: int64
     InningsDto:
       type: object
-      description: "One innings' totals (docs/specs/100). balls is balls faced, never decimal overs; oversDisplay (e.g. 36.4) is derived on read and ignored on write. On write sequence, kind and allOut may be omitted."
+      description: "One innings' totals (docs/specs/100). balls is balls faced, never decimal overs; oversDisplay (e.g. 36.4) is derived on read and ignored on write. On write sequence, kind and allOut may be omitted. runs, wickets and balls are nullable (docs/specs/101): null means not entered, a draft innings may hold any subset of its figures or none (the scorecard is entered before the scores); publishing a WON, TIE or DRAW result requires all three (INNINGS_FIGURES_MISSING)."
       properties:
         sequence:
           type: integer
@@ -10575,12 +10575,15 @@ components:
         runs:
           type: integer
           format: int32
+          nullable: true
         wickets:
           type: integer
           format: int32
+          nullable: true
         balls:
           type: integer
           format: int32
+          nullable: true
         extras:
           type: integer
           format: int32

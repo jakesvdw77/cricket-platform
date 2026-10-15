@@ -38,7 +38,7 @@ public final class StandoutRules {
      * Batters of one innings: in the top {@link #TOP_N} by runs (then fewer balls) <em>and</em> at least {@link
      * #BATTING_SHARE} of {@code inningsRuns}, or the top scorer when they scored at least one run.
      */
-    public static <K> Set<K> battingSuggestions(List<Batter<K>> batters, int inningsRuns) {
+    public static <K> Set<K> battingSuggestions(List<Batter<K>> batters, Integer inningsRuns) {
         // a batter without a run is never featured, whatever the innings total
         List<Batter<K>> ranked = new ArrayList<>(batters.stream().filter(b -> b.runs() > 0).toList());
         ranked.sort(Comparator.<Batter<K>>comparingInt(b -> -b.runs())
@@ -46,7 +46,8 @@ public final class StandoutRules {
         Set<K> suggested = new HashSet<>();
         for (int index = 0; index < ranked.size() && index < TOP_N; index++) {
             Batter<K> batter = ranked.get(index);
-            if (batter.runs() >= BATTING_SHARE * inningsRuns && batter.runs() > 0) {
+            // without the innings total (not entered yet) the share rule cannot apply; the top scorer rule below still does
+            if (inningsRuns != null && batter.runs() >= BATTING_SHARE * inningsRuns && batter.runs() > 0) {
                 suggested.add(batter.key());
             }
         }
@@ -64,7 +65,7 @@ public final class StandoutRules {
      * one wicket or at least {@link #MIN_BALLS_FOR_ECONOMY} balls at an economy of at most {@link #ECONOMY_FACTOR} of
      * the innings run rate. Economy and run rate compare runs per ball, so the over length cancels out.
      */
-    public static <K> Set<K> bowlingSuggestions(List<Bowler<K>> bowlers, int inningsRuns, int inningsBalls) {
+    public static <K> Set<K> bowlingSuggestions(List<Bowler<K>> bowlers, Integer inningsRuns, Integer inningsBalls) {
         // a bowler who bowled no ball is never featured
         List<Bowler<K>> ranked = new ArrayList<>(bowlers.stream().filter(b -> b.balls() > 0).toList());
         ranked.sort(Comparator.<Bowler<K>>comparingInt(b -> -b.wickets())
@@ -72,7 +73,7 @@ public final class StandoutRules {
         Set<K> suggested = new HashSet<>();
         for (int index = 0; index < ranked.size() && index < TOP_N; index++) {
             Bowler<K> bowler = ranked.get(index);
-            boolean economical = inningsBalls > 0 && bowler.balls() >= MIN_BALLS_FOR_ECONOMY
+            boolean economical = inningsRuns != null && inningsBalls != null && inningsBalls > 0 && bowler.balls() >= MIN_BALLS_FOR_ECONOMY
                     && runsPerBall(bowler) <= ECONOMY_FACTOR * ((double) inningsRuns / inningsBalls);
             if (bowler.wickets() >= 1 || economical) {
                 suggested.add(bowler.key());

@@ -104,6 +104,9 @@ public class ResultValidator {
             issues.error(ErrorCode.DECIDED_BY_NOT_A_WIN, ResultWizardStep.RESULT, null,
                     "Only a win can be decided by DLS or a super over.");
         }
+        if (outcome == ResultOutcomeType.WON || outcome == ResultOutcomeType.TIE || outcome == ResultOutcomeType.DRAW) {
+            requireInningsFigures(draft, issues);
+        }
         switch (outcome) {
             case WON -> validateWon(draft, names, issues);
             case FORFEIT -> validateForfeit(draft, issues);
@@ -126,6 +129,16 @@ public class ResultValidator {
         warnOnInningsLength(draft, issues);
         ScorecardRules.validate(draft, outcome, homeName, awayName, context, issues);
         return ResultValidationDto.of(issues.all());
+    }
+
+    /** Publish rule: an innings that is in the draft needs runs, wickets and overs once the outcome depends on them. */
+    private void requireInningsFigures(ResultDraft draft, ResultIssues issues) {
+        for (InningsDto i : draft.innings()) {
+            if (i.runs() == null || i.wickets() == null || i.balls() == null) {
+                issues.error(ErrorCode.INNINGS_FIGURES_MISSING, ResultWizardStep.SCORES, null,
+                        "Innings " + i.sequence() + " needs runs, wickets and overs.");
+            }
+        }
     }
 
     // ---- outcome matrix ----
@@ -460,13 +473,11 @@ public class ResultValidator {
             if (i.battingSide() == null) {
                 issues.error(ErrorCode.INNINGS_BATTING_SIDE_MISSING, ResultWizardStep.SCORES, null, label + " needs the batting side.");
             }
-            if (i.runs() == null || i.wickets() == null || i.balls() == null) {
-                issues.error(ErrorCode.INNINGS_FIGURES_MISSING, ResultWizardStep.SCORES, null, label + " needs runs, wickets and overs.");
-                continue;
-            }
-            if (i.runs() < 0 || i.balls() < 0 || i.wickets() < 0 || negative(i.extras()) || negative(i.wides())
-                    || negative(i.noBalls()) || negative(i.byes()) || negative(i.legByes()) || negative(i.penaltyRuns())
-                    || negative(i.nonBowlerWickets())) {
+            // A draft innings may hold any subset of its figures (docs/specs/101: the scorecard is entered before the
+            // scores); a missing figure is "not entered", checked at publish, never here.
+            if (negative(i.runs()) || negative(i.balls()) || negative(i.wickets()) || negative(i.extras())
+                    || negative(i.wides()) || negative(i.noBalls()) || negative(i.byes()) || negative(i.legByes())
+                    || negative(i.penaltyRuns()) || negative(i.nonBowlerWickets())) {
                 issues.error(ErrorCode.INNINGS_FIGURES_NEGATIVE, ResultWizardStep.SCORES, null, label + " cannot have negative figures.");
             }
             if (i.hasExtrasBreakdown() && i.extras() != null && i.extras() != i.extrasBreakdownTotal()) {
@@ -475,7 +486,7 @@ public class ResultValidator {
                                 + " runs, which make " + i.extrasBreakdownTotal() + ".");
             }
             int maxWickets = i.kind() == InningsKind.SUPER_OVER ? MAX_SUPER_OVER_WICKETS : MAX_WICKETS;
-            if (i.wickets() > maxWickets) {
+            if (i.wickets() != null && i.wickets() > maxWickets) {
                 issues.error(ErrorCode.INNINGS_WICKETS_TOO_MANY, ResultWizardStep.SCORES, null, label + " cannot have more than " + maxWickets + " wickets.");
             }
         }

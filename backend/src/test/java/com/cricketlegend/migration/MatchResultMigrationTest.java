@@ -135,6 +135,11 @@ class MatchResultMigrationTest {
         assertThatThrownBy(() -> jdbc.update(insert, id, 3, "SUPER_OVER", "BOTH", 1, 1, 6))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
+        // migration 046: any figure may be absent (not entered yet); the range checks still hold for what is present
+        jdbc.update(insert, id, 4, "SUPER_OVER", "HOME", null, null, null);
+        assertThatThrownBy(() -> jdbc.update(insert, id, 5, "SUPER_OVER", "HOME", null, 11, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
         jdbc.update("delete from match_result where id = ?", id);
         assertThat(jdbc.queryForObject("select count(*) from match_innings where match_result_id = ?", Integer.class, id))
                 .isZero();

@@ -351,9 +351,6 @@ final class ScorecardRules {
                 .sorted(Comparator.comparingInt(InningsDto::sequence))
                 .toList();
         for (InningsDto innings : regular) {
-            if (innings.runs() == null || innings.balls() == null) {
-                continue;
-            }
             Inn inn = new Inn(innings, draft.ballsPerOver(), scorecard, players);
             battingChecks(inn, issues);
             bowlingChecks(inn, context, issues);
@@ -524,7 +521,9 @@ final class ScorecardRules {
                     "Innings " + inn.innings.sequence() + ": " + notOut + " batters are not out"
                             + (allOut ? " in an innings that was all out." : "."));
         }
-        if (inn.innings.extras() != null && batterRuns + inn.innings.extras() != inn.innings.runs()) {
+        if (inn.innings.runs() == null) {
+            // the total has not been entered yet: nothing to compare the batters against
+        } else if (inn.innings.extras() != null && batterRuns + inn.innings.extras() != inn.innings.runs()) {
             issues.warning(WarningCode.BATTING_TOTAL_MISMATCH, step, side,
                     "Innings " + inn.innings.sequence() + ": the batters' " + batterRuns + " runs plus "
                             + inn.innings.extras() + " extras make " + (batterRuns + inn.innings.extras())
@@ -560,13 +559,15 @@ final class ScorecardRules {
                                     + OversFormat.display(context.maxBallsPerBowler(), inn.ballsPerOver) + " overs.");
                 }
             }
-            if (balls != innings.balls()) {
+            if (innings.balls() != null && balls != innings.balls()) {
                 issues.warning(WarningCode.BOWLER_BALLS_MISMATCH, step, bowlingSide,
                         label + ": the bowlers bowled " + OversFormat.display(balls, inn.ballsPerOver)
                                 + " overs, but the innings lasted " + OversFormat.display(innings.balls(), inn.ballsPerOver)
                                 + ".");
             }
-            if (innings.hasExtrasBreakdown()) {
+            if (innings.runs() == null) {
+                // the total has not been entered yet: nothing to compare the bowlers against
+            } else if (innings.hasExtrasBreakdown()) {
                 int charged = runs + zero(innings.byes()) + zero(innings.legByes()) + zero(innings.penaltyRuns());
                 if (charged != innings.runs()) {
                     issues.warning(WarningCode.BOWLING_RUNS_MISMATCH, step, bowlingSide,
