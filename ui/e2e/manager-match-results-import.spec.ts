@@ -19,7 +19,7 @@ import { addFieldInline } from './helpers/addFieldInline';
  * before Publish, so only an error would stop it.
  *
  * Runs against a real running dev server AND real local Keycloak (not Testcontainers, no mocking)
- * — start all of these before running, same as ui/e2e/manager-match-results.spec.ts:
+ * Start all of these before running, same as ui/e2e/manager-match-results.spec.ts:
  *   - backend: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (port 8082)
  *   - frontend: `cd ui && npm run dev` (port 5173)
  *   - Keycloak: `auth.localhost:8180`, realm `cricketlegend`, client `cricketlegend`

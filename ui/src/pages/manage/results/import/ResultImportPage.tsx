@@ -106,7 +106,7 @@ export default function ResultImportPage() {
   const resolveMutation = useMutation({ mutationFn: (request: Parameters<typeof resolveImport>[1]) => resolveImport(clubId as string, request) })
 
   if (!clubId) {
-    return <EmptyState title="Not authorized" description="No club is associated with your account." />
+    return <EmptyState title="Not authorised" description="No club is associated with your account." />
   }
 
   const stepIndex = Math.max(0, IMPORT_STEPS.findIndex((step) => step.id === stepId))

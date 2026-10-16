@@ -1,4 +1,4 @@
-# Plan: 104 — Match Results: Import Adaptors and the Result Processor
+# Plan: 104: Match Results: Import Adaptors and the Result Processor
 
 Spec: `docs/specs/104-match-results-import-adaptors.md` (merged to master via PR #120; first revision, **no AI**). Branch: `feature/104-import-adaptors` (created from master). On approval this file is copied verbatim to `docs/plans/104-match-results-import-adaptors.md`.
 
