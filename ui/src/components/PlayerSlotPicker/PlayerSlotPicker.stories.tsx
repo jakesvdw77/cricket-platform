@@ -9,7 +9,7 @@ function seededClient() {
   const person = (id: string, firstName: string, lastName: string) => ({ id, playerProfileId: id, firstName, lastName })
   client.setQueryData(
     ['managed-club', 'club-1', 'teams', 'team-1', 'seasons', 'season-1', 'squad'],
-    [person('p1', 'Ann', 'Ash'), person('p2', 'Bob', 'Birch'), person('p3', 'Sam', 'Venter'), person('p4', 'Sam', 'van der Westhuizen')],
+    [person('p1', 'Ann', 'Ash'), person('p2', 'Bob', 'Birch'), person('p3', 'Sam', 'Venter'), person('p4', 'Sam', 'van der Walton')],
   )
   client.setQueryData(['managed-club', 'club-1', 'players', { includeInactive: false }], [
     person('p1', 'Ann', 'Ash'),
@@ -59,7 +59,7 @@ export const ImportedUnresolved: Story = {
     importedName: 'Sam V',
     suggestions: [
       { player: { playerProfileId: 'p3', firstName: 'Sam', lastName: 'Venter' }, score: 0.86 },
-      { player: { playerProfileId: 'p4', firstName: 'Sam', lastName: 'van der Westhuizen' }, score: 0.81 },
+      { player: { playerProfileId: 'p4', firstName: 'Sam', lastName: 'van der Walton' }, score: 0.81 },
     ],
   },
 }

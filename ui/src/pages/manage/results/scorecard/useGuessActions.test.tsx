@@ -24,7 +24,7 @@ const scorecardOf = (players: ResultPlayer[]): Scorecard => ({ players, batting:
 
 const notes: ImportNote[] = [
   { code: 'NAME_INITIALS', severity: 'INFO', section: 'ours', message: 'Matched by initials.', fileText: 'Ann', candidateName: 'Ann Smith', level: 'NORMALISED' },
-  { code: 'NAME_UNRESOLVED', severity: 'WARNING', section: 'ours', message: 'Not placed.', fileText: 'Dihandre V', level: 'UNRESOLVED', suggestions: [{ playerProfileId: 'p-henk', displayName: 'Henk Smit', score: 0.8 }] },
+  { code: 'NAME_UNRESOLVED', severity: 'WARNING', section: 'ours', message: 'Not placed.', fileText: 'Dino V', level: 'UNRESOLVED', suggestions: [{ playerProfileId: 'p-hank', displayName: 'Hank Brow', score: 0.8 }] },
 ]
 
 function setup(players: ResultPlayer[], provider: string | null = 'ACMESCORE') {
@@ -41,7 +41,7 @@ describe('useGuessActions', () => {
   const ann = ours('ann', { importMatch: 'NORMALISED' })
   const dan = ours('dan', { importMatch: 'AI_SUGGESTED' })
   const bob = ours('bob')
-  const guest = ours('guest', { playerProfileId: null, displayName: 'Dihandre V', firstName: null, lastName: null, guest: true })
+  const guest = ours('guest', { playerProfileId: null, displayName: 'Dino V', firstName: null, lastName: null, guest: true })
 
   it('hands a chip nothing for a result that was not imported or a row with nothing to check', () => {
     expect(setup([ann], null).result.current.guessOf(ann)).toBeUndefined()
@@ -70,20 +70,20 @@ describe('useGuessActions', () => {
   it('use closest links the row to the top suggestion, keeps the file spelling and clears the guess', () => {
     const { result, onScorecard } = setup([ann, guest])
     const info = result.current.guessOf(guest)
-    expect(info?.closest?.displayName).toBe('Henk Smit')
+    expect(info?.closest?.displayName).toBe('Hank Brow')
 
     info?.onUseClosest?.()
 
     const swapped = lastWritten(onScorecard).players.find((p) => p.id === 'id-guest')
-    expect(swapped).toMatchObject({ playerProfileId: 'p-henk', firstName: 'Henk', lastName: 'Smit', displayName: 'Dihandre V', guest: false, importMatch: null })
+    expect(swapped).toMatchObject({ playerProfileId: 'p-hank', firstName: 'Hank', lastName: 'Brow', displayName: 'Dino V', guest: false, importMatch: null })
     expect(lastWritten(onScorecard).players.find((p) => p.id === 'id-ann')?.importMatch).toBe('NORMALISED')
   })
 
   it('hides use closest when that player is already on the side', () => {
-    const henk = ours('henk', { playerProfileId: 'p-henk' })
-    const { result } = setup([henk, guest])
+    const hank = ours('hank', { playerProfileId: 'p-hank' })
+    const { result } = setup([hank, guest])
     const info = result.current.guessOf(guest)
-    expect(info?.closest?.displayName).toBe('Henk Smit')
+    expect(info?.closest?.displayName).toBe('Hank Brow')
     expect(info?.onUseClosest).toBeUndefined()
   })
 })

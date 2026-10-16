@@ -77,7 +77,7 @@ const oppo = (key: string, name: string) => ({
   id: `id-${key}`, side: 'AWAY', playerProfileId: null, displayName: name, plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, opposition: true,
 })
 
-// Two rule-based guesses (Ann, Cy), one reserved AI level (Dan), one name nobody matched (Dihandre V), and an exact link (Bob).
+// Two rule-based guesses (Ann, Cy), one reserved AI level (Dan), one name nobody matched (Dino V), and an exact link (Bob).
 const importedScorecard = (): Scorecard =>
   ({
     players: [
@@ -85,7 +85,7 @@ const importedScorecard = (): Scorecard =>
       row('b', 'Bob', 'Bell', { displayName: 'Bob Bell', plannedBattingOrder: 2 }),
       row('c', 'Cy', 'Cox', { displayName: 'Cy C', importMatch: 'NORMALISED' }),
       row('d', 'Dan', 'Day', { displayName: 'D Day', importMatch: 'AI_SUGGESTED' }),
-      { ...row('g', '', ''), playerProfileId: null, displayName: 'Dihandre V', guest: true, firstName: null, lastName: null },
+      { ...row('g', '', ''), playerProfileId: null, displayName: 'Dino V', guest: true, firstName: null, lastName: null },
       oppo('x', 'Sam Jones'),
     ],
     batting: [], bowling: [], fielding: [], awards: [],
@@ -118,7 +118,7 @@ const notes = (overrides: ImportNote[] = []): ImportNote[] => [
     severity: 'WARNING',
     section: 'ours',
     message: 'm',
-    fileText: 'Dihandre V',
+    fileText: 'Dino V',
     level: 'UNRESOLVED',
     suggestions: [
       { playerProfileId: 'p-e', displayName: 'Eve Elm', score: 0.82 },
@@ -336,10 +336,10 @@ describe('an imported draft in the capture wizard', () => {
 
     it('an unresolved Guest chip goes straight to the picker with the ranked suggestions, best first, with similarity', async () => {
       const user = await open()
-      await user.click(screen.getByRole('button', { name: 'Choose the player for Dihandre V' }))
+      await user.click(screen.getByRole('button', { name: 'Choose the player for Dino V' }))
 
       const dialog = await screen.findByRole('dialog', { name: 'Link to a registered player' })
-      expect(within(dialog).getByText(/File said:/)).toHaveTextContent('Dihandre V')
+      expect(within(dialog).getByText(/File said:/)).toHaveTextContent('Dino V')
       const closest = within(within(dialog).getByRole('list', { name: 'Closest players' })).getAllByRole('button')
       expect(closest[0]).toHaveTextContent('Eve Elm')
       expect(closest[0]).toHaveTextContent('82%')
@@ -350,21 +350,21 @@ describe('an imported draft in the capture wizard', () => {
 
     it('picking a suggestion links the row, clears the flag and keeps the file spelling for the club to remember', async () => {
       const user = await open()
-      await user.click(screen.getByRole('button', { name: 'Choose the player for Dihandre V' }))
+      await user.click(screen.getByRole('button', { name: 'Choose the player for Dino V' }))
       const dialog = await screen.findByRole('dialog', { name: 'Link to a registered player' })
       await user.click(within(within(dialog).getByRole('list', { name: 'Closest players' })).getByRole('button', { name: /Eve Elm/ }))
 
-      await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dihandre V' })).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dino V' })).not.toBeInTheDocument())
       // findBy waits out the fading dialog or popover, which hides the rest of the page from the accessibility tree meanwhile.
       await user.click(await screen.findByRole('button', { name: 'Next: Toss and field' }))
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
-      expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dihandre V', guest: false })
+      expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dino V', guest: false })
       expect(savedPlayer('id-g')?.importMatch ?? null).toBeNull()
     })
   })
 
   describe('Change to the closest player', () => {
-    const useClosest = () => screen.getByRole('button', { name: 'Change to Eve Elm for Dihandre V' })
+    const useClosest = () => screen.getByRole('button', { name: 'Change to Eve Elm for Dino V' })
 
     it('is offered under the unresolved name, in the status column and not in the name cell', async () => {
       await open()
@@ -382,14 +382,14 @@ describe('an imported draft in the capture wizard', () => {
       const user = await open()
       // Nothing is saved or linked just by the button being there.
       expect(saveResultDraft).not.toHaveBeenCalled()
-      expect(screen.getByRole('button', { name: 'Choose the player for Dihandre V' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Choose the player for Dino V' })).toBeInTheDocument()
 
       await user.click(useClosest())
-      await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dihandre V' })).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dino V' })).not.toBeInTheDocument())
       // findBy waits out the fading dialog or popover, which hides the rest of the page from the accessibility tree meanwhile.
       await user.click(await screen.findByRole('button', { name: 'Next: Toss and field' }))
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
-      expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dihandre V' })
+      expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dino V' })
     })
 
     it('is hidden when the closest player is already on the side, and the caption says who is closest instead', async () => {

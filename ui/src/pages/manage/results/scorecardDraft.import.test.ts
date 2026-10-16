@@ -5,7 +5,7 @@ import { confirmGuess, linkGuest, resolveImportedRow, swapPlayer } from './score
 // docs/specs/104: how a manager's confirm, change or link settles an imported guess. The client can only ever clear the flag.
 
 const player = (key: string, profile: string | null, patch: Partial<ResultPlayer> = {}): ResultPlayer => ({
-  clientKey: key, side: 'HOME', playerProfileId: profile, displayName: profile ? 'Ann A' : 'Dihandre V', plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false,
+  clientKey: key, side: 'HOME', playerProfileId: profile, displayName: profile ? 'Ann A' : 'Dino V', plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false,
   firstName: profile ? key.toUpperCase() : null, lastName: profile ? 'Smith' : null, ...patch,
 })
 const card = (): Scorecard => ({
@@ -40,7 +40,7 @@ describe('resolveImportedRow', () => {
 
   it('links an unresolved guest to a registered player', () => {
     const next = resolveImportedRow(card(), 'g', { playerProfileId: 'pz', firstName: 'Zed', lastName: 'Zulu' })
-    expect(find(next, 'g')).toMatchObject({ playerProfileId: 'pz', displayName: 'Dihandre V', guest: false })
+    expect(find(next, 'g')).toMatchObject({ playerProfileId: 'pz', displayName: 'Dino V', guest: false })
   })
 
   it('keeps the row a guest when a guest name is chosen', () => {

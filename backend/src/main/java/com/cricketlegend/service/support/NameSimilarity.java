@@ -61,7 +61,7 @@ public final class NameSimilarity {
 
     /**
      * The compact forms compared: given names then the surname, once with its leading particle stripped and once
-     * as written. Both are offered because a stripped form can lose a real syllable ("Dedka" starts with "de").
+     * as written. Both are offered because a stripped form can lose a real syllable ("Dedman" starts with "de").
      */
     private static List<String> forms(String given, String surname) {
         String compactGiven = PlayerNameMatcher.canonical(given);
