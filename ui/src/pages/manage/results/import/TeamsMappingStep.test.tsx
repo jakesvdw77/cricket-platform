@@ -59,6 +59,23 @@ describe('Teams mapping step', () => {
     expect(screen.getByText('Matched ignoring capitals.')).toBeInTheDocument()
   })
 
+  it('says a side that is only a typed name is not one of the club teams, instead of a plain Exact', async () => {
+    await toTeamsStep(makePreview({ matchCandidates: [makeCandidate({ homeIsClubTeam: true, awayIsClubTeam: false })] }))
+    // Northgate is a club team (home) and Riverside only a typed outside name (away).
+    const away = sideOf('Riverside Occasionals').closest('div[class*="MuiBox"]') as HTMLElement
+    expect(within(away.parentElement as HTMLElement).getByText('Not one of your teams')).toBeInTheDocument()
+    expect(screen.queryByTestId('no-club-team')).not.toBeInTheDocument()
+    expect(create()).toBeEnabled()
+  })
+
+  it('blocks Create and says why when neither team of the match is one of the club teams', async () => {
+    await toTeamsStep(makePreview({ matchCandidates: [makeCandidate({ homeIsClubTeam: false, awayIsClubTeam: false })] }))
+    expect(screen.getByTestId('no-club-team')).toHaveTextContent("Neither team of this match is one of your club's teams.")
+    expect(screen.getByRole('link', { name: 'Open the match' })).toHaveAttribute('href', '/manage/fixtures/matches/match-1')
+    expect(create()).toBeDisabled()
+    expect(screen.getAllByText('Not one of your teams')).toHaveLength(2)
+  })
+
   it('cannot create until every file team has a side', async () => {
     const user = await toTeamsStep(
       makePreview({ teamMapping: [{ fileKey: 'a', fileName: 'Northgate Strollers', side: null, exactness: 'UNRESOLVED' }, { fileKey: 'b', fileName: 'Riverside Occasionals', side: null, exactness: 'UNRESOLVED' }] }),

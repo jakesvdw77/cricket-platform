@@ -29,6 +29,8 @@ function TeamCard({
   value,
   homeName,
   awayName,
+  homeIsClub,
+  awayIsClub,
   onChange,
   disabled,
 }: {
@@ -37,12 +39,16 @@ function TeamCard({
   value: ResultSide | null
   homeName: string
   awayName: string
+  homeIsClub: boolean
+  awayIsClub: boolean
   onChange: (side: ResultSide) => void
   disabled: boolean
 }) {
   // The chip describes the server's proposal; once the manager picks a different side it says the choice is theirs.
   const changed = Boolean(proposal) && proposal?.side !== value
   const exactness = proposal?.exactness ?? 'UNRESOLVED'
+  // A side that is only a typed name is not a club team: its name can match exactly and still hold nobody of ours.
+  const outside = value !== null && !(value === 'HOME' ? homeIsClub : awayIsClub)
   return (
     <Box sx={{ flex: 1, minWidth: 0, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 1.5, md: 2.25 }, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
       <Box>
@@ -68,7 +74,9 @@ function TeamCard({
         <MenuItem value="AWAY">{awayName} (away)</MenuItem>
       </Input>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        {changed ? (
+        {outside ? (
+          <Chip size="small" label="Not one of your teams" sx={{ ...badgeSx('neutral'), height: 24, fontSize: '0.75rem' }} />
+        ) : changed ? (
           <Chip size="small" label="Chosen by you" sx={{ ...badgeSx('neutral'), height: 24, fontSize: '0.75rem' }} />
         ) : (
           <Chip
@@ -78,7 +86,7 @@ function TeamCard({
             sx={{ ...badgeSx(TONE[exactness]), height: 24, fontSize: '0.75rem' }}
           />
         )}
-        {!changed && proposal?.reason && (
+        {!changed && !outside && proposal?.reason && (
           <Typography variant="caption" color="text.secondary">
             {proposal.reason}
           </Typography>
@@ -99,7 +107,8 @@ export function TeamsMappingStep(context: ImportStepContext) {
 
   const draftExists = candidate.existingResult?.status === 'DRAFT'
   const complete = teams.length === 2 && teams.every((team) => mapping[team.key])
-  const canCreate = complete && (!draftExists || replaceAck) && !creating && !resolved
+  const noClubTeam = !candidate.homeIsClubTeam && !candidate.awayIsClubTeam
+  const canCreate = !noClubTeam && complete && (!draftExists || replaceAck) && !creating && !resolved
   const locked = creating || resolved !== null
 
   return (
@@ -121,6 +130,8 @@ export function TeamsMappingStep(context: ImportStepContext) {
             value={mapping[teams[0].key] ?? null}
             homeName={candidate.homeName}
             awayName={candidate.awayName}
+            homeIsClub={candidate.homeIsClubTeam}
+            awayIsClub={candidate.awayIsClubTeam}
             onChange={(side) => onMappingChange(teams[0].key, side)}
             disabled={locked}
           />
@@ -137,11 +148,27 @@ export function TeamsMappingStep(context: ImportStepContext) {
             value={mapping[teams[1].key] ?? null}
             homeName={candidate.homeName}
             awayName={candidate.awayName}
+            homeIsClub={candidate.homeIsClubTeam}
+            awayIsClub={candidate.awayIsClubTeam}
             onChange={(side) => onMappingChange(teams[1].key, side)}
             disabled={locked}
           />
         )}
       </Box>
+
+      {noClubTeam && (
+        <Box role="alert" data-testid="no-club-team" sx={{ maxWidth: { md: 720 }, display: 'flex', flexDirection: 'column', gap: 1, border: 1, borderColor: 'warning.main', borderRadius: 2, p: 1.5, bgcolor: 'background.paper' }}>
+          <Typography variant="body2" fontWeight={700}>
+            Neither team of this match is one of your club&apos;s teams.
+          </Typography>
+          <Typography variant="body2">
+            Nobody on the scorecard can be linked to your players. Open the match, choose your own team as home or away, then come back. Your file is kept.
+          </Typography>
+          <MuiButton component={RouterLink} to={`/manage/fixtures/matches/${candidate.matchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none' }}>
+            Open the match
+          </MuiButton>
+        </Box>
+      )}
 
       {draftExists && candidate.existingResult && (
         <AcknowledgementTick

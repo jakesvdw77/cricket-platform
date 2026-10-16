@@ -72,6 +72,12 @@ describe('Match step', () => {
     expect(other.getByText('League')).toBeInTheDocument()
   })
 
+  it('flags a match with no team of the club before the manager continues', async () => {
+    previewImport.mockResolvedValue(makePreview({ matchCandidates: [makeCandidate({ homeIsClubTeam: false, awayIsClubTeam: false }), second()] }))
+    await toMatchStep()
+    expect(matches().getByText('Neither team is yours. Edit the match first')).toBeInTheDocument()
+  })
+
   it('preselects nothing when there are several candidates, and Next waits for a choice', async () => {
     previewImport.mockResolvedValue(makePreview({ matchCandidates: [makeCandidate(), second({ matchDate: new Date(2026, 9, 11, 15, 0).toISOString() })] }))
     const user = await toMatchStep()

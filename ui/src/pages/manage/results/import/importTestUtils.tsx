@@ -53,6 +53,8 @@ export const makeCandidate = (overrides: Partial<MatchCandidate> = {}): MatchCan
   label: 'Northgate Strollers v Riverside Occasionals',
   matchDate: new Date(2026, 9, 11, 13, 0).toISOString(),
   homeName: 'Northgate Strollers',
+  homeIsClubTeam: true,
+  awayIsClubTeam: true,
   awayName: 'Riverside Occasionals',
   leagueName: null,
   venue: 'Main Oval',

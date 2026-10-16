@@ -32,6 +32,7 @@ const chipSx = (tone: RecordCardBadgeTone) => ({ ...badgeSx(tone), height: 24, f
 
 // The status of a candidate's existing result, in words (never colour alone): published matches cannot be chosen.
 function statusOf(candidate: MatchCandidate, importedBefore: boolean): { label: string; tone: RecordCardBadgeTone } | null {
+  if (!candidate.homeIsClubTeam && !candidate.awayIsClubTeam) return { label: 'Neither team is yours. Edit the match first', tone: 'warning' }
   if (candidate.existingResult?.status === 'PUBLISHED') return { label: 'Published. Unpublish it first', tone: 'muted' }
   if (importedBefore) return { label: 'Imported from this id before', tone: 'side' }
   if (candidate.existingResult?.status === 'DRAFT') return { label: 'Draft result exists', tone: 'warning' }

@@ -154,6 +154,7 @@ public class ImportMatchLocator {
             located.add(new Located(
                     new MatchCandidateDto(
                             match.id(), homeName + " v " + awayName, match.matchDate(), homeName, awayName,
+                            match.homeTeamId() != null, match.awayTeamId() != null,
                             league == null ? null : league.getName(), match.venue(),
                             reasons.stream().sorted().toList(), existing.get(match.id())),
                     mapping));

@@ -172,6 +172,8 @@ export default function ResultImportPage() {
       matchDate: match.matchDate,
       homeName: match.homeTeamName ?? '',
       awayName: match.awayTeamName ?? '',
+      homeIsClubTeam: Boolean(match.homeTeamId),
+      awayIsClubTeam: Boolean(match.awayTeamId),
       leagueName: null,
       venue: match.venue,
       reasons: [],

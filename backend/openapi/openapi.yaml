@@ -11806,6 +11806,10 @@ components:
           type: string
         awayName:
           type: string
+        homeIsClubTeam:
+          type: boolean
+        awayIsClubTeam:
+          type: boolean
         leagueName:
           type: string
         venue:

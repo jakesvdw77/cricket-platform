@@ -74,6 +74,9 @@ export interface MatchCandidate {
   matchDate: string
   homeName: string
   awayName: string
+  // Whether that side is one of the club's own teams (a typed outside name is not): an import needs one such side.
+  homeIsClubTeam: boolean
+  awayIsClubTeam: boolean
   leagueName: string | null
   venue: string | null
   reasons: ImportMatchReason[]
