@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Alert, Box, Stack, Typography } from '@mui/material'
+import { Alert, Box, MenuItem, Stack, Typography } from '@mui/material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
@@ -13,6 +13,9 @@ export interface LeagueSeasonDatesBlockProps {
   leagueId: string
   seasonId: string
   seasonLabel: string
+  // Details tab only: when both are given the block shows its own Season select (the other tabs have the header pill).
+  seasons?: { id: string; label: string }[]
+  onSeasonChange?: (seasonId: string) => void
 }
 
 interface DraftState {
@@ -29,7 +32,7 @@ function sourceKey(dates: LeagueSeasonDates | null | undefined, seasonId: string
 // docs/specs/111-league-season-dates.md: the "Season dates" block above the season-scoped tabs of Edit League. Start and End
 // date are both required for the chosen season, saved with their own Save (a PUT that the server may refuse with a message,
 // shown as it is, when an existing match would fall outside the range). An amber notice asks for the dates while none exist.
-export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel }: LeagueSeasonDatesBlockProps) {
+export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel, seasons, onSeasonChange }: LeagueSeasonDatesBlockProps) {
   const queryClient = useQueryClient()
   const datesQuery = useQuery({
     queryKey: leagueSeasonDatesKey(clubId, leagueId, seasonId),
@@ -86,6 +89,22 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
       <Typography variant="subtitle2" component="h2">
         Season dates
       </Typography>
+
+      {seasons && onSeasonChange && (
+        <Input
+          select
+          label="Season"
+          value={seasonId}
+          onChange={(event) => onSeasonChange(event.target.value)}
+          sx={{ '& .MuiInputBase-root': { minHeight: 44 }, maxWidth: { sm: 220 } }}
+        >
+          {seasons.map((season) => (
+            <MenuItem key={season.id} value={season.id} sx={{ minHeight: 44 }}>
+              {season.label}
+            </MenuItem>
+          ))}
+        </Input>
+      )}
 
       {loaded && saved === null && (
         <Alert severity="warning" data-testid="season-dates-banner">
