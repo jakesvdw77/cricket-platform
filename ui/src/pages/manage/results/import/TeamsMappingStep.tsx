@@ -48,6 +48,8 @@ function TeamCard({
   const changed = Boolean(proposal) && proposal?.side !== value
   const exactness = proposal?.exactness ?? 'UNRESOLVED'
   // A side that is only a typed name is not a club team: its name can match exactly and still hold nobody of ours.
+  // The nearest side by name, offered only while nothing is chosen and the server could not place the team.
+  const closest = value === null && proposal?.closestSide ? { side: proposal.closestSide, name: proposal.closestSide === 'HOME' ? homeName : awayName } : null
   const outside = value !== null && !(value === 'HOME' ? homeIsClub : awayIsClub)
   return (
     <Box sx={{ flex: 1, minWidth: 0, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 1.5, md: 2.25 }, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
@@ -92,6 +94,16 @@ function TeamCard({
           </Typography>
         )}
       </Box>
+      {closest && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }} data-testid="closest-side">
+          <Typography variant="caption" color="text.secondary">
+            Closest side by name: {closest.name}
+          </Typography>
+          <MuiButton variant="text" onClick={() => onChange(closest.side)} disabled={disabled} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
+            Use {closest.name}
+          </MuiButton>
+        </Box>
+      )}
     </Box>
   )
 }

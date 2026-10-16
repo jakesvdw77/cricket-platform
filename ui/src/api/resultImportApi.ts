@@ -89,6 +89,8 @@ export interface TeamMapping {
   side: ResultSide | null
   exactness?: ImportExactness
   reason?: string
+  // A hint for a team the server could not place: the side its name is nearest to. Never chosen for the manager.
+  closestSide?: ResultSide | null
 }
 
 export interface ImportNoteSuggestion {

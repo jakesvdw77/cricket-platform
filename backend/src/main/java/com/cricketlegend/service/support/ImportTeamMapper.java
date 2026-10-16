@@ -52,7 +52,7 @@ public class ImportTeamMapper {
             }
             placed.add(mapping);
         }
-        return completeTheOtherSide(placed);
+        return completeTheOtherSide(withClosestHints(placed, home, away));
     }
 
     /**
@@ -127,12 +127,34 @@ public class ImportTeamMapper {
                         "The same name as " + side.name().trim() + " apart from capitals or spacing.");
             }
         }
-        NameResolution byTiers = NameTiers.resolve(written, List.of(asCandidate(HOME_MARKER, home), asCandidate(AWAY_MARKER, away)));
-        if (byTiers.isLinked()) {
+        for (Side side : List.of(home, away)) {
+            if (side.name() != null && TeamNameForms.sameWords(written, side.name())) {
+                return mapped(team, side.side(), ImportExactness.NORMALISED,
+                        "The same name as " + side.name().trim() + ", with the age group written differently.");
+            }
+        }
+        // A name with a number or an age group never links to a side with another one ("Villagers 1" is not "Villagers 2").
+        boolean homeFits = home.name() != null && TeamNameForms.compatible(written, home.name());
+        boolean awayFits = away.name() != null && TeamNameForms.compatible(written, away.name());
+        NameResolution byTiers = homeFits || awayFits
+                ? NameTiers.resolve(written, candidatesFor(homeFits ? home : null, awayFits ? away : null))
+                : null;
+        if (byTiers != null && byTiers.isLinked()) {
             ResultSide side = HOME_MARKER.equals(byTiers.candidate().id()) ? ResultSide.HOME : ResultSide.AWAY;
             return mapped(team, side, ImportExactness.NORMALISED, "Similar to the name of the " + side.name().toLowerCase(java.util.Locale.ROOT) + " side.");
         }
         return unplaced(team, "Not recognised as either side.");
+    }
+
+    private static List<NameCandidate> candidatesFor(Side home, Side away) {
+        List<NameCandidate> out = new ArrayList<>();
+        if (home != null) {
+            out.add(asCandidate(HOME_MARKER, home));
+        }
+        if (away != null) {
+            out.add(asCandidate(AWAY_MARKER, away));
+        }
+        return out;
     }
 
     private static NameCandidate asCandidate(UUID marker, Side side) {
@@ -157,6 +179,35 @@ public class ImportTeamMapper {
 
     private static TeamMappingDto unplaced(ImportedResultDto.Team team, String reason) {
         return new TeamMappingDto(team.key(), team.name(), null, ImportExactness.UNRESOLVED, reason);
+    }
+
+    /**
+     * For a team that could not be placed, the side its name is nearest to, as a hint the manager can take with one tap.
+     * Only when neither team was placed (with one placed the other is the other side), and when both would point at the same
+     * side only the nearer one gets the hint.
+     */
+    private static List<TeamMappingDto> withClosestHints(List<TeamMappingDto> placed, Side home, Side away) {
+        if (placed.size() != 2 || placed.stream().anyMatch(m -> m.side() != null)) {
+            return placed;
+        }
+        List<TeamMappingDto> out = new ArrayList<>(placed);
+        List<java.util.Optional<TeamNameForms.Closest>> hints = new ArrayList<>();
+        for (TeamMappingDto m : placed) {
+            hints.add(TeamNameForms.closest(m.fileName(), home.name(), away.name()));
+        }
+        boolean sameSide = hints.get(0).isPresent() && hints.get(1).isPresent()
+                && hints.get(0).get().side() == hints.get(1).get().side();
+        for (int i = 0; i < 2; i++) {
+            if (hints.get(i).isEmpty()) {
+                continue;
+            }
+            if (sameSide && hints.get(i).get().score() < hints.get(1 - i).get().score()) {
+                continue;
+            }
+            TeamMappingDto m = placed.get(i);
+            out.set(i, new TeamMappingDto(m.fileKey(), m.fileName(), null, m.exactness(), m.reason(), hints.get(i).get().side()));
+        }
+        return out;
     }
 
     /** With one team placed, the other is by elimination the other side: proposed, but still for the manager to confirm. */
