@@ -212,7 +212,7 @@ export function MatchStep(context: ImportStepContext) {
         onCreated={onMatchCreated}
         initialValues={preview ? matchPrefill(preview.document) : undefined}
         inferSeason
-        hint="Filled in from the file where it could be. Check each box, and choose which side is your team."
+        hint="Filled in from the file where it could be. A team whose name matches one of yours is picked as My team; check each box and choose which side is your team if it is not."
       />
 
       {matchProblem && (
