@@ -1,7 +1,7 @@
 # 107: Match Results: CricClubs CSV Adaptor
 
 **Depends on:** `104-match-results-import-adaptors.md` (the adaptor framework, the common import format, the Result Processor with its deterministic name matching, the import wizard). This spec adds one adaptor and nothing else to the framework.
-**Status:** built on `feature/107-cricclubs-csv-adaptor` (2026-10-16), in review. Originally: draft, written from eight real CricClubs exports (six distinct matches) the user supplied. Not approved. Contains no AI and sends nothing to any third party.
+**Status:** approved by the user 2026-10-16 and built on `feature/107-cricclubs-csv-adaptor`, in review. Written from eight real CricClubs exports (six distinct matches) the user supplied. Contains no AI and sends nothing to any third party.
 
 ## Problem & Goals
 
@@ -141,8 +141,11 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 
 Where the build is stricter than, or differs from, the draft:
 
-- **Error shape:** the error path is `line N` with a stable code (`BAD_NUMBER`, `UNKNOWN_CODE` and so on) and a message that does not repeat the line number. Row-level problems (a bad number, an unknown code, a wrong row width) are collected and reported together; structural problems (a missing section, a result line that is not understood) stop the read at once.
+- **Error shape:** the error path is `line N` with a stable code (`BAD_NUMBER`, `UNKNOWN_DISMISSAL` and so on) and a message that does not repeat the line number. Row-level problems (a bad number, an unknown code, a wrong row width) are collected and reported together; structural problems (a missing section, a result line that is not understood) stop the read at once.
 - **Extra loud failures where the spec was silent:** a catch with neither fielder nor bowler (`FIELDER_OR_BOWLER_REQUIRED`); a fielder on `b`, `lbw` or `rt`, or a bowler on `rt` (`UNEXPECTED_NAME`); a changed column header (`UNKNOWN_LAYOUT`); an invalid overs value (`BAD_OVERS`); more than two batting sections. Only a bowler on a run-out is dropped, as specified.
+- **A forfeit must be empty** (`FORFEIT_HAS_SCORECARD`): a "Forfeited. Winner: X" result is accepted only when every batting and bowling block has no batter or bowler rows and zero totals; otherwise the read fails at the line of the first non-empty row or total. Innings are never dropped silently. The real `Forfeited.csv` sample is empty and still imports as a forfeit with no innings.
+- **A blank dismissal code with a name is an error** (`UNEXPECTED_NAME`): a row with no code that names a fielder or a bowler is refused, like a retired batter, instead of being cleaned silently. Only a run-out bowler is dropped. The literal `Substitute` (any case) is the only substitute spelling recognised until a sample shows another.
+- **Quotes and encoding:** a double quote opens quoted mode only as the first character of a cell (RFC 4180), and a byte order mark is removed on the Windows-1252 path as well as the UTF-8 one.
 - **Format words:** an unknown format word leaves `scheduledOvers` empty with no note, because the only note field on the common format is saved onto the draft.
 - **`ctw`** is not given the caught-and-bowled treatment (the rule applies to `ct` only). The common-format `position` is left empty, as the JSON adaptor does.
 - **Not checked by the adaptor:** a report with no retired batters is not compared with the stated wickets; that is the validator's warning.
