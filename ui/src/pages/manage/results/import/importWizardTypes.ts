@@ -36,6 +36,8 @@ export interface ImportStepContext {
   onMatchCreated: (match: Match) => void
   // docs/specs/109-delete-empty-match.md: an empty match was deleted from the Match step; it leaves the candidates and, if it was chosen, the choice is cleared.
   onMatchDeleted: (matchId: string) => void
+  // A match found by search was chosen: handled like an added one (preview again for it, add it to the candidates, choose it).
+  onMatchFound: (match: Match) => void
   matchPending: boolean
   matchProblem: ImportProblem | null
   onMatchNext: () => void

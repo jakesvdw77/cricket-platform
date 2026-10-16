@@ -24,6 +24,7 @@ import com.cricketlegend.repository.BattingEntryRepository;
 import com.cricketlegend.repository.BowlingEntryRepository;
 import com.cricketlegend.repository.FieldingEntryRepository;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
+import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAwardRepository;
 import com.cricketlegend.repository.MatchInningsRepository;
 import com.cricketlegend.repository.MatchResultRepository;
@@ -84,7 +85,7 @@ class ScorecardServiceImportFlagTest {
                 mock(MatchAwardRepository.class), mock(MatchSideRepository.class), mock(MatchSidePlayerRepository.class),
                 mock(TeamRepository.class), mock(TeamSquadMemberRepository.class), playerProfileRepository,
                 mock(LeaguePlayingConditionsRepository.class), eligibility, Mappers.getMapper(ScorecardMapper.class),
-                accessService, nameAliases);
+                accessService, nameAliases, mock(LeagueRepository.class));
         result = MatchResult.builder().id(resultId).clubId(clubId).matchId(matchId).source("IMPORT:EXAMPLE").build();
         when(resultRepository.findById(resultId)).thenReturn(Optional.of(result));
         when(resultRepository.findByMatchId(matchId)).thenReturn(Optional.of(result));

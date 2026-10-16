@@ -231,7 +231,7 @@ function OurSideTeam({
   const label = usePlayerLabeler(view)
   // docs/specs/104: the Guess chips of an imported draft (nothing for any other result).
   const importReview = useImportReview()
-  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, leagueId: match.leagueId, oursSides, prefill, scorecard, onScorecard: commit })
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
   const onReorder = (nextIds: string[]) => {
@@ -255,6 +255,7 @@ function OurSideTeam({
   const actions = usePlayerActions({
     clubId,
     seasonId: match.seasonId,
+    leagueId: match.leagueId,
     ours,
     scorecard,
     onScorecard: commit,

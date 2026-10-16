@@ -256,6 +256,7 @@ export default function ResultImportPage() {
     },
     onMatchCreated,
     onMatchDeleted,
+    onMatchFound: onMatchCreated,
     matchPending: previewMutation.isPending && stepId === 'match',
     matchProblem,
     onMatchNext,

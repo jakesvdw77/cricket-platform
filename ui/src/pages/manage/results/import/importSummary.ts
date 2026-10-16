@@ -118,3 +118,13 @@ export function dateMismatch(document: ImportedResult, matchDate: string): DateM
   if (apart <= 1) return null
   return { fileDay: `${day} ${MONTHS[month] ?? ''} ${year}`, matchDay: `${match.getDate()} ${MONTHS[match.getMonth()]} ${match.getFullYear()}` }
 }
+
+// docs/specs/104: the warning under a created draft when most of a team's names were not found in the squad, the strongest sign that
+// the wrong team (or the wrong match) was picked. Opposition names are never counted as unresolved, so the unresolved count is
+// our side's guests. `teamName` is the club's team on the match when exactly one side is, otherwise "your team".
+export const MANY_GUESTS = 5
+
+export function squadMismatchSentence(counts: ImportCounts, teamName: string | null): string | null {
+  if (counts.unresolved < MANY_GUESTS) return null
+  return `${counts.unresolved} names were not found in ${teamName ? `${teamName}'s` : "your team's"} squad. If that is not the team that played, go back and choose the right match or team before you review.`
+}

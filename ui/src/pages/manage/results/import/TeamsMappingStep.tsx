@@ -14,7 +14,7 @@ import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { AcknowledgementTick } from './AcknowledgementTick'
 import { ImportNotesList } from './ImportNotesList'
 import { ImportProblemAlert } from './ImportProblemAlert'
-import { checksSentence, EXACTNESS_WORDS, resolvedSentence } from './importSummary'
+import { checksSentence, EXACTNESS_WORDS, resolvedSentence, squadMismatchSentence } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 
 const TONE: Record<ImportExactness, RecordCardBadgeTone> = { EXACT: 'active', NORMALISED: 'side', AI_SUGGESTED: 'side', UNRESOLVED: 'warning' }
@@ -118,6 +118,8 @@ export function TeamsMappingStep(context: ImportStepContext) {
   if (!preview || !candidate) return null
 
   const draftExists = candidate.existingResult?.status === 'DRAFT'
+  const clubTeamName = candidate.homeIsClubTeam !== candidate.awayIsClubTeam ? (candidate.homeIsClubTeam ? candidate.homeName : candidate.awayName) : null
+  const squadWarning = resolved ? squadMismatchSentence(resolved.counts, clubTeamName) : null
   const complete = teams.length === 2 && teams.every((team) => mapping[team.key])
   const noClubTeam = !candidate.homeIsClubTeam && !candidate.awayIsClubTeam
   const canCreate = !noClubTeam && complete && (!draftExists || replaceAck) && !creating && !resolved
@@ -216,6 +218,11 @@ export function TeamsMappingStep(context: ImportStepContext) {
               {resolvedSentence(resolved.counts)}
             </Typography>
           </Box>
+          {squadWarning && (
+            <Typography variant="body2" role="alert" data-testid="import-squad-warning" sx={{ color: 'warning.dark', fontWeight: 600 }}>
+              {squadWarning}
+            </Typography>
+          )}
           <Typography variant="body2" color="text.secondary">
             {checksSentence(resolved.validation)}
           </Typography>

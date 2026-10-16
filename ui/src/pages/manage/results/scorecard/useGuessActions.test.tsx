@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -30,7 +31,9 @@ const notes: ImportNote[] = [
 function setup(players: ResultPlayer[], provider: string | null = 'ACMESCORE') {
   const onScorecard = vi.fn()
   const scorecard = scorecardOf(players)
-  const wrapper = ({ children }: { children: ReactNode }) => <ImportReviewContext.Provider value={{ provider, notes }}>{children}</ImportReviewContext.Provider>
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={new QueryClient()}>
+      <ImportReviewContext.Provider value={{ provider, notes }}>{children}</ImportReviewContext.Provider>
+    </QueryClientProvider>
   const { result } = renderHook(() => useGuessActions({ clubId: 'club-1', seasonId: 's-1', oursSides: [], prefill: null, scorecard, onScorecard }), { wrapper })
   return { result, onScorecard }
 }

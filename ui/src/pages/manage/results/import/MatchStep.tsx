@@ -5,21 +5,19 @@ import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ImportMatchReason, MatchCandidate } from '../../../../api/resultImportApi'
-import { deleteMatch } from '../../../../api/matchApi'
 import { Button } from '../../../../components/Button'
-import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { MatchFormDialog } from '../../../../components/MatchFormDialog'
 import { badgeSx } from '../../../../components/RecordCard'
 import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
-import { errorDetail } from '../../../../utils/errorDetail'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { AcknowledgementTick } from './AcknowledgementTick'
+import { FindMatchSearch } from './FindMatchSearch'
 import { ImportProblemAlert } from './ImportProblemAlert'
+import { useDeleteMatchDialog } from './useDeleteMatchDialog'
 import { dateMismatch, fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 
@@ -118,21 +116,9 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchDeleted, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchDeleted, onMatchFound, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
   const [adding, setAdding] = useState(false)
-  // docs/specs/109-delete-empty-match.md: the candidate whose Delete was pressed, awaiting the confirmation.
-  const [deleting, setDeleting] = useState<MatchCandidate | null>(null)
-  const deleteMutation = useMutation({
-    mutationFn: (candidate: MatchCandidate) => deleteMatch(clubId, candidate.matchId),
-    onSuccess: (_data, candidate) => {
-      setDeleting(null)
-      onMatchDeleted(candidate.matchId)
-    },
-  })
-  const closeDelete = () => {
-    setDeleting(null)
-    deleteMutation.reset()
-  }
+  const deleteFlow = useDeleteMatchDialog(clubId, onMatchDeleted)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
   // Warn when the manager came from a match the file does not look like (neither its date nor its teams matched).
@@ -166,6 +152,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="outlined" sx={{ minHeight: 44 }}>
                 Add match
               </MuiButton>
+              <FindMatchSearch clubId={clubId} listedIds={[]} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} defaultOpen />
             </Box>
           ) : (
             <>
@@ -190,7 +177,7 @@ export function MatchStep(context: ImportStepContext) {
                         variant="text"
                         aria-label={`Delete match ${candidate.homeName} v ${candidate.awayName}`}
                         disabled={matchPending}
-                        onClick={() => setDeleting(candidate)}
+                        onClick={() => deleteFlow.request({ id: candidate.matchId, name: `${candidate.homeName} v ${candidate.awayName}` })}
                         sx={{ minHeight: 44, minWidth: 44, px: 1, py: 0, fontSize: '0.8125rem', fontWeight: 600, textTransform: 'none' }}
                       >
                         Delete
@@ -229,6 +216,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
                 Match not listed? Add the match first
               </MuiButton>
+              <FindMatchSearch clubId={clubId} listedIds={candidates.map((candidate) => candidate.matchId)} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} />
             </>
           )}
         </Box>
@@ -241,29 +229,10 @@ export function MatchStep(context: ImportStepContext) {
         onCreated={onMatchCreated}
         initialValues={preview ? matchPrefill(preview.document) : undefined}
         inferSeason
-        hint="Filled in from the file where it could be. Check each box, and choose which side is your team."
+        hint="Filled in from the file where it could be. A team whose name matches one of yours is picked as My team; check each box and choose which side is your team if it is not."
       />
 
-      <ConfirmDialog
-        open={deleting !== null}
-        title="Delete this match?"
-        description={
-          <>
-            It has nothing recorded against it. This cannot be undone.
-            {deleteMutation.isError && (
-              <Typography role="alert" variant="body2" color="error" sx={{ mt: 1.5 }}>
-                {errorDetail(deleteMutation.error, 'Something went wrong deleting this match. Please try again.')}
-              </Typography>
-            )}
-          </>
-        }
-        confirmLabel="Delete"
-        pendingLabel="Deleting…"
-        destructive
-        pending={deleteMutation.isPending}
-        onConfirm={() => deleting && deleteMutation.mutate(deleting)}
-        onClose={closeDelete}
-      />
+      {deleteFlow.dialog}
 
       {matchProblem && (
         <Box>

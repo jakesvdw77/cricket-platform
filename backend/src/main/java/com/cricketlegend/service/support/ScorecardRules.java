@@ -623,7 +623,8 @@ final class ScorecardRules {
                 if (context.maxBallsPerBowler() != null && zero(b.balls()) > context.maxBallsPerBowler()) {
                     issues.warning(WarningCode.BOWLER_OVERS_EXCEED_LIMIT, step, bowlingSide,
                             who + " bowled more than the league's maximum of "
-                                    + OversFormat.display(context.maxBallsPerBowler(), inn.ballsPerOver) + " overs.");
+                                    + OversFormat.display(context.maxBallsPerBowler(), inn.ballsPerOver) + " overs"
+                            + (context.leagueName() == null ? "" : " (" + context.leagueName() + ")") + ".");
                 }
             }
             if (innings.balls() != null && balls != innings.balls()) {
