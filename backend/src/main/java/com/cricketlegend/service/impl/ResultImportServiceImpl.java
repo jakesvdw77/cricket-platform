@@ -160,6 +160,13 @@ public class ResultImportServiceImpl implements ResultImportService {
             throw new ImportInputValidationException("The document does not follow the common import format.", errors);
         }
         Match match = matchService.requireAdministrableMatch(authentication, clubId, request.matchId());
+        if (match.getHomeTeamId() == null && match.getAwayTeamId() == null) {
+            // Neither side is one of the club's teams, so there is nobody of ours to import; the scorecard rules would refuse it with a vaguer message.
+            throw new ImportInputValidationException("The match has no team of this club.", List.of(new ImportErrorDto(
+                    "match", "NO_CLUB_TEAM_ON_MATCH",
+                    "Neither team of this match is one of your club's teams, so nobody on the scorecard can be linked to your players."
+                            + " Edit the match and choose your own team as home or away, then import again.")));
+        }
         ExistingResultDto existing = resultService.existingResults(clubId, List.of(match.getId())).get(match.getId());
         if (existing != null && existing.status() == ResultStatus.PUBLISHED) {
             throw new ImportMatchAlreadyHasResultException(

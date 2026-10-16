@@ -20,6 +20,7 @@ import com.cricketlegend.domain.ResultMarginType;
 import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ResultStatus;
+import com.cricketlegend.dto.ImportErrorDto;
 import com.cricketlegend.dto.ImportExactness;
 import com.cricketlegend.dto.ImportMatchReason;
 import com.cricketlegend.dto.ImportNoteDto;
@@ -35,6 +36,7 @@ import com.cricketlegend.dto.ResultValidationDto;
 import com.cricketlegend.dto.ScorecardDto;
 import com.cricketlegend.dto.TeamMappingDto;
 import com.cricketlegend.exception.ImportExternalIdAlreadyUsedException;
+import com.cricketlegend.exception.ImportInputValidationException;
 import com.cricketlegend.exception.ImportMatchAlreadyHasResultException;
 import com.cricketlegend.exception.ImportWouldOverwriteDraftException;
 import com.cricketlegend.exception.InvalidResultException;
@@ -208,6 +210,18 @@ class ResultImportServiceIntegrationTest {
     }
 
     // ---- resolve and preview ----
+
+    @Test
+    void refusesAMatchWithNoTeamOfTheClubBeforeSavingAnything() {
+        ImportPreviewDto preview = preview(admin, clubId, fullDocument("ext-noteam", "B Player"), match.getId());
+        jdbc.update("update match set home_team_name = 'Outside One', home_team_id = null, home_league_team_id = null,"
+                + " away_team_name = 'Outside Two', away_team_id = null, away_league_team_id = null where id = ?", match.getId());
+
+        assertThatThrownBy(() -> resolve(admin, clubId, preview, match.getId(), false))
+                .isInstanceOfSatisfying(ImportInputValidationException.class, e -> assertThat(e.getErrors())
+                        .extracting(ImportErrorDto::code).containsExactly("NO_CLUB_TEAM_ON_MATCH"));
+        assertThat(resultRepository.findByMatchId(match.getId())).isEmpty();
+    }
 
     @Test
     void servicesRunWithoutAnAmbientTransactionAndStillReadLazyFields() {
