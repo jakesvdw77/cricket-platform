@@ -30,9 +30,18 @@ describe('readImportProblem', () => {
     expect(problem.totalErrors).toBe(2)
   })
 
-  it('drops list entries with no message and entries that are not objects', () => {
+  it('drops list entries with no message and null entries, and keeps a plain string as a message', () => {
     const problem = readImportProblem(failure(400, { errors: [{ path: 'a', code: 'X', message: '' }, 'oops', null, { path: 'b', message: 'Kept' }] }))
-    expect(problem.errors).toEqual([{ path: 'b', code: '', message: 'Kept' }])
+    expect(problem.errors).toEqual([
+      { path: '', code: '', message: 'oops' },
+      { path: 'b', code: '', message: 'Kept' },
+    ])
+  })
+
+  it('shows the reasons of a draft the server refused (plain strings) instead of a generic message', () => {
+    const problem = readImportProblem(failure(400, { detail: 'The scorecard cannot be saved as entered.', errors: ['A dismissal names a player who is not on the scorecard.'] }))
+    expect(problem.kind).toBe('validation')
+    expect(problem.errors[0].message).toBe('A dismissal names a player who is not on the scorecard.')
   })
 
   it('reads a 400 naming supported formats as unsupported, and one with neither as unreadable', () => {

@@ -40,9 +40,15 @@ function text(value: unknown): string {
 
 function items(value: unknown): ImportErrorItem[] {
   if (!Array.isArray(value)) return []
+  // The import's own errors are objects; a result that cannot be saved (the processor's draft was refused) sends plain strings.
   return value
-    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
-    .map((item) => ({ path: text(item.path), code: text(item.code), message: text(item.message) }))
+    .map((item): ImportErrorItem =>
+      typeof item === 'string'
+        ? { path: '', code: '', message: item }
+        : typeof item === 'object' && item !== null
+          ? { path: text((item as Record<string, unknown>).path), code: text((item as Record<string, unknown>).code), message: text((item as Record<string, unknown>).message) }
+          : { path: '', code: '', message: '' },
+    )
     .filter((item) => item.message !== '')
 }
 
