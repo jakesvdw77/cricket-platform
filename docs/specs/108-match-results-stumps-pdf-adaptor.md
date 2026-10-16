@@ -1,7 +1,7 @@
 # 108: Match Results: STUMPS PDF Adaptor
 
 **Depends on:** `104-match-results-import-adaptors.md` (the adaptor framework, the common import format, the Result Processor with its deterministic name matching, the import wizard) and `107-match-results-cricclubs-csv-adaptor.md` (the model for a deterministic reader: line-numbered errors, nothing guessed, a reusable mapper). This spec adds one adaptor and one library.
-**Status:** approved by the user 2026-10-16, including Apache PDFBox as a backend dependency. Written from three real STUMPS match reports the user supplied. Contains no AI and sends nothing to any third party.
+**Status:** approved by the user 2026-10-16, including Apache PDFBox as a backend dependency. Written from three real STUMPS match reports the user supplied. Contains no AI and sends nothing to any third party. Built 2026-10-16 on `feature/108-stumps-pdf-adaptor`, in review.
 
 ## Problem & Goals
 
@@ -149,12 +149,12 @@ None new. The Source step shows a tile "STUMPS match report (PDF)" from the cata
 
 - [x] The user has approved Apache PDFBox as a dependency (2026-10-16).
 - [ ] The three sample reports (an ordinary win by wickets, a DLS win by runs, a large win by runs) import to a draft with the correct teams, toss, venue, start time, overs, result, margin, innings, batting and bowling rows, player of the match and match id.
-- [ ] Every dismissal form in the table maps as shown; any other wording fails with its page and line and is never guessed.
-- [ ] A second import of the same match finds the draft and needs the replace tick.
-- [ ] A scanned or empty PDF, a PDF that is not a STUMPS report, a corrupt file and an over-long PDF are refused with a clear message and the file stays in the screen.
-- [ ] The ball-by-ball pages are ignored and cannot cause an error.
-- [ ] No real report and no real name is in the repository, its fixtures or its tests.
-- [ ] No other new library; OpenAPI change is the new enum value only.
+- [x] Every dismissal form in the table maps as shown; any other wording fails with its page and line and is never guessed.
+- [x] A second import of the same match finds the draft and needs the replace tick.
+- [x] A scanned or empty PDF, a PDF that is not a STUMPS report, a corrupt file and an over-long PDF are refused with a clear message and the file stays in the screen.
+- [x] The ball-by-ball pages are ignored and cannot cause an error.
+- [x] No real report and no real name is in the repository, its fixtures or its tests.
+- [x] No other new library; OpenAPI change is the new enum value only.
 
 ## Rollout Notes
 
@@ -162,6 +162,24 @@ None new. The Source step shows a tile "STUMPS match report (PDF)" from the cata
 - **Order of work:** the approval of PDFBox, the text helper and the masked fixture builder, then the pure parser (summary page, batting cards, bowling table), then the adaptor and the PDF refusals, then integration, docs, review and the PR.
 - **Docs to update when built:** `docs/roadmap.md`, `docs/architecture.md`, `docs/standards/backend.md` (the PDFBox rule), a pointer in `104`'s Rollout Notes.
 - **Deferred:** other STUMPS exports, a position-aware reader, super overs, bulk import of several reports, reading the ball-by-ball detail.
+
+### Built versus spec (2026-10-16)
+
+Where the build differs from the draft, or is stricter. The real reports were read to learn the line structure only; nothing from them is committed.
+
+- **The banner is three lines, not one.** Every page starts with `Download 'STUMPS - The Cricket Scorer' app ...`, `Match report created from`, `STUMPS`. The parser removes it from every page, and a file without it (or without the `Match Report` heading after it) is refused with `NOT_A_STUMPS_REPORT`. The heading is `Match Report` (capital R).
+- **Wording seen in the real files, accepted as written:** the toss is `Toss <Team> Opted To Bat` (any single word before `To Bat` or `To Bowl`); the bowling header is `Bowler O M R W Eco 0s 4s 6s Wd NB` (`Eco` and `Econ` are both accepted); the extras line lists only the parts present, so `( WD 6 )` is valid and every absent part is zero; a result and a venue can wrap onto a second line and are joined; a batter name can wrap and is joined using the figures line as the end marker, and so can a dismissal. A report lists only the batters who batted (one sample lists eight).
+- **The player of the match is the line after `Player Of The Match`**, and `-` means none. All three real reports had `-`, so a report that names a player has only been tested with a masked template.
+- **The summary block has more labels than the spec lists** (`Organiser`, `Match Title`, `Match Format`, `Playing 11 Per Side`); they are read and ignored. A line that is not a label continues the previous label, so a wrapped venue is joined.
+- **Where the ball-by-ball pages start.** The page after the second bowling table starts with `Over Comparison`; the reader stops at that line (or at `Over <n>`). Any other line after the second bowling table is `UNRECOGNISED_LINE`. A third `Innings Scorecard` is also refused.
+- **Page and line numbers** count the lines of text on a page, from 1 (a PDF has no blank lines). A bowling table can continue on the next page after a repeated banner; that is one table.
+- **Extra codes** beyond the list in the spec: `MISSING_SECTION`, `RESULT_NOT_UNDERSTOOD` (a tie, no result and the like), `INVALID_DATE`, `TEAM_NOT_FOUND` (a batting card for a team that is not on the summary), `TEAMS_SAME_NAME`, `BATTER_INCOMPLETE` (a name and dismissal with no figures line). A dismissal error quotes only a dismissal word from a fixed list (`st`, `hit`, `retired`, `timed` and so on), never any other text, so a name cannot reach a message.
+- **A file that is not a readable PDF** (corrupt, not a PDF, password protected) is an `UnreadableImportInputException` (400, the existing class), not an `ImportInputValidationException`, because there is no page or line to name. The text-less PDF (`NO_TEXT_IN_PDF`) and over-long PDF (`TOO_MANY_PAGES`) are validation errors with an empty path. The PDF library's own message is never passed on.
+- **Venue and start time** are in the common document and are used by the existing match locator; the processor does not write them onto the match, as for every import.
+- **The shared mapper is small.** Only the team-name comparison (`TeamNames`, case and spaces ignored) was common and unchanged, so `CricClubsScorecardMapper` now delegates to it. The dismissal and result rules differ in shape between the two reports and were not forced into one class.
+- **The isolation rule.** The closed-list ArchUnit rule governs only classes of ours, so it needed no change. PDFBox is covered by its own rule, `onlyStumpsPdfTextImportsPdfBox`, which is stricter than the plan asked: nothing in the whole application, adaptor or not, may import it except `StumpsPdfText`, proven non-vacuous.
+- **Privacy test scope.** Names, teams and venues from the git-ignored samples are searched for in the files this feature owns (`Stumps*` tests and fixtures, spec and plan 108); a match id is searched for across all of `src/test`. Older tests legitimately name the operator's own club and ground, and a common first name can coincide with a real player's, so a whole-tree scan of names would flag files this feature never touched. The test is skipped when `docs/samples` is absent and never prints a name.
+- **Not covered by a real sample** (still open, see Rollout Notes): stumped, hit wicket, retired and timed out fail loudly; a substitute fielder's wording; a tie or no result; a report that names a player of the match.
 
 ### Decisions
 
