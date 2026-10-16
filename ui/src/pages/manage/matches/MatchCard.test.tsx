@@ -31,7 +31,7 @@ function LocationProbe() {
   return <div>At: {location.pathname + location.search}</div>
 }
 
-function renderCard(match: Match, props: { viewTo?: string; editTo?: string; withLeague?: boolean; withSeason?: boolean } = {}) {
+function renderCard(match: Match, props: { viewTo?: string; editTo?: string; withLeague?: boolean; withSeason?: boolean; onDelete?: (target: { id: string; name: string }) => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
@@ -48,6 +48,7 @@ function renderCard(match: Match, props: { viewTo?: string; editTo?: string; wit
                 seasonsById={new Map(props.withSeason === false ? [] : [[season.id, season]])}
                 editTo={props.editTo ?? EDIT}
                 viewTo={props.viewTo}
+                onDelete={props.onDelete}
               />
             }
           />
@@ -546,6 +547,28 @@ describe('MatchCard', () => {
       expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
       expect(listMatchSides).toHaveBeenCalledWith('club-1', 'match-1')
       expect(listSquad).toHaveBeenCalledWith('club-1', 'team-1', 'season-1')
+    })
+  })
+
+  // docs/specs/109-delete-empty-match.md: Delete only on a deletable match, and only where the page passes the handler.
+  describe('Delete', () => {
+    it('shows Delete for a deletable match when a handler is given, and hands the match name to it without navigating', async () => {
+      const user = userEvent.setup()
+      const onDelete = vi.fn()
+      renderCard(makeMatch({ id: 'match-7', deletable: true }), { viewTo: '/manage/fixtures/matches/match-7', onDelete })
+      await user.click(screen.getByRole('button', { name: 'Delete match 1st XI v Riverside Occasionals' }))
+      expect(onDelete).toHaveBeenCalledWith({ id: 'match-7', name: '1st XI v Riverside Occasionals' })
+      expect(screen.queryByText(/^At:/)).not.toBeInTheDocument() // still on the list, no navigation
+    })
+
+    it('hides Delete when the match is not deletable', () => {
+      renderCard(makeMatch({ deletable: false }), { onDelete: vi.fn() })
+      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
+    })
+
+    it('hides Delete when no handler is given', () => {
+      renderCard(makeMatch({ deletable: true }))
+      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
     })
   })
 })

@@ -16,12 +16,14 @@ const listLeagues = vi.fn()
 const listSeasons = vi.fn()
 const listSections = vi.fn()
 const listPlayingAreas = vi.fn()
+const deleteMatch = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
   listMatchFilterOptions: (clubId: string, params: unknown) => listMatchFilterOptions(clubId, params),
   getMatchesSummary: (clubId: string, filters: unknown) => getMatchesSummary(clubId, filters),
   matchesSummaryKey: (clubId: string, filters: unknown) => ['managed-club', clubId, 'matches', 'summary', filters],
+  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
   deactivateMatch: vi.fn(),
   reactivateMatch: vi.fn(),
 }))
@@ -137,6 +139,46 @@ function renderPage(clubId?: string, entry: string | { pathname: string; state: 
 }
 
 describe('MatchList', () => {
+  // docs/specs/109-delete-empty-match.md: Delete from the list, in both views, through the one shared confirm dialog.
+  describe.each([['cards'], ['list']])('Delete in the %s view', (view) => {
+    beforeEach(() => {
+      localStorage.setItem('matchList:view', view)
+    })
+
+    it('shows Delete only on a deletable match', async () => {
+      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true }), makeMatch({ id: 'match-2', deletable: false })]))
+      renderPage('test-club-id')
+      expect(await screen.findAllByRole('button', { name: /^Delete match/ })).toHaveLength(1)
+    })
+
+    it('asks first, does not open the match, deletes on confirm and shows the notice', async () => {
+      const user = userEvent.setup()
+      deleteMatch.mockResolvedValue(undefined)
+      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true })]))
+      renderPage('test-club-id')
+      await user.click(await screen.findByRole('button', { name: /^Delete match/ }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Delete this match?')).toBeInTheDocument()
+      expect(screen.queryByText('Match Detail Page')).not.toBeInTheDocument()
+      expect(deleteMatch).not.toHaveBeenCalled()
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
+      expect(await screen.findByText('Match deleted.')).toBeInTheDocument()
+    })
+
+    it('shows the server message in the dialog on a 409 and keeps the match', async () => {
+      const user = userEvent.setup()
+      deleteMatch.mockRejectedValue({ isAxiosError: true, response: { status: 409, data: { detail: 'This match has a draft result. Deactivate it instead.' } } })
+      listMatches.mockResolvedValue(makePage([makeMatch({ id: 'match-1', deletable: true })]))
+      renderPage('test-club-id')
+      await user.click(await screen.findByRole('button', { name: /^Delete match/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('This match has a draft result. Deactivate it instead.')
+      expect(screen.queryByText('Match deleted.')).not.toBeInTheDocument()
+    })
+  })
+
   it('shows the success notice carried in router state, and dismisses it', async () => {
     const user = userEvent.setup()
     listMatches.mockResolvedValue(makePage([makeMatch()]))

@@ -24,6 +24,7 @@ import { listSections } from '../../api/sectionApi'
 import { listPlayingAreas, playingAreasKey } from '../../api/playingAreaApi'
 import { MatchCard } from './matches/MatchCard'
 import { MatchTable } from './matches/MatchTable'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { cardGridSx } from '../../utils/cardGrid'
 import { scopeFilterText } from '../../utils/availabilityScope'
@@ -97,6 +98,8 @@ export default function MatchList({
       navigate(location.pathname + location.search, { replace: true, state: null })
     }
   }, [location, navigate])
+  // docs/specs/109: one confirm dialog for Delete on a card or a row; success shows the same notice the Match page's delete does.
+  const { request: requestDelete, dialog: deleteDialog } = useDeleteMatchDialog(clubId ?? '', () => setNotice('Match deleted.'))
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -525,6 +528,7 @@ export default function MatchList({
           leaguesById={leaguesById}
           seasonsById={seasonsById}
           viewTo={viewTo ? (match) => viewTo(match.id) : undefined}
+          onDelete={requestDelete}
         />
       )}
 
@@ -540,6 +544,7 @@ export default function MatchList({
               seasonsById={seasonsById}
               editTo={editTo(match.id)}
               viewTo={viewTo ? viewTo(match.id) : undefined}
+              onDelete={requestDelete}
             />
           ))}
         </Box>
@@ -581,6 +586,7 @@ export default function MatchList({
           </Button>
         </Stack>
       )}
+      {deleteDialog}
     </Box>
   )
 }
