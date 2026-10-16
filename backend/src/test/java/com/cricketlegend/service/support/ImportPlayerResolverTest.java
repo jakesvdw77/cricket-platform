@@ -247,30 +247,30 @@ class ImportPlayerResolverTest {
 
     @Test
     void twoOppositionSpellingsOfOneNameAreUnifiedWithAnInfoNote() {
-        SideNames names = resolveOpposition(List.of("Willem Van Der Nest", "Willem V"), List.of());
+        SideNames names = resolveOpposition(List.of("Walter Van Der Nell", "Walter V"), List.of());
 
-        assertThat(names.people()).singleElement().satisfies(p -> assertThat(p.displayName()).isEqualTo("Willem Van Der Nest"));
-        assertThat(names.of("Willem V")).isSameAs(names.of("Willem Van Der Nest"));
+        assertThat(names.people()).singleElement().satisfies(p -> assertThat(p.displayName()).isEqualTo("Walter Van Der Nell"));
+        assertThat(names.of("Walter V")).isSameAs(names.of("Walter Van Der Nell"));
         ImportNoteDto note = noteFor(names, "OPPOSITION_NAMES_UNIFIED");
         assertThat(note.severity()).isEqualTo(ImportNoteSeverity.INFO);
-        assertThat(note.fileText()).isEqualTo("Willem V");
-        assertThat(note.candidateName()).isEqualTo("Willem Van Der Nest");
+        assertThat(note.fileText()).isEqualTo("Walter V");
+        assertThat(note.candidateName()).isEqualTo("Walter Van Der Nell");
     }
 
     @Test
     void theShorterSpellingJoinsTheFullerOneWhicheverComesFirstInTheFile() {
-        SideNames names = resolveOpposition(List.of("Willem V", "Willem Van Der Nest"), List.of());
+        SideNames names = resolveOpposition(List.of("Walter V", "Walter Van Der Nell"), List.of());
 
-        assertThat(names.people()).singleElement().satisfies(p -> assertThat(p.displayName()).isEqualTo("Willem Van Der Nest"));
+        assertThat(names.people()).singleElement().satisfies(p -> assertThat(p.displayName()).isEqualTo("Walter Van Der Nell"));
     }
 
     @Test
     void twoSpellingsInOneListAreTwoPeopleNotMerged() {
-        SideNames names = resolveOpposition(List.of("Willem Van Der Nest", "Willem V"),
-                List.of(List.of("Willem Van Der Nest", "Willem V")));
+        SideNames names = resolveOpposition(List.of("Walter Van Der Nell", "Walter V"),
+                List.of(List.of("Walter Van Der Nell", "Walter V")));
 
         assertThat(names.people()).hasSize(2);
-        assertThat(names.of("Willem V")).isNotSameAs(names.of("Willem Van Der Nest"));
+        assertThat(names.of("Walter V")).isNotSameAs(names.of("Walter Van Der Nell"));
         assertThat(names.notes()).noneMatch(n -> n.code().equals("OPPOSITION_NAMES_UNIFIED"));
     }
 

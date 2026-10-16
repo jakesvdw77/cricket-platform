@@ -5,9 +5,9 @@ const meta: Meta<typeof GuessChip> = {
   title: 'Components/GuessChip',
   component: GuessChip,
   args: {
-    importedName: 'Hari K',
+    importedName: 'Hugo K',
     level: 'NORMALISED',
-    matchedName: 'Hari Konduru',
+    matchedName: 'Hugo Kemp',
     reason: 'by the start of the surname',
     onConfirm: () => undefined,
     onChange: () => undefined,
@@ -24,6 +24,6 @@ export const Guess: Story = {}
 export const Suggested: Story = { args: { level: 'AI_SUGGESTED' } }
 
 // No name matched: a Guest chip, and tapping it goes straight to the picker.
-export const Unresolved: Story = { args: { level: 'UNRESOLVED', importedName: 'Dihandre V', matchedName: null } }
+export const Unresolved: Story = { args: { level: 'UNRESOLVED', importedName: 'Dino V', matchedName: null } }
 
 export const Disabled: Story = { args: { disabled: true } }

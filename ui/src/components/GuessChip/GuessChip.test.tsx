@@ -11,7 +11,7 @@ function renderChip(props: Partial<GuessChipProps> = {}) {
   const onChange = vi.fn()
   render(
     <ThemeProvider theme={baseTheme}>
-      <GuessChip importedName="Hari K" level="NORMALISED" matchedName="Hari Konduru" reason="by the start of the surname" onConfirm={onConfirm} onChange={onChange} {...props} />
+      <GuessChip importedName="Hugo K" level="NORMALISED" matchedName="Hugo Kemp" reason="by the start of the surname" onConfirm={onConfirm} onChange={onChange} {...props} />
     </ThemeProvider>,
   )
   return { onConfirm, onChange }
@@ -20,7 +20,7 @@ function renderChip(props: Partial<GuessChipProps> = {}) {
 describe('GuessChip', () => {
   it('shows a Guess chip that names what the file said and who it was matched to', () => {
     renderChip()
-    const chip = screen.getByRole('button', { name: 'Guess: file said Hari K, matched to Hari Konduru. Check this player' })
+    const chip = screen.getByRole('button', { name: 'Guess: file said Hugo K, matched to Hugo Kemp. Check this player' })
     expect(chip).toHaveTextContent('Guess')
   })
 
@@ -31,7 +31,7 @@ describe('GuessChip', () => {
 
     const popover = await screen.findByRole('presentation')
     expect(within(popover).getByText('Check this player')).toBeInTheDocument()
-    expect(popover).toHaveTextContent("File said 'Hari K'. Matched to Hari Konduru by the start of the surname.")
+    expect(popover).toHaveTextContent("File said 'Hugo K'. Matched to Hugo Kemp by the start of the surname.")
   })
 
   it('Confirm closes the popover and confirms, without opening the picker', async () => {
@@ -71,8 +71,8 @@ describe('GuessChip', () => {
 
   it('draws an unresolved name as a Guest chip whose tap goes straight to the picker', async () => {
     const user = userEvent.setup()
-    const { onChange } = renderChip({ level: 'UNRESOLVED', importedName: 'Dihandre V', matchedName: null })
-    const chip = screen.getByRole('button', { name: 'Choose the player for Dihandre V' })
+    const { onChange } = renderChip({ level: 'UNRESOLVED', importedName: 'Dino V', matchedName: null })
+    const chip = screen.getByRole('button', { name: 'Choose the player for Dino V' })
     expect(chip).toHaveTextContent('Guest')
 
     await user.click(chip)

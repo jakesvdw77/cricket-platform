@@ -15,33 +15,33 @@ import org.junit.jupiter.api.Test;
  */
 class DismissalNamesTest {
 
-    private static final List<String> KNOWN = List.of("Nazar", "Nazar A", "Cd Brandt", "Jon Smith", "Smith");
+    private static final List<String> KNOWN = List.of("Nazar", "Nazar A", "Cd Bright", "Jon Smith", "Smith");
 
     @Test
     void theLongestKnownNameWinsSoNazarAIsNeverReadAsNazar() {
-        Result result = DismissalNames.resolve("c Nazar A b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("c Nazar A b Cd Bright", KNOWN);
 
         assertThat(result.mentions()).containsExactly(
-                new Mention("Nazar A", Role.FIELDER), new Mention("Cd Brandt", Role.BOWLER));
+                new Mention("Nazar A", Role.FIELDER), new Mention("Cd Bright", Role.BOWLER));
         assertThat(result.fielder()).isEqualTo("Nazar A");
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
         assertThat(result.unmatched()).isEmpty();
     }
 
     @Test
     void theShorterNameIsUsedWhenTheLongerOneIsNotThere() {
-        Result result = DismissalNames.resolve("c Nazar b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("c Nazar b Cd Bright", KNOWN);
 
         assertThat(result.fielder()).isEqualTo("Nazar");
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
     }
 
     @Test
     void aNameNotInTheListsIsReportedNotInvented() {
-        Result result = DismissalNames.resolve("c Zane Quirk b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("c Zane Quirk b Cd Bright", KNOWN);
 
         assertThat(result.fielder()).isNull();
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
         assertThat(result.unmatched()).containsExactly("Zane", "Quirk");
     }
 
@@ -56,25 +56,25 @@ class DismissalNamesTest {
 
     @Test
     void caseAccentsAndPunctuationDoNotMatterButTheReportsOwnSpellingIsReturned() {
-        Result result = DismissalNames.resolve("C NAZAR, a  B cd BRANDT", KNOWN);
+        Result result = DismissalNames.resolve("C NAZAR, a  B cd BRIGHT", KNOWN);
 
         assertThat(result.fielder()).isEqualTo("Nazar A");
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
     }
 
     @Test
     void aBowledDismissalHasOnlyABowler() {
-        Result result = DismissalNames.resolve("b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("b Cd Bright", KNOWN);
 
-        assertThat(result.mentions()).containsExactly(new Mention("Cd Brandt", Role.BOWLER));
+        assertThat(result.mentions()).containsExactly(new Mention("Cd Bright", Role.BOWLER));
         assertThat(result.fielder()).isNull();
     }
 
     @Test
     void caughtAndBowledNamesTheBowlerOnly() {
-        Result result = DismissalNames.resolve("c & b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("c & b Cd Bright", KNOWN);
 
-        assertThat(result.mentions()).containsExactly(new Mention("Cd Brandt", Role.BOWLER));
+        assertThat(result.mentions()).containsExactly(new Mention("Cd Bright", Role.BOWLER));
         assertThat(result.unmatched()).isEmpty();
     }
 
@@ -88,25 +88,25 @@ class DismissalNamesTest {
 
     @Test
     void aStumpingNamesTheKeeperAndTheBowler() {
-        Result result = DismissalNames.resolve("st Jon Smith b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("st Jon Smith b Cd Bright", KNOWN);
 
         assertThat(result.fielder()).isEqualTo("Jon Smith");
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
     }
 
     @Test
     void theSamePersonMayBeBothFielderAndBowler() {
-        Result result = DismissalNames.resolve("c Cd Brandt b Cd Brandt", KNOWN);
+        Result result = DismissalNames.resolve("c Cd Bright b Cd Bright", KNOWN);
 
-        assertThat(result.fielder()).isEqualTo("Cd Brandt");
-        assertThat(result.bowler()).isEqualTo("Cd Brandt");
+        assertThat(result.fielder()).isEqualTo("Cd Bright");
+        assertThat(result.bowler()).isEqualTo("Cd Bright");
     }
 
     @Test
     void dismissalVocabularyIsNotReportedAsUnmatched() {
         assertThat(DismissalNames.resolve("not out", KNOWN).unmatched()).isEmpty();
-        assertThat(DismissalNames.resolve("lbw b Cd Brandt", KNOWN).unmatched()).isEmpty();
-        assertThat(DismissalNames.resolve("hit wicket b Cd Brandt", KNOWN).unmatched()).isEmpty();
+        assertThat(DismissalNames.resolve("lbw b Cd Bright", KNOWN).unmatched()).isEmpty();
+        assertThat(DismissalNames.resolve("hit wicket b Cd Bright", KNOWN).unmatched()).isEmpty();
         assertThat(DismissalNames.resolve("retired hurt", KNOWN).unmatched()).isEmpty();
     }
 
@@ -120,11 +120,11 @@ class DismissalNamesTest {
 
     @Test
     void noKnownNamesAndEmptyTextGiveNothing() {
-        Result none = DismissalNames.resolve("c Nazar A b Cd Brandt", List.of());
+        Result none = DismissalNames.resolve("c Nazar A b Cd Bright", List.of());
         Result empty = DismissalNames.resolve("", KNOWN);
 
         assertThat(none.mentions()).isEmpty();
-        assertThat(none.unmatched()).containsExactly("Nazar", "A", "Cd", "Brandt");
+        assertThat(none.unmatched()).containsExactly("Nazar", "A", "Cd", "Bright");
         assertThat(empty.mentions()).isEmpty();
         assertThat(empty.unmatched()).isEmpty();
     }

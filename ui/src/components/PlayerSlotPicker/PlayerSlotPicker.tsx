@@ -79,7 +79,7 @@ export interface PlayerSlotPickerProps {
   notListedLabel?: string
   // False when the row can only become a registered player (Link to a registered player...): no Guest scope.
   allowGuest?: boolean
-  // docs/specs/104: the name as an imported file wrote it. Shown at the top ("File said: Dihandre V"), and prefills the
+  // docs/specs/104: the name as an imported file wrote it. Shown at the top ("File said: Dino V"), and prefills the
   // Guest name so keeping it as a guest is one tap.
   importedName?: string
   // docs/specs/104: the closest registered players for that name, best first, offered as one-tap picks above the scopes.

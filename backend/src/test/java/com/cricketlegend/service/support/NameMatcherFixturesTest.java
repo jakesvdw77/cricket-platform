@@ -45,7 +45,7 @@ class NameMatcherFixturesTest {
     static Stream<Fixture> fixtures() {
         String abel = "Abel|Nazar";
         String abelBruce = "Abel Bruce|Nazar";
-        String jaco = "Jaco|van der Westhuizen";
+        String jack = "Jack|van der Walton";
         return Stream.of(
                 // tier 1
                 linked("tier 1 identity", "Abel Nazar", abel, NameLevel.EXACT, NameReason.EXACT, "Abel Nazar"),
@@ -57,16 +57,16 @@ class NameMatcherFixturesTest {
                 linked("accents", "Ábel Názar", abel, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Abel Nazar"),
                 linked("hyphen", "Mary-Anne Cole", "Mary Anne|Cole", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Mary Anne Cole"),
                 linked("apostrophe", "Pat O'Brien", "Pat|OBrien", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Pat OBrien"),
-                linked("particle vd for van der", "Jaco Vd Westhuizen", jaco, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jaco van der Westhuizen"),
-                linked("particle Van Der capitalised", "Jaco Van Der Westhuizen", jaco, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jaco van der Westhuizen"),
-                linked("particle van den for van der", "Emile Van Den Merwe", "Emile|van der Merwe", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Emile van der Merwe"),
-                linked("particle de capitalised", "Anton De Villiers", "Anton|de Villiers", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Anton de Villiers"),
-                linked("particle written closed up", "Jaco VanDerWesthuizen", jaco, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jaco van der Westhuizen"),
-                linked("full given name with abbreviated particle surname", "Sam vdW", "Sam|van der Westhuizen", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Sam van der Westhuizen"),
+                linked("particle vd for van der", "Jack Vd Walton", jack, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jack van der Walton"),
+                linked("particle Van Der capitalised", "Jack Van Der Walton", jack, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jack van der Walton"),
+                linked("particle van den for van der", "Eric Van Den Merton", "Eric|van der Merton", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Eric van der Merton"),
+                linked("particle de capitalised", "Adam De Vries", "Adam|de Vries", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Adam de Vries"),
+                linked("particle written closed up", "Jack VanDerWalton", jack, NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Jack van der Walton"),
+                linked("full given name with abbreviated particle surname", "Sam vdW", "Sam|van der Walton", NameLevel.EXACT, NameReason.NORMALISED_EXACT, "Sam van der Walton"),
 
                 // tier 2, NORMALISED: word order and a dropped particle are guesses
                 linked("word order, full names", "Nazar Abel", abel, NameLevel.NORMALISED, NameReason.NORMALISED, "Abel Nazar"),
-                linked("dropped particle", "Anton Villiers", "Anton|de Villiers", NameLevel.NORMALISED, NameReason.NORMALISED, "Anton de Villiers"),
+                linked("dropped particle", "Adam Vries", "Adam|de Vries", NameLevel.NORMALISED, NameReason.NORMALISED, "Adam de Vries"),
 
                 // tier 3: initials and prefixes
                 linked("surname then initial", "Nazar A", abel, NameLevel.NORMALISED, NameReason.INITIALS, "Abel Nazar"),
@@ -74,21 +74,21 @@ class NameMatcherFixturesTest {
                 linked("initial with a dot", "A. Nazar", abel, NameLevel.NORMALISED, NameReason.INITIALS, "Abel Nazar"),
                 linked("two initials", "AB Nazar", abelBruce, NameLevel.NORMALISED, NameReason.INITIALS, "Abel Bruce Nazar"),
                 linked("one initial of two given names", "A Nazar", abelBruce, NameLevel.NORMALISED, NameReason.INITIALS, "Abel Bruce Nazar"),
-                linked("mixed-case initials", "Cd Brandt", "Cornelis Dirk|Brandt", NameLevel.NORMALISED, NameReason.INITIALS, "Cornelis Dirk Brandt"),
+                linked("mixed-case initials", "Cd Bright", "Cornelis Dirk|Bright", NameLevel.NORMALISED, NameReason.INITIALS, "Cornelis Dirk Bright"),
                 linked("start of the given name", "Ab Nazar", "Abel|Nazar;Adam|Nazar", NameLevel.NORMALISED, NameReason.INITIALS, "Abel Nazar"),
-                linked("abbreviated particle surname", "vdW", jaco, NameLevel.NORMALISED, NameReason.ABBREVIATED_SURNAME, "Jaco van der Westhuizen"),
-                linked("abbreviated particle surname with an initial", "J vdW", jaco, NameLevel.NORMALISED, NameReason.ABBREVIATED_SURNAME, "Jaco van der Westhuizen"),
+                linked("abbreviated particle surname", "vdW", jack, NameLevel.NORMALISED, NameReason.ABBREVIATED_SURNAME, "Jack van der Walton"),
+                linked("abbreviated particle surname with an initial", "J vdW", jack, NameLevel.NORMALISED, NameReason.ABBREVIATED_SURNAME, "Jack van der Walton"),
                 linked("surname prefix", "Vermeul", "Pieter|Vermeulen", NameLevel.NORMALISED, NameReason.SURNAME_PREFIX, "Pieter Vermeulen"),
                 linked("surname prefix with an initial", "P Vermeul", "Pieter|Vermeulen", NameLevel.NORMALISED, NameReason.SURNAME_PREFIX, "Pieter Vermeulen"),
-                linked("given name and surname initial", "Sai V", "Sai|Varma", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Sai Varma"),
-                linked("given name and two surname letters", "Sai Va", "Sai|Varma", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Sai Varma"),
-                linked("given name and particle initial", "Willem V", "Willem|Van Der Nest", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Willem Van Der Nest"),
+                linked("given name and surname initial", "Sol V", "Sol|Varga", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Sol Varga"),
+                linked("given name and two surname letters", "Sol Va", "Sol|Varga", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Sol Varga"),
+                linked("given name and particle initial", "Walter V", "Walter|Van Der Nell", NameLevel.NORMALISED, NameReason.SURNAME_INITIAL, "Walter Van Der Nell"),
                 linked("a candidate listed twice counts once", "A Nazar", abel + ";" + abel, NameLevel.NORMALISED, NameReason.INITIALS, "Abel Nazar"),
 
                 // ambiguity: two candidates fit, nothing is linked
                 unplaced("initial fits two", "A Nazar", "Abel|Nazar;Adam|Nazar", NameReason.AMBIGUOUS),
                 unplaced("surname prefix fits two", "Vermeul", "Pieter|Vermeulen;Hans|Vermeulen", NameReason.AMBIGUOUS),
-                unplaced("given name and surname initial fits two", "Sai V", "Sai|Varma;Sai|Verma", NameReason.AMBIGUOUS),
+                unplaced("given name and surname initial fits two", "Sol V", "Sol|Varga;Sol|Verga", NameReason.AMBIGUOUS),
 
                 // disagreeing initials and unknown names
                 unplaced("initials that disagree", "B Nazar", abel, NameReason.NO_MATCH),
@@ -126,14 +126,14 @@ class NameMatcherFixturesTest {
 
     @Test
     void onlyTiersOneToThreeEverLinkAndTierFourNeverDoes() {
-        // Henk Smith -> Henk Smit is a typo: close enough to suggest, never close enough to link
-        NameResolution resolution = NameResolver.resolve("Henk Smith", candidates(List.of("Henk|Smit")));
+        // Hank Brown -> Hank Brow is a typo: close enough to suggest, never close enough to link
+        NameResolution resolution = NameResolver.resolve("Hank Brown", candidates(List.of("Hank|Brow")));
 
         assertThat(resolution.isLinked()).isFalse();
         assertThat(resolution.level()).isEqualTo(NameLevel.UNRESOLVED);
         assertThat(resolution.reason()).isEqualTo(NameReason.NO_MATCH);
         assertThat(resolution.suggestions()).singleElement().satisfies(s -> {
-            assertThat(s.candidate().fullName()).isEqualTo("Henk Smit");
+            assertThat(s.candidate().fullName()).isEqualTo("Hank Brow");
             assertThat(s.score()).isGreaterThanOrEqualTo(NameSimilarity.MIN_SCORE);
         });
     }
@@ -155,32 +155,32 @@ class NameMatcherFixturesTest {
     @Test
     void suggestionsAreRankedBestFirstAndCapped() {
         List<NameCandidate> pool = candidates(List.of(
-                "Pieter|Brandt", "Peter|Brandt", "Peter|Brandts", "Peter|Brandtt", "Zane|Quirk"));
+                "Pieter|Bright", "Peter|Bright", "Peter|Brights", "Peter|Brightt", "Zane|Quirk"));
 
-        List<NameSuggestion> ranked = NameSimilarity.rank("Peter Brandd", pool);
+        List<NameSuggestion> ranked = NameSimilarity.rank("Peter Brighd", pool);
 
         assertThat(ranked).hasSize(NameSimilarity.MAX_SUGGESTIONS).hasSize(3);
         assertThat(ranked).extracting(s -> s.score()).isSortedAccordingTo(java.util.Comparator.reverseOrder());
-        assertThat(ranked.get(0).candidate().fullName()).isEqualTo("Peter Brandt");
+        assertThat(ranked.get(0).candidate().fullName()).isEqualTo("Peter Bright");
         assertThat(ranked).extracting(s -> s.candidate().fullName()).doesNotContain("Zane Quirk");
         assertThat(ranked).allSatisfy(s -> assertThat(s.score()).isGreaterThanOrEqualTo(0.80));
     }
 
     @Test
     void equalScoresAreOrderedByName() {
-        List<NameSuggestion> ranked = NameSimilarity.rank("Peter Brandd",
-                candidates(List.of("Peter|Brandz", "Peter|Brandt", "Peter|Brandy")));
+        List<NameSuggestion> ranked = NameSimilarity.rank("Peter Brighd",
+                candidates(List.of("Peter|Brighz", "Peter|Bright", "Peter|Brighy")));
 
         assertThat(ranked).extracting(s -> s.candidate().fullName())
-                .containsExactly("Peter Brandt", "Peter Brandy", "Peter Brandz");
+                .containsExactly("Peter Bright", "Peter Brighy", "Peter Brighz");
     }
 
     @Test
     void justAboveTheThresholdIsListedAndWellBelowIsNot() {
-        // 'henksmith' against 'henksmit': one edit in nine letters (score 0.89)
-        assertThat(NameSimilarity.rank("Henk Smith", candidates(List.of("Henk|Smit")))).hasSize(1);
+        // 'hankbrown' against 'hankbrow': one edit in nine letters (score 0.89)
+        assertThat(NameSimilarity.rank("Hank Brown", candidates(List.of("Hank|Brow")))).hasSize(1);
         // three edits in thirteen letters (score 0.77) is under the threshold
-        assertThat(NameSimilarity.rank("Henk Smithson", candidates(List.of("Henk|Smit")))).isEmpty();
+        assertThat(NameSimilarity.rank("Hank Brownson", candidates(List.of("Hank|Brow")))).isEmpty();
         assertThat(NameSimilarity.MIN_SCORE).isEqualTo(0.80);
     }
 
@@ -191,8 +191,8 @@ class NameMatcherFixturesTest {
      */
     @Test
     void aScoreExactlyAtTheThresholdIsListed() {
-        // 'henksmiths' against 'henksmit': two edits in ten letters, 0.80
-        assertThat(NameSimilarity.rank("Henk Smiths", candidates(List.of("Henk|Smit")))).hasSize(1);
+        // 'hankbrowns' against 'hankbrow': two edits in ten letters, 0.80
+        assertThat(NameSimilarity.rank("Hank Browns", candidates(List.of("Hank|Brow")))).hasSize(1);
     }
 
     @Test
@@ -215,17 +215,17 @@ class NameMatcherFixturesTest {
 
     @Test
     void aWordOrderSwappedTypoStillSuggests() {
-        List<NameSuggestion> ranked = NameSimilarity.rank("Brandd Peter", candidates(List.of("Peter|Brandt")));
+        List<NameSuggestion> ranked = NameSimilarity.rank("Brighd Peter", candidates(List.of("Peter|Bright")));
 
-        assertThat(ranked).extracting(s -> s.candidate().fullName()).containsExactly("Peter Brandt");
+        assertThat(ranked).extracting(s -> s.candidate().fullName()).containsExactly("Peter Bright");
     }
 
     @Test
     void theStrongestTierWinsWhenSeveralWouldFit() {
         // the exact spelling is found at tier 1 even though a near name would also be a suggestion
-        NameResolution resolution = NameResolver.resolve("Peter Brandt", candidates(List.of("Peter|Brandt", "Peter|Brandts")));
+        NameResolution resolution = NameResolver.resolve("Peter Bright", candidates(List.of("Peter|Bright", "Peter|Brights")));
 
         assertThat(resolution.reason()).isEqualTo(NameReason.EXACT);
-        assertThat(Arrays.asList(resolution.candidate().fullName())).containsExactly("Peter Brandt");
+        assertThat(Arrays.asList(resolution.candidate().fullName())).containsExactly("Peter Bright");
     }
 }

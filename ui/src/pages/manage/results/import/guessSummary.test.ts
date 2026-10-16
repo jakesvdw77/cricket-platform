@@ -44,10 +44,10 @@ describe('guessLevelOf', () => {
   })
 
   it('is UNRESOLVED for our guest whose spelling has an unresolved note', () => {
-    const guest = player('2', { playerProfileId: null, displayName: 'Dihandre V' })
-    expect(guessLevelOf(guest, [note('Dihandre V', { level: 'UNRESOLVED' })])).toBe('UNRESOLVED')
+    const guest = player('2', { playerProfileId: null, displayName: 'Dino V' })
+    expect(guessLevelOf(guest, [note('Dino V', { level: 'UNRESOLVED' })])).toBe('UNRESOLVED')
     expect(guessLevelOf(guest, [])).toBeNull()
-    expect(guessLevelOf(guest, [note('Dihandre V', { level: 'EXACT' })])).toBeNull()
+    expect(guessLevelOf(guest, [note('Dino V', { level: 'EXACT' })])).toBeNull()
   })
 
   it('is never anything for the opposition', () => {
@@ -61,10 +61,10 @@ describe('summariseGuesses', () => {
       player('1', { importMatch: 'NORMALISED' }),
       player('2', { importMatch: 'NORMALISED' }),
       player('3', { importMatch: 'AI_SUGGESTED' }),
-      player('4', { playerProfileId: null, displayName: 'Dihandre V' }),
+      player('4', { playerProfileId: null, displayName: 'Dino V' }),
       player('5'),
     ]
-    expect(summariseGuesses(players, [note('Dihandre V', { level: 'UNRESOLVED' })])).toEqual({ guesses: 3, ruleBased: 2, unresolved: 1 })
+    expect(summariseGuesses(players, [note('Dino V', { level: 'UNRESOLVED' })])).toEqual({ guesses: 3, ruleBased: 2, unresolved: 1 })
   })
 
   it('is all zero when nothing needs checking', () => {
@@ -74,11 +74,11 @@ describe('summariseGuesses', () => {
 
 describe('nextToCheck', () => {
   const players = [
-    player('a', { playerProfileId: null, displayName: 'Dihandre V' }),
+    player('a', { playerProfileId: null, displayName: 'Dino V' }),
     player('b', { importMatch: 'NORMALISED' }),
     player('c', { side: 'AWAY', importMatch: 'NORMALISED' }),
   ]
-  const notes = [note('Dihandre V', { level: 'UNRESOLVED' })]
+  const notes = [note('Dino V', { level: 'UNRESOLVED' })]
 
   it('offers guesses before unresolved names, each in list order, with the side to show', () => {
     expect(nextToCheck(players, notes)).toEqual({ key: 'b', side: 'HOME' })

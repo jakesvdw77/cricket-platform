@@ -1,7 +1,7 @@
 import { Button } from '../../../../components/Button'
 import type { GuessInfo } from './guessSummary'
 
-// docs/specs/104-match-results-import-adaptors.md: the one-tap "Change to Henk Smit" under an unresolved (Guest) name that the
+// docs/specs/104-match-results-import-adaptors.md: the one-tap "Change to Hank Brow" under an unresolved (Guest) name that the
 // resolve step ranked a closest player for. Only the manager's tap links the row (never automatic); the rest of the
 // suggestions stay behind the Guest chip's picker. The label truncates, the accessible name carries the full player.
 export function UseClosestButton({ guess, disabled = false }: { guess: GuessInfo; disabled?: boolean }) {

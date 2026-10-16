@@ -399,7 +399,7 @@ public class ImportPlayerResolver {
         if (words.length < 2) {
             return new NameCandidate(marker, "", trimmed);
         }
-        // The surname starts at the first particle after the given name ("Willem" + "Van Der Nest"), else at the last word.
+        // The surname starts at the first particle after the given name ("Walter" + "Van Der Nell"), else at the last word.
         int cut = words.length - 1;
         for (int i = 1; i < words.length - 1; i++) {
             if (NameTokens.isParticle(words[i])) {

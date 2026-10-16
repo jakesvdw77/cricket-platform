@@ -67,13 +67,13 @@ public class JsonAdaptor extends AbstractAdaptor {
                 { "battingTeam": "B", "runs": 180, "wickets": 9, "overs": "40.0",
                   "extras": { "wides": 6, "noBalls": 1, "byes": 2, "legByes": 1, "penalty": 0 },
                   "batting": [
-                    { "player": "J Smith", "howOut": "CAUGHT", "fielder": "A Nazar", "bowler": "C Mescht",
+                    { "player": "J Smith", "howOut": "CAUGHT", "fielder": "A Nazar", "bowler": "C Marsh",
                       "runs": 42, "balls": 51, "fours": 4, "sixes": 1 }
                   ],
                   "didNotBat": [ "P Jones" ],
-                  "bowling": [ { "player": "C Mescht", "overs": "8.0", "maidens": 1, "runs": 31, "wickets": 3, "dots": 22 } ] }
+                  "bowling": [ { "player": "C Marsh", "overs": "8.0", "maidens": 1, "runs": 31, "wickets": 3, "dots": 22 } ] }
               ],
-              "awards": { "playerOfMatch": { "name": "C Mescht" } }
+              "awards": { "playerOfMatch": { "name": "C Marsh" } }
             }
             """;
 

@@ -9,10 +9,10 @@ import { Button } from '../Button'
 export type GuessChipLevel = 'NORMALISED' | 'AI_SUGGESTED' | 'UNRESOLVED'
 
 export interface GuessChipProps {
-  // The name as the file wrote it ("Hari K").
+  // The name as the file wrote it ("Hugo K").
   importedName: string
   level: GuessChipLevel
-  // Who the guess became ("Hari Konduru"); not used for an unresolved name.
+  // Who the guess became ("Hugo Kemp"); not used for an unresolved name.
   matchedName?: string | null
   // How it was matched, as a phrase that follows "Matched to <name>" ("by the start of the surname"); omitted when unknown.
   reason?: string | null

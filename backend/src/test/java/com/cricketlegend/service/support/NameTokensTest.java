@@ -70,10 +70,10 @@ class NameTokensTest {
     @CsvSource(delimiter = '|', nullValues = "NONE", textBlock = """
             van der Walt    | vdw
             VanDerWalt      | vdw
-            Van Der Nest    | vdn
-            vd Westhuizen   | vdw
-            De Villiers     | dv
-            de Villiers     | dv
+            Van Der Nell    | vdn
+            vd Walton   | vdw
+            De Vries     | dv
+            de Vries     | dv
             Walt            | ''
             Nazar           | ''
             """)

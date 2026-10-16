@@ -173,11 +173,11 @@ describe('PlayerSlotPicker', () => {
     it('shows what the file said and the closest players best first with their similarity, and a tap picks one', async () => {
       const user = userEvent.setup()
       const { onPickPlayer } = setup({
-        importedName: 'Dihandre V',
+        importedName: 'Dino V',
         suggestions: [suggestion('p2', 'Bob', 'Birch', 0.82), suggestion('p3', 'Cal', 'Cedar', 0.4)],
       })
 
-      expect(await screen.findByText(/File said:/)).toHaveTextContent('Dihandre V')
+      expect(await screen.findByText(/File said:/)).toHaveTextContent('Dino V')
       const list = screen.getByRole('list', { name: 'Closest players' })
       const rows = within(list).getAllByRole('button')
       expect(rows[0]).toHaveTextContent('Bob Birch')
@@ -191,7 +191,7 @@ describe('PlayerSlotPicker', () => {
     it('greys out a closest player who is already taken, with the reason, and cannot pick them', async () => {
       const user = userEvent.setup({ pointerEventsCheck: 0 })
       const { onPickPlayer } = setup({
-        importedName: 'Dihandre V',
+        importedName: 'Dino V',
         suggestions: [suggestion('p2', 'Bob', 'Birch', 0.82)],
         takenPlayers: { p2: 'Already on this side' },
       })
@@ -204,9 +204,9 @@ describe('PlayerSlotPicker', () => {
 
     it('prefills the Guest name with the file spelling so keeping a guest is one tap', async () => {
       const user = userEvent.setup()
-      setup({ importedName: 'Dihandre V' })
+      setup({ importedName: 'Dino V' })
       await user.click(await screen.findByRole('button', { name: 'Guest' }))
-      expect(screen.getByDisplayValue('Dihandre V')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Dino V')).toBeInTheDocument()
     })
 
     it('shows no import header for an ordinary pick', async () => {

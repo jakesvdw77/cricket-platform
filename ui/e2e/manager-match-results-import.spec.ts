@@ -66,7 +66,7 @@ interface Fixture {
   teamName: string;
   opponent: string;
   matchDate: string; // yyyy-MM-dd
-  hari: string; // "Hari Konduru<suffix>": the file writes "Hari K", a guess the manager confirms
+  hari: string; // "Hugo Kemp<suffix>": the file writes "Hugo K", a guess the manager confirms
   sam: string; // "Sam Patel<suffix>": the file writes "Sam P", a guess the manager changes to Gus
   neil: string; // "Neil Naidoo<suffix>": the file writes "Neil N", a guess left unconfirmed so Review blocks
   gus: string; // "Gus Gopal<suffix>": in the squad, not in the file, the player Sam P is changed to
@@ -86,7 +86,7 @@ async function setUpClub(page: Page): Promise<Fixture> {
   const matchDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const people = [
-    { first: 'Hari', last: `Konduru${surnameSuffix}` },
+    { first: 'Hugo', last: `Kemp${surnameSuffix}` },
     { first: 'Sam', last: `Patel${surnameSuffix}` },
     { first: 'Neil', last: `Naidoo${surnameSuffix}` },
     { first: 'Gus', last: `Gopal${surnameSuffix}` },
@@ -157,7 +157,7 @@ async function setUpClub(page: Page): Promise<Fixture> {
     teamName,
     opponent,
     matchDate,
-    hari: `Hari Konduru${surnameSuffix}`,
+    hari: `Hugo Kemp${surnameSuffix}`,
     sam: `Sam Patel${surnameSuffix}`,
     neil: `Neil Naidoo${surnameSuffix}`,
     gus: `Gus Gopal${surnameSuffix}`,
@@ -166,7 +166,7 @@ async function setUpClub(page: Page): Promise<Fixture> {
 }
 
 // The common-format document: our side is "A" and batted first (the figures are small and plain so the totals add up), the
-// opposition is "B". Our three players are written the way a scorer would ("Hari K", "Sam P", "Neil N"): each a guess.
+// opposition is "B". Our three players are written the way a scorer would ("Hugo K", "Sam P", "Neil N"): each a guess.
 function documentFor(fixture: Fixture, externalId: string): string {
   return JSON.stringify(
     {
@@ -187,7 +187,7 @@ function documentFor(fixture: Fixture, externalId: string): string {
           overs: '40.0',
           extras: { wides: 6, noBalls: 1, byes: 2, legByes: 1, penalty: 0 },
           batting: [
-            { player: 'Hari K', howOut: 'BOWLED', bowler: 'Opp Bowler', runs: 42, balls: 51 },
+            { player: 'Hugo K', howOut: 'BOWLED', bowler: 'Opp Bowler', runs: 42, balls: 51 },
             { player: 'Sam P', howOut: 'NOT_OUT', runs: 30, balls: 28 },
             { player: 'Neil N', howOut: 'BOWLED', bowler: 'Opp Bowler', runs: 10, balls: 14 },
           ],
@@ -200,12 +200,12 @@ function documentFor(fixture: Fixture, externalId: string): string {
           overs: '40.0',
           extras: { wides: 4, noBalls: 0, byes: 2, legByes: 2, penalty: 0 },
           batting: [
-            { player: 'Opp Batter', howOut: 'BOWLED', bowler: 'Hari K', runs: 30, balls: 40 },
-            { player: 'Opp Second', howOut: 'BOWLED', bowler: 'Hari K', runs: 20, balls: 30 },
+            { player: 'Opp Batter', howOut: 'BOWLED', bowler: 'Hugo K', runs: 30, balls: 40 },
+            { player: 'Opp Second', howOut: 'BOWLED', bowler: 'Hugo K', runs: 20, balls: 30 },
             { player: 'Opp Third', howOut: 'BOWLED', bowler: 'Sam P', runs: 10, balls: 20 },
           ],
           bowling: [
-            { player: 'Hari K', overs: '20.0', maidens: 1, runs: 30, wickets: 2 },
+            { player: 'Hugo K', overs: '20.0', maidens: 1, runs: 30, wickets: 2 },
             { player: 'Sam P', overs: '20.0', maidens: 0, runs: 34, wickets: 1 },
           ],
         },
@@ -279,13 +279,13 @@ test.describe('Match result import golden path (104-match-results-import-adaptor
     // --- Teams step: the banner and a Guess chip for each of the three; nothing is published. ---
     const banner = page.getByTestId('import-guess-banner');
     await expect(banner).toContainText('3 names were matched by a best guess');
-    for (const fileName of ['Hari K', 'Sam P', 'Neil N']) await expect(guessChip(page, fileName)).toBeVisible();
+    for (const fileName of ['Hugo K', 'Sam P', 'Neil N']) await expect(guessChip(page, fileName)).toBeVisible();
 
     // --- Confirm Hari's guess from his chip. ---
-    await guessChip(page, 'Hari K').click();
-    await expect(page.getByText(/File said 'Hari K'/)).toBeVisible();
+    await guessChip(page, 'Hugo K').click();
+    await expect(page.getByText(/File said 'Hugo K'/)).toBeVisible();
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-    await expect(guessChip(page, 'Hari K')).toHaveCount(0);
+    await expect(guessChip(page, 'Hugo K')).toHaveCount(0);
 
     // --- Change Sam's guess to Gus: Change opens the picker with what the file said; Gus is in the team squad. ---
     await guessChip(page, 'Sam P').click();
@@ -357,7 +357,7 @@ test.describe('Match result import golden path (104-match-results-import-adaptor
     await expect(created).toContainText('2 are guesses to check');
     await created.getByRole('button', { name: 'Review in the result wizard' }).click();
     await expect(guessChip(page, 'Sam P')).toHaveCount(0);
-    await expect(guessChip(page, 'Hari K')).toBeVisible();
+    await expect(guessChip(page, 'Hugo K')).toBeVisible();
     await expect(page.getByText(fixture.gus).first()).toBeVisible();
   });
 });

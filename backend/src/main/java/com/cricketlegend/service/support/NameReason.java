@@ -12,7 +12,7 @@ public enum NameReason {
     NORMALISED,
     /** Tier 3a: the surname equals the candidate's and the given names or initials agree. */
     INITIALS,
-    /** Tier 3: given name plus one or two surname initials ("Sai V" for "Sai Varma"). */
+    /** Tier 3: given name plus one or two surname initials ("Sol V" for "Sol Varga"). */
     SURNAME_INITIAL,
     /** Tier 3b: an abbreviated particle surname such as "vdW" for "van der Walt". */
     ABBREVIATED_SURNAME,

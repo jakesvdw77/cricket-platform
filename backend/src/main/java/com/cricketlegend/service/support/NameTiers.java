@@ -65,7 +65,7 @@ public final class NameTiers {
     /**
      * Tier 1b (EXACT, reason NORMALISED_EXACT): the same words in the same order, differing only in case, accents,
      * spacing, punctuation or the form of the surname particle ("vd", "van der", "van den", "vdW" are equivalent,
-     * "De Villiers" is "de Villiers"). The particle must be present on both sides or neither: dropping it is a
+     * "De Vries" is "de Vries"). The particle must be present on both sides or neither: dropping it is a
      * guess, left to tier 2. The abbreviated "vdW" form only counts with the full given name present and equal.
      */
     private static boolean sameNameDifferentForm(NameTokens typed, NameTokens.Split split, NameCandidate c) {
@@ -126,7 +126,7 @@ public final class NameTiers {
     }
 
     /**
-     * Tier 3 "given name plus surname initial" (the CricClubs form, "Sai V", "Jaco V"): exactly two words, the
+     * Tier 3 "given name plus surname initial" (the CricClubs form, "Sol V", "Jack V"): exactly two words, the
      * first equal to the candidate's given name and the second one or two letters that start the candidate's main
      * surname or its full compact surname (so the particle's first letter also counts). Runs after the initials
      * rule, so "Nazar A" still reads as surname plus initial whenever that identifies a candidate.

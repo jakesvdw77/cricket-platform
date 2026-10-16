@@ -8,7 +8,7 @@ import java.util.Set;
 
 /**
  * Closed-world resolution of a dismissal's text (docs/specs/104, "matching approach"): for example
- * {@code "c Nazar A b Cd Mescht"} is read against the names the report's own batting and bowling lists already
+ * {@code "c Nazar A b Cd Marsh"} is read against the names the report's own batting and bowling lists already
  * established, and at each position the <em>longest</em> known name that fits wins, so "Nazar A" is never read as
  * the shorter "Nazar". Only the report's own spellings can be found; nothing from our data is involved. A name
  * after a standalone {@code b} is the bowler, any other is the fielder. A standalone {@code b} is read as the
