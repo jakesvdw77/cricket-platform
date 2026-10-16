@@ -121,7 +121,8 @@ const TEAMS: Team[] = [
   makeTeam({ id: 'team-2', name: '2nd XI' }),
   makeTeam({ id: 'team-3', name: 'O/13A' }),
 ]
-const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
+// Inactive, so the form does not default to it (the default-season tests below use their own active seasons).
+const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026', active: false })]
 const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
 
 beforeEach(() => {
@@ -154,6 +155,65 @@ function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Sub
 }
 
 describe('MatchForm', () => {
+  describe('default season on a new match', () => {
+    const TODAY = new Date(2026, 9, 16)
+    const ACTIVE: Season[] = [
+      makeSeason({ id: 'season-old', label: '2025/26', startDate: '2025-09-01', endDate: '2026-07-31' }),
+      makeSeason({ id: 'season-now', label: '2026/27', startDate: '2026-09-01', endDate: '2027-07-31' }),
+    ]
+
+    it('starts on the current season', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27')
+    })
+
+    it('applies it once the seasons arrive after the first render', () => {
+      const props: MatchFormProps = { clubId: 'club-1', teams: TEAMS, seasons: [], leagues: LEAGUES, affiliations: [], onSubmit: vi.fn(), today: TODAY }
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const ui = (p: MatchFormProps) => (
+        <QueryClientProvider client={queryClient}>
+          <MatchForm {...p} />
+        </QueryClientProvider>
+      )
+      const { rerender } = render(ui(props))
+      rerender(ui({ ...props, seasons: ACTIVE }))
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27')
+    })
+
+    it('lets an explicit initial season win', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY, initialValues: { seasonId: 'season-old' } })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('keeps the season an edit already has', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY, initialValues: { seasonId: 'season-old', matchDate: '2026-01-10T10:00:00Z' } })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('never overwrites a season the manager chose', async () => {
+      const user = userEvent.setup()
+      const props: MatchFormProps = { clubId: 'club-1', teams: TEAMS, seasons: ACTIVE, leagues: LEAGUES, affiliations: [], onSubmit: vi.fn(), today: TODAY }
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const ui = (p: MatchFormProps) => (
+        <QueryClientProvider client={queryClient}>
+          <MatchForm {...p} />
+        </QueryClientProvider>
+      )
+      const { rerender } = render(ui(props))
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2025/26' }))
+      rerender(ui({ ...props, seasons: [...ACTIVE] }))
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('leaves the season empty with no active seasons, and the required error still shows', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ seasons: [makeSeason({ active: false })], today: TODAY })
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('Season is required')).toBeInTheDocument()
+    })
+  })
+
   it('renders a required Season select and an optional League select', () => {
     renderMatchForm()
     expect(screen.getByLabelText('Season')).toBeInTheDocument()

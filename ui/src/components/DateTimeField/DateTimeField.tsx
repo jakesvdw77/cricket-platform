@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, FormHelperText, FormLabel, IconButton, InputAdornment } from '@mui/material'
+import { Box, FormHelperText, IconButton, InputAdornment } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import { Input } from '../Input'
@@ -63,44 +63,37 @@ export function DateTimeField({
   }
 
   const step = (direction: 1 | -1) => update({ ...draft, time: stepTime(draft.time, direction) })
-  // Small stacked arrows, 22 px each; the 44 px touch target is kept by extending the hit area sideways (as GuessChip does).
+  // Small stacked arrows, 18 px each; the 44 px touch target is kept by extending the hit area sideways (as GuessChip does).
   const arrowSx = {
     position: 'relative',
     width: 28,
-    height: 22,
+    height: 18,
     p: 0,
     borderRadius: 0.5,
     '&::after': { content: '""', position: 'absolute', top: 0, bottom: 0, left: -8, right: -8 },
   } as const
 
   const helperId = helperText ? `${testId ?? label.replace(/\W+/g, '-')}-helper` : undefined
-  const fieldSx = { '& .MuiInputBase-root': { minHeight: 44 } }
+  // Both boxes keep the standard Input height so the pair lines up with the neighbouring fields; the labels float on the border.
+  const shrink = { shrink: true }
 
   return (
     <Box role="group" aria-label={label} aria-describedby={helperId} data-testid={testId}>
-      <FormLabel
-        aria-hidden
-        required={required}
-        error={error}
-        disabled={disabled}
-        sx={{ display: 'block', mb: 0.75, fontSize: '0.8rem', color: error ? 'error.main' : 'text.secondary' }}
-      >
-        {label}
-      </FormLabel>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 9rem', gap: 1 }}>
         <Input
-          label=""
+          label={label}
           type="date"
+          InputLabelProps={shrink}
           value={draft.date}
           onChange={(event) => update({ ...draft, date: event.target.value })}
           error={error}
           disabled={disabled}
           required={required}
           inputProps={{ 'aria-label': `${label} (date)`, min: min?.slice(0, 10), max: max?.slice(0, 10) }}
-          sx={fieldSx}
         />
         <Input
-          label=""
+          label="Time"
+          InputLabelProps={shrink}
           value={draft.time}
           onChange={(event) => update({ ...draft, time: sanitiseTimeText(event.target.value) })}
           error={error}
@@ -128,7 +121,6 @@ export function DateTimeField({
               </InputAdornment>
             ),
           }}
-          sx={fieldSx}
         />
       </Box>
       {helperText && (
