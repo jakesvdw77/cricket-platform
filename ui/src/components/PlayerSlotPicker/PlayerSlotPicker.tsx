@@ -19,11 +19,14 @@ import {
   useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
-import { listPlayers } from '../../api/playerApi'
+import { createPlayer, linkPlayerSection, listPlayers } from '../../api/playerApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { errorDetail } from '../../utils/errorDetail'
+import { splitGuestName } from '../../utils/guestNameSplit'
+import { PlayerQuickForm } from '../PlayerQuickForm'
 import { fullName } from '../../utils/playerDisplayName'
 import type { PersonName } from '../../utils/playerDisplayName'
 import { alpha } from '@mui/material/styles'
@@ -43,7 +46,7 @@ export interface PickerSuggestion {
   score: number
 }
 
-export type PlayerSlotScope = 'match' | 'squad' | 'club' | 'guest'
+export type PlayerSlotScope = 'match' | 'squad' | 'club' | 'guest' | 'new'
 
 export interface PlayerSlotPickerProps {
   open: boolean
@@ -84,6 +87,10 @@ export interface PlayerSlotPickerProps {
   importedName?: string
   // docs/specs/104: the closest registered players for that name, best first, offered as one-tap picks above the scopes.
   suggestions?: PickerSuggestion[]
+  // docs/specs/104: adds a "New player" tab that creates a registered player inside the dialog and picks them in one step
+  // (the guest becomes that player). `name` is the guest's written name, split into first name and surname to prefill the
+  // form; `sectionId` is the section of the guest's club team, which the new player is linked to. Omitted, no tab.
+  newPlayer?: { name: string; sectionId?: string | null }
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -91,6 +98,7 @@ const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
   squad: 'Team squad',
   club: 'Club',
   guest: 'Guest',
+  new: 'New player',
 }
 
 const norm = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase()
@@ -214,6 +222,7 @@ function PickerBody({
   notListedLabel = 'Add them on Teams',
   importedName,
   suggestions = [],
+  newPlayer,
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
   const hasMatch = matchSquad !== undefined
@@ -222,6 +231,43 @@ function PickerBody({
   const [search, setSearch] = useState('')
   const [guest, setGuest] = useState(importedName ?? '')
   const debouncedGuest = useDebouncedValue(guest, 250)
+  const queryClient = useQueryClient()
+  // Creates the player, tags them to the team's section when one is known (a failure there is not fatal: the player exists
+  // and can be tagged from their page), refreshes the club's players so they appear in the Club tab, and picks them.
+  const createMutation = useMutation({
+    mutationFn: async (values: { firstName: string; lastName: string; dateOfBirth: string }) => {
+      const created = await createPlayer(clubId, {
+        ...values,
+        gender: null,
+        photoUrl: null,
+        clubMembershipNumber: null,
+        medicalAidProvider: null,
+        medicalAidMemberNumber: null,
+        phone: null,
+        email: null,
+        altContactName: null,
+        altContactPhone: null,
+        battingStance: null,
+        bowlingArm: null,
+        bowlingType: null,
+        isWicketKeeper: false,
+        jerseyNumber: null,
+      })
+      if (newPlayer?.sectionId) {
+        try {
+          await linkPlayerSection(clubId, created.id, newPlayer.sectionId)
+        } catch {
+          // not fatal
+        }
+      }
+      return created
+    },
+    onSuccess: (created) => {
+      void queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'players'] })
+      onPickPlayer({ playerProfileId: created.id, firstName: created.firstName, lastName: created.lastName })
+    },
+  })
+  const guessedName = splitGuestName(newPlayer?.name)
 
   const squadQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
@@ -298,7 +344,7 @@ function PickerBody({
 
   const importedHeader = importedName ? <ImportedName name={importedName} suggestions={suggestions} takenPlayers={takenPlayers} onPick={onPickPlayer} /> : null
 
-  const scopes: PlayerSlotScope[] = [...(hasMatch ? (['match'] as const) : []), ...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : [])]
+  const scopes: PlayerSlotScope[] = [...(hasMatch ? (['match'] as const) : []), ...(hasSquad ? (['squad', 'club'] as const) : (['club'] as const)), ...(allowGuest ? (['guest'] as const) : []), ...(newPlayer ? (['new'] as const) : [])]
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
@@ -316,13 +362,24 @@ function PickerBody({
         ))}
       </CompactToggleGroup>
 
-      {noSelection && scope !== 'guest' && scope !== 'match' && (
+      {noSelection && scope !== 'guest' && scope !== 'new' && scope !== 'match' && (
         <Typography variant="caption" color="text.secondary">
           No team selected for this match
         </Typography>
       )}
 
-      {scope !== 'guest' && (
+      {scope === 'new' && newPlayer && (
+        <PlayerQuickForm
+          initialFirstName={guessedName.firstName}
+          initialLastName={guessedName.lastName}
+          submitLabel="Create and link"
+          pending={createMutation.isPending}
+          error={createMutation.isError ? errorDetail(createMutation.error, 'The player could not be created. Please try again.') : null}
+          onSubmit={(values) => createMutation.mutate(values)}
+        />
+      )}
+
+      {scope !== 'guest' && scope !== 'new' && (
         <>
           <TextField
             size="small"

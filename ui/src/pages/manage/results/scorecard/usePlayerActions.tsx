@@ -13,6 +13,7 @@ import { usePlayerLabeler } from '../../../../hooks/usePlayerLabeler'
 import { scorecardPersonName } from '../../../../utils/playerDisplayName'
 import type { PersonName } from '../../../../utils/playerDisplayName'
 import { playerRowKey } from '../../../../utils/scorecardPrefill'
+import { useTeamSectionId } from '../../../../hooks/useTeamSectionId'
 import { linkGuest, swapPlayer } from '../scorecardDraft'
 import type { PlayerIdentity } from '../scorecardDraft'
 
@@ -82,6 +83,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
   const label = usePlayerLabeler(view)
   const [menu, setMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null)
   const [picker, setPicker] = useState<{ mode: 'swap' | 'link' | 'add'; key: string } | null>(null)
+  const linkSectionId = useTeamSectionId(clubId, ours.teamId, picker?.mode === 'link')
   const [removeKey, setRemoveKey] = useState<string | null>(null)
   const [blocked, setBlocked] = useState<string | null>(null)
 
@@ -206,6 +208,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
         takenGuests={picker?.mode === 'add' ? (options.addTakenGuests ?? []) : swapTakenGuests}
         hints={picker?.mode === 'add' && options.addFromList ? options.addFromList.hints : hints}
         allowGuest={picker?.mode !== 'link'}
+        newPlayer={picker?.mode === 'link' && player(pickerKey)?.displayName ? { name: player(pickerKey)?.displayName as string, sectionId: linkSectionId } : undefined}
         matchSquad={options.matchSquad}
         note={picker?.mode === 'swap' ? 'Swap player: the selected player did not play and this person played instead; all their figures move to them. If a player was replaced during the match, keep both and use Add player.' : undefined}
         matchOnly={picker?.mode === 'add' && Boolean(options.addFromList)}

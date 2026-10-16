@@ -21,8 +21,13 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
 })
 // The picker has its own tests; here it only stands in for "choose a registered player".
 vi.mock('../../../components/PlayerSlotPicker', () => ({
-  PlayerSlotPicker: ({ open, onPickPlayer }: { open: boolean; onPickPlayer: (p: { playerProfileId: string; firstName: string; lastName: string }) => void }) =>
-    open ? <button onClick={() => onPickPlayer({ playerProfileId: 'p-zoe', firstName: 'Zoe', lastName: 'Zane' })}>Pick Zoe Zane</button> : null,
+  PlayerSlotPicker: ({ open, onPickPlayer, newPlayer }: { open: boolean; onPickPlayer: (p: { playerProfileId: string; firstName: string; lastName: string }) => void; newPlayer?: { name: string; sectionId?: string | null } }) =>
+    open ? (
+      <>
+        <button onClick={() => onPickPlayer({ playerProfileId: 'p-zoe', firstName: 'Zoe', lastName: 'Zane' })}>Pick Zoe Zane</button>
+        {newPlayer && <span data-testid="new-player-config">{`${newPlayer.name}|${newPlayer.sectionId ?? ''}`}</span>}
+      </>
+    ) : null,
 }))
 
 const reg = (id: string, first: string, last: string, side = 'HOME') => ({
@@ -51,13 +56,13 @@ const card = (): Scorecard => ({
   innings: [],
 })
 
-function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: true, away: false }, readOnly = false) {
+function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: true, away: false }, readOnly = false, sectionIds?: { home?: string | null; away?: string | null }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const result = makeResult({ status, hasScorecard: true, detailLevel: 'FULL' })
   return render(
     <ThemeProvider theme={baseTheme}>
       <QueryClientProvider client={queryClient}>
-        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} toss={null} readOnly={readOnly} />
+        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} toss={null} readOnly={readOnly} sectionIds={sectionIds} />
       </QueryClientProvider>
     </ThemeProvider>,
   )
@@ -120,6 +125,14 @@ describe('ResultScorecard', () => {
     await user.click(await screen.findByRole('button', { name: 'Pick Zoe Zane' }))
     await waitFor(() => expect(linkResultPlayer).toHaveBeenCalled())
     expect(linkResultPlayer.mock.calls[0].slice(0, 4)).toEqual(['club-1', 'match-1', 'g', 'p-zoe'])
+  })
+
+  it('the Link to player dialog gets the guest name and the side\'s section for its New player tab', async () => {
+    const user = userEvent.setup()
+    renderCard('PUBLISHED', { home: true, away: false }, false, { home: 'sec-9', away: null })
+    const home = await screen.findByTestId('scorecard-home')
+    await user.click(within(home).getAllByRole('button', { name: 'Link to player' })[0])
+    expect(await screen.findByTestId('new-player-config')).toHaveTextContent('Gus Guest|sec-9')
   })
 
   it('readOnly (the capture preview) shows no Link to player for a guest of our side', async () => {

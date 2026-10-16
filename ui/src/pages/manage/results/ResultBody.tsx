@@ -62,7 +62,10 @@ export function ResultBody({
       </ResultSection>
 
       {result.hasScorecard && (
-        <ResultScorecard clubId={clubId} match={match} result={result} names={names} ours={ownSidesOf(match, teamsById)} toss={toss} readOnly={readOnly} />
+        <ResultScorecard clubId={clubId} match={match} result={result} names={names} ours={ownSidesOf(match, teamsById)} toss={toss}
+          readOnly={readOnly}
+          sectionIds={{ home: match.homeTeamId ? teamsById.get(match.homeTeamId)?.sectionId : null, away: match.awayTeamId ? teamsById.get(match.awayTeamId)?.sectionId : null }}
+        />
       )}
 
       <ResultSection title="Details">
