@@ -22,8 +22,9 @@ class MatchEmptinessTest {
 
     private final ResultStatusResolver resolver = mock(ResultStatusResolver.class);
     private final MatchAvailabilityPollRepository polls = mock(MatchAvailabilityPollRepository.class);
+    private final MatchSideRepository sides = mock(MatchSideRepository.class);
     private final MatchEmptiness emptiness = new MatchEmptiness(
-            resolver, polls, mock(MatchSquadMemberRepository.class), mock(MatchSideRepository.class),
+            resolver, polls, mock(MatchSquadMemberRepository.class), sides,
             mock(SectionAvailabilityWindowMatchRepository.class));
 
     @Test
@@ -48,5 +49,18 @@ class MatchEmptinessTest {
         assertThat(emptiness.emptyAmong(List.of(id))).isEmpty();
 
         verify(resolver, times(1)).statusesFor(any());
+    }
+
+    @Test
+    void aMatchWhoseOnlySidesAreEmptyIsEmptyAndOneWithASideHoldingContentIsTeamSelection() {
+        UUID emptySideOnly = UUID.randomUUID();
+        UUID withContent = UUID.randomUUID();
+        // the repository query already excludes empty sides, so only the match with content is returned
+        when(sides.findMatchIdsWithSideByMatchIdIn(any())).thenReturn(List.of(withContent));
+        List<UUID> ids = List.of(emptySideOnly, withContent);
+
+        assertThat(emptiness.emptyAmong(ids, Map.of())).containsExactly(emptySideOnly);
+        assertThat(emptiness.attachmentsFor(ids, Map.of()).get(withContent))
+                .containsExactly(MatchEmptiness.Attachment.TEAM_SELECTION);
     }
 }

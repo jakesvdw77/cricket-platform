@@ -11,7 +11,7 @@ Goal: let a club manager **delete a match that has nothing recorded against it**
 
 ## Non-goals
 
-- **Deleting a match that has any data.** A result (draft or published), an availability poll, a squad or selection, a match side, or an availability window link makes the match not deletable. The manager can still Deactivate it. Cascading deletes are deliberately not offered.
+- **Deleting a match that has any data.** A result (draft or published), an availability poll, a squad, a team selection that has content (a selected player, an announced selection, or a captain, wicket-keeper or twelfth man chosen), or an availability window link makes the match not deletable. The manager can still Deactivate it. Cascading deletes are deliberately not offered.
 - **Bulk delete.**
 - **Restoring a deleted match.** A delete is final; it only applies to a match with nothing in it.
 - **Stopping the duplicate from being created.** A separate, optional improvement (see Rollout Notes).
@@ -26,7 +26,7 @@ Goal: let a club manager **delete a match that has nothing recorded against it**
 
 ## Data Model Changes
 
-**None.** No migration. A delete removes one `match` row, and only when no row in `match_result`, `match_availability_poll`, `match_squad_member`, `match_side` or `section_availability_window_match` refers to it (the database's foreign keys would refuse it anyway; the service checks first to give a clear message).
+**None.** No migration. A delete removes one `match` row, and only when no row in `match_result`, `match_availability_poll`, `match_squad_member` or `section_availability_window_match` refers to it, and no `match_side` has content. An empty, unannounced `match_side` with nobody chosen (made by merely opening Team selection) does not count and is removed with the match in the same transaction (the database's foreign keys would refuse it anyway; the service checks first to give a clear message).
 
 ## API Contract
 
@@ -47,7 +47,7 @@ Additive only.
 
 ## Test Plan
 
-- **Backend unit and integration:** an empty match is deleted (204, the row is gone); a match with each of a draft result, a published result, a poll, a squad member, a match side and an availability window link is refused with the matching 409 message and nothing is removed; another club's match is 404; a user who cannot administer the match is 403; `deletable` is true only for an empty match in `MatchDto` and in the import candidates; the OpenAPI additions.
+- **Backend unit and integration:** an empty match is deleted (204, the row is gone); a match with each of a draft result, a published result, a poll, a squad member, a match side holding a player or announced or with a captain set, and an availability window link; a match with only an empty, unannounced side is deleted (204) and its side is gone is refused with the matching 409 message and nothing is removed; another club's match is 404; a user who cannot administer the match is 403; `deletable` is true only for an empty match in `MatchDto` and in the import candidates; the OpenAPI additions.
 - **Frontend:** the Match page shows Delete only when `deletable`, confirms before calling, goes back to the list on success and shows a 409 message; the import Match step shows the row Delete only for deletable candidates, does not change the selection when pressed, refreshes the list and clears a deleted selection.
 - **Manual:** delete the duplicate match from the Match step; try to delete the match that holds a draft and see the refusal.
 

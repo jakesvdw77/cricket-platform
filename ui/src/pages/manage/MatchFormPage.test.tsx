@@ -434,11 +434,26 @@ describe('MatchFormPage', () => {
 
   // docs/specs/109-delete-empty-match.md
   describe('Delete (109)', () => {
-    it('shows no Delete when the match has something recorded against it, or on create', async () => {
+    it('shows a disabled Delete when the match has something recorded against it', async () => {
       getMatch.mockResolvedValue(makeMatch({ deletable: false }))
       renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
       expect(await screen.findByText('Edit Match')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    })
+
+    it('explains why Delete is disabled', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ deletable: false }))
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+      await screen.findByText('Edit Match')
+      await user.hover(screen.getByRole('button', { name: 'Delete' }).parentElement as HTMLElement)
+      expect(await screen.findByText(/A match can only be deleted when nothing is recorded against it/)).toBeInTheDocument()
+    })
+
+    it('shows no Delete on the Add page', async () => {
+      renderPage('/manage/fixtures/matches/new', 'test-club-id')
+      expect(await screen.findByText('Add Match')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
     })
 
