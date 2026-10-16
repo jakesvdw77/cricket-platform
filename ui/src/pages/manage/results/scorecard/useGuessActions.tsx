@@ -90,7 +90,7 @@ export function useGuessActions({ clubId, seasonId, leagueId, oursSides, prefill
       takenPlayers={taken}
       takenGuests={takenGuests}
       allowGuest={!unresolved}
-      newPlayer={unresolved && row?.displayName ? { name: row.displayName, sectionId, leagueId } : undefined}
+      newPlayer={unresolved && row?.displayName ? { name: row.displayName, sectionId, leagueId, seasonId } : undefined}
       matchSquad={row ? matchSquadFor(scorecard, row.side, prefillSide, false) : undefined}
       onPickPlayer={(picked) => {
         if (pickerKey) onScorecard(resolveImportedRow(scorecard, pickerKey, { playerProfileId: picked.playerProfileId, firstName: picked.firstName, lastName: picked.lastName }))

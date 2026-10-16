@@ -79,10 +79,11 @@ describe('PlayerQuickForm', () => {
     })
   })
 
-  it("uses the league's cut-off date and limits for min, max and the helper line", () => {
+  it("uses the server's reference date and the league's limits for min, max and the helper line", () => {
     setup({
       section: { name: 'U15', minAge: null, maxAge: 15 },
-      league: { minAge: null, maxAge: 13, ageCutoffDate: '2020-09-01' },
+      league: { minAge: null, maxAge: 13 },
+      referenceDate: '2020-09-01',
     })
     const input = screen.getByLabelText('Date of birth')
     expect(input).toHaveAttribute('min', '2007-09-02')

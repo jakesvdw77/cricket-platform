@@ -22,7 +22,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
 import { createPlayer, linkPlayerSection, listPlayers } from '../../api/playerApi'
-import { listLeagues } from '../../api/leagueApi'
+import { ageReferenceKey, getLeagueAgeReference, listLeagues } from '../../api/leagueApi'
 import { listSections } from '../../api/sectionApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -90,9 +90,10 @@ export interface PlayerSlotPickerProps {
   // docs/specs/104: the closest registered players for that name, best first, offered as one-tap picks above the scopes.
   suggestions?: PickerSuggestion[]
   // docs/specs/104: adds a "New player" tab that creates a registered player inside the dialog and picks them in one step
-  // (the guest becomes that player). `name` is the guest's written name, split into first name and surname to prefill the
+  // (the guest becomes that player). With `leagueId` and `seasonId` the date of birth window uses the server's age reference
+  // date for that league and season (docs/specs/110). `name` is the guest's written name, split into first name and surname to prefill the
   // form; `sectionId` is the section of the guest's club team, which the new player is linked to. Omitted, no tab.
-  newPlayer?: { name: string; sectionId?: string | null; leagueId?: string | null }
+  newPlayer?: { name: string; sectionId?: string | null; leagueId?: string | null; seasonId?: string | null }
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -276,11 +277,18 @@ function PickerBody({
     queryFn: () => listSections(clubId),
     enabled: scope === 'new' && Boolean(newPlayer?.sectionId),
   })
-  // The league's age cut-off and limits, when the match is in one; a failed lookup just means section and today are used.
+  // The league's age limits, when the match is in one; a failed lookup just means the section's limits are used.
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId),
     enabled: scope === 'new' && Boolean(newPlayer?.leagueId),
+  })
+  // The day ages are judged on for the match's league and season, from the server; a failed lookup means today is used.
+  const referenceQuery = useQuery({
+    queryKey: ageReferenceKey(clubId, newPlayer?.leagueId ?? '', newPlayer?.seasonId ?? ''),
+    queryFn: () => getLeagueAgeReference(clubId, newPlayer?.leagueId as string, newPlayer?.seasonId as string),
+    enabled: scope === 'new' && Boolean(newPlayer?.leagueId) && Boolean(newPlayer?.seasonId),
+    retry: false,
   })
   const newPlayerLeague = leaguesQuery.data?.find((candidate) => candidate.id === newPlayer?.leagueId) ?? null
   const newPlayerSection = sectionsQuery.data?.find((candidate) => candidate.id === newPlayer?.sectionId) ?? null
@@ -390,6 +398,7 @@ function PickerBody({
           initialLastName={guessedName.lastName}
           section={newPlayerSection}
           league={newPlayerLeague}
+          referenceDate={referenceQuery.data?.referenceDate ?? null}
           submitLabel="Create and link"
           pending={createMutation.isPending}
           error={createMutation.isError ? errorDetail(createMutation.error, 'The player could not be created. Please try again.') : null}

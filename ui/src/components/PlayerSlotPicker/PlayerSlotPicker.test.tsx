@@ -12,7 +12,11 @@ import * as resultApi from '../../api/matchResultApi'
 import { resetPlayerNameModeForTests } from '../../hooks/usePlayerNameMode'
 
 vi.mock('../../api/playerApi', () => ({ listPlayers: vi.fn(), createPlayer: vi.fn(), linkPlayerSection: vi.fn() }))
-vi.mock('../../api/leagueApi', () => ({ listLeagues: vi.fn() }))
+vi.mock('../../api/leagueApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/leagueApi')>()),
+  listLeagues: vi.fn(),
+  getLeagueAgeReference: vi.fn(),
+}))
 vi.mock('../../api/sectionApi', () => ({ listSections: vi.fn() }))
 vi.mock('../../api/teamSquadApi', () => ({ listSquad: vi.fn() }))
 vi.mock('../../api/matchResultApi', async (importOriginal) => ({
@@ -82,24 +86,51 @@ describe('PlayerSlotPicker', () => {
       expect(playerApi.createPlayer).not.toHaveBeenCalled()
     })
 
-    it("reads the league's cut-off and limits for the date of birth guidance", async () => {
+    it("reads the league's limits and the server's reference date for the date of birth guidance", async () => {
       const user = userEvent.setup()
       vi.mocked(sectionApi.listSections).mockResolvedValue([{ id: 'sec-1', name: 'U15', minAge: null, maxAge: 15 }] as never)
-      vi.mocked(leagueApi.listLeagues).mockResolvedValue([{ id: 'lg-1', name: 'League', minAge: null, maxAge: null, ageCutoffDate: '2020-09-01' }] as never)
-      setup({ newPlayer: { name: 'Jan Berg', sectionId: 'sec-1', leagueId: 'lg-1' }, allowGuest: false })
+      vi.mocked(leagueApi.listLeagues).mockResolvedValue([{ id: 'lg-1', name: 'League', minAge: null, maxAge: null }] as never)
+      vi.mocked(leagueApi.getLeagueAgeReference).mockResolvedValue({ referenceDate: '2020-12-31', source: 'CUTOFF', leagueStart: '2020-09-01', leagueStartSource: 'FIRST_MATCH' })
+      setup({ newPlayer: { name: 'Jan Berg', sectionId: 'sec-1', leagueId: 'lg-1', seasonId: 'season-1' }, allowGuest: false })
+      expect(leagueApi.getLeagueAgeReference).not.toHaveBeenCalled()
       await user.click(await screen.findByRole('button', { name: 'New player' }))
 
-      expect(await screen.findByText('Under 15 on 1 Sep 2020: born on or after 2 Sep 2005')).toBeInTheDocument()
+      expect(await screen.findByText('Under 15 on 31 Dec 2020: born on or after 1 Jan 2006')).toBeInTheDocument()
       expect(leagueApi.listLeagues).toHaveBeenCalledWith('club-1')
+      expect(leagueApi.getLeagueAgeReference).toHaveBeenCalledWith('club-1', 'lg-1', 'season-1')
+    })
+
+    it('judges ages today when the reference lookup fails', async () => {
+      const user = userEvent.setup()
+      vi.mocked(sectionApi.listSections).mockResolvedValue([{ id: 'sec-1', name: 'U15', minAge: null, maxAge: 15 }] as never)
+      vi.mocked(leagueApi.listLeagues).mockResolvedValue([{ id: 'lg-1', name: 'League', minAge: null, maxAge: null }] as never)
+      vi.mocked(leagueApi.getLeagueAgeReference).mockRejectedValue(new Error('boom'))
+      setup({ newPlayer: { name: 'Jan Berg', sectionId: 'sec-1', leagueId: 'lg-1', seasonId: 'season-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+
+      expect(await screen.findByText(/^Under 15: born on or after /)).toBeInTheDocument()
+      await vi.waitFor(() => expect(leagueApi.getLeagueAgeReference).toHaveBeenCalled())
+    })
+
+    it('does not look up the league or the reference date when none was passed, or without a season', async () => {
+      const user = userEvent.setup()
+      vi.mocked(leagueApi.listLeagues).mockClear()
+      vi.mocked(leagueApi.getLeagueAgeReference).mockClear()
+      setup({ newPlayer: { name: 'Jan Berg', leagueId: 'lg-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      await screen.findByLabelText('Date of birth')
+      expect(leagueApi.getLeagueAgeReference).not.toHaveBeenCalled()
     })
 
     it('does not look up the league when none was passed', async () => {
       const user = userEvent.setup()
       vi.mocked(leagueApi.listLeagues).mockClear()
+      vi.mocked(leagueApi.getLeagueAgeReference).mockClear()
       setup({ newPlayer: { name: 'Jan Berg' }, allowGuest: false })
       await user.click(await screen.findByRole('button', { name: 'New player' }))
       await screen.findByLabelText('Date of birth')
       expect(leagueApi.listLeagues).not.toHaveBeenCalled()
+      expect(leagueApi.getLeagueAgeReference).not.toHaveBeenCalled()
     })
 
     it('creates the player, tags the section, and picks the new player in one step', async () => {

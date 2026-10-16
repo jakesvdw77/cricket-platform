@@ -24,7 +24,7 @@ export type RemoveKind = { kind: 'remove' } | { kind: 'dnb' } | { kind: 'blocked
 export interface PlayerActionsOptions {
   clubId: string
   seasonId: string
-  // The match's league: its age cut-off and limits guide the date of birth of a player created from Link to player.
+  // The match's league (with seasonId): its age limits and the server's age reference date (docs/specs/110) guide the date of birth of a player created from Link to player.
   leagueId?: string | null
   // The side whose list the menu works on; `teamId` is null for the opposition (no squad, no Swap or Link).
   ours: { side: ResultSide; teamId: string | null }
@@ -210,7 +210,7 @@ export function usePlayerActions(options: PlayerActionsOptions) {
         takenGuests={picker?.mode === 'add' ? (options.addTakenGuests ?? []) : swapTakenGuests}
         hints={picker?.mode === 'add' && options.addFromList ? options.addFromList.hints : hints}
         allowGuest={picker?.mode !== 'link'}
-        newPlayer={picker?.mode === 'link' && player(pickerKey)?.displayName ? { name: player(pickerKey)?.displayName as string, sectionId: linkSectionId, leagueId: options.leagueId } : undefined}
+        newPlayer={picker?.mode === 'link' && player(pickerKey)?.displayName ? { name: player(pickerKey)?.displayName as string, sectionId: linkSectionId, leagueId: options.leagueId, seasonId } : undefined}
         matchSquad={options.matchSquad}
         note={picker?.mode === 'swap' ? 'Swap player: the selected player did not play and this person played instead; all their figures move to them. If a player was replaced during the match, keep both and use Add player.' : undefined}
         matchOnly={picker?.mode === 'add' && Boolean(options.addFromList)}

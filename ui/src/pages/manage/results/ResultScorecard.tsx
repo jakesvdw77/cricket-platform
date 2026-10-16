@@ -438,7 +438,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
         takenPlayers={linking ? takenOnSide(linking.side) : {}}
         onPickPlayer={(picked) => linking && linkMutation.mutate({ player: linking, profileId: picked.playerProfileId })}
         onPickGuest={() => {}}
-        newPlayer={linking ? { name: linking.displayName ?? [linking.firstName, linking.lastName].filter(Boolean).join(' '), sectionId: (linking.side === 'AWAY' ? sectionIds?.away : sectionIds?.home) ?? null, leagueId: match.leagueId } : undefined}
+        newPlayer={linking ? { name: linking.displayName ?? [linking.firstName, linking.lastName].filter(Boolean).join(' '), sectionId: (linking.side === 'AWAY' ? sectionIds?.away : sectionIds?.home) ?? null, leagueId: match.leagueId, seasonId: match.seasonId } : undefined}
       />
     </>
   )
