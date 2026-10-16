@@ -91,6 +91,36 @@ function Heading({ children }: { children: ReactNode }) {
   )
 }
 
+// A compact Link control that sits on the line of the Guest chip: about 24 px high, with the 44 px touch target kept on a
+// phone by an invisible extension of the hit area (the GuessChip technique).
+function LinkButton({ onClick, sx }: { onClick: () => void; sx?: object }) {
+  return (
+    <Button
+      size="small"
+      variant="text"
+      aria-label="Link to player"
+      startIcon={<LinkIcon sx={{ fontSize: '0.95rem' }} />}
+      onClick={onClick}
+      sx={{
+        position: 'relative',
+        flex: 'none',
+        minWidth: 0,
+        minHeight: 24,
+        py: 0,
+        px: 0.75,
+        fontSize: '0.75rem',
+        lineHeight: 1.5,
+        textTransform: 'none',
+        '& .MuiButton-startIcon': { mr: 0.25, ml: 0 },
+        '&::after': { content: '""', position: 'absolute', top: { xs: -10, sm: -4 }, bottom: { xs: -10, sm: -4 }, left: -4, right: -4 },
+        ...sx,
+      }}
+    >
+      Link
+    </Button>
+  )
+}
+
 export interface ResultScorecardProps {
   clubId: string
   match: Match
@@ -98,6 +128,10 @@ export interface ResultScorecardProps {
   names: { home: string; away: string }
   ours: OwnSides
   toss: string | null
+  // The capture wizard's preview: no Link to player buttons, nothing that changes the result.
+  readOnly?: boolean
+  // The club team's section on each side, carried into a player created from the Link to player dialog.
+  sectionIds?: { home?: string | null; away?: string | null }
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Review step and result page): the scorecard of both sides on the
@@ -105,7 +139,7 @@ export interface ResultScorecardProps {
 // the extras and total lines, and for our sides the standouts and the team's player of the match. Names go through
 // PlayerName (Full name | First name at the top). A guest row of our side offers Link to player, on a draft and on a
 // published result alike.
-export function ResultScorecard({ clubId, match, result, names, ours, toss }: ResultScorecardProps) {
+export function ResultScorecard({ clubId, match, result, names, ours, toss, readOnly = false, sectionIds }: ResultScorecardProps) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const queryClient = useQueryClient()
@@ -200,20 +234,10 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
               <PlayerName person={person} view={view} />
             </Typography>
             {guest && <Chip size="small" label="Guest" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />}
+            {guest && isOurs && !readOnly && <LinkButton onClick={() => setLinking(player)} />}
             {isOurs && featuredOf(entry) && <StandoutToggle suggested readOnly override={null} onChange={() => {}} playerLabel={label(person)} />}
           </Box>
           {extra}
-          {guest && isOurs && (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<LinkIcon fontSize="small" />}
-              onClick={() => setLinking(player)}
-              sx={{ mt: 0.5, minHeight: { xs: 44, sm: 30 }, textTransform: 'none' }}
-            >
-              Link to player
-            </Button>
-          )}
           {/* linkedBy is a user id, not a name, so only the date is shown until a name lookup exists. */}
           {!guest && isOurs && player.linkedBy && player.linkedAt && (
             <Typography variant="caption" color="text.secondary" component="div">
@@ -323,10 +347,8 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
               <span key={playerRowKey(player)}>
                 {index > 0 && ', '}
                 <PlayerName person={scorecardPersonName(player)} view={view} />
-                {isGuest(player) && isOurs && (
-                  <Button size="small" variant="text" onClick={() => setLinking(player)} sx={{ ml: 0.5, minHeight: { xs: 44, sm: 24 }, textTransform: 'none' }}>
-                    Link to player
-                  </Button>
+                {isGuest(player) && isOurs && !readOnly && (
+                  <LinkButton onClick={() => setLinking(player)} sx={{ ml: 0.5 }} />
                 )}
               </span>
             ))}
@@ -416,6 +438,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
         takenPlayers={linking ? takenOnSide(linking.side) : {}}
         onPickPlayer={(picked) => linking && linkMutation.mutate({ player: linking, profileId: picked.playerProfileId })}
         onPickGuest={() => {}}
+        newPlayer={linking ? { name: linking.displayName ?? [linking.firstName, linking.lastName].filter(Boolean).join(' '), sectionId: (linking.side === 'AWAY' ? sectionIds?.away : sectionIds?.home) ?? null, leagueId: match.leagueId, seasonId: match.seasonId } : undefined}
       />
     </>
   )

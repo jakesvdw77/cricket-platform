@@ -50,7 +50,8 @@ function makeLeague(overrides: Partial<League> = {}): League {
     maxPlayingXiSize: 11,
     minAge: null,
     maxAge: null,
-    ageCutoffDate: null,
+    ageCutoffMonth: null,
+    ageCutoffDay: null,
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -254,4 +255,23 @@ export const TabletViewport: Story = {
 export const DesktopViewport: Story = {
   args: NewMatch.args,
   parameters: { viewport: { defaultViewport: 'desktop' } },
+}
+
+// docs/specs/104: each of my teams is listed under its section, with its abbreviation, and the chosen team's section and ground
+// are spelled out under the box, so two teams with similar names cannot be mistaken for each other.
+export const TeamDetailsBySection: Story = {
+  args: {
+    ...NewMatch.args,
+    teams: [
+      makeTeam({ id: 'team-1', name: '1st XI', sectionId: 'section-1' }),
+      makeTeam({ id: 'team-u15', name: 'Villagers U15', sectionId: 'section-2', abbreviation: 'VU15', groundName: 'Glen High School' }),
+      makeTeam({ id: 'team-u13', name: 'Villagers U13', sectionId: 'section-3', abbreviation: 'VU13' }),
+    ],
+    sections: [
+      { id: 'section-1', clubId: 'club-1', parentSectionId: null, name: 'Seniors', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'section-2', clubId: 'club-1', parentSectionId: null, name: 'Under 15', minAge: null, maxAge: 15, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'section-3', clubId: 'club-1', parentSectionId: null, name: 'Under 13', minAge: null, maxAge: 13, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ],
+    initialValues: { homeTeamId: 'team-u15' },
+  },
 }

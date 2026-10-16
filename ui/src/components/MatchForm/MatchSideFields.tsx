@@ -5,6 +5,8 @@ import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
 import { avatarSx } from '../RecordCard'
 import type { Team } from '../../api/teamApi'
+import type { Section } from '../../api/sectionApi'
+import { sectionPath } from '../../utils/sectionPath'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 import { initialsFromName } from '../../utils/initials'
 
@@ -34,6 +36,8 @@ export interface MatchSideFieldsProps {
   errors: SideErrors
   onChange: (patch: Partial<SideState>) => void
   teamOptions: Team[]
+  // The club's sections: each of my teams is listed under its section, and the chosen team's section is shown beneath the box.
+  sections?: Section[]
   narrowedByAffiliation: boolean
   // The league's teams for the chosen league and season (active and inactive); only active ones
   // are offered, plus the side's own current pick.
@@ -55,6 +59,7 @@ export function MatchSideFields({
   errors,
   onChange,
   teamOptions,
+  sections = [],
   narrowedByAffiliation,
   leagueTeams,
   canUseLeagueTeams,
@@ -93,6 +98,35 @@ export function MatchSideFields({
     onChange({ leagueTeamId: id, teamId: '', teamName: team?.name ?? '', teamLogoUrl: '' })
   }
 
+  // My team: the teams grouped by their section (a group heading only when the club has more than one section in play), each
+  // with its abbreviation, and the chosen team's section, abbreviation and ground spelled out beneath the box, so two teams with
+  // similar names cannot be mistaken for each other.
+  const sectionOf = (team: Team) => sectionPath(sections, team.sectionId)
+  const groups = new Map<string, Team[]>()
+  for (const team of teamOptions) {
+    const heading = sectionOf(team)
+    groups.set(heading, [...(groups.get(heading) ?? []), team])
+  }
+  const orderedHeadings = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b))
+  const grouped = orderedHeadings.length > 1 || (orderedHeadings.length === 1 && orderedHeadings[0] !== '' && sections.length > 0)
+  const myTeamItems = orderedHeadings.flatMap((heading) => [
+    ...(grouped && heading ? [<ListSubheader key={`section-${heading}`}>{heading}</ListSubheader>] : []),
+    ...(groups.get(heading) ?? [])
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((team) => (
+        <MenuItem key={team.id} value={team.id}>
+          <OptionRow name={team.active ? team.name : `${team.name} (Inactive)`} logoUrl={team.logoUrl} abbreviation={team.abbreviation} />
+        </MenuItem>
+      )),
+  ])
+  const chosenTeam = teamOptions.find((team) => team.id === value.teamId)
+  const teamDetails = chosenTeam
+    ? [sectionOf(chosenTeam), chosenTeam.abbreviation, chosenTeam.groundName ? `Ground: ${chosenTeam.groundName}` : '', chosenTeam.active ? '' : 'Inactive']
+        .filter(Boolean)
+        .join(' · ') || null
+    : null
+
   return (
     <Box
       data-testid={`match-side-${label.toLowerCase()}`}
@@ -130,13 +164,10 @@ export function MatchSideFields({
           value={value.teamId}
           onChange={(event) => onChange({ teamId: event.target.value })}
           error={Boolean(errors.team)}
-          helperText={errors.team ?? (narrowedByAffiliation ? 'Only teams affiliated with this League for this Season' : undefined)}
+          helperText={errors.team ?? teamDetails ?? (narrowedByAffiliation ? 'Only teams affiliated with this League for this Season' : undefined)}
+          SelectProps={{ MenuProps: { slotProps: { paper: { sx: { maxHeight: 360 } } } } }}
         >
-          {teamOptions.map((team) => (
-            <MenuItem key={team.id} value={team.id}>
-              {team.name}
-            </MenuItem>
-          ))}
+          {myTeamItems}
         </Input>
       )}
 
@@ -220,7 +251,7 @@ export function MatchSideFields({
 function OptionRow({ name, logoUrl, abbreviation }: { name: string; logoUrl: string | null; abbreviation?: string | null }) {
   return (
     <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
-      <Avatar src={logoUrl ?? undefined} variant="rounded" sx={avatarSx(28, '0.65rem')}>
+      <Avatar src={logoUrl ?? undefined} variant="rounded" aria-hidden sx={avatarSx(28, '0.65rem')}>
         {initialsFromName(abbreviation || name)}
       </Avatar>
       <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Alert, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Switch, Typography } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/Button'
-import { Input } from '../../../components/Input'
+import { DateTimeField } from '../../../components/DateTimeField'
 import { openPoll, updatePollCloseTime } from '../../../api/matchAvailabilityApi'
 import { openRound, updateRoundCloseTime } from '../../../api/sectionAvailabilityApi'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../utils/datetimeLocal'
@@ -118,15 +118,13 @@ function EditCloseTimeForm({
             control={<Switch checked={autoClose} onChange={(event) => setAutoClose(event.target.checked)} />}
             label="Autoclose"
           />
-          <Input
+          <DateTimeField
             label="Closes at"
-            type="datetime-local"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={setValue}
             disabled={!autoClose}
             error={autoClose && Boolean(validationError)}
             helperText={autoClose ? validationError : 'The poll stays open until you close it.'}
-            InputLabelProps={{ shrink: true }}
           />
           {saveMutation.isError && (
             <Alert severity="error">

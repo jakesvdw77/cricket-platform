@@ -177,6 +177,25 @@ describe('Teams mapping step', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled()
   })
 
+  it('warns that this may be the wrong team when many names were not found in the squad, naming the club team', async () => {
+    resolveImport.mockResolvedValue(makeResolved({ counts: { exact: 11, normalised: 0, aiSuggested: 0, unresolved: 9 } }))
+    const user = await toTeamsStep(makePreview({ matchCandidates: [makeCandidate({ homeIsClubTeam: true, awayIsClubTeam: false })] }))
+    await user.click(create())
+
+    const warning = await screen.findByTestId('import-squad-warning')
+    expect(warning).toHaveTextContent("9 names were not found in Northgate Strollers's squad")
+    expect(warning).toHaveTextContent('go back and choose the right match or team')
+  })
+
+  it('shows no squad warning when only a few names are guests', async () => {
+    resolveImport.mockResolvedValue(makeResolved({ counts: { exact: 18, normalised: 1, aiSuggested: 0, unresolved: 3 } }))
+    const user = await toTeamsStep()
+    await user.click(create())
+
+    await screen.findByTestId('import-created')
+    expect(screen.queryByTestId('import-squad-warning')).not.toBeInTheDocument()
+  })
+
   it('on success summarises the draft, lists the notes that are not about a name, warnings first, and keeps the name notes for the wizard', async () => {
     resolveImport.mockResolvedValue(
       makeResolved({

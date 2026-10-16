@@ -27,7 +27,7 @@ Cricket Legend Platform — a multi-club cricket management system: Spring Boot 
 
 | Layer | Choice |
 |---|---|
-| Backend | Spring Boot 3 / Java 17, package `com.cricketlegend` |
+| Backend | Spring Boot 3 / Java 17, package `com.cricketlegend`. Apache PDFBox approved 2026-10-16 for the STUMPS PDF adaptor (backend only, imported by one class, `docs/specs/108`). |
 | API contract | springdoc OpenAPI, schema checked into git |
 | Database | Postgres + Liquibase, sequential migrations under `backend/src/main/resources/db/changelog/v1/` |
 | Backend layering | Controller → Service (iface+impl) → Repository, DTOs only cross the controller boundary — see `docs/standards/backend.md` |

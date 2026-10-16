@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { useTheme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
+import { LeagueAgeReferenceLine } from '../../components/LeagueAgeReferenceLine'
 import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
@@ -367,6 +368,18 @@ export default function LeagueFormPage() {
           ) : undefined
         }
       >
+        {/* docs/specs/110: the date ages are judged on this season, from the server. Sits above the form it describes. */}
+        {isEdit && activeTab === 'details' && league && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <LeagueAgeReferenceLine
+              clubId={clubId}
+              leagueId={league.id}
+              seasonId={selectedSeasonId}
+              hasAgeLimit={league.minAge != null || league.maxAge != null}
+            />
+          </Box>
+        )}
+
         {activeTab === 'details' && (
           <LeagueForm
             initialValues={
@@ -376,7 +389,8 @@ export default function LeagueFormPage() {
                     maxPlayingXiSize: league.maxPlayingXiSize,
                     minAge: league.minAge,
                     maxAge: league.maxAge,
-                    ageCutoffDate: league.ageCutoffDate,
+                    ageCutoffMonth: league.ageCutoffMonth,
+                    ageCutoffDay: league.ageCutoffDay,
                     format: league.format,
                     logoUrl: league.logoUrl,
                     phone: league.phone,

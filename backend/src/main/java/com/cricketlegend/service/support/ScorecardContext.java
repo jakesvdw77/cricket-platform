@@ -11,14 +11,26 @@ import java.util.UUID;
  * balls per bowler, each side's squad for the match's season (a side absent from {@code squadBySide} is not checked),
  * the club's registered players by normalised name (for {@code GUEST_NAME_MATCHES_PLAYER}) and display names of the
  * linked players (for messages), and the selection state of each ours side (for the not-selected notice; a side absent
- * from {@code selectionBySide} is not checked).
+ * from {@code selectionBySide} is not checked). {@code leagueName} names the league whose limits apply, so a message about a
+ * limit can say which league it is (null when there is none).
  */
 public record ScorecardContext(
         Integer maxBallsPerBowler,
         Map<ResultSide, Set<UUID>> squadBySide,
         Map<String, UUID> registeredPlayersByName,
         Map<UUID, String> playerNames,
-        Map<ResultSide, ScorecardSelectionState> selectionBySide) {
+        Map<ResultSide, ScorecardSelectionState> selectionBySide,
+        String leagueName) {
+
+    /** The context without a league name (the league's name is only used to word a message). */
+    public ScorecardContext(
+            Integer maxBallsPerBowler,
+            Map<ResultSide, Set<UUID>> squadBySide,
+            Map<String, UUID> registeredPlayersByName,
+            Map<UUID, String> playerNames,
+            Map<ResultSide, ScorecardSelectionState> selectionBySide) {
+        this(maxBallsPerBowler, squadBySide, registeredPlayersByName, playerNames, selectionBySide, null);
+    }
 
     /** No extra context: the rules that need none still run. */
     public static ScorecardContext none() {

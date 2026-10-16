@@ -36,7 +36,8 @@ const populatedValues: Partial<LeaguePayload> = {
   maxPlayingXiSize: 12,
   minAge: 13,
   maxAge: 15,
-  ageCutoffDate: '2026-12-31',
+  ageCutoffMonth: 12,
+  ageCutoffDay: 31,
   format: 'T20',
   phone: '+27 21 555 0177',
   website: 'https://riverside.example.com',
@@ -44,6 +45,22 @@ const populatedValues: Partial<LeaguePayload> = {
   logoUrl: '/media/managed/league-logo.png',
   socialLinks: [{ platform: 'facebook', url: 'https://facebook.com/riverside-league' }],
 }
+
+// MUI selects open a listbox: choose an option by its visible name.
+async function chooseOption(user: ReturnType<typeof userEvent.setup>, field: string, option: string) {
+  await user.click(screen.getByLabelText(field))
+  await user.click(await screen.findByRole('option', { name: option }))
+}
+
+async function chooseCutoff(user: ReturnType<typeof userEvent.setup>, month: string, day: string) {
+  await chooseOption(user, 'Cut-off month (optional)', month)
+  await chooseOption(user, 'Cut-off day (optional)', day)
+}
+
+// An empty MUI select shows only a zero-width space.
+const EMPTY = /^\u200b?$/
+const CUTOFF_MONTH = 'Cut-off month (optional)'
+const CUTOFF_DAY = 'Cut-off day (optional)'
 
 describe('LeagueForm', () => {
   // docs/specs/091 (D): the inner Basic Info / Branding / Social Media tabs are three sections of one form.
@@ -63,7 +80,7 @@ describe('LeagueForm', () => {
   it('puts "(optional)" in the labels of the optional fields and shows no helper text', () => {
     renderLeagueForm({ onSubmit: vi.fn() })
 
-    for (const label of ['Min age (optional)', 'Max age (optional)', 'Age cutoff date (optional)', 'Phone (optional)', 'Website (optional)', 'Email (optional)']) {
+    for (const label of ['Min age (optional)', 'Max age (optional)', 'Cut-off month (optional)', 'Cut-off day (optional)', 'Phone (optional)', 'Website (optional)', 'Email (optional)']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument()
     }
     expect(screen.queryByText(/Leave blank|Defaults to 11|Purely descriptive|e\.g\./)).not.toBeInTheDocument()
@@ -157,7 +174,8 @@ describe('LeagueForm', () => {
       maxPlayingXiSize: 11,
       minAge: null,
       maxAge: null,
-      ageCutoffDate: null,
+      ageCutoffMonth: null,
+      ageCutoffDay: null,
       format: null,
       phone: null,
       website: null,
@@ -167,7 +185,7 @@ describe('LeagueForm', () => {
     })
   })
 
-  it('submits min/max age, cutoff date, and format when provided', async () => {
+  it('submits min/max age, cut-off day and month, and format when provided', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderLeagueForm({ onSubmit })
@@ -177,7 +195,7 @@ describe('LeagueForm', () => {
     await user.type(screen.getByLabelText('Playing XI size'), '11')
     await user.type(screen.getByLabelText('Min age (optional)'), '13')
     await user.type(screen.getByLabelText('Max age (optional)'), '15')
-    await user.type(screen.getByLabelText('Age cutoff date (optional)'), '2026-12-31')
+    await chooseCutoff(user, 'September', '1')
     await user.click(screen.getByLabelText('Format'))
     await user.click(await screen.findByRole('option', { name: '1 Day' }))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -188,7 +206,8 @@ describe('LeagueForm', () => {
       maxPlayingXiSize: 11,
       minAge: 13,
       maxAge: 15,
-      ageCutoffDate: '2026-12-31',
+      ageCutoffMonth: 9,
+      ageCutoffDay: 1,
       format: 'ONE_DAY',
       phone: null,
       website: null,
@@ -237,5 +256,148 @@ describe('LeagueForm', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const payload = onSubmit.mock.calls[0][0] as LeaguePayload
     expect(payload.socialLinks).toEqual([{ platform: 'facebook', url: 'https://facebook.com/riverside-league' }])
+  })
+
+  // docs/specs/110: the cut-off is a day and month, filled with 31 December when an age limit is first entered.
+  describe('age cut-off (docs/specs/110)', () => {
+    const HELPER =
+      'Ages are judged on this day in the year the league starts. Leave empty to judge ages on the day the league starts (for example a winter league).'
+
+    it('shows the helper text and no value by default', () => {
+      renderLeagueForm({ onSubmit: vi.fn() })
+      expect(screen.getByText(HELPER)).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Age cut-off (day and month)' })).toBeInTheDocument()
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent(EMPTY)
+    })
+
+    it('fills 31 December when Max age is entered first', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      await user.type(screen.getByLabelText('Max age (optional)'), '1')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('December')
+      expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent('31')
+    })
+
+    it('fills 31 December when Min age is entered first', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      await user.type(screen.getByLabelText('Min age (optional)'), '1')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('December')
+      expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent('31')
+    })
+
+    it('never overwrites a cut-off the manager chose before entering an age', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      await chooseCutoff(user, 'June', '30')
+      await user.type(screen.getByLabelText('Max age (optional)'), '15')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('June')
+      expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent('30')
+    })
+
+    it('does not fill again once the manager has cleared the cut-off', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      await user.type(screen.getByLabelText('Max age (optional)'), '15')
+      await chooseOption(user, CUTOFF_MONTH, 'Not set')
+      await chooseOption(user, CUTOFF_DAY, 'Not set')
+      await user.clear(screen.getByLabelText('Max age (optional)'))
+      await user.type(screen.getByLabelText('Max age (optional)'), '14')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent(EMPTY)
+      expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent(EMPTY)
+    })
+
+    it('keeps a loaded cut-off when an age limit changes', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn(), initialValues: { ...populatedValues, ageCutoffMonth: 6, ageCutoffDay: 30 } })
+      await user.clear(screen.getByLabelText('Max age (optional)'))
+      await user.type(screen.getByLabelText('Max age (optional)'), '16')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('June')
+      expect(screen.getByLabelText(CUTOFF_DAY)).toHaveTextContent('30')
+    })
+
+    it('does not fill a winter league loaded with an age limit and no cut-off', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn(), initialValues: { name: 'Winter', minAge: 12, maxAge: 14 } })
+      await user.type(screen.getByLabelText('Max age (optional)'), '5')
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent(EMPTY)
+    })
+
+    it('keeps a filled default when the age limits are cleared again', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      await user.type(screen.getByLabelText('Max age (optional)'), '15')
+      await user.clear(screen.getByLabelText('Max age (optional)'))
+      expect(screen.getByLabelText(CUTOFF_MONTH)).toHaveTextContent('December')
+      expect(screen.getByTestId('cutoff-no-effect')).toHaveTextContent('This cut-off has no effect until an age limit is set.')
+    })
+
+    it('shows no no-effect note while an age limit is set or no cut-off is set', async () => {
+      const user = userEvent.setup()
+      renderLeagueForm({ onSubmit: vi.fn() })
+      expect(screen.queryByTestId('cutoff-no-effect')).not.toBeInTheDocument()
+      await user.type(screen.getByLabelText('Max age (optional)'), '15')
+      expect(screen.queryByTestId('cutoff-no-effect')).not.toBeInTheDocument()
+    })
+
+    it('refuses a month without a day, and a day without a month', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderLeagueForm({ onSubmit })
+      await user.type(screen.getByLabelText('Name'), 'L')
+      await chooseOption(user, CUTOFF_MONTH, 'March')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('Choose the day as well as the month')).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+
+      await chooseOption(user, CUTOFF_MONTH, 'Not set')
+      await chooseOption(user, CUTOFF_DAY, '5')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('Choose the month as well as the day')).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('refuses 31 April and 30 February', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderLeagueForm({ onSubmit })
+      await user.type(screen.getByLabelText('Name'), 'L')
+      await chooseCutoff(user, 'April', '31')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('April has no day 31. Choose a day from 1 to 30.')).toBeInTheDocument()
+
+      await chooseOption(user, CUTOFF_MONTH, 'February')
+      await chooseOption(user, CUTOFF_DAY, '30')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('February has no day 30. Choose a day from 1 to 29.')).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('accepts 29 February and sends the month and day as numbers', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderLeagueForm({ onSubmit })
+      await user.type(screen.getByLabelText('Name'), 'L')
+      await chooseCutoff(user, 'February', '29')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      const payload = onSubmit.mock.calls[0][0] as LeaguePayload
+      expect(payload.ageCutoffMonth).toBe(2)
+      expect(payload.ageCutoffDay).toBe(29)
+    })
+
+    it('sends the filled 31 December default, and null for both when cleared', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderLeagueForm({ onSubmit })
+      await user.type(screen.getByLabelText('Name'), 'L')
+      await user.type(screen.getByLabelText('Max age (optional)'), '15')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({ ageCutoffMonth: 12, ageCutoffDay: 31 })
+
+      await chooseOption(user, CUTOFF_MONTH, 'Not set')
+      await chooseOption(user, CUTOFF_DAY, 'Not set')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(onSubmit.mock.calls[1][0]).toMatchObject({ ageCutoffMonth: null, ageCutoffDay: null })
+    })
   })
 })

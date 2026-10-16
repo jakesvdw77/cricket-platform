@@ -41,7 +41,9 @@ export interface League {
   maxPlayingXiSize: number
   minAge: number | null
   maxAge: number | null
-  ageCutoffDate: string | null
+  // docs/specs/110: the age cut-off is a day and month (no year); both set or both null.
+  ageCutoffMonth: number | null
+  ageCutoffDay: number | null
   active: boolean
   createdAt: string
   updatedAt: string
@@ -79,7 +81,8 @@ export interface LeaguePayload {
   maxPlayingXiSize?: number | null
   minAge?: number | null
   maxAge?: number | null
-  ageCutoffDate?: string | null
+  ageCutoffMonth?: number | null
+  ageCutoffDay?: number | null
   format?: LeagueFormat | null
   logoUrl?: string | null
   phone?: string | null
@@ -187,5 +190,26 @@ export async function duplicateLeague(
   request: DuplicateLeagueRequest,
 ): Promise<DuplicateLeagueResponse> {
   const { data } = await api.post<DuplicateLeagueResponse>(`${leaguesPath(clubId)}/${leagueId}/duplicate`, request)
+  return data
+}
+
+// docs/specs/110-league-age-cutoff-day-and-month.md: the date ages are judged on for a league in a season, computed by the
+// server (the same date eligibility uses). source says whether it is the league's cut-off or the day the league starts;
+// leagueStartSource says whether that start is the first match or, with no match yet, the season start.
+export type AgeReferenceSource = 'CUTOFF' | 'LEAGUE_START'
+export type LeagueStartSource = 'FIRST_MATCH' | 'SEASON_START'
+
+export interface AgeReference {
+  referenceDate: string
+  source: AgeReferenceSource
+  leagueStart: string
+  leagueStartSource: LeagueStartSource
+}
+
+export const ageReferenceKey = (clubId: string, leagueId: string, seasonId: string) =>
+  ['managed-club', clubId, 'leagues', leagueId, 'age-reference', seasonId] as const
+
+export async function getLeagueAgeReference(clubId: string, leagueId: string, seasonId: string): Promise<AgeReference> {
+  const { data } = await api.get<AgeReference>(`${leaguesPath(clubId)}/${leagueId}/seasons/${seasonId}/age-reference-date`)
   return data
 }

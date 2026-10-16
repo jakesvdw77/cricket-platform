@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  * docs/specs/104-match-results-import-adaptors.md, Test Plan "Structural": an adaptor can only turn input into the
  * common import document. It can never write a result, so nothing in {@code service.adaptor} may depend on a
  * repository, a result service, an entity or the Result Processor, and only {@code ResultImportServiceImpl} may call
- * {@code ResultService.saveImportedDraft}.
+ * {@code ResultService.saveImportedDraft}. docs/specs/108 adds the one third-party library, PDFBox, to exactly one class.
  */
 class ImportAdaptorRulesTest {
 
@@ -96,13 +96,42 @@ class ImportAdaptorRulesTest {
                 .check(CLASSES);
     }
 
+    // ---- PDFBox: one class, docs/specs/108 ----
+
+    private static final String PDFBOX = "org.apache.pdfbox..";
+    private static final String PDF_TEXT_READER = "com.cricketlegend.service.adaptor.StumpsPdfText";
+
+    /**
+     * The closed list above covers our own packages; the one third-party library the adaptors add is Apache PDFBox
+     * (approved for docs/specs/108), and exactly one class may import it: {@code StumpsPdfText}. Nothing else in the
+     * application, adaptor or not, may depend on it, so the parser and every other adaptor stay free of PDF knowledge.
+     */
+    @Test
+    void onlyStumpsPdfTextImportsPdfBox() {
+        noClasses().that().doNotHaveFullyQualifiedName(PDF_TEXT_READER)
+                .should().dependOnClassesThat().resideInAPackage(PDFBOX)
+                .because("PDFBox is approved for one class, StumpsPdfText (docs/specs/108)")
+                .check(CLASSES);
+    }
+
+    @Test
+    void thePdfBoxRuleIsNotVacuous() {
+        Set<String> users = CLASSES.stream()
+                .filter(c -> c.getDirectDependenciesFromSelf().stream()
+                        .anyMatch(d -> d.getTargetClass().getPackageName().startsWith("org.apache.pdfbox")))
+                .map(JavaClass::getName)
+                .collect(Collectors.toSet());
+        assertThat(users).containsExactly(PDF_TEXT_READER);
+    }
+
     @Test
     void theAdaptorRulesAreNotVacuous() {
         Set<String> adaptorClasses = CLASSES.stream()
                 .filter(c -> c.getPackageName().startsWith("com.cricketlegend.service.adaptor"))
                 .map(JavaClass::getSimpleName)
                 .collect(Collectors.toSet());
-        assertThat(adaptorClasses).contains("AbstractAdaptor", "JsonAdaptor", "AdaptorRegistry", "ImportedResultValidator");
+        assertThat(adaptorClasses).contains("AbstractAdaptor", "JsonAdaptor", "AdaptorRegistry", "ImportedResultValidator",
+                "StumpsPdfText", "StumpsReportParser");
 
         Set<String> used = CLASSES.stream()
                 .filter(c -> c.getPackageName().startsWith("com.cricketlegend.service.adaptor"))

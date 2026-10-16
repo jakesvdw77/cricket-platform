@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Checkbox, Chip, FormControlLabel, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
@@ -9,6 +10,8 @@ import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
+import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Button } from '../../../../components/Button'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { DetailLine } from '../../../../components/DetailLine'
@@ -23,6 +26,8 @@ import { entryPlayerKey } from '../../../../utils/scorecardPrefill'
 import type { MarginCheck } from '../../../../utils/marginCheck'
 import { inningsFor, resultLine } from '../../../../utils/resultLine'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
+import { PlayingConditionsDialog } from './PlayingConditionsDialog'
+import { ResultPreviewDialog } from './ResultPreviewDialog'
 import { tossLine } from '../resultListHelpers'
 import { toPayload } from '../resultDraftHelpers'
 import { dedupeWarnings } from './dedupeWarnings'
@@ -40,6 +45,8 @@ export interface ReviewStepProps extends ScorecardStepProps {
   warningsAcknowledged: boolean
   onAcknowledgeChange: (acknowledged: boolean) => void
   fieldName: string | null
+  // Saves the draft and says whether the server took it (the page shows the problem itself when it did not).
+  onSaveForPreview: () => Promise<boolean>
 }
 
 function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'error' | 'info'; text: string; action?: ReactNode; chip?: string | null }) {
@@ -65,6 +72,7 @@ function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'erro
 // that was not selected) are quiet. Scorecard issues carry a chip with the team they belong to. The Publish button lives in
 // the page's footer.
 export function ReviewStep({
+  clubId,
   match,
   draft,
   sides,
@@ -80,6 +88,7 @@ export function ReviewStep({
   warningsAcknowledged,
   onAcknowledgeChange,
   fieldName,
+  onSaveForPreview,
 }: ReviewStepProps) {
   const payload = toPayload(draft)
   const names = { home: sides[0].name, away: sides[1].name }
@@ -95,6 +104,21 @@ export function ReviewStep({
     names,
   )
   const ballsPerOver = payload.ballsPerOver ?? 6
+  const [conditionsOpen, setConditionsOpen] = useState(false)
+  // docs/specs/104-match-results-import-adaptors.md: Preview result saves the draft first, and opens only if that worked.
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewSaving, setPreviewSaving] = useState(false)
+  const openPreview = async () => {
+    setPreviewSaving(true)
+    try {
+      if (await onSaveForPreview()) setPreviewOpen(true)
+    } finally {
+      setPreviewSaving(false)
+    }
+  }
+  // The league's rules, for a match that has a league and season: the overs this result was scheduled for are compared with them.
+  const leagueRules = match.leagueId && match.seasonId ? { leagueId: match.leagueId, seasonId: match.seasonId } : null
+  const scheduledOvers = payload.scheduledBalls != null ? payload.scheduledBalls / ballsPerOver : null
   const derby = oursSides.length > 1
   const teamNameOf = (side: ResultSide | null) => (side ? (sides.find((candidate) => candidate.side === side)?.name ?? null) : null)
 
@@ -138,7 +162,17 @@ export function ReviewStep({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+        <Button
+          variant="secondary"
+          size="sm"
+          startIcon={<VisibilityOutlinedIcon fontSize="small" />}
+          disabled={previewSaving}
+          onClick={() => void openPreview()}
+          sx={{ minHeight: 44 }}
+        >
+          {previewSaving ? 'Saving the draft…' : 'Preview result'}
+        </Button>
         <NameModeToggle />
       </Box>
       <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="This is how the result will look" />
@@ -204,7 +238,14 @@ export function ReviewStep({
       )}
 
       <Box aria-live="polite" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+          <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
+          {leagueRules && (
+            <Button variant="secondary" size="sm" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)} sx={{ minHeight: 44 }}>
+              Playing conditions
+            </Button>
+          )}
+        </Box>
         {validating && (
           <Typography variant="body2" color="text.secondary">
             Checking the result…
@@ -250,6 +291,17 @@ export function ReviewStep({
           />
         )}
       </Box>
+      <ResultPreviewDialog open={previewOpen} onClose={() => setPreviewOpen(false)} clubId={clubId} match={match} />
+      {leagueRules && (
+        <PlayingConditionsDialog
+          open={conditionsOpen}
+          onClose={() => setConditionsOpen(false)}
+          clubId={clubId}
+          leagueId={leagueRules.leagueId}
+          seasonId={leagueRules.seasonId}
+          scheduledOvers={scheduledOvers}
+        />
+      )}
     </Box>
   )
 }

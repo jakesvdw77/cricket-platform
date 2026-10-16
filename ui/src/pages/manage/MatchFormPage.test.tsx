@@ -5,6 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-d
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MatchFormPage from './MatchFormPage'
 import type { Match } from '../../api/matchApi'
+import { setDateTime } from '../../test/dateTimeField'
 
 const getMatch = vi.fn()
 const createMatch = vi.fn()
@@ -145,7 +146,7 @@ describe('MatchFormPage', () => {
     await user.click(await screen.findByRole('option', { name: '1st XI' }))
     await user.click(screen.getByLabelText('Away team'))
     await user.click(await screen.findByRole('option', { name: '2nd XI' }))
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
     await user.click(screen.getByRole('button', { name: 'Create match' }))
 
     expect(createMatch).toHaveBeenCalledTimes(1)
@@ -172,7 +173,8 @@ describe('MatchFormPage', () => {
           maxPlayingXiSize: 11,
           minAge: null,
           maxAge: null,
-          ageCutoffDate: null,
+          ageCutoffMonth: null,
+          ageCutoffDay: null,
           active: true,
           createdAt: '',
           updatedAt: '',
