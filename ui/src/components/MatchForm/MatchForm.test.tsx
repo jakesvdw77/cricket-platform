@@ -247,6 +247,37 @@ describe('MatchForm', () => {
   // docs/specs/029-league-management.md: LeagueAffiliation narrowing, closing the same class of
   // bug reported live against MatchList's search suggestions (042) — a team not entered into the
   // selected League/Season must not be offered as Home/Away, since it doesn't actually play there.
+  describe('My team picker details', () => {
+    const SECTIONS = [
+      { id: 'section-1', clubId: 'club-1', parentSectionId: null, name: 'Seniors', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'section-2', clubId: 'club-1', parentSectionId: 'section-1', name: 'Under 15', minAge: null, maxAge: 15, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ]
+    const SECTION_TEAMS: Team[] = [
+      makeTeam({ id: 'team-1', name: '1st XI', sectionId: 'section-1' }),
+      makeTeam({ id: 'team-u15', name: 'Villagers U15', sectionId: 'section-2', abbreviation: 'VU15', groundName: 'Glen High School' }),
+    ]
+
+    it('groups the teams by section and shows the chosen team\'s section, abbreviation and ground under the box', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ teams: SECTION_TEAMS, sections: SECTIONS, initialValues: { homeTeamId: 'team-u15' } })
+
+      expect(await screen.findByText('Seniors > Under 15 · VU15 · Ground: Glen High School')).toBeInTheDocument()
+      await user.click(screen.getByLabelText('Home team'))
+      expect(await screen.findByText('Seniors')).toBeInTheDocument()
+      expect(screen.getByText('Seniors > Under 15')).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Villagers U15/ })).toBeInTheDocument()
+    })
+
+    it('works with no section information: a plain list and no details line', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ initialValues: { homeTeamId: 'team-1' } })
+
+      await user.click(await screen.findByLabelText('Home team'))
+      expect(await screen.findByRole('option', { name: '1st XI' })).toBeInTheDocument()
+      expect(screen.queryByText(/Ground:/)).not.toBeInTheDocument()
+    })
+  })
+
   describe('LeagueAffiliation narrowing', () => {
     const AFFILIATIONS: LeagueAffiliation[] = [
       makeAffiliation({ id: 'affiliation-1', teamId: 'team-1' }),

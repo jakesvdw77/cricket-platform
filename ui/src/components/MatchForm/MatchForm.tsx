@@ -14,6 +14,7 @@ import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import type { Season } from '../../api/seasonApi'
 import type { League } from '../../api/leagueApi'
 import type { Team } from '../../api/teamApi'
+import type { Section } from '../../api/sectionApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 
@@ -32,6 +33,8 @@ export interface MatchFormProps {
   // club's Team id is a valid homeTeamId/awayTeamId) but this pass's UI only ever lets an admin
   // pick from their own club's teams (docs/specs/029-league-management.md's Rollout Notes).
   teams: Team[]
+  // The club's sections, to show each team's section in the picker (optional).
+  sections?: Section[]
   seasons: Season[]
   leagues: League[]
   // docs/specs/029-league-management.md: every LeagueAffiliation for the club (across every
@@ -204,6 +207,7 @@ export function MatchForm({
   initialValues,
   initialField,
   teams,
+  sections = [],
   seasons,
   leagues,
   affiliations,
@@ -416,6 +420,7 @@ export function MatchForm({
             errors={{ team: errors.homeTeamId, name: errors.homeTeamName, leagueTeam: errors.homeLeagueTeamId }}
             onChange={(patch) => updateSide('home', patch)}
             teamOptions={homeTeamOptions}
+            sections={sections}
             narrowedByAffiliation={narrowedByAffiliation}
             leagueTeams={leagueTeams}
             canUseLeagueTeams={canUseLeagueTeams}
@@ -430,6 +435,7 @@ export function MatchForm({
             errors={{ team: errors.awayTeamId, name: errors.awayTeamName, leagueTeam: errors.awayLeagueTeamId }}
             onChange={(patch) => updateSide('away', patch)}
             teamOptions={awayTeamOptions}
+            sections={sections}
             narrowedByAffiliation={narrowedByAffiliation}
             leagueTeams={leagueTeams}
             canUseLeagueTeams={canUseLeagueTeams}
