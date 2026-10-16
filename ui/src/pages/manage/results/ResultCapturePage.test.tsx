@@ -386,6 +386,63 @@ describe('ResultCapturePage', () => {
       expect(screen.queryByRole('button', { name: 'Playing conditions' })).not.toBeInTheDocument()
     })
 
+    // docs/specs/104: Preview result saves the draft, then shows the saved result with the same body as the result page.
+    it('Preview result saves the draft first, then opens the full-screen preview with the banner and the same sections as the result page', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft({ hasScorecard: true }))
+      getScorecard.mockResolvedValue({
+        players: [
+          { id: 'a', side: 'HOME', playerProfileId: 'p-a', displayName: null, plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, firstName: 'Ann', lastName: 'Ash', guest: false },
+          { id: 'x', side: 'AWAY', playerProfileId: null, displayName: 'Sam Jones', plannedBattingOrder: null, replacedPlayerProfileId: null, substitute: false, opposition: true },
+        ],
+        batting: [{ battingSide: 'HOME', inningsKind: 'REGULAR', resultPlayerId: 'a', position: 1, howOut: 'NOT_OUT', runs: 50, balls: 40, fours: 5, sixes: 1, featuredOverride: null }],
+        bowling: [],
+        fielding: [],
+        awards: [],
+        innings: [],
+      })
+      renderPage()
+      await toReview(user)
+      saveResultDraft.mockClear()
+
+      await user.click(screen.getByRole('button', { name: 'Preview result' }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'Result preview' })
+      expect(saveResultDraft).toHaveBeenCalledTimes(1)
+      expect(within(dialog).getByTestId('preview-banner')).toHaveTextContent('Preview: not published yet. This is how the result will look once published.')
+      expect(await within(dialog).findByTestId('result-key-figures')).toBeInTheDocument()
+      expect(within(dialog).getByRole('table', { name: 'Innings' })).toBeInTheDocument()
+      expect(await within(dialog).findAllByText('Ann Ash')).not.toHaveLength(0)
+      expect(within(dialog).getByTestId('result-details')).toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: /^(Edit|Publish|Unpublish|Delete draft)$|link to player/i })).not.toBeInTheDocument()
+    })
+
+    it('Back to review closes the preview', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      renderPage()
+      await toReview(user)
+
+      await user.click(screen.getByRole('button', { name: 'Preview result' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Result preview' })
+      await user.click(within(dialog).getByRole('button', { name: 'Back to review' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Result preview' })).not.toBeInTheDocument())
+    })
+
+    it('does not open the preview when the save is refused, and shows the same problem as any other save', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      renderPage()
+      await toReview(user)
+      saveResultDraft.mockRejectedValue(new AxiosError('bad', '400', undefined, undefined, { status: 400, data: { errors: ['Choose who won.'] } } as never))
+
+      await user.click(screen.getByRole('button', { name: 'Preview result' }))
+
+      expect(await screen.findByText('Choose who won.')).toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Result preview' })).not.toBeInTheDocument()
+    })
+
     it('validates the saved payload when Review opens and lists a green check for a clean result', async () => {
       const user = userEvent.setup()
       getMatchResult.mockResolvedValue(existingDraft())

@@ -51,13 +51,13 @@ const card = (): Scorecard => ({
   innings: [],
 })
 
-function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: true, away: false }) {
+function renderCard(status: 'PUBLISHED' | 'DRAFT' = 'PUBLISHED', ours = { home: true, away: false }, readOnly = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const result = makeResult({ status, hasScorecard: true, detailLevel: 'FULL' })
   return render(
     <ThemeProvider theme={baseTheme}>
       <QueryClientProvider client={queryClient}>
-        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} toss={null} />
+        <ResultScorecard clubId="club-1" match={makeMatch({ id: 'match-1' })} result={result} names={{ home: '1st XI', away: 'Riverside Occasionals' }} ours={ours} toss={null} readOnly={readOnly} />
       </QueryClientProvider>
     </ThemeProvider>,
   )
@@ -120,6 +120,13 @@ describe('ResultScorecard', () => {
     await user.click(await screen.findByRole('button', { name: 'Pick Zoe Zane' }))
     await waitFor(() => expect(linkResultPlayer).toHaveBeenCalled())
     expect(linkResultPlayer.mock.calls[0].slice(0, 4)).toEqual(['club-1', 'match-1', 'g', 'p-zoe'])
+  })
+
+  it('readOnly (the capture preview) shows no Link to player for a guest of our side', async () => {
+    renderCard('DRAFT', { home: true, away: false }, true)
+    const home = await screen.findByTestId('scorecard-home')
+    expect(within(home).getAllByText(/Gus/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /link to player/i })).not.toBeInTheDocument()
   })
 
   it('has no Link to player when nobody is a guest', async () => {

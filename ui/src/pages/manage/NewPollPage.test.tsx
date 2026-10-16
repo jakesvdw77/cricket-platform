@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
@@ -9,6 +9,7 @@ import type { SectionAvailabilityFixtureGroup, SectionAvailabilityFixtureMatch }
 import type { Section } from '../../api/sectionApi'
 import type { Team } from '../../api/teamApi'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
+import { expectDateTime, setDateTime } from '../../test/dateTimeField'
 
 const getFixtureGroups = vi.fn()
 const createRound = vi.fn()
@@ -234,12 +235,8 @@ describe('NewPollPage', () => {
       expect(screen.queryByText('U13 Boys B vs Other CC')).not.toBeInTheDocument()
       expect(getFixtureGroups).toHaveBeenCalledWith('test-club-id', 'section-1')
       // docs/specs/066: each ticked row has its own editable 'Closes at', defaulting to kickoff - 24h.
-      expect(screen.getByLabelText('Closes at for U13 Boys A vs Rivals CC')).toHaveValue(
-        toDatetimeLocal('2030-06-05T09:00:00.000Z'),
-      )
-      expect(screen.getByLabelText('Closes at for U13 Boys A vs United CC')).toHaveValue(
-        toDatetimeLocal('2030-06-06T09:00:00.000Z'),
-      )
+      expectDateTime('Closes at for U13 Boys A vs Rivals CC', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
+      expectDateTime('Closes at for U13 Boys A vs United CC', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
       expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeEnabled()
     })
 
@@ -323,12 +320,13 @@ describe('NewPollPage', () => {
       renderPage('/manage/availability/new?type=squad')
 
       await pickTeam(user)
-      const field = await screen.findByLabelText('Closes at for U13 Boys A vs Rivals CC')
-      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-07T09:00:00.000Z') } })
+      const field = 'Closes at for U13 Boys A vs Rivals CC'
+      await screen.findByLabelText(`${field} (date)`)
+      setDateTime(field, toDatetimeLocal('2030-06-07T09:00:00.000Z'))
       expect(await screen.findByText('Choose a closing time before the first match starts.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Open 2 polls' })).toBeDisabled()
 
-      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-05T20:00:00.000Z') } })
+      setDateTime(field, toDatetimeLocal('2030-06-05T20:00:00.000Z'))
       await user.click(screen.getByRole('button', { name: 'Open 2 polls' }))
 
       await waitFor(() => expect(createPoll).toHaveBeenCalledTimes(2))
@@ -551,10 +549,10 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      expect(screen.getByLabelText('Closes at')).toHaveValue(toDatetimeLocal('2030-06-05T09:00:00.000Z'))
+      expectDateTime('Closes at', toDatetimeLocal('2030-06-05T09:00:00.000Z'))
 
       await user.click(screen.getByLabelText('Include U13 Boys A vs Rivals CC'))
-      expect(screen.getByLabelText('Closes at')).toHaveValue(toDatetimeLocal('2030-06-06T09:00:00.000Z'))
+      expectDateTime('Closes at', toDatetimeLocal('2030-06-06T09:00:00.000Z'))
     })
 
     it('keeps an edited close time when ticks change, sends it, and rejects one in the past', async () => {
@@ -564,14 +562,14 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      const field = screen.getByLabelText('Closes at')
-      fireEvent.change(field, { target: { value: '2020-01-01T09:00' } })
+      const field = 'Closes at'
+      setDateTime(field, '2020-01-01T09:00')
       expect(await screen.findByText('Choose a closing time in the future.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' })).toBeDisabled()
 
-      fireEvent.change(field, { target: { value: toDatetimeLocal('2030-06-05T18:00:00.000Z') } })
+      setDateTime(field, toDatetimeLocal('2030-06-05T18:00:00.000Z'))
       await user.click(screen.getByLabelText('Include U13 Boys A vs United CC'))
-      expect(field).toHaveValue(toDatetimeLocal('2030-06-05T18:00:00.000Z'))
+      expectDateTime(field, toDatetimeLocal('2030-06-05T18:00:00.000Z'))
 
       await user.click(screen.getByRole('button', { name: 'Open poll for 1 selected fixture' }))
       await waitFor(() =>

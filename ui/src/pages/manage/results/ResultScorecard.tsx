@@ -98,6 +98,8 @@ export interface ResultScorecardProps {
   names: { home: string; away: string }
   ours: OwnSides
   toss: string | null
+  // The capture wizard's preview: no Link to player buttons, nothing that changes the result.
+  readOnly?: boolean
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Review step and result page): the scorecard of both sides on the
@@ -105,7 +107,7 @@ export interface ResultScorecardProps {
 // the extras and total lines, and for our sides the standouts and the team's player of the match. Names go through
 // PlayerName (Full name | First name at the top). A guest row of our side offers Link to player, on a draft and on a
 // published result alike.
-export function ResultScorecard({ clubId, match, result, names, ours, toss }: ResultScorecardProps) {
+export function ResultScorecard({ clubId, match, result, names, ours, toss, readOnly = false }: ResultScorecardProps) {
   const theme = useTheme()
   const phone = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const queryClient = useQueryClient()
@@ -203,7 +205,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
             {isOurs && featuredOf(entry) && <StandoutToggle suggested readOnly override={null} onChange={() => {}} playerLabel={label(person)} />}
           </Box>
           {extra}
-          {guest && isOurs && (
+          {guest && isOurs && !readOnly && (
             <Button
               size="small"
               variant="outlined"
@@ -323,7 +325,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
               <span key={playerRowKey(player)}>
                 {index > 0 && ', '}
                 <PlayerName person={scorecardPersonName(player)} view={view} />
-                {isGuest(player) && isOurs && (
+                {isGuest(player) && isOurs && !readOnly && (
                   <Button size="small" variant="text" onClick={() => setLinking(player)} sx={{ ml: 0.5, minHeight: { xs: 44, sm: 24 }, textTransform: 'none' }}>
                     Link to player
                   </Button>
