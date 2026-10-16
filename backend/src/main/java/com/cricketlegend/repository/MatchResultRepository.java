@@ -21,6 +21,9 @@ public interface MatchResultRepository extends JpaRepository<MatchResult, UUID>,
 
     List<MatchResult> findAllByMatchIdIn(Collection<UUID> matchIds);
 
+    /** docs/specs/104: the result a provider's match id was imported onto (unique per club by {@code ux_match_result_source_external}). */
+    Optional<MatchResult> findByClubIdAndSourceAndExternalId(UUID clubId, String source, String externalId);
+
     /** A match's result status without loading the result: the Matches list reads this for a whole page. */
     interface MatchStatusView {
         UUID getMatchId();

@@ -136,6 +136,12 @@ A platform-wide list of cricket fields, shown as the next worked example of the 
 - **`FieldPicker`** (`components/FieldPicker`) is the match form's single "Field (optional)" box: a server-searched Autocomplete grouped Our fields then Other fields, an amber Unverified chip on an unverified option and a last row "Add a new field..." that opens `FieldFormDialog` (a dialog on a desktop, a `BottomSheet` on a phone) built from the shared `FieldFormFields`. A field added there is never linked to the club. The match form shows an amber alert for an unverified field and blocks Save for a rejected one.
 - **Shared extensions made for it:** `AddressFields` takes optional `isoCountry`/`fields`/`optional`/`errors` props (the club form is unchanged), `KeyFigureTile` takes a `to` link, `ConfirmDialog` takes `reasonLabel`, `NavTile` takes a `count`, and `PageNav` is the shared Previous / Page N of M / Next stack.
 
+## Match results import (`docs/specs/104-match-results-import-adaptors.md`)
+
+- **`GuessChip`** is the one marker for an unconfirmed name: amber (warning tokens), with the written name and a one-tap "Change to <name>" in the status column of the row, on one line with the badge so a row never grows taller.
+- **`InfoCard tone="warning"`** carries the red-bordered disclaimer on the Convert with your own AI helper (short, red text). Warnings use theme tokens only.
+- Touch targets stay 44 px on the import steps and the capture notice dismiss; the wizard and the chip work at 375 px with no horizontal scroll.
+
 ## Brand icons (`docs/specs/078-brand-icon-set.md`)
 
 The product's own colour icon set (dark green circular badges) lives in `ui/src/icons/<group>/<name>.svg` (`nav`, `roles`, `stats`, `people`, `actions`, `field`, `brand`). `nav/ground-oval` is the Fields menu entry (the Club group); its artwork fills most of the canvas, so it has its own `viewBox` window in `scripts/strip-icon-background.mjs` and `BrandIcon.test.tsx`. It is an approved addition alongside MUI, not a second icon system.

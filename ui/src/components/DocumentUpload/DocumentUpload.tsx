@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, DragEvent } from 'react'
 import { Box, CircularProgress, Stack, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
+import { formatBytes } from '../../utils/formatBytes'
 import { Button } from '../Button'
 
 // docs/specs/050-league-schedule-and-fixtures.md: the first PDF/document upload control in this
@@ -19,8 +20,28 @@ export interface DocumentUploadValue {
   uploadedAt: string
 }
 
-export interface DocumentUploadProps {
+// docs/specs/104: what every mode shares. `accept` lists what the control takes, each entry a file extension (".json") or
+// a MIME type, and replaces the PDF-only default; `maxBytes` refuses a bigger file before anything is sent; `helperText`
+// replaces the caption line under the control.
+interface DocumentUploadCommonProps {
   label: string
+  accept?: string[]
+  maxBytes?: number
+  helperText?: string
+}
+
+// docs/specs/104: `mode="select"` only holds the chosen file (nothing is uploaded and there is no stored document); the
+// caller reads `file` when it is ready to send it (the import wizard's Source step). The same refusals (type, size) apply.
+export interface DocumentSelectProps extends DocumentUploadCommonProps {
+  mode: 'select'
+  file: File | null
+  onFileChange: (file: File | null) => void
+  disabled?: boolean
+}
+
+export interface DocumentUploadModeProps extends DocumentUploadCommonProps {
+  // The default: the file is uploaded at once through `onUpload`.
+  mode?: 'upload'
   value: DocumentUploadValue | null
   // Injected upload delegate, resolving a selected file to the new document's URL, kept generic
   // (rather than a fixed import the way MediaUpload picks between uploadMedia/uploadManagedMedia
@@ -41,6 +62,30 @@ export interface DocumentUploadProps {
   layout?: 'card' | 'inline'
 }
 
+export type DocumentUploadProps = DocumentUploadModeProps | DocumentSelectProps
+
+// Whether a file is one of the accepted kinds: an entry starting with a dot is an extension (compared without regard to
+// case, a MIME type is unreliable for .json and .csv), anything else a MIME type.
+function isAccepted(file: File, accept: string[]): boolean {
+  const name = file.name.toLowerCase()
+  return accept.some((entry) => (entry.startsWith('.') ? name.endsWith(entry.toLowerCase()) : file.type === entry))
+}
+
+function acceptLabel(accept: string[]): string {
+  return accept.map((entry) => (entry.startsWith('.') ? entry : entry.split('/').pop() ?? entry)).join(', ')
+}
+
+// Why a chosen file is refused, or null when it is fine.
+function refusalFor(file: File, accept: string[] | undefined, maxBytes: number | undefined): string | null {
+  if (accept ? !isAccepted(file, accept) : !ALLOWED_TYPES.includes(file.type)) {
+    return `"${file.name}" isn't a supported document type. Upload a ${accept ? acceptLabel(accept) : ALLOWED_TYPES_LABEL} file instead.`
+  }
+  if (maxBytes !== undefined && file.size > maxBytes) {
+    return `"${file.name}" is ${formatBytes(file.size)}, over the ${formatBytes(maxBytes)} limit.`
+  }
+  return null
+}
+
 // The backend never preserves a document's original filename (MediaServiceImpl generates a UUID
 // filename on every upload, the same "/media/{filename}"-style URL an image upload already
 // returns), the trailing URL segment is the closest thing to a display name available.
@@ -49,7 +94,92 @@ function filenameFromUrl(url: string): string {
   return segments[segments.length - 1] || url
 }
 
-export function DocumentUpload({ label, value, onUpload, onUploaded, displayName, layout = 'card' }: DocumentUploadProps) {
+export function DocumentUpload(props: DocumentUploadProps) {
+  return props.mode === 'select' ? <SelectDocument {...props} /> : <UploadDocument {...props} />
+}
+
+function SelectDocument({ label, accept, maxBytes, helperText, file, onFileChange, disabled = false }: DocumentSelectProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const choose = (chosen: File | undefined) => {
+    if (!chosen) return
+    const refusal = refusalFor(chosen, accept, maxBytes)
+    setError(refusal)
+    // A refused file never replaces the one already held.
+    if (!refusal) onFileChange(chosen)
+  }
+
+  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const chosen = event.target.files?.[0]
+    // Reset so selecting the same file again still fires a change event.
+    event.target.value = ''
+    choose(chosen)
+  }
+
+  const onDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    setDragging(false)
+    if (!disabled) choose(event.dataTransfer.files?.[0])
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+      <Box
+        onDragOver={(event) => {
+          event.preventDefault()
+          if (!disabled) setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        sx={(theme) => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.75,
+          p: { xs: 1.5, sm: 2.5 },
+          border: 2,
+          borderStyle: 'dashed',
+          borderColor: error ? 'error.main' : 'primary.main',
+          borderRadius: 2,
+          bgcolor: alpha(theme.palette.primary.main, dragging ? 0.1 : 0.04),
+        })}
+      >
+        <DescriptionOutlinedIcon color="primary" sx={{ fontSize: 28, flex: 'none' }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body2" fontWeight={700} noWrap>
+            {file ? file.name : label}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {file ? formatBytes(file.size) : 'No file chosen yet'}
+          </Typography>
+        </Box>
+        {file ? (
+          <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onFileChange(null)} sx={{ minHeight: 44, minWidth: 44, color: 'info.main' }}>
+            Remove
+          </Button>
+        ) : (
+          <Button variant="secondary" size="sm" disabled={disabled} onClick={() => inputRef.current?.click()} sx={{ minHeight: 44 }}>
+            Choose file
+          </Button>
+        )}
+      </Box>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={(accept ?? ALLOWED_TYPES).join(',')}
+        hidden
+        aria-label={`${label} file`}
+        onChange={onChange}
+      />
+      <Typography variant="caption" color={error ? 'error.main' : 'text.secondary'} role={error ? 'alert' : undefined}>
+        {error ?? helperText ?? `${accept ? acceptLabel(accept) : ALLOWED_TYPES_LABEL}${maxBytes !== undefined ? `, up to ${formatBytes(maxBytes)}` : ''}. Drop a file here or choose one.`}
+      </Typography>
+    </Box>
+  )
+}
+
+function UploadDocument({ label, value, onUpload, onUploaded, displayName, layout = 'card', accept, maxBytes, helperText }: DocumentUploadModeProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,8 +192,9 @@ export function DocumentUpload({ label, value, onUpload, onUploaded, displayName
       return
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError(`"${file.name}" isn't a supported document type. Upload a ${ALLOWED_TYPES_LABEL} file instead.`)
+    const refusal = refusalFor(file, accept, maxBytes)
+    if (refusal) {
+      setError(refusal)
       return
     }
 
@@ -83,7 +214,7 @@ export function DocumentUpload({ label, value, onUpload, onUploaded, displayName
     <input
       ref={inputRef}
       type="file"
-      accept={ALLOWED_TYPES.join(',')}
+      accept={(accept ?? ALLOWED_TYPES).join(',')}
       hidden
       aria-label={`${label} file`}
       onChange={handleFileSelected}
@@ -194,7 +325,7 @@ export function DocumentUpload({ label, value, onUpload, onUploaded, displayName
       {fileInput}
 
       <Typography variant="caption" color={error ? 'error.main' : 'text.secondary'}>
-        {error ?? `${ALLOWED_TYPES_LABEL}, up to 5MB.`}
+        {error ?? helperText ?? `${ALLOWED_TYPES_LABEL}, up to 5MB.`}
       </Typography>
     </Box>
   )

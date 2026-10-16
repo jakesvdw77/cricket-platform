@@ -50,3 +50,16 @@ export const Squad: Story = {
 }
 
 export const NoSquad: Story = { args: { teamId: null } }
+
+// docs/specs/104: a name an import could not place: "File said" at the top and the closest players as one-tap picks.
+export const ImportedUnresolved: Story = {
+  args: {
+    title: 'Link to a registered player',
+    allowGuest: false,
+    importedName: 'Sam V',
+    suggestions: [
+      { player: { playerProfileId: 'p3', firstName: 'Sam', lastName: 'Venter' }, score: 0.86 },
+      { player: { playerProfileId: 'p4', firstName: 'Sam', lastName: 'van der Westhuizen' }, score: 0.81 },
+    ],
+  },
+}

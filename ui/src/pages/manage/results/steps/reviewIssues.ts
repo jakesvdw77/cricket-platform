@@ -24,6 +24,8 @@ const TEAM_CODES = new Set([
   'SCORECARD_PLAYER_KEY_MISSING',
   'SCORECARD_PLAYER_KEY_DUPLICATE',
   'SCORECARD_PLAYER_SIDE_MISSING',
+  // docs/specs/104: an imported guess is confirmed or changed on Teams, on the side the issue names.
+  'IMPORTED_NAME_UNCONFIRMED',
 ])
 
 export const stepIdForIssue = (step: ResultWizardStep | null | undefined, code?: string | null): string | null =>

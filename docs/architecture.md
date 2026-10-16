@@ -138,7 +138,7 @@ erDiagram
     RESULT_PLAYER }o--o| PLAYER_PROFILE : "linked registered player, null for a guest or the opposition"
     BATTING_ENTRY }o--o| RESULT_PLAYER : "dismissing bowler and fielder"
     MATCH_RESULT ||--o{ PLAYER_STATS : "future — 103, stats"
-    MATCH_RESULT }o--o| IMPORT_BATCH : "future — 104, import"
+    CLUB ||--o{ RESULT_NAME_ALIAS : "remembered names, per club"
 
     MATCH_RESULT {
         uuid id
@@ -192,7 +192,8 @@ erDiagram
 - **`RESULT_PLAYER`** — "who played", once per side (migration 044). Batting, bowling and fielding rows and awards point at it, so a swap or a link to a registered player is one update. An ours player is either linked to a `PLAYER_PROFILE` or a guest (name only, linkable later); an opposition player (`opposition = true`, migration 045) is a name, a side and an optional substitute marker, never linked and never fed to statistics.
 - **`BATTING_ENTRY` / `BOWLING_ENTRY` / `FIELDING_ENTRY`** — rows per regular innings, for both sides. A batting entry names the dismissing bowler and fielder (045); bowler wickets and fielding credits are derived from those dismissals server-side (`DismissalCredits`), marked `DERIVED`, while a `MANUAL` row is never touched. `how_out` is nullable in a draft (migration 047: figures typed before the dismissal is chosen) and enforced at publish. Super-over innings never carry scorecard rows (super-over scorecards are `105`).
 - **`MATCH_AWARD`** — one official player of the match plus one team award per ours side; it keeps the name when the player's row is removed (045).
-- **Future (not built):** player and team stats (`103`) and results import (`104`) hang off these tables. **Decided order: `104` (import) is built before `103` (stats)**, so real scorecards prove the wizard rules first; see `docs/roadmap.md`.
+- **Import (104, built):** `Adaptor` (stateless, found by `AdaptorRegistry`) to the common `ImportedResultDto` to the Result Processor (location, team mapping, deterministic name matching, draft derivation) to `ResultService.saveImportedDraft`, which writes a `DRAFT` with `match_result.source = IMPORT:<provider>` and `external_id` (unique together, so a re-import finds the draft). Nothing is published and nothing is sent to an AI service. `result_player.import_match` flags a guessed name until a person confirms it (publishing is blocked meanwhile). `result_name_alias` (migration 048) remembers a confirmed spelling per club and is written inside the scorecard save.
+- **Future (not built):** player and team stats (`103`) hang off these tables. **Decided order: `104` (import) is built before `103` (stats)**, so real scorecards prove the wizard rules first; see `docs/roadmap.md`.
 - **Validation issues** carry a stable `code`, the wizard `step`, the `side` and a `severity`, built on `ResultValidator.WarningCode`/`ErrorCode`.
 - **Capture picker gaps:** the awaiting-match picker lacks the team's section on each row and a "show all seasons" toggle.
 - Open review questions are listed in `100`'s and `101`'s Rollout Notes.

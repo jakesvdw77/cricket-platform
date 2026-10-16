@@ -74,6 +74,15 @@ public class ResultPlayer {
     @Column(nullable = false)
     private boolean opposition;
 
+    /**
+     * docs/specs/104: set only by an import on one of our players linked by a rule other than an exact match or a
+     * remembered alias (a guess to confirm); cleared when the manager confirms, swaps, links or removes the row. A
+     * client can never set or raise it; an unconfirmed guess blocks publishing.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "import_match")
+    private ImportMatchLevel importMatch;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

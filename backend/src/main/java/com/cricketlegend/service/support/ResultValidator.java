@@ -308,7 +308,9 @@ public class ResultValidator {
         OPPOSITION_NO_STANDOUTS,
         OPPOSITION_WITHOUT_OUR_SCORECARD,
         DISMISSAL_DETAIL_NOT_ALLOWED,
-        DISMISSAL_PLAYER_WRONG_SIDE
+        DISMISSAL_PLAYER_WRONG_SIDE,
+        // imported results (docs/specs/104): a rule-based player guess the manager has not confirmed yet
+        IMPORTED_NAME_UNCONFIRMED
     }
 
     /** Regular win (not DLS, not super over): level scores, the wrong winner, then the margin, each reported once. */

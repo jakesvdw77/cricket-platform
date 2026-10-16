@@ -26,7 +26,7 @@ import type { Match } from '../../../api/matchApi'
 import type { League } from '../../../api/leagueApi'
 import type { Team } from '../../../api/teamApi'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
-import { resultCaptureTo, resultSides } from './resultListHelpers'
+import { resultCaptureTo, resultImportTo, resultSides } from './resultListHelpers'
 
 const SEARCH_DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
@@ -64,7 +64,7 @@ function groupByDate(matches: Match[]): DateGroup[] {
   return groups
 }
 
-function PickerBody({ clubId, teamsById, leaguesById, onPicked }: Omit<CaptureResultDialogProps, 'open' | 'onClose'> & { onPicked: (match: Match) => void }) {
+function PickerBody({ clubId, teamsById, leaguesById, onPicked, onImport }: Omit<CaptureResultDialogProps, 'open' | 'onClose'> & { onPicked: (match: Match) => void; onImport: () => void }) {
   const [search, setSearch] = useState('')
   const [teamId, setTeamId] = useState('')
   const [includeUpcoming, setIncludeUpcoming] = useState(false)
@@ -210,9 +210,15 @@ function PickerBody({ clubId, teamsById, leaguesById, onPicked }: Omit<CaptureRe
         )}
       </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ pt: 1.25 }}>
-        {total} {total === 1 ? 'match' : 'matches'} waiting · tap a row to start
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', pt: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          {total} {total === 1 ? 'match' : 'matches'} waiting · tap a row to start
+        </Typography>
+        {/* docs/specs/104: a result that already exists elsewhere is imported, not retyped. */}
+        <Button variant="secondary" size="sm" onClick={onImport} sx={{ minHeight: 44 }}>
+          Import a result instead
+        </Button>
+      </Box>
     </Box>
   )
 }
@@ -228,12 +234,16 @@ export function CaptureResultDialog({ open, onClose, clubId, teamsById, leaguesB
     onClose()
     navigate(resultCaptureTo(match.id))
   }
+  const importInstead = () => {
+    onClose()
+    navigate(resultImportTo())
+  }
 
   if (phone) {
     return (
       <BottomSheet open={open} onOpen={() => undefined} onClose={onClose} ariaLabel="Capture a result" title="Capture a result" closeLabel="Close">
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '70vh' }}>
-          {open && <PickerBody clubId={clubId} teamsById={teamsById} leaguesById={leaguesById} onPicked={picked} />}
+          {open && <PickerBody clubId={clubId} teamsById={teamsById} leaguesById={leaguesById} onPicked={picked} onImport={importInstead} />}
         </Box>
       </BottomSheet>
     )
@@ -248,7 +258,7 @@ export function CaptureResultDialog({ open, onClose, clubId, teamsById, leaguesB
         </Typography>
       </DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', pt: '16px !important', minHeight: 0 }}>
-        <PickerBody clubId={clubId} teamsById={teamsById} leaguesById={leaguesById} onPicked={picked} />
+        <PickerBody clubId={clubId} teamsById={teamsById} leaguesById={leaguesById} onPicked={picked} onImport={importInstead} />
       </DialogContent>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 3, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
         <Button variant="ghost" onClick={onClose}>

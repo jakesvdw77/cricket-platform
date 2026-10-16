@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Link, Stack, Typography } from '@mui/material'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { BrandIcon } from '../../../components/BrandIcon'
 import { Button } from '../../../components/Button'
@@ -36,6 +36,7 @@ import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
 import { scopeFilterText } from '../../../utils/availabilityScope'
 import { cardGridSx } from '../../../utils/cardGrid'
 import { CaptureResultDialog } from './CaptureResultDialog'
+import { resultImportTo } from './resultListHelpers'
 import { ResultCard } from './ResultCard'
 import { ResultTable } from './ResultTable'
 import { usePublishResult } from './usePublishResult'
@@ -74,6 +75,7 @@ const STATUS_OPTIONS: { value: ResultStatus; label: string }[] = [
 // backend parameter; the counters come from GET /results/summary for the same filters.
 export default function ResultList() {
   const { clubId } = useOutletContext<{ clubId?: string }>()
+  const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -294,7 +296,15 @@ export default function ResultList() {
             onChange={(next) => setSaved({ seasonId: next })}
           />
         }
-        action={<Button onClick={() => setPickerOpen(true)}>Capture result</Button>}
+        action={
+          // docs/specs/104: Import result sits beside Capture result; the capture picker also offers it.
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => navigate(resultImportTo())}>
+              Import result
+            </Button>
+            <Button onClick={() => setPickerOpen(true)}>Capture result</Button>
+          </Box>
+        }
       />
 
       {showCounters && <PageCounters density="compact" items={counters} loading={summaryQuery.isPending} />}
@@ -406,7 +416,14 @@ export default function ResultList() {
               ? `${awaitingCount} ${awaitingCount === 1 ? 'match is' : 'matches are'} waiting for a result.`
               : 'Results you capture for your matches will appear here.'
           }
-          action={<Button onClick={() => setPickerOpen(true)}>Capture result</Button>}
+          action={
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Button variant="secondary" onClick={() => navigate(resultImportTo())}>
+                Import result
+              </Button>
+              <Button onClick={() => setPickerOpen(true)}>Capture result</Button>
+            </Box>
+          }
         />
       )}
 

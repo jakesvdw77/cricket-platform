@@ -115,7 +115,7 @@ export function FieldFormDialog({ open, onClose, clubId, initialName, onCreated 
 
   if (phone) {
     return (
-      <BottomSheet open={open} onOpen={() => undefined} onClose={onClose} ariaLabel="Add a new field" title="Add a new field" closeLabel="Close">
+      <BottomSheet open={open} onOpen={() => undefined} onClose={onClose} ariaLabel="Add a new field" title="Add a new field" closeLabel="Close" aboveDialogs>
         {open && <DialogBody clubId={clubId} initialName={initialName} phone onClose={onClose} onCreated={onCreated} />}
       </BottomSheet>
     )

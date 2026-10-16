@@ -210,4 +210,36 @@ describe('ScorecardGrid', () => {
     )
     expect(screen.getByText('Add a player to start.')).toBeInTheDocument()
   })
+
+  // docs/specs/104: a row to look at but not a problem (an imported guess): a light amber tint, no problem icon or reason.
+  it('tints a flagged row in both layouts without marking it as a problem', () => {
+    const flagged = (phone: boolean) => {
+      setPhone(phone)
+      return render(
+        <ScorecardGrid
+          ariaLabel="Teams"
+          rows={[{ id: 'a' }, { id: 'b' }]}
+          getRowId={(row) => row.id}
+          columns={[]}
+          renderPlayer={(row) => <span>{`Player ${row.id}`}</span>}
+          renderCard={(row) => <span>{`Card ${row.id}`}</span>}
+          isRowFlagged={(row) => row.id === 'a'}
+        />,
+      )
+    }
+    // A table row tints its cells, a phone card tints itself.
+    const background = (text: string) => {
+      const node = screen.getByText(text)
+      const row = node.closest('tr')
+      return getComputedStyle((row ? row.querySelector('td') : node.closest('[role="listitem"]')) as HTMLElement).backgroundColor
+    }
+
+    const table = flagged(false)
+    expect(background('Player a')).not.toBe(background('Player b'))
+    expect(screen.queryByLabelText(/problem|needs attention/i)).not.toBeInTheDocument()
+    table.unmount()
+
+    flagged(true)
+    expect(background('Card a')).not.toBe(background('Card b'))
+  })
 })

@@ -27,6 +27,8 @@ The contract every backend-touching agent is briefed with by path, not by vague 
 
   **An exception may carry structured detail for the client**, as a `ProblemDetail` property set by its own `GlobalExceptionHandler` method (a more specific type wins over `ConflictException`): `SelectionRejectedException` carries `rejections` and `DuplicateFieldException` (spec 099) carries `existingPlayingAreaId`, so the screen can offer the existing record instead of only showing a message.
 
+  Spec 104 adds `InvalidImportInputException` (abstract, extends `ValidationException`) with `UnsupportedImportFormatException` (carries `supported`), `UnreadableImportInputException` and `ImportInputValidationException` (carries `errors` and `totalErrors`), and three `ConflictException` subclasses, `ImportMatchAlreadyHasResultException`, `ImportExternalIdAlreadyUsedException` (carries `otherMatchId`) and `ImportWouldOverwriteDraftException`. No new base type or status.
+
 - Every `@Service` method carrying a business rule ships with a unit test in the same PR; every custom repository query ships with a Testcontainers-backed integration test in the same PR (base class: `com.cricketlegend.AbstractIntegrationTest`).
 - **Shared logic lives in one place.** Business logic needed by two or more services is extracted into a shared service/utility before the second use is written — never copy-pasted. Same for validation rules, mapping helpers, and query specifications (reusable `Specification<T>` classes over hand-rolled duplicate queries).
 - **Pagination is backend-driven, never client-side.** Any list endpoint whose result set can grow unbounded returns a Spring Data `Page<T>` (`Pageable` request param — `page`/`size`/`sort`), fetched with a real `LIMIT`/`OFFSET` (or keyset) query — never the full table handed to the frontend to slice, filter, or paginate in memory. The whole point is keeping that memory and scalability cost on the server, where it's one tunable query, not duplicated per browser tab. See `docs/standards/frontend.md`'s matching rule for how the client consumes this.
@@ -65,6 +67,15 @@ class MatchServiceImpl implements MatchService {
 ```
 
 Package layout: `controller` / `service` + `service.impl` / `repository` / `domain` / `dto` (flat, no subpackages) / `mapper` / `config`.
+
+Spec 104 adds `service.adaptor`, a sibling of `service.impl` and `service.support`: import adaptors (stateless beans extending `AbstractAdaptor`, found by `AdaptorRegistry`) that turn an input into the common `ImportedResultDto`. They never touch a repository, a result service or the processor.
+
+Import rules (spec 104):
+- **Adaptors never write.** `service.adaptor` may depend only on `dto`, `exception`, domain enums, `OversFormat` and itself (ArchUnit `ImportAdaptorRulesTest`). The Result Processor (`service.support`) turns the common format into a draft; adaptors only read.
+- **`source` and `external_id` are written only through `ResultService.saveImportedDraft`**, and only `ResultImportServiceImpl` may call it (ArchUnit). It only ever produces a `DRAFT`; an import never publishes. A re-import of the same `(source, external_id)` needs the `replaceExistingDraft` acknowledgement, otherwise the server answers 409.
+- **`result_player.import_match` is clear-only for clients.** It is set only by `ScorecardService.replaceImported`; a normal save may clear it (the manager confirmed the name) but never set it, and `ScorecardMapper` ignores it on the way in. Publishing is blocked with `IMPORTED_NAME_UNCONFIRMED` while any row still carries it.
+- **Name matching is deterministic and local** (`NameResolver`, `NameTiers`, `NameSimilarity`). Nothing is sent to any AI service; `UnresolvedNameSuggester` is an interface with no bean. A remembered name (`result_name_alias`, per club) is written inside the scorecard save, never by the import.
+- **The preview is stateless.** The document goes to the browser and comes back with `resolve`; the server re-validates it and recomputes every match level. The raw payload is not stored (`source_payload` stays null).
 
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 

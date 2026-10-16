@@ -1,0 +1,74 @@
+import { useState } from 'react'
+import { Box, Typography } from '@mui/material'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
+import { Button } from '../../../../components/Button'
+
+// Copies text, falling back to a hidden textarea where the async clipboard is unavailable (an insecure page, an old browser).
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // fall through to the textarea route
+  }
+  try {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    const done = document.execCommand('copy')
+    document.body.removeChild(area)
+    return done
+  } catch {
+    return false
+  }
+}
+
+// docs/specs/104-match-results-import-adaptors.md: the Other tab on the Source step, "Convert it with your own AI". The
+// platform sends nothing to any AI: this is only the descriptor's `conversionPrompt`, which the manager copies into their own
+// chat. The caller renders it only when the selected source has a prompt.
+export function ConvertWithAiHelper({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle')
+
+  const copy = async () => {
+    const ok = await copyText(prompt)
+    setCopied(ok ? 'copied' : 'failed')
+    window.setTimeout(() => setCopied('idle'), 2500)
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+      <Typography variant="body2" color="text.secondary">
+        Have a file in another format? Copy this prompt into your own AI chat with your scorecard attached, then paste the JSON it gives you in the Paste tab.
+      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Button variant="secondary" startIcon={<ContentCopyIcon />} onClick={() => void copy()} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}>
+          Copy prompt
+        </Button>
+        <Typography variant="caption" color="text.secondary" role="status" aria-live="polite">
+          {copied === 'copied' ? 'Copied' : copied === 'failed' ? 'Could not copy. Select the prompt below instead.' : ''}
+        </Typography>
+      </Box>
+      <Box
+        component="pre"
+        tabIndex={0}
+        aria-label="Conversion prompt"
+        sx={{ m: 0, p: 1.25, height: 220, minHeight: 96, resize: 'vertical', overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'action.hover', fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+      >
+        {prompt}
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, color: 'error.main' }}>
+        <ReportProblemOutlinedIcon aria-hidden sx={{ fontSize: 18, mt: '2px', flex: 'none' }} />
+        <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 600 }}>
+          Your file goes to the AI you choose, not through us. Only share it if you are allowed to, especially children&apos;s names.
+        </Typography>
+      </Box>
+    </Box>
+  )
+}

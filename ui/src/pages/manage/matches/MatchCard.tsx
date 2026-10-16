@@ -5,6 +5,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
@@ -20,7 +21,7 @@ import type { Team } from '../../../api/teamApi'
 import type { League } from '../../../api/leagueApi'
 import type { Season } from '../../../api/seasonApi'
 import { formatMatchDateTime } from '../availability/pollHelpers'
-import { resultActionFor, resultBadgeFor, resultStateOf } from './matchResultHelpers'
+import { resultActionFor, resultBadgeFor, resultImportActionFor, resultStateOf } from './matchResultHelpers'
 import { SelectionBlock } from './SelectionBlock'
 import { useAvailabilityNavigation } from './useAvailabilityNavigation'
 import { useTeamSheetShare } from './useTeamSheetShare'
@@ -81,6 +82,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const played = resultState === 'published'
   const started = kickoff.stage === 'expired'
   const resultAction = resultActionFor(match)
+  const importAction = resultImportActionFor(match)
   const resultBadge = resultBadgeFor(match)
 
   const inactive = badgeFor(match)
@@ -169,6 +171,16 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                   ariaLabel: resultAction.label,
                   icon: <SportsScoreOutlinedIcon fontSize="small" />,
                   onClick: () => navigate(resultAction.to),
+                },
+              ]
+            : []),
+          ...(importAction
+            ? [
+                {
+                  label: importAction.caption,
+                  ariaLabel: importAction.label,
+                  icon: <UploadFileOutlinedIcon fontSize="small" />,
+                  onClick: () => navigate(importAction.to),
                 },
               ]
             : []),

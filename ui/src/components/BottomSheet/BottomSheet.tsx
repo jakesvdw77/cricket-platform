@@ -12,13 +12,15 @@ export interface BottomSheetProps {
   title?: string
   // When set, the header carries a close button with this accessible name.
   closeLabel?: string
+  // Lift the sheet above dialogs, for a sheet opened from inside one (a dialog's z-index is higher than a drawer's).
+  aboveDialogs?: boolean
   children: ReactNode
 }
 
 // The phone bottom sheet shared by MenuSheet (079) and FilterBar (083): a SwipeableDrawer from the
 // bottom, so Escape, focus trap, backdrop tap and swipe-down all come with it. Rounded top corners,
 // a drag handle, an optional title row. Like any SwipeableDrawer it stays mounted (hidden) while closed.
-export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabel, children }: BottomSheetProps) {
+export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabel, aboveDialogs, children }: BottomSheetProps) {
   return (
     <SwipeableDrawer
       anchor="bottom"
@@ -26,6 +28,7 @@ export function BottomSheet({ open, onOpen, onClose, ariaLabel, title, closeLabe
       onOpen={onOpen}
       onClose={onClose}
       disableDiscovery
+      sx={aboveDialogs ? { zIndex: (theme) => theme.zIndex.modal + 1 } : undefined}
       PaperProps={{
         'aria-label': ariaLabel,
         sx: { borderRadius: '20px 20px 0 0', maxHeight: '88%', px: 2, pt: 1, pb: 2.5 },

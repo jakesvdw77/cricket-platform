@@ -30,6 +30,7 @@ import type { PickOption } from '../scorecard/PlayerPickCombo'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
 import { useAddPlayerSupport } from '../scorecard/useAddPlayerSupport'
+import { useGuessActions } from '../scorecard/useGuessActions'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
   addPlayer,
@@ -161,6 +162,9 @@ export function BattingStep({
     disabled,
   })
 
+  // docs/specs/104: the Guess chips of an imported draft, for the batter and for the dismissal's fielder and bowler.
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: (next) => commit(filled(next)) })
+
   // ---- typing a name adds the player to the team ----
   const support = useAddPlayerSupport({ clubId, matchId: match.id, seasonId: match.seasonId, side, ours, scorecard, prefillSide, label })
   const addTo = (identity: Parameters<typeof addPlayer>[2]) => {
@@ -234,6 +238,7 @@ export function BattingStep({
         disabled={disabled}
         fullWidth={fullWidth}
         warn={battingRowChecks(entry).cells.has(isFielder ? 'fielder' : 'bowler')}
+        guess={entry[field] ? guesses.guessOf(byKey.get(entry[field] as string)) : undefined}
       />
     )
   }
@@ -305,6 +310,7 @@ export function BattingStep({
         caption={captionOf(key, entry)}
         onOpen={(anchor) => actions.openMenu(key, anchor)}
         disabled={disabled}
+        guess={guesses.guessOf(player)}
       />
     )
   }
@@ -383,6 +389,7 @@ export function BattingStep({
             reorder={reorder}
             reorderDisabled={disabled}
             isRowMuted={(entry) => entry.howOut === 'DID_NOT_BAT'}
+            isRowFlagged={(entry) => guesses.guessOf(byKey.get(entryPlayerKey(entry) as string)) !== undefined}
             rowProblem={(entry) => battingRowChecks(entry).reasons.join('. ') || null}
             emptyMessage={null}
             renderCard={(entry) => {
@@ -468,6 +475,7 @@ export function BattingStep({
       )}
 
       {actions.host}
+      {guesses.host}
     </Box>
   )
 }

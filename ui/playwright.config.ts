@@ -1,4 +1,11 @@
+import { existsSync } from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
+
+// Optional local settings (the CLUB_ADMIN test login) from the git-ignored ui/.env.e2e; copy ui/.env.e2e.example. Values
+// already in the environment win, and CI sets its own, so a missing file is fine.
+if (existsSync('.env.e2e')) {
+  process.loadEnvFile('.env.e2e')
+}
 
 /**
  * E2E tier (docs/standards/testing.md) — Playwright, mobile + desktop viewport, golden paths

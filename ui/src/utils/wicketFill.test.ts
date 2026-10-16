@@ -35,7 +35,17 @@ describe('wicketFill', () => {
     rows = mark(rows, 2, 'BOWLED')
     rows = mark(rows, 3, 'NOT_OUT')
     // Batting is in order: the row between two batted rows batted too, so its how out is still to choose (null), not Did not bat.
-    expect(howOuts(applyWicketFill(rows, 2))).toEqual(['CAUGHT', null, 'BOWLED', 'NOT_OUT', 'NOT_OUT', 'NOT_OUT'])
+    // The one Not out the manager set counts towards the two at the crease, so only one more is given.
+    expect(howOuts(applyWicketFill(rows, 2))).toEqual(['CAUGHT', null, 'BOWLED', 'NOT_OUT', 'NOT_OUT', 'DID_NOT_BAT'])
+  })
+
+  it('gives no automatic Not out when two Not outs are already set, for example by an import', () => {
+    let rows = initialRows(5, 2)
+    rows = mark(rows, 0, 'CAUGHT')
+    rows = mark(rows, 1, 'BOWLED')
+    rows = mark(rows, 2, 'NOT_OUT')
+    rows = mark(rows, 3, 'NOT_OUT')
+    expect(howOuts(applyWicketFill(rows, 2))).toEqual(['CAUGHT', 'BOWLED', 'NOT_OUT', 'NOT_OUT', 'DID_NOT_BAT'])
   })
 
   it('never leaves Did not bat before a row that batted: the earlier rows are batted with the how out still to choose', () => {

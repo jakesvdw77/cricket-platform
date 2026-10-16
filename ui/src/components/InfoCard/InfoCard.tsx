@@ -29,14 +29,22 @@ export interface InfoCardProps {
   children?: ReactNode
   actions?: ReactNode
   testId?: string
+  // docs/specs/104: 'warning' is the amber "look at this" card (an amber icon tile, tinted fill and border) for a notice that
+  // is not an error, such as the import's "Check these names". Omitted, the card is unchanged.
+  tone?: 'default' | 'warning'
 }
 
 // docs/specs/088 section G (the Player page) and docs/specs/091 (the league Conditions tab): one section card. A solid-green icon tile and an uppercase heading, then
 // label-over-bold-value fields, optional chips, optional action buttons pinned to the bottom so the cards in a row
 // stay the same height.
-export function InfoCard({ title, icon, fields = [], chips, note, headerAction, children, actions, testId }: InfoCardProps) {
+export function InfoCard({ title, icon, fields = [], chips, note, headerAction, children, actions, testId, tone = 'default' }: InfoCardProps) {
   return (
-    <Card sx={{ height: '100%' }} contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }} data-testid={testId}>
+    <Card
+      sx={[
+        { height: '100%' },
+        tone === 'warning' && ((theme) => ({ borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06) })),
+      ]}
+      contentSx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2, md: 2.5 }, '&:last-child': { pb: { xs: 2, md: 2.5 } } }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
           <Box
@@ -46,8 +54,8 @@ export function InfoCard({ title, icon, fields = [], chips, note, headerAction, 
               height: 32,
               flex: 'none',
               borderRadius: 1,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
+              bgcolor: tone === 'warning' ? 'warning.main' : 'primary.main',
+              color: tone === 'warning' ? 'warning.contrastText' : 'primary.contrastText',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

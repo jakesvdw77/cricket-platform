@@ -332,6 +332,8 @@ export function swapPlayer(scorecard: Scorecard, key: string, identity: PlayerId
             replacedPlayerProfileId: player.replacedPlayerProfileId ?? player.playerProfileId,
             linkedBy: null,
             linkedAt: null,
+            // A different player settles any import guess about the row (the server clears the flag too).
+            importMatch: null,
           }
         : player,
     ),
@@ -351,6 +353,52 @@ export function linkGuest(scorecard: Scorecard, key: string, identity: PlayerIde
             firstName: identity.firstName ?? null,
             lastName: identity.lastName ?? null,
             guest: false,
+            importMatch: null,
+          }
+        : player,
+    ),
+  }
+}
+
+// docs/specs/104: the manager confirms an import's guess: the player stays and the flag goes. Saving persists it (the server
+// remembers the file's spelling for the club); the client can only clear the flag, never set it.
+export function confirmGuess(scorecard: Scorecard, key: string): Scorecard {
+  return {
+    ...scorecard,
+    players: scorecard.players.map((player) => (playerRowKey(player) === key ? { ...player, importMatch: null } : player)),
+  }
+}
+
+// docs/specs/104: the manager changes who an imported name is (Change on a guess, or a pick for an unresolved name). Unlike
+// a swap it KEEPS the name the file wrote (`displayName`), because the server writes the remembered name from it when the
+// save changes the linked player. A registered player becomes the row's person; a guest name keeps the row a guest. Refused
+// (unchanged) when that registered player is already playing for the side; a 12th man of that name is promoted by removing
+// the duplicate row, as a swap does.
+export function resolveImportedRow(scorecard: Scorecard, key: string, identity: PlayerIdentity): Scorecard {
+  const current = scorecard.players.find((player) => playerRowKey(player) === key)
+  if (!current) return scorecard
+  if (
+    identity.playerProfileId &&
+    scorecard.players.some((player) => player.side === current.side && !player.substitute && playerRowKey(player) !== key && player.playerProfileId === identity.playerProfileId)
+  ) {
+    return scorecard
+  }
+  const sub = identity.playerProfileId
+    ? scorecard.players.find((player) => player.side === current.side && player.substitute && player.playerProfileId === identity.playerProfileId && playerRowKey(player) !== key)
+    : undefined
+  const base = sub ? removePlayer(scorecard, playerRowKey(sub)) : scorecard
+  return {
+    ...base,
+    players: base.players.map((player) =>
+      playerRowKey(player) === key
+        ? {
+            ...player,
+            playerProfileId: identity.playerProfileId,
+            firstName: identity.playerProfileId ? (identity.firstName ?? null) : null,
+            lastName: identity.playerProfileId ? (identity.lastName ?? null) : null,
+            displayName: identity.playerProfileId ? player.displayName : (identity.displayName ?? player.displayName),
+            guest: !identity.playerProfileId,
+            importMatch: null,
           }
         : player,
     ),

@@ -13,6 +13,8 @@ import { logoFor } from '../matches/teamLogoHelpers'
 export const resultViewTo = (matchId: string) => `/manage/results/${matchId}`
 export const resultCaptureTo = (matchId: string) => `/manage/results/${matchId}/capture`
 export const resultEditTo = resultCaptureTo
+// docs/specs/104: the import wizard, optionally opened from one match (`?matchId=` preselects it on the Match step).
+export const resultImportTo = (matchId?: string) => `/manage/results/import${matchId ? `?matchId=${encodeURIComponent(matchId)}` : ''}`
 
 export const UNPUBLISH_TO_EDIT_REASON = 'Unpublish to edit'
 

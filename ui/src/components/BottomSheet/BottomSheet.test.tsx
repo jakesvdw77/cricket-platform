@@ -46,4 +46,23 @@ describe('BottomSheet', () => {
     expect(screen.queryByRole('button', { name: 'Close example' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
   })
+
+  it('lifts the sheet above dialogs only when asked, for a sheet opened from inside one', () => {
+    const { unmount } = render(
+      <BottomSheet open onOpen={() => undefined} onClose={() => undefined} ariaLabel="Example">
+        <p>Sheet content</p>
+      </BottomSheet>,
+    )
+    const normal = Number(getComputedStyle(document.querySelector('.MuiDrawer-root') as HTMLElement).zIndex)
+    unmount()
+
+    render(
+      <BottomSheet open onOpen={() => undefined} onClose={() => undefined} ariaLabel="Example" aboveDialogs>
+        <p>Sheet content</p>
+      </BottomSheet>,
+    )
+    const lifted = Number(getComputedStyle(document.querySelector('.MuiDrawer-root') as HTMLElement).zIndex)
+    expect(lifted).toBeGreaterThan(normal)
+    expect(lifted).toBeGreaterThan(1300) // a dialog's z-index
+  })
 })

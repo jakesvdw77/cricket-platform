@@ -52,7 +52,8 @@ export function applyWicketFill<T extends FigureRow>(rows: T[], wickets: number 
     (last, row, index) => ((row.howOut !== null && row.howOut !== 'DID_NOT_BAT') || hasFigures(row) ? index : last),
     -1,
   )
-  let given = 0
+  // Not outs already on the card (typed, or imported) count towards the two at the crease, so none is given on top of them.
+  let given = released.filter((row) => row.howOut === 'NOT_OUT').length
   const settledRows = released.map((row, index) => {
     if (row.howOut !== null) return row
     // A batted row with figures and no how out yet is neither a wicket nor Not out until the manager chooses.

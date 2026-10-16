@@ -14,6 +14,8 @@ import com.cricketlegend.domain.ResultOutcomeType;
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ResultStatus;
 import com.cricketlegend.domain.Team;
+import com.cricketlegend.dto.ExistingResultDto;
+import com.cricketlegend.dto.ImportOrigin;
 import com.cricketlegend.dto.InningsDto;
 import com.cricketlegend.dto.MatchDto;
 import com.cricketlegend.dto.MatchFilterOptionsDto;
@@ -24,6 +26,8 @@ import com.cricketlegend.dto.ResultListCriteria;
 import com.cricketlegend.dto.ResultListItemDto;
 import com.cricketlegend.dto.ResultValidationDto;
 import com.cricketlegend.dto.ResultsSummaryDto;
+import com.cricketlegend.dto.ScorecardDto;
+import com.cricketlegend.exception.ImportExternalIdAlreadyUsedException;
 import com.cricketlegend.exception.InvalidResultException;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchNotCapturableException;
@@ -49,6 +53,7 @@ import com.cricketlegend.service.support.ServerClock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -56,6 +61,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -78,6 +84,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResultServiceImpl implements ResultService {
 
     private static final String SOURCE_MANUAL = "MANUAL";
+    private static final String CONSTRAINT_SOURCE_EXTERNAL = "ux_match_result_source_external";
     private static final List<ResultOutcomeType> TIED_OR_NONE = List.of(
             ResultOutcomeType.TIE, ResultOutcomeType.DRAW, ResultOutcomeType.NO_RESULT, ResultOutcomeType.ABANDONED);
 
@@ -229,6 +236,19 @@ public class ResultServiceImpl implements ResultService {
     @Override
     @Transactional
     public MatchResultDto upsertDraft(Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft) {
+        return doUpsert(authentication, clubId, matchId, draft, null);
+    }
+
+    @Override
+    @Transactional
+    public MatchResultDto saveImportedDraft(
+            Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft, ImportOrigin origin) {
+        return doUpsert(authentication, clubId, matchId, Objects.requireNonNull(draft), Objects.requireNonNull(origin));
+    }
+
+    /** The one save path: {@code origin} is null for a manual save and set only by {@link #saveImportedDraft}. */
+    private MatchResultDto doUpsert(
+            Authentication authentication, UUID clubId, UUID matchId, ResultDraft draft, ImportOrigin origin) {
         Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
         assertCapturable(match);
         Map<UUID, Team> sideTeams = teamsOf(match);
@@ -243,6 +263,15 @@ public class ResultServiceImpl implements ResultService {
         MatchResult existing = resultRepository.findByMatchId(matchId).orElse(null);
         if (existing != null && existing.getStatus() == ResultStatus.PUBLISHED) {
             throw new ResultPublishedException("This result is published: unpublish it before changing it.");
+        }
+        if (origin != null && origin.externalId() != null) {
+            resultRepository
+                    .findByClubIdAndSourceAndExternalId(clubId, origin.source(), origin.externalId())
+                    .filter(other -> !other.getMatchId().equals(matchId))
+                    .ifPresent(other -> {
+                        throw new ImportExternalIdAlreadyUsedException(
+                                "This provider match id is already imported onto another match.", other.getMatchId());
+                    });
         }
 
         PlayingArea chosenField =
@@ -260,6 +289,11 @@ public class ResultServiceImpl implements ResultService {
                         .source(SOURCE_MANUAL)
                         .build();
         mapper.applyDraft(withDefaults, result);
+        if (origin != null) {
+            result.setSource(origin.source());
+            result.setExternalId(origin.externalId());
+            result.setSourcePayload(null);
+        }
         result.setDetailLevel(detailLevelFor(existing, draft));
         if (chosenField != null) {
             result.setPlayingAreaId(chosenField.getId());
@@ -271,11 +305,24 @@ public class ResultServiceImpl implements ResultService {
         try {
             saved = resultRepository.saveAndFlush(result);
         } catch (DataIntegrityViolationException e) {
+            if (origin != null && violates(e, CONSTRAINT_SOURCE_EXTERNAL)) {
+                // a race with another import of the same provider id; the other match is not known here
+                throw new ImportExternalIdAlreadyUsedException(
+                        "This provider match id is already imported onto another match.", null);
+            }
             throw new ResultAlreadyExistsException("This match already has a result.");
         }
         List<MatchInnings> innings = reconcileInnings(saved.getId(), withDefaults.innings(), existing != null);
         if (draft.scorecard() != null) {
-            scorecardService.replace(saved.getId(), clubId, match, draft.scorecard(), person);
+            if (origin != null) {
+                scorecardService.replaceImported(saved.getId(), clubId, match, draft.scorecard(), person);
+            } else {
+                scorecardService.replace(saved.getId(), clubId, match, draft.scorecard(), person);
+            }
+        } else if (origin != null && existing != null) {
+            // a re-import that carries no scorecard (a forfeit) replaces the draft wholesale, so it clears the old one
+            scorecardService.replaceImported(
+                    saved.getId(), clubId, match, new ScorecardDto(null, null, null, null, null, null, null), person);
         } else if (existing != null) {
             scorecardService.refreshNonBowlerWickets(saved.getId());
         }
@@ -407,6 +454,52 @@ public class ResultServiceImpl implements ResultService {
         }
         inningsRepository.deleteByMatchResultId(result.getId());
         resultRepository.delete(result);
+    }
+
+    // ---- docs/specs/104: what an import needs to know about existing results ----
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, ExistingResultDto> existingResults(UUID clubId, Collection<UUID> matchIds) {
+        Map<UUID, ExistingResultDto> byMatch = new HashMap<>();
+        if (matchIds.isEmpty()) {
+            return byMatch;
+        }
+        for (MatchResult result : resultRepository.findAllByMatchIdIn(matchIds)) {
+            if (clubId.equals(result.getClubId())) {
+                byMatch.put(result.getMatchId(), summaryOf(result));
+            }
+        }
+        return byMatch;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ExistingResultDto> findImported(UUID clubId, String source, String externalId) {
+        return resultRepository.findByClubIdAndSourceAndExternalId(clubId, source, externalId).map(this::summaryOf);
+    }
+
+    private ExistingResultDto summaryOf(MatchResult result) {
+        return new ExistingResultDto(
+                result.getMatchId(), result.getStatus(), result.getSource(),
+                resultPlayerRepository.existsByMatchResultId(result.getId()), result.getUpdatedAt());
+    }
+
+    /** Whether the failed write broke the named constraint, read from the database's own report. */
+    private static boolean violates(DataIntegrityViolationException e, String constraint) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException hibernate
+                    && constraint.equalsIgnoreCase(hibernate.getConstraintName())) {
+                return true;
+            }
+            if (cause.getMessage() != null && cause.getMessage().contains(constraint)) {
+                return true;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return false;
     }
 
     // ---- helpers ----

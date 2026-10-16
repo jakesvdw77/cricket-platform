@@ -59,4 +59,14 @@ describe('InfoCard', () => {
     expect(screen.getByRole('button', { name: 'Add section' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Club structure' })).toBeInTheDocument()
   })
+
+  it('draws the warning tone with an amber icon tile, and leaves the default card unchanged', () => {
+    const { rerender } = render(<InfoCard title="Check these names" icon={<span data-testid="icon" />} testId="card" tone="warning" />)
+    const warningIconTile = screen.getByTestId('icon').parentElement as HTMLElement
+    const warningBackground = getComputedStyle(warningIconTile).backgroundColor
+
+    rerender(<InfoCard title="Check these names" icon={<span data-testid="icon" />} testId="card" />)
+    const defaultBackground = getComputedStyle(screen.getByTestId('icon').parentElement as HTMLElement).backgroundColor
+    expect(warningBackground).not.toBe(defaultBackground)
+  })
 })

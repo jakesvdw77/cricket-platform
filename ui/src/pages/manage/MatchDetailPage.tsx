@@ -12,6 +12,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
 import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
@@ -33,7 +34,7 @@ import { listMatchSides } from '../../api/matchSideApi'
 import type { MatchSide } from '../../api/matchSideApi'
 import { listPolls } from '../../api/matchAvailabilityApi'
 import { getMatchSquad } from '../../api/matchSquadApi'
-import { resultActionFor, resultBadgeFor } from './matches/matchResultHelpers'
+import { resultActionFor, resultBadgeFor, resultImportActionFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
@@ -219,6 +220,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   const inactive = badgeFor(match)
   const resultBadge = resultBadgeFor(match)
   const resultAction = resultActionFor(match)
+  const importAction = resultImportActionFor(match)
 
   const logos = [
     logoFor(match.homeTeamId, match.homeTeamLogoUrl, homeName, teamsById),
@@ -264,7 +266,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
             </MuiButton>
 
             {/* Scoring and Watch live (only when the match has the link; below the actions on a phone) and the primary Edit. */}
-            <Box sx={{ display: 'flex', gap: 1, flex: 'none' }} data-testid="match-header-links">
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, flex: '0 1 auto' }} data-testid="match-header-links">
               {match.scoringUrl && (
                 <MuiButton
                   component="a"
@@ -296,6 +298,11 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               {resultAction && (
                 <MuiButton component={RouterLink} to={resultAction.to} variant="outlined" startIcon={<SportsScoreOutlinedIcon fontSize="small" />}>
                   {resultAction.label}
+                </MuiButton>
+              )}
+              {importAction && (
+                <MuiButton component={RouterLink} to={importAction.to} variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />}>
+                  {importAction.label}
                 </MuiButton>
               )}
               <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>

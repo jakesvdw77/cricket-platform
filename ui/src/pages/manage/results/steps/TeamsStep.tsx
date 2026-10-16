@@ -25,8 +25,13 @@ import { selectTeamPath } from '../../teamSelection/selectionLinks'
 import { regularInningsOf } from '../resultDraftHelpers'
 import { NotSelectedBanner } from '../scorecard/NotSelectedBanner'
 import { OppositionTeamList } from '../scorecard/OppositionTeamList'
+import { ImportGuessBanner } from '../import/ImportGuessBanner'
+import { confirmRuleBased } from '../import/guessSummary'
+import { useImportReview } from '../import/importReviewContext'
+import { UseClosestButton } from '../import/UseClosestButton'
 import { ScorecardPlayerCell } from '../scorecard/ScorecardPlayerCell'
 import { ScorecardStepHeader } from '../scorecard/ScorecardStepHeader'
+import { useGuessActions } from '../scorecard/useGuessActions'
 import { usePlayerActions } from '../scorecard/usePlayerActions'
 import {
   addPlayer,
@@ -81,6 +86,13 @@ export function TeamsStep(props: ScorecardStepProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+      <ImportGuessBanner
+        players={scorecard.players}
+        scorecardSide={side}
+        onScorecardSideChange={onScorecardSideChange}
+        onConfirmAll={() => onReplace(withScorecard(draft, { ...scorecard, players: confirmRuleBased(scorecard.players) }))}
+        disabled={disabled}
+      />
       <ScorecardStepHeader sides={sides} scorecardSide={side} onSideChange={onScorecardSideChange} incomplete={incomplete} label="Who is playing?" />
       <FormSectionHeading icon={<GroupsOutlinedIcon />} title={`${ours?.teamName ?? opposing?.name ?? ''}: who played`} />
       {ours ? (
@@ -127,6 +139,7 @@ function OurSideTeam({
   prefill,
   prefillState,
   onSaveAndNavigate,
+  oursSides,
   ours,
 }: ScorecardStepProps & { ours: OurSide }) {
   const side = ours.side
@@ -216,6 +229,9 @@ function OurSideTeam({
 
   const view: PersonName[] = players.map((player) => scorecardPersonName(player))
   const label = usePlayerLabeler(view)
+  // docs/specs/104: the Guess chips of an imported draft (nothing for any other result).
+  const importReview = useImportReview()
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
   const plannedPeople = new Map((prefillSide?.players ?? []).map((player) => [player.playerProfileId, player]))
 
   const onReorder = (nextIds: string[]) => {
@@ -286,7 +302,8 @@ function OurSideTeam({
       const replaced = plannedPeople.get(player.replacedPlayerProfileId)
       parts.push(replaced ? `replaced ${label({ id: replaced.playerProfileId, firstName: replaced.firstName, lastName: replaced.lastName })}` : 'swapped in')
     }
-    if (player.plannedBattingOrder != null && !player.substitute) parts.push(`planned ${player.plannedBattingOrder}`)
+    // An import builds the list in the file's order, so a planned number would read as a mistake beside it.
+    if (player.plannedBattingOrder != null && !player.substitute && importReview.provider === null) parts.push(`planned ${player.plannedBattingOrder}`)
     return parts.length > 0 ? parts.join(' · ') : null
   }
 
@@ -296,11 +313,21 @@ function OurSideTeam({
   const notice = ourTeamNotice(prefillSide, scorecard, side, prefillState === 'ready')
 
   const typeChips = (player: ResultPlayer) => (
-    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: { xs: 'wrap', sm: 'nowrap' }, minWidth: 0 }}>
+      <Chip size="small" label={player.playerProfileId ? 'Registered' : 'Guest'} sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
       {duplicates.has(playerRowKey(player)) && (
         <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem' }} />
       )}
+      {(() => {
+        const guess = guesses.guessOf(player)
+        if (!guess?.closest) return null
+        if (guess.onUseClosest) return <UseClosestButton guess={guess} disabled={disabled} />
+        return (
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0, fontSize: '0.75rem' }}>
+            Closest: {guess.closest.displayName}
+          </Typography>
+        )
+      })()}
     </Box>
   )
 
@@ -313,6 +340,8 @@ function OurSideTeam({
       onOpen={(anchor) => actions.openMenu(playerRowKey(player), anchor)}
       duplicate={false}
       disabled={disabled}
+      guess={guesses.guessOf(player)}
+      useClosestInCell={false}
     />
   )
 
@@ -364,6 +393,7 @@ function OurSideTeam({
         columns={[{ id: 'type', header: 'Type', render: typeChips }]}
         renderPlayer={nameCell}
         renderPosition={(player, index) => (player.substitute ? '–' : index + 1)}
+        isRowFlagged={(player) => guesses.guessOf(player) !== undefined}
         reorder={reorder}
         reorderDisabled={disabled}
         hideHelp
@@ -386,6 +416,7 @@ function OurSideTeam({
       </Box>
 
       {actions.host}
+      {guesses.host}
 
       <ConfirmDialog
         open={resetOpen}

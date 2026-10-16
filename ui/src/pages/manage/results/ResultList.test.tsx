@@ -146,6 +146,25 @@ describe('ResultList', () => {
     expect(screen.getByText('4 matches are waiting for a result.')).toBeInTheDocument()
   })
 
+  it('offers Import result beside Capture result, and opens the import wizard', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: 'Import result' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Capture result' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Import result' }))
+    expect(await screen.findByText('At: /manage/results/import')).toBeInTheDocument()
+  })
+
+  it('offers Import result in the first-run empty state too', async () => {
+    listResults.mockResolvedValue(makePage([]))
+    renderPage()
+
+    await screen.findByText('No results yet')
+    // The header's action and the empty state's own.
+    expect(screen.getAllByRole('button', { name: 'Import result' })).toHaveLength(2)
+  })
+
   it('says nothing is waiting when there are no awaiting matches', async () => {
     listResults.mockResolvedValue(makePage([]))
     getResultsSummary.mockResolvedValue({ ...SUMMARY, awaiting: 0 })
