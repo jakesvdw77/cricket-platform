@@ -9,7 +9,7 @@ import type { ImportNote } from '../../../api/resultImportApi'
 import { baseTheme } from '../../../theme'
 import ResultCapturePage from './ResultCapturePage'
 import { saveImportNotes } from './import/importNotesStore'
-import { makeMatch, makeResult } from './resultTestUtils'
+import { innings, makeMatch, makeResult } from './resultTestUtils'
 
 // docs/specs/104 Test Plan (frontend): what the capture wizard shows for an imported draft: the Imported chip, the notice,
 // the Guess chips and the Teams banner, Confirm all, Change and the one-tap "Change to <closest>", and Review's blocking error.
@@ -197,6 +197,56 @@ describe('an imported draft in the capture wizard', () => {
     it('is not shown when the wizard is opened any other way', async () => {
       await open()
       expect(screen.queryByText(/Draft created from the import/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('the toss warning', () => {
+    const noToss = () =>
+      getMatchResult.mockResolvedValue(storedDraft({ tossWonBy: null, tossDecision: null, innings: [innings(1, 'AWAY', 150, 8), innings(2, 'HOME', 151, 4)] }))
+
+    it('says in the notice that the toss was not in the file and why it matters', async () => {
+      noToss()
+      renderPage('?imported=1')
+
+      const notice = await screen.findByTestId('import-toss-notice', {}, { timeout: 10000 })
+      expect(notice).toHaveTextContent('The toss was not in the file.')
+      expect(notice).toHaveTextContent('runs or by wickets')
+    })
+
+    it('puts a warning card at the top of the Toss step naming the side the file had batting first', async () => {
+      noToss()
+      const user = await open()
+      await user.click(step('Toss and field'))
+
+      const warning = await screen.findByTestId('import-toss-warning')
+      expect(warning).toHaveTextContent('Toss not recorded')
+      expect(warning).toHaveTextContent('The file did not say who won the toss.')
+      expect(warning).toHaveTextContent('batted first')
+      expect(warning).toHaveTextContent('win by wickets will be shown as a win by runs')
+    })
+
+    it('says the decision is missing when only the winner of the toss is known', async () => {
+      getMatchResult.mockResolvedValue(storedDraft({ tossWonBy: 'HOME', tossDecision: null, innings: [innings(1, 'HOME', 150, 8), innings(2, 'AWAY', 151, 4)] }))
+      const user = await open()
+      await user.click(step('Toss and field'))
+
+      expect(await screen.findByTestId('import-toss-warning')).toHaveTextContent('The toss decision (bat or bowl) is missing.')
+    })
+
+    it('shows nothing when the toss is complete, or for a manual result', async () => {
+      getMatchResult.mockResolvedValue(storedDraft({ tossWonBy: 'HOME', tossDecision: 'BAT', innings: [innings(1, 'HOME', 150, 8), innings(2, 'AWAY', 151, 4)] }))
+      const user = await open('?imported=1')
+      expect(screen.queryByTestId('import-toss-notice')).not.toBeInTheDocument()
+      await user.click(step('Toss and field'))
+      await screen.findByText('Who won the toss?')
+      expect(screen.queryByTestId('import-toss-warning')).not.toBeInTheDocument()
+    })
+
+    it('never appears on a manual result with no toss', async () => {
+      getMatchResult.mockResolvedValue(storedDraft({ source: 'MANUAL', tossWonBy: null, tossDecision: null, innings: [] }))
+      renderPage('?imported=1')
+      await screen.findByRole('heading', { name: 'Edit result' }, { timeout: 10000 })
+      expect(screen.queryByTestId('import-toss-notice')).not.toBeInTheDocument()
     })
   })
 

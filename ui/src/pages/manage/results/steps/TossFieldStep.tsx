@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { Box, ToggleButton, Typography } from '@mui/material'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { FieldPicker } from '../../../../components/FieldPicker'
 import type { FieldPickerValue } from '../../../../components/FieldPicker'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
+import { InfoCard } from '../../../../components/InfoCard'
 import { Input } from '../../../../components/Input'
 import { OversInput } from '../../../../components/OversInput'
 import { SidePicker } from '../../../../components/SidePicker'
 import type { TossDecision } from '../../../../api/matchResultApi'
-import { withToss } from '../resultDraftHelpers'
+import { useImportReview } from '../import/importReviewContext'
+import { regularInningsOf, tossIncomplete, withToss } from '../resultDraftHelpers'
 import { sidePickerOptions } from './sidePickerOptions'
 import type { StepProps } from './stepTypes'
 
@@ -34,9 +37,26 @@ export interface TossFieldStepProps extends StepProps {
 export function TossFieldStep({ clubId, draft, onChange, onReplace, sides, disabled, field, fieldChanged, onFieldChange, leagueScheduledBalls }: TossFieldStepProps) {
   const [picking, setPicking] = useState(false)
   const ballsPerOver = draft.ballsPerOver ?? 6
+  // docs/specs/104: the import could not say who won the toss, so the order of play is only what the file listed.
+  const imported = useImportReview().provider !== null
+  const firstSide = regularInningsOf(draft).find((item) => item.sequence === 1)?.battingSide ?? null
+  const firstName = sides.find((side) => side.side === firstSide)?.name ?? null
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {imported && tossIncomplete(draft) && (
+        <InfoCard tone="warning" title="Toss not recorded" icon={<ReportProblemOutlinedIcon />} testId="import-toss-warning">
+          <Typography variant="body2">
+            {draft.tossWonBy
+              ? 'The toss decision (bat or bowl) is missing. '
+              : 'The file did not say who won the toss. '}
+            {firstName
+              ? `The order of play is taken from the file: ${firstName} batted first. `
+              : 'The order of play is taken from the file. '}
+            Check it before you publish. If the wrong side is shown as batting first, a win by wickets will be shown as a win by runs, or the other way round.
+          </Typography>
+        </InfoCard>
+      )}
       <FormSectionHeading icon={<SportsCricketOutlinedIcon />} title="Toss" />
       <Box>
         <Typography sx={labelSx}>Who won the toss?</Typography>

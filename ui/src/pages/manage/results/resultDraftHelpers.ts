@@ -23,6 +23,10 @@ export function blankInnings(sequence: number, battingSide: ResultSide): Innings
   }
 }
 
+// docs/specs/104: an imported draft whose toss is missing or only half given. The order of play then comes from the file alone,
+// and a wrong order turns a win by wickets into a win by runs, so the wizard points it out.
+export const tossIncomplete = (draft: Pick<ResultDraft, 'tossWonBy' | 'tossDecision'>): boolean => !draft.tossWonBy || !draft.tossDecision
+
 export const regularInningsOf = (draft: ResultDraft): Innings[] =>
   (draft.innings ?? []).filter((innings) => !isSuperOver(innings))
 

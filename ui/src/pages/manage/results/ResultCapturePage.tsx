@@ -31,7 +31,7 @@ import { formatMatchDateTime } from '../../../utils/matchDateTime'
 import { checkMargin } from '../../../utils/marginCheck'
 import { errorIssues, errorList, errorStatus, isNotFound } from '../../../utils/errorDetail'
 import type { MarginCheck } from '../../../utils/marginCheck'
-import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromToss, hasRegularFigures, isBlankDraft, scorecardStepsApplicable, toPayload } from './resultDraftHelpers'
+import { applyBattingOrder, applySuggestion, draftFromResult, firstBatterFromToss, hasRegularFigures, isBlankDraft, scorecardStepsApplicable, tossIncomplete, toPayload } from './resultDraftHelpers'
 import { ownSidesOf, resultSides, resultViewTo } from './resultListHelpers'
 import { defaultSideFor, mergeSuggestions, normalizeLoaded } from './scorecardDraft'
 import { withCalculatedMargin } from './calculatedMargin'
@@ -414,6 +414,11 @@ function CaptureWizard({
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <span>Draft created from the import. Nothing is published yet: check the names marked Guess, then review and publish.</span>
+              {tossIncomplete(draft) && (
+                <span data-testid="import-toss-notice">
+                  <strong>The toss was not in the file.</strong> Check who batted first on the Toss step: a wrong order changes whether the win is by runs or by wickets.
+                </span>
+              )}
               <ImportNotesList notes={otherNotes} />
             </Box>
           </Alert>
