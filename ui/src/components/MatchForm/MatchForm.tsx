@@ -7,6 +7,7 @@ import { FormSectionHeading } from '../FormSectionHeading'
 import { FieldPicker } from '../FieldPicker'
 import type { FieldPickerValue } from '../FieldPicker'
 import { Input } from '../Input'
+import { DateTimeField } from '../DateTimeField'
 import { MatchSideFields } from './MatchSideFields'
 import type { SideMode, SideState } from './MatchSideFields'
 import type { MatchPayload } from '../../api/matchApi'
@@ -349,14 +350,12 @@ export function MatchForm({
             ))}
           </Input>
 
-          <Input
+          <DateTimeField
             label="Match date & time"
-            type="datetime-local"
             value={values.matchDate}
-            onChange={(event) => setValues((prev) => ({ ...prev, matchDate: event.target.value }))}
+            onChange={(matchDate) => setValues((prev) => ({ ...prev, matchDate }))}
             error={Boolean(errors.matchDate)}
             helperText={errors.matchDate}
-            InputLabelProps={{ shrink: true }}
           />
 
           <Box>

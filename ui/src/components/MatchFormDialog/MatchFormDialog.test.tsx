@@ -7,6 +7,7 @@ import { baseTheme } from '../../theme'
 import { makeMatch } from '../../pages/manage/matches/matchTestUtils'
 import { MatchFormDialog } from './MatchFormDialog'
 import type { MatchFormDialogProps } from './MatchFormDialog'
+import { expectDateTime } from '../../test/dateTimeField'
 
 const createMatch = vi.fn()
 const listTeamsForClub = vi.fn()
@@ -57,7 +58,7 @@ describe('MatchFormDialog', () => {
     expect(await screen.findByText('Filled in from the file.')).toBeInTheDocument()
     expect(await screen.findByLabelText('Home opponent name')).toHaveValue('Northgate Strollers')
     expect(screen.getByLabelText('Away opponent name')).toHaveValue('Riverside Occasionals')
-    expect(screen.getByLabelText('Match date & time')).toHaveValue('2026-10-11T13:00')
+    expectDateTime('Match date & time', '2026-10-11T13:00')
     await waitFor(() => expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27'))
   })
 
@@ -89,7 +90,7 @@ describe('MatchFormDialog', () => {
     listSeasons.mockResolvedValue([season('season-1', '2026/27', '2026-09-01', '2027-04-30'), season('season-2', 'Summer 2026', '2026-10-01', '2026-12-31')])
     renderDialog({ inferSeason: true, initialValues: { matchDate: new Date(2026, 9, 11, 13, 0).toISOString() } })
 
-    await screen.findByLabelText('Match date & time')
+    await screen.findByLabelText('Match date & time (date)')
     expect(screen.getByLabelText('Season')).not.toHaveTextContent('2026')
   })
 
