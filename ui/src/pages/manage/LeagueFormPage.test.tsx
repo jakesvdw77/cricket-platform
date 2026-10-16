@@ -28,12 +28,14 @@ const getPlayingConditions = vi.fn()
 const uploadPlayingConditions = vi.fn()
 const updatePlayingConditions = vi.fn()
 const listLeagueContacts = vi.fn()
+const getLeagueAgeReference = vi.fn()
 
 vi.mock('../../api/leagueApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/leagueApi')>()
   return {
     ...actual,
     listLeagues: (clubId: string) => listLeagues(clubId),
+    getLeagueAgeReference: (...args: unknown[]) => getLeagueAgeReference(...args),
     createLeague: (clubId: string, payload: unknown) => createLeague(clubId, payload),
     updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
     deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
@@ -108,7 +110,8 @@ function makeLeague(overrides: Partial<League> = {}): League {
     maxPlayingXiSize: 11,
     minAge: null,
     maxAge: null,
-    ageCutoffDate: null,
+    ageCutoffMonth: null,
+    ageCutoffDay: null,
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -222,6 +225,7 @@ beforeEach(() => {
   listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
   getPlayingConditions.mockResolvedValue(null)
   listLeagueContacts.mockResolvedValue([])
+  getLeagueAgeReference.mockRejectedValue(new Error('no reference'))
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -301,6 +305,54 @@ describe('LeagueFormPage', () => {
   // through to the form on the edit path, LeagueForm.test.tsx's own "prefills the Basic Info tab
   // from initialValues" test already proves LeagueForm renders these correctly given the right
   // props; this proves LeagueFormPage actually passes them.
+  // docs/specs/110: the age cut-off day and month round trip, and the page shows the date ages are judged on.
+  it('edit mode: prefills the cut-off month and day, and shows the date ages are judged on', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', maxAge: 15, ageCutoffMonth: 12, ageCutoffDay: 31 })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+    getLeagueAgeReference.mockResolvedValue({
+      referenceDate: '2026-12-31',
+      source: 'CUTOFF',
+      leagueStart: '2026-09-05',
+      leagueStartSource: 'FIRST_MATCH',
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.getByLabelText('Cut-off month (optional)')).toHaveTextContent('December')
+    expect(screen.getByLabelText('Cut-off day (optional)')).toHaveTextContent('31')
+    expect(await screen.findByTestId('league-age-reference')).toHaveTextContent('Ages are judged on 31 Dec 2026 (the cut-off)')
+    expect(getLeagueAgeReference).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1')
+  })
+
+  it('edit mode: the day the league starts is named when there is no cut-off', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', minAge: 12 })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+    getLeagueAgeReference.mockResolvedValue({
+      referenceDate: '2027-07-14',
+      source: 'LEAGUE_START',
+      leagueStart: '2027-07-14',
+      leagueStartSource: 'SEASON_START',
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    expect(await screen.findByTestId('league-age-reference')).toHaveTextContent(
+      'Ages are judged on 14 Jul 2027 (the day the league starts)',
+    )
+  })
+
+  it('edit mode: no age line for a league without an age limit', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
+    expect(getLeagueAgeReference).not.toHaveBeenCalled()
+  })
+
   it('edit mode: prefills the form with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
     listLeagues.mockResolvedValue([
       makeLeague({

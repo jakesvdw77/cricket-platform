@@ -28,7 +28,15 @@ export const NewLeague: Story = {
 export const AgeRestrictedLeague: Story = {
   args: {
     onSubmit: () => undefined,
-    initialValues: { name: 'Junior U15 League', maxPlayingXiSize: 11, minAge: 13, maxAge: 15, ageCutoffDate: '2026-12-31' },
+    initialValues: { name: 'Junior U15 League', maxPlayingXiSize: 11, minAge: 13, maxAge: 15, ageCutoffMonth: 12, ageCutoffDay: 31 },
+  },
+}
+
+// docs/specs/110: a winter league judges ages on the day it starts, so it has limits and no cut-off.
+export const WinterLeagueNoCutoff: Story = {
+  args: {
+    onSubmit: () => undefined,
+    initialValues: { name: 'Winter League', maxPlayingXiSize: 11, minAge: 12, maxAge: 14 },
   },
 }
 
