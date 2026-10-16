@@ -14,3 +14,6 @@ export const Empty: Story = {}
 export const PrefilledFromAGuestName: Story = { args: { initialFirstName: 'Jan', initialLastName: 'van der Berg' } }
 export const Saving: Story = { args: { initialFirstName: 'Jan', initialLastName: 'van der Berg', pending: true } }
 export const ServerError: Story = { args: { initialFirstName: 'Jan', initialLastName: 'van der Berg', error: 'A player with this name and date of birth already exists.' } }
+export const WithSectionAgeLimit: Story = {
+  args: { initialFirstName: 'Jan', initialLastName: 'van der Berg', section: { name: 'U15', minAge: null, maxAge: 15 } },
+}

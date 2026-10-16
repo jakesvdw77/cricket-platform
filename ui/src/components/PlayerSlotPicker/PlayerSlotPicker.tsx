@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
 import { createPlayer, linkPlayerSection, listPlayers } from '../../api/playerApi'
+import { listSections } from '../../api/sectionApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { errorDetail } from '../../utils/errorDetail'
@@ -268,6 +269,13 @@ function PickerBody({
     },
   })
   const guessedName = splitGuestName(newPlayer?.name)
+  // The section's age limits guide the date of birth; a failed lookup just means no guidance.
+  const sectionsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'sections'],
+    queryFn: () => listSections(clubId),
+    enabled: scope === 'new' && Boolean(newPlayer?.sectionId),
+  })
+  const newPlayerSection = sectionsQuery.data?.find((candidate) => candidate.id === newPlayer?.sectionId) ?? null
 
   const squadQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
@@ -372,6 +380,7 @@ function PickerBody({
         <PlayerQuickForm
           initialFirstName={guessedName.firstName}
           initialLastName={guessedName.lastName}
+          section={newPlayerSection}
           submitLabel="Create and link"
           pending={createMutation.isPending}
           error={createMutation.isError ? errorDetail(createMutation.error, 'The player could not be created. Please try again.') : null}
