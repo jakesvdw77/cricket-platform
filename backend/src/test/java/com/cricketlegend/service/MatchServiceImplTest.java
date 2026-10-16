@@ -109,6 +109,9 @@ class MatchServiceImplTest {
     @Mock
     private com.cricketlegend.service.support.ResultStatusResolver resultStatusResolver;
 
+    @Mock
+    private com.cricketlegend.repository.LeagueSeasonRepository leagueSeasonRepository;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -121,7 +124,8 @@ class MatchServiceImplTest {
                 new com.cricketlegend.service.support.SelectionLimitsResolver(
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
-                accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver);
+                accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver,
+                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository));
     }
 
     private MatchDto dummyDto() {
@@ -1968,5 +1972,126 @@ class MatchServiceImplTest {
         assertThatThrownBy(() -> matchService.requireAdministrableMatch(authentication, cardClubId, matchId))
                 .isInstanceOf(NotFoundException.class);
         verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+    }
+
+    // --- docs/specs/111-league-season-dates.md: a match honours its league season's dates ---
+
+    private static Instant at(int year, int month, int day) {
+        return LocalDate.of(year, month, day).atTime(15, 30).atZone(java.time.ZoneId.systemDefault()).toInstant();
+    }
+
+    /** A league and season of one club, with dates 1 Sep 2026 to 31 Jul 2027 when {@code withDates}. */
+    private UUID[] leagueSeasonFixture(UUID clubId, boolean withDates) {
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        when(leagueSeasonRepository.findByLeagueIdAndSeasonId(leagueId, seasonId)).thenReturn(withDates
+                ? Optional.of(com.cricketlegend.domain.LeagueSeason.builder().leagueId(leagueId).seasonId(seasonId)
+                        .startDate(LocalDate.of(2026, 9, 1)).endDate(LocalDate.of(2027, 7, 31)).build())
+                : Optional.empty());
+        return new UUID[] {leagueId, seasonId};
+    }
+
+    private CreateMatchRequest leagueMatch(UUID[] ids, Instant when) {
+        return new CreateMatchRequest(
+                null, "Home Occasionals", null, "Away Occasionals", null, null, ids[0], ids[1], when, null, null, null,
+                null, null, null);
+    }
+
+    private void stubSave() {
+        ArgumentCaptor<Match> captor = ArgumentCaptor.forClass(Match.class);
+        when(matchRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        when(matchMapper.toDto(any(Match.class))).thenReturn(dummyDto());
+    }
+
+    @Test
+    void createInsideTheLeagueSeasonDatesSucceedsIncludingBothBoundaryDays() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+        stubSave();
+
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 12, 5)));
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 9, 1)));
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2027, 7, 31)));
+
+        verify(matchRepository, times(3)).save(any());
+    }
+
+    @Test
+    void createTheDayBeforeTheStartOrAfterTheEndIsRefusedNamingTheDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 8, 31))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, leagueMatch(ids, at(2027, 8, 1))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithNoDatesForTheLeagueSeasonIsNotChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, false);
+        stubSave();
+
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2020, 1, 1)));
+
+        verify(matchRepository).save(any());
+    }
+
+    @Test
+    void createAFriendlyWithNoLeagueIsNeverChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        stubSave();
+
+        matchService.create(authentication, clubId, new CreateMatchRequest(
+                null, "Home", null, "Away", null, null, null, seasonId, at(2020, 1, 1), null, null, null, null, null,
+                null));
+
+        verify(matchRepository).save(any());
+        verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
+    }
+
+    private UpdateMatchRequest updateTo(UUID[] ids, Instant when) {
+        return new UpdateMatchRequest(
+                null, "Home Occasionals", null, "Away Occasionals", null, null, ids[0], ids[1], when, null, null, null,
+                null, null, null);
+    }
+
+    @Test
+    void updateMovingAMatchOutsideTheDatesIsRefusedAndInsideIsAccepted() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+
+        assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, updateTo(ids, at(2027, 8, 1))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class);
+        verify(matchRepository, never()).save(any());
+
+        stubSave();
+        matchService.update(authentication, clubId, matchId, updateTo(ids, at(2027, 7, 31)));
+        verify(matchRepository).save(any());
+    }
+
+    @Test
+    void deactivatingAndReactivatingNeverChecksTheDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match match = existingMatch(matchId, clubId, true);
+        match.setLeagueId(UUID.randomUUID());
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        stubSave();
+
+        matchService.deactivate(authentication, clubId, matchId);
+        matchService.reactivate(authentication, clubId, matchId);
+
+        verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
     }
 }

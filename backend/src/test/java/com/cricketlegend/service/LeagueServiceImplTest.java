@@ -112,7 +112,7 @@ class LeagueServiceImplTest {
         leagueService = new LeagueServiceImpl(
                 leagueRepository, seasonRepository, leagueAffiliationRepository,
                 leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, teamSquadMemberRepository,
-                leagueContactRepository, leagueMapper, new LeagueAgeReference(matchRepository, seasonRepository));
+                leagueContactRepository, leagueMapper, new LeagueAgeReference(matchRepository, seasonRepository, org.mockito.Mockito.mock(com.cricketlegend.repository.LeagueSeasonRepository.class)));
     }
 
     private LeagueDto dummyDto() {

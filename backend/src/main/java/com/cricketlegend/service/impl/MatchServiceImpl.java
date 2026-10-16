@@ -38,6 +38,7 @@ import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.SelectionLimitsResolver;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
+import com.cricketlegend.service.support.LeagueSeasonDates;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultStatusResolver;
 import com.cricketlegend.service.support.ServerClock;
@@ -97,6 +98,7 @@ public class MatchServiceImpl implements MatchService {
     private final PlayingAreaRepository playingAreaRepository;
     private final PlayingAreaMatchResolver playingAreaMatchResolver;
     private final ResultStatusResolver resultStatusResolver;
+    private final LeagueSeasonDates leagueSeasonDates;
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
@@ -113,7 +115,8 @@ public class MatchServiceImpl implements MatchService {
             AccessService accessService,
             PlayingAreaRepository playingAreaRepository,
             PlayingAreaMatchResolver playingAreaMatchResolver,
-            ResultStatusResolver resultStatusResolver) {
+            ResultStatusResolver resultStatusResolver,
+            LeagueSeasonDates leagueSeasonDates) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
@@ -129,6 +132,7 @@ public class MatchServiceImpl implements MatchService {
         this.playingAreaRepository = playingAreaRepository;
         this.playingAreaMatchResolver = playingAreaMatchResolver;
         this.resultStatusResolver = resultStatusResolver;
+        this.leagueSeasonDates = leagueSeasonDates;
     }
 
     @Override
@@ -544,6 +548,8 @@ public class MatchServiceImpl implements MatchService {
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
                 request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
+        // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
+        leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
         LeagueTeam homeLeagueTeam = resolveLeagueTeam(
                 clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
@@ -595,6 +601,8 @@ public class MatchServiceImpl implements MatchService {
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
                 request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
+        // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
+        leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
         LeagueTeam homeLeagueTeam = resolveLeagueTeam(
                 clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),

@@ -1365,6 +1365,99 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AgeReferenceDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates:
+    get:
+      tags:
+      - league-season-dates-controller
+      summary: The start and end date of the league in the season (docs/specs/111).
+      operationId: leagueSeasonDates
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueSeasonDatesDto"
+        "404":
+          description: Another club's league or season, or no dates set yet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+      - league-season-dates-controller
+      summary: Create or replace the dates (docs/specs/111). 409 when an active match of the league in the season would fall outside them.
+      operationId: updateLeagueSeasonDates
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueSeasonDatesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueSeasonDatesDto"
+        "400":
+          description: A date is missing or the start is after the end
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Another club's league or season
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: An active match of this league in this season would fall outside the new dates
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
     get:
       tags:
@@ -6862,6 +6955,9 @@ components:
         instance:
           type: string
           format: uri
+        code:
+          type: string
+          description: "On a 400 for a match outside its league season's dates (docs/specs/111): MATCH_OUTSIDE_LEAGUE_DATES."
         triesLeft:
           type: integer
           format: int32
@@ -7312,6 +7408,33 @@ components:
           format: date
         leagueStartSource:
           type: string
+          description: "LEAGUE_SEASON_DATES (docs/specs/111), FIRST_MATCH or SEASON_START."
+          enum:
+          - LEAGUE_SEASON_DATES
+          - FIRST_MATCH
+          - SEASON_START
+    LeagueSeasonDatesDto:
+      type: object
+      description: The start and end date of a league in a season (docs/specs/111).
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+    UpdateLeagueSeasonDatesRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - endDate
+      - startDate
     SocialLinkDto:
       type: object
       properties:

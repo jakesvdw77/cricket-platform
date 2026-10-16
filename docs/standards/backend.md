@@ -80,7 +80,11 @@ Import rules (spec 104):
 
 ## Age reference date (spec 110)
 
-- **The date a league judges ages on is computed only by `LeagueAgeReference`** (`service.support`): the league's cut-off day and month in the calendar year the league starts in that season (first active match, else the season start), or the league start itself when there is no cut-off. `SelectionEligibility`, `TeamSelectionBatchRules` and the age-reference-date endpoint all call it; never recompute the date elsewhere, and use its batch method (`ofAll`) rather than one query per match.
+- **The date a league judges ages on is computed only by `LeagueAgeReference`** (`service.support`): the league's cut-off day and month in the calendar year the league starts in that season (the league season start date if set (spec 111), else the first active match, else the season start), or the league start itself when there is no cut-off. `SelectionEligibility`, `TeamSelectionBatchRules` and the age-reference-date endpoint all call it; never recompute the date elsewhere, and use its batch method (`ofAll`) rather than one query per match.
+
+## League season dates (spec 111)
+
+- **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create and update and by any future path that creates matches (the schedule import's batch create); it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate or reactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
 
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 

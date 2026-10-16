@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.exception.NotFoundException;
+import com.cricketlegend.domain.LeagueSeason;
+import com.cricketlegend.repository.LeagueSeasonRepository;
 import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.MatchRepository.LeagueSeasonFirstMatch;
 import com.cricketlegend.repository.SeasonRepository;
@@ -45,6 +47,9 @@ class LeagueAgeReferenceTest {
     @Mock
     private SeasonRepository seasonRepository;
 
+    @Mock
+    private LeagueSeasonRepository leagueSeasonRepository;
+
     private LeagueAgeReference reference;
     private final UUID seasonId = UUID.randomUUID();
     private final Season season = Season.builder().id(seasonId).clubId(UUID.randomUUID()).label("2026/27")
@@ -52,7 +57,7 @@ class LeagueAgeReferenceTest {
 
     @BeforeEach
     void setUp() {
-        reference = new LeagueAgeReference(matchRepository, seasonRepository);
+        reference = new LeagueAgeReference(matchRepository, seasonRepository, leagueSeasonRepository);
     }
 
     private static League league(Integer month, Integer day) {
@@ -169,11 +174,63 @@ class LeagueAgeReferenceTest {
         assertThat(noMatches.leagueStartSource()).isEqualTo(StartSource.SEASON_START);
         verify(matchRepository, times(1)).findFirstMatchDates(any(), any());
         verify(seasonRepository, times(1)).findAllById(any());
+        verify(leagueSeasonRepository, times(1)).findByLeagueIdInAndSeasonIdIn(any(), any());
+    }
+
+    // --- docs/specs/111-league-season-dates.md: the explicit start comes first ---
+
+    private static LeagueSeason dates(League league, UUID seasonId, LocalDate start) {
+        return LeagueSeason.builder().leagueId(league.getId()).seasonId(seasonId).startDate(start)
+                .endDate(start.plusMonths(10)).build();
+    }
+
+    @Test
+    void theLeagueSeasonStartDateIsPreferredToTheFirstMatch() {
+        League club = league(12, 31);
+        when(leagueSeasonRepository.findByLeagueIdAndSeasonId(club.getId(), seasonId))
+                .thenReturn(Optional.of(dates(club, seasonId, LocalDate.of(2027, 3, 1))));
+        firstMatchAt(club, on(2026, 9, 5));
+
+        Reference result = reference.of(club, season);
+
+        assertThat(result).isEqualTo(new Reference(LocalDate.of(2027, 12, 31), Source.CUTOFF,
+                LocalDate.of(2027, 3, 1), StartSource.LEAGUE_SEASON_DATES));
+    }
+
+    @Test
+    void theLeagueSeasonStartDateIsPreferredToTheSeasonStartWithNoMatches() {
+        League none = league(null, null);
+        when(leagueSeasonRepository.findByLeagueIdAndSeasonId(none.getId(), seasonId))
+                .thenReturn(Optional.of(dates(none, seasonId, LocalDate.of(2026, 10, 10))));
+
+        Reference result = reference.of(none, season);
+
+        assertThat(result).isEqualTo(new Reference(LocalDate.of(2026, 10, 10), Source.LEAGUE_START,
+                LocalDate.of(2026, 10, 10), StartSource.LEAGUE_SEASON_DATES));
+    }
+
+    @Test
+    void theBatchPrefersTheExplicitStartPerPairWithOneExtraQuery() {
+        League club = league(null, null);
+        League other = league(null, null);
+        when(seasonRepository.findAllById(any())).thenReturn(List.of(season));
+        when(matchRepository.findFirstMatchDates(any(), any())).thenReturn(List.of(
+                first(club, seasonId, on(2026, 9, 5)), first(other, seasonId, on(2026, 9, 6))));
+        when(leagueSeasonRepository.findByLeagueIdInAndSeasonIdIn(any(), any()))
+                .thenReturn(List.of(dates(club, seasonId, LocalDate.of(2026, 9, 1))));
+
+        Map<Key, Reference> result = reference.ofAll(Map.of(club.getId(), club, other.getId(), other),
+                Set.of(new Key(club.getId(), seasonId), new Key(other.getId(), seasonId)));
+
+        assertThat(result.get(new Key(club.getId(), seasonId)).leagueStartSource()).isEqualTo(StartSource.LEAGUE_SEASON_DATES);
+        assertThat(result.get(new Key(club.getId(), seasonId)).leagueStart()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(result.get(new Key(other.getId(), seasonId)).leagueStartSource()).isEqualTo(StartSource.FIRST_MATCH);
+        verify(leagueSeasonRepository, times(1)).findByLeagueIdInAndSeasonIdIn(any(), any());
     }
 
     @Test
     void theBatchOfNothingMakesNoQueries() {
         assertThat(reference.ofAll(Map.of(), Set.of())).isEmpty();
-        org.mockito.Mockito.verifyNoInteractions(matchRepository, seasonRepository);
+        org.mockito.Mockito.verifyNoInteractions(matchRepository, seasonRepository, leagueSeasonRepository);
     }
 }

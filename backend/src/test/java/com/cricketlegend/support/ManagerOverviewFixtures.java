@@ -377,6 +377,7 @@ public final class ManagerOverviewFixtures {
                 "delete from section_availability_window_match where window_id in (" + windows + ")",
                 "delete from match where club_id in (" + clubs + ")",
                 "delete from league_social_link where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_season where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_playing_conditions where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_contact where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_team where league_id in (select id from league where club_id in (" + clubs + "))",

@@ -87,7 +87,7 @@ class SelectionEligibilityTest {
     @BeforeEach
     void setUp() {
         eligibility = new SelectionEligibility(playerProfileRepository, personRepository, teamSquadMemberRepository,
-                playerSectionRepository, leagueRepository, new LeagueAgeReference(matchRepository, seasonRepository),
+                playerSectionRepository, leagueRepository, new LeagueAgeReference(matchRepository, seasonRepository, org.mockito.Mockito.mock(com.cricketlegend.repository.LeagueSeasonRepository.class)),
                 accessService);
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(Set.of(sectionId, childSectionId));
     }
