@@ -259,16 +259,24 @@ describe('Source step', () => {
     expect(previewImport).toHaveBeenCalledTimes(2)
   })
 
-  it('shows the Convert with your own AI helper only when the selected source has a prompt', async () => {
+  it('offers an Other tab with the AI conversion prompt only when the selected source has one, and hides Continue there', async () => {
     const user = userEvent.setup()
     getImportCatalogue.mockResolvedValue(makeCatalogue([jsonAdaptor, pdfAdaptor]))
     renderImportPage()
 
     await user.click((await sources()).getByRole('radio', { name: /Cricket Legend JSON/ }))
-    expect(screen.getByRole('button', { name: /Convert it with your own AI/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Convert it with your own AI/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Other' }))
+    expect(screen.getByLabelText('Conversion prompt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Paste' }))
+    expect(screen.getByLabelText('Pasted result content')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
 
     await user.click((await sources()).getByRole('radio', { name: /Scorebook PDF/ }))
-    expect(screen.queryByRole('button', { name: /Convert it with your own AI/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Other' })).not.toBeInTheDocument()
   })
 
   it('shows an empty state when no source is registered', async () => {

@@ -8,7 +8,7 @@ import type { ImportCatalogue, ImportPreview, ImportResolved } from '../../../..
 export interface SourceState {
   adaptorType: string | null
   format: string | null
-  tab: 'upload' | 'paste'
+  tab: 'upload' | 'paste' | 'other'
   paste: string
   file: File | null
 }

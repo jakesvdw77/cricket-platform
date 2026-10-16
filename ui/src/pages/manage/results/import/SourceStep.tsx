@@ -35,7 +35,9 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
   const adaptor = catalogue.adaptors.find((candidate) => candidate.type === source.adaptorType)
   const input = chosenInput(adaptor, source.format)
   const pasteAllowed = Boolean(input?.acceptsPaste)
-  const tab = pasteAllowed ? source.tab : 'upload'
+  const prompt = adaptor?.conversionPrompt ?? null
+  // Other holds the "convert it with your own AI" prompt, so it exists only for a source that has one.
+  const tab = source.tab === 'other' ? (prompt ? 'other' : 'upload') : pasteAllowed ? source.tab : 'upload'
   const limit = catalogue.limits.maxPasteCharacters
   const over = source.paste.length > limit
   const sourceName = adaptor?.displayName
@@ -100,12 +102,6 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
         }))}
       />
 
-      {adaptor?.conversionPrompt && (
-        <Box>
-          <ConvertWithAiHelper prompt={adaptor.conversionPrompt} />
-        </Box>
-      )}
-
       {adaptor && adaptor.inputs.length > 1 && (
         <CompactToggleGroup<string> value={input?.format ?? ''} onChange={(format) => onSourceChange({ format, file: null })} ariaLabel="File format" fullWidthOnPhone>
           {adaptor.inputs.map((candidate) => (
@@ -118,10 +114,11 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
 
       {adaptor && input && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
-          {pasteAllowed ? (
-            <Tabs value={tab} onChange={(_event, value: 'upload' | 'paste') => onSourceChange({ tab: value })} aria-label="How to provide the result" variant="fullWidth" sx={viewTabsSx}>
+          {pasteAllowed || prompt ? (
+            <Tabs value={tab} onChange={(_event, value: 'upload' | 'paste' | 'other') => onSourceChange({ tab: value })} aria-label="How to provide the result" variant="fullWidth" sx={viewTabsSx}>
               <Tab value="upload" label="Upload file" sx={viewTabSx} disabled={previewing} />
-              <Tab value="paste" label="Paste" sx={viewTabSx} disabled={previewing} />
+              {pasteAllowed && <Tab value="paste" label="Paste" sx={viewTabSx} disabled={previewing} />}
+              {prompt && <Tab value="other" label="Other" sx={viewTabSx} disabled={previewing} />}
             </Tabs>
           ) : (
             <Typography variant="body2" color="text.secondary">
@@ -129,7 +126,9 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
             </Typography>
           )}
 
-          {tab === 'paste' ? (
+          {tab === 'other' && prompt ? (
+            <ConvertWithAiHelper prompt={prompt} />
+          ) : tab === 'paste' ? (
             <Box>
               {input.format === 'JSON' ? (
                 <JsonEditor
@@ -190,6 +189,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
         </Box>
       )}
 
+      {tab !== 'other' && (
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: { xs: 1, md: 2 }, mt: { xs: 1, md: 2 } }}>
         <Button onClick={onContinue} disabled={!canContinue || previewing} sx={{ minHeight: 44, minWidth: { md: 140 } }}>
           {previewing ? 'Reading…' : 'Continue'}
@@ -198,6 +198,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
           Nothing is saved at this step.
         </Typography>
       </Box>
+      )}
     </Box>
   )
 }

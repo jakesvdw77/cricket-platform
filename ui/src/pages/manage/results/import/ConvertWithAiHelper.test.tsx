@@ -17,16 +17,11 @@ const renderHelper = () =>
 afterEach(() => vi.restoreAllMocks())
 
 describe('ConvertWithAiHelper', () => {
-  it('is collapsed by default and opens from its heading', async () => {
-    const user = userEvent.setup()
+  it('shows the instructions, the prompt text and the Copy prompt button straight away', () => {
     renderHelper()
-    const heading = screen.getByRole('button', { name: /Convert it with your own AI/ })
-    expect(heading).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('button', { name: 'Copy prompt' })).not.toBeInTheDocument()
-
-    await user.click(heading)
-    expect(heading).toHaveAttribute('aria-expanded', 'true')
-    expect(await screen.findByRole('button', { name: 'Copy prompt' })).toBeVisible()
+    expect(screen.getByText(/copy this prompt into your own AI chat/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Conversion prompt')).toHaveTextContent('Convert the attached scorecard.')
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeVisible()
   })
 
   it('copies the exact prompt text and announces Copied', async () => {
@@ -36,7 +31,6 @@ describe('ConvertWithAiHelper', () => {
     // Replaced after userEvent.setup(), which installs its own clipboard stub.
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 
-    await user.click(screen.getByRole('button', { name: /Convert it with your own AI/ }))
     await user.click(screen.getByRole('button', { name: 'Copy prompt' }))
 
     expect(writeText).toHaveBeenCalledWith(PROMPT)
@@ -44,35 +38,20 @@ describe('ConvertWithAiHelper', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Copied')
   })
 
-  it('tells the manager when copying failed and points at Show prompt', async () => {
+  it('tells the manager when copying failed and points at the prompt to select', async () => {
     const user = userEvent.setup()
     renderHelper()
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
     // No fallback either: execCommand is unavailable.
     document.execCommand = vi.fn().mockReturnValue(false)
 
-    await user.click(screen.getByRole('button', { name: /Convert it with your own AI/ }))
     await user.click(screen.getByRole('button', { name: 'Copy prompt' }))
 
     expect(await screen.findByText(/Could not copy/)).toBeInTheDocument()
   })
 
-  it('shows and hides the prompt text on request', async () => {
-    const user = userEvent.setup()
+  it('carries the red disclaimer with a warning icon: the file goes to the AI the manager chooses', () => {
     renderHelper()
-    await user.click(screen.getByRole('button', { name: /Convert it with your own AI/ }))
-    expect(screen.queryByLabelText('Conversion prompt')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Show prompt' }))
-    expect(screen.getByLabelText('Conversion prompt')).toHaveTextContent('Convert the attached scorecard.')
-    await user.click(screen.getByRole('button', { name: 'Hide prompt' }))
-    expect(screen.queryByLabelText('Conversion prompt')).not.toBeInTheDocument()
-  })
-
-  it('carries the red disclaimer with a warning icon: the file goes to the AI the manager chooses', async () => {
-    const user = userEvent.setup()
-    renderHelper()
-    await user.click(screen.getByRole('button', { name: /Convert it with your own AI/ }))
 
     const disclaimer = screen.getByText(/Your file goes to the AI you choose, not through us/)
     expect(disclaimer).toHaveTextContent("children's names")
