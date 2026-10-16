@@ -81,6 +81,7 @@ A screen with more than one filter control still uses `ListToolbar.filters` for 
 - **Nothing is saved until Create.** Preview and resolve are stateless calls; the page holds the document and sends it back. An error keeps the pasted text and file (`importErrors.ts` maps each kind).
 - **`GuessChip`** (`components/GuessChip`) marks a name the matcher placed but a person has not confirmed. Confirming goes through `useGuessActions` (one row, or Confirm all for the Normalised level only); the guess flag is read-only in the client apart from clearing it.
 - **Import-only presentation** (the Imported chip, the notes list, the planned batting caption hidden) is driven by `importReviewContext` and `?imported=1`, so manual capture is unchanged.
+- **The JSON paste box is `JsonEditor`** (`components/JsonEditor`, `react-simple-code-editor` plus `prismjs`, colours from theme tokens). Other text formats keep the plain box.
 - **"Convert with your own AI" only provides copyable text** (`ConvertWithAiHelper`). The platform sends nothing to an AI.
 - **Extended shared components, props only:** `DocumentUpload` (`accept`, `maxBytes`, `helperText`, `mode="select"`), `PlayerSlotPicker` (`importedName`, suggestions), `TileChoiceGroup` (per-option `disabled`), `ScorecardGrid` (`isRowFlagged`), `InfoCard` (`tone="warning"`), `BottomSheet` (`aboveDialogs`).
 

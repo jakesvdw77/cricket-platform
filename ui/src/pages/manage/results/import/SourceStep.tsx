@@ -5,6 +5,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { Button } from '../../../../components/Button'
 import { CompactToggleGroup } from '../../../../components/CompactToggleGroup'
 import { DocumentUpload } from '../../../../components/DocumentUpload'
+import { JsonEditor } from '../../../../components/JsonEditor'
 import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { badgeSx } from '../../../../components/RecordCard'
 import { viewTabSx, viewTabsSx } from '../../../../utils/viewTabs'
@@ -130,19 +131,30 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
 
           {tab === 'paste' ? (
             <Box>
-              <TextField
-                multiline
-                minRows={8}
-                maxRows={14}
-                fullWidth
-                value={source.paste}
-                onChange={(event) => onSourceChange({ paste: event.target.value })}
-                disabled={previewing}
-                error={hasProblem || over}
-                placeholder="Paste the result here"
-                inputProps={{ 'aria-label': 'Pasted result content', spellCheck: false }}
-                sx={{ '& textarea': { fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem', lineHeight: 1.5 } }}
-              />
+              {input.format === 'JSON' ? (
+                <JsonEditor
+                  value={source.paste}
+                  onChange={(paste) => onSourceChange({ paste })}
+                  disabled={previewing}
+                  error={hasProblem || over}
+                  placeholder="Paste the result here"
+                  ariaLabel="Pasted result content"
+                />
+              ) : (
+                <TextField
+                  multiline
+                  minRows={8}
+                  maxRows={14}
+                  fullWidth
+                  value={source.paste}
+                  onChange={(event) => onSourceChange({ paste: event.target.value })}
+                  disabled={previewing}
+                  error={hasProblem || over}
+                  placeholder="Paste the result here"
+                  inputProps={{ 'aria-label': 'Pasted result content', spellCheck: false }}
+                  sx={{ '& textarea': { fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem', lineHeight: 1.5 } }}
+                />
+              )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5, gap: 1 }}>
                 {hasExample ? (
                   <Button variant="ghost" size="sm" disabled={previewing} onClick={() => onSourceChange({ paste: adaptor.example ?? '' })} sx={{ minHeight: 44, color: 'info.main', fontWeight: 600, textTransform: 'none' }}>
