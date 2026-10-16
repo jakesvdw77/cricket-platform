@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,6 +10,7 @@ const getMatch = vi.fn()
 const createMatch = vi.fn()
 const updateMatch = vi.fn()
 const deactivateMatch = vi.fn()
+const deleteMatch = vi.fn()
 const reactivateMatch = vi.fn()
 const listTeamsForClub = vi.fn()
 const listSeasons = vi.fn()
@@ -22,6 +23,7 @@ vi.mock('../../api/matchApi', () => ({
   updateMatch: (clubId: string, matchId: string, payload: unknown) => updateMatch(clubId, matchId, payload),
   deactivateMatch: (clubId: string, matchId: string) => deactivateMatch(clubId, matchId),
   reactivateMatch: (clubId: string, matchId: string) => reactivateMatch(clubId, matchId),
+  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
 }))
 
 vi.mock('../../api/teamApi', () => ({
@@ -418,6 +420,61 @@ describe('MatchFormPage', () => {
         ),
       )
     })
+
+  // docs/specs/109-delete-empty-match.md
+  describe('Delete (109)', () => {
+    it('shows no Delete when the match has something recorded against it, or on create', async () => {
+      getMatch.mockResolvedValue(makeMatch({ deletable: false }))
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+      expect(await screen.findByText('Edit Match')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    })
+
+    it('asks first, then deletes and returns to the list', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ deletable: true }))
+      deleteMatch.mockResolvedValueOnce(undefined)
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Delete' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
+      expect(within(dialog).getByText('It has nothing recorded against it. This cannot be undone.')).toBeInTheDocument()
+      expect(deleteMatch).not.toHaveBeenCalled()
+
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
+      expect(await screen.findByText('Match List Page')).toBeInTheDocument()
+    })
+
+    it('Cancel closes the dialog without deleting', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ deletable: true }))
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Delete' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(deleteMatch).not.toHaveBeenCalled()
+    })
+
+    it('shows a 409 message inside the dialog and stays on the page', async () => {
+      const user = userEvent.setup()
+      getMatch.mockResolvedValue(makeMatch({ deletable: true }))
+      deleteMatch.mockRejectedValueOnce(
+        Object.assign(new Error('conflict'), { isAxiosError: true, response: { status: 409, data: { detail: 'This match has a draft result. Deactivate it instead.' } } }),
+      )
+      renderPage('/manage/fixtures/matches/match-1/edit', 'test-club-id')
+
+      await user.click(await screen.findByRole('button', { name: 'Delete' }))
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('This match has a draft result. Deactivate it instead.')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.queryByText('Match List Page')).not.toBeInTheDocument()
+    })
+  })
 
   // docs/specs/038-move-deactivate-to-edit-screen.md: relocated from MatchList's own card, plus
   // the tab-gating restructure — the button must render on every tab, not just Details.

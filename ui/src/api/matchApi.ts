@@ -23,7 +23,7 @@ export async function fetchUpcomingMatches(): Promise<MatchSummary[]> {
 // A club's own scheduled fixture — docs/specs/029-league-management.md. Either side is either a
 // real Team (any club's — cross-club Team references are backend-supported even though this
 // pass's UI only ever lets an admin pick from their own club's teams) or a free-text opponent
-// name. Never hard-deleted — deactivate/reactivate only.
+// name. Deactivate/reactivate normally; a match with nothing recorded against it can also be deleted (docs/specs/109).
 export interface Match {
   id: string
   clubId: string
@@ -59,6 +59,9 @@ export interface Match {
   // docs/specs/100-match-results-core.md: NONE, DRAFT or PUBLISHED. A match is completed when its result is published.
   // Optional so older fixtures stay valid; absent means NONE.
   resultStatus?: MatchResultStatus
+  // docs/specs/109-delete-empty-match.md: true when nothing is recorded against the match (no result, poll, squad, side or
+  // availability link), so it can be deleted. Optional so older fixtures stay valid; absent means not deletable.
+  deletable?: boolean
   // docs/specs/069-match-card-redesign.md: list-response only (non-list endpoints return null / []).
   // Picked = players in that side's playing XI; null for a free-text or other-club side.
   homePickedCount: number | null
@@ -306,6 +309,11 @@ export async function updateMatch(clubId: string, matchId: string, payload: Matc
 export async function deactivateMatch(clubId: string, matchId: string): Promise<Match> {
   const { data } = await api.post<Match>(`${matchesPath(clubId)}/${matchId}/deactivate`)
   return data
+}
+
+// docs/specs/109-delete-empty-match.md: 204 on success; 409 (with a plain message) when anything is attached to the match.
+export async function deleteMatch(clubId: string, matchId: string): Promise<void> {
+  await api.delete(`${matchesPath(clubId)}/${matchId}`)
 }
 
 export async function reactivateMatch(clubId: string, matchId: string): Promise<Match> {

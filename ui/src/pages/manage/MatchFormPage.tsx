@@ -1,7 +1,10 @@
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
@@ -12,6 +15,7 @@ import {
   createMatch,
   updateMatch,
   deactivateMatch,
+  deleteMatch,
   reactivateMatch,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
@@ -75,6 +79,18 @@ export default function MatchFormPage() {
   const deactivate = useMutation({
     mutationFn: () => deactivateMatch(clubId as string, matchId as string),
     onSuccess: invalidateMatches,
+  })
+
+  // docs/specs/109-delete-empty-match.md: Delete is offered only when the server says nothing is recorded against the match.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const remove = useMutation({
+    mutationFn: () => deleteMatch(clubId as string, matchId as string),
+    onSuccess: () => {
+      setConfirmingDelete(false)
+      queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
+      invalidateMatches()
+      navigate('/manage/fixtures/matches')
+    },
   })
 
   const reactivate = useMutation({
@@ -165,9 +181,38 @@ export default function MatchFormPage() {
           {isEdit && match && (
             <RecordStatusToggle active={match.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
           )}
+
+          {isEdit && match?.deletable && (
+            <MuiButton variant="outlined" color="error" startIcon={<DeleteOutlineIcon fontSize="small" />} onClick={() => setConfirmingDelete(true)}>
+              Delete
+            </MuiButton>
+          )}
         </Stack>
       }
     >
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this match?"
+        description={
+          <>
+            It has nothing recorded against it. This cannot be undone.
+            {remove.isError && (
+              <Typography role="alert" variant="body2" color="error" sx={{ mt: 1.5 }}>
+                {errorDetail(remove.error, 'Something went wrong deleting this match. Please try again.')}
+              </Typography>
+            )}
+          </>
+        }
+        confirmLabel="Delete"
+        pendingLabel="Deleting…"
+        destructive
+        pending={remove.isPending}
+        onConfirm={() => remove.mutate()}
+        onClose={() => {
+          setConfirmingDelete(false)
+          remove.reset()
+        }}
+      />
       <MatchForm
         clubId={clubId}
         initialField={

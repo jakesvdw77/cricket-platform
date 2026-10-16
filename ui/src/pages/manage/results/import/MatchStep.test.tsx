@@ -7,6 +7,7 @@ import { jsonAdaptor, makeCandidate, makeCatalogue, makePreview, renderImportPag
 const getImportCatalogue = vi.fn()
 const previewImport = vi.fn()
 const createMatch = vi.fn()
+const deleteMatch = vi.fn()
 
 vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../api/resultImportApi')>()
@@ -17,7 +18,10 @@ vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   }
 })
 // The Add match dialog's own data.
-vi.mock('../../../../api/matchApi', () => ({ createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload) }))
+vi.mock('../../../../api/matchApi', () => ({
+  createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
+  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
+}))
 vi.mock('../../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([]) }))
 vi.mock('../../../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
 vi.mock('../../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
@@ -232,5 +236,81 @@ describe('Match step', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(await screen.findByText('Where is the result coming from?')).toBeInTheDocument()
     expect(screen.getByLabelText('Pasted result content')).toHaveValue('{}')
+  })
+
+  // docs/specs/109-delete-empty-match.md
+  describe('Delete an empty match (109)', () => {
+    const twoWithOneDeletable = () =>
+      makePreview({ matchCandidates: [makeCandidate({ deletable: false }), second({ deletable: true })] })
+
+    it('offers Delete only on a deletable candidate, named for its match and outside the radio', async () => {
+      previewImport.mockResolvedValue(twoWithOneDeletable())
+      await toMatchStep()
+
+      expect(screen.getAllByRole('button', { name: /^Delete match/ })).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Delete match Northgate Strollers v Hilltop Wanderers' })).toBeInTheDocument()
+      expect(matches().getByRole('radio', { name: /Hilltop Wanderers/ })).not.toHaveAccessibleName(/Delete/)
+    })
+
+    it('pressing Delete opens the confirmation and does not change the selection', async () => {
+      previewImport.mockResolvedValue(twoWithOneDeletable())
+      const user = await toMatchStep()
+      await user.click(matches().getByRole('radio', { name: /Riverside Occasionals/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Delete match Northgate Strollers v Hilltop Wanderers' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(matches().getByRole('radio', { name: /Riverside Occasionals/ })).toHaveAttribute('aria-checked', 'true')
+      expect(matches().getByRole('radio', { name: /Hilltop Wanderers/ })).toHaveAttribute('aria-checked', 'false')
+      expect(deleteMatch).not.toHaveBeenCalled()
+    })
+
+    it('on success the match leaves the list and the other selection stays', async () => {
+      previewImport.mockResolvedValue(twoWithOneDeletable())
+      deleteMatch.mockResolvedValueOnce(undefined)
+      const user = await toMatchStep()
+      await user.click(matches().getByRole('radio', { name: /Riverside Occasionals/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Delete match Northgate Strollers v Hilltop Wanderers' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('club-1', 'match-2'))
+      await waitFor(() => expect(matches().queryByRole('radio', { name: /Hilltop Wanderers/ })).not.toBeInTheDocument())
+      expect(matches().getByRole('radio', { name: /Riverside Occasionals/ })).toHaveAttribute('aria-checked', 'true')
+      expect(next()).toBeEnabled()
+    })
+
+    it('deleting the selected match clears the selection and disables Next', async () => {
+      previewImport.mockResolvedValue(twoWithOneDeletable())
+      deleteMatch.mockResolvedValueOnce(undefined)
+      const user = await toMatchStep()
+      await user.click(matches().getByRole('radio', { name: /Hilltop Wanderers/ }))
+      expect(matches().getByRole('radio', { name: /Hilltop Wanderers/ })).toHaveAttribute('aria-checked', 'true')
+
+      await user.click(screen.getByRole('button', { name: 'Delete match Northgate Strollers v Hilltop Wanderers' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(matches().queryByRole('radio', { name: /Hilltop Wanderers/ })).not.toBeInTheDocument())
+      expect(matches().getByRole('radio', { name: /Riverside Occasionals/ })).toHaveAttribute('aria-checked', 'false')
+      expect(next()).toBeDisabled()
+    })
+
+    it('shows a refusal message in the dialog and keeps the match', async () => {
+      previewImport.mockResolvedValue(twoWithOneDeletable())
+      deleteMatch.mockRejectedValueOnce(
+        Object.assign(new Error('conflict'), { isAxiosError: true, response: { status: 409, data: { detail: 'This match has a poll. Deactivate it instead.' } } }),
+      )
+      const user = await toMatchStep()
+
+      await user.click(screen.getByRole('button', { name: 'Delete match Northgate Strollers v Hilltop Wanderers' }))
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('This match has a poll. Deactivate it instead.')
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(matches().getByRole('radio', { name: /Hilltop Wanderers/ })).toBeInTheDocument()
+    })
   })
 })
