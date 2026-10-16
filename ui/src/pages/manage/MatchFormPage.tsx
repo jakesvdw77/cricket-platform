@@ -1,10 +1,8 @@
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { Button } from '../../components/Button'
@@ -15,10 +13,10 @@ import {
   createMatch,
   updateMatch,
   deactivateMatch,
-  deleteMatch,
   reactivateMatch,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useMatchFormData } from '../../hooks/useMatchFormData'
 import { errorDetail } from '../../utils/errorDetail'
 import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
@@ -82,15 +80,10 @@ export default function MatchFormPage() {
   })
 
   // docs/specs/109-delete-empty-match.md: Delete is offered only when the server says nothing is recorded against the match.
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const remove = useMutation({
-    mutationFn: () => deleteMatch(clubId as string, matchId as string),
-    onSuccess: () => {
-      setConfirmingDelete(false)
-      queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
-      invalidateMatches()
-      navigate('/manage/fixtures/matches')
-    },
+  // The confirm-and-delete flow is shared with the result import (hooks/useDeleteMatchDialog).
+  const deleteFlow = useDeleteMatchDialog(clubId ?? '', () => {
+    queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
+    navigate('/manage/fixtures/matches', { state: { notice: 'Match deleted.' } })
   })
 
   const reactivate = useMutation({
@@ -183,36 +176,20 @@ export default function MatchFormPage() {
           )}
 
           {isEdit && match?.deletable && (
-            <MuiButton variant="outlined" color="error" startIcon={<DeleteOutlineIcon fontSize="small" />} onClick={() => setConfirmingDelete(true)}>
+            <MuiButton
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteOutlineIcon fontSize="small" />}
+              sx={{ minHeight: 44 }}
+              onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
+            >
               Delete
             </MuiButton>
           )}
         </Stack>
       }
     >
-      <ConfirmDialog
-        open={confirmingDelete}
-        title="Delete this match?"
-        description={
-          <>
-            It has nothing recorded against it. This cannot be undone.
-            {remove.isError && (
-              <Typography role="alert" variant="body2" color="error" sx={{ mt: 1.5 }}>
-                {errorDetail(remove.error, 'Something went wrong deleting this match. Please try again.')}
-              </Typography>
-            )}
-          </>
-        }
-        confirmLabel="Delete"
-        pendingLabel="Deleting…"
-        destructive
-        pending={remove.isPending}
-        onConfirm={() => remove.mutate()}
-        onClose={() => {
-          setConfirmingDelete(false)
-          remove.reset()
-        }}
-      />
+      {deleteFlow.dialog}
       <MatchForm
         clubId={clubId}
         initialField={

@@ -17,7 +17,7 @@ import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { AcknowledgementTick } from './AcknowledgementTick'
 import { FindMatchSearch } from './FindMatchSearch'
 import { ImportProblemAlert } from './ImportProblemAlert'
-import { useDeleteMatchDialog } from './useDeleteMatchDialog'
+import { useDeleteMatchDialog } from '../../../../hooks/useDeleteMatchDialog'
 import { dateMismatch, fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 

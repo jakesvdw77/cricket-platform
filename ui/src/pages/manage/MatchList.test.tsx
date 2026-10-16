@@ -118,11 +118,11 @@ function EditMatchPageStub() {
   return <div>Edit Match Page: {location.pathname + location.search}</div>
 }
 
-function renderPage(clubId?: string) {
+function renderPage(clubId?: string, entry: string | { pathname: string; state: unknown } = '/manage/fixtures/matches') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/manage/fixtures/matches']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
             <Route path="matches" element={<MatchList />} />
@@ -137,6 +137,17 @@ function renderPage(clubId?: string) {
 }
 
 describe('MatchList', () => {
+  it('shows the success notice carried in router state, and dismisses it', async () => {
+    const user = userEvent.setup()
+    listMatches.mockResolvedValue(makePage([makeMatch()]))
+
+    renderPage('test-club-id', { pathname: '/manage/fixtures/matches', state: { notice: 'Match deleted.' } })
+
+    expect(await screen.findByText('Match deleted.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /close/i }))
+    expect(screen.queryByText('Match deleted.')).not.toBeInTheDocument()
+  })
+
   it('renders "Home vs Away" resolving a real team id against the club\'s teams and a free-text opponent name', async () => {
     listMatches.mockResolvedValueOnce(makePage([makeMatch()]))
 

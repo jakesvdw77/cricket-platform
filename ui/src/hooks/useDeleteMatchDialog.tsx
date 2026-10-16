@@ -2,9 +2,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Typography } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteMatch } from '../../../../api/matchApi'
-import { ConfirmDialog } from '../../../../components/ConfirmDialog'
-import { errorDetail } from '../../../../utils/errorDetail'
+import { deleteMatch } from '../api/matchApi'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { errorDetail } from '../utils/errorDetail'
 
 export interface DeleteMatchTarget {
   id: string

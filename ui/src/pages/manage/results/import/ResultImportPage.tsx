@@ -178,7 +178,7 @@ export default function ResultImportPage() {
       venue: match.venue,
       reasons: [],
       existingResult: null,
-      deletable: match.deletable ?? true,
+      deletable: match.deletable === true,
     }
     const choose = (data: ImportPreview | null) => {
       const ranked = data?.matchCandidates ?? preview.matchCandidates

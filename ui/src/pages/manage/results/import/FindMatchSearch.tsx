@@ -15,7 +15,7 @@ import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { sectionPath } from '../../../../utils/sectionPath'
-import type { DeleteMatchTarget } from './useDeleteMatchDialog'
+import type { DeleteMatchTarget } from '../../../../hooks/useDeleteMatchDialog'
 
 const PAGE_SIZE = 50
 const MAX_PAGES = 6

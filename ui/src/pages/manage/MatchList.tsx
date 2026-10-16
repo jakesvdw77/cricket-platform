@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Link, Stack, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Alert, Box, Link, Stack, Typography } from '@mui/material'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
@@ -85,6 +85,18 @@ export default function MatchList({
 }: MatchListProps) {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  // docs/specs/109-delete-empty-match.md: the success notice a navigation carries in router state (same convention as the
+  // league page, 096). Read once, shown until dismissed, then the router state is cleared so a reload does not repeat it.
+  const location = useLocation()
+  const [notice, setNotice] = useState<string | null>(() => {
+    const carried = (location.state as { notice?: unknown } | null)?.notice
+    return typeof carried === 'string' ? carried : null
+  })
+  useEffect(() => {
+    if ((location.state as { notice?: unknown } | null)?.notice) {
+      navigate(location.pathname + location.search, { replace: true, state: null })
+    }
+  }, [location, navigate])
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -424,6 +436,12 @@ export default function MatchList({
           <Button onClick={onCreate ?? (() => navigate('/manage/fixtures/matches/new'))}>{createLabel}</Button>
         }
       />
+
+      {notice && (
+        <Alert severity="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
 
       {/* docs/specs/087-matches-polls-alignment.md (B): the Polls toolbar - the shared FilterBar (League,
           Section, Team and search; Season is the pill in the header, 089; Team arrives with its backend param in the counters slice) and a content

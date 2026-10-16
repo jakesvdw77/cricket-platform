@@ -110,6 +110,15 @@ function OutletContextWrapper({ clubId }: { clubId?: string }) {
   return <Outlet context={{ clubId }} />
 }
 
+function MatchListStub() {
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
+  return (
+    <div>
+      Match List Page<span data-testid="list-notice">{notice}</span>
+    </div>
+  )
+}
+
 function renderPage(initialPath: string, clubId?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -117,7 +126,7 @@ function renderPage(initialPath: string, clubId?: string) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
-            <Route path="matches" element={<div>Match List Page</div>} />
+            <Route path="matches" element={<MatchListStub />} />
             <Route path="matches/new" element={<MatchFormPage />} />
             <Route path="matches/:matchId/edit" element={<MatchFormPage />} />
           </Route>
@@ -446,6 +455,7 @@ describe('MatchFormPage', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
       await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
       expect(await screen.findByText('Match List Page')).toBeInTheDocument()
+      expect(screen.getByTestId('list-notice')).toHaveTextContent('Match deleted.')
     })
 
     it('Cancel closes the dialog without deleting', async () => {

@@ -100,7 +100,10 @@ export function TileChoiceGroup<T extends string>({ label, options, value, onCha
         return (
           <Box key={option.value} sx={{ position: 'relative', display: 'grid' }}>
             {tile}
-            <Box sx={{ position: 'absolute', right: 8, bottom: 4 }}>{option.adornment}</Box>
+            {/* Each adornment adds one Tab stop between the radios (they are not part of the roving tab stop). */}
+            <Box role="presentation" sx={{ position: 'absolute', right: 8, bottom: 4 }}>
+              {option.adornment}
+            </Box>
           </Box>
         )
       })}
