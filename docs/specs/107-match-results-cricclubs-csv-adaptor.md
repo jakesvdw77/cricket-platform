@@ -1,7 +1,7 @@
 # 107: Match Results: CricClubs CSV Adaptor
 
 **Depends on:** `104-match-results-import-adaptors.md` (the adaptor framework, the common import format, the Result Processor with its deterministic name matching, the import wizard). This spec adds one adaptor and nothing else to the framework.
-**Status:** draft, written 2026-10-16 from eight real CricClubs exports (six distinct matches) the user supplied. Not approved. Contains no AI and sends nothing to any third party.
+**Status:** built on `feature/107-cricclubs-csv-adaptor` (2026-10-16), in review. Originally: draft, written from eight real CricClubs exports (six distinct matches) the user supplied. Not approved. Contains no AI and sends nothing to any third party.
 
 ## Problem & Goals
 
@@ -136,6 +136,18 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 - **Order of work:** the line reader and result line first, then the batting and bowling sections, then fixtures and integration, then docs, review and the PR.
 - **Docs to update when built:** `docs/roadmap.md`, `docs/architecture.md` (the adaptor list), a pointer in `104`'s Rollout Notes.
 - **Deferred:** other CricClubs layouts, bulk import of many files, reading the fall of wickets, a Remembered names screen (all already in `104`'s deferred list).
+
+### Built versus spec (2026-10-16)
+
+Where the build is stricter than, or differs from, the draft:
+
+- **Error shape:** the error path is `line N` with a stable code (`BAD_NUMBER`, `UNKNOWN_CODE` and so on) and a message that does not repeat the line number. Row-level problems (a bad number, an unknown code, a wrong row width) are collected and reported together; structural problems (a missing section, a result line that is not understood) stop the read at once.
+- **Extra loud failures where the spec was silent:** a catch with neither fielder nor bowler (`FIELDER_OR_BOWLER_REQUIRED`); a fielder on `b`, `lbw` or `rt`, or a bowler on `rt` (`UNEXPECTED_NAME`); a changed column header (`UNKNOWN_LAYOUT`); an invalid overs value (`BAD_OVERS`); more than two batting sections. Only a bowler on a run-out is dropped, as specified.
+- **Format words:** an unknown format word leaves `scheduledOvers` empty with no note, because the only note field on the common format is saved onto the draft.
+- **`ctw`** is not given the caught-and-bowled treatment (the rule applies to `ct` only). The common-format `position` is left empty, as the JSON adaptor does.
+- **Not checked by the adaptor:** a report with no retired batters is not compared with the stated wickets; that is the validator's warning.
+- **A real file that fails:** `cricclubs.csv` has a stray `No` glued to a sixes value on one row (`...,1,3,0,0No`). The adaptor refuses it with `BAD_NUMBER` and the line number, as the spec's "numbers are numbers" requires. The matching edited export (`Villagers2.csv`) does not have it. If real exports turn out to carry this marker it is a deliberate, small spec change.
+- **A PDF is refused:** `Score_Card_PDF.pdf` is not a CSV report and fails with `RESULT_LINE_NOT_UNDERSTOOD`. A CricClubs PDF adaptor is deferred until the CSV has been tried on real files.
 
 ### Decisions
 
