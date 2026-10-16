@@ -75,6 +75,34 @@ class CricClubsCsvAdaptorTest {
         return report(HEAD, TEAMS);
     }
 
+    /**
+     * A forfeit as CricClubs writes it: both batting and bowling blocks present but empty, with zero totals. Line 6 is the
+     * first batting extras line, 10 the first bowling total, 15 the second batting extras line, 19 the second bowling total.
+     */
+    private static String forfeitReport() {
+        return String.join("\n",
+                "T20:  LeagueForfeited. Winner: Valley Rovers (13/09/2026)",
+                TEAMS,
+                ",,,Hillside 4 Batting",
+                BATTING_HEADER,
+                "\t",
+                "\t\tByes: 0 , Leg Byes: 0, Wickets : 0  Wides : 0, No Balls: 0 Penalty : 0,0,0",
+                ",,,Valley Rovers Bowling ",
+                BOWLING_HEADER,
+                "\t",
+                "Total, 0 ,0,0,0,0,0,0,0",
+                "Hillside 4 Fall of Wickets",
+                ",,,Valley Rovers Batting",
+                BATTING_HEADER,
+                "\t",
+                "Byes: 0 , Leg Byes: 0, Wickets : 0  Wides : 0, No Balls: 0 Penalty : 0,0,0",
+                ",,,Hillside 4 Bowling",
+                BOWLING_HEADER,
+                "\t",
+                "Total, 0 ,0,0,0,0,0,0,0",
+                "");
+    }
+
     /** The text with the given 1-based line replaced. */
     private static String withLine(String text, int number, String replacement) {
         String[] lines = text.split("\n", -1);
@@ -189,7 +217,7 @@ class CricClubsCsvAdaptorTest {
 
     @Test
     void aForfeitNamesTheWinnerAndHasNoInnings() {
-        ImportedResultDto result = read(report("T20:  LeagueForfeited. Winner: Valley Rovers (13/09/2026)", TEAMS));
+        ImportedResultDto result = read(forfeitReport());
 
         assertThat(result.result().outcome()).isEqualTo(ResultOutcomeType.FORFEIT);
         assertThat(result.result().winner()).isEqualTo("B");
@@ -636,6 +664,60 @@ class CricClubsCsvAdaptorTest {
     }
 
     @Test
+    void aBlankCodeThatNamesABowlerFails() {
+        assertSingleError(withLine(report(), 6, "Bob Birch,,,Kay Kauri,9,8,1,0"),
+                "line 6", "UNEXPECTED_NAME", "no dismissal code");
+    }
+
+    @Test
+    void aBlankCodeThatNamesAFielderFails() {
+        assertSingleError(withLine(report(), 6, "Bob Birch,,Fay Field,,9,8,1,0"),
+                "line 6", "UNEXPECTED_NAME", "no dismissal code");
+    }
+
+    @Test
+    void aBlankCodeWithASubstituteFielderIsStillNotOut() {
+        Batting row = read(withLine(report(), 6, "Bob Birch,,substitute,,9,8,1,0")).innings().get(0).batting().get(1);
+
+        assertThat(row.howOut()).isEqualTo(DismissalType.NOT_OUT);
+        assertThat(row.fielder()).isNull();
+    }
+
+    @Test
+    void aQuoteInsideACellIsPartOfTheText() {
+        Batting row = firstBatter("\tAnn \"Ace\" Alder,b,,Kay Kauri,5,10,0,0");
+
+        assertThat(row.player()).isEqualTo("Ann \"Ace\" Alder");
+    }
+
+    @Test
+    void aBadNumberOnABattingRowDoesNotAlsoReportTheRetiredBatterWickets() {
+        // line 6 is a retired batter and line 5 has a bad number; the stated wickets (3) would not match, but only the
+        // bad number is reported
+        String text = withLine(report(), 6, "Bob Birch,rt,,,40,30,4,1");
+        text = withLine(text, 5, "\tAnn Alder,b,,Kay Kauri,five,10,0,0");
+        text = withLine(text, 8, "\t\tByes: 1 , Leg Byes: 2, Wickets : 3  Wides : 3, No Balls: 4 Penalty : 5,60,10.3");
+
+        assertThat(errorsOf(text)).extracting(ImportErrorDto::code).containsExactly("BAD_NUMBER");
+    }
+
+    @Test
+    void aByteOrderMarkInAWindows1252FileIsRemovedAndTheAccentIsRead() {
+        String text = withLine(report(), 5, "\tZo\u00EB Alder,b,,Kay Kauri,5,10,0,0");
+        byte[] body = text.getBytes(Charset.forName("windows-1252"));
+        byte[] bytes = new byte[body.length + 3];
+        bytes[0] = (byte) 0xEF;
+        bytes[1] = (byte) 0xBB;
+        bytes[2] = (byte) 0xBF;
+        System.arraycopy(body, 0, bytes, 3, body.length);
+
+        ImportedResultDto result = readBytes(bytes);
+
+        assertThat(result.result().outcome()).isEqualTo(ResultOutcomeType.WON);
+        assertThat(result.innings().get(0).batting().get(0).player()).isEqualTo("Zo\u00EB Alder");
+    }
+
+    @Test
     void aRetiredBatterThatNamesABowlerFails() {
         assertSingleError(withLine(report(), 5, "\tAnn Alder,rt,,Kay Kauri,5,10,0,0"),
                 "line 5", "UNEXPECTED_NAME", "retired batter");
@@ -663,6 +745,35 @@ class CricClubsCsvAdaptorTest {
     void aWinnerThatIsNeitherTeamFails() {
         assertSingleError(report("T20:  LeagueDowntown 9 won by 10 Runs (11/10/2026)", TEAMS),
                 "line 1", "WINNER_NOT_FOUND", "does not end with either team name");
+    }
+
+    @Test
+    void aForfeitWithABatterRowFailsAtThatRow() {
+        String text = withLine(forfeitReport(), 5, "\tAnn Alder,b,,Kay Kauri,5,10,0,0");
+
+        assertSingleError(text, "line 5", "FORFEIT_HAS_SCORECARD", "forfeited");
+    }
+
+    @Test
+    void aForfeitWithABowlerRowFailsAtThatRow() {
+        String text = withLine(forfeitReport(), 18, "\tKay Kauri,4,1,30,2,3,4,0,10");
+
+        assertSingleError(text, "line 18", "FORFEIT_HAS_SCORECARD", "forfeited");
+    }
+
+    @Test
+    void aForfeitWithANonZeroInningsTotalFailsAtThatLine() {
+        String text = withLine(forfeitReport(), 15,
+                "Byes: 0 , Leg Byes: 0, Wickets : 0  Wides : 0, No Balls: 0 Penalty : 0,12,3.2");
+
+        assertSingleError(text, "line 15", "FORFEIT_HAS_SCORECARD", "forfeited");
+    }
+
+    @Test
+    void aForfeitWithANonZeroBowlingTotalFailsAtThatLine() {
+        String text = withLine(forfeitReport(), 10, "Total, 4 ,1,30,2,3,4,0,10");
+
+        assertSingleError(text, "line 10", "FORFEIT_HAS_SCORECARD", "forfeited");
     }
 
     @Test

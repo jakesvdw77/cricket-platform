@@ -39,7 +39,9 @@ final class CricClubsLines {
                     } else {
                         cell.append(c);
                     }
-                } else if (c == '"') {
+                } else if (c == '"' && isPadOnly(cell)) {
+                    // RFC 4180: a quote opens quoted mode only as the first character of a cell (padding before it is
+                    // trimmed); a quote anywhere else in a cell is part of the text
                     quoted = true;
                 } else if (c == ',') {
                     cells.add(trim(cell));
@@ -86,6 +88,15 @@ final class CricClubsLines {
             end--;
         }
         return text.subSequence(start, end).toString();
+    }
+
+    private static boolean isPadOnly(CharSequence text) {
+        for (int i = 0; i < text.length(); i++) {
+            if (!isPad(text.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isPad(char c) {

@@ -132,6 +132,7 @@ final class CricClubsScorecardMapper {
     static RowOutcome batter(String player, String rawCode, String fielder, String bowler, int runs, int balls, int fours,
             int sixes) {
         String code = rawCode.toLowerCase(Locale.ROOT);
+        // only the literal "Substitute" (any case) is recognised; other spellings are not until a sample shows one
         String field = fielder != null && fielder.equalsIgnoreCase(SUBSTITUTE) ? null : fielder;
         String bowl = bowler;
         DismissalType type;
@@ -160,9 +161,9 @@ final class CricClubsScorecardMapper {
             }
         }
         boolean notDismissed = type == DismissalType.NOT_OUT || type == DismissalType.DID_NOT_BAT;
-        if (notDismissed) {
-            field = null;
-            bowl = null;
+        if (notDismissed && (field != null || bowl != null)) {
+            return rowProblem("UNEXPECTED_NAME", "A row with no dismissal code is not out or did not bat, so it has no"
+                    + " fielder or bowler, but this row names one.");
         }
         if (type == null && (field != null || bowl != null)) {
             return rowProblem("UNEXPECTED_NAME",

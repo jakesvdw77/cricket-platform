@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * docs/specs/107-match-results-cricclubs-csv-adaptor.md: reads the text of one CricClubs report into the common import
@@ -45,6 +46,7 @@ final class CricClubsReportParser {
     private static final Pattern EXTRAS = Pattern.compile(
             "^Byes:\\s*(\\d+)\\s*,\\s*Leg Byes:\\s*(\\d+)\\s*,\\s*Wickets\\s*:\\s*(\\d+)\\s+Wides\\s*:\\s*(\\d+)\\s*,"
                     + "\\s*No Balls:\\s*(\\d+)\\s+Penalty\\s*:\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+(?:\\.\\d+)?)$");
+    private static final Pattern ZERO = Pattern.compile("^0+(\\.0+)?$");
     private static final Pattern WHOLE_NUMBER = Pattern.compile("^\\d{1,6}$");
 
     private static final List<String> BATTING_HEADER =
@@ -85,7 +87,9 @@ final class CricClubsReportParser {
 
         List<InningsParts> blocks = readSections(teamsIndex + 1);
         boolean forfeit = result.outcome() == ResultOutcomeType.FORFEIT;
-        if (!forfeit) {
+        if (forfeit) {
+            checkForfeitIsEmpty(blocks);
+        } else {
             checkBlocks(blocks);
         }
         if (!errors.isEmpty()) {
@@ -171,10 +175,18 @@ final class CricClubsReportParser {
         private final List<String> didNotBat = new ArrayList<>();
         private final List<Bowling> bowling = new ArrayList<>();
         private boolean bowlingRead;
+        /** The line of the first row or total with anything in it, or 0 when the blocks so far are empty. */
+        private int contentLine;
 
         private InningsParts(int line, String battingKey) {
             this.line = line;
             this.battingKey = battingKey;
+        }
+
+        private void content(int number) {
+            if (contentLine == 0) {
+                contentLine = number;
+            }
         }
 
         private Innings toInnings() {
@@ -240,6 +252,17 @@ final class CricClubsReportParser {
         return i;
     }
 
+    /** A forfeit has no play: every block must be empty, with zero totals. Anything else is not a forfeit scorecard. */
+    private void checkForfeitIsEmpty(List<InningsParts> blocks) {
+        for (InningsParts block : blocks) {
+            if (block.contentLine > 0) {
+                throw fail(CricClubsLines.path(block.contentLine), "FORFEIT_HAS_SCORECARD",
+                        "The result says forfeited, but the scorecard has play in it (a batter, a bowler or a non-zero"
+                                + " total). A forfeit scorecard is empty; check the result line or the scorecard.");
+            }
+        }
+    }
+
     private void checkBlocks(List<InningsParts> blocks) {
         if (blocks.isEmpty()) {
             throw fail("", "MISSING_SECTION", "There is no batting section. Expected ',,,<team> Batting'.");
@@ -289,6 +312,7 @@ final class CricClubsReportParser {
     /** The innings' batting block from the title: header row, batters, then the extras and total line that closes it. */
     private int readBatting(int titleIndex, InningsParts innings) {
         int i = expectHeader(titleIndex + 1, BATTING_HEADER, "batting");
+        int errorsBefore = errors.size();
         List<CricClubsScorecardMapper.Row> rows = new ArrayList<>();
         while (i < lines.size()) {
             Line line = lines.get(i);
@@ -297,7 +321,12 @@ final class CricClubsReportParser {
                 continue;
             }
             if (line.text().startsWith("Byes")) {
+                boolean rowFailed = errors.size() > errorsBefore;
                 readExtras(line, innings);
+                if (rowFailed) {
+                    // a batting row already failed, so the retired batters cannot be decided and a wickets error would mislead
+                    return i;
+                }
                 CricClubsScorecardMapper.Decided decided = CricClubsScorecardMapper.decideRetired(rows, innings.wickets);
                 if (decided.problem() != null) {
                     error(line, decided.problem().code(), decided.problem().message());
@@ -311,6 +340,7 @@ final class CricClubsReportParser {
                 throw fail(CricClubsLines.path(line.number()), "MISSING_SECTION",
                         "The batting section ends without its extras and total line, which starts 'Byes:'.");
             }
+            innings.content(line.number());
             CricClubsScorecardMapper.Row row = battingRow(line);
             if (row != null) {
                 rows.add(row);
@@ -337,6 +367,10 @@ final class CricClubsReportParser {
         innings.wickets = whole(match, 3);
         innings.runs = whole(match, 7);
         innings.overs = overs;
+        if (innings.runs != 0 || innings.wickets != 0 || !ZERO.matcher(overs).matches()
+                || IntStream.of(1, 2, 4, 5, 6).anyMatch(g -> whole(match, g) != 0)) {
+            innings.content(line.number());
+        }
     }
 
     // ---- bowling ----
@@ -355,8 +389,12 @@ final class CricClubsReportParser {
             }
             List<String> cells = line.cells();
             if (cells.get(0).equalsIgnoreCase("Total")) {
+                if (cells.stream().skip(1).anyMatch(c -> !ZERO.matcher(c).matches())) {
+                    innings.content(line.number());
+                }
                 return i;
             }
+            innings.content(line.number());
             if (cells.size() != BOWLING_HEADER.size()) {
                 error(line, "BAD_ROW", "A bowling row has " + BOWLING_HEADER.size() + " columns (name, overs, maidens, runs,"
                         + " wickets, wides, no balls, hat-tricks, dot balls) but this one has " + cells.size() + ".");

@@ -108,7 +108,11 @@ public class CricClubsCsvAdaptor extends AbstractAdaptor {
                     .toString();
         } catch (CharacterCodingException ex) {
             text = new String(bytes, WINDOWS_1252);
+            // a UTF-8 byte order mark in a file that is otherwise not UTF-8 decodes here as three Windows-1252 characters
+            if (text.startsWith("\u00EF\u00BB\u00BF")) {
+                return text.substring(3);
+            }
         }
-        return text.startsWith("﻿") ? text.substring(1) : text;
+        return text.startsWith("\uFEFF") ? text.substring(1) : text;
     }
 }
