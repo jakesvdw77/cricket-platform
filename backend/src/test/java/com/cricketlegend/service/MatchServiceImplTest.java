@@ -26,8 +26,10 @@ import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.MatchNotEmptyException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
+import com.cricketlegend.service.support.MatchEmptiness;
 import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -112,6 +114,9 @@ class MatchServiceImplTest {
     @Mock
     private com.cricketlegend.repository.LeagueSeasonRepository leagueSeasonRepository;
 
+    @Mock
+    private com.cricketlegend.service.support.MatchEmptiness matchEmptiness;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -125,13 +130,13 @@ class MatchServiceImplTest {
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
                 accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver,
-                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository));
+                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository), matchEmptiness);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -406,6 +411,104 @@ class MatchServiceImplTest {
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
+    // --- 109: delete an empty match ---
+
+    @Test
+    void deleteRemovesAMatchWithNothingAttached() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+
+        matchService.delete(authentication, clubId, matchId);
+
+        verify(matchRepository).delete(existing);
+    }
+
+    @Test
+    void deleteReportsARecordInsertedSinceTheCheckAsMatchNotEmpty() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("fk"))
+                .when(matchRepository).flush();
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has other records. Deactivate it instead.");
+    }
+
+    @Test
+    void deleteRefusesNamingEachKindOfAttachmentAndDeletesNothing() {
+        Map<MatchEmptiness.Attachment, String> expected = Map.of(
+                MatchEmptiness.Attachment.DRAFT_RESULT, "This match has a draft result. Deactivate it instead.",
+                MatchEmptiness.Attachment.PUBLISHED_RESULT, "This match has a published result. Deactivate it instead.",
+                MatchEmptiness.Attachment.POLL, "This match has an availability poll. Deactivate it instead.",
+                MatchEmptiness.Attachment.SQUAD, "This match has a squad. Deactivate it instead.",
+                MatchEmptiness.Attachment.TEAM_SELECTION, "This match has a team selection. Deactivate it instead.",
+                MatchEmptiness.Attachment.AVAILABILITY_WINDOW,
+                "This match has an availability window. Deactivate it instead.");
+        expected.forEach((attachment, message) -> {
+            UUID clubId = UUID.randomUUID();
+            UUID matchId = UUID.randomUUID();
+            when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+            when(matchEmptiness.attachmentsFor(List.of(matchId)))
+                    .thenReturn(Map.of(matchId, java.util.EnumSet.of(attachment)));
+
+            assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                    .isInstanceOf(MatchNotEmptyException.class)
+                    .hasMessage(message);
+        });
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteNamesTheFirstAttachmentAndMentionsTheOthersWhenSeveralExist() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of(matchId, java.util.EnumSet.of(
+                MatchEmptiness.Attachment.SQUAD, MatchEmptiness.Attachment.DRAFT_RESULT)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has a draft result and other records. Deactivate it instead.");
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteOfAnotherClubsOrUnknownMatchIsNotFound() {
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId))
+                .thenReturn(Optional.of(existingMatch(matchId, UUID.randomUUID(), true)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, UUID.randomUUID(), matchId))
+                .isInstanceOf(NotFoundException.class);
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteThrowsAccessDeniedWhenCallerCannotAdministerTheMatchAndChecksNothingElse() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        java.util.Set<UUID> resolvedSections = java.util.Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, existing.getHomeTeamId(), existing.getAwayTeamId()))
+                .thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(matchRepository, never()).delete(any(Match.class));
+        verify(matchEmptiness, never()).attachmentsFor(any());
+    }
+
     @Test
     void reactivateOnInactiveMatchTransitionsToActive() {
         UUID clubId = UUID.randomUUID();
@@ -567,9 +670,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -610,7 +713,7 @@ class MatchServiceImplTest {
     private MatchDto cardDto(Match m) {
         return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
                 m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
-                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private List<MatchDto> listCard(Match... matches) {
@@ -1633,7 +1736,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, homeLtId, awayLtId, null, null, null, null, null, null));
+                null, null, homeLtId, awayLtId, null, null, null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1846,7 +1949,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null));
+                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1875,6 +1978,9 @@ class MatchServiceImplTest {
         assertThat(byId(result, draft).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.DRAFT);
         assertThat(byId(result, none).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.NONE);
         verify(resultStatusResolver, times(1)).statusesFor(any());
+        // the emptiness check reuses those statuses rather than asking again
+        verify(matchEmptiness, never()).emptyAmong(any());
+        verify(matchEmptiness, times(1)).emptyAmong(any(), any());
     }
 
     @Test

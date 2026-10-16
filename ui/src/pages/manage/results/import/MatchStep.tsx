@@ -17,6 +17,7 @@ import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { AcknowledgementTick } from './AcknowledgementTick'
 import { FindMatchSearch } from './FindMatchSearch'
 import { ImportProblemAlert } from './ImportProblemAlert'
+import { useDeleteMatchDialog } from '../../../../hooks/useDeleteMatchDialog'
 import { dateMismatch, fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
 
@@ -115,8 +116,9 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchFound, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchDeleted, onMatchFound, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
   const [adding, setAdding] = useState(false)
+  const deleteFlow = useDeleteMatchDialog(clubId, onMatchDeleted)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
   // Warn when the manager came from a match the file does not look like (neither its date nor its teams matched).
@@ -150,7 +152,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="outlined" sx={{ minHeight: 44 }}>
                 Add match
               </MuiButton>
-              <FindMatchSearch clubId={clubId} listedIds={[]} onFound={onMatchFound} disabled={matchPending} defaultOpen />
+              <FindMatchSearch clubId={clubId} listedIds={[]} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} defaultOpen />
             </Box>
           ) : (
             <>
@@ -169,6 +171,18 @@ export function MatchStep(context: ImportStepContext) {
                   return {
                     value: candidate.matchId,
                     disabled: published,
+                    adornment: candidate.deletable ? (
+                      <MuiButton
+                        color="error"
+                        variant="text"
+                        aria-label={`Delete match ${candidate.homeName} v ${candidate.awayName}`}
+                        disabled={matchPending}
+                        onClick={() => deleteFlow.request({ id: candidate.matchId, name: `${candidate.homeName} v ${candidate.awayName}` })}
+                        sx={{ minHeight: 44, minWidth: 44, px: 1, py: 0, fontSize: '0.8125rem', fontWeight: 600, textTransform: 'none' }}
+                      >
+                        Delete
+                      </MuiButton>
+                    ) : undefined,
                     content: (
                       <>
                         {published ? (
@@ -202,7 +216,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
                 Match not listed? Add the match first
               </MuiButton>
-              <FindMatchSearch clubId={clubId} listedIds={candidates.map((candidate) => candidate.matchId)} onFound={onMatchFound} disabled={matchPending} />
+              <FindMatchSearch clubId={clubId} listedIds={candidates.map((candidate) => candidate.matchId)} onFound={onMatchFound} onDelete={deleteFlow.request} disabled={matchPending} />
             </>
           )}
         </Box>
@@ -217,6 +231,8 @@ export function MatchStep(context: ImportStepContext) {
         inferSeason
         hint="Filled in from the file where it could be. A team whose name matches one of yours is picked as My team; check each box and choose which side is your team if it is not."
       />
+
+      {deleteFlow.dialog}
 
       {matchProblem && (
         <Box>

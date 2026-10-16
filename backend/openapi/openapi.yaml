@@ -1020,6 +1020,39 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
+    delete:
+      tags:
+      - match-controller
+      description: "Deletes a match with nothing recorded against it (docs/specs/109). Refused with 409 naming what exists when it has a result, an availability poll, a squad, a team selection or an availability window."
+      operationId: delete
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Match deleted
+        "404":
+          description: Not this club's match
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: The match has a result, poll, squad, team selection or availability window
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}:
     put:
       tags:
@@ -8384,6 +8417,9 @@ components:
           - NONE
           - DRAFT
           - PUBLISHED
+        deletable:
+          type: boolean
+          description: "True when nothing is recorded against the match (no result, poll, squad, team selection or availability window), so it can be deleted (docs/specs/109)."
     MatchPollDto:
       type: object
       properties:
@@ -12007,6 +12043,9 @@ components:
             - COMPETITION
         existingResult:
           $ref: "#/components/schemas/ExistingResultDto"
+        deletable:
+          type: boolean
+          description: "True when nothing is recorded against the match, so the Match step can offer Delete (docs/specs/109)."
     TeamMappingDto:
       type: object
       description: "Which side of the chosen match a file team is (docs/specs/104). In a preview the server proposes it (side null when the team cannot be placed). In a resolve request only fileKey and side are read; the two teams must map to HOME and AWAY once each."

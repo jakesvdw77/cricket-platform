@@ -1,6 +1,7 @@
 import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -15,6 +16,7 @@ import {
   reactivateMatch,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useMatchFormData } from '../../hooks/useMatchFormData'
 import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
@@ -75,6 +77,13 @@ export default function MatchFormPage() {
   const deactivate = useMutation({
     mutationFn: () => deactivateMatch(clubId as string, matchId as string),
     onSuccess: invalidateMatches,
+  })
+
+  // docs/specs/109-delete-empty-match.md: Delete is offered only when the server says nothing is recorded against the match.
+  // The confirm-and-delete flow is shared with the result import (hooks/useDeleteMatchDialog).
+  const deleteFlow = useDeleteMatchDialog(clubId ?? '', () => {
+    queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
+    navigate('/manage/fixtures/matches', { state: { notice: 'Match deleted.' } })
   })
 
   const reactivate = useMutation({
@@ -165,9 +174,22 @@ export default function MatchFormPage() {
           {isEdit && match && (
             <RecordStatusToggle active={match.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
           )}
+
+          {isEdit && match?.deletable && (
+            <MuiButton
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteOutlineIcon fontSize="small" />}
+              sx={{ minHeight: 44 }}
+              onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
+            >
+              Delete
+            </MuiButton>
+          )}
         </Stack>
       }
     >
+      {deleteFlow.dialog}
       <MatchForm
         clubId={clubId}
         initialField={

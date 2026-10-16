@@ -15,6 +15,7 @@ import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { useDebouncedValue } from '../../../../hooks/useDebouncedValue'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { sectionPath } from '../../../../utils/sectionPath'
+import type { DeleteMatchTarget } from '../../../../hooks/useDeleteMatchDialog'
 
 const PAGE_SIZE = 50
 const MAX_PAGES = 6
@@ -29,6 +30,8 @@ interface FindMatchSearchProps {
   listedIds: string[]
   // The manager chose one: the page makes the preview again for it and selects it.
   onFound: (match: Match) => void
+  // Delete was pressed on a deletable match (docs/specs/109-delete-empty-match.md): the page's shared confirmation takes over.
+  onDelete: (target: DeleteMatchTarget) => void
   disabled?: boolean
   // Open from the start (when no candidate was proposed).
   defaultOpen?: boolean
@@ -40,7 +43,7 @@ interface FindMatchSearchProps {
 // newest first, never one with a result of any status), narrowed by section and, optionally, by team name. Both narrowing
 // filters are the Matches list's own backend parameters. A found match carries no evidence chips (nothing was compared);
 // choosing one re-runs the preview for it, so its team mapping and status come from the server.
-export function FindMatchSearch({ clubId, listedIds, onFound, disabled = false, defaultOpen = false }: FindMatchSearchProps) {
+export function FindMatchSearch({ clubId, listedIds, onFound, onDelete, disabled = false, defaultOpen = false }: FindMatchSearchProps) {
   const [open, setOpen] = useState(defaultOpen)
   const [text, setText] = useState('')
   const [sectionId, setSectionId] = useState<string | null>(null)
@@ -132,6 +135,18 @@ export function FindMatchSearch({ clubId, listedIds, onFound, disabled = false, 
                 return {
                   value: match.id,
                   disabled: published,
+                  adornment: match.deletable ? (
+                    <MuiButton
+                      color="error"
+                      variant="text"
+                      aria-label={`Delete match ${match.homeTeamName} v ${match.awayTeamName}`}
+                      disabled={disabled}
+                      onClick={() => onDelete({ id: match.id, name: `${match.homeTeamName} v ${match.awayTeamName}` })}
+                      sx={{ minHeight: 44, minWidth: 44, px: 1, py: 0, fontSize: '0.8125rem', fontWeight: 600, textTransform: 'none' }}
+                    >
+                      Delete
+                    </MuiButton>
+                  ) : undefined,
                   content: (
                     <>
                       {published ? (

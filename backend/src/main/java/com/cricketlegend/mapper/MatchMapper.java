@@ -25,6 +25,7 @@ public interface MatchMapper {
     @Mapping(target = "playingAreaName", ignore = true)
     @Mapping(target = "playingAreaVerificationStatus", ignore = true)
     @Mapping(target = "resultStatus", ignore = true)
+    @Mapping(target = "deletable", ignore = true) // docs/specs/109: batched in the service
     MatchDto toDto(Match entity);
 
 }

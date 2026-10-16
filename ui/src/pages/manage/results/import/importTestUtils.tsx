@@ -60,6 +60,8 @@ export const makeCandidate = (overrides: Partial<MatchCandidate> = {}): MatchCan
   venue: 'Main Oval',
   reasons: ['DATE', 'TEAMS'],
   existingResult: null,
+  // docs/specs/109: not deletable unless a test says so, so the row Delete never appears by accident.
+  deletable: false,
   ...overrides,
 })
 
