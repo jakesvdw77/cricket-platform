@@ -15,6 +15,7 @@ import type { RecordCardBadgeTone } from '../../../../components/RecordCard'
 import { TileChoiceGroup } from '../../../../components/TileChoiceGroup'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
 import { AcknowledgementTick } from './AcknowledgementTick'
+import { FindMatchSearch } from './FindMatchSearch'
 import { ImportProblemAlert } from './ImportProblemAlert'
 import { dateMismatch, fileDateTime, matchPrefill, fileResultLine, fileSourceLine, fileTeamsLine } from './importSummary'
 import type { ImportStepContext } from './importWizardTypes'
@@ -114,7 +115,7 @@ function FileSummary({ context }: { context: ImportStepContext }) {
 // belong to as radio rows, each with the reasons (icon-free words, never colour alone) and a status when the match already has
 // a result. Nothing is chosen for the manager when there is more than one candidate; a single one is only pre-selected.
 export function MatchStep(context: ImportStepContext) {
-  const { clubId, preview, matchId, onMatchChange, onMatchCreated, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
+  const { clubId, preview, matchId, onMatchChange, onMatchCreated, onMatchFound, launchedMatchId, matchPending, matchProblem, onMatchNext, dateAck, onDateAckChange, onBack } = context
   const [adding, setAdding] = useState(false)
   const candidates = preview?.matchCandidates ?? []
   const chosen = candidates.find((candidate) => candidate.matchId === matchId) ?? null
@@ -149,6 +150,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="outlined" sx={{ minHeight: 44 }}>
                 Add match
               </MuiButton>
+              <FindMatchSearch clubId={clubId} listedIds={[]} onFound={onMatchFound} disabled={matchPending} defaultOpen />
             </Box>
           ) : (
             <>
@@ -200,6 +202,7 @@ export function MatchStep(context: ImportStepContext) {
               <MuiButton onClick={() => setAdding(true)} variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none', fontWeight: 600, color: 'info.main' }}>
                 Match not listed? Add the match first
               </MuiButton>
+              <FindMatchSearch clubId={clubId} listedIds={candidates.map((candidate) => candidate.matchId)} onFound={onMatchFound} disabled={matchPending} />
             </>
           )}
         </Box>
