@@ -15,6 +15,7 @@ import type { OurSide } from '../steps/stepTypes'
 export interface GuessActionsOptions {
   clubId: string
   seasonId: string
+  leagueId?: string | null
   oursSides: OurSide[]
   prefill: ScorecardPrefill | null
   scorecard: Scorecard
@@ -35,7 +36,7 @@ const asPicked = (suggestion: { playerProfileId: string; displayName: string }):
 // picker, rendered once per step. Works on the row's own side, so a fielder of the other side is changed as readily as a
 // batter. Every write goes through the step's `onScorecard`, so the normal save persists it (and the server writes the
 // remembered name).
-export function useGuessActions({ clubId, seasonId, oursSides, prefill, scorecard, onScorecard }: GuessActionsOptions) {
+export function useGuessActions({ clubId, seasonId, leagueId, oursSides, prefill, scorecard, onScorecard }: GuessActionsOptions) {
   const review = useImportReview()
   const [pickerKey, setPickerKey] = useState<string | null>(null)
 
@@ -89,7 +90,7 @@ export function useGuessActions({ clubId, seasonId, oursSides, prefill, scorecar
       takenPlayers={taken}
       takenGuests={takenGuests}
       allowGuest={!unresolved}
-      newPlayer={unresolved && row?.displayName ? { name: row.displayName, sectionId } : undefined}
+      newPlayer={unresolved && row?.displayName ? { name: row.displayName, sectionId, leagueId } : undefined}
       matchSquad={row ? matchSquadFor(scorecard, row.side, prefillSide, false) : undefined}
       onPickPlayer={(picked) => {
         if (pickerKey) onScorecard(resolveImportedRow(scorecard, pickerKey, { playerProfileId: picked.playerProfileId, firstName: picked.firstName, lastName: picked.lastName }))

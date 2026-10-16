@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
 import { createPlayer, linkPlayerSection, listPlayers } from '../../api/playerApi'
+import { listLeagues } from '../../api/leagueApi'
 import { listSections } from '../../api/sectionApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -91,7 +92,7 @@ export interface PlayerSlotPickerProps {
   // docs/specs/104: adds a "New player" tab that creates a registered player inside the dialog and picks them in one step
   // (the guest becomes that player). `name` is the guest's written name, split into first name and surname to prefill the
   // form; `sectionId` is the section of the guest's club team, which the new player is linked to. Omitted, no tab.
-  newPlayer?: { name: string; sectionId?: string | null }
+  newPlayer?: { name: string; sectionId?: string | null; leagueId?: string | null }
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -275,6 +276,13 @@ function PickerBody({
     queryFn: () => listSections(clubId),
     enabled: scope === 'new' && Boolean(newPlayer?.sectionId),
   })
+  // The league's age cut-off and limits, when the match is in one; a failed lookup just means section and today are used.
+  const leaguesQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'leagues'],
+    queryFn: () => listLeagues(clubId),
+    enabled: scope === 'new' && Boolean(newPlayer?.leagueId),
+  })
+  const newPlayerLeague = leaguesQuery.data?.find((candidate) => candidate.id === newPlayer?.leagueId) ?? null
   const newPlayerSection = sectionsQuery.data?.find((candidate) => candidate.id === newPlayer?.sectionId) ?? null
 
   const squadQuery = useQuery({
@@ -381,6 +389,7 @@ function PickerBody({
           initialFirstName={guessedName.firstName}
           initialLastName={guessedName.lastName}
           section={newPlayerSection}
+          league={newPlayerLeague}
           submitLabel="Create and link"
           pending={createMutation.isPending}
           error={createMutation.isError ? errorDetail(createMutation.error, 'The player could not be created. Please try again.') : null}

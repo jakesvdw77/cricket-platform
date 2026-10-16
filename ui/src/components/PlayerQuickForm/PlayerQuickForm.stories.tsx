@@ -17,3 +17,11 @@ export const ServerError: Story = { args: { initialFirstName: 'Jan', initialLast
 export const WithSectionAgeLimit: Story = {
   args: { initialFirstName: 'Jan', initialLastName: 'van der Berg', section: { name: 'U15', minAge: null, maxAge: 15 } },
 }
+export const WithLeagueCutoff: Story = {
+  args: {
+    initialFirstName: 'Jan',
+    initialLastName: 'van der Berg',
+    section: { name: 'U15', minAge: null, maxAge: 15 },
+    league: { minAge: null, maxAge: 13, ageCutoffDate: '2026-09-01' },
+  },
+}

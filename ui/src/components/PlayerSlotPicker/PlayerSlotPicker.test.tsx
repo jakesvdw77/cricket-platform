@@ -5,11 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlayerSlotPicker } from './PlayerSlotPicker'
 import type { PlayerSlotPickerProps } from './PlayerSlotPicker'
 import * as playerApi from '../../api/playerApi'
+import * as leagueApi from '../../api/leagueApi'
+import * as sectionApi from '../../api/sectionApi'
 import * as squadApi from '../../api/teamSquadApi'
 import * as resultApi from '../../api/matchResultApi'
 import { resetPlayerNameModeForTests } from '../../hooks/usePlayerNameMode'
 
 vi.mock('../../api/playerApi', () => ({ listPlayers: vi.fn(), createPlayer: vi.fn(), linkPlayerSection: vi.fn() }))
+vi.mock('../../api/leagueApi', () => ({ listLeagues: vi.fn() }))
+vi.mock('../../api/sectionApi', () => ({ listSections: vi.fn() }))
 vi.mock('../../api/teamSquadApi', () => ({ listSquad: vi.fn() }))
 vi.mock('../../api/matchResultApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/matchResultApi')>()),
@@ -76,6 +80,26 @@ describe('PlayerSlotPicker', () => {
       await user.click(screen.getByRole('button', { name: 'Create and link' }))
       expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
       expect(playerApi.createPlayer).not.toHaveBeenCalled()
+    })
+
+    it("reads the league's cut-off and limits for the date of birth guidance", async () => {
+      const user = userEvent.setup()
+      vi.mocked(sectionApi.listSections).mockResolvedValue([{ id: 'sec-1', name: 'U15', minAge: null, maxAge: 15 }] as never)
+      vi.mocked(leagueApi.listLeagues).mockResolvedValue([{ id: 'lg-1', name: 'League', minAge: null, maxAge: null, ageCutoffDate: '2020-09-01' }] as never)
+      setup({ newPlayer: { name: 'Jan Berg', sectionId: 'sec-1', leagueId: 'lg-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+
+      expect(await screen.findByText('Under 15 on 1 Sep 2020: born on or after 2 Sep 2005')).toBeInTheDocument()
+      expect(leagueApi.listLeagues).toHaveBeenCalledWith('club-1')
+    })
+
+    it('does not look up the league when none was passed', async () => {
+      const user = userEvent.setup()
+      vi.mocked(leagueApi.listLeagues).mockClear()
+      setup({ newPlayer: { name: 'Jan Berg' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      await screen.findByLabelText('Date of birth')
+      expect(leagueApi.listLeagues).not.toHaveBeenCalled()
     })
 
     it('creates the player, tags the section, and picks the new player in one step', async () => {

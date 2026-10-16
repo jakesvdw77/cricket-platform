@@ -79,6 +79,17 @@ describe('PlayerQuickForm', () => {
     })
   })
 
+  it("uses the league's cut-off date and limits for min, max and the helper line", () => {
+    setup({
+      section: { name: 'U15', minAge: null, maxAge: 15 },
+      league: { minAge: null, maxAge: 13, ageCutoffDate: '2020-09-01' },
+    })
+    const input = screen.getByLabelText('Date of birth')
+    expect(input).toHaveAttribute('min', '2007-09-02')
+    expect(input).toHaveAttribute('max', '2020-09-01')
+    expect(screen.getByText('Under 13 on 1 Sep 2020: born on or after 2 Sep 2007')).toBeInTheDocument()
+  })
+
   it('without a section or with no age limits behaves as before', () => {
     setup({ section: { name: 'Open', minAge: null, maxAge: null } })
     const input = screen.getByLabelText('Date of birth')
