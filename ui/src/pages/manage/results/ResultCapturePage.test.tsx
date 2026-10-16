@@ -37,6 +37,8 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
 vi.mock('../../../api/leaguePlayingConditionsApi', () => ({
   getPlayingConditions: (clubId: string, leagueId: string, seasonId: string) => getPlayingConditions(clubId, leagueId, seasonId),
 }))
+vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([{ id: 'team-1', name: '1st XI', logoUrl: null }]) }))
 
 const notFound = () => new AxiosError('nope', '404', undefined, undefined, { status: 404 } as never)
@@ -361,6 +363,27 @@ describe('ResultCapturePage', () => {
       await userEvent.setup().click(step('Result'))
       expect(await screen.findByRole('radio', { name: /^Won/ })).toHaveAttribute('aria-checked', 'true')
       expect(screen.getByText(/Draft saved/)).toBeInTheDocument()
+    })
+
+    it('offers the league playing conditions on Review only for a match with a league, and opens them in a dialog', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      getMatch.mockResolvedValue(makeMatch({ id: 'match-1', leagueId: 'league-1' }))
+      getPlayingConditions.mockResolvedValue(null)
+      renderPage()
+      await toReview(user)
+
+      await user.click(screen.getByRole('button', { name: 'Playing conditions' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Playing conditions' })
+      expect(await within(dialog).findByText('No playing conditions are on file for this league and season.')).toBeInTheDocument()
+    })
+
+    it('has no playing conditions button on Review for a friendly', async () => {
+      const user = userEvent.setup()
+      getMatchResult.mockResolvedValue(existingDraft())
+      renderPage()
+      await toReview(user)
+      expect(screen.queryByRole('button', { name: 'Playing conditions' })).not.toBeInTheDocument()
     })
 
     it('validates the saved payload when Review opens and lists a green check for a clean result', async () => {

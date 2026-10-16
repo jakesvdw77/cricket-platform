@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Box, Checkbox, Chip, FormControlLabel, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
@@ -9,6 +10,7 @@ import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
+import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined'
 import { Button } from '../../../../components/Button'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { DetailLine } from '../../../../components/DetailLine'
@@ -23,6 +25,7 @@ import { entryPlayerKey } from '../../../../utils/scorecardPrefill'
 import type { MarginCheck } from '../../../../utils/marginCheck'
 import { inningsFor, resultLine } from '../../../../utils/resultLine'
 import { formatMatchDateTime } from '../../../../utils/matchDateTime'
+import { PlayingConditionsDialog } from './PlayingConditionsDialog'
 import { tossLine } from '../resultListHelpers'
 import { toPayload } from '../resultDraftHelpers'
 import { dedupeWarnings } from './dedupeWarnings'
@@ -65,6 +68,7 @@ function CheckRow({ tone, text, action, chip }: { tone: 'ok' | 'warning' | 'erro
 // that was not selected) are quiet. Scorecard issues carry a chip with the team they belong to. The Publish button lives in
 // the page's footer.
 export function ReviewStep({
+  clubId,
   match,
   draft,
   sides,
@@ -95,6 +99,10 @@ export function ReviewStep({
     names,
   )
   const ballsPerOver = payload.ballsPerOver ?? 6
+  const [conditionsOpen, setConditionsOpen] = useState(false)
+  // The league's rules, for a match that has a league and season: the overs this result was scheduled for are compared with them.
+  const leagueRules = match.leagueId && match.seasonId ? { leagueId: match.leagueId, seasonId: match.seasonId } : null
+  const scheduledOvers = payload.scheduledBalls != null ? payload.scheduledBalls / ballsPerOver : null
   const derby = oursSides.length > 1
   const teamNameOf = (side: ResultSide | null) => (side ? (sides.find((candidate) => candidate.side === side)?.name ?? null) : null)
 
@@ -204,7 +212,14 @@ export function ReviewStep({
       )}
 
       <Box aria-live="polite" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+          <FormSectionHeading icon={<FactCheckOutlinedIcon />} title="Checks" />
+          {leagueRules && (
+            <Button variant="secondary" size="sm" startIcon={<GavelOutlinedIcon fontSize="small" />} onClick={() => setConditionsOpen(true)} sx={{ minHeight: 44 }}>
+              Playing conditions
+            </Button>
+          )}
+        </Box>
         {validating && (
           <Typography variant="body2" color="text.secondary">
             Checking the result…
@@ -250,6 +265,16 @@ export function ReviewStep({
           />
         )}
       </Box>
+      {leagueRules && (
+        <PlayingConditionsDialog
+          open={conditionsOpen}
+          onClose={() => setConditionsOpen(false)}
+          clubId={clubId}
+          leagueId={leagueRules.leagueId}
+          seasonId={leagueRules.seasonId}
+          scheduledOvers={scheduledOvers}
+        />
+      )}
     </Box>
   )
 }
