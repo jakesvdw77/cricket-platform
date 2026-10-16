@@ -26,3 +26,16 @@ export function sanitiseTimeText(raw: string): string {
 export function isCompleteTime(text: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(text)
 }
+
+// How far the time box's up and down arrows move the time.
+export const STEP_MINUTES = 15
+
+// Steps a 'HH:MM' time to the next (+1) or previous (-1) STEP_MINUTES mark (:00 :15 :30 :45), wrapping within the day. An
+// empty or incomplete time starts at 09:00.
+export function stepTime(text: string, direction: 1 | -1): string {
+  if (!isCompleteTime(text)) return '09:00'
+  const minutes = Number(text.slice(0, 2)) * 60 + Number(text.slice(3))
+  const stepped = direction === 1 ? (Math.floor(minutes / STEP_MINUTES) + 1) * STEP_MINUTES : (Math.ceil(minutes / STEP_MINUTES) - 1) * STEP_MINUTES
+  const wrapped = ((stepped % 1440) + 1440) % 1440
+  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`
+}

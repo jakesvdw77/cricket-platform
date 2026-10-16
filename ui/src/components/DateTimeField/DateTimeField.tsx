@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Box, Button, FormHelperText, FormLabel } from '@mui/material'
+import { Box, FormHelperText, FormLabel, IconButton, InputAdornment } from '@mui/material'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import { Input } from '../Input'
-import { isCompleteTime, sanitiseTimeText } from '../../utils/timeInput'
-
-const DEFAULT_QUICK_TIMES = ['08:00', '09:00', '10:00', '12:00', '13:00', '14:00']
+import { isCompleteTime, sanitiseTimeText, stepTime, STEP_MINUTES } from '../../utils/timeInput'
 
 export interface DateTimeFieldProps {
   label: string
@@ -17,8 +17,6 @@ export interface DateTimeFieldProps {
   // 'YYYY-MM-DDTHH:mm' or 'YYYY-MM-DD'; only the date part reaches the date input.
   min?: string
   max?: string
-  // One-tap times shown under the time box (24-hour 'HH:MM').
-  quickTimes?: string[]
   'data-testid'?: string
 }
 
@@ -44,7 +42,6 @@ export function DateTimeField({
   required = false,
   min,
   max,
-  quickTimes = DEFAULT_QUICK_TIMES,
   'data-testid': testId,
 }: DateTimeFieldProps) {
   const [draft, setDraft] = useState(() => splitValue(value))
@@ -65,6 +62,17 @@ export function DateTimeField({
     }
   }
 
+  const step = (direction: 1 | -1) => update({ ...draft, time: stepTime(draft.time, direction) })
+  // Small stacked arrows, 22 px each; the 44 px touch target is kept by extending the hit area sideways (as GuessChip does).
+  const arrowSx = {
+    position: 'relative',
+    width: 28,
+    height: 22,
+    p: 0,
+    borderRadius: 0.5,
+    '&::after': { content: '""', position: 'absolute', top: 0, bottom: 0, left: -8, right: -8 },
+  } as const
+
   const helperId = helperText ? `${testId ?? label.replace(/\W+/g, '-')}-helper` : undefined
   const fieldSx = { '& .MuiInputBase-root': { minHeight: 44 } }
 
@@ -79,7 +87,7 @@ export function DateTimeField({
       >
         {label}
       </FormLabel>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7.5rem', gap: 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 9rem', gap: 1 }}>
         <Input
           label=""
           type="date"
@@ -99,28 +107,30 @@ export function DateTimeField({
           disabled={disabled}
           required={required}
           placeholder="HH:MM"
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+              event.preventDefault()
+              step(event.key === 'ArrowUp' ? 1 : -1)
+            }
+          }}
           inputProps={{ 'aria-label': `${label} (time)`, inputMode: 'numeric', maxLength: 5, autoComplete: 'off' }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end" sx={{ ml: 0, mr: -0.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <IconButton size="small" tabIndex={-1} aria-label={`${label}: ${STEP_MINUTES} minutes later`} disabled={disabled} onClick={() => step(1)} sx={arrowSx}>
+                    <KeyboardArrowUpIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" tabIndex={-1} aria-label={`${label}: ${STEP_MINUTES} minutes earlier`} disabled={disabled} onClick={() => step(-1)} sx={arrowSx}>
+                    <KeyboardArrowDownIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </InputAdornment>
+            ),
+          }}
           sx={fieldSx}
         />
       </Box>
-      {quickTimes.length > 0 && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-          {quickTimes.map((time) => (
-            <Button
-              key={time}
-              size="small"
-              variant={draft.time === time ? 'contained' : 'outlined'}
-              aria-pressed={draft.time === time}
-              aria-label={`Set ${label} to ${time}`}
-              disabled={disabled}
-              onClick={() => update({ ...draft, time })}
-              sx={{ minHeight: 44, minWidth: 64, fontVariantNumeric: 'tabular-nums' }}
-            >
-              {time}
-            </Button>
-          ))}
-        </Box>
-      )}
       {helperText && (
         <FormHelperText id={helperId} error={error} sx={{ mx: '14px' }}>
           {helperText}

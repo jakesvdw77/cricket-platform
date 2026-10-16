@@ -19,7 +19,6 @@ export default meta
 export const Empty: StoryObj = { render: () => <Demo /> }
 export const WithValue: StoryObj = { render: () => <Demo initial="2026-10-11T13:00" /> }
 export const DateOnly: StoryObj = { render: () => <Demo initial="2026-10-11" /> }
-export const CustomQuickTimes: StoryObj = { render: () => <Demo quickTimes={['09:30', '13:30', '18:00']} /> }
 export const WithError: StoryObj = {
   render: () => <Demo initial="2020-01-01T09:00" error helperText="Choose a closing time in the future." />,
 }

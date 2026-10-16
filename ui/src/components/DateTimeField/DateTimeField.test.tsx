@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { DateTimeField } from './DateTimeField'
 import type { DateTimeFieldProps } from './DateTimeField'
 import { baseTheme } from '../../theme'
+import { STEP_MINUTES } from '../../utils/timeInput'
 
 function Harness({ initial = '', onValue, ...rest }: Partial<DateTimeFieldProps> & { initial?: string; onValue?: (v: string) => void }) {
   const [value, setValue] = useState(initial)
@@ -120,31 +121,6 @@ describe('DateTimeField', () => {
     expect(date()).toHaveValue('2026-06-01')
   })
 
-  it('a quick time button sets the time and does not assume a date', async () => {
-    const user = userEvent.setup()
-    const onValue = vi.fn()
-    render(<Harness onValue={onValue} />)
-
-    await user.click(screen.getByRole('button', { name: 'Set Closes at to 13:00' }))
-    expect(time()).toHaveValue('13:00')
-    expect(date()).toHaveValue('')
-    expect(onValue).not.toHaveBeenCalled()
-
-    fireEvent.change(date(), { target: { value: '2026-06-01' } })
-    expect(onValue).toHaveBeenLastCalledWith('2026-06-01T13:00')
-  })
-
-  it('a quick time button changes the time of an existing value', async () => {
-    const user = userEvent.setup()
-    const onValue = vi.fn()
-    render(<Harness initial="2026-10-11T13:00" onValue={onValue} quickTimes={['09:00', '18:30']} />)
-
-    await user.click(screen.getByRole('button', { name: 'Set Closes at to 18:30' }))
-
-    expect(onValue).toHaveBeenCalledWith('2026-10-11T18:30')
-    expect(screen.queryByRole('button', { name: 'Set Closes at to 13:00' })).not.toBeInTheDocument()
-  })
-
   it('follows a value changed from outside', () => {
     const { rerender } = render(
       <ThemeProvider theme={baseTheme}>
@@ -166,8 +142,7 @@ describe('DateTimeField', () => {
 
     expect(date()).toBeDisabled()
     expect(time()).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Set Closes at to 09:00' })).toBeDisabled()
-  })
+      })
 
   it('shows the helper or error text', () => {
     render(<Harness error helperText="Choose a closing time in the future." />)
@@ -181,5 +156,58 @@ describe('DateTimeField', () => {
     expect(date()).toHaveAttribute('min', '2026-01-01')
     expect(date()).toHaveAttribute('max', '2026-12-31')
     expect(screen.getByTestId('close')).toBe(screen.getByRole('group', { name: 'Closes at' }))
+  })
+
+  describe('stepper', () => {
+    const later = () => screen.getByRole('button', { name: `Closes at: ${STEP_MINUTES} minutes later` })
+    const earlier = () => screen.getByRole('button', { name: `Closes at: ${STEP_MINUTES} minutes earlier` })
+
+    it('the arrows step to the next and previous quarter hour', async () => {
+      const user = userEvent.setup()
+      const onValue = vi.fn()
+      render(<Harness initial="2026-10-11T13:10" onValue={onValue} />)
+
+      await user.click(later())
+      expect(time()).toHaveValue('13:15')
+      await user.click(later())
+      expect(time()).toHaveValue('13:30')
+      await user.click(earlier())
+      expect(time()).toHaveValue('13:15')
+      expect(onValue).toHaveBeenLastCalledWith('2026-10-11T13:15')
+    })
+
+    it('ArrowUp and ArrowDown step the time, wrapping within the day', async () => {
+      const user = userEvent.setup()
+      render(<Harness initial="2026-10-11T23:50" />)
+
+      await user.click(time())
+      await user.keyboard('{ArrowUp}')
+      expect(time()).toHaveValue('00:00')
+      await user.keyboard('{ArrowDown}')
+      expect(time()).toHaveValue('23:45')
+    })
+
+    it('starts at 09:00 when the time is empty, and sets the time without assuming a date', async () => {
+      const user = userEvent.setup()
+      const onValue = vi.fn()
+      render(<Harness onValue={onValue} />)
+
+      await user.click(earlier())
+
+      expect(time()).toHaveValue('09:00')
+      expect(date()).toHaveValue('')
+      expect(onValue).not.toHaveBeenCalled()
+    })
+
+    it('is disabled with the field', () => {
+      render(<Harness initial="2026-10-11T13:00" disabled />)
+      expect(later()).toBeDisabled()
+      expect(earlier()).toBeDisabled()
+    })
+  })
+
+  it('renders no quick time buttons', () => {
+    render(<Harness />)
+    expect(screen.queryByRole('button', { name: /^Set Closes at to/ })).not.toBeInTheDocument()
   })
 })
