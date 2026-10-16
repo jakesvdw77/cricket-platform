@@ -70,6 +70,13 @@ Package layout: `controller` / `service` + `service.impl` / `repository` / `doma
 
 Spec 104 adds `service.adaptor`, a sibling of `service.impl` and `service.support`: import adaptors (stateless beans extending `AbstractAdaptor`, found by `AdaptorRegistry`) that turn an input into the common `ImportedResultDto`. They never touch a repository, a result service or the processor.
 
+Import rules (spec 104):
+- **Adaptors never write.** `service.adaptor` may depend only on `dto`, `exception`, domain enums, `OversFormat` and itself (ArchUnit `ImportAdaptorRulesTest`). The Result Processor (`service.support`) turns the common format into a draft; adaptors only read.
+- **`source` and `external_id` are written only through `ResultService.saveImportedDraft`**, and only `ResultImportServiceImpl` may call it (ArchUnit). It only ever produces a `DRAFT`; an import never publishes. A re-import of the same `(source, external_id)` needs the `replaceExistingDraft` acknowledgement, otherwise the server answers 409.
+- **`result_player.import_match` is clear-only for clients.** It is set only by `ScorecardService.replaceImported`; a normal save may clear it (the manager confirmed the name) but never set it, and `ScorecardMapper` ignores it on the way in. Publishing is blocked with `IMPORTED_NAME_UNCONFIRMED` while any row still carries it.
+- **Name matching is deterministic and local** (`NameResolver`, `NameTiers`, `NameSimilarity`). Nothing is sent to any AI service; `UnresolvedNameSuggester` is an interface with no bean. A remembered name (`result_name_alias`, per club) is written inside the scorecard save, never by the import.
+- **The preview is stateless.** The document goes to the browser and comes back with `resolve`; the server re-validates it and recomputes every match level. The raw payload is not stored (`source_payload` stays null).
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:

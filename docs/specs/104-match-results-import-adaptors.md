@@ -1,7 +1,7 @@
 # 104 — Match Results: Import Adaptors and the Result Processor
 
 **Depends on:** `100-match-results-core.md` (`match_result` with `source` / `external_id` / `source_payload`, the draft and publish gate, `ResultDraft`, `ResultValidator`; this spec is its slice 104), `101-match-results-our-side-scorecard.md` (the merged full-scorecard flow: `ScorecardDto`, `result_player`, batting / bowling entries with dismissal bowler and fielder, `DismissalCredits`, `StandoutRules`, the Teams-first wizard, the side toggle, `scorecard/prefill`; built on `feature/101-our-side-scorecard` and awaiting merge, 104 is built after it merges), `097-import-framework.md` (the principles that bind every import: always an explicit confirm, validation first, never blindly import, AI only proposes; its tables and token are **not** reused, see Decision 1), `001-tenancy-identity-model.md` (club, person, player profile), `035-section-scoped-access.md` and `029` (`canAccessClub`, section narrowing on matches), `099-fields-directory.md` (the venue text in a file is **not** linked to a field here), `docs/standards/*.md`.
-**Status:** draft, revised 2026-10-15 after the user's decisions on the open questions (recorded in Decisions below): **the first revision excludes AI completely**; name matching is deterministic, with a ranked suggestion list for anything left over. Not planned or built.
+**Status:** built on `feature/104-import-adaptors` (2026-10-16), hand-tested, tests green, in review. Originally: draft, revised 2026-10-15 after the user's decisions on the open questions (recorded in Decisions below): **the first revision excludes AI completely**; name matching is deterministic, with a ranked suggestion list for anything left over. Not planned or built.
 
 ## Problem & Goals
 
@@ -336,6 +336,21 @@ Not part of this revision (decision 2026-10-15); also listed in `docs/roadmap.md
 - **Behaviour to keep:** the AI only suggests, must answer "no match" unless confident, chooses only from supplied keys, only a `HIGH` answer is accepted and it is flagged `AI_SUGGESTED`, confirmed one by one, never in "Confirm all"; a failure never fails the import; a platform kill switch and per-club cap.
 
 **Docs to update when built** (the roadmap's 104 row and "Deferred by `104`" are updated now): `docs/architecture.md` (Adaptor to common format to Result Processor to draft; `result_name_alias`; `match_result.source` / `external_id`); `docs/standards/backend.md` (the `service.adaptor` package and its isolation rule; adaptors never write; `source` / `external_id` only through `saveImportedDraft`; `import_match` is clear-only for clients; the new exceptions); `docs/standards/frontend.md` (the import wizard route, `GuessChip`, `IMPORT_STEPS`, the rule that the UI never hard-codes adaptors); `docs/specs/100-match-results-core.md` (its slice 104 outline now points here).
+
+### Built versus spec (2026-10-16)
+
+Departures and additions made while building, each agreed with the user during hand testing:
+
+- **Add match is a dialog** (`MatchFormDialog`), not a new tab, so an import can create its match without leaving the wizard.
+- **Date mismatch warning.** The import does not enforce the match date. The Match step warns, with a tick, when the file's date differs from the match by more than one day (UI only).
+- **"Change to <name>" button** in the status column confirms the closest player in one tap, beside the Guess chip, so rows stay one line high.
+- **Planned batting caption** is hidden for imported results only.
+- **`NOT_OUT_NO_BALLS` note** (one per innings, no names): batters marked not out with 0 balls faced probably did not bat. The wizard's wicket fill now counts existing Not outs, so imported non-batters are no longer turned into Not outs.
+- **JSON adaptor tolerates one surrounding code fence** (line numbers preserved), because AI chats wrap the JSON. Curly quotes are deliberately not repaired, to avoid altering names.
+- **"Convert with your own AI" helper.** The adaptor descriptor carries an optional `conversionPrompt` (generated from `DismissalType`); the UI offers it as copyable text with a short red disclaimer. The platform sends nothing to any AI; using one is the user's own decision (operator question for POPIA, not legal advice).
+- **Matcher additions after measurement:** `SURNAME_INITIAL`, particle surnames starting at the first particle word ("Willem V" unifies with "Willem van der Merwe"), and a floating-point fix at the 0.80 boundary.
+- **Known test gaps:** the duplicate-id race fallback, binary-format paste refusal (needs a second adaptor) and the on-disk JSON fixtures; the Playwright golden path is written but not yet run (needs Keycloak).
+- **Parked:** team-name matching improvements (ranked closest-side suggestions, "U15" versus "Under 15", trailing numbers).
 
 ### Decisions
 
