@@ -12,10 +12,10 @@ const teams = makeTeams(makeTeam('team-1', '1st XI'), makeTeam('team-2', '2nd XI
 const leagues = new Map([['league-1', { id: 'league-1', name: 'TVL Division 1' } as League]])
 const seasons = new Map([['season-1', { id: 'season-1', label: '2026/27' } as Season]])
 
-function renderTable(matches: Match[], viewTo?: (match: Match) => string) {
+function renderTable(matches: Match[], viewTo?: (match: Match) => string, onDelete?: (target: { id: string; name: string }) => void) {
   return render(
     <MemoryRouter>
-      <MatchTable matches={matches} teamsById={teams} leaguesById={leagues} seasonsById={seasons} viewTo={viewTo} />
+      <MatchTable matches={matches} teamsById={teams} leaguesById={leagues} seasonsById={seasons} viewTo={viewTo} onDelete={onDelete} />
     </MemoryRouter>,
   )
 }
@@ -115,5 +115,32 @@ describe('MatchTable', () => {
   it('marks an inactive match', () => {
     renderTable([makeMatch({ active: false, matchDate: '2026-10-15T07:15:00' })])
     expect(screen.getByText('Inactive')).toBeInTheDocument()
+  })
+
+  // docs/specs/109-delete-empty-match.md
+  describe('Delete', () => {
+    it('shows Delete only on a deletable row, and hands the match name to the handler', () => {
+      const onDelete = vi.fn()
+      renderTable([makeMatch({ id: 'm1', deletable: true }), makeMatch({ id: 'm2', deletable: false })], undefined, onDelete)
+      const buttons = screen.getAllByRole('button', { name: 'Delete match 1st XI v Riverside Occasionals' })
+      expect(buttons).toHaveLength(1)
+      buttons[0].click()
+      expect(onDelete).toHaveBeenCalledWith({ id: 'm1', name: '1st XI v Riverside Occasionals' })
+    })
+
+    it('shows no Delete and no actions column without a handler', () => {
+      renderTable([makeMatch({ deletable: true })])
+      expect(screen.queryByRole('button', { name: /^Delete match/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument()
+    })
+
+    it('does not follow the row link when pressed', () => {
+      renderTable([makeMatch({ id: 'm1', deletable: true })], (match) => `/matches/${match.id}`, vi.fn())
+      const press = vi.fn()
+      document.addEventListener('click', press)
+      screen.getByRole('button', { name: /^Delete match/ }).click()
+      document.removeEventListener('click', press)
+      expect(press).not.toHaveBeenCalled()
+    })
   })
 })

@@ -118,6 +118,8 @@ export interface RecordCardFooterButton {
   // explains why: the button is wrapped in a span carrying the tooltip, because a disabled
   // ButtonBase has pointer-events none and would never show its own `title`.
   title?: string
+  // docs/specs/109-delete-empty-match.md: a destructive action (Delete) reads in the error colour.
+  destructive?: boolean
 }
 
 export interface RecordCardProps {
@@ -602,7 +604,7 @@ export function RecordCard({
                 py: 1,
                 px: 0.25,
                 borderRadius: 1,
-                color: 'primary.dark',
+                color: button.destructive ? 'error.main' : 'primary.dark',
                 '&:hover': { bgcolor: 'action.hover' },
                 '&.Mui-disabled': { opacity: 0.5 },
                 '&.Mui-focusVisible': { bgcolor: 'action.focus' },

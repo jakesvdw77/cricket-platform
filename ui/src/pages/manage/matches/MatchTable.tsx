@@ -1,7 +1,8 @@
-import { Avatar, Box, Chip, Link as MuiLink, Typography } from '@mui/material'
+import { Avatar, Box, Chip, IconButton, Link as MuiLink, Typography } from '@mui/material'
 import { lighten } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { Link as RouterLink } from 'react-router-dom'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ChevronRightOutlinedIcon from '@mui/icons-material/ChevronRightOutlined'
 import { badgeSx } from '../../../components/RecordCard'
 import type { RecordCardBadge } from '../../../components/RecordCard'
@@ -23,6 +24,9 @@ export interface MatchTableProps {
   seasonsById: Map<string, Season>
   // Where a row opens the match; absent (the squad picker) = the rows are not links.
   viewTo?: (match: Match) => string
+  // docs/specs/109-delete-empty-match.md: when given, the table gains a narrow actions column and a match the server marks
+  // `deletable` shows Delete in it. Absent (the other users of the table) = no column, unchanged.
+  onDelete?: (target: { id: string; name: string }) => void
 }
 
 const NOT_ON_FILE = '–'
@@ -34,13 +38,17 @@ const COLUMNS = {
   sm: '150px minmax(220px, 2fr) 170px minmax(130px, 1fr) 110px 32px',
 }
 
+// The actions column (spec 109) is one 44 px target wide.
+const columnsFor = (withActions: boolean) =>
+  withActions ? { xs: `${COLUMNS.xs} 44px`, sm: `${COLUMNS.sm} 44px` } : COLUMNS
+
 const gridSx = {
   display: 'grid',
-  gridTemplateColumns: COLUMNS,
   alignItems: 'center',
   columnGap: { xs: 0.75, sm: 1.5 },
   px: 1.5,
 } as const
+const gridFor = (withActions: boolean) => ({ ...gridSx, gridTemplateColumns: columnsFor(withActions) })
 
 const desktopOnly = { display: { xs: 'none', sm: 'block' } } as const
 const phoneOnly = { display: { xs: 'block', sm: 'none' } } as const
@@ -66,12 +74,14 @@ function MatchRow({
   leaguesById,
   seasonsById,
   viewTo,
+  onDelete,
 }: {
   match: Match
   teamsById: Map<string, Team>
   leaguesById: Map<string, League>
   seasonsById: Map<string, Season>
   viewTo?: string
+  onDelete?: MatchTableProps['onDelete']
 }) {
   const home = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const away = sideName(match.awayTeamId, match.awayTeamName, teamsById)
@@ -119,7 +129,7 @@ function MatchRow({
       data-testid="match-row"
       data-tone={soon ? 'warning' : 'neutral'}
       sx={{
-        ...gridSx,
+        ...gridFor(Boolean(onDelete)),
         position: 'relative',
         minHeight: { xs: 60, sm: 56 },
         '&:nth-of-type(odd)': { bgcolor: zebraTint },
@@ -192,6 +202,24 @@ function MatchRow({
       <Box role="cell" aria-hidden sx={{ display: 'flex', justifyContent: 'center', color: 'primary.main' }}>
         <ChevronRightOutlinedIcon fontSize="small" />
       </Box>
+      {onDelete && (
+        <Box role="cell" sx={{ display: 'flex', justifyContent: 'center' }}>
+          {match.deletable === true && (
+            <IconButton
+              aria-label={`Delete match ${home} v ${away}`}
+              title="Delete"
+              onClick={(event) => {
+                // Sits above the row's stretched link, so pressing it never opens the match.
+                event.stopPropagation()
+                onDelete({ id: match.id, name: `${home} v ${away}` })
+              }}
+              sx={{ position: 'relative', zIndex: 1, width: 44, height: 44, color: 'error.main' }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }
@@ -199,7 +227,7 @@ function MatchRow({
 // docs/specs/089 (C): the list view of the Matches page, built like PlayerTable (docs/specs/088 F): one bordered panel
 // with a header row that sticks to the top of the scrolling page and zebra rows; the whole row opens the match. A
 // phone keeps Match (the time under the names), Picked and the chevron.
-export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewTo }: MatchTableProps) {
+export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewTo, onDelete }: MatchTableProps) {
   return (
     <Box
       role="table"
@@ -217,7 +245,7 @@ export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewT
       <Box
         role="row"
         sx={{
-          ...gridSx,
+          ...gridFor(Boolean(onDelete)),
           position: 'sticky',
           top: 0,
           zIndex: 1,
@@ -241,6 +269,7 @@ export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewT
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Announced</Box>
         <Box role="columnheader" sx={desktopOnly} {...DESKTOP_ONLY}>Poll</Box>
         <Box role="columnheader" aria-label="Open" />
+        {onDelete && <Box role="columnheader" aria-label="Actions" />}
       </Box>
       <Box role="rowgroup">
         {matches.map((match) => (
@@ -251,6 +280,7 @@ export function MatchTable({ matches, teamsById, leaguesById, seasonsById, viewT
             leaguesById={leaguesById}
             seasonsById={seasonsById}
             viewTo={viewTo ? viewTo(match) : undefined}
+            onDelete={onDelete}
           />
         ))}
       </Box>
