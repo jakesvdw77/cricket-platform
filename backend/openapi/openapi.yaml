@@ -11499,6 +11499,7 @@ components:
           enum:
           - JSON
           - CRICCLUBS_CSV
+          - STUMPS_PDF
         displayName:
           type: string
         description:
@@ -11594,6 +11595,7 @@ components:
               enum:
               - JSON
               - CRICCLUBS_CSV
+              - STUMPS_PDF
             provider:
               type: string
               maxLength: 40
@@ -11967,6 +11969,7 @@ components:
           enum:
           - JSON
           - CRICCLUBS_CSV
+          - STUMPS_PDF
         format:
           type: string
           enum:

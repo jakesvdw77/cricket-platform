@@ -5,6 +5,7 @@ import type { Match, MatchPayload } from '../api/matchApi'
 import { listTeamsForClub } from '../api/teamApi'
 import { listSeasons } from '../api/seasonApi'
 import { listLeagues } from '../api/leagueApi'
+import { listSections } from '../api/sectionApi'
 import { listLeagueAffiliations } from '../api/leagueAffiliationApi'
 import { leagueTeamsQueryKey, listLeagueTeams } from '../api/leagueTeamApi'
 import { activateSession } from '../api/meApi'
@@ -21,6 +22,13 @@ export function useMatchFormData(clubId: string | undefined) {
   const seasonsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'seasons'],
     queryFn: () => listSeasons(clubId as string),
+    enabled: Boolean(clubId),
+  })
+
+  // Only to say which section each of the club's teams is in; the picker works without it.
+  const sectionsQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'sections'],
+    queryFn: () => listSections(clubId as string),
     enabled: Boolean(clubId),
   })
 
@@ -63,6 +71,7 @@ export function useMatchFormData(clubId: string | undefined) {
 
   const formProps = {
     teams: teamsQuery.data ?? [],
+    sections: sectionsQuery.data ?? [],
     seasons: seasonsQuery.data ?? [],
     leagues: leaguesQuery.data ?? [],
     affiliations: affiliationsQuery.data ?? [],

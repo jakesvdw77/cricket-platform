@@ -10,6 +10,7 @@ import com.cricketlegend.domain.FeaturedOverride;
 import com.cricketlegend.domain.FieldingEntry;
 import com.cricketlegend.domain.ImportMatchLevel;
 import com.cricketlegend.domain.InningsKind;
+import com.cricketlegend.domain.League;
 import com.cricketlegend.domain.LeaguePlayingConditions;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAward;
@@ -49,6 +50,7 @@ import com.cricketlegend.repository.BattingEntryRepository;
 import com.cricketlegend.repository.BowlingEntryRepository;
 import com.cricketlegend.repository.FieldingEntryRepository;
 import com.cricketlegend.repository.LeaguePlayingConditionsRepository;
+import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAwardRepository;
 import com.cricketlegend.repository.MatchInningsRepository;
 import com.cricketlegend.repository.MatchResultRepository;
@@ -123,6 +125,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     private final ScorecardMapper mapper;
     private final AccessService accessService;
     private final NameAliases nameAliases;
+    private final LeagueRepository leagueRepository;
 
     public ScorecardServiceImpl(
             MatchService matchService,
@@ -142,7 +145,8 @@ public class ScorecardServiceImpl implements ScorecardService {
             SelectionEligibility eligibility,
             ScorecardMapper mapper,
             AccessService accessService,
-            NameAliases nameAliases) {
+            NameAliases nameAliases,
+            LeagueRepository leagueRepository) {
         this.matchService = matchService;
         this.resultRepository = resultRepository;
         this.inningsRepository = inningsRepository;
@@ -161,6 +165,7 @@ public class ScorecardServiceImpl implements ScorecardService {
         this.mapper = mapper;
         this.accessService = accessService;
         this.nameAliases = nameAliases;
+        this.leagueRepository = leagueRepository;
     }
 
     // ---- prefill ----
@@ -693,6 +698,9 @@ public class ScorecardServiceImpl implements ScorecardService {
             return ScorecardContext.none();
         }
         Integer maxBalls = null;
+        String leagueName = match.getLeagueId() == null
+                ? null
+                : leagueRepository.findById(match.getLeagueId()).map(League::getName).orElse(null);
         if (match.getLeagueId() != null) {
             maxBalls = playingConditionsRepository
                     .findByLeagueIdAndSeasonId(match.getLeagueId(), match.getSeasonId())
@@ -736,7 +744,7 @@ public class ScorecardServiceImpl implements ScorecardService {
                         matchSide, matchSide != null && matchSidePlayerRepository.countByMatchSideId(matchSide.getId()) > 0));
             }
         });
-        return new ScorecardContext(maxBalls, squads, registered, names, selection);
+        return new ScorecardContext(maxBalls, squads, registered, names, selection, leagueName);
     }
 
     // ---- building the read model ----

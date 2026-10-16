@@ -5,6 +5,8 @@ import { Input } from '../Input'
 import { MediaUpload } from '../MediaUpload'
 import type { PlayerPayload, Gender, BattingStance, BowlingArm, BowlingType } from '../../api/playerApi'
 import { numberToInput, inputToNumber } from '../../utils/numberInput'
+import { MIN_DATE_OF_BIRTH, todayIso, validatePlayerBasics } from '../../utils/playerValidation'
+import type { PlayerBasicsErrors } from '../../utils/playerValidation'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see PlayerFormPage), so its Save button targets this form via the native HTML
@@ -67,17 +69,7 @@ type TextField =
   | 'altContactName'
   | 'altContactPhone'
 
-type FormErrors = Partial<Record<'firstName' | 'lastName' | 'dateOfBirth', string>>
-
-// docs/specs/077: same bounds and wording as the backend's date of birth validation.
-const MIN_DATE_OF_BIRTH = '1900-01-01'
-
-function todayIso(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
+type FormErrors = PlayerBasicsErrors
 
 // The exact BowlingType option list from the spec's UI Requirements — arm is already captured
 // separately (Bowling arm), so this list is arm-independent style, not combined codes like "RFM".
@@ -115,29 +107,8 @@ function toFormState(initialValues?: PlayerFormInitialValues): FormState {
   }
 }
 
-// Mirrors the backend's required fields (CreatePlayerRequest/UpdatePlayerRequest): firstName,
-// lastName and (docs/specs/077) dateOfBirth — every other field is independently optional.
-function validate(values: FormState): FormErrors {
-  const errors: FormErrors = {}
-
-  if (!values.firstName.trim()) {
-    errors.firstName = 'First name is required'
-  }
-
-  if (!values.lastName.trim()) {
-    errors.lastName = 'Last name is required'
-  }
-
-  if (!values.dateOfBirth) {
-    errors.dateOfBirth = 'Date of birth is required'
-  } else if (values.dateOfBirth > todayIso()) {
-    errors.dateOfBirth = 'Date of birth must not be in the future'
-  } else if (values.dateOfBirth < MIN_DATE_OF_BIRTH) {
-    errors.dateOfBirth = 'Date of birth must not be before 1900-01-01'
-  }
-
-  return errors
-}
+// Required fields (first name, last name, date of birth) are validated by utils/playerValidation, shared with PlayerQuickForm.
+const validate = validatePlayerBasics
 
 // Blank string -> null, matching the backend's full-replace semantics — an admin clearing a
 // field should actually clear it, same posture as SponsorForm/ClubForm's blankToNull.

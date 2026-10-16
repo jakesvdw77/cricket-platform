@@ -5,11 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlayerSlotPicker } from './PlayerSlotPicker'
 import type { PlayerSlotPickerProps } from './PlayerSlotPicker'
 import * as playerApi from '../../api/playerApi'
+import * as leagueApi from '../../api/leagueApi'
+import * as sectionApi from '../../api/sectionApi'
 import * as squadApi from '../../api/teamSquadApi'
 import * as resultApi from '../../api/matchResultApi'
 import { resetPlayerNameModeForTests } from '../../hooks/usePlayerNameMode'
 
-vi.mock('../../api/playerApi', () => ({ listPlayers: vi.fn() }))
+vi.mock('../../api/playerApi', () => ({ listPlayers: vi.fn(), createPlayer: vi.fn(), linkPlayerSection: vi.fn() }))
+vi.mock('../../api/leagueApi', () => ({ listLeagues: vi.fn() }))
+vi.mock('../../api/sectionApi', () => ({ listSections: vi.fn() }))
 vi.mock('../../api/teamSquadApi', () => ({ listSquad: vi.fn() }))
 vi.mock('../../api/matchResultApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/matchResultApi')>()),
@@ -56,6 +60,74 @@ describe('PlayerSlotPicker', () => {
     vi.mocked(resultApi.listGuestNames).mockResolvedValue({
       content: [{ displayName: 'Dewald van Wyk', uses: 3, lastUsed: '2026-10-01T00:00:00Z' }],
       totalElements: 1, totalPages: 1, number: 0, size: 8,
+    })
+  })
+
+  describe('New player tab', () => {
+    it('is only there when newPlayer is passed, and the other tabs are unchanged', async () => {
+      setup()
+      await screen.findByText('Ann Ash')
+      expect(screen.queryByRole('button', { name: 'New player' })).not.toBeInTheDocument()
+    })
+
+    it('prefills the name from the guest, requires a date of birth, and does not create without it', async () => {
+      const user = userEvent.setup()
+      setup({ newPlayer: { name: 'Jan van der Berg', sectionId: 'sec-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      expect(screen.getByLabelText('First name')).toHaveValue('Jan')
+      expect(screen.getByLabelText('Last name')).toHaveValue('van der Berg')
+
+      await user.click(screen.getByRole('button', { name: 'Create and link' }))
+      expect(await screen.findByText('Date of birth is required')).toBeInTheDocument()
+      expect(playerApi.createPlayer).not.toHaveBeenCalled()
+    })
+
+    it("reads the league's cut-off and limits for the date of birth guidance", async () => {
+      const user = userEvent.setup()
+      vi.mocked(sectionApi.listSections).mockResolvedValue([{ id: 'sec-1', name: 'U15', minAge: null, maxAge: 15 }] as never)
+      vi.mocked(leagueApi.listLeagues).mockResolvedValue([{ id: 'lg-1', name: 'League', minAge: null, maxAge: null, ageCutoffDate: '2020-09-01' }] as never)
+      setup({ newPlayer: { name: 'Jan Berg', sectionId: 'sec-1', leagueId: 'lg-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+
+      expect(await screen.findByText('Under 15 on 1 Sep 2020: born on or after 2 Sep 2005')).toBeInTheDocument()
+      expect(leagueApi.listLeagues).toHaveBeenCalledWith('club-1')
+    })
+
+    it('does not look up the league when none was passed', async () => {
+      const user = userEvent.setup()
+      vi.mocked(leagueApi.listLeagues).mockClear()
+      setup({ newPlayer: { name: 'Jan Berg' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      await screen.findByLabelText('Date of birth')
+      expect(leagueApi.listLeagues).not.toHaveBeenCalled()
+    })
+
+    it('creates the player, tags the section, and picks the new player in one step', async () => {
+      const user = userEvent.setup()
+      vi.mocked(playerApi.createPlayer).mockResolvedValue({ id: 'new-1', firstName: 'Jan', lastName: 'van der Berg' } as never)
+      vi.mocked(playerApi.linkPlayerSection).mockResolvedValue(undefined)
+      const { onPickPlayer } = setup({ newPlayer: { name: 'Jan van der Berg', sectionId: 'sec-1' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Create and link' }))
+
+      await vi.waitFor(() => expect(onPickPlayer).toHaveBeenCalledWith({ playerProfileId: 'new-1', firstName: 'Jan', lastName: 'van der Berg' }))
+      expect(playerApi.createPlayer).toHaveBeenCalledWith('club-1', expect.objectContaining({ firstName: 'Jan', lastName: 'van der Berg', dateOfBirth: '2010-04-12' }))
+      expect(playerApi.linkPlayerSection).toHaveBeenCalledWith('club-1', 'new-1', 'sec-1')
+    })
+
+    it('shows a server error inline and leaves the guest unlinked', async () => {
+      const user = userEvent.setup()
+      vi.mocked(playerApi.createPlayer).mockRejectedValue(
+        Object.assign(new Error('bad'), { isAxiosError: true, response: { status: 409, data: { detail: 'This player already exists.' } } }),
+      )
+      const { onPickPlayer } = setup({ newPlayer: { name: 'Jan Berg' }, allowGuest: false })
+      await user.click(await screen.findByRole('button', { name: 'New player' }))
+      await user.type(screen.getByLabelText('Date of birth'), '2010-04-12')
+      await user.click(screen.getByRole('button', { name: 'Create and link' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('This player already exists.')
+      expect(onPickPlayer).not.toHaveBeenCalled()
     })
   })
 

@@ -3,6 +3,7 @@ import { Alert, Box, Checkbox, FormControlLabel, MenuItem, Stack, Switch, Typogr
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
 import { Button } from '../../../components/Button'
+import { DateTimeField } from '../../../components/DateTimeField'
 import { EmptyState } from '../../../components/EmptyState'
 import { createPoll } from '../../../api/matchAvailabilityApi'
 import { getFixtureGroups } from '../../../api/sectionAvailabilityApi'
@@ -176,16 +177,15 @@ export function SquadPollBranch({
                   {match.leagueName ? ` - ${match.leagueName}` : ''}
                 </Typography>
                 {isTicked(match) && autoClose && (
-                  <Input
-                    label={`Closes at for ${matchLabel(match)}`}
-                    type="datetime-local"
-                    value={closeAtFor(match)}
-                    onChange={(event) => setEditedCloseAt((prev) => ({ ...prev, [match.matchId]: event.target.value }))}
-                    error={Boolean(closeAtError(match))}
-                    helperText={closeAtError(match)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ mt: 1 }}
-                  />
+                  <Box sx={{ mt: 1 }}>
+                    <DateTimeField
+                      label={`Closes at for ${matchLabel(match)}`}
+                      value={closeAtFor(match)}
+                      onChange={(closeAt) => setEditedCloseAt((prev) => ({ ...prev, [match.matchId]: closeAt }))}
+                      error={Boolean(closeAtError(match))}
+                      helperText={closeAtError(match)}
+                    />
+                  </Box>
                 )}
                 <CoveredByNote match={match} />
               </Stack>

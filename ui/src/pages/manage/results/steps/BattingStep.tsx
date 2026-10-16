@@ -145,6 +145,7 @@ export function BattingStep({
   const actions = usePlayerActions({
     clubId,
     seasonId: match.seasonId,
+    leagueId: match.leagueId,
     ours: { side, teamId: ours?.teamId ?? null },
     scorecard,
     onScorecard: (next) => commit(filled(next)),
@@ -163,7 +164,7 @@ export function BattingStep({
   })
 
   // docs/specs/104: the Guess chips of an imported draft, for the batter and for the dismissal's fielder and bowler.
-  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: (next) => commit(filled(next)) })
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, leagueId: match.leagueId, oursSides, prefill, scorecard, onScorecard: (next) => commit(filled(next)) })
 
   // ---- typing a name adds the player to the team ----
   const support = useAddPlayerSupport({ clubId, matchId: match.id, seasonId: match.seasonId, side, ours, scorecard, prefillSide, label })
