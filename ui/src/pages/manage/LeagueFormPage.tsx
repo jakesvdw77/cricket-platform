@@ -20,6 +20,7 @@ import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
 import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
 import { LeagueEditTeamsTab } from './leagueEdit/LeagueEditTeamsTab'
 import { LeagueEditScheduleTab } from './leagueEdit/LeagueEditScheduleTab'
+import { LeagueSeasonDatesBlock } from './leagueEdit/LeagueSeasonDatesBlock'
 import { LeagueEditConditionsTab } from './leagueEdit/LeagueEditConditionsTab'
 import { LeagueEditContactsTab } from './leagueEdit/LeagueEditContactsTab'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
@@ -401,6 +402,16 @@ export default function LeagueFormPage() {
                 : undefined
             }
             onSubmit={(payload) => saveMutation.mutate(payload)}
+          />
+        )}
+
+        {/* docs/specs/111: when the league runs in the chosen season, above the season-scoped tabs (the header pill picks the season). */}
+        {isEdit && SEASON_TABS.includes(activeTab) && seasons.length > 0 && selectedSeasonId && (
+          <LeagueSeasonDatesBlock
+            clubId={clubId}
+            leagueId={leagueId as string}
+            seasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
           />
         )}
 

@@ -197,7 +197,7 @@ export async function duplicateLeague(
 // server (the same date eligibility uses). source says whether it is the league's cut-off or the day the league starts;
 // leagueStartSource says whether that start is the first match or, with no match yet, the season start.
 export type AgeReferenceSource = 'CUTOFF' | 'LEAGUE_START'
-export type LeagueStartSource = 'FIRST_MATCH' | 'SEASON_START'
+export type LeagueStartSource = 'LEAGUE_SEASON_DATES' | 'FIRST_MATCH' | 'SEASON_START'
 
 export interface AgeReference {
   referenceDate: string

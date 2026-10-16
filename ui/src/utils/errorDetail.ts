@@ -36,3 +36,11 @@ export function errorIssues(error: unknown): ResultIssue[] {
   const issues = error.response?.data?.issues
   return Array.isArray(issues) ? (issues as ResultIssue[]).filter((issue) => issue && typeof issue.message === 'string') : []
 }
+
+// docs/specs/111-league-season-dates.md: the message of a 400 whose code is MATCH_OUTSIDE_LEAGUE_DATES (the match date is
+// outside its league's dates), so a match form can show it under the date field; null for any other failure.
+export function matchOutsideLeagueDatesMessage(error: unknown): string | null {
+  if (!isAxiosError(error) || error.response?.status !== 400) return null
+  const data = error.response.data as { code?: unknown; detail?: unknown } | undefined
+  return data?.code === 'MATCH_OUTSIDE_LEAGUE_DATES' && typeof data.detail === 'string' ? data.detail : null
+}

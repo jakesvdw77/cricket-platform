@@ -16,7 +16,7 @@ import {
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
 import { useMatchFormData } from '../../hooks/useMatchFormData'
-import { errorDetail } from '../../utils/errorDetail'
+import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
 import { selectTeamPath } from './teamSelection/selectionLinks'
 
@@ -146,7 +146,7 @@ export default function MatchFormPage() {
       }
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {saveMutation.isError && (
+          {saveMutation.isError && !matchOutsideLeagueDatesMessage(saveMutation.error) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
             </Typography>
@@ -203,6 +203,7 @@ export default function MatchFormPage() {
         }
         {...formProps}
         onSubmit={(payload) => saveMutation.mutate(payload)}
+        matchDateServerError={matchOutsideLeagueDatesMessage(saveMutation.error)}
       />
     </RecordFormScreen>
   )

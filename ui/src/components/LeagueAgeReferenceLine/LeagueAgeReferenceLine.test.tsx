@@ -48,6 +48,19 @@ describe('LeagueAgeReferenceLine', () => {
     )
   })
 
+  it("says the league's start date applies when it comes from the season dates (docs/specs/111)", async () => {
+    mocks.getLeagueAgeReference.mockResolvedValue({
+      referenceDate: '2026-09-01',
+      source: 'LEAGUE_START',
+      leagueStart: '2026-09-01',
+      leagueStartSource: 'LEAGUE_SEASON_DATES',
+    })
+    renderLine()
+    expect(await screen.findByTestId('league-age-reference')).toHaveTextContent(
+      "Ages are judged on 1 Sep 2026 (the league's start date)",
+    )
+  })
+
   it('shows nothing while loading', () => {
     mocks.getLeagueAgeReference.mockReturnValue(new Promise(() => undefined))
     renderLine()

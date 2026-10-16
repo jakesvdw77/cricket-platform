@@ -27,7 +27,9 @@ export function LeagueAgeReferenceLine({ clubId, leagueId, seasonId, hasAgeLimit
     return null
   }
 
-  const source = data.source === 'CUTOFF' ? 'the cut-off' : 'the day the league starts'
+  // docs/specs/111: with no cut-off, the league's start is its entered season dates, else the day the league starts.
+  const leagueStart = data.leagueStartSource === 'LEAGUE_SEASON_DATES' ? "the league's start date" : 'the day the league starts'
+  const source = data.source === 'CUTOFF' ? 'the cut-off' : leagueStart
   return (
     <Typography variant="body2" color="text.secondary" data-testid="league-age-reference">
       Ages are judged on {formatReferenceDate(data.referenceDate)} ({source})
