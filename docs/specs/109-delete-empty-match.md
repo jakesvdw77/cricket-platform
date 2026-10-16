@@ -1,7 +1,7 @@
 # 109: Delete an Empty Match
 
 **Depends on:** `089-match-page-form-and-list-view.md` (the Match page and its actions), `100-match-results-core.md` (the result), `104-match-results-import-adaptors.md` (the import's Match step, where a match can be added by mistake).
-**Status:** draft, written 2026-10-16 from the user's request. Not approved.
+**Status:** approved by the user 2026-10-16 ("an empty match should be deletable, to avoid accidentally creating a match in the wrong section without having to disable it").
 
 ## Problem & Goals
 
