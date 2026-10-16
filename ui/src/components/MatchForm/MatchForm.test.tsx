@@ -12,6 +12,7 @@ import type { League } from '../../api/leagueApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
 import { fieldPage, makeField } from '../../test/fieldFixtures'
+import { setDateTime } from '../../test/dateTimeField'
 
 // docs/specs/050-league-schedule-and-fixtures.md: MatchForm's per-side external-opponent logo
 // renders via the real MediaUpload component (namespace="manage"), so its own uploadManagedMedia
@@ -197,7 +198,7 @@ describe('MatchForm', () => {
     await user.click(screen.getByLabelText('Away team'))
     await user.click(await screen.findByRole('option', { name: '2nd XI' }))
 
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -230,7 +231,7 @@ describe('MatchForm', () => {
     await user.click(externalButtons[1])
     await user.type(screen.getByLabelText('Away opponent name'), 'Riverside Occasionals')
 
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     const payload = onSubmit.mock.calls[0][0] as MatchPayload
@@ -247,6 +248,37 @@ describe('MatchForm', () => {
   // docs/specs/029-league-management.md: LeagueAffiliation narrowing, closing the same class of
   // bug reported live against MatchList's search suggestions (042) — a team not entered into the
   // selected League/Season must not be offered as Home/Away, since it doesn't actually play there.
+  describe('My team picker details', () => {
+    const SECTIONS = [
+      { id: 'section-1', clubId: 'club-1', parentSectionId: null, name: 'Seniors', minAge: null, maxAge: null, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'section-2', clubId: 'club-1', parentSectionId: 'section-1', name: 'Under 15', minAge: null, maxAge: 15, gender: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ]
+    const SECTION_TEAMS: Team[] = [
+      makeTeam({ id: 'team-1', name: '1st XI', sectionId: 'section-1' }),
+      makeTeam({ id: 'team-u15', name: 'Villagers U15', sectionId: 'section-2', abbreviation: 'VU15', groundName: 'Glen High School' }),
+    ]
+
+    it('groups the teams by section and shows the chosen team\'s section, abbreviation and ground under the box', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ teams: SECTION_TEAMS, sections: SECTIONS, initialValues: { homeTeamId: 'team-u15' } })
+
+      expect(await screen.findByText('Seniors > Under 15 · VU15 · Ground: Glen High School')).toBeInTheDocument()
+      await user.click(screen.getByLabelText('Home team'))
+      expect(await screen.findByText('Seniors')).toBeInTheDocument()
+      expect(screen.getByText('Seniors > Under 15')).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Villagers U15/ })).toBeInTheDocument()
+    })
+
+    it('works with no section information: a plain list and no details line', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ initialValues: { homeTeamId: 'team-1' } })
+
+      await user.click(await screen.findByLabelText('Home team'))
+      expect(await screen.findByRole('option', { name: '1st XI' })).toBeInTheDocument()
+      expect(screen.queryByText(/Ground:/)).not.toBeInTheDocument()
+    })
+  })
+
   describe('LeagueAffiliation narrowing', () => {
     const AFFILIATIONS: LeagueAffiliation[] = [
       makeAffiliation({ id: 'affiliation-1', teamId: 'team-1' }),
@@ -351,7 +383,7 @@ describe('MatchForm', () => {
       await user.upload(screen.getByLabelText('Logo file'), file)
       await screen.findByRole('button', { name: 'Replace' })
 
-      await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+      setDateTime('Match date & time', '2026-06-01T14:30')
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -453,7 +485,7 @@ describe('MatchForm league teams', () => {
     await user.click(screen.getAllByRole('button', { name: 'League team' })[1])
     await user.click(screen.getByLabelText('Away league team'))
     await user.click(await screen.findByRole('option', { name: /Laudium Cricket Club/ }))
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     const payload = onSubmit.mock.calls[0][0] as MatchPayload
@@ -478,7 +510,7 @@ describe('MatchForm league teams', () => {
 
     // The picker switches that side back to My team with the team selected.
     expect(screen.getByLabelText('Home team')).toHaveTextContent('1st XI')
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
     const payload = onSubmit.mock.calls[0][0] as MatchPayload
     expect(payload).toMatchObject({ homeTeamId: 'team-1', homeLeagueTeamId: null })
@@ -546,7 +578,7 @@ describe('MatchForm links', () => {
     await user.click(await screen.findByRole('option', { name: '1st XI' }))
     await user.click(screen.getByLabelText('Away team'))
     await user.click(await screen.findByRole('option', { name: '2nd XI' }))
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
   }
 
   it('renders the optional Scoring and Streaming link fields with example placeholders and no helper text', () => {
@@ -670,7 +702,7 @@ describe('MatchForm Field box', () => {
     await user.click(await screen.findByRole('option', { name: '1st XI' }))
     await user.click(screen.getByLabelText('Away team'))
     await user.click(await screen.findByRole('option', { name: '2nd XI' }))
-    await user.type(screen.getByLabelText('Match date & time'), '2026-06-01T14:30')
+    setDateTime('Match date & time', '2026-06-01T14:30')
   }
 
   it('shows the Field (optional) picker and no Venue input', () => {

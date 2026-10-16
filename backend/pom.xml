@@ -149,6 +149,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Apache PDFBox: reads the text of a STUMPS match report PDF, docs/specs/108; the only class that imports it
+             is service.adaptor.StumpsPdfText (ImportAdaptorRulesTest) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+
         <!-- ArchUnit — layering rules, backend.md / Enforcement -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>

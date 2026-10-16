@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EditCloseTimeDialog } from './EditCloseTimeDialog'
 import type { EditCloseTimeDialogProps } from './EditCloseTimeDialog'
 import { toDatetimeLocal } from '../../../utils/datetimeLocal'
+import { dateTimeInputs, expectDateTime, setDateTime } from '../../../test/dateTimeField'
 
 const updatePollCloseTime = vi.fn()
 const openPoll = vi.fn()
@@ -59,7 +60,7 @@ function renderDialog(overrides: Partial<EditCloseTimeDialogProps> = {}) {
   return { ...utils, props, onClose, onSaved, queryClient }
 }
 
-const field = () => screen.getByLabelText('Closes at')
+const LABEL = 'Closes at'
 
 describe('EditCloseTimeDialog', () => {
   it('is pre-filled with the current close time', () => {
@@ -67,31 +68,31 @@ describe('EditCloseTimeDialog', () => {
     renderDialog({ scheduledCloseAt: stored })
     expect(screen.getByRole('heading', { name: 'Edit close time' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Autoclose' })).toBeChecked()
-    expect(field()).toHaveValue(toDatetimeLocal(stored))
+    expectDateTime(LABEL, toDatetimeLocal(stored))
   })
 
   it('defaults to 24 hours before the first kickoff when there is no close time', () => {
     const kickoff = iso(5 * DAY)
     renderDialog({ kickoff })
-    expect(field()).toHaveValue(toDatetimeLocal(new Date(new Date(kickoff).getTime() - DAY).toISOString()))
+    expectDateTime(LABEL, toDatetimeLocal(new Date(new Date(kickoff).getTime() - DAY).toISOString()))
   })
 
   it('defaults to 1 hour before the kickoff when 24 hours before is already past', () => {
     const kickoff = iso(10 * HOUR)
     renderDialog({ kickoff })
-    expect(field()).toHaveValue(toDatetimeLocal(new Date(new Date(kickoff).getTime() - HOUR).toISOString()))
+    expectDateTime(LABEL, toDatetimeLocal(new Date(new Date(kickoff).getTime() - HOUR).toISOString()))
   })
 
   it('shows the exact server messages inline and disables Save', () => {
     renderDialog()
-    fireEvent.change(field(), { target: { value: '' } })
+    setDateTime(LABEL, '')
     expect(screen.getByText('A closing time is required when Autoclose is on.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
 
-    fireEvent.change(field(), { target: { value: toDatetimeLocal(iso(-DAY)) } })
+    setDateTime(LABEL, toDatetimeLocal(iso(-DAY)))
     expect(screen.getByText('Choose a closing time in the future.')).toBeInTheDocument()
 
-    fireEvent.change(field(), { target: { value: toDatetimeLocal(iso(6 * DAY)) } })
+    setDateTime(LABEL, toDatetimeLocal(iso(6 * DAY)))
     expect(screen.getByText('Choose a closing time before the first match starts.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
@@ -100,7 +101,7 @@ describe('EditCloseTimeDialog', () => {
     const user = userEvent.setup()
     const { onClose, onSaved } = renderDialog()
     const chosen = toDatetimeLocal(iso(3 * DAY))
-    fireEvent.change(field(), { target: { value: chosen } })
+    setDateTime(LABEL, chosen)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalled())
@@ -116,7 +117,8 @@ describe('EditCloseTimeDialog', () => {
     const user = userEvent.setup()
     renderDialog({ target: { kind: 'SQUAD', matchId: 'match-1', pollId: 'poll-1' } })
     await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-    expect(field()).toBeDisabled()
+    expect(dateTimeInputs(LABEL).date).toBeDisabled()
+    expect(dateTimeInputs(LABEL).time).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>

@@ -8,6 +8,8 @@ import type { Match, MatchPayload } from '../../api/matchApi'
 import type { Season } from '../../api/seasonApi'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
 import { errorDetail } from '../../utils/errorDetail'
+import { teamNameKey } from '../../utils/teamNameKey'
+import type { Team } from '../../api/teamApi'
 
 export interface MatchFormDialogProps {
   open: boolean
@@ -31,6 +33,32 @@ function withInferredSeason(values: Partial<MatchPayload> | undefined, seasons: 
   return containing.length === 1 ? { ...values, seasonId: containing[0].id } : values
 }
 
+// A suggested team name that is exactly one of the club's own teams (spelling aside) opens as that team under "My team"
+// instead of as free text under "Other", so the form never looks as if our side were chosen when it is not. Two teams with
+// the same name, or none, leave the typed name for the manager to resolve.
+function withClubTeamsPicked(values: Partial<MatchPayload> | undefined, teams: Team[]): Partial<MatchPayload> | undefined {
+  if (!values || teams.length === 0) return values
+  const pick = (name: string | null | undefined): Team | null => {
+    const key = teamNameKey(name)
+    if (!key) return null
+    const found = teams.filter((team) => teamNameKey(team.name) === key)
+    return found.length === 1 ? found[0] : null
+  }
+  const home = values.homeTeamId ? null : pick(values.homeTeamName)
+  const away = values.awayTeamId ? null : pick(values.awayTeamName)
+  if (!home && !away) return values
+  const next = { ...values }
+  if (home) {
+    next.homeTeamId = home.id
+    next.homeTeamName = null
+  }
+  if (away) {
+    next.awayTeamId = away.id
+    next.awayTeamName = null
+  }
+  return next
+}
+
 function DialogBody({ clubId, onClose, onCreated, initialValues, inferSeason, hint, phone }: Omit<MatchFormDialogProps, 'open'> & { phone: boolean }) {
   const { formProps, loading } = useMatchFormData(clubId)
   const create = useCreateMatch(clubId, (match) => {
@@ -38,7 +66,7 @@ function DialogBody({ clubId, onClose, onCreated, initialValues, inferSeason, hi
     onClose()
   })
 
-  const values = withInferredSeason(initialValues, inferSeason ? formProps.seasons : [])
+  const values = withClubTeamsPicked(withInferredSeason(initialValues, inferSeason ? formProps.seasons : []), formProps.teams)
 
   return (
     <>

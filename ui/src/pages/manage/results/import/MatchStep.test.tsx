@@ -7,6 +7,8 @@ import { jsonAdaptor, makeCandidate, makeCatalogue, makePreview, renderImportPag
 const getImportCatalogue = vi.fn()
 const previewImport = vi.fn()
 const createMatch = vi.fn()
+const listMatches = vi.fn()
+const listSections = vi.fn()
 
 vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../api/resultImportApi')>()
@@ -17,10 +19,14 @@ vi.mock('../../../../api/resultImportApi', async (importOriginal) => {
   }
 })
 // The Add match dialog's own data.
-vi.mock('../../../../api/matchApi', () => ({ createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload) }))
-vi.mock('../../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([]) }))
+vi.mock('../../../../api/matchApi', () => ({
+  createMatch: (clubId: string, payload: unknown) => createMatch(clubId, payload),
+  listMatches: (clubId: string, params: unknown) => listMatches(clubId, params),
+}))
+vi.mock('../../../../api/sectionApi', () => ({ listSections: () => listSections() }))
+vi.mock('../../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([{ id: 'team-1', name: 'Strollers A', sectionId: 'sec-1' }]) }))
 vi.mock('../../../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
-vi.mock('../../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
+vi.mock('../../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([{ id: 'league-1', name: 'Saturday League' }]) }))
 vi.mock('../../../../api/leagueAffiliationApi', () => ({ listLeagueAffiliations: () => Promise.resolve([]) }))
 vi.mock('../../../../api/leagueTeamApi', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../../../api/leagueTeamApi')>()), listLeagueTeams: () => Promise.resolve([]) }))
 vi.mock('../../../../api/meApi', () => ({ activateSession: () => Promise.resolve({ personId: null, personStatus: null, platformAdmin: false, clubAdminClubIds: [] }) }))
@@ -28,10 +34,25 @@ vi.mock('../../../../api/meApi', () => ({ activateSession: () => Promise.resolve
 const second = (overrides: Partial<MatchCandidate> = {}) =>
   makeCandidate({ matchId: 'match-2', homeName: 'Northgate Strollers', awayName: 'Hilltop Wanderers', matchDate: new Date(2026, 9, 18, 13, 0).toISOString(), reasons: ['TEAMS'], ...overrides })
 
+const found = (overrides: Record<string, unknown> = {}) => ({
+  id: 'match-9',
+  homeTeamId: 'team-1',
+  homeTeamName: 'Northgate Strollers',
+  awayTeamId: null,
+  awayTeamName: 'Lakeside Rovers',
+  matchDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  leagueId: 'league-1',
+  resultStatus: 'NONE',
+  ...overrides,
+})
+const page = (content: unknown[], totalElements = content.length) => ({ content, totalElements, totalPages: 1, number: 0, size: 8 })
+
 beforeEach(() => {
   vi.clearAllMocks()
   getImportCatalogue.mockResolvedValue(makeCatalogue([jsonAdaptor]))
   previewImport.mockResolvedValue(makePreview())
+  listMatches.mockResolvedValue(page([]))
+  listSections.mockResolvedValue([{ id: 'sec-1', clubId: 'club-1', parentSectionId: null, name: 'Seniors', active: true }, { id: 'sec-2', clubId: 'club-1', parentSectionId: null, name: 'Juniors', active: true }])
 })
 
 // Gets to the Match step with the given preview.
@@ -225,6 +246,90 @@ describe('Match step', () => {
     expect(await screen.findByTestId('import-problem')).toBeInTheDocument()
     expect(screen.getByText('Which match is this?')).toBeInTheDocument()
     await waitFor(() => expect(next()).toBeEnabled())
+  })
+
+  describe('Find another match', () => {
+    const open = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Find another match' }))
+    }
+    const toListed = () => previewImport.mockResolvedValue(makePreview({ matchCandidates: [makeCandidate(), second()] }))
+
+    it('opens with the recent matches that have no result, with date, league and section, without typing', async () => {
+      listMatches.mockResolvedValue(page([found()]))
+      toListed()
+      const user = await toMatchStep()
+      expect(listMatches).not.toHaveBeenCalled()
+      await open(user)
+
+      const group = await screen.findByRole('radiogroup', { name: 'Found by search' })
+      expect(within(group).getByText('Northgate Strollers v Lakeside Rovers')).toBeInTheDocument()
+      expect(await within(group).findByText(/Saturday League · Seniors/)).toBeInTheDocument()
+      expect(listMatches).toHaveBeenCalledWith('club-1', expect.objectContaining({ resultStatus: 'NONE', sort: 'matchDate,desc' }))
+    })
+
+    it('never offers a match with a result, or one outside the recent window', async () => {
+      const day = 24 * 60 * 60 * 1000
+      listMatches.mockResolvedValue(
+        page([
+          found({ id: 'm-a', awayTeamName: 'Has Draft', resultStatus: 'DRAFT' }),
+          found({ id: 'm-b', awayTeamName: 'Far Future', matchDate: new Date(Date.now() + 30 * day).toISOString() }),
+          found({ id: 'm-c', awayTeamName: 'Long Ago', matchDate: new Date(Date.now() - 200 * day).toISOString() }),
+          found({ id: 'm-d', awayTeamName: 'Just Right' }),
+        ]),
+      )
+      toListed()
+      const user = await toMatchStep()
+      await open(user)
+      await screen.findByRole('radio', { name: /Just Right/ })
+      expect(screen.queryByRole('radio', { name: /Has Draft|Far Future|Long Ago/ })).not.toBeInTheDocument()
+    })
+
+    it('narrows by team name', async () => {
+      listMatches.mockResolvedValue(page([found()]))
+      toListed()
+      const user = await toMatchStep()
+      await open(user)
+      await user.type(screen.getByLabelText('Team name (optional)'), 'Lakeside')
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ search: 'Lakeside' })))
+    })
+
+    it('narrows by section', async () => {
+      listMatches.mockResolvedValue(page([found()]))
+      toListed()
+      const user = await toMatchStep()
+      await open(user)
+      await user.click(await screen.findByLabelText('Section'))
+      await user.click(await screen.findByText('Juniors'))
+      await waitFor(() => expect(listMatches).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ sectionId: 'sec-2' })))
+    })
+
+    it('choosing a found match previews again with its id and selects it', async () => {
+      listMatches.mockResolvedValue(page([found()]))
+      toListed()
+      const user = await toMatchStep()
+      await open(user)
+      await screen.findByRole('radio', { name: /Lakeside Rovers/ })
+      previewImport.mockResolvedValue(makePreview({ matchCandidates: [makeCandidate({ matchId: 'match-9', awayName: 'Lakeside Rovers', reasons: [] })] }))
+
+      await user.click(screen.getByRole('radio', { name: /Lakeside Rovers/ }))
+
+      await waitFor(() => expect(previewImport).toHaveBeenLastCalledWith('club-1', expect.objectContaining({ matchId: 'match-9' }), null))
+      await waitFor(() => expect(matches().getByRole('radio', { name: /Lakeside Rovers/ })).toHaveAttribute('aria-checked', 'true'))
+    })
+
+    it('says so when there are none', async () => {
+      toListed()
+      const user = await toMatchStep()
+      await open(user)
+      expect(await screen.findByText('No recent matches without a result. Try another section or add the match.')).toBeInTheDocument()
+    })
+
+    it('is open from the start when no candidate was proposed', async () => {
+      listMatches.mockResolvedValue(page([found()]))
+      previewImport.mockResolvedValue(makePreview({ matchCandidates: [] }))
+      await toMatchStep()
+      expect(await screen.findByRole('radio', { name: /Lakeside Rovers/ })).toBeInTheDocument()
+    })
   })
 
   it('Back returns to the Source step with what was given', async () => {

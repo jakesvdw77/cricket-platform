@@ -64,6 +64,7 @@ interface StepContext extends StepProps, ScorecardStepProps {
   validationFailed: boolean
   warningsAcknowledged: boolean
   onAcknowledgeChange: (acknowledged: boolean) => void
+  onSaveForPreview: () => Promise<boolean>
 }
 
 interface StepRegistration {
@@ -364,6 +365,12 @@ function CaptureWizard({
     },
     warningsAcknowledged: acknowledged,
     onAcknowledgeChange: setAcknowledged,
+    // docs/specs/104: the Review step's Preview result reads the saved draft, so it saves the current one first.
+    onSaveForPreview: async () => {
+      const next = withSuggestedMargin(draft, names)
+      if (next !== draft) setDraft(next)
+      return save(next)
+    },
   }
 
   const subtitle = [`${sides[0].name} v ${sides[1].name}`, formatMatchDateTime(match.matchDate), field?.name ?? match.venue]

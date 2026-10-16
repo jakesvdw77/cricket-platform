@@ -94,6 +94,24 @@ class ResultValidatorScorecardPublishRulesTest {
         }
     }
 
+    // ---- the league limit names the league ----
+
+    @Test
+    void theBowlerLimitWarningNamesTheLeagueWhoseLimitApplies() {
+        ScorecardCard card = ScorecardCard.oursBat();
+
+        ResultValidationDto named = validate(card.context(new ScorecardContext(
+                18, Map.of(), Map.of(), Map.of(), Map.of(), "Division Two T20")));
+        assertThat(withCode(named, WarningCode.BOWLER_OVERS_EXCEED_LIMIT))
+                .isNotEmpty().allSatisfy(issue -> assertThat(issue.message())
+                        .contains("the league's maximum of 3.0 overs (Division Two T20).").contains("bowled more than"));
+
+        ResultValidationDto unnamed = validate(ScorecardCard.oursBat().context(new ScorecardContext(
+                18, Map.of(), Map.of(), Map.of(), Map.of())));
+        assertThat(withCode(unnamed, WarningCode.BOWLER_OVERS_EXCEED_LIMIT))
+                .isNotEmpty().allSatisfy(issue -> assertThat(issue.message()).endsWith("overs.").doesNotContain("("));
+    }
+
     // ---- the reconciliation matrix, for our entries and for the opposition's ----
 
     private record Case(String name, UnaryOperator<ScorecardCard> bend, Enum<?> code, ResultWizardStep step,

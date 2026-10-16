@@ -3,6 +3,7 @@ import { Alert, Box, Card, CardContent, Checkbox, Chip, Divider, FormControlLabe
 import { useMutation } from '@tanstack/react-query'
 import { Input } from '../../../components/Input'
 import { Button } from '../../../components/Button'
+import { DateTimeField } from '../../../components/DateTimeField'
 import { createRound } from '../../../api/sectionAvailabilityApi'
 import type { SectionAvailabilityFixtureGroup } from '../../../api/sectionAvailabilityApi'
 import { errorDetail } from '../../../utils/errorDetail'
@@ -117,14 +118,12 @@ export function FixtureGroupCard({
                 label="Autoclose"
               />
               {autoClose && (
-                <Input
+                <DateTimeField
                   label="Closes at"
-                  type="datetime-local"
                   value={closeAtValue}
-                  onChange={(event) => setEditedCloseAt(event.target.value)}
+                  onChange={setEditedCloseAt}
                   error={Boolean(closeAtError)}
                   helperText={closeAtError ?? 'Defaults to 24 hours before the earliest selected fixture.'}
-                  InputLabelProps={{ shrink: true }}
                 />
               )}
             </Stack>

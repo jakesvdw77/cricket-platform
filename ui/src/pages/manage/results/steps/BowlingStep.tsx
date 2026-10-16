@@ -224,6 +224,7 @@ export function BowlingStep({
   const actions = usePlayerActions({
     clubId,
     seasonId: match.seasonId,
+    leagueId: match.leagueId,
     ours: { side, teamId: ours?.teamId ?? null },
     scorecard,
     onScorecard: commit,
@@ -240,7 +241,7 @@ export function BowlingStep({
   })
 
   // docs/specs/104: the Guess chips of an imported draft, on the bowler rows and the fielding list.
-  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, oursSides, prefill, scorecard, onScorecard: commit })
+  const guesses = useGuessActions({ clubId, seasonId: match.seasonId, leagueId: match.leagueId, oursSides, prefill, scorecard, onScorecard: commit })
 
   const captionOf = (key: string): string | null => {
     const player = byKey.get(key)

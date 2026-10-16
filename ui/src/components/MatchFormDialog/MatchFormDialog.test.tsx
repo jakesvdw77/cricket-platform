@@ -7,6 +7,7 @@ import { baseTheme } from '../../theme'
 import { makeMatch } from '../../pages/manage/matches/matchTestUtils'
 import { MatchFormDialog } from './MatchFormDialog'
 import type { MatchFormDialogProps } from './MatchFormDialog'
+import { expectDateTime } from '../../test/dateTimeField'
 
 const createMatch = vi.fn()
 const listTeamsForClub = vi.fn()
@@ -57,15 +58,39 @@ describe('MatchFormDialog', () => {
     expect(await screen.findByText('Filled in from the file.')).toBeInTheDocument()
     expect(await screen.findByLabelText('Home opponent name')).toHaveValue('Northgate Strollers')
     expect(screen.getByLabelText('Away opponent name')).toHaveValue('Riverside Occasionals')
-    expect(screen.getByLabelText('Match date & time')).toHaveValue('2026-10-11T13:00')
+    expectDateTime('Match date & time', '2026-10-11T13:00')
     await waitFor(() => expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27'))
+  })
+
+  it('opens a side whose name is exactly one of the club teams as My team, not as typed text', async () => {
+    listTeamsForClub.mockResolvedValue([
+      { id: 'team-u15', clubId: 'club-1', sectionId: 's-1', name: 'Northgate U15', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'team-1', clubId: 'club-1', sectionId: 's-1', name: '1st XI', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    renderDialog({ initialValues: { homeTeamName: 'NORTHGATE UNDER 15', awayTeamName: 'Riverside Occasionals', matchDate: new Date(2026, 9, 11, 13, 0).toISOString() } })
+
+    // The home side shows the club team (no free-text box); the other side stays typed text.
+    expect(await screen.findByLabelText('Away opponent name')).toHaveValue('Riverside Occasionals')
+    expect(screen.queryByLabelText('Home opponent name')).not.toBeInTheDocument()
+    expect(screen.getByText('Northgate U15')).toBeInTheDocument()
+  })
+
+  it('leaves a name typed when two club teams share it or none does', async () => {
+    listTeamsForClub.mockResolvedValue([
+      { id: 'team-a', clubId: 'club-1', sectionId: 's-1', name: 'Northgate U15', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+      { id: 'team-b', clubId: 'club-1', sectionId: 's-2', name: 'northgate under 15', logoUrl: null, active: true, createdAt: '', updatedAt: '', updatedBy: null },
+    ])
+    renderDialog({ initialValues: { homeTeamName: 'Northgate U15', awayTeamName: 'Somewhere Else', matchDate: new Date(2026, 9, 11, 13, 0).toISOString() } })
+
+    expect(await screen.findByLabelText('Home opponent name')).toHaveValue('Northgate U15')
+    expect(screen.getByLabelText('Away opponent name')).toHaveValue('Somewhere Else')
   })
 
   it('never guesses between seasons: with two that contain the date none is chosen', async () => {
     listSeasons.mockResolvedValue([season('season-1', '2026/27', '2026-09-01', '2027-04-30'), season('season-2', 'Summer 2026', '2026-10-01', '2026-12-31')])
     renderDialog({ inferSeason: true, initialValues: { matchDate: new Date(2026, 9, 11, 13, 0).toISOString() } })
 
-    await screen.findByLabelText('Match date & time')
+    await screen.findByLabelText('Match date & time (date)')
     expect(screen.getByLabelText('Season')).not.toHaveTextContent('2026')
   })
 

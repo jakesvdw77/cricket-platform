@@ -104,11 +104,11 @@ final class CricClubsScorecardMapper {
 
     /** True when the two team names are the same ignoring case and runs of spaces. */
     static boolean same(String first, String second) {
-        return normal(first).equals(normal(second));
+        return TeamNames.same(first, second);
     }
 
     private static String normal(String text) {
-        return text.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return TeamNames.normal(text);
     }
 
     // ---- a batting row ----
