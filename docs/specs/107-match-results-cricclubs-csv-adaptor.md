@@ -141,4 +141,4 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 
 - **No AI and no library** for this adaptor (2026-10-16): the format is regular enough for a deterministic reader.
 - **Unknown codes fail loudly** rather than falling back to a guess.
-- **A substitute fielder keeps the dismissal but no fielder**, rather than inventing a player. (To confirm with the user.)
+- **A substitute fielder keeps the dismissal but no fielder**, rather than inventing a player (user, 2026-10-16).
