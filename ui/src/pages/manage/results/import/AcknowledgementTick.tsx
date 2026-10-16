@@ -20,7 +20,7 @@ export function AcknowledgementTick({
 }) {
   return (
     <Box
-      sx={(theme) => ({ border: 1, borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06), borderRadius: 2, p: { xs: 1.25, md: 1.75 }, display: 'flex', gap: 1, alignItems: detail ? 'flex-start' : 'center', maxWidth: { md: 560 } })}
+      sx={(theme) => ({ border: 1, borderColor: alpha(theme.palette.warning.main, 0.5), bgcolor: alpha(theme.palette.warning.main, 0.06), borderRadius: 2, p: { xs: 1.25, md: 1.75 }, display: 'flex', gap: 1, alignItems: detail ? 'flex-start' : 'center' })}
     >
       <Checkbox
         checked={checked}

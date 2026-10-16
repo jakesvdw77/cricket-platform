@@ -157,7 +157,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
       </Box>
 
       {noClubTeam && (
-        <Box role="alert" data-testid="no-club-team" sx={{ maxWidth: { md: 720 }, display: 'flex', flexDirection: 'column', gap: 1, border: 1, borderColor: 'warning.main', borderRadius: 2, p: 1.5, bgcolor: 'background.paper' }}>
+        <Box role="alert" data-testid="no-club-team" sx={{ display: 'flex', flexDirection: 'column', gap: 1, border: 1, borderColor: 'warning.main', borderRadius: 2, p: 1.5, bgcolor: 'background.paper' }}>
           <Typography variant="body2" fontWeight={700}>
             Neither team of this match is one of your club&apos;s teams.
           </Typography>
@@ -182,7 +182,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
       )}
 
       {createProblem && (
-        <Box sx={{ maxWidth: { md: 720 }, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <ImportProblemAlert problem={createProblem} input="file" onRetry={onCreate} retrying={creating} />
           {createProblem.otherMatchId && (
             <MuiButton component={RouterLink} to={`/manage/fixtures/matches/${createProblem.otherMatchId}`} target="_blank" rel="noopener noreferrer" variant="text" sx={{ alignSelf: 'flex-start', minHeight: 44, textTransform: 'none' }}>
@@ -196,7 +196,7 @@ export function TeamsMappingStep(context: ImportStepContext) {
         <Box
           role="status"
           data-testid="import-created"
-          sx={(theme) => ({ border: 1, borderColor: alpha(theme.palette.success.main, 0.5), borderRadius: 2, bgcolor: 'background.paper', p: { xs: 1.5, md: 1.75 }, display: 'flex', flexDirection: 'column', gap: 1, maxWidth: { md: 560 } })}
+          sx={(theme) => ({ border: 1, borderColor: alpha(theme.palette.success.main, 0.5), borderRadius: 2, bgcolor: 'background.paper', p: { xs: 1.5, md: 1.75 }, display: 'flex', flexDirection: 'column', gap: 1 })}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <TaskAltIcon sx={{ color: 'success.main' }} />

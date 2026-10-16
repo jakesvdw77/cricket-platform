@@ -44,7 +44,7 @@ function WarningNote({ children }: { children: ReactNode }) {
   return (
     <Box
       role="status"
-      sx={(theme) => ({ bgcolor: alpha(theme.palette.warning.main, 0.12), border: 1, borderColor: alpha(theme.palette.warning.main, 0.4), borderRadius: 2, p: 1.25, fontSize: '0.8125rem', maxWidth: { md: 720 }, display: 'flex', gap: 1, alignItems: 'flex-start' })}
+      sx={(theme) => ({ bgcolor: alpha(theme.palette.warning.main, 0.12), border: 1, borderColor: alpha(theme.palette.warning.main, 0.4), borderRadius: 2, p: 1.25, fontSize: '0.8125rem', display: 'flex', gap: 1, alignItems: 'flex-start' })}
     >
       <WarningAmberIcon aria-hidden fontSize="small" sx={{ flex: 'none', color: 'warning.main' }} />
       <Box sx={{ minWidth: 0 }}>{children}</Box>
@@ -216,7 +216,7 @@ export function MatchStep(context: ImportStepContext) {
       />
 
       {matchProblem && (
-        <Box sx={{ maxWidth: { md: 720 } }}>
+        <Box>
           <ImportProblemAlert problem={matchProblem} input="file" onRetry={onMatchNext} retrying={matchPending} />
         </Box>
       )}

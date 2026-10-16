@@ -302,7 +302,7 @@ export default function ResultImportPage() {
         }
       />
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, maxWidth: { sm: 560 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
         <ResultStepper
           steps={IMPORT_STEPS.map(({ id, label }) => ({ id, label }))}
           activeId={step.id}

@@ -62,7 +62,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
           onSourceChange({ adaptorType: type, format: next?.inputs[0]?.format ?? null, file: null })
         }}
         disabled={previewing}
-        columns={{ xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' }}
+        columns={{ xs: '1fr', md: 'repeat(auto-fill, minmax(340px, 1fr))' }}
         tileSx={{ alignItems: 'flex-start', textAlign: 'left', gap: 1.5, py: 1.5 }}
         options={catalogue.adaptors.map((candidate) => ({
           value: candidate.type,
@@ -100,7 +100,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
       />
 
       {adaptor?.conversionPrompt && (
-        <Box sx={{ maxWidth: { sm: 560, md: 640 } }}>
+        <Box>
           <ConvertWithAiHelper prompt={adaptor.conversionPrompt} />
         </Box>
       )}
@@ -116,7 +116,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
       )}
 
       {adaptor && input && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: { sm: 560, md: 640 }, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
           {pasteAllowed ? (
             <Tabs value={tab} onChange={(_event, value: 'upload' | 'paste') => onSourceChange({ tab: value })} aria-label="How to provide the result" variant="fullWidth" sx={viewTabsSx}>
               <Tab value="upload" label="Upload file" sx={viewTabSx} disabled={previewing} />
@@ -132,7 +132,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
             <Box>
               <TextField
                 multiline
-                minRows={4}
+                minRows={8}
                 maxRows={14}
                 fullWidth
                 value={source.paste}
@@ -173,7 +173,7 @@ export function SourceStep({ catalogue, source, onSourceChange, previewing, sour
       )}
 
       {sourceProblem && (
-        <Box sx={{ maxWidth: { md: 640 } }}>
+        <Box>
           <ImportProblemAlert problem={sourceProblem} sourceName={sourceName} input={tab === 'paste' ? 'paste' : 'file'} onRetry={onContinue} retrying={previewing} />
         </Box>
       )}
