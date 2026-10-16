@@ -325,6 +325,28 @@ describe('LeagueFormPage', () => {
     expect(getLeagueAgeReference).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1')
   })
 
+  it('add mode: opens with 31 December and saves it with no age limits', async () => {
+    const user = userEvent.setup()
+    createLeague.mockResolvedValue(makeLeague({ id: 'new-league' }))
+    renderPage('/manage/fixtures/leagues/new', 'test-club-id')
+
+    expect(await screen.findByLabelText('Cut-off month (optional)')).toHaveTextContent('December')
+    expect(screen.getByLabelText('Cut-off day (optional)')).toHaveTextContent('31')
+    await user.type(screen.getByLabelText('Name'), 'Fresh League')
+    await user.click(screen.getByRole('button', { name: /save|create/i }))
+
+    await waitFor(() => expect(createLeague).toHaveBeenCalled())
+    expect(createLeague.mock.calls[0][1]).toMatchObject({ ageCutoffMonth: 12, ageCutoffDay: 31, minAge: null, maxAge: null })
+  })
+
+  it('edit mode: a league with no stored cut-off stays empty', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.getByLabelText('Cut-off month (optional)')).toHaveTextContent(/^\u200b?$/)
+  })
+
   it('edit mode: the day the league starts is named when there is no cut-off', async () => {
     listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', minAge: 12 })])
     listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])

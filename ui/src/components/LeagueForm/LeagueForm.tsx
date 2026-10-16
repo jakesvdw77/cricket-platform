@@ -53,8 +53,14 @@ function toFormState(initialValues?: Partial<LeaguePayload>): FormState {
     maxPlayingXiSize: String(initialValues?.maxPlayingXiSize ?? 11),
     minAge: initialValues?.minAge != null ? String(initialValues.minAge) : '',
     maxAge: initialValues?.maxAge != null ? String(initialValues.maxAge) : '',
-    ageCutoffMonth: initialValues?.ageCutoffMonth != null ? String(initialValues.ageCutoffMonth) : '',
-    ageCutoffDay: initialValues?.ageCutoffDay != null ? String(initialValues.ageCutoffDay) : '',
+    // docs/specs/110: 31 December is the standing default. The Add form (no initialValues) opens with it; an edited
+    // league shows exactly what is stored, so a league with no cut-off stays empty (a winter league).
+    ageCutoffMonth: initialValues
+      ? initialValues.ageCutoffMonth != null ? String(initialValues.ageCutoffMonth) : ''
+      : String(DEFAULT_CUTOFF.month),
+    ageCutoffDay: initialValues
+      ? initialValues.ageCutoffDay != null ? String(initialValues.ageCutoffDay) : ''
+      : String(DEFAULT_CUTOFF.day),
     format: initialValues?.format ?? '',
     phone: initialValues?.phone ?? '',
     website: initialValues?.website ?? '',
@@ -186,7 +192,10 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
     onSubmit(payload)
   }
 
-  const noEffect = Boolean(values.ageCutoffMonth && values.ageCutoffDay) && !values.minAge.trim() && !values.maxAge.trim()
+  // The note stays hidden while an Add form still shows its untouched 31 December default.
+  const untouchedDefault = initialValues === undefined && !cutoffTouched
+  const noEffect =
+    Boolean(values.ageCutoffMonth && values.ageCutoffDay) && !values.minAge.trim() && !values.maxAge.trim() && !untouchedDefault
 
   return (
     // docs/specs/091 (D): one full-width form of three sections - Basic info, Contact and Branding and social - in place of

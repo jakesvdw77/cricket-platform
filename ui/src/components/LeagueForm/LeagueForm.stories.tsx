@@ -21,6 +21,7 @@ export default meta
 
 type Story = StoryObj<typeof LeagueForm>
 
+// docs/specs/110: the Add form opens with 31 December in the cut-off.
 export const NewLeague: Story = {
   args: { onSubmit: () => undefined },
 }
@@ -38,6 +39,11 @@ export const WinterLeagueNoCutoff: Story = {
     onSubmit: () => undefined,
     initialValues: { name: 'Winter League', maxPlayingXiSize: 11, minAge: 12, maxAge: 14 },
   },
+}
+
+// docs/specs/110: an edited league with no cut-off and no limits stays empty; the first limit fills 31 December.
+export const EditNoCutoffNoLimits: Story = {
+  args: { onSubmit: () => undefined, initialValues: { name: 'Open League', maxPlayingXiSize: 11 } },
 }
 
 // Every tab is enabled from the start, in both create and edit mode — no ClubForm-style
