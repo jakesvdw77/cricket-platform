@@ -48,7 +48,7 @@ export interface MatchCardProps {
   // docs/specs/036: when present the whole card links to the match view. SquadPicker.tsx
   // deliberately passes `undefined` (via MatchList's own `viewTo={null}`).
   viewTo?: string
-  // docs/specs/109-delete-empty-match.md: when given, a match the server marks `deletable` shows Delete in the footer.
+  // docs/specs/109-delete-empty-match.md: when given, a match the server marks `deletable` shows Delete top right.
   // Optional so every other use of the card (the Overview page) is unchanged.
   onDelete?: (target: { id: string; name: string }) => void
 }
@@ -67,6 +67,7 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
+  const canDelete = Boolean(onDelete) && match.deletable === true
 
   const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
   const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(match, teamsById))
@@ -105,9 +106,10 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
         titleLines={3}
         badgesBelow
         description={leagueValue || undefined}
+        // docs/specs/109: Delete sits top right, beside the scoring/streaming links, only on a deletable match.
         headerActions={
-          match.scoringUrl || match.streamingUrl ? (
-            <Box data-testid="match-links-row" sx={{ display: 'flex', gap: 0.25 }}>
+          match.scoringUrl || match.streamingUrl || canDelete ? (
+            <Box data-testid="match-links-row" sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
               {match.scoringUrl && (
                 <IconButton
                   component="a"
@@ -134,6 +136,16 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                   sx={{ color: 'primary.dark' }}
                 >
                   <LiveTvOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+              {canDelete && (
+                <IconButton
+                  aria-label={`Delete match ${homeTeamName} v ${awayTeamName}`}
+                  title="Delete match"
+                  onClick={() => onDelete?.({ id: match.id, name: `${homeTeamName} v ${awayTeamName}` })}
+                  sx={{ width: 44, height: 44, color: 'error.main' }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
               )}
             </Box>
@@ -185,17 +197,6 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                   ariaLabel: importAction.label,
                   icon: <UploadFileOutlinedIcon fontSize="small" />,
                   onClick: () => navigate(importAction.to),
-                },
-              ]
-            : []),
-          ...(onDelete && match.deletable === true
-            ? [
-                {
-                  label: 'Delete',
-                  ariaLabel: `Delete match ${homeTeamName} v ${awayTeamName}`,
-                  icon: <DeleteOutlineIcon fontSize="small" />,
-                  destructive: true,
-                  onClick: () => onDelete({ id: match.id, name: `${homeTeamName} v ${awayTeamName}` }),
                 },
               ]
             : []),

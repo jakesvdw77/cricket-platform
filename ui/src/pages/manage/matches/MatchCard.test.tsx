@@ -552,7 +552,7 @@ describe('MatchCard', () => {
 
   // docs/specs/109-delete-empty-match.md: Delete only on a deletable match, and only where the page passes the handler.
   describe('Delete', () => {
-    it('shows Delete for a deletable match when a handler is given, and hands the match name to it without navigating', async () => {
+    it('shows Delete (top right) for a deletable match when a handler is given, and hands the match name to it without navigating', async () => {
       const user = userEvent.setup()
       const onDelete = vi.fn()
       renderCard(makeMatch({ id: 'match-7', deletable: true }), { viewTo: '/manage/fixtures/matches/match-7', onDelete })

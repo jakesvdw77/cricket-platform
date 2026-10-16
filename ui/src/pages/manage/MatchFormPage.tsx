@@ -1,4 +1,4 @@
-import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -175,16 +175,25 @@ export default function MatchFormPage() {
             <RecordStatusToggle active={match.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
           )}
 
-          {isEdit && match?.deletable && (
-            <MuiButton
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteOutlineIcon fontSize="small" />}
-              sx={{ minHeight: 44 }}
-              onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
+          {isEdit && match && (
+            // docs/specs/109: always visible on the edit page; disabled, with the reason, when something is recorded against the match.
+            <Tooltip
+              title={match.deletable ? '' : 'A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.'}
+              enterTouchDelay={0}
             >
-              Delete
-            </MuiButton>
+              <span>
+                <MuiButton
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineIcon fontSize="small" />}
+                  sx={{ minHeight: 44 }}
+                  disabled={!match.deletable}
+                  onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
+                >
+                  Delete
+                </MuiButton>
+              </span>
+            </Tooltip>
           )}
         </Stack>
       }
