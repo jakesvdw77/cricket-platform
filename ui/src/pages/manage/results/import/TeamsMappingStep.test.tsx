@@ -76,6 +76,34 @@ describe('Teams mapping step', () => {
     expect(screen.getAllByText('Not one of your teams')).toHaveLength(2)
   })
 
+  it('offers the closest side by name for a team the server could not place, and only chooses it when tapped', async () => {
+    const user = await toTeamsStep(
+      makePreview({
+        teamMapping: [
+          { fileKey: 'a', fileName: 'Northgate Strolers', side: null, exactness: 'UNRESOLVED', reason: 'Not recognised as either side.', closestSide: 'HOME' },
+          { fileKey: 'b', fileName: 'Riverside Occasional', side: null, exactness: 'UNRESOLVED', reason: 'Not recognised as either side.', closestSide: 'AWAY' },
+        ],
+      }),
+    )
+    // Nothing is chosen for the manager, and Create waits.
+    expect(create()).toBeDisabled()
+    const hints = screen.getAllByTestId('closest-side')
+    expect(hints).toHaveLength(2)
+    expect(hints[0]).toHaveTextContent('Closest side by name: Northgate Strollers')
+
+    await user.click(within(hints[0]).getByRole('button', { name: 'Use Northgate Strollers' }))
+    expect(sideOf('Northgate Strollers')).toHaveTextContent('Northgate Strollers (home)')
+    // Choosing one side puts the other on the opposite side, so neither hint is needed any more.
+    expect(sideOf('Riverside Occasionals')).toHaveTextContent('Riverside Occasionals (away)')
+    expect(screen.queryByTestId('closest-side')).not.toBeInTheDocument()
+    expect(create()).toBeEnabled()
+  })
+
+  it('shows no closest-side hint when the server gave none', async () => {
+    await toTeamsStep()
+    expect(screen.queryByTestId('closest-side')).not.toBeInTheDocument()
+  })
+
   it('cannot create until every file team has a side', async () => {
     const user = await toTeamsStep(
       makePreview({ teamMapping: [{ fileKey: 'a', fileName: 'Northgate Strollers', side: null, exactness: 'UNRESOLVED' }, { fileKey: 'b', fileName: 'Riverside Occasionals', side: null, exactness: 'UNRESOLVED' }] }),

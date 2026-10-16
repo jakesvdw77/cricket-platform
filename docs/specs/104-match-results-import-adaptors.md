@@ -350,7 +350,7 @@ Departures and additions made while building, each agreed with the user during h
 - **"Convert with your own AI" helper.** The adaptor descriptor carries an optional `conversionPrompt` (generated from `DismissalType`); the UI offers it as copyable text with a short red disclaimer. The platform sends nothing to any AI; using one is the user's own decision (operator question for POPIA, not legal advice).
 - **Matcher additions after measurement:** `SURNAME_INITIAL`, particle surnames starting at the first particle word ("Willem V" unifies with "Willem van der Merwe"), and a floating-point fix at the 0.80 boundary.
 - **Known test gaps:** the duplicate-id race fallback, binary-format paste refusal (needs a second adaptor) and the on-disk JSON fixtures; the Playwright golden path is written but not yet run (needs Keycloak).
-- **Parked:** team-name matching improvements (ranked closest-side suggestions, "U15" versus "Under 15", trailing numbers).
+- **Team-name matching across scoring systems (follow-up, 2026-10-16):** `TeamNameForms` reads "U15", "Under 15", "Under-15" and "C.B.C." as the same words (proposed as Normalised, never Exact); a number or age group never matches another or none ("Villagers 1" is not "Villagers 2"); a team the server cannot place may carry a `closestSide` hint (`TeamMappingDto`, additive) that the Teams step offers as "Use <side>" and never chooses itself.
 
 ### Decisions
 

@@ -11844,6 +11844,12 @@ components:
           $ref: "#/components/schemas/ImportExactness"
         reason:
           type: string
+        closestSide:
+          type: string
+          description: "A hint for a team that could not be placed: the side its name is nearest to. Never chosen for the manager."
+          enum:
+          - HOME
+          - AWAY
     ImportNoteSuggestionDto:
       type: object
       description: "A ranked fuzzy suggestion for a name that could not be placed (docs/specs/104). Never linked automatically."

@@ -266,7 +266,8 @@ describe('an imported draft in the capture wizard', () => {
 
       await user.click(within(popover).getByRole('button', { name: 'Confirm' }))
       await waitFor(() => expect(screen.queryByRole('button', { name: /^Guess: file said Ann A,/ })).not.toBeInTheDocument())
-      await user.click(screen.getByRole('button', { name: 'Next: Toss and field' }))
+      // findBy waits out the fading dialog or popover, which hides the rest of the page from the accessibility tree meanwhile.
+      await user.click(await screen.findByRole('button', { name: 'Next: Toss and field' }))
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
       expect(savedPlayer('id-a')?.importMatch ?? null).toBeNull()
       expect(savedPlayer('id-c')?.importMatch).toBe('NORMALISED')
@@ -304,7 +305,8 @@ describe('an imported draft in the capture wizard', () => {
       await user.click(within(within(dialog).getByRole('list', { name: 'Closest players' })).getByRole('button', { name: /Eve Elm/ }))
 
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dihandre V' })).not.toBeInTheDocument())
-      await user.click(screen.getByRole('button', { name: 'Next: Toss and field' }))
+      // findBy waits out the fading dialog or popover, which hides the rest of the page from the accessibility tree meanwhile.
+      await user.click(await screen.findByRole('button', { name: 'Next: Toss and field' }))
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
       expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dihandre V', guest: false })
       expect(savedPlayer('id-g')?.importMatch ?? null).toBeNull()
@@ -334,7 +336,8 @@ describe('an imported draft in the capture wizard', () => {
 
       await user.click(useClosest())
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Choose the player for Dihandre V' })).not.toBeInTheDocument())
-      await user.click(screen.getByRole('button', { name: 'Next: Toss and field' }))
+      // findBy waits out the fading dialog or popover, which hides the rest of the page from the accessibility tree meanwhile.
+      await user.click(await screen.findByRole('button', { name: 'Next: Toss and field' }))
       await waitFor(() => expect(saveResultDraft).toHaveBeenCalled())
       expect(savedPlayer('id-g')).toMatchObject({ playerProfileId: 'p-e', displayName: 'Dihandre V' })
     })
