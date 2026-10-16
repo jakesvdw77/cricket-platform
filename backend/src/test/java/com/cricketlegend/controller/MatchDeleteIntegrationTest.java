@@ -80,6 +80,7 @@ class MatchDeleteIntegrationTest {
     @Autowired private SeasonRepository seasonRepository;
     @Autowired private MatchRepository matchRepository;
     @Autowired private MatchSideRepository matchSideRepository;
+    @Autowired private com.cricketlegend.repository.MatchSidePlayerRepository matchSidePlayerRepository;
     @Autowired private MatchResultRepository matchResultRepository;
     @Autowired private MatchAvailabilityPollRepository pollRepository;
     @Autowired private MatchSquadMemberRepository squadMemberRepository;
@@ -211,10 +212,33 @@ class MatchDeleteIntegrationTest {
     }
 
     @Test
-    void aMatchSideRefusesAndKeepsBoth() throws Exception {
+    void aMatchWithOnlyAnEmptySideIsDeletedAndTheSideGoesWithIt() throws Exception {
         World w = world();
         Match m = match(w);
         matchSideRepository.save(MatchSide.builder().matchId(m.getId()).teamId(w.team().getId()).build());
+
+        mockMvc.perform(get(ONE, w.club().getId(), m.getId()).with(w.admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deletable").value(true));
+        mockMvc.perform(delete(ONE, w.club().getId(), m.getId()).with(w.admin()))
+                .andExpect(status().isNoContent());
+
+        assertThat(matchRepository.existsById(m.getId())).isFalse();
+        assertThat(matchSideRepository.findByMatchId(m.getId())).isEmpty();
+    }
+
+    @Test
+    void aMatchSideRefusesAndKeepsBoth() throws Exception {
+        World w = world();
+        Match m = match(w);
+        MatchSide side = matchSideRepository.save(
+                MatchSide.builder().matchId(m.getId()).teamId(w.team().getId()).build());
+        Person person = personRepository.save(Person.builder().firstName("Sam").lastName("Opener").build());
+        PlayerProfile profile = playerProfileRepository.save(PlayerProfile.builder().personId(person.getId())
+                .clubId(w.club().getId()).active(true).build());
+        matchSidePlayerRepository.save(com.cricketlegend.domain.MatchSidePlayer.builder().matchSideId(side.getId())
+                .playerProfileId(profile.getId()).battingOrder(1)
+                .role(com.cricketlegend.domain.PlayingRole.BATSMAN).build());
 
         assertRefused(w, m, "This match has a team selection. Deactivate it instead.");
         assertThat(matchSideRepository.findByMatchId(m.getId())).hasSize(1);
@@ -236,7 +260,7 @@ class MatchDeleteIntegrationTest {
         World w = world();
         Match m = match(w);
         result(w, m, ResultStatus.DRAFT);
-        matchSideRepository.save(MatchSide.builder().matchId(m.getId()).teamId(w.team().getId()).build());
+        matchSideRepository.save(MatchSide.builder().matchId(m.getId()).teamId(w.team().getId()).announced(true).build());
 
         assertRefused(w, m, "This match has a draft result and other records. Deactivate it instead.");
     }

@@ -673,6 +673,8 @@ public class MatchServiceImpl implements MatchService {
                     + (attached.size() > 1 ? " and other records" : "") + ". Deactivate it instead.");
         }
         try {
+            // sides with nobody chosen are not content (spec 109); they go with the match
+            matchSideRepository.deleteAll(matchSideRepository.findByMatchId(matchId));
             matchRepository.delete(match);
             matchRepository.flush(); // a poll or squad row inserted since the check fails on its foreign key here
         } catch (DataIntegrityViolationException e) {

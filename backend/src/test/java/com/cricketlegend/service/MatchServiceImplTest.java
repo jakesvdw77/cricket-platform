@@ -423,6 +423,40 @@ class MatchServiceImplTest {
     }
 
     @Test
+    void deleteRemovesTheMatchsEmptySidesBeforeTheMatch() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        com.cricketlegend.domain.MatchSide emptySide = com.cricketlegend.domain.MatchSide.builder()
+                .id(UUID.randomUUID()).matchId(matchId).teamId(UUID.randomUUID()).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+        when(matchSideRepository.findByMatchId(matchId)).thenReturn(List.of(emptySide));
+
+        matchService.delete(authentication, clubId, matchId);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(matchSideRepository, matchRepository);
+        order.verify(matchSideRepository).deleteAll(List.of(emptySide));
+        order.verify(matchRepository).delete(existing);
+    }
+
+    @Test
+    void deleteRefusesAndKeepsTheSidesWhenASideHoldsContent() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(
+                Map.of(matchId, java.util.EnumSet.of(MatchEmptiness.Attachment.TEAM_SELECTION)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has a team selection. Deactivate it instead.");
+
+        verify(matchSideRepository, never()).deleteAll(any());
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
     void deleteReportsARecordInsertedSinceTheCheckAsMatchNotEmpty() {
         UUID clubId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
