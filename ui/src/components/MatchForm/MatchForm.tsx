@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Alert, Box, MenuItem, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
@@ -22,6 +22,7 @@ import type { LeagueTeam } from '../../api/leagueTeamApi'
 import { getLeagueSeasonDates, leagueSeasonDatesKey } from '../../api/leagueSeasonDatesApi'
 import type { LeagueSeasonDates } from '../../api/leagueSeasonDatesApi'
 import { formatReferenceDate } from '../../utils/ageCutoff'
+import { currentSeasonId } from '../../utils/currentSeason'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see MatchFormPage), same pattern as LEAGUE_FORM_ID/SEASON_FORM_ID.
@@ -60,6 +61,8 @@ export interface MatchFormProps {
   // docs/specs/111: the server's refusal of a date outside the league's dates, shown under the date field until the date is
   // changed. The league's dates themselves are looked up here once a league and season are chosen.
   matchDateServerError?: string | null
+  // A new match (no season in initialValues) starts in the current season; injectable for tests.
+  today?: Date
 }
 
 interface FormState {
@@ -236,6 +239,7 @@ export function MatchForm({
   onScopeChange,
   onSubmit,
   matchDateServerError = null,
+  today,
 }: MatchFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues, initialField))
   const [errors, setErrors] = useState<FormErrors>({})
@@ -267,6 +271,20 @@ export function MatchForm({
   }
   const serverDateError = matchDateServerError && matchDateServerError !== dismissedServerError ? matchDateServerError : null
 
+  // A new match starts in the current season once the seasons are known, only while the season is still empty and the
+  // manager has not touched it (an edit, a prefill and the import's inferred season all arrive with one already).
+  const seasonTouched = useRef(false)
+  const hadInitialSeason = Boolean(initialValues?.seasonId)
+  useEffect(() => {
+    if (hadInitialSeason || seasonTouched.current) {
+      return
+    }
+    const current = currentSeasonId(seasons, today)
+    if (current) {
+      setValues((prev) => (prev.seasonId || seasonTouched.current ? prev : { ...prev, seasonId: current }))
+    }
+  }, [seasons, today, hadInitialSeason])
+
   useEffect(() => {
     onScopeChange?.(values.leagueId, values.seasonId)
   }, [onScopeChange, values.leagueId, values.seasonId])
@@ -278,6 +296,9 @@ export function MatchForm({
   // A league team belongs to one league and season, so changing either clears a league-team side
   // (the server would 400 otherwise) and tells the user.
   const changeScope = (patch: Partial<Pick<FormState, 'leagueId' | 'seasonId'>>) => {
+    if (patch.seasonId !== undefined) {
+      seasonTouched.current = true
+    }
     const clears = (side: SideState) => side.mode === 'leagueTeam' && side.leagueTeamId !== ''
     setValues((prev) => {
       const cleared = (side: SideState): SideState =>
