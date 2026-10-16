@@ -189,6 +189,26 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             @Param("weekStart") Instant weekStart,
             @Param("weekEnd") Instant weekEnd);
 
+    /**
+     * docs/specs/110-league-age-cutoff-day-and-month.md: the date of the earliest active match of each (league, season)
+     * pair among the given leagues and seasons, in one query. Pairs with no active match are absent; the caller keeps
+     * only the pairs it asked for.
+     */
+    @Query("select m.leagueId as leagueId, m.seasonId as seasonId, min(m.matchDate) as firstMatchDate "
+            + "from Match m where m.leagueId in :leagueIds and m.seasonId in :seasonIds and m.active = true "
+            + "group by m.leagueId, m.seasonId")
+    List<LeagueSeasonFirstMatch> findFirstMatchDates(
+            @Param("leagueIds") Collection<UUID> leagueIds, @Param("seasonIds") Collection<UUID> seasonIds);
+
+    /** Projection backing {@link #findFirstMatchDates}. */
+    interface LeagueSeasonFirstMatch {
+        UUID getLeagueId();
+
+        UUID getSeasonId();
+
+        Instant getFirstMatchDate();
+    }
+
     /** Projection backing {@link #countMatchesInWindowByLeague}. */
     interface LeagueWeekMatchCount {
         UUID getLeagueId();

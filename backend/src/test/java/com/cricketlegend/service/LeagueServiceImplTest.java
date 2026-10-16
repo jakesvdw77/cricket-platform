@@ -46,6 +46,7 @@ import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.domain.LeagueListFocus;
 import com.cricketlegend.dto.LeaguesSummaryDto;
 import com.cricketlegend.repository.SeasonRepository;
+import com.cricketlegend.service.support.LeagueAgeReference;
 import com.cricketlegend.service.impl.LeagueServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -111,13 +112,13 @@ class LeagueServiceImplTest {
         leagueService = new LeagueServiceImpl(
                 leagueRepository, seasonRepository, leagueAffiliationRepository,
                 leaguePlayingConditionsRepository, matchRepository, leagueTeamRepository, teamSquadMemberRepository,
-                leagueContactRepository, leagueMapper);
+                leagueContactRepository, leagueMapper, new LeagueAgeReference(matchRepository, seasonRepository));
     }
 
     private LeagueDto dummyDto() {
         return new LeagueDto(
                 UUID.randomUUID(), UUID.randomUUID(), "Premier League", LeagueSource.INTERNAL, 11,
-                null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null,
+                null, null, null, null, null, null, null, null, null, List.of(), true, null, null, null, 0, null, null,
                 null, null, null, null, null, null);
     }
 
@@ -138,7 +139,7 @@ class LeagueServiceImplTest {
         return new LeagueDto(
                 league.getId(), league.getClubId(), league.getName(), league.getSource(),
                 league.getMaxPlayingXiSize(), league.getMinAge(),
-                league.getMaxAge(), league.getAgeCutoffDate(), league.getFormat(), league.getLogoUrl(),
+                league.getMaxAge(), league.getAgeCutoffMonth(), league.getAgeCutoffDay(), league.getFormat(), league.getLogoUrl(),
                 league.getPhone(), league.getWebsite(), league.getEmail(), List.of(),
                 league.isActive(), league.getCreatedAt(),
                 league.getUpdatedAt(), league.getUpdatedBy(), 0, null, null, null, null, null, null, null, null);
@@ -149,7 +150,7 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
-                        "Vets League", null, null, null, null, null, null, null, null, null, null, null);
+                        "Vets League", null, null, null, null, null, null, null, null, null, null, null, null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
         when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
@@ -174,7 +175,7 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
-                        "Vets League", LeagueSource.INTERNAL, 12, 35, null, null, null, null, null, null, null,
+                        "Vets League", LeagueSource.INTERNAL, 12, 35, null, null, null, null, null, null, null, null,
                         null);
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
         when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
@@ -192,12 +193,129 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request =
                 new CreateLeagueRequest(
-                        "U15s", null, null, 20, 15, null, null, null, null, null, null, null);
+                        "U15s", null, null, 20, 15, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.create(clubId, request))
                 .isInstanceOf(ValidationException.class);
 
         org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    // --- 110: the age cut-off as a day and month ---
+
+    private CreateLeagueRequest createWithCutoff(Integer month, Integer day) {
+        return new CreateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null);
+    }
+
+    private UpdateLeagueRequest updateWithCutoff(Integer month, Integer day) {
+        return new UpdateLeagueRequest("U15s", null, null, 12, 15, month, day, null, null, null, null, null, null);
+    }
+
+    @Test
+    void createAndUpdateRejectACutoffWithOnlyOneOfMonthAndDay() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(12, null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(null, 31)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.update(clubId, leagueId, updateWithCutoff(12, null)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.update(clubId, leagueId, updateWithCutoff(null, 31)))
+                .isInstanceOf(ValidationException.class);
+        org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void createRejectsAMonthOutsideOneToTwelveAndADayThatDoesNotExistInTheMonth() {
+        UUID clubId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(0, 1))).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(13, 1))).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(12, 0))).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(12, 32))).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(4, 31))).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.create(clubId, createWithCutoff(2, 30))).isInstanceOf(ValidationException.class);
+        org.mockito.Mockito.verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRejectsAnImpossibleDayToo() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> leagueService.update(clubId, leagueId, updateWithCutoff(4, 31)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> leagueService.update(clubId, leagueId, updateWithCutoff(2, 30)))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void createAcceptsThe29thOfFebruaryAndNoCutoffAtAll() {
+        UUID clubId = UUID.randomUUID();
+        ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
+        when(leagueRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
+
+        leagueService.create(clubId, createWithCutoff(2, 29));
+        assertThat(captor.getValue().getAgeCutoffMonth()).isEqualTo(2);
+        assertThat(captor.getValue().getAgeCutoffDay()).isEqualTo(29);
+
+        leagueService.create(clubId, createWithCutoff(null, null));
+        assertThat(captor.getValue().getAgeCutoffMonth()).isNull();
+        assertThat(captor.getValue().getAgeCutoffDay()).isNull();
+    }
+
+    @Test
+    void updateStoresTheCutoffDayAndMonth() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        League existing = existingLeague(leagueId, clubId, true);
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
+        when(leagueRepository.save(any(League.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(leagueMapper.toDto(any(League.class))).thenReturn(dummyDto());
+
+        leagueService.update(clubId, leagueId, updateWithCutoff(12, 31));
+
+        assertThat(existing.getAgeCutoffMonth()).isEqualTo(12);
+        assertThat(existing.getAgeCutoffDay()).isEqualTo(31);
+    }
+
+    @Test
+    void ageReferenceDateIsComputedForTheClubsOwnLeagueAndSeason() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        League league = existingLeague(leagueId, clubId, true);
+        league.setAgeCutoffMonth(12);
+        league.setAgeCutoffDay(31);
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(
+                season(seasonId, clubId, "2026", LocalDate.of(2026, 9, 1), LocalDate.of(2027, 6, 30), Instant.now())));
+
+        com.cricketlegend.dto.AgeReferenceDto dto = leagueService.ageReferenceDate(clubId, leagueId, seasonId);
+
+        assertThat(dto.referenceDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(dto.source()).isEqualTo("CUTOFF");
+        assertThat(dto.leagueStart()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(dto.leagueStartSource()).isEqualTo("SEASON_START");
+    }
+
+    @Test
+    void ageReferenceDateIs404ForAnotherClubsLeagueOrSeason() {
+        UUID clubId = UUID.randomUUID();
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existingLeague(leagueId, UUID.randomUUID(), true)));
+        assertThatThrownBy(() -> leagueService.ageReferenceDate(clubId, leagueId, seasonId))
+                .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
+
+        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existingLeague(leagueId, clubId, true)));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(
+                season(seasonId, UUID.randomUUID(), "2026", LocalDate.of(2026, 9, 1), LocalDate.of(2027, 6, 30), Instant.now())));
+        assertThatThrownBy(() -> leagueService.ageReferenceDate(clubId, leagueId, seasonId))
+                .isInstanceOf(com.cricketlegend.exception.NotFoundException.class);
     }
 
     // --- 053: format/logoUrl/phone/website/email/socialLinks profile fields ---
@@ -210,7 +328,7 @@ class LeagueServiceImplTest {
                 SocialLink.builder().platform("facebook").url("https://facebook.com/premier-league").build();
         when(leagueMapper.toEntity(linkDto)).thenReturn(mappedLink);
         CreateLeagueRequest request = new CreateLeagueRequest(
-                "Premier League", null, null, null, null, null, LeagueFormat.T20, "/media/logo.png",
+                "Premier League", null, null, null, null, null, null, LeagueFormat.T20, "/media/logo.png",
                 "0123456789", "https://premierleague.example", "info@premierleague.example",
                 List.of(linkDto));
         ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
@@ -242,7 +360,7 @@ class LeagueServiceImplTest {
         when(leagueMapper.toEntity(linkDto)).thenReturn(mappedLink);
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, LeagueFormat.ONE_DAY,
+                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, LeagueFormat.ONE_DAY,
                 "/media/logo.png", "0123456789", "https://premierleague.example",
                 "info@premierleague.example", List.of(linkDto));
 
@@ -260,7 +378,7 @@ class LeagueServiceImplTest {
     void createWithADuplicateSocialLinkPlatformThrowsValidationExceptionAndNeverSaves() {
         UUID clubId = UUID.randomUUID();
         CreateLeagueRequest request = new CreateLeagueRequest(
-                "Premier League", null, null, null, null, null, null, null, null, null, null,
+                "Premier League", null, null, null, null, null, null, null, null, null, null, null,
                 List.of(
                         new SocialLinkDto("facebook", "https://facebook.com/a"),
                         new SocialLinkDto("facebook", "https://facebook.com/b")));
@@ -276,7 +394,7 @@ class LeagueServiceImplTest {
         UUID clubId = UUID.randomUUID();
         UUID leagueId = UUID.randomUUID();
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Premier League", null, null, null, null, null, null, null, null, null, null,
+                "Premier League", null, null, null, null, null, null, null, null, null, null, null,
                 List.of(
                         new SocialLinkDto("facebook", "https://facebook.com/a"),
                         new SocialLinkDto("facebook", "https://facebook.com/b")));
@@ -298,7 +416,7 @@ class LeagueServiceImplTest {
         when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, null, null, null, null,
+                "Premier League", LeagueSource.INTERNAL, 11, null, null, null, null, null, null, null, null, null,
                 null);
 
         leagueService.update(clubId, leagueId, request);
@@ -321,7 +439,7 @@ class LeagueServiceImplTest {
         when(leagueMapper.toDto(existing)).thenReturn(dummyDto());
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null, null, null, null, null, null, null);
+                "Renamed League", LeagueSource.INTERNAL, 12, 10, 20, null, null, null, null, null, null, null, null);
 
         leagueService.update(clubId, leagueId, request);
 
@@ -340,7 +458,7 @@ class LeagueServiceImplTest {
         when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(existing));
 
         UpdateLeagueRequest request = new UpdateLeagueRequest(
-                "Renamed League", null, null, null, null, null, null, null, null, null, null, null);
+                "Renamed League", null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> leagueService.update(clubId, leagueId, request))
                 .isInstanceOf(NotFoundException.class);
@@ -531,9 +649,9 @@ class LeagueServiceImplTest {
 
         List<LeagueDto> results = new java.util.ArrayList<>();
         results.add(leagueService.create(clubId, new CreateLeagueRequest(
-                "New League", null, null, null, null, null, null, null, null, null, null, null)));
+                "New League", null, null, null, null, null, null, null, null, null, null, null, null)));
         results.add(leagueService.update(clubId, leagueId, new UpdateLeagueRequest(
-                "Renamed", null, null, null, null, null, null, null, null, null, null, null)));
+                "Renamed", null, null, null, null, null, null, null, null, null, null, null, null)));
         results.add(leagueService.deactivate(clubId, leagueId));
         results.add(leagueService.reactivate(clubId, leagueId));
 
@@ -882,7 +1000,7 @@ class LeagueServiceImplTest {
 
     private League richSource(boolean active) {
         return League.builder().id(SOURCE_ID).clubId(CLUB_ID).name("Division 1").source(LeagueSource.EXTERNAL)
-                .maxPlayingXiSize(9).minAge(12).maxAge(15).ageCutoffDate(LocalDate.of(2031, 9, 1))
+                .maxPlayingXiSize(9).minAge(12).maxAge(15).ageCutoffMonth(12).ageCutoffDay(31)
                 .format(LeagueFormat.T20).logoUrl("/media/l.png").phone("0123").website("https://l.example")
                 .email("a@l.example")
                 .socialLinks(new ArrayList<>(List.of(SocialLink.builder().platform("facebook").url("https://fb").build())))
@@ -949,7 +1067,8 @@ class LeagueServiceImplTest {
         assertThat(copy.getMaxPlayingXiSize()).isEqualTo(9);
         assertThat(copy.getMinAge()).isEqualTo(12);
         assertThat(copy.getMaxAge()).isEqualTo(15);
-        assertThat(copy.getAgeCutoffDate()).isEqualTo(LocalDate.of(2031, 9, 1));
+        assertThat(copy.getAgeCutoffMonth()).isEqualTo(12);
+        assertThat(copy.getAgeCutoffDay()).isEqualTo(31);
         assertThat(copy.getFormat()).isEqualTo(LeagueFormat.T20);
         assertThat(copy.getLogoUrl()).isEqualTo("/media/l.png");
         assertThat(copy.getPhone()).isEqualTo("0123");

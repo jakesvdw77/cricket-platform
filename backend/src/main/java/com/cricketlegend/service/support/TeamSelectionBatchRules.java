@@ -7,7 +7,6 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchAvailabilityPoll;
 import com.cricketlegend.domain.PlayerAvailability;
 import com.cricketlegend.domain.PlayerSection;
-import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SectionAvailabilityResponse;
 import com.cricketlegend.domain.SectionAvailabilityWindow;
 import com.cricketlegend.domain.SectionAvailabilityWindowMatch;
@@ -18,7 +17,6 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchAvailabilityPollRepository;
 import com.cricketlegend.repository.PlayerAvailabilityRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
-import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.SectionAvailabilityResponseRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowMatchRepository;
 import com.cricketlegend.repository.SectionAvailabilityWindowRepository;
@@ -71,7 +69,7 @@ public class TeamSelectionBatchRules {
     private final MatchAvailabilityPollRepository pollRepository;
     private final PlayerAvailabilityRepository playerAvailabilityRepository;
     private final LeagueRepository leagueRepository;
-    private final SeasonRepository seasonRepository;
+    private final LeagueAgeReference ageReference;
 
     public TeamSelectionBatchRules(
             SelectionRules rules,
@@ -85,7 +83,7 @@ public class TeamSelectionBatchRules {
             MatchAvailabilityPollRepository pollRepository,
             PlayerAvailabilityRepository playerAvailabilityRepository,
             LeagueRepository leagueRepository,
-            SeasonRepository seasonRepository) {
+            LeagueAgeReference ageReference) {
         this.rules = rules;
         this.matchSlots = matchSlots;
         this.accessService = accessService;
@@ -97,7 +95,7 @@ public class TeamSelectionBatchRules {
         this.pollRepository = pollRepository;
         this.playerAvailabilityRepository = playerAvailabilityRepository;
         this.leagueRepository = leagueRepository;
-        this.seasonRepository = seasonRepository;
+        this.ageReference = ageReference;
     }
 
     /**
@@ -162,7 +160,7 @@ public class TeamSelectionBatchRules {
         Coverage coverage = coverage(matches);
         Map<UUID, Set<UUID>> windowAudience = windowAudience(clubId, coverage.windowsById().values(), players);
         Map<UUID, League> leagues = leagues(matches);
-        Map<UUID, Season> seasons = seasonsNeedingCutoff(matches, leagues);
+        Map<LeagueAgeReference.Key, LeagueAgeReference.Reference> references = ageReferences(matches, leagues);
         Map<UUID, List<MatchSlots.Held>> held = matchSlots.heldByMatch(matches);
         SelectionEligibility eligibility = rules.eligibility();
         SelectionAvailabilityResolver availabilityResolver = rules.availability();
@@ -170,9 +168,12 @@ public class TeamSelectionBatchRules {
         Map<MatchTeam, Map<UUID, Verdict>> result = new HashMap<>();
         for (Match match : matches) {
             League league = match.getLeagueId() == null ? null : leagues.get(match.getLeagueId());
-            Map<UUID, String> ageProblems = league == null
+            LeagueAgeReference.Reference reference = league == null
+                    ? null
+                    : references.get(new LeagueAgeReference.Key(league.getId(), match.getSeasonId()));
+            Map<UUID, String> ageProblems = reference == null
                     ? Map.of()
-                    : eligibility.ageProblems(league, seasons.get(match.getSeasonId()), candidateIds, players);
+                    : eligibility.ageProblems(league, reference.referenceDate(), candidateIds, players);
             UUID windowId = coverage.windowIdByMatch().get(match.getId());
             for (Team team : ownTeamsByMatch.getOrDefault(match.getId(), List.of())) {
                 MatchTeam key = new MatchTeam(match.getId(), team.getId());
@@ -317,20 +318,20 @@ public class TeamSelectionBatchRules {
         return leagues;
     }
 
-    /** The seasons of matches whose league has an age rule but no cutoff date (the season start applies). */
-    private Map<UUID, Season> seasonsNeedingCutoff(List<Match> matches, Map<UUID, League> leagues) {
-        Set<UUID> seasonIds = new HashSet<>();
+    /**
+     * The age reference date (docs/specs/110) of every (league, season) pair among the matches whose league has an age
+     * rule, in one query for the seasons and one for the first match dates.
+     */
+    private Map<LeagueAgeReference.Key, LeagueAgeReference.Reference> ageReferences(
+            List<Match> matches, Map<UUID, League> leagues) {
+        Set<LeagueAgeReference.Key> keys = new HashSet<>();
         for (Match match : matches) {
             League league = match.getLeagueId() == null ? null : leagues.get(match.getLeagueId());
             boolean ageRule = league != null && (league.getMinAge() != null || league.getMaxAge() != null);
-            if (ageRule && league.getAgeCutoffDate() == null) {
-                seasonIds.add(match.getSeasonId());
+            if (ageRule) {
+                keys.add(new LeagueAgeReference.Key(league.getId(), match.getSeasonId()));
             }
         }
-        Map<UUID, Season> seasons = new HashMap<>();
-        if (!seasonIds.isEmpty()) {
-            seasonRepository.findAllById(seasonIds).forEach(season -> seasons.put(season.getId(), season));
-        }
-        return seasons;
+        return ageReference.ofAll(leagues, keys);
     }
 }

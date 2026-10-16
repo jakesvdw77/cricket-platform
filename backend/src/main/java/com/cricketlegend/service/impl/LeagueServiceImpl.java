@@ -8,6 +8,7 @@ import com.cricketlegend.domain.LeagueSource;
 import com.cricketlegend.domain.LeagueTeam;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.SocialLink;
+import com.cricketlegend.dto.AgeReferenceDto;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.DuplicateLeagueRequest;
 import com.cricketlegend.dto.DuplicateLeagueResponse;
@@ -34,6 +35,7 @@ import com.cricketlegend.repository.MatchRepository.LeagueWeekMatchCount;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.service.LeagueService;
+import com.cricketlegend.service.support.LeagueAgeReference;
 import com.cricketlegend.service.support.LeagueCopyRules;
 import com.cricketlegend.service.support.LeagueListRow;
 import com.cricketlegend.service.support.LeagueSeasonFields;
@@ -87,6 +89,7 @@ public class LeagueServiceImpl implements LeagueService {
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final LeagueContactRepository leagueContactRepository;
     private final LeagueMapper leagueMapper;
+    private final LeagueAgeReference leagueAgeReference;
 
     public LeagueServiceImpl(
             LeagueRepository leagueRepository,
@@ -97,7 +100,8 @@ public class LeagueServiceImpl implements LeagueService {
             LeagueTeamRepository leagueTeamRepository,
             TeamSquadMemberRepository teamSquadMemberRepository,
             LeagueContactRepository leagueContactRepository,
-            LeagueMapper leagueMapper) {
+            LeagueMapper leagueMapper,
+            LeagueAgeReference leagueAgeReference) {
         this.leagueRepository = leagueRepository;
         this.seasonRepository = seasonRepository;
         this.leagueAffiliationRepository = leagueAffiliationRepository;
@@ -107,6 +111,7 @@ public class LeagueServiceImpl implements LeagueService {
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.leagueContactRepository = leagueContactRepository;
         this.leagueMapper = leagueMapper;
+        this.leagueAgeReference = leagueAgeReference;
     }
 
     @Override
@@ -247,7 +252,7 @@ public class LeagueServiceImpl implements LeagueService {
         LeagueDto dto = leagueMapper.toDto(league);
         return new LeagueDto(
                 dto.id(), dto.clubId(), dto.name(), dto.source(), dto.maxPlayingXiSize(),
-                dto.minAge(), dto.maxAge(), dto.ageCutoffDate(), dto.format(), dto.logoUrl(), dto.phone(),
+                dto.minAge(), dto.maxAge(), dto.ageCutoffMonth(), dto.ageCutoffDay(), dto.format(), dto.logoUrl(), dto.phone(),
                 dto.website(), dto.email(), dto.socialLinks(), dto.active(), dto.createdAt(), dto.updatedAt(),
                 dto.updatedBy(), fields.currentSeasonTeamCount(), fields.currentSeasonLabel(),
                 fields.currentSeasonPlayingConditionsUrl(), fields.matchCount(), fields.playedCount(),
@@ -258,6 +263,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional
     public LeagueDto create(UUID clubId, CreateLeagueRequest request) {
         validateAgeRange(request.minAge(), request.maxAge());
+        validateAgeCutoff(request.ageCutoffMonth(), request.ageCutoffDay());
         SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
 
         League league = League.builder()
@@ -267,7 +273,8 @@ public class LeagueServiceImpl implements LeagueService {
                 .maxPlayingXiSize(request.maxPlayingXiSize() != null ? request.maxPlayingXiSize() : 11)
                 .minAge(request.minAge())
                 .maxAge(request.maxAge())
-                .ageCutoffDate(request.ageCutoffDate())
+                .ageCutoffMonth(request.ageCutoffMonth())
+                .ageCutoffDay(request.ageCutoffDay())
                 .format(request.format())
                 .logoUrl(request.logoUrl())
                 .phone(request.phone())
@@ -284,6 +291,7 @@ public class LeagueServiceImpl implements LeagueService {
     @Transactional
     public LeagueDto update(UUID clubId, UUID leagueId, UpdateLeagueRequest request) {
         validateAgeRange(request.minAge(), request.maxAge());
+        validateAgeCutoff(request.ageCutoffMonth(), request.ageCutoffDay());
         SocialLinkValidation.requireNoDuplicatePlatform(request.socialLinks());
         League league = findOrThrowForClub(clubId, leagueId);
 
@@ -293,7 +301,8 @@ public class LeagueServiceImpl implements LeagueService {
                 request.maxPlayingXiSize() != null ? request.maxPlayingXiSize() : 11);
         league.setMinAge(request.minAge());
         league.setMaxAge(request.maxAge());
-        league.setAgeCutoffDate(request.ageCutoffDate());
+        league.setAgeCutoffMonth(request.ageCutoffMonth());
+        league.setAgeCutoffDay(request.ageCutoffDay());
         league.setFormat(request.format());
         league.setLogoUrl(request.logoUrl());
         league.setPhone(request.phone());
@@ -302,6 +311,20 @@ public class LeagueServiceImpl implements LeagueService {
         league.setSocialLinks(toSocialLinks(request.socialLinks()));
 
         return leagueMapper.toDto(leagueRepository.save(league));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgeReferenceDto ageReferenceDate(UUID clubId, UUID leagueId, UUID seasonId) {
+        League league = findOrThrowForClub(clubId, leagueId);
+        Season season = seasonRepository
+                .findById(seasonId)
+                .filter(found -> found.getClubId().equals(clubId))
+                .orElseThrow(() -> new NotFoundException("Season not found: " + seasonId));
+        LeagueAgeReference.Reference reference = leagueAgeReference.of(league, season);
+        return new AgeReferenceDto(
+                reference.referenceDate(), reference.source().name(), reference.leagueStart(),
+                reference.leagueStartSource().name());
     }
 
     @Override
@@ -389,6 +412,25 @@ public class LeagueServiceImpl implements LeagueService {
     private void validateAgeRange(Integer minAge, Integer maxAge) {
         if (minAge != null && maxAge != null && minAge > maxAge) {
             throw new ValidationException("minAge must be <= maxAge");
+        }
+    }
+
+    /**
+     * docs/specs/110: the cut-off is both a month and a day or neither; the month is 1 to 12 and the day must exist in
+     * that month (29 February is allowed, the year is not stored).
+     */
+    private void validateAgeCutoff(Integer month, Integer day) {
+        if (month == null && day == null) {
+            return;
+        }
+        if (month == null || day == null) {
+            throw new ValidationException("ageCutoffMonth and ageCutoffDay must be set together");
+        }
+        if (month < 1 || month > 12) {
+            throw new ValidationException("ageCutoffMonth must be between 1 and 12");
+        }
+        if (day < 1 || day > java.time.Month.of(month).maxLength()) {
+            throw new ValidationException("ageCutoffDay " + day + " does not exist in month " + month);
         }
     }
 

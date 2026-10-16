@@ -1334,6 +1334,37 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/age-reference-date:
+    get:
+      tags:
+      - league-controller
+      operationId: ageReferenceDate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgeReferenceDto"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
     get:
       tags:
@@ -7268,6 +7299,19 @@ components:
           type: string
         postalCode:
           type: string
+    AgeReferenceDto:
+      type: object
+      properties:
+        referenceDate:
+          type: string
+          format: date
+        source:
+          type: string
+        leagueStart:
+          type: string
+          format: date
+        leagueStartSource:
+          type: string
     SocialLinkDto:
       type: object
       properties:
@@ -8791,9 +8835,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:
@@ -8843,9 +8890,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:
@@ -9616,9 +9666,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:

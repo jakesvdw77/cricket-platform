@@ -35,6 +35,11 @@ public final class ServerClock {
         return day.atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
+    /** The local calendar day (server clock) the given instant falls on. */
+    public static LocalDate localDate(Instant instant) {
+        return instant.atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
     /**
      * The current instant on the server clock. Read once per request that needs several aggregates
      * to agree on "now" (docs/specs/071-league-card-redesign.md's {@code LeagueServiceImpl.list}).

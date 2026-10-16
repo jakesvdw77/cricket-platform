@@ -1,5 +1,6 @@
 package com.cricketlegend.controller;
 
+import com.cricketlegend.dto.AgeReferenceDto;
 import com.cricketlegend.dto.CreateLeagueAffiliationRequest;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.DuplicateLeagueRequest;
@@ -54,6 +55,14 @@ public class LeagueController {
             @RequestParam(defaultValue = "true") boolean includeInactive,
             @RequestParam(required = false) String focus) {
         return ResponseEntity.ok(leagueService.list(clubId, seasonId, includeInactive, LeagueListFocus.parse(focus)));
+    }
+
+    /** docs/specs/110-league-age-cutoff-day-and-month.md: the date ages are judged on for the league in the season. */
+    @PreAuthorize("@access.canAdministerClub(authentication, #clubId)")
+    @GetMapping("/api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/age-reference-date")
+    public ResponseEntity<AgeReferenceDto> ageReferenceDate(
+            @PathVariable UUID clubId, @PathVariable UUID leagueId, @PathVariable UUID seasonId) {
+        return ResponseEntity.ok(leagueService.ageReferenceDate(clubId, leagueId, seasonId));
     }
 
     /** docs/specs/091-leagues-gold-standard.md: the Leagues page counters for the same filters the list uses. */

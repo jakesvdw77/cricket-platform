@@ -164,7 +164,7 @@ public final class ManagerOverviewFixtures {
     public League leagueWithProfile(World w, String name, boolean active) {
         return leagueRepository.save(League.builder().clubId(w.club().getId()).name(name)
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(9).minAge(12).maxAge(15)
-                .ageCutoffDate(LocalDate.of(2031, 9, 1)).format(LeagueFormat.T20).logoUrl("/media/league.png")
+                .ageCutoffMonth(12).ageCutoffDay(31).format(LeagueFormat.T20).logoUrl("/media/league.png")
                 .phone("0123456789").website("https://league.example").email("info@league.example")
                 .socialLinks(new ArrayList<>(List.of(
                         SocialLink.builder().platform("facebook").url("https://facebook.com/league").build(),
@@ -236,8 +236,12 @@ public final class ManagerOverviewFixtures {
     }
 
     public PlayerProfile player(World w, String firstName, boolean active) {
+        return player(w, firstName, active, LocalDate.of(1995, 1, 1));
+    }
+
+    public PlayerProfile player(World w, String firstName, boolean active, LocalDate dateOfBirth) {
         Person person = personRepository.save(Person.builder().firstName(firstName).lastName("Player")
-                .dateOfBirth(LocalDate.of(1995, 1, 1)).build());
+                .dateOfBirth(dateOfBirth).build());
         personIds.add(person.getId());
         return playerProfileRepository.save(
                 PlayerProfile.builder().personId(person.getId()).clubId(w.club().getId()).active(active).build());
@@ -245,6 +249,14 @@ public final class ManagerOverviewFixtures {
 
     public PlayerProfile rosterPlayer(World w, Team team, String firstName) {
         PlayerProfile profile = player(w, firstName, true);
+        teamSquadMemberRepository.save(TeamSquadMember.builder().teamId(team.getId())
+                .seasonId(w.season().getId()).playerProfileId(profile.getId()).build());
+        return profile;
+    }
+
+    /** An active player born on {@code dateOfBirth} on {@code team}'s roster for the world's season (spec 110). */
+    public PlayerProfile rosterPlayerBorn(World w, Team team, String firstName, LocalDate dateOfBirth) {
+        PlayerProfile profile = player(w, firstName, true, dateOfBirth);
         teamSquadMemberRepository.save(TeamSquadMember.builder().teamId(team.getId())
                 .seasonId(w.season().getId()).playerProfileId(profile.getId()).build());
         return profile;

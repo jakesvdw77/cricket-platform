@@ -14,7 +14,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +22,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * A club's own internal league/tournament/friendly fixture list — club-owned, never a true
@@ -73,8 +74,14 @@ public class League {
     @Column(name = "max_age")
     private Integer maxAge;
 
-    @Column(name = "age_cutoff_date")
-    private LocalDate ageCutoffDate;
+    /** docs/specs/110: the age cut-off as a day and month; both set or both null. */
+    @JdbcTypeCode(SqlTypes.SMALLINT)
+    @Column(name = "age_cutoff_month")
+    private Integer ageCutoffMonth;
+
+    @JdbcTypeCode(SqlTypes.SMALLINT)
+    @Column(name = "age_cutoff_day")
+    private Integer ageCutoffDay;
 
     @Enumerated(EnumType.STRING)
     private LeagueFormat format;

@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 
 /**
  * {@code name}/{@code source}/{@code maxPlayingXiSize}/{@code minAge}/{@code maxAge}/{@code
- * ageCutoffDate}/{@code format}/{@code logoUrl}/{@code phone}/{@code website}/{@code email} all
+ * ageCutoffMonth}/{@code ageCutoffDay}/{@code format}/{@code logoUrl}/{@code phone}/{@code website}/{@code email} all
  * exist with matching names on {@link League}, inferred by MapStruct. See
  * docs/specs/029-league-management.md.
  *

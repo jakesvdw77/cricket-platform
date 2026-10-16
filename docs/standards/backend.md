@@ -78,6 +78,10 @@ Import rules (spec 104):
 - **A reader fails loudly rather than guessing.** An adaptor that reads a report (`CRICCLUBS_CSV`) reports every problem as an `ImportInputValidationException` whose path is the input location (`line N`), with a stable code and a plain message, and never defaults an unknown value. The rules that do not depend on how a file was read live in a separate package-private mapper so a second reader of the same source can reuse them.
 - **The preview is stateless.** The document goes to the browser and comes back with `resolve`; the server re-validates it and recomputes every match level. The raw payload is not stored (`source_payload` stays null).
 
+## Age reference date (spec 110)
+
+- **The date a league judges ages on is computed only by `LeagueAgeReference`** (`service.support`): the league's cut-off day and month in the calendar year the league starts in that season (first active match, else the season start), or the league start itself when there is no cut-off. `SelectionEligibility`, `TeamSelectionBatchRules` and the age-reference-date endpoint all call it; never recompute the date elsewhere, and use its batch method (`ofAll`) rather than one query per match.
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:

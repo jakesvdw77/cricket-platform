@@ -18,6 +18,7 @@ import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.repository.LeagueRepository;
+import com.cricketlegend.repository.MatchRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
@@ -68,6 +69,9 @@ class SelectionEligibilityTest {
     private SeasonRepository seasonRepository;
 
     @Mock
+    private MatchRepository matchRepository;
+
+    @Mock
     private AccessService accessService;
 
     private SelectionEligibility eligibility;
@@ -83,7 +87,8 @@ class SelectionEligibilityTest {
     @BeforeEach
     void setUp() {
         eligibility = new SelectionEligibility(playerProfileRepository, personRepository, teamSquadMemberRepository,
-                playerSectionRepository, leagueRepository, seasonRepository, accessService);
+                playerSectionRepository, leagueRepository, new LeagueAgeReference(matchRepository, seasonRepository),
+                accessService);
         when(accessService.sectionAndDescendantIds(clubId, sectionId)).thenReturn(Set.of(sectionId, childSectionId));
     }
 
@@ -230,9 +235,17 @@ class SelectionEligibilityTest {
     // --- age rule ---
 
     private League league(Integer minAge, Integer maxAge, LocalDate cutoff) {
+        return league(minAge, maxAge, cutoff == null ? null : cutoff.getMonthValue(),
+                cutoff == null ? null : cutoff.getDayOfMonth(), LocalDate.of(cutoff == null ? 2026 : cutoff.getYear(), 9, 1));
+    }
+
+    /** Spec 110: the cut-off is a day and month; the season (and so the league start) begins on {@code seasonStart}. */
+    private League league(Integer minAge, Integer maxAge, Integer cutoffMonth, Integer cutoffDay, LocalDate seasonStart) {
+        org.mockito.Mockito.lenient().when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(Season.builder()
+                .id(seasonId).clubId(clubId).label("S").startDate(seasonStart).endDate(seasonStart.plusYears(1)).build()));
         League league = League.builder().id(UUID.randomUUID()).clubId(clubId).name("U15s")
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(11).minAge(minAge).maxAge(maxAge)
-                .ageCutoffDate(cutoff).active(true).build();
+                .ageCutoffMonth(cutoffMonth).ageCutoffDay(cutoffDay).active(true).build();
         when(leagueRepository.findById(league.getId())).thenReturn(Optional.of(league));
         match.setLeagueId(league.getId());
         return league;
@@ -290,14 +303,49 @@ class SelectionEligibilityTest {
     }
 
     @Test
-    void withoutACutoffDateTheSeasonsStartDateIsUsed() {
-        league(13, null, null);
-        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(Season.builder().id(seasonId).clubId(clubId)
-                .label("2026").startDate(LocalDate.of(2026, 1, 1)).endDate(LocalDate.of(2026, 12, 31)).build()));
+    void withoutACutoffAndWithoutMatchesTheSeasonsStartDateIsUsed() {
+        league(13, null, null, null, LocalDate.of(2026, 1, 1));
         PlayerInfo player = namedAged("Ann", LocalDate.of(2013, 6, 1));
 
         assertThat(ageProblems(player).get(player.playerProfileId()))
                 .isEqualTo("Ann Kid is 12, below this league's minAge of 13");
+    }
+
+    @Test
+    void withoutACutoffTheLeaguesFirstActiveMatchDayIsUsed() {
+        // Spec 110 rule 2: a winter league judges age on the day it starts (here 10 July), not the season start.
+        league(null, 13, null, null, LocalDate.of(2026, 1, 1));
+        org.mockito.Mockito.when(matchRepository.findFirstMatchDates(any(), any())).thenReturn(List.of(
+                firstMatch(match.getLeagueId(), seasonId, java.time.ZonedDateTime
+                        .of(2026, 7, 10, 9, 0, 0, 0, java.time.ZoneId.systemDefault()).toInstant())));
+        PlayerInfo turnedFourteenTheDayBefore = namedAged("Old", LocalDate.of(2012, 7, 9));
+        PlayerInfo turnsFourteenOnTheDay = namedAged("Edge", LocalDate.of(2012, 7, 10));
+        PlayerInfo stillThirteen = namedAged("Ok", LocalDate.of(2012, 7, 11));
+
+        assertThat(ageProblems(turnedFourteenTheDayBefore, turnsFourteenOnTheDay, stillThirteen))
+                .containsOnlyKeys(turnedFourteenTheDayBefore.playerProfileId(), turnsFourteenOnTheDay.playerProfileId());
+    }
+
+    @Test
+    void aSeptemberLeagueWithA31DecemberCutoffKeepsAPlayerEligibleAllSeason() {
+        // Spec 110 rule 1: judged on 31 December of the year the league starts, not when the match is played.
+        league(null, 13, 12, 31, LocalDate.of(2026, 9, 1));
+        org.mockito.Mockito.when(matchRepository.findFirstMatchDates(any(), any())).thenReturn(List.of(
+                firstMatch(match.getLeagueId(), seasonId, java.time.ZonedDateTime
+                        .of(2026, 9, 5, 9, 0, 0, 0, java.time.ZoneId.systemDefault()).toInstant())));
+        PlayerInfo thirteenOnTheCutoff = namedAged("In", LocalDate.of(2013, 1, 1));
+        PlayerInfo fourteenOnTheCutoff = namedAged("Out", LocalDate.of(2012, 12, 31));
+
+        assertThat(ageProblems(thirteenOnTheCutoff, fourteenOnTheCutoff))
+                .containsOnlyKeys(fourteenOnTheCutoff.playerProfileId());
+    }
+
+    private static MatchRepository.LeagueSeasonFirstMatch firstMatch(UUID leagueId, UUID seasonId, Instant at) {
+        return new MatchRepository.LeagueSeasonFirstMatch() {
+            public UUID getLeagueId() { return leagueId; }
+            public UUID getSeasonId() { return seasonId; }
+            public Instant getFirstMatchDate() { return at; }
+        };
     }
 
     @Test
