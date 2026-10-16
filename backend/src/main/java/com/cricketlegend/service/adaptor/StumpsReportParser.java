@@ -77,15 +77,22 @@ final class StumpsReportParser {
 
     private static final Pattern DISMISSAL_START = Pattern.compile(
             "^(not out|b .+|c .+|lbw .+|runout.*|st .+|stumped.*|hit .*|retired.*|timed .*|handled.*|obstruct.*|absent.*)$");
-    private static final Pattern CAUGHT_AND_BOWLED = Pattern.compile("^c & b (.+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern CAUGHT = Pattern.compile("^c (.+?) b (.+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BOWLED = Pattern.compile("^b (.+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern LBW = Pattern.compile("^lbw (.+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RUN_OUT = Pattern.compile("^runout \\((.+)\\)$", Pattern.CASE_INSENSITIVE);
+    // STUMPS prints every dismissal keyword (and the separator ' b ') in lower case, so these are case sensitive: a capital
+    // B inside a name is part of the name, never the separator
+    private static final Pattern CAUGHT_AND_BOWLED = Pattern.compile("^c & b (.+)$");
+    private static final Pattern CAUGHT = Pattern.compile("^c (.+?) b (.+)$");
+    private static final Pattern BOWLED = Pattern.compile("^b (.+)$");
+    private static final Pattern LBW = Pattern.compile("^lbw (.+)$");
+    private static final Pattern RUN_OUT = Pattern.compile("^runout \\((.+)\\)$");
+    private static final Pattern INNINGS_OVERS = Pattern.compile("^\\d{1,3}(\\.\\d)?$");
+    /** A line in the lines before a dismissal that is a marker of another row, not part of a name. */
+    private static final Pattern ROW_MARKER = Pattern.compile(
+            "(?i)(^|\\s)(did not bat|yet to bat|dnb|absent( hurt)?|retired( hurt| out)?|not out)(\\s|$)");
     /** The only words of a dismissal that an error may quote: the words of a dismissal, never a name. */
     private static final Set<String> QUOTABLE_WORDS = Set.of("st", "stumped", "hit", "retired", "timed", "handled",
             "obstructing", "obstruct", "absent", "abandoned", "run", "out", "caught", "bowled", "lbw", "c", "b", "ro");
     private static final int MOST_BATTER_LINES = 6;
+    private static final int MOST_NAME_LINES = 2;
 
     private static final Map<String, Integer> MONTHS = Map.ofEntries(
             Map.entry("jan", 1), Map.entry("feb", 2), Map.entry("mar", 3), Map.entry("apr", 4), Map.entry("may", 5),
@@ -354,7 +361,7 @@ final class StumpsReportParser {
         Integer month = match.matches() ? MONTHS.get(match.group(2).toLowerCase(Locale.ROOT)) : null;
         if (month == null) {
             throw fail(value.line().path(), "INVALID_DATE",
-                    "The date and time should read like '10 Oct 2026 01:30 PM'.");
+                    "The date and time should read like '21 Nov 2026 01:30 PM'.");
         }
         int hour = Integer.parseInt(match.group(4));
         int minute = Integer.parseInt(match.group(5));
@@ -484,6 +491,17 @@ final class StumpsReportParser {
                         + " missing.");
             }
         }
+        if (start > MOST_NAME_LINES) {
+            throw fail(group.get(0).path(), "BATTER_INCOMPLETE", "A batter's name should take at most " + MOST_NAME_LINES
+                    + " lines before the dismissal, but this one has more, so a batter's figures line is probably missing.");
+        }
+        for (int i = 0; i < start; i++) {
+            if (ROW_MARKER.matcher(group.get(i).text()).find()) {
+                throw fail(group.get(i).path(), "BATTER_INCOMPLETE", "This line looks like a dismissal or a marker such as"
+                        + " 'did not bat', 'absent' or 'retired' where a batter's name should be, so the batter before it"
+                        + " has no figures line.");
+            }
+        }
         String name = join(group.subList(0, start));
         String dismissal = join(group.subList(start, group.size()));
         Line dismissalLine = group.get(start);
@@ -495,6 +513,10 @@ final class StumpsReportParser {
         Matcher m;
         if (dismissal.equalsIgnoreCase("not out")) {
             type = DismissalType.NOT_OUT;
+        } else if (ambiguous(dismissal)) {
+            error(dismissalLine, "UNKNOWN_DISMISSAL", "The dismissal has a lower case 'b' word where it should have"
+                    + " none, or more than one, so the fielder and the bowler cannot be told apart. A name is not quoted"
+                    + " here; check the report.");
         } else if ((m = CAUGHT_AND_BOWLED.matcher(dismissal)).matches()) {
             type = DismissalType.CAUGHT_AND_BOWLED;
             bowler = m.group(1);
@@ -509,14 +531,46 @@ final class StumpsReportParser {
             type = DismissalType.LBW;
             bowler = m.group(1);
         } else if ((m = RUN_OUT.matcher(dismissal)).matches()) {
-            type = DismissalType.RUN_OUT;
-            fielder = m.group(1);
+            if (m.group(1).contains("/") || m.group(1).contains(",")) {
+                error(dismissalLine, "UNKNOWN_DISMISSAL", "The run out names more than one fielder (a '/' or ',' inside the"
+                        + " brackets). The adaptor reads one fielder only, so this is not guessed.");
+            } else {
+                type = DismissalType.RUN_OUT;
+                fielder = m.group(1);
+            }
         } else {
             error(dismissalLine, "UNKNOWN_DISMISSAL", "The dismissal wording " + quotedWording(dismissal)
                     + " is not one this adaptor knows. It knows 'b', 'c ... b', 'c & b', 'lbw', 'runout (...)' and"
                     + " 'not out'. A new form is added deliberately, with a masked sample.");
         }
         return new Batting(name, null, type, bowler, fielder, numbers[0], numbers[1], numbers[2], numbers[3]);
+    }
+
+    /** How many words of the dismissal are exactly the lower case separator {@code b}. */
+    private static int separators(String dismissal) {
+        int count = 0;
+        for (String word : dismissal.split(" ")) {
+            if (word.equals("b")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * True when the dismissal's fielder and bowler cannot be told apart: a caught, bowled or caught and bowled line
+     * may have at most one lower case {@code b} word (the separator), and an lbw or a run out none. A name that holds
+     * a lone lower case b is therefore refused, not split at a guess.
+     */
+    private static boolean ambiguous(String dismissal) {
+        int count = separators(dismissal);
+        if (dismissal.startsWith("c ") || dismissal.startsWith("b ")) {
+            return count > 1;
+        }
+        if (dismissal.startsWith("lbw ") || dismissal.startsWith("runout")) {
+            return count != 0;
+        }
+        return false;
     }
 
     /** The first word of the dismissal in quotes when it is a word of a dismissal, never a name. */
@@ -553,12 +607,17 @@ final class StumpsReportParser {
         int wides = 0;
         int noBalls = 0;
         String inner = match.group(1).trim();
+        Set<String> seen = new java.util.HashSet<>();
         if (!inner.isEmpty()) {
             for (String part : inner.split("\\|", -1)) {
                 Matcher extra = EXTRAS_PART.matcher(part.trim());
                 if (!extra.matches()) {
                     throw fail(line.path(), "UNRECOGNISED_LINE",
                             "Each of the extras should be 'B n', 'LB n', 'WD n' or 'NB n', separated by '|'.");
+                }
+                if (!seen.add(extra.group(1))) {
+                    throw fail(line.path(), "UNRECOGNISED_LINE", "The extras list '" + extra.group(1)
+                            + "' more than once, so which value is right is not guessed.");
                 }
                 int value = wholeOrError(line, extra.group(2), "The " + extra.group(1) + " extras");
                 switch (extra.group(1)) {
@@ -583,9 +642,8 @@ final class StumpsReportParser {
             throw fail(line.path(), "UNRECOGNISED_LINE", "Expected the extras total and the overs, such as '12 Overs 20.0'.");
         }
         String overs = total.group(2);
-        OversFormat.Parsed parsed = OversFormat.parse(overs, 6);
-        if (!parsed.valid()) {
-            error(line, "BAD_NUMBER", "The innings overs are not valid. " + parsed.error());
+        if (!validOvers(overs)) {
+            error(line, "BAD_NUMBER", "The innings overs '" + overs + "' are not valid. Overs look like 20 or 17.3.");
         }
         Line totalTitle = nextLine("the 'Total' line");
         if (!totalTitle.text().equals("Total")) {
@@ -628,6 +686,8 @@ final class StumpsReportParser {
 
     private List<Bowling> readBowling(int ordinal) {
         List<Bowling> rows = new ArrayList<>();
+        Line header = lines.get(pos - 1);
+        int seen = 0;
         while (pos < lines.size()) {
             Line line = lines.get(pos);
             if (INNINGS_HEADER.matcher(line.text()).matches()) {
@@ -636,6 +696,7 @@ final class StumpsReportParser {
             if (ordinal == 2 && BALL_BY_BALL.matcher(line.text()).matches()) {
                 // the ball-by-ball pages start here: everything from this line on is ignored
                 pos = lines.size();
+                requireBowlers(seen, header);
                 return rows;
             }
             String[] tokens = line.text().split(" ");
@@ -643,16 +704,30 @@ final class StumpsReportParser {
                 throw fail(line.path(), "UNRECOGNISED_LINE", "Expected a bowler's line: a name and ten figures (overs,"
                         + " maidens, runs, wickets, economy, dots, fours, sixes, wides, no balls).");
             }
+            seen++;
             Bowling row = bowler(line, tokens);
             if (row != null) {
                 rows.add(row);
             }
             pos++;
         }
+        requireBowlers(seen, header);
         if (ordinal == 1 && pos >= lines.size()) {
             throw fail(lines.get(lines.size() - 1).path(), "MISSING_SECTION", "The report ends before the 2nd innings.");
         }
         return rows;
+    }
+
+    /** An innings without a single bowler row is a missing table, not an innings nobody bowled in. */
+    private void requireBowlers(int seen, Line header) {
+        if (seen == 0) {
+            throw fail(header.path(), "MISSING_SECTION", "The innings' bowling table has no bowler rows after its header.");
+        }
+    }
+
+    /** Overs such as {@code 4} or {@code 17.3}: one to three digits and at most one decimal digit, a valid count of balls. */
+    private static boolean validOvers(String overs) {
+        return INNINGS_OVERS.matcher(overs).matches() && OversFormat.parse(overs, 6).valid();
     }
 
     private static boolean lastTenNumeric(String[] tokens) {
@@ -668,8 +743,7 @@ final class StumpsReportParser {
         int first = tokens.length - 10;
         String name = String.join(" ", java.util.Arrays.copyOfRange(tokens, 0, first));
         String overs = tokens[first];
-        OversFormat.Parsed parsed = OversFormat.parse(overs, 6);
-        boolean valid = overs.matches("^\\d{1,3}(\\.\\d)?$") && parsed.valid();
+        boolean valid = validOvers(overs);
         if (!valid) {
             error(line, "BAD_NUMBER", "The overs '" + overs + "' are not valid. Overs look like 4 or 3.4.");
         }

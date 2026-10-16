@@ -44,8 +44,11 @@ final class StumpsLines {
         return ofPages(List.of(text.split("\f", -1)));
     }
 
-    /** Trims spaces, tabs and the non-breaking space, and turns every run of them inside the line into one space. */
+    /**
+     * Trims spaces, tabs and the no-break spaces a PDF can carry (U+00A0 no-break, U+202F narrow no-break and U+2007 figure
+     * space), and turns every run of them inside the line into one space.
+     */
     private static String trim(String text) {
-        return text.replace(' ', ' ').replaceAll("[ \t]+", " ").trim();
+        return text.replaceAll("[\\u00A0\\u202F\\u2007 \\t]+", " ").trim();
     }
 }

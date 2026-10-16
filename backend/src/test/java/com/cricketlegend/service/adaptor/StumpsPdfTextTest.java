@@ -1,6 +1,7 @@
 package com.cricketlegend.service.adaptor;
 
 import static com.cricketlegend.support.StumpsPdfFixtures.blankPdf;
+import static com.cricketlegend.support.StumpsPdfFixtures.encryptedPdf;
 import static com.cricketlegend.support.StumpsPdfFixtures.nonBlankLines;
 import static com.cricketlegend.support.StumpsPdfFixtures.pdf;
 import static com.cricketlegend.support.StumpsPdfFixtures.pdfOfPages;
@@ -100,5 +101,26 @@ class StumpsPdfTextTest {
     @Test
     void anEmptyFileIsRefusedWithAPlainMessage() {
         assertThatThrownBy(() -> StumpsPdfText.extract(new byte[0])).isInstanceOf(UnreadableImportInputException.class);
+    }
+
+    @Test
+    void aPdfThatNeedsAPasswordIsRefusedAsProtectedNotAsDamaged() {
+        byte[] locked = encryptedPdf(text(), "user-secret-1");
+
+        assertThatThrownBy(() -> StumpsPdfText.extract(locked))
+                .isInstanceOf(UnreadableImportInputException.class)
+                .hasMessageContaining("protected")
+                .hasMessageContaining("without a password")
+                .message().doesNotContain("damaged");
+    }
+
+    @Test
+    void aPdfEncryptedWithAnEmptyUserPasswordOpensButIsStillRefusedAsProtected() {
+        byte[] encrypted = encryptedPdf(text(), "");
+
+        assertThatThrownBy(() -> StumpsPdfText.extract(encrypted))
+                .isInstanceOf(UnreadableImportInputException.class)
+                .hasMessageContaining("protected")
+                .message().doesNotContain("damaged");
     }
 }

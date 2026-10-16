@@ -71,7 +71,7 @@ class StumpsReportParserTest {
         assertThat(doc.schemaVersion()).isEqualTo(1);
         assertThat(doc.source().provider()).isEqualTo("STUMPS");
         assertThat(doc.source().externalMatchId()).isEqualTo("tst00001");
-        assertThat(doc.match().date()).isEqualTo(LocalDate.of(2026, 10, 10));
+        assertThat(doc.match().date()).isEqualTo(LocalDate.of(2026, 11, 21));
         assertThat(doc.match().startTime()).isEqualTo(LocalTime.of(13, 30));
         assertThat(doc.match().venue()).isEqualTo("Placeholder Ground");
         assertThat(doc.teams()).extracting("key", "name").containsExactly(
@@ -236,15 +236,15 @@ class StumpsReportParserTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
-            "10 Oct 2026 01:30 PM|2026-10-10|13:30",
-            "10 Oct 2026 08:01 AM|2026-10-10|08:01",
+            "21 Nov 2026 01:30 PM|2026-11-21|13:30",
+            "21 Nov 2026 08:01 AM|2026-11-21|08:01",
             "01 Jan 2027 12:00 PM|2027-01-01|12:00",
             "1 Feb 2027 12:15 PM|2027-02-01|12:15",
             "29 Feb 2028 12:15 AM|2028-02-29|00:15",
             "31 Dec 2026 11:59 PM|2026-12-31|23:59",
             "5 Sep 2026 12:00 AM|2026-09-05|00:00"})
     void theDateAndTimeAreReadOnATwelveHourClock(String written, String date, String time) {
-        ImportedResultDto doc = parse(text().replace("10 Oct 2026 01:30 PM", written));
+        ImportedResultDto doc = parse(text().replace("21 Nov 2026 01:30 PM", written));
 
         assertThat(doc.match().date()).isEqualTo(LocalDate.parse(date));
         assertThat(doc.match().startTime()).isEqualTo(LocalTime.parse(time));
@@ -252,10 +252,10 @@ class StumpsReportParserTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
-            "31 Feb 2026 01:30 PM", "10 Foo 2026 01:30 PM", "10 Oct 2026 13:30 PM", "10 Oct 2026 00:30 AM",
-            "10 Oct 2026 01:75 PM", "10 Oct 2026", "10/10/2026 01:30 PM"})
+            "31 Feb 2026 01:30 PM", "21 Foo 2026 01:30 PM", "21 Nov 2026 13:30 PM", "21 Nov 2026 00:30 AM",
+            "21 Nov 2026 01:75 PM", "21 Nov 2026", "21/11/2026 01:30 PM"})
     void aDateOrTimeThatIsNotReadableFails(String written) {
-        String text = text().replace("10 Oct 2026 01:30 PM", written);
+        String text = text().replace("21 Nov 2026 01:30 PM", written);
 
         ImportErrorDto error = onlyError(text);
 
@@ -551,6 +551,63 @@ class StumpsReportParserTest {
         assertThat(onlyError(text).code()).isEqualTo("UNRECOGNISED_LINE");
     }
 
+    // ---- failures: a batter row that is not a batter ----
+
+    @Test
+    void aDidNotBatRowWithNoFiguresFollowedByARealBatterIsNotMergedIntoIt() {
+        String text = text().replace("Player 6\nb Player 16\n", "Player 9\nDid not bat\nPlayer 6\nb Player 16\n");
+
+        ImportErrorDto error = onlyError(text);
+
+        assertThat(error.code()).isEqualTo("BATTER_INCOMPLETE");
+        assertThat(error.path()).isEqualTo(pathOf(text, "Player 9"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {"Did not bat", "did not bat", "Absent hurt", "Retired hurt", "Yet to bat"})
+    void aMarkerWhereANameShouldBeIsRefusedAtItsOwnLine(String marker) {
+        String text = text().replace("Player 6\nb Player 16\n", "Player 6\n" + marker + "\nb Player 16\n");
+
+        ImportErrorDto error = onlyError(text);
+
+        assertThat(error.code()).isEqualTo("BATTER_INCOMPLETE");
+        assertThat(error.path()).isEqualTo(pathOf(text, marker));
+    }
+
+    @Test
+    void anAbsentRowWithNoFiguresIsNotMergedIntoTheNextBatterEither() {
+        String text = text().replace("Player 6\nb Player 16\n", "Player 6\nabsent\nb Player 16\n");
+
+        ImportErrorDto error = onlyError(text);
+
+        assertThat(error.code()).isEqualTo("BATTER_INCOMPLETE");
+        assertThat(error.path()).isEqualTo(pathOf(text, "Player 6"));
+    }
+
+    @Test
+    void aBatterNameCanWrapOverTwoLinesButNotThree() {
+        String threeLines = text().replace("Player 6\nb Player 16\n", "Player 6 With\nA Very Long\nSurname\nb Player 16\n");
+
+        ImportErrorDto error = onlyError(threeLines);
+
+        assertThat(error.code()).isEqualTo("BATTER_INCOMPLETE");
+        assertThat(error.path()).isEqualTo(pathOf(threeLines, "Player 6 With"));
+    }
+
+    @Test
+    void aBowlingTableWithNoBowlerRowsIsAMissingSectionInEitherInnings() {
+        String firstEmpty = text().replaceAll("(?m)^Player 1[4-8] \\d\\.\\d \\d+ .*\\n", "");
+        String secondEmpty = text().replaceAll("(?m)^Player [1-5] \\d\\.\\d \\d+ \\d+ \\d+ .*\\n", "");
+
+        ImportErrorDto first = onlyError(firstEmpty);
+        ImportErrorDto second = onlyError(secondEmpty);
+
+        assertThat(first.code()).isEqualTo("MISSING_SECTION");
+        assertThat(first.path()).isEqualTo("page 3, line 4");
+        assertThat(second.code()).isEqualTo("MISSING_SECTION");
+        assertThat(second.path()).isEqualTo("page 4, line 4");
+    }
+
     // ---- failures: dismissals ----
 
     @ParameterizedTest
@@ -590,6 +647,47 @@ class StumpsReportParserTest {
 
         assertThat(errors).extracting(ImportErrorDto::code).containsExactly("UNKNOWN_DISMISSAL", "UNKNOWN_DISMISSAL");
         assertThat(errors).extracting(ImportErrorDto::path).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void aCapitalBInsideAFielderNameIsPartOfTheNameNotTheSeparator() {
+        ImportedResultDto doc = parse(text().replace("c Player 15 b Player 14", "c Player 15 B Smith b Player 14"));
+
+        Batting caught = batter(doc.innings().get(0), "Player 2");
+        assertThat(caught.howOut()).isEqualTo(DismissalType.CAUGHT);
+        assertThat(caught.fielder()).isEqualTo("Player 15 B Smith");
+        assertThat(caught.bowler()).isEqualTo("Player 14");
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "c Player 15 b Player 14|c Player 15 b Player 12 b Player 14",
+            "b Player 16|b Player 16 b Player 12",
+            "c & b Player 16|c & b Player 16 b Player 12",
+            "lbw Player 14|lbw Player 14 b Player 12",
+            "runout (Player 17)|runout (Player 17) b Player 12"})
+    void aDismissalWithMoreThanOneLowerCaseBIsAmbiguousAndQuotesNoName(String original, String ambiguous) {
+        String text = text().replace("\n" + original + "\n", "\n" + ambiguous + "\n");
+
+        List<ImportErrorDto> errors = errors(text);
+
+        assertThat(errors).extracting(ImportErrorDto::code).containsOnly("UNKNOWN_DISMISSAL");
+        assertThat(errors.get(0).path()).isEqualTo(pathOf(text, ambiguous));
+        assertThat(errors.get(0).message()).contains("cannot be told apart");
+    }
+
+    @Test
+    void aRunOutWithTwoFieldersIsRefusedNotPassedOnAsOneName() {
+        for (String fielders : List.of("Player 17 / Player 18", "Player 17, Player 18", "Player 17/Player 18")) {
+            String wording = "runout (" + fielders + ")";
+            String text = text().replace("runout (Player 17)", wording);
+
+            ImportErrorDto error = onlyError(text);
+
+            assertThat(error.code()).isEqualTo("UNKNOWN_DISMISSAL");
+            assertThat(error.path()).isEqualTo(pathOf(text, wording));
+            assertThat(error.message()).contains("more than one fielder");
+        }
     }
 
     // ---- failures: numbers ----
@@ -643,6 +741,28 @@ class StumpsReportParserTest {
 
         assertThat(error.code()).isEqualTo("BAD_NUMBER");
         assertThat(error.path()).isEqualTo(pathOf(text, "10 Overs 20.7"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {"20.", ".5", "20.55", "2o.0", "1000.0", "20.0.1", "20,0"})
+    void aMalformedInningsOversTokenIsRefused(String overs) {
+        String text = text().replace("10 Overs 20.0", "10 Overs " + overs);
+
+        ImportErrorDto error = onlyError(text);
+
+        assertThat(error.code()).isEqualTo("BAD_NUMBER");
+        assertThat(error.path()).isEqualTo(pathOf(text, "10 Overs " + overs));
+    }
+
+    @Test
+    void aRepeatedExtrasPartIsRefusedNotSilentlyOverwritten() {
+        String text = text().replace("( B 2 | LB 1 | WD 6 | NB 1 )", "( B 2 | B 3 | LB 1 | WD 6 | NB 1 )");
+
+        ImportErrorDto error = onlyError(text);
+
+        assertThat(error.code()).isEqualTo("UNRECOGNISED_LINE");
+        assertThat(error.path()).isEqualTo(pathOf(text, "( B 2 | B 3 | LB 1 | WD 6 | NB 1 )"));
+        assertThat(error.message()).contains("'B' more than once");
     }
 
     @Test

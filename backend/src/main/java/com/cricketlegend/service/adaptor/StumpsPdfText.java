@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 /**
@@ -54,6 +55,10 @@ final class StumpsPdfText {
             return lines;
         } catch (ImportInputValidationException | UnreadableImportInputException ex) {
             throw ex;
+        } catch (InvalidPasswordException ex) {
+            // a PDF that needs a password to open is protected, not damaged
+            throw new UnreadableImportInputException("The PDF is protected and cannot be read. Export the report"
+                    + " again without a password.");
         } catch (IOException | RuntimeException ex) {
             // the message of a PDF library error can quote the file, so it is not passed on
             throw new UnreadableImportInputException("The file is not a PDF that can be read. It may be damaged, or it"

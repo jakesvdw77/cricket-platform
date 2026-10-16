@@ -242,7 +242,7 @@ class StumpsImportIntegrationTest {
         Scenario s = scenario("Team A U15", "Team B U15", "Player 7", "Player 1", "Player 20");
 
         ImportPreviewDto preview = preview(s.match, StumpsPdfFixtures.pdf());
-        assertThat(preview.document().match().date()).isEqualTo(LocalDate.of(2026, 10, 10));
+        assertThat(preview.document().match().date()).isEqualTo(LocalDate.of(2026, 11, 21));
         assertThat(preview.document().match().startTime()).isEqualTo(LocalTime.of(13, 30));
         assertThat(preview.document().match().venue()).isEqualTo("Placeholder Ground");
         assertThat(preview.document().source().provider()).isEqualTo("STUMPS");

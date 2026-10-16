@@ -9,6 +9,8 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 
 /**
@@ -52,7 +54,7 @@ public final class StumpsPdfFixtures {
             Playing 11 Per Side
             Overs 20
             Venue Placeholder Ground
-            Date & Time 10 Oct 2026 01:30 PM
+            Date & Time 21 Nov 2026 01:30 PM
             Toss Team A U15 Opted To Bat
             Scorer Placeholder Scorer
             Match ID tst00001
@@ -181,6 +183,25 @@ public final class StumpsPdfFixtures {
             for (String page : text.split("\f", -1)) {
                 addPage(document, page.split("\r\n|\n|\r", -1));
             }
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    /**
+     * The text as a PDF encrypted with a user password ({@code ""} for none, so it opens without one) and a different
+     * owner password.
+     */
+    public static byte[] encryptedPdf(String text, String userPassword) {
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (String page : text.split("\f", -1)) {
+                addPage(document, page.split("\r\n|\n|\r", -1));
+            }
+            StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-secret-1", userPassword, new AccessPermission());
+            policy.setEncryptionKeyLength(128);
+            document.protect(policy);
             document.save(out);
             return out.toByteArray();
         } catch (IOException ex) {
