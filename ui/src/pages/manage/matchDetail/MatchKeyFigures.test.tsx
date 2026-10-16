@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MatchKeyFigures } from './MatchKeyFigures'
@@ -103,5 +104,36 @@ describe('MatchKeyFigures', () => {
   it('shows a dash for the poll until the polls have loaded', () => {
     render(<MatchKeyFigures {...base} pollsReady={false} matchDate="2026-10-15T07:15:00" />)
     expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
+  })
+
+  // docs/specs/089 (Match page actions, 2026-10-16): Open availability lives on the poll tile.
+  describe('Open availability', () => {
+    it('is a button inside the poll tile that calls the handler', async () => {
+      vi.useRealTimers()
+      const onOpenAvailability = vi.fn()
+      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={onOpenAvailability} />)
+
+      const button = within(screen.getByTestId('match-figure-poll')).getByRole('button', { name: 'Open availability' })
+      await userEvent.setup().click(button)
+      expect(onOpenAvailability).toHaveBeenCalledTimes(1)
+    })
+
+    it('is absent without a handler, and disabled with the reason on its wrapper when told so', () => {
+      const { unmount } = render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
+      expect(screen.queryByRole('button', { name: 'Open availability' })).not.toBeInTheDocument()
+      unmount()
+
+      render(
+        <MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={vi.fn()} availabilityDisabled availabilityDisabledReason="No team" />,
+      )
+      const button = screen.getByRole('button', { name: 'Open availability' })
+      expect(button).toBeDisabled()
+      expect(button.closest('span[title]')).toHaveAttribute('title', 'No team')
+    })
+
+    it('is on the poll tile only', () => {
+      render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" onOpenAvailability={vi.fn()} />)
+      expect(screen.getAllByRole('button')).toHaveLength(1)
+    })
   })
 })
