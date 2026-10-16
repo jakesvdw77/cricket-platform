@@ -423,6 +423,21 @@ class MatchServiceImplTest {
     }
 
     @Test
+    void deleteReportsARecordInsertedSinceTheCheckAsMatchNotEmpty() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("fk"))
+                .when(matchRepository).flush();
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has other records. Deactivate it instead.");
+    }
+
+    @Test
     void deleteRefusesNamingEachKindOfAttachmentAndDeletesNothing() {
         Map<MatchEmptiness.Attachment, String> expected = Map.of(
                 MatchEmptiness.Attachment.DRAFT_RESULT, "This match has a draft result. Deactivate it instead.",
@@ -1959,6 +1974,9 @@ class MatchServiceImplTest {
         assertThat(byId(result, draft).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.DRAFT);
         assertThat(byId(result, none).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.NONE);
         verify(resultStatusResolver, times(1)).statusesFor(any());
+        // the emptiness check reuses those statuses rather than asking again
+        verify(matchEmptiness, never()).emptyAmong(any());
+        verify(matchEmptiness, times(1)).emptyAmong(any(), any());
     }
 
     @Test

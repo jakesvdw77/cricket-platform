@@ -62,11 +62,23 @@ public class MatchEmptiness {
 
     /** Every attachment of each match; a match with none has no entry. */
     public Map<UUID, Set<Attachment>> attachmentsFor(Collection<UUID> matchIds) {
+        if (matchIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return attachmentsFor(matchIds, resultStatusResolver.statusesFor(matchIds));
+    }
+
+    /**
+     * As {@link #attachmentsFor(Collection)}, for a caller that has already fetched the result statuses of
+     * {@code matchIds}, so the match_result query is not run a second time.
+     */
+    public Map<UUID, Set<Attachment>> attachmentsFor(
+            Collection<UUID> matchIds, Map<UUID, MatchResultStatus> resultStatuses) {
         Map<UUID, Set<Attachment>> byMatch = new HashMap<>();
         if (matchIds.isEmpty()) {
             return byMatch;
         }
-        resultStatusResolver.statusesFor(matchIds).forEach((matchId, status) -> add(
+        resultStatuses.forEach((matchId, status) -> add(
                 byMatch, matchId,
                 status == MatchResultStatus.PUBLISHED ? Attachment.PUBLISHED_RESULT : Attachment.DRAFT_RESULT));
         pollRepository.findMatchIdsWithPollByMatchIdIn(matchIds).forEach(id -> add(byMatch, id, Attachment.POLL));
@@ -81,7 +93,12 @@ public class MatchEmptiness {
 
     /** The matches among {@code matchIds} that have nothing attached. */
     public Set<UUID> emptyAmong(Collection<UUID> matchIds) {
-        Map<UUID, Set<Attachment>> attached = attachmentsFor(matchIds);
+        return emptyAmong(matchIds, matchIds.isEmpty() ? Map.of() : resultStatusResolver.statusesFor(matchIds));
+    }
+
+    /** As {@link #emptyAmong(Collection)}, reusing result statuses the caller has already fetched. */
+    public Set<UUID> emptyAmong(Collection<UUID> matchIds, Map<UUID, MatchResultStatus> resultStatuses) {
+        Map<UUID, Set<Attachment>> attached = attachmentsFor(matchIds, resultStatuses);
         Set<UUID> empty = new java.util.HashSet<>(matchIds);
         empty.removeAll(attached.keySet());
         return empty;

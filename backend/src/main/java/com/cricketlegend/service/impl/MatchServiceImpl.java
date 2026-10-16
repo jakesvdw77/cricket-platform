@@ -22,6 +22,7 @@ import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchNotEmptyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
@@ -450,7 +451,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         Map<UUID, MatchResultStatus> resultStatusByMatchId = resultStatusResolver.statusesFor(matchIds);
-        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matchIds); // docs/specs/109
+        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matchIds, resultStatusByMatchId); // docs/specs/109
 
         Map<UUID, PlayingArea> fieldsById = playingAreasById(
                 content.stream().map(MatchDto::playingAreaId).filter(Objects::nonNull).collect(Collectors.toSet()));
@@ -671,7 +672,12 @@ public class MatchServiceImpl implements MatchService {
             throw new MatchNotEmptyException("This match has " + first.description()
                     + (attached.size() > 1 ? " and other records" : "") + ". Deactivate it instead.");
         }
-        matchRepository.delete(match);
+        try {
+            matchRepository.delete(match);
+            matchRepository.flush(); // a poll or squad row inserted since the check fails on its foreign key here
+        } catch (DataIntegrityViolationException e) {
+            throw new MatchNotEmptyException("This match has other records. Deactivate it instead.");
+        }
     }
 
     /**
@@ -702,7 +708,7 @@ public class MatchServiceImpl implements MatchService {
                 .collect(Collectors.toSet()));
         Map<UUID, MatchResultStatus> resultStatusByMatchId =
                 resultStatusResolver.statusesFor(matches.stream().map(Match::getId).toList());
-        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matches.stream().map(Match::getId).toList());
+        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matches.stream().map(Match::getId).toList(), resultStatusByMatchId);
         return matches.stream()
                 .map(match -> {
                     MatchDto dto = matchMapper.toDto(match)
