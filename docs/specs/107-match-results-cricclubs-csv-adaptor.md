@@ -61,7 +61,7 @@ What each part means, as seen in the samples:
 - **Result line** (line 1): `<format>:  <match type><result text> (dd/mm/yyyy)`, for example `T20:  LeagueLaudium 4 Caribeans won by 135 Runs (11/10/2026)` or `O/50 IPT:  PracticeWickets won by 84 Runs (22/11/2025)`. The word glued in front of the result text is the **match type** (`League`, `Practice`), not a competition name and not part of the team name. The result text is one of `<Team> won by N Runs`, `<Team> won by N Wickets`, `It is a Tie`, or `Forfeited. Winner: <Team>`. The first word before the colon is the format and gives the scheduled overs (`T20` is 20, `O/50` is 50); any further words there name the tournament (such as `IPT`, the Inter-Provincial Tournament, per the user) and are kept as written.
 - **Finding the winner.** Because the match type is glued to the team name with no space, the winner is found by matching the two team names from line 2 against the end of the text before "won by" (the longer name wins a tie), never by splitting at a fixed word.
 - **Teams line** (line 2): `<Team A> Vs <Team B>`. Team A is the key `A`, Team B is `B`. Which team batted first comes from the order of the batting blocks, not from this line.
-- **Dismissal codes seen:** `b` bowled, `ct` caught, `ctw` caught by the wicketkeeper, `lbw`, `st` stumped, `ro` run out, `rtno` and `rt` retired (neither counts in the extras line's "Wickets", so both are read as retired not out; to confirm). A blank code means not out, or did not bat.
+- **Dismissal codes seen:** `b` bowled, `ct` caught, `ctw` caught by the wicketkeeper, `lbw`, `st` stumped, `ro` run out, `rtno` and `rt` retired. Whether a retirement was out or not out is not in the code but in the file's own wicket total (see below). A blank code means not out, or did not bat.
 - **Batters:** the first block lists the whole squad that was named, including players who did not bat (blank code and 0 balls).
 - **Extras and total line:** wides, no balls, byes, leg byes and penalty, then the innings runs and overs. **The innings total is this line's runs, not the bowling table's total**, because bowlers' runs leave out byes and leg byes (a 227 innings shows 225 in the bowling total). The overs on this line can differ in form from the bowling table (a full innings is "11" where the over-by-over data says 10.6); it is read as the total overs.
 - **Encoding.** One real export is Windows-1252 / Latin-1, not UTF-8 (a name such as `Morné`). Line endings and a byte order mark vary too.
@@ -85,7 +85,7 @@ What each part means, as seen in the samples:
 | `lbw` | `LBW` with the bowler |
 | `st` | `STUMPED` with fielder and bowler |
 | `ro` | `RUN_OUT` with the fielder. A bowler written on a run-out is dropped (a run-out has no bowler credit). |
-| `rtno`, `rt` | `RETIRED_NOT_OUT` |
+| `rtno`, `rt` | `RETIRED_NOT_OUT` or `RETIRED_OUT`, decided per innings by the wicket total (see below) |
 | blank code, balls faced or runs > 0 | `NOT_OUT` |
 | blank code, 0 balls and 0 runs | `didNotBat` |
 | fielder `Substitute` | fielder left empty (the catch is kept; no player is invented) |
@@ -94,6 +94,8 @@ What each part means, as seen in the samples:
 | Fall of wickets | ignored |
 
 Names are passed to the processor exactly as written. The processor already resolves "Dawid M" or "Willem V" against the other side's list with its closed-world rule, and a name it cannot place stays a guest or an opposition name for the manager to fix.
+
+**Retired batters decide themselves from the file's own numbers.** The extras line states the innings' wickets. For each innings the adaptor counts the dismissals that are wickets. If the stated wickets equal that count, every `rt` and `rtno` batter is `RETIRED_NOT_OUT` (this is what all the samples show, for example 5 wickets and five dismissals with two `rt` batters). If the stated wickets equal that count plus the number of `rt` and `rtno` batters, they are `RETIRED_OUT`. If neither fits, the import fails with the line number of the extras line and says the wickets do not match the batters, rather than choosing.
 
 A dismissal code the adaptor does not know is **not guessed**: the import fails with an error giving the line and the code (for example "line 17: unknown dismissal code 'rtd'"), so a new code is added deliberately, with a sample, rather than turning into a wrong scorecard.
 
@@ -113,7 +115,7 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 ## Test Plan
 
 - **Fixtures.** Anonymised copies (invented names, same shape) of the six real files, stored under `backend/src/test/resources/imports/results/cricclubs/`: a normal chase, a win by runs with a retired-not-out batter and a substitute fielder, a 50-over practice match saved as Windows-1252 with an accented name and `rt` batters, a tie, a forfeit, and edited variants. The real files stay in the git-ignored `docs/samples/`.
-- **Adaptor unit tests.** The result line in each form (runs, wickets, tie, forfeit), the date, T20 to 20 overs, every dismissal code, caught and bowled, run-out with a stray bowler, did-not-bat versus not-out, the substitute fielder, the extras line, the bowling table, BOM, CRLF and a Windows-1252 file with an accented name, a quoted name with a comma, the winner found when the match type is glued to the team name (`LeagueLaudium 4 Caribeans`, `PracticeWickets`), `O/50` read as 50 overs, the innings total taken from the extras line, pasted text, and every failure: an unknown code, a missing section, a bad number, a bad date, an empty file, a file that is some other CSV. Each asserts the line number and message.
+- **Adaptor unit tests.** The result line in each form (runs, wickets, tie, forfeit), the date, T20 to 20 overs, every dismissal code, caught and bowled, run-out with a stray bowler, did-not-bat versus not-out, the substitute fielder, the extras line, the bowling table, BOM, CRLF and a Windows-1252 file with an accented name, a quoted name with a comma, the winner found when the match type is glued to the team name (`LeagueLaudium 4 Caribeans`, `PracticeWickets`), `O/50` read as 50 overs, the innings total taken from the extras line, pasted text, and every failure: an unknown code, a missing section, a bad number, a bad date, an empty file, a file that is some other CSV. Retired batters: not out when the stated wickets equal the dismissals, out when they equal dismissals plus retirements, and a failure naming the extras line when neither fits. Each asserts the line number and message.
 - **Integration.** Each fixture through preview and resolve to a draft with the matcher and the validator, asserting the draft's innings, scores, wickets, dismissals and that nothing is published; a forfeit and a tie produce the right outcome.
 - **Contract.** The enum addition only.
 - **Manual.** The user imports a real export of each kind into a real match.
@@ -130,7 +132,7 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 
 ## Rollout Notes
 
-- **Open points to confirm against more samples** (each is a small, separate fix): whether `rt` is retired hurt (not out) or retired out; the dismissal codes for hit wicket, timed out, handled ball and obstructing; other tournament tags and match types and `O/40` or `O/30` formats; how no result, abandoned and draw read; a DLS or reduced-overs result; a super over; two players sharing one abbreviation; a team with fewer than 11 named; a competition whose header carries a real league name.
+- **Open points to confirm against more samples** (each is a small, separate fix): a file where the stated wickets include the retired batters (to prove the retired-out reading); the dismissal codes for hit wicket, timed out, handled ball and obstructing; other tournament tags and match types and `O/40` or `O/30` formats; how no result, abandoned and draw read; a DLS or reduced-overs result; a super over; two players sharing one abbreviation; a team with fewer than 11 named; a competition whose header carries a real league name.
 - **Order of work:** the line reader and result line first, then the batting and bowling sections, then fixtures and integration, then docs, review and the PR.
 - **Docs to update when built:** `docs/roadmap.md`, `docs/architecture.md` (the adaptor list), a pointer in `104`'s Rollout Notes.
 - **Deferred:** other CricClubs layouts, bulk import of many files, reading the fall of wickets, a Remembered names screen (all already in `104`'s deferred list).
