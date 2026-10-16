@@ -105,6 +105,10 @@ A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `Security
 - **Validation issue shape:** `ResultIssueDto` with `code`, `step`, `side`, `severity` (and message), built on `WarningCode`/`ErrorCode`; clients read `code`, never message text.
 - **Migrations:** `044-match-results-our-side-scorecard` (result_player, batting/bowling/fielding entries, match_award, extras, deferrable sequence), `045-match-results-opposition-scorecard` (opposition flag, dismissal bowler/fielder, credit sources, dots, award keeps its name), `046-match-innings-partial-figures` (nullable runs/wickets/balls), `047-batting-entry-how-out-nullable`.
 
+## Deleting records (spec 109)
+
+- **A delete is allowed only on an empty record.** The service checks, in one place (e.g. `MatchEmptiness`), that nothing is attached, and refuses otherwise with a `ConflictException` (409) whose message names what exists and the alternative (Deactivate). No cascading deletes. Expose a batched `deletable` flag on the read DTO so screens never need a call per row.
+
 ## Enforcement
 
 - **ArchUnit suite** (`backend/src/test/java/com/cricketlegend/architecture/`) — layers depend only downward, no field injection, `service.impl` classes are `@Service`-annotated and suffixed `Impl`. Runs on every build; a violation fails CI the same for an agent's change as a human's.

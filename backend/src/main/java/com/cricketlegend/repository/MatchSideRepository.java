@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** See docs/specs/029-league-management.md. */
 public interface MatchSideRepository extends JpaRepository<MatchSide, UUID> {
@@ -18,4 +20,8 @@ public interface MatchSideRepository extends JpaRepository<MatchSide, UUID> {
 
     /** Batched lookup for {@code MatchServiceImpl.list()}'s per-page announced-status enrichment (040). */
     List<MatchSide> findByMatchIdIn(Collection<UUID> matchIds);
+
+    /** docs/specs/109-delete-empty-match.md: which of these matches have at least one row here (one query for a page). */
+    @Query("select distinct s.matchId from MatchSide s where s.matchId in :matchIds")
+    List<UUID> findMatchIdsWithSideByMatchIdIn(@Param("matchIds") Collection<UUID> matchIds);
 }

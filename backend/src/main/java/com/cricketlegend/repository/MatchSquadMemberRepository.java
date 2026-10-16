@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * The per-fixture squad pool for a group-poll-covered match of a {@link com.cricketlegend.domain.Team} — see
@@ -41,4 +43,8 @@ public interface MatchSquadMemberRepository extends JpaRepository<MatchSquadMemb
 
     /** Batch lookup for the player availability grid (docs/specs/068-player-availability-grid.md). */
     List<MatchSquadMember> findByMatchIdIn(Collection<UUID> matchIds);
+
+    /** docs/specs/109-delete-empty-match.md: which of these matches have at least one row here (one query for a page). */
+    @Query("select distinct s.matchId from MatchSquadMember s where s.matchId in :matchIds")
+    List<UUID> findMatchIdsWithSquadMemberByMatchIdIn(@Param("matchIds") Collection<UUID> matchIds);
 }

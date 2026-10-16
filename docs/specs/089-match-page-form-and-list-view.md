@@ -96,3 +96,5 @@ Composes from: `PageHeaderBand`, `Card`, `badgeSx`, `CardProgressBar`, `PlayingX
 ## Rollout Notes
 
 Slices, one branch, each reviewable on its own: (1) the match page (key-figure strip, header, team cards); (2) the compact form with the side switch; (3) the list view (`MatchTable`, switch, preference). Update `docs/roadmap.md` (remove the Matches half of the "List view for Matches and Polls" item, leaving Polls) when slice 3 lands.
+
+**Delete (spec 109):** an empty match can be deleted from the Match page, beside Deactivate, shown only when the match's `deletable` flag is true. See `docs/specs/109-delete-empty-match.md`.
