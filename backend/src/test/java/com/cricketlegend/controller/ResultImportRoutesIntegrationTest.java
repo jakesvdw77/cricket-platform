@@ -147,7 +147,13 @@ class ResultImportRoutesIntegrationTest {
         JsonNode catalogue = body(mockMvc.perform(get(BASE + "/adaptors", clubId).with(admin))
                 .andExpect(status().isOk()));
 
-        JsonNode json = catalogue.path("adaptors").get(0);
+        JsonNode json = null;
+        for (JsonNode adaptor : catalogue.path("adaptors")) {
+            if ("JSON".equals(adaptor.path("type").asText())) {
+                json = adaptor;
+            }
+        }
+        assertThat(json).as("the JSON adaptor is in the catalogue").isNotNull();
         assertThat(json.path("type").asText()).isEqualTo("JSON");
         assertThat(json.path("displayName").asText()).isNotBlank();
         assertThat(json.path("aiAllowed").asBoolean()).isFalse();

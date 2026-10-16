@@ -71,6 +71,13 @@ beforeEach(() => {
 })
 
 describe('ResultScorecard', () => {
+  it('never shows a planned batting number under a name, even when it differs from where the player batted', async () => {
+    getScorecard.mockResolvedValue({ ...card(), players: [{ ...reg('a', 'Ann', 'Ash'), plannedBattingOrder: 7 }, ...card().players.slice(1)] })
+    renderCard()
+    await screen.findAllByText('Ann Ash')
+    expect(screen.queryByText(/planned/i)).not.toBeInTheDocument()
+  })
+
   it('shows a section per side with its batting table, the dismissal text and the names of the other side', async () => {
     renderCard()
     const home = await screen.findByTestId('scorecard-home')

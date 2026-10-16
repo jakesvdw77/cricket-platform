@@ -32,7 +32,8 @@ import java.util.Set;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({
-    @Type(value = JsonAdaptor.class, name = "JSON")
+    @Type(value = JsonAdaptor.class, name = "JSON"),
+    @Type(value = CricClubsCsvAdaptor.class, name = "CRICCLUBS_CSV")
 })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonAutoDetect(
