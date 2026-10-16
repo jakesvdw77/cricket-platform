@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "source": { "provider": "EXAMPLE", "externalMatchId": "fixture-full-1" },
+  "match": { "date": "2026-10-10", "startTime": "13:00", "venue": "Main Oval" },
+  "teams": [
+    { "key": "A", "name": "Northgate Strollers" },
+    { "key": "B", "name": "Riverside Occasionals" }
+  ],
+  "toss": { "wonBy": "A", "decision": "BAT" },
+  "result": { "outcome": "WON", "winner": "B", "margin": { "type": "WICKETS", "value": 6 }, "scheduledOvers": 20 },
+  "innings": [
+    {
+      "battingTeam": "A",
+      "runs": 101,
+      "wickets": 3,
+      "overs": "20.0",
+      "extras": { "wides": 4, "noBalls": 0, "byes": 1, "legByes": 0, "penalty": 0 },
+      "batting": [
+        { "player": "Anna Player", "howOut": "BOWLED", "bowler": "Olly Opp", "runs": 30, "balls": 28, "fours": 4, "sixes": 0 },
+        { "player": "Ben Batter", "howOut": "CAUGHT", "bowler": "Olly Opp", "fielder": "Pat Opp", "runs": 12, "balls": 15, "fours": 1, "sixes": 0 },
+        { "player": "Cara Crease", "howOut": "NOT_OUT", "runs": 40, "balls": 34, "fours": 3, "sixes": 1 },
+        { "player": "Dan Dasher", "howOut": "NOT_OUT", "runs": 10, "balls": 9, "fours": 1, "sixes": 0 }
+      ],
+      "didNotBat": ["Eve Extra"],
+      "bowling": [
+        { "player": "Olly Opp", "overs": "4.0", "maidens": 0, "runs": 22, "wickets": 2 },
+        { "player": "Pat Opp", "overs": "4.0", "maidens": 1, "runs": 18, "wickets": 0 }
+      ]
+    },
+    {
+      "battingTeam": "B",
+      "runs": 102,
+      "wickets": 4,
+      "overs": "18.2",
+      "batting": [
+        { "player": "Olly Opp", "howOut": "NOT_OUT", "runs": 60, "balls": 50, "fours": 6, "sixes": 1 },
+        { "player": "Pat Opp", "howOut": "NOT_OUT", "runs": 30, "balls": 25, "fours": 2, "sixes": 0 }
+      ],
+      "bowling": [
+        { "player": "Anna Player", "overs": "4.0", "maidens": 0, "runs": 25, "wickets": 2 }
+      ]
+    }
+  ],
+  "awards": { "playerOfMatch": null }
+}

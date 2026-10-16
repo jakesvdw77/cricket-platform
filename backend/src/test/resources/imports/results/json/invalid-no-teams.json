@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "source": { "provider": "EXAMPLE", "externalMatchId": "fixture-bad-1" },
+  "match": { "date": "2026-10-10" },
+  "teams": [ { "key": "A", "name": "Northgate Strollers" } ]
+}
