@@ -381,6 +381,18 @@ export default function LeagueFormPage() {
           </Box>
         )}
 
+        {/* docs/specs/111: Details has no header pill, so the block carries its own Season select, sharing the page's selected season. */}
+        {isEdit && activeTab === 'details' && seasons.length > 0 && selectedSeasonId && (
+          <LeagueSeasonDatesBlock
+            clubId={clubId}
+            leagueId={leagueId as string}
+            seasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
+            seasons={seasons}
+            onSeasonChange={setSelectedSeasonId}
+          />
+        )}
+
         {activeTab === 'details' && (
           <LeagueForm
             initialValues={

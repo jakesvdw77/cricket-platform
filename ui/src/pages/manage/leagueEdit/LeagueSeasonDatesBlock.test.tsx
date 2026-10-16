@@ -117,4 +117,34 @@ describe('LeagueSeasonDatesBlock (docs/specs/111)', () => {
     await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
     expect(getLeagueSeasonDates).toHaveBeenCalledWith('club-1', 'league-1', 'season-2')
   })
+
+  it('shows its own Season select when given seasons, and reports a change', async () => {
+    const user = userEvent.setup()
+    const onSeasonChange = vi.fn()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <LeagueSeasonDatesBlock
+          clubId="club-1"
+          leagueId="league-1"
+          seasonId="season-1"
+          seasonLabel="2026"
+          seasons={[
+            { id: 'season-1', label: '2026' },
+            { id: 'season-2', label: '2027' },
+          ]}
+          onSeasonChange={onSeasonChange}
+        />
+      </QueryClientProvider>,
+    )
+    await user.click(screen.getByRole('combobox', { name: 'Season' }))
+    await user.click(await screen.findByRole('option', { name: '2027' }))
+    expect(onSeasonChange).toHaveBeenCalledWith('season-2')
+  })
+
+  it('has no Season select without seasons', async () => {
+    renderBlock()
+    await waitFor(() => expect(start()).toHaveValue('2026-09-01'))
+    expect(screen.queryByRole('combobox', { name: 'Season' })).not.toBeInTheDocument()
+  })
 })

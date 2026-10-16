@@ -29,6 +29,13 @@ const uploadPlayingConditions = vi.fn()
 const updatePlayingConditions = vi.fn()
 const listLeagueContacts = vi.fn()
 const getLeagueAgeReference = vi.fn()
+const getLeagueSeasonDates = vi.fn()
+const putLeagueSeasonDates = vi.fn()
+vi.mock('../../api/leagueSeasonDatesApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/leagueSeasonDatesApi')>()),
+  getLeagueSeasonDates: (...args: unknown[]) => getLeagueSeasonDates(...args),
+  putLeagueSeasonDates: (...args: unknown[]) => putLeagueSeasonDates(...args),
+}))
 
 vi.mock('../../api/leagueApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/leagueApi')>()
@@ -226,6 +233,7 @@ beforeEach(() => {
   getPlayingConditions.mockResolvedValue(null)
   listLeagueContacts.mockResolvedValue([])
   getLeagueAgeReference.mockRejectedValue(new Error('no reference'))
+  getLeagueSeasonDates.mockResolvedValue({ startDate: '2025-02-01', endDate: '2025-10-31' })
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -459,6 +467,39 @@ describe('LeagueFormPage', () => {
 
       renderAt('/manage/fixtures/leagues/league-1/edit?tab=conditions')
       expect(await screen.findByText(/^Playing conditions for /)).toBeInTheDocument()
+    })
+
+    // docs/specs/111: the Season dates block on Details, with its own Season select tied to the page's season.
+    it('Details shows the Season dates block with a Season select, loads another season and saves from there', async () => {
+      const user = userEvent.setup()
+      putLeagueSeasonDates.mockResolvedValue({ startDate: '2024-03-01', endDate: '2024-09-30' })
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=details')
+
+      expect(await screen.findByTestId('league-season-dates')).toBeInTheDocument()
+      await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-2'))
+      expect(screen.getByRole('combobox', { name: 'Season' })).toHaveTextContent('2025')
+
+      await user.click(screen.getByRole('combobox', { name: 'Season' }))
+      await user.click(await screen.findByRole('option', { name: '2024' }))
+      await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+
+      await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+      await waitFor(() =>
+        expect(putLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', {
+          startDate: '2025-02-01',
+          endDate: '2025-10-31',
+        }),
+      )
+
+      // The page's season follows, so the Teams tab pill shows the same one.
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+      expect(await screen.findByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+    })
+
+    it('Add page has no Season dates block', async () => {
+      renderAt('/manage/fixtures/leagues/new')
+      await screen.findByLabelText('Name')
+      expect(screen.queryByTestId('league-season-dates')).not.toBeInTheDocument()
     })
 
     it('falls back to Details for an unknown ?tab= value', async () => {
