@@ -258,7 +258,7 @@ export default function ResultDetailPage() {
 
           <Box
             data-testid="result-actions"
-            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, auto)' }, justifyContent: { sm: 'start' } }}
+            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, auto)' }, justifyContent: { sm: 'start' }, alignItems: 'start' }}
           >
             {draft ? (
               <>
@@ -286,20 +286,14 @@ export default function ResultDetailPage() {
               </>
             ) : (
               <>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <MuiButton
-                    variant="contained"
-                    disabled
-                    fullWidth
-                    aria-describedby="unpublish-to-edit-reason"
-                    startIcon={<EditOutlinedIcon fontSize="small" />}
-                  >
-                    Edit
-                  </MuiButton>
-                  <Typography id="unpublish-to-edit-reason" variant="caption" color="text.secondary">
-                    {UNPUBLISH_TO_EDIT_REASON}
-                  </Typography>
-                </Box>
+                <MuiButton
+                  variant="contained"
+                  disabled
+                  aria-describedby="unpublish-to-edit-reason"
+                  startIcon={<EditOutlinedIcon fontSize="small" />}
+                >
+                  Edit
+                </MuiButton>
                 <MuiButton
                   variant="outlined"
                   startIcon={<UnpublishedOutlinedIcon fontSize="small" />}
@@ -310,6 +304,10 @@ export default function ResultDetailPage() {
                 >
                   Unpublish
                 </MuiButton>
+                {/* One line under both buttons, so neither button is stretched to hold it. */}
+                <Typography id="unpublish-to-edit-reason" variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
+                  {UNPUBLISH_TO_EDIT_REASON}
+                </Typography>
               </>
             )}
           </Box>
