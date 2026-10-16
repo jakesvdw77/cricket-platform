@@ -12,9 +12,8 @@ export interface JsonEditorProps {
   placeholder?: string
   disabled?: boolean
   error?: boolean
-  // Visible height in lines: it grows with the text from `minRows` and scrolls past `maxRows`.
-  minRows?: number
-  maxRows?: number
+  // Starting height in lines. The box scrolls inside and the user can drag its bottom edge to make it taller or shorter.
+  rows?: number
 }
 
 const LINE_HEIGHT = 1.5
@@ -28,7 +27,7 @@ function highlight(code: string): string {
 // A paste box that colours JSON as it is typed (docs/specs/104-match-results-import-adaptors.md, the JSON source): a
 // thin wrapper over react-simple-code-editor with Prism's JSON grammar. The text is still a plain textarea underneath, so
 // paste, undo and the screen reader's field name work as in any text box. The colours are theme tokens, never hex.
-export function JsonEditor({ value, onChange, ariaLabel, placeholder, disabled = false, error = false, minRows = 8, maxRows = 14 }: JsonEditorProps) {
+export function JsonEditor({ value, onChange, ariaLabel, placeholder, disabled = false, error = false, rows = 12 }: JsonEditorProps) {
   const lineHeightPx = FONT_SIZE * LINE_HEIGHT
   const textareaId = useId()
   return (
@@ -38,9 +37,10 @@ export function JsonEditor({ value, onChange, ariaLabel, placeholder, disabled =
         borderColor: error ? 'error.main' : 'divider',
         borderRadius: 1,
         bgcolor: disabled ? 'action.disabledBackground' : 'background.paper',
-        minHeight: minRows * lineHeightPx + PADDING * 2,
-        maxHeight: maxRows * lineHeightPx + PADDING * 2,
+        height: rows * lineHeightPx + PADDING * 2,
+        minHeight: 4 * lineHeightPx + PADDING * 2,
         overflow: 'auto',
+        resize: 'vertical',
         '&:hover': disabled || error ? undefined : { borderColor: 'text.primary' },
         '&:focus-within': { borderColor: error ? 'error.main' : 'primary.main', outline: `1px solid ${error ? theme.palette.error.main : theme.palette.primary.main}` },
         '& .token.property': { color: 'primary.main', fontWeight: 600 },
@@ -63,7 +63,7 @@ export function JsonEditor({ value, onChange, ariaLabel, placeholder, disabled =
         padding={PADDING}
         disabled={disabled}
         placeholder={placeholder}
-        style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: FONT_SIZE, lineHeight: LINE_HEIGHT, minHeight: minRows * lineHeightPx + PADDING * 2 }}
+        style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: FONT_SIZE, lineHeight: LINE_HEIGHT, minHeight: '100%' }}
       />
     </Box>
   )

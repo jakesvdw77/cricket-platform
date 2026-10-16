@@ -71,7 +71,7 @@ export function ConvertWithAiHelper({ prompt }: { prompt: string }) {
             component="pre"
             tabIndex={0}
             aria-label="Conversion prompt"
-            sx={{ m: 0, p: 1.25, maxHeight: 220, overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'action.hover', fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+            sx={{ m: 0, p: 1.25, height: 220, minHeight: 96, resize: 'vertical', overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: 'action.hover', fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
           >
             {prompt}
           </Box>
