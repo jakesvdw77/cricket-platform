@@ -236,7 +236,6 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
         phone: true,
         render: (entry) => {
           const player = playerOf(entry)
-          const planned = player?.plannedBattingOrder != null && player.plannedBattingOrder !== entry.position
           return nameCell(
             player,
             entry,
@@ -244,11 +243,6 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss }: Re
               {phone && (
                 <Typography variant="caption" color="text.secondary" component="div">
                   {howOut(entry)}
-                </Typography>
-              )}
-              {planned && (
-                <Typography variant="caption" color="text.secondary" component="div">
-                  planned {player?.plannedBattingOrder}
                 </Typography>
               )}
             </>,
