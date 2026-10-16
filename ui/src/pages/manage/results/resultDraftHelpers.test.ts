@@ -12,6 +12,7 @@ import {
   toPayload,
   withToss,
   withoutSuperOvers,
+  tossIncomplete,
 } from './resultDraftHelpers'
 
 const inn = (sequence: number, battingSide: 'HOME' | 'AWAY', runs: number | null, wickets: number | null = 5, balls: number | null = 240): Innings => ({
@@ -241,5 +242,17 @@ describe('toPayload scorecard sections', () => {
     expect(payload.scorecard?.batting[0]).toMatchObject({ howOut: 'DID_NOT_BAT', position: null })
     expect(payload.scorecard?.batting[0]).not.toHaveProperty('auto')
     expect(payload.scorecard?.bowling).toEqual([])
+  })
+})
+
+describe('tossIncomplete', () => {
+  it('is true with no toss, with a winner but no decision, and with a decision but no winner', () => {
+    expect(tossIncomplete({ tossWonBy: null, tossDecision: null })).toBe(true)
+    expect(tossIncomplete({ tossWonBy: 'HOME', tossDecision: null })).toBe(true)
+    expect(tossIncomplete({ tossWonBy: null, tossDecision: 'BAT' })).toBe(true)
+  })
+
+  it('is false once both the winner and the decision are given', () => {
+    expect(tossIncomplete({ tossWonBy: 'AWAY', tossDecision: 'BOWL' })).toBe(false)
   })
 })
