@@ -58,7 +58,7 @@ Total, 20 ,0,113,8,6,1,0,69
 
 What each part means, as seen in the samples:
 
-- **Result line** (line 1): `<format>:  <match type><result text> (dd/mm/yyyy)`, for example `T20:  LeagueLaudium 4 Caribeans won by 135 Runs (11/10/2026)` or `O/50 IPT:  PracticeWickets won by 84 Runs (22/11/2025)`. The word glued in front of the result text is the **match type** (`League`, `Practice`), not a competition name and not part of the team name. The result text is one of `<Team> won by N Runs`, `<Team> won by N Wickets`, `It is a Tie`, or `Forfeited. Winner: <Team>`. The first word before the colon is the format and gives the scheduled overs (`T20` is 20, `O/50` is 50); any further words there (such as `IPT`) are not understood and are ignored.
+- **Result line** (line 1): `<format>:  <match type><result text> (dd/mm/yyyy)`, for example `T20:  LeagueLaudium 4 Caribeans won by 135 Runs (11/10/2026)` or `O/50 IPT:  PracticeWickets won by 84 Runs (22/11/2025)`. The word glued in front of the result text is the **match type** (`League`, `Practice`), not a competition name and not part of the team name. The result text is one of `<Team> won by N Runs`, `<Team> won by N Wickets`, `It is a Tie`, or `Forfeited. Winner: <Team>`. The first word before the colon is the format and gives the scheduled overs (`T20` is 20, `O/50` is 50); any further words there name the tournament (such as `IPT`, the Inter-Provincial Tournament, per the user) and are kept as written.
 - **Finding the winner.** Because the match type is glued to the team name with no space, the winner is found by matching the two team names from line 2 against the end of the text before "won by" (the longer name wins a tie), never by splitting at a fixed word.
 - **Teams line** (line 2): `<Team A> Vs <Team B>`. Team A is the key `A`, Team B is `B`. Which team batted first comes from the order of the batting blocks, not from this line.
 - **Dismissal codes seen:** `b` bowled, `ct` caught, `ctw` caught by the wicketkeeper, `lbw`, `st` stumped, `ro` run out, `rtno` and `rt` retired (neither counts in the extras line's "Wickets", so both are read as retired not out; to confirm). A blank code means not out, or did not bat.
@@ -72,12 +72,13 @@ What each part means, as seen in the samples:
 
 | From the file | Becomes |
 |---|---|
-| Result line date `dd/mm/yyyy` | `match.date`. No time, venue or competition. |
+| Result line date `dd/mm/yyyy` | `match.date`. No time or venue. The competition is only set from words such as `IPT` after the format word (see below). |
 | `won by N Runs / Wickets` | `result.outcome = WON`, `winner`, `margin {RUNS or WICKETS, N}` |
 | `It is a Tie` | `outcome = TIE` |
 | `Forfeited. Winner: X` | `outcome = FORFEIT`, `winner = X`, no innings |
 | Format word `T20`, `O/50` | `scheduledOvers = 20`, `50`. `O/N` for any other N is read the same way (to confirm with samples); any other word leaves it empty with a note. |
-| Match type (`League`, `Practice`) | Ignored in this version (no competition is set). |
+| Words after the format word (`IPT`) | `match.competition`, as written ("IPT"). It is only evidence for finding the match, which the manager still chooses. Nothing is set when there are none. |
+| Match type (`League`, `Practice`) | Ignored in this version. |
 | `b` | `BOWLED` with the bowler |
 | `ct` | `CAUGHT` with fielder and bowler. When the fielder and the bowler are the same person: `CAUGHT_AND_BOWLED`, no fielder. |
 | `ctw` | `CAUGHT`, the fielder is the keeper |
@@ -129,7 +130,7 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 
 ## Rollout Notes
 
-- **Open points to confirm against more samples** (each is a small, separate fix): whether `rt` is retired hurt (not out) or retired out; the dismissal codes for hit wicket, timed out, handled ball and obstructing; what the `IPT` word means, other match types and `O/40` or `O/30` formats; how no result, abandoned and draw read; a DLS or reduced-overs result; a super over; two players sharing one abbreviation; a team with fewer than 11 named; a competition whose header carries a real league name.
+- **Open points to confirm against more samples** (each is a small, separate fix): whether `rt` is retired hurt (not out) or retired out; the dismissal codes for hit wicket, timed out, handled ball and obstructing; other tournament tags and match types and `O/40` or `O/30` formats; how no result, abandoned and draw read; a DLS or reduced-overs result; a super over; two players sharing one abbreviation; a team with fewer than 11 named; a competition whose header carries a real league name.
 - **Order of work:** the line reader and result line first, then the batting and bowling sections, then fixtures and integration, then docs, review and the PR.
 - **Docs to update when built:** `docs/roadmap.md`, `docs/architecture.md` (the adaptor list), a pointer in `104`'s Rollout Notes.
 - **Deferred:** other CricClubs layouts, bulk import of many files, reading the fall of wickets, a Remembered names screen (all already in `104`'s deferred list).
