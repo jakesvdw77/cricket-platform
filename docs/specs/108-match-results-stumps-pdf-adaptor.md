@@ -1,7 +1,7 @@
 # 108: Match Results: STUMPS PDF Adaptor
 
 **Depends on:** `104-match-results-import-adaptors.md` (the adaptor framework, the common import format, the Result Processor with its deterministic name matching, the import wizard) and `107-match-results-cricclubs-csv-adaptor.md` (the model for a deterministic reader: line-numbered errors, nothing guessed, a reusable mapper). This spec adds one adaptor and one library.
-**Status:** draft, written 2026-10-16 from three real STUMPS match reports the user supplied. **Not approved. The library (Apache PDFBox) needs the user's approval before any code.** Contains no AI and sends nothing to any third party.
+**Status:** approved by the user 2026-10-16, including Apache PDFBox as a backend dependency. Written from three real STUMPS match reports the user supplied. Contains no AI and sends nothing to any third party.
 
 ## Problem & Goals
 
@@ -128,7 +128,7 @@ None new. The Source step shows a tile "STUMPS match report (PDF)" from the cata
 ## Backend design
 
 - **`StumpsPdfAdaptor extends AbstractAdaptor`**, format `PDF`, binary. It overrides `read` to extract the text and returns a content object holding the numbered lines; `validate` checks the STUMPS banner and the section markers; `transform` parses. `AbstractAdaptor.importFrom` still does the size check, the source stamp and the common-format validation.
-- **Library: Apache PDFBox 3.x** (Apache 2.0), used only to extract text in `service.adaptor`, in one small class (`StumpsPdfText`). **It needs the user's approval before the build.** It is used with no JavaScript, no embedded files and no network access; the page count is capped (a report is about 7 pages; more than 30 is refused) and the existing 5 MB upload cap applies. The `service.adaptor` isolation rule gains exactly the library's package for that one class.
+- **Library: Apache PDFBox 3.x** (Apache 2.0), used only to extract text in `service.adaptor`, in one small class (`StumpsPdfText`). **Approved by the user 2026-10-16.** It is used with no JavaScript, no embedded files and no network access; the page count is capped (a report is about 7 pages; more than 30 is refused) and the existing 5 MB upload cap applies. The `service.adaptor` isolation rule gains exactly the library's package for that one class.
 - **Reading order, not positions.** The three samples extract cleanly in the library's default reading order: each batter is three consecutive lines, and the tables are one row per line. A name that wraps across two lines is joined using the figures line as the end marker. If a real file proves the plain order is not enough, a position-aware reader is a separate, small change.
 - **A pure parser.** `StumpsReportParser` works on the list of lines and knows nothing of PDFs, so every rule is unit tested with plain text and no PDF at all. It reports problems with the page and line.
 - **A shared mapper where the rules are shared.** The winner and margin, the toss and the dismissal-to-`howOut` mapping follow the `107` pattern; common pieces move into a shared package-private class only where both adaptors use them unchanged.
@@ -147,7 +147,7 @@ None new. The Source step shows a tile "STUMPS match report (PDF)" from the cata
 
 ## Acceptance Criteria
 
-- [ ] The user has approved Apache PDFBox as a dependency.
+- [x] The user has approved Apache PDFBox as a dependency (2026-10-16).
 - [ ] The three sample reports (an ordinary win by wickets, a DLS win by runs, a large win by runs) import to a draft with the correct teams, toss, venue, start time, overs, result, margin, innings, batting and bowling rows, player of the match and match id.
 - [ ] Every dismissal form in the table maps as shown; any other wording fails with its page and line and is never guessed.
 - [ ] A second import of the same match finds the draft and needs the replace tick.
@@ -168,4 +168,4 @@ None new. The Source step shows a tile "STUMPS match report (PDF)" from the cata
 - **No AI and no network** (user, 2026-10-16): the report is regular enough to parse directly.
 - **Ball-by-ball is ignored** (user, 2026-10-16).
 - **Children's names are never committed**; tests use masked patterns (user, 2026-10-16).
-- **PDFBox is the only new library** and needs approval before the build.
+- **PDFBox is the only new library** (approved by the user 2026-10-16, backend only).
