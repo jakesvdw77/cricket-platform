@@ -7,7 +7,7 @@
 
 Many of the club's matches are scored on CricClubs, which can export a result as a CSV. Retyping a scorecard in the capture wizard (`100`, `101`) is slow and error-prone. `104` built the framework that turns any source into one common format; this spec adds the first real source file, so a manager can pick a CricClubs export, check the match and teams, and get a draft to review.
 
-The export is not a clean table. It is a text report written as comma separated lines: a result line, then for each team a batting block, an extras and total line, a bowling block and a fall of wickets block. Names are abbreviated ("Dawid M", "Willem V"). The deterministic matcher from `104` already copes with abbreviated names, so this adaptor only has to read the layout and the dismissal codes reliably.
+The export is not a clean table. It is a text report written as comma separated lines: a result line, then for each team a batting block, an extras and total line, a bowling block and a fall of wickets block. Names are abbreviated ("Player A", "Player B"). The deterministic matcher from `104` already copes with abbreviated names, so this adaptor only has to read the layout and the dismissal codes reliably.
 
 Goals:
 
@@ -42,8 +42,8 @@ Additive only. `AdaptorType` gains `CRICCLUBS_CSV` (one `@JsonSubTypes` entry). 
 ## What the file looks like (from eight real exports)
 
 ```
-T20:  LeagueLaudium 4 Caribeans won by 135 Runs (11/10/2026)
-                     Laudium 4 Caribeans Vs Soshanguve
+T20:  LeagueTeam A 4 won by 135 Runs (11/10/2026)
+                     Team A 4 Vs Team B
 ,,,<Team> Batting
 	BatsMan, How Out, Fielder, Bowler, Runs, Balls, Fours,Sixers
 <name>,<code>,<fielder>,<bowler>,<runs>,<balls>,<fours>,<sixes>      (one per batter, 11 or 12 lines)
@@ -58,7 +58,7 @@ Total, 20 ,0,113,8,6,1,0,69
 
 What each part means, as seen in the samples:
 
-- **Result line** (line 1): `<format>:  <match type><result text> (dd/mm/yyyy)`, for example `T20:  LeagueLaudium 4 Caribeans won by 135 Runs (11/10/2026)` or `O/50 IPT:  PracticeWickets won by 84 Runs (22/11/2025)`. The word glued in front of the result text is the **match type** (`League`, `Practice`), not a competition name and not part of the team name. The result text is one of `<Team> won by N Runs`, `<Team> won by N Wickets`, `It is a Tie`, or `Forfeited. Winner: <Team>`. The first word before the colon is the format and gives the scheduled overs (`T20` is 20, `O/50` is 50); any further words there name the tournament (such as `IPT`, the Inter-Provincial Tournament, per the user) and are kept as written.
+- **Result line** (line 1): `<format>:  <match type><result text> (dd/mm/yyyy)`, for example `T20:  LeagueTeam A 4 won by 135 Runs (11/10/2026)` or `O/50 IPT:  PracticeTeam C won by 84 Runs (22/11/2025)`. The word glued in front of the result text is the **match type** (`League`, `Practice`), not a competition name and not part of the team name. The result text is one of `<Team> won by N Runs`, `<Team> won by N Wickets`, `It is a Tie`, or `Forfeited. Winner: <Team>`. The first word before the colon is the format and gives the scheduled overs (`T20` is 20, `O/50` is 50); any further words there name the tournament (such as `IPT`, the Inter-Provincial Tournament, per the user) and are kept as written.
 - **Finding the winner.** Because the match type is glued to the team name with no space, the winner is found by matching the two team names from line 2 against the end of the text before "won by" (the longer name wins a tie), never by splitting at a fixed word.
 - **Teams line** (line 2): `<Team A> Vs <Team B>`. Team A is the key `A`, Team B is `B`. Which team batted first comes from the order of the batting blocks, not from this line.
 - **Dismissal codes seen:** `b` bowled, `ct` caught, `ctw` caught by the wicketkeeper, `lbw`, `st` stumped, `ro` run out, `rtno` and `rt` retired. Whether a retirement was out or not out is not in the code but in the file's own wicket total (see below). A blank code means not out, or did not bat.
@@ -93,7 +93,7 @@ What each part means, as seen in the samples:
 | Extras and total line | `extras`, the innings `runs` (this line, not the bowling total), `wickets` and `overs` |
 | Fall of wickets | ignored |
 
-Names are passed to the processor exactly as written. The processor already resolves "Dawid M" or "Willem V" against the other side's list with its closed-world rule, and a name it cannot place stays a guest or an opposition name for the manager to fix.
+Names are passed to the processor exactly as written. The processor already resolves "Player A" or "Player B" against the other side's list with its closed-world rule, and a name it cannot place stays a guest or an opposition name for the manager to fix.
 
 **Retired batters decide themselves from the file's own numbers.** The extras line states the innings' wickets. For each innings the adaptor counts the dismissals that are wickets. If the stated wickets equal that count, every `rt` and `rtno` batter is `RETIRED_NOT_OUT` (this is what all the samples show, for example 5 wickets and five dismissals with two `rt` batters). If the stated wickets equal that count plus the number of `rt` and `rtno` batters, they are `RETIRED_OUT`. If neither fits, the import fails with the line number of the extras line and says the wickets do not match the batters, rather than choosing.
 
@@ -115,7 +115,7 @@ None new. The Source step shows a tile "CricClubs scorecard (CSV)" from the cata
 ## Test Plan
 
 - **Fixtures.** Anonymised copies (invented names, same shape) of the six real files, stored under `backend/src/test/resources/imports/results/cricclubs/`: a normal chase, a win by runs with a retired-not-out batter and a substitute fielder, a 50-over practice match saved as Windows-1252 with an accented name and `rt` batters, a tie, a forfeit, and edited variants. The real files stay in the git-ignored `docs/samples/`.
-- **Adaptor unit tests.** The result line in each form (runs, wickets, tie, forfeit), the date, T20 to 20 overs, every dismissal code, caught and bowled, run-out with a stray bowler, did-not-bat versus not-out, the substitute fielder, the extras line, the bowling table, BOM, CRLF and a Windows-1252 file with an accented name, a quoted name with a comma, the winner found when the match type is glued to the team name (`LeagueLaudium 4 Caribeans`, `PracticeWickets`), `O/50` read as 50 overs, the innings total taken from the extras line, pasted text, and every failure: an unknown code, a missing section, a bad number, a bad date, an empty file, a file that is some other CSV. Retired batters: not out when the stated wickets equal the dismissals, out when they equal dismissals plus retirements, and a failure naming the extras line when neither fits. Each asserts the line number and message.
+- **Adaptor unit tests.** The result line in each form (runs, wickets, tie, forfeit), the date, T20 to 20 overs, every dismissal code, caught and bowled, run-out with a stray bowler, did-not-bat versus not-out, the substitute fielder, the extras line, the bowling table, BOM, CRLF and a Windows-1252 file with an accented name, a quoted name with a comma, the winner found when the match type is glued to the team name (`LeagueTeam A 4`, `PracticeTeam C`), `O/50` read as 50 overs, the innings total taken from the extras line, pasted text, and every failure: an unknown code, a missing section, a bad number, a bad date, an empty file, a file that is some other CSV. Retired batters: not out when the stated wickets equal the dismissals, out when they equal dismissals plus retirements, and a failure naming the extras line when neither fits. Each asserts the line number and message.
 - **Integration.** Each fixture through preview and resolve to a draft with the matcher and the validator, asserting the draft's innings, scores, wickets, dismissals and that nothing is published; a forfeit and a tie produce the right outcome.
 - **Contract.** The enum addition only.
 - **Manual.** The user imports a real export of each kind into a real match.
@@ -149,7 +149,7 @@ Where the build is stricter than, or differs from, the draft:
 - **Format words:** an unknown format word leaves `scheduledOvers` empty with no note, because the only note field on the common format is saved onto the draft.
 - **`ctw`** is not given the caught-and-bowled treatment (the rule applies to `ct` only). The common-format `position` is left empty, as the JSON adaptor does.
 - **Not checked by the adaptor:** a report with no retired batters is not compared with the stated wickets; that is the validator's warning.
-- **A real file that fails:** `cricclubs.csv` has a stray `No` glued to a sixes value on one row (`...,1,3,0,0No`). The adaptor refuses it with `BAD_NUMBER` and the line number, as the spec's "numbers are numbers" requires. The matching edited export (`Villagers2.csv`) does not have it. If real exports turn out to carry this marker it is a deliberate, small spec change.
+- **A real file that fails:** `cricclubs.csv` has a stray `No` glued to a sixes value on one row (`...,1,3,0,0No`). The adaptor refuses it with `BAD_NUMBER` and the line number, as the spec's "numbers are numbers" requires. The matching edited export (`Sample2.csv`) does not have it. If real exports turn out to carry this marker it is a deliberate, small spec change.
 - **A PDF is refused:** `Score_Card_PDF.pdf` is not a CSV report and fails with `RESULT_LINE_NOT_UNDERSTOOD`. A CricClubs PDF adaptor is deferred until the CSV has been tried on real files.
 
 ### Decisions

@@ -179,6 +179,15 @@ Where the build differs from the draft, or is stricter. The real reports were re
 - **The shared mapper is small.** Only the team-name comparison (`TeamNames`, case and spaces ignored) was common and unchanged, so `CricClubsScorecardMapper` now delegates to it. The dismissal and result rules differ in shape between the two reports and were not forced into one class.
 - **The isolation rule.** The closed-list ArchUnit rule governs only classes of ours, so it needed no change. PDFBox is covered by its own rule, `onlyStumpsPdfTextImportsPdfBox`, which is stricter than the plan asked: nothing in the whole application, adaptor or not, may import it except `StumpsPdfText`, proven non-vacuous.
 - **Privacy test scope.** Names, teams and venues from the git-ignored samples are searched for in the files this feature owns (`Stumps*` tests and fixtures, spec and plan 108); a match id is searched for across all of `src/test`. Older tests legitimately name the operator's own club and ground, and a common first name can coincide with a real player's, so a whole-tree scan of names would flag files this feature never touched. The test is skipped when `docs/samples` is absent and never prints a name.
+- **A caught line is split only at a lower case ` b `.** STUMPS prints the separator in lower case, so a capital B inside a fielder's name stays in the name. A caught, bowled or caught and bowled line with more than one lower case `b` word, or an lbw or run out with any, is `UNKNOWN_DISMISSAL` (ambiguous, no name quoted). The dismissal keywords are matched case sensitively.
+- **A batter's name wraps over at most two lines.** More, or a line before the dismissal that holds a marker (`did not bat`, `absent`, `retired`, `yet to bat`, `not out`), is `BATTER_INCOMPLETE` at that line, so a row with no figures line is never merged into the next batter.
+- **A run out names one fielder.** A `/` or `,` inside the brackets is `UNKNOWN_DISMISSAL`.
+- **Every innings needs at least one bowler row**, otherwise `MISSING_SECTION` at the bowling table's header line.
+- **The innings overs token is validated like a bowler's overs** (`20`, `17.3`; not `20.` or `20.55`), else `BAD_NUMBER`.
+- **A repeated extras part** (`( B 2 | B 3 )`) is `UNRECOGNISED_LINE`, not a silent overwrite.
+- **Line text** treats the no-break space (U+00A0), narrow no-break space (U+202F) and figure space (U+2007) as spaces.
+- **A password protected PDF** (one PDFBox cannot open without a password) says it is protected, not damaged; one encrypted with an empty user password opens but is still refused as protected.
+- **The privacy test** also scans the adaptor's sources and the changed docs, keeps one and two letter names from name positions, compares after stripping accents, and harvests wrapped names whole.
 - **Not covered by a real sample** (still open, see Rollout Notes): stumped, hit wicket, retired and timed out fail loudly; a substitute fielder's wording; a tie or no result; a report that names a player of the match.
 
 ### Decisions
