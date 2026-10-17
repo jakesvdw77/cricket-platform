@@ -21,9 +21,9 @@ import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { Button } from '../Button'
 import { Input } from '../Input'
+import { WhatsAppSendActions } from '../WhatsAppSendActions'
 import type { Match } from '../../api/matchApi'
 import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 import { generateTeamSheetWhatsAppText } from '../../utils/teamSheetWhatsAppText'
@@ -151,18 +151,14 @@ export function TeamSheetCommunicationDialog({
     setWhatsappText(generateTeamSheetWhatsAppText(match, sidesInScope, subtitle))
   }
 
-  // Mirrors handlePrint's own shape (clear any previous error, attempt the action, close on
-  // success, surface a retryable inline error on failure) so the two primary actions behave
-  // symmetrically even though one opens a PDF and the other writes to the clipboard.
-  const handleCopyWhatsApp = async () => {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(whatsappText)
+  // The shared WhatsAppSendActions copies (and falls back to the legacy route); on success the
+  // dialog closes, on failure its own retryable message is shown beside the buttons.
+  const handleCopyResult = (ok: boolean) => {
+    if (ok) {
       onClose()
-    } catch {
-      setError("Couldn't copy to clipboard. Please try again.")
     }
   }
+
 
   const scopeLabel = (scope: TeamSheetPrintScope): string => {
     if (scope === 'both') {
@@ -275,6 +271,13 @@ export function TeamSheetCommunicationDialog({
                 >
                   Regenerate
                 </Button>
+                <WhatsAppSendActions
+                  text={whatsappText}
+                  copyLabel="Copy to Clipboard"
+                  copyFailureText="Couldn't copy to clipboard. Please try again."
+                  disabled={copyDisabled}
+                  onCopyResult={handleCopyResult}
+                />
               </Stack>
             )}
           </Stack>
@@ -296,11 +299,7 @@ export function TeamSheetCommunicationDialog({
           <Button onClick={handlePrint} disabled={printDisabled}>
             {isGenerating ? 'Generating…' : selectedScope ? scopeLabel(selectedScope) : 'Print'}
           </Button>
-        ) : (
-          <Button onClick={handleCopyWhatsApp} startIcon={<ContentCopyOutlinedIcon />} disabled={copyDisabled}>
-            Copy to Clipboard
-          </Button>
-        )}
+        ) : null}
       </DialogActions>
     </Dialog>
   )
