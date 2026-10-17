@@ -6880,6 +6880,49 @@ paths:
                 $ref: "#/components/schemas/PlatformPlayingAreaDto"
         "409":
           description: Invalid merge target
+  /api/v1/manage/clubs/{clubId}/share-settings:
+    get:
+      tags:
+      - club-share-settings-controller
+      operationId: getShareSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ShareSettingsDto"
+    put:
+      tags:
+      - club-share-settings-controller
+      operationId: updateShareSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareSettingsDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ShareSettingsDto"
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -12682,4 +12725,9 @@ components:
         last:
           type: boolean
         empty:
+          type: boolean
+    ShareSettingsDto:
+      type: object
+      properties:
+        initialsOnlyDefault:
           type: boolean
