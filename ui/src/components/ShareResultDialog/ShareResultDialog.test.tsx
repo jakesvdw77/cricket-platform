@@ -56,13 +56,13 @@ beforeEach(() => {
 })
 
 describe('ShareResultDialog', () => {
-  it('shows the five tiles, with only PDF marked as coming next', () => {
+  it('shows the five tiles, every one choosable', () => {
     renderDialog()
 
     expect(screen.getByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
     expect(screen.getAllByRole('radio')).toHaveLength(5)
-    expect(screen.getAllByText('Coming next')).toHaveLength(1)
-    expect(screen.getByRole('radio', { name: /PDF scorecard/ })).toBeDisabled()
+    expect(screen.queryByText('Coming next')).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /PDF scorecard/ })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /WhatsApp/ })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /Image/ })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /TV summary/ })).toBeEnabled()

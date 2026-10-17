@@ -124,7 +124,7 @@ export interface BuildShareResultInput {
   // Undefined or without players: a summary-only share.
   scorecard?: Scorecard | null
   // Used only to fall back to a team's own logo when the match carries none.
-  teams?: Pick<Team, 'id' | 'logoUrl'>[]
+  teams?: Pick<Team, 'id' | 'name' | 'logoUrl'>[]
   clubName?: string | null
   leagueName?: string | null
   teamsChoice: TeamsChoice
@@ -186,8 +186,11 @@ export function buildShareResultModel(input: BuildShareResultInput): ShareResult
   const players = scorecard?.players ?? []
   const hasScorecard = players.length > 0
 
-  const homeName = match.homeTeamName?.trim() || 'Home team'
-  const awayName = match.awayTeamName?.trim() || 'Away team'
+  // One of the club's own teams carries its name on the Team, not on the match (the match only names a free-text opponent).
+  const nameOf = (teamId: string | null, matchName: string | null, fallback: string): string =>
+    (teamId ? input.teams?.find((team) => team.id === teamId)?.name?.trim() : null) || matchName?.trim() || fallback
+  const homeName = nameOf(match.homeTeamId, match.homeTeamName, 'Home team')
+  const awayName = nameOf(match.awayTeamId, match.awayTeamName, 'Away team')
   const names: Record<ResultSide, string> = { HOME: homeName, AWAY: awayName }
   const logoOf = (teamId: string | null, matchLogo: string | null): string | null =>
     matchLogo || (teamId ? (input.teams?.find((team) => team.id === teamId)?.logoUrl ?? null) : null)

@@ -22,6 +22,7 @@ import { Button } from '../Button'
 import { TileChoiceGroup } from '../TileChoiceGroup'
 import { FacebookShareScreen } from './FacebookShareScreen'
 import { ImageShareScreen } from './ImageShareScreen'
+import { PdfShareScreen } from './PdfShareScreen'
 import { TvShareScreen } from './TvShareScreen'
 import { WhatsAppShareScreen } from './WhatsAppShareScreen'
 import { resolveShareInitials } from './useShareInitials'
@@ -40,16 +41,14 @@ interface FormatTile {
   title: string
   subtitle: string
   icon: ReactNode
-  // PDF arrives in a later slice: shown, but not yet choosable.
-  ready: boolean
 }
 
 const TILES: FormatTile[] = [
-  { value: 'PDF', title: 'PDF scorecard', subtitle: 'Full scorecard, A4, to print or send', icon: <PictureAsPdfOutlinedIcon />, ready: false },
-  { value: 'IMAGE', title: 'Image', subtitle: 'Result card for feeds and chats', icon: <ImageOutlinedIcon />, ready: true },
-  { value: 'TV', title: 'TV summary', subtitle: 'Widescreen match summary', icon: <LiveTvOutlinedIcon />, ready: true },
-  { value: 'WHATSAPP', title: 'WhatsApp', subtitle: 'Message text plus image', icon: <WhatsAppIcon />, ready: true },
-  { value: 'FACEBOOK', title: 'Facebook', subtitle: 'Post text plus image', icon: <FacebookIcon />, ready: true },
+  { value: 'PDF', title: 'PDF scorecard', subtitle: 'Full scorecard, A4, to print or send', icon: <PictureAsPdfOutlinedIcon /> },
+  { value: 'IMAGE', title: 'Image', subtitle: 'Result card for feeds and chats', icon: <ImageOutlinedIcon /> },
+  { value: 'TV', title: 'TV summary', subtitle: 'Widescreen match summary', icon: <LiveTvOutlinedIcon /> },
+  { value: 'WHATSAPP', title: 'WhatsApp', subtitle: 'Message text plus image', icon: <WhatsAppIcon /> },
+  { value: 'FACEBOOK', title: 'Facebook', subtitle: 'Post text plus image', icon: <FacebookIcon /> },
 ]
 
 const ARROW_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
@@ -131,8 +130,8 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
     setScreen(format)
   }
 
-  // The last format used is highlighted on opening, unless it cannot be chosen yet.
-  const highlighted = picked ?? (TILES.find((tile) => tile.value === choices.format && tile.ready)?.value ?? null)
+  // The last format used is highlighted on opening.
+  const highlighted = picked ?? (TILES.find((tile) => tile.value === choices.format)?.value ?? null)
 
   const screenProps = {
     model,
@@ -175,7 +174,6 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
               tileSx={{ minHeight: 88, py: 1.5, textAlign: 'left', justifyContent: 'flex-start', alignItems: 'center' }}
               options={TILES.map((item) => ({
                 value: item.value,
-                disabled: !item.ready,
                 content: (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
                     <Box sx={{ color: 'primary.main', display: 'flex', '& svg': { fontSize: 32 } }}>{item.icon}</Box>
@@ -184,11 +182,6 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
                       <Typography variant="body2" color="text.secondary">
                         {item.subtitle}
                       </Typography>
-                      {!item.ready && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                          Coming next
-                        </Typography>
-                      )}
                     </Box>
                   </Box>
                 ),
@@ -205,6 +198,8 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
                 <CircularProgress size={20} />
                 <Typography color="text.secondary">Loading the result details…</Typography>
               </Box>
+            ) : screen === 'PDF' ? (
+              <PdfShareScreen {...screenProps} />
             ) : screen === 'WHATSAPP' ? (
               <WhatsAppShareScreen {...screenProps} />
             ) : screen === 'FACEBOOK' ? (
