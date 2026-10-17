@@ -7,6 +7,12 @@ export function buildWhatsAppLink(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`
 }
 
+// WhatsApp Web with the message filled in. Offered on desktop beside the app link, because the WhatsApp desktop
+// app has been seen keeping only the link of a message and dropping the rest of the text.
+export function buildWhatsAppWebLink(text: string): string {
+  return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`
+}
+
 // True when the URL-encoded message is within WHATSAPP_LINK_MAX_CHARS.
 export function fitsWhatsAppLink(text: string): boolean {
   return encodeURIComponent(text).length <= WHATSAPP_LINK_MAX_CHARS

@@ -4,7 +4,7 @@ import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { Button } from '../Button'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
-import { buildWhatsAppLink, fitsWhatsAppLink } from '../../utils/whatsappLink'
+import { buildWhatsAppLink, buildWhatsAppWebLink, fitsWhatsAppLink } from '../../utils/whatsappLink'
 
 export interface WhatsAppSendActionsProps {
   // The message exactly as shown in the editable box; links stay inside it.
@@ -51,9 +51,14 @@ export function WhatsAppSendActions({
   const { copy, copiedKey, failed } = clipboard ?? ownClipboard
   const fits = fitsWhatsAppLink(text)
   const showShare = canNativeShare(file)
+  const desktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !window.matchMedia('(pointer: coarse)').matches
 
   const handleSend = () => {
     window.open(buildWhatsAppLink(text), '_blank', 'noopener')
+  }
+
+  const handleSendWeb = () => {
+    window.open(buildWhatsAppWebLink(text), '_blank', 'noopener')
   }
 
   const handleShare = async () => {
@@ -76,6 +81,11 @@ export function WhatsAppSendActions({
         {fits && (
           <Button startIcon={<WhatsAppIcon />} onClick={handleSend} disabled={disabled} sx={TOUCH_TARGET_SX}>
             Send in WhatsApp
+          </Button>
+        )}
+        {fits && desktop && (
+          <Button variant="secondary" startIcon={<WhatsAppIcon />} onClick={handleSendWeb} disabled={disabled} sx={TOUCH_TARGET_SX}>
+            WhatsApp Web
           </Button>
         )}
         {showShare && (

@@ -76,4 +76,18 @@ describe('WhatsAppSendActions', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(share).toHaveBeenCalledWith({ text: 'Hello', files: [file] })
   })
+
+  it('offers WhatsApp Web with the full text on a desktop only', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: false }), configurable: true })
+    const desktop = render(<WhatsAppSendActions text="Hello there" />)
+    await userEvent.click(screen.getByRole('button', { name: 'WhatsApp Web' }))
+    expect(open).toHaveBeenCalledWith('https://web.whatsapp.com/send?text=Hello%20there', '_blank', 'noopener')
+    desktop.unmount()
+
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: true }), configurable: true })
+    render(<WhatsAppSendActions text="Hello there" />)
+    expect(screen.queryByRole('button', { name: 'WhatsApp Web' })).not.toBeInTheDocument()
+    open.mockRestore()
+  })
 })
