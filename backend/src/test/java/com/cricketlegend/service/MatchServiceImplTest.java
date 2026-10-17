@@ -2122,10 +2122,16 @@ class MatchServiceImplTest {
 
     /** A league and season of one club, with dates 1 Sep 2026 to 31 Jul 2027 when {@code withDates}. */
     private UUID[] leagueSeasonFixture(UUID clubId, boolean withDates) {
+        return leagueSeasonFixture(clubId, withDates, true);
+    }
+
+    private UUID[] leagueSeasonFixture(UUID clubId, boolean withDates, boolean stubLeagueAndSeason) {
         UUID leagueId = UUID.randomUUID();
         UUID seasonId = UUID.randomUUID();
-        when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
-        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        if (stubLeagueAndSeason) {
+            when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+            when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        }
         when(leagueSeasonRepository.findByLeagueIdAndSeasonId(leagueId, seasonId)).thenReturn(withDates
                 ? Optional.of(com.cricketlegend.domain.LeagueSeason.builder().leagueId(leagueId).seasonId(seasonId)
                         .startDate(LocalDate.of(2026, 9, 1)).endDate(LocalDate.of(2027, 7, 31)).build())
@@ -2220,8 +2226,17 @@ class MatchServiceImplTest {
         verify(matchRepository).save(any());
     }
 
+    private Match inactiveLeagueMatch(UUID matchId, UUID clubId, UUID[] ids, Instant when) {
+        Match match = existingMatch(matchId, clubId, false);
+        match.setLeagueId(ids[0]);
+        match.setSeasonId(ids[1]);
+        match.setMatchDate(when);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        return match;
+    }
+
     @Test
-    void deactivatingAndReactivatingNeverChecksTheDates() {
+    void deactivatingNeverChecksTheDates() {
         UUID clubId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         Match match = existingMatch(matchId, clubId, true);
@@ -2230,8 +2245,54 @@ class MatchServiceImplTest {
         stubSave();
 
         matchService.deactivate(authentication, clubId, matchId);
-        matchService.reactivate(authentication, clubId, matchId);
 
         verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
+    }
+
+    @Test
+    void reactivatingInsideTheLeagueSeasonDatesWorks() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = inactiveLeagueMatch(matchId, clubId, ids, at(2026, 12, 5));
+        stubSave();
+
+        matchService.reactivate(authentication, clubId, matchId);
+
+        assertThat(match.isActive()).isTrue();
+    }
+
+    @Test
+    void reactivatingOutsideTheLeagueSeasonDatesIsRefusedAndTheMatchStaysInactive() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = inactiveLeagueMatch(matchId, clubId, ids, at(2027, 8, 1));
+
+        assertThatThrownBy(() -> matchService.reactivate(authentication, clubId, matchId))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+
+        assertThat(match.isActive()).isFalse();
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void reactivatingWithNoDatesRowOrNoLeagueIsNotChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID noRowId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, false, false);
+        Match noRow = inactiveLeagueMatch(noRowId, clubId, ids, at(2020, 1, 1));
+        UUID friendlyId = UUID.randomUUID();
+        Match friendly = existingMatch(friendlyId, clubId, false);
+        friendly.setMatchDate(at(2020, 1, 1));
+        when(matchRepository.findById(friendlyId)).thenReturn(Optional.of(friendly));
+        stubSave();
+
+        matchService.reactivate(authentication, clubId, noRowId);
+        matchService.reactivate(authentication, clubId, friendlyId);
+
+        assertThat(noRow.isActive()).isTrue();
+        assertThat(friendly.isActive()).isTrue();
     }
 }

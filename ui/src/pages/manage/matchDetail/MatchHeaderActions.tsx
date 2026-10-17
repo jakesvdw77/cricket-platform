@@ -114,9 +114,11 @@ export function MatchHeaderActions({ resultActions, editTo, active, onToggleActi
           {verb}
         </MenuItem>
         <MenuItem
-          disabled={!deletable}
-          sx={{ minHeight: 44, color: 'error.main', maxWidth: 320, whiteSpace: 'normal' }}
+          aria-disabled={!deletable}
+          aria-describedby={deletable ? undefined : 'match-delete-blocked-reason'}
+          sx={{ minHeight: 44, color: 'error.main', ...(deletable ? {} : { cursor: 'default', '&:hover': { backgroundColor: 'transparent' } }) }}
           onClick={() => {
+            // Kept focusable so a keyboard user reaches it and hears why; it just does nothing while blocked.
             if (!deletable) return
             setMoreAnchor(null)
             onDelete()
@@ -125,12 +127,20 @@ export function MatchHeaderActions({ resultActions, editTo, active, onToggleActi
           <ListItemIcon sx={{ color: 'inherit' }}>
             <DeleteOutlineIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText
-            primary="Delete"
-            secondary={deletable ? undefined : DELETE_BLOCKED_REASON}
-            secondaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
-          />
+          <ListItemText primary="Delete" />
         </MenuItem>
+        {!deletable && (
+          <Typography
+            id="match-delete-blocked-reason"
+            component="li"
+            role="presentation"
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', maxWidth: 320, px: 2, pb: 1, whiteSpace: 'normal' }}
+          >
+            {DELETE_BLOCKED_REASON}
+          </Typography>
+        )}
       </Menu>
 
       <ConfirmDialog

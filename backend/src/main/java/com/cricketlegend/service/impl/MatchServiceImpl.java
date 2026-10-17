@@ -22,7 +22,6 @@ import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
 import com.cricketlegend.exception.MatchNotEmptyException;
-import org.springframework.dao.DataIntegrityViolationException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
@@ -57,6 +56,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -660,6 +660,8 @@ public class MatchServiceImpl implements MatchService {
         if (match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already active: " + matchId);
         }
+        // docs/specs/111: a match left outside its league's dates (deactivated before they were set) cannot come back.
+        leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), match.getMatchDate());
         match.setActive(true);
         return toDto(matchRepository.save(match));
     }

@@ -40,7 +40,7 @@ Migration `050-league-season-dates.sql`:
 | `GET /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates` | club manager | `{startDate, endDate}`, or `404` when none are set yet. |
 | `PUT /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates` | club manager | Create or replace the dates. `400` when `startDate` is after `endDate` or a date is missing. **`409` when an active match of this league in this season would fall outside the new range**, naming how many and the earliest and latest match dates. |
 
-- **Matches honour the dates:** match create and update (and so every path that creates matches, including the league schedule import) reject, with `400` and a code `MATCH_OUTSIDE_LEAGUE_DATES`, a match whose league and season have dates and whose local match date is outside them. The message names the dates ("This league runs from 1 Sep 2026 to 31 Jul 2027."). A league season with no dates is not checked.
+- **Matches honour the dates:** match create, update and reactivate (a match deactivated outside the dates cannot come back; deactivating is never checked), and a future bulk or schedule-import path per fixture, reject, with `400` and a code `MATCH_OUTSIDE_LEAGUE_DATES`, a match whose league and season have dates and whose local match date is outside them. The message names the dates ("This league runs from 1 Sep 2026 to 31 Jul 2027."). A league season with no dates is not checked.
 - **`110`'s age reference date** (`LeagueAgeReference`, the `age-reference-date` endpoint) takes the league start from these dates first, then the first match, then the season start; the endpoint's `leagueStartSource` gains `LEAGUE_SEASON_DATES`.
 - `openapi.yaml` updated for all of this.
 
@@ -69,4 +69,5 @@ Migration `050-league-season-dates.sql`:
 ## Rollout Notes
 
 - **Order of work:** after `110`'s backend is committed: migration and entity, endpoint and the match checks, then the reference date change, then the league page block and the match form range.
+- **Known limits:** there is a narrow race between a match create or update and a concurrent `PUT` of the dates (no lock; acceptable for now). The browser's range check and the server's check share a time zone assumption (the club time zone gap).
 - **Docs to update when built:** `docs/roadmap.md`, `docs/standards/backend.md`, pointers in `029` and `050`.

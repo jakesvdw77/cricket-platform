@@ -288,8 +288,8 @@ class SelectionEligibilityTest {
         Map<UUID, String> problems = ageProblems(tooYoung, tooOld, justRight);
 
         assertThat(problems).containsOnlyKeys(tooYoung.playerProfileId(), tooOld.playerProfileId());
-        assertThat(problems.get(tooYoung.playerProfileId())).isEqualTo("Tim Kid is 11, below this league's minAge of 13");
-        assertThat(problems.get(tooOld.playerProfileId())).isEqualTo("Tom Kid is 17, above this league's maxAge of 15");
+        assertThat(problems.get(tooYoung.playerProfileId())).isEqualTo("Tim Kid is 11, below this league's minAge of 13 as at 1 Sep 2026");
+        assertThat(problems.get(tooOld.playerProfileId())).isEqualTo("Tom Kid is 17, above this league's maxAge of 15 as at 1 Sep 2026");
     }
 
     @Test
@@ -308,7 +308,7 @@ class SelectionEligibilityTest {
         PlayerInfo player = namedAged("Ann", LocalDate.of(2013, 6, 1));
 
         assertThat(ageProblems(player).get(player.playerProfileId()))
-                .isEqualTo("Ann Kid is 12, below this league's minAge of 13");
+                .isEqualTo("Ann Kid is 12, below this league's minAge of 13 as at 1 Jan 2026");
     }
 
     @Test

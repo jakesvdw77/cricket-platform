@@ -63,7 +63,8 @@ export function DateTimeField({
   }
 
   const step = (direction: 1 | -1) => update({ ...draft, time: stepTime(draft.time, direction) })
-  // Small stacked arrows, 18 px each; the 44 px touch target is kept by extending the hit area sideways (as GuessChip does).
+  // Small stacked arrows, 18 px tall each, so the pair fits the 40 px input. Their hit areas extend sideways only. The arrows are a
+  // convenience: the accessible routes are typing the time and the ArrowUp / ArrowDown keys.
   const arrowSx = {
     position: 'relative',
     width: 28,

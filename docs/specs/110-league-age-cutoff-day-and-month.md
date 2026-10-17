@@ -44,7 +44,7 @@ Migration `049-league-age-cutoff-day-month.sql` (additive then a drop; no data t
 ## API Contract
 
 - `LeagueDto`, `CreateLeagueRequest`, `UpdateLeagueRequest`: **`ageCutoffDate` is replaced by `ageCutoffMonth` and `ageCutoffDay`** (nullable integers). Validation (400): both or neither; month 1 to 12; the day must exist in that month (29 February allowed). This is a breaking change to one field, approved by the user.
-- New `GET /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/age-reference-date` (club manager): returns `{ referenceDate: "yyyy-MM-dd", source: "CUTOFF" | "LEAGUE_START", leagueStart: "yyyy-MM-dd", leagueStartSource: "FIRST_MATCH" | "SEASON_START" }`, so screens show and use the same date the server uses. `404` for another club's league or season.
+- New `GET /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/age-reference-date` (club manager): returns `{ referenceDate: "yyyy-MM-dd", source: "CUTOFF" | "LEAGUE_START", leagueStart: "yyyy-MM-dd", leagueStartSource: "FIRST_MATCH" | "SEASON_START" }` (spec 111 adds `"LEAGUE_SEASON_DATES"`, checked first), so screens show and use the same date the server uses. `404` for another club's league or season.
 - `openapi.yaml` updated for all of the above.
 
 ## The reference date (single rule, in one place)

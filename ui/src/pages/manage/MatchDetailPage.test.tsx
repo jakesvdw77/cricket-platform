@@ -831,7 +831,12 @@ describe('MatchDetailPage', () => {
 
       const item = within(await openMore(user)).getByRole('menuitem', { name: /^Delete/ })
       expect(item).toHaveAttribute('aria-disabled', 'true')
-      expect(item).toHaveTextContent('A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.')
+      expect(item).not.toHaveClass('Mui-disabled')
+      expect(item).toHaveAttribute('tabindex')
+      const reason = 'A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.'
+      expect(item).toHaveAccessibleDescription(reason)
+      expect(screen.getByText(reason)).toBeVisible()
+      expect(window.getComputedStyle(screen.getByText(reason)).opacity).not.toBe('0.38')
       fireEvent.click(item)
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(deleteMatch).not.toHaveBeenCalled()

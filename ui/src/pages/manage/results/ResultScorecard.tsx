@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Box, Button, Chip, Typography, useMediaQuery, useTheme } from '@mui/material'
+import { Alert, Box, Chip, Typography, useMediaQuery, useTheme } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
-import LinkIcon from '@mui/icons-material/Link'
 import StarIcon from '@mui/icons-material/Star'
 import type { Match } from '../../../api/matchApi'
 import { getScorecard, linkResultPlayer, resultKeys, resultsKey } from '../../../api/matchResultApi'
@@ -18,6 +17,7 @@ import type {
   ResultSide,
   Scorecard,
 } from '../../../api/matchResultApi'
+import { LinkButton } from '../../../components/LinkButton'
 import { NameModeToggle } from '../../../components/NameModeToggle'
 import { PlayerName } from '../../../components/PlayerName'
 import { PlayerSlotPicker } from '../../../components/PlayerSlotPicker'
@@ -88,36 +88,6 @@ function Heading({ children }: { children: ReactNode }) {
     <Typography variant="subtitle2" component="h3" fontWeight={700} sx={{ mt: 2, mb: 0.75 }}>
       {children}
     </Typography>
-  )
-}
-
-// A compact Link control that sits on the line of the Guest chip: about 24 px high, with the 44 px touch target kept on a
-// phone by an invisible extension of the hit area (the GuessChip technique).
-function LinkButton({ onClick, sx }: { onClick: () => void; sx?: object }) {
-  return (
-    <Button
-      size="small"
-      variant="text"
-      aria-label="Link to player"
-      startIcon={<LinkIcon sx={{ fontSize: '0.95rem' }} />}
-      onClick={onClick}
-      sx={{
-        position: 'relative',
-        flex: 'none',
-        minWidth: 0,
-        minHeight: 24,
-        py: 0,
-        px: 0.75,
-        fontSize: '0.75rem',
-        lineHeight: 1.5,
-        textTransform: 'none',
-        '& .MuiButton-startIcon': { mr: 0.25, ml: 0 },
-        '&::after': { content: '""', position: 'absolute', top: { xs: -10, sm: -4 }, bottom: { xs: -10, sm: -4 }, left: -4, right: -4 },
-        ...sx,
-      }}
-    >
-      Link
-    </Button>
   )
 }
 
@@ -438,6 +408,7 @@ export function ResultScorecard({ clubId, match, result, names, ours, toss, read
         takenPlayers={linking ? takenOnSide(linking.side) : {}}
         onPickPlayer={(picked) => linking && linkMutation.mutate({ player: linking, profileId: picked.playerProfileId })}
         onPickGuest={() => {}}
+        clubScope={linking ? { sectionId: (linking.side === 'AWAY' ? sectionIds?.away : sectionIds?.home) ?? null, leagueId: match.leagueId } : undefined}
         newPlayer={linking ? { name: linking.displayName ?? [linking.firstName, linking.lastName].filter(Boolean).join(' '), sectionId: (linking.side === 'AWAY' ? sectionIds?.away : sectionIds?.home) ?? null, leagueId: match.leagueId, seasonId: match.seasonId } : undefined}
       />
     </>

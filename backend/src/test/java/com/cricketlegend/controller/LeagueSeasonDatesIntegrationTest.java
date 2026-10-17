@@ -278,11 +278,21 @@ class LeagueSeasonDatesIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(matchJson(w, league, on(6, 6))))
                 .andExpect(status().isOk());
 
-        // A match left outside the dates by older data can still be deactivated and reactivated.
+        // A match left outside the dates by older data can still be deactivated, but cannot be reactivated.
         Match stray = fixtures.match(w, w.seniors1(), null, on(12, 5), true, league);
         mockMvc.perform(post(MATCHES + "/{matchId}/deactivate", w.club().getId(), stray.getId()).with(fixtures.clubAdmin(w)))
                 .andExpect(status().isOk());
         mockMvc.perform(post(MATCHES + "/{matchId}/reactivate", w.club().getId(), stray.getId()).with(fixtures.clubAdmin(w)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MATCH_OUTSIDE_LEAGUE_DATES"));
+        org.assertj.core.api.Assertions.assertThat(matchRepository.findById(stray.getId()).orElseThrow().isActive())
+                .isFalse();
+
+        // Inside the dates it comes back.
+        Match inside = fixtures.match(w, w.seniors1(), null, on(6, 7), true, league);
+        mockMvc.perform(post(MATCHES + "/{matchId}/deactivate", w.club().getId(), inside.getId()).with(fixtures.clubAdmin(w)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(MATCHES + "/{matchId}/reactivate", w.club().getId(), inside.getId()).with(fixtures.clubAdmin(w)))
                 .andExpect(status().isOk());
     }
 

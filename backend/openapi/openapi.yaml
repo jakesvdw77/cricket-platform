@@ -1014,6 +1014,12 @@ paths:
               $ref: "#/components/schemas/UpdateMatchRequest"
         required: true
       responses:
+        "400":
+          description: "Validation failed. A match outside its league season's dates is a ProblemDetail whose property code is MATCH_OUTSIDE_LEAGUE_DATES (docs/specs/111)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "200":
           description: OK
           content:
@@ -3275,6 +3281,12 @@ paths:
               $ref: "#/components/schemas/CreateMatchRequest"
         required: true
       responses:
+        "400":
+          description: "Validation failed. A match outside its league season's dates is a ProblemDetail whose property code is MATCH_OUTSIDE_LEAGUE_DATES (docs/specs/111)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "201":
           description: Match created
           content:

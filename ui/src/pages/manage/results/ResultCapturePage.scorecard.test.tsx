@@ -234,6 +234,51 @@ const storedScorecard = (): Scorecard => ({
 const storedDraft = (extra: object = {}) =>
   makeResult({ status: 'DRAFT', outcomeType: null, winningSide: null, marginType: null, marginValue: null, innings: [], hasScorecard: true, ...extra })
 
+describe('Teams step: guest rows', () => {
+  const guest = (key: string, name: string) => player(key, '', '', { playerProfileId: null, displayName: name, firstName: null, lastName: null, guest: true })
+
+  beforeEach(() => {
+    getMatchResult.mockResolvedValue(storedDraft())
+    getScorecard.mockResolvedValue({
+      players: [player('a', 'Ann', 'Ash'), guest('g', 'Gus Guest'), oppo('x', 'Sam Jones')],
+      batting: [], bowling: [], fielding: [], awards: [],
+    })
+  })
+
+  async function openTeams() {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Edit result' }, { timeout: 10000 })
+    await user.click(step('Teams'))
+    await screen.findByText('Gus Guest')
+    return user
+  }
+
+  it('says Guest once on the row, in the Type column, and offers Link only on our guest', async () => {
+    await openTeams()
+    expect(screen.getAllByText('Guest')).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Link to player' })).toHaveLength(1)
+    expect(screen.getByText('Registered')).toBeInTheDocument()
+  })
+
+  it('has no Link button on the opposition list', async () => {
+    const user = await openTeams()
+    await user.click(radio(AWAY))
+    await screen.findByText(`${AWAY}: who played`)
+    expect(screen.queryByRole('button', { name: 'Link to player' })).not.toBeInTheDocument()
+  })
+
+  it('opens the Link to player picker with the New player tab', async () => {
+    const user = await openTeams()
+    await user.click(screen.getByRole('button', { name: 'Link to player' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Link to a registered player' })
+    expect(within(dialog).getByLabelText('New player')).toBeInTheDocument()
+    // The Club tab is scoped to the side's section (the 1st XI team has no section in this fixture, so no club list).
+    await user.click(within(dialog).getByRole('button', { name: 'Club' }))
+    expect(await within(dialog).findByText('Choose the team for this match first.')).toBeInTheDocument()
+  })
+})
+
 describe('Batting step', () => {
   beforeEach(() => {
     getMatchResult.mockResolvedValue(storedDraft({ tossWonBy: 'AWAY', tossDecision: 'BAT' }))
