@@ -9,7 +9,7 @@ export const PDF_ERROR = 'The PDF could not be created. Try again, or choose ano
 
 // Makes the PDF (debounced) with the generator, then draws the chosen page of the SAME laid-out document into the preview
 // canvas, so what is shown is what is shared. `model` and `options` must be memoised by the caller.
-export function useResultPdfOutput(model: ShareResultModel, options: ResultPdfOptions, fileName: string) {
+export function useResultPdfOutput(model: ShareResultModel, options: ResultPdfOptions, fileName: string, pixelWidth?: number) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [pages, setPages] = useState<PdfOp[][]>([])
@@ -46,13 +46,20 @@ export function useResultPdfOutput(model: ShareResultModel, options: ResultPdfOp
     const ops = pages[shown]
     if (!canvas || !ops) return
     let cancelled = false
-    drawResultPdfPage(canvas, ops).catch(() => {
+    drawResultPdfPage(canvas, ops, pixelWidth).catch(() => {
       if (!cancelled) setError(PDF_ERROR)
     })
     return () => {
       cancelled = true
     }
-  }, [pages, shown])
+  }, [pages, shown, pixelWidth])
 
-  return { canvasRef, file, pageCount: pages.length, pageIndex: shown, setPageIndex, error }
+  return {
+    canvasRef,
+    file,
+    pageCount: pages.length,
+    pageIndex: shown,
+    setPageIndex,
+    error,
+  }
 }

@@ -144,7 +144,7 @@ export async function generateResultPdf(model: ShareResultModel, options: Result
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   doc.setProperties({
-    // Team names only, whatever the Initials only setting: never a player name.
+    // Team names only, whatever the First names as initials setting: never a player name.
     title: `${model.home.name} v ${model.away.name}`,
     subject: [model.leagueName, model.dateLabel].filter(Boolean).join(', ') || 'Match scorecard',
     author: model.clubName || 'Cricket Legend',

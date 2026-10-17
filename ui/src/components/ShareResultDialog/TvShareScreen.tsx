@@ -90,8 +90,16 @@ export function TvShareScreen(props: ShareScreenProps) {
         </>
       }
       preview={
-        <SharePreviewStage ariaLabel="TV summary preview" caption="This is the file you will share (1920 x 1080). Both scores always show.">
-          <ShareResultCanvas canvasRef={canvasRef} ariaLabel={`Match summary: ${model.resultLine}`} />
+        <SharePreviewStage
+          ariaLabel="TV summary preview"
+          zoomable
+          baseWidth={960}
+          fitMaxWidth={720}
+          caption="This is the file you will share (1920 x 1080). Both scores always show."
+        >
+          {(view) => (
+            <ShareResultCanvas canvasRef={canvasRef} ariaLabel={`Match summary: ${model.resultLine}`} width={view.width} />
+          )}
         </SharePreviewStage>
       }
       actions={<ShareImageActions file={file} shareTitle={shareTitle} error={error} />}

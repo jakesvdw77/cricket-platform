@@ -108,12 +108,16 @@ export function ImageShareScreen(props: ShareScreenProps) {
         </>
       }
       preview={
-        <SharePreviewStage ariaLabel="Image preview" caption={`This is the file you will share (${pixels}). Both scores always show.`}>
-          <ShareResultCanvas
-            canvasRef={canvasRef}
-            ariaLabel={`Result card: ${model.resultLine}`}
-            maxWidth={size === 'STORY' ? 320 : undefined}
-          />
+        <SharePreviewStage
+          ariaLabel="Image preview"
+          zoomable
+          baseWidth={540}
+          fitMaxWidth={size === 'STORY' ? 320 : 560}
+          caption={`This is the file you will share (${pixels}). Both scores always show.`}
+        >
+          {(view) => (
+            <ShareResultCanvas canvasRef={canvasRef} ariaLabel={`Result card: ${model.resultLine}`} width={view.width} />
+          )}
         </SharePreviewStage>
       }
       actions={<ShareImageActions file={file} shareTitle={shareTitle} error={error} />}

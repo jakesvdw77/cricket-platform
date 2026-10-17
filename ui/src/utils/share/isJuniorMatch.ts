@@ -1,7 +1,7 @@
 import type { League } from '../../api/leagueApi'
 import type { Section } from '../../api/sectionApi'
 
-// docs/specs/114-share-result.md (Default and junior lock): is this a junior match, so Initials only is locked on?
+// docs/specs/114-share-result.md (Default and junior lock): is this a junior match, so First names as initials is locked on?
 // Pure; no React. The one place the rule lives.
 
 // A league or section with a maxAge at or below this is junior; "U19" and above are adult.

@@ -47,7 +47,7 @@ describe('PdfShareScreen', () => {
     for (const name of ['Club colours', 'Classic', 'Compact', 'Both teams', 'Our team only']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
-    for (const name of ['Initials only', 'Batting', 'Bowling', 'Extras', 'Toss and conditions', 'Player of the match', 'Club logo', 'Team logos', 'Footer line']) {
+    for (const name of ['First names as initials', 'Batting', 'Bowling', 'Extras', 'Toss and conditions', 'Player of the match', 'Club logo', 'Team logos', 'Footer line']) {
       expect(screen.getByRole('checkbox', { name })).toBeInTheDocument()
     }
   })
@@ -63,7 +63,7 @@ describe('PdfShareScreen', () => {
     })
     await userEvent.click(screen.getByRole('checkbox', { name: 'Footer line' }))
     expect(updateChoices).toHaveBeenLastCalledWith({ footerLine: false })
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Initials only' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'First names as initials' }))
     expect(setInitials).toHaveBeenCalledWith(true)
   })
 

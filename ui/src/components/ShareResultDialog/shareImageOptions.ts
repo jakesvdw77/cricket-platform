@@ -57,7 +57,7 @@ export function useShareImageOptions(source: OptionSource, specifics: ShareImage
   )
 }
 
-// The SQUARE Club green image attached to the WhatsApp and Facebook texts, with the current Initials only value and the
+// The SQUARE Club green image attached to the WhatsApp and Facebook texts, with the current First names as initials value and the
 // remembered logo and footer choices. Null until generated, while off, or when generation fails (the text still works).
 export function useAttachedResultImage(props: ShareScreenProps, enabled: boolean): File | null {
   const { cardModel } = props

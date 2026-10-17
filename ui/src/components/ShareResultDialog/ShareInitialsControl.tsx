@@ -4,13 +4,13 @@ import type { ShareInitialsState } from './useShareInitials'
 
 export interface ShareInitialsControlProps {
   initials: ShareInitialsState
-  // The initials two different players share (from the model); empty when none.
+  // The shortened names ("M. Naidoo") that two different players share when first names are initials; empty when none.
   collisions: string[]
   // Called with the new value; a screen wraps it to confirm replacing typed edits first.
   onChange: (next: boolean) => void
 }
 
-// docs/specs/114-share-result.md (Initials only, Default and junior lock): the switch at the top of every format's Include
+// docs/specs/114-share-result.md (First names as initials, Default and junior lock): the switch at the top of every format's Include
 // group, with its visible lock reason, the collision note and the club default switch. Internal to ShareResultDialog.
 export function ShareInitialsControl({ initials, collisions, onChange }: ShareInitialsControlProps) {
   const reasonId = 'share-initials-reason'
@@ -18,7 +18,7 @@ export function ShareInitialsControl({ initials, collisions, onChange }: ShareIn
   return (
     <>
       <CompactSwitch
-        label="Initials only"
+        label="First names as initials"
         checked={initials.value}
         disabled={initials.locked}
         describedBy={initials.locked ? reasonId : undefined}
@@ -31,7 +31,7 @@ export function ShareInitialsControl({ initials, collisions, onChange }: ShareIn
       )}
       {initials.value && collisions.length > 0 && (
         <Alert severity="warning" variant="outlined" sx={{ py: 0, fontSize: '0.8rem' }}>
-          Two or more players share the initials {collisions.join(', ')}
+          Two or more players show as {collisions.join(', ')}.
         </Alert>
       )}
       <CompactSwitch

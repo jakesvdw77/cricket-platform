@@ -78,12 +78,12 @@ describe('ShareResultDialog', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(5)
   })
 
-  it('locks Initials only on, with the visible reason, for a junior league match', async () => {
+  it('locks First names as initials on, with the visible reason, for a junior league match', async () => {
     listLeagues.mockResolvedValue([{ id: 'league-1', name: 'U13 League', maxAge: 13 }])
     renderDialog({ leagueId: 'league-1' })
 
     await userEvent.click(screen.getByRole('radio', { name: /Facebook/ }))
-    const toggle = await screen.findByRole('checkbox', { name: 'Initials only' })
+    const toggle = await screen.findByRole('checkbox', { name: 'First names as initials' })
 
     expect(toggle).toBeChecked()
     expect(toggle).toBeDisabled()

@@ -146,26 +146,26 @@ describe('drawResultImage', () => {
     expect(text).toContain('RIVERSIDE 1')
     expect(text).toContain('150/6')
     expect(text).toContain('RIVERSIDE 1 WON BY 24 RUNS')
-    expect(text).toContain('M. Naidoo')
+    expect(text).toContain('Mpho Naidoo')
     expect(text).toContain('Player of the match')
   })
 
-  it('never draws a full given name with Initials only on, in any template, size or format', () => {
+  it('never draws a full given name with First names as initials on, in any template, size or format', () => {
     for (const options of ALL_VARIANTS) {
       fillTextSpy.mockClear()
       drawResultImage(makeMockContext(), model(true), options)
       const text = drawnText().join('\n')
       for (const given of ['Mpho', 'Sam', 'Thabo', 'Pieter'])
         expect(text, `${options.format} ${options.template} ${options.size}`).not.toContain(given)
-      expect(text).toContain('M. N.')
+      expect(text).toContain('M. Naidoo')
     }
   })
 
-  it('shows the surname form with Initials only off, so the check above cannot pass vacuously', () => {
+  it('shows the full name with First names as initials off, so the check above cannot pass vacuously', () => {
     for (const options of ALL_VARIANTS) {
       fillTextSpy.mockClear()
       drawResultImage(makeMockContext(), model(false), options)
-      expect(drawnText().join('\n')).toContain('M. Naidoo')
+      expect(drawnText().join('\n')).toContain('Mpho Naidoo')
     }
   })
 

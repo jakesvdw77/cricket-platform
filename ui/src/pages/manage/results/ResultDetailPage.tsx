@@ -28,7 +28,6 @@ import {
   PERSPECTIVE_COLOR,
   resultCaptureTo,
   resultEditTo,
-  PUBLISH_TO_SHARE_REASON,
   resultSides,
   UNPUBLISH_TO_EDIT_REASON,
 } from './resultListHelpers'
@@ -165,24 +164,11 @@ export default function ResultDetailPage() {
   const field = result.playingAreaName ?? match.playingAreaName ?? match.venue
   const leagueName = match.leagueId ? (leaguesQuery.data?.find((league) => league.id === match.leagueId)?.name ?? null) : null
   const statusLabel = draft ? 'Draft' : 'Published'
-  // docs/specs/114: Share is a filled primary button like Edit; on a draft it is disabled and the reason is visible text.
-  const sharePair = (
-    <>
-      <MuiButton
-        variant="contained"
-        disabled={draft}
-        aria-describedby={draft ? 'publish-to-share-reason' : undefined}
-        startIcon={<ShareOutlinedIcon fontSize="small" />}
-        onClick={() => setShareOpen(true)}
-      >
-        Share
-      </MuiButton>
-      {draft && (
-        <Typography id="publish-to-share-reason" variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
-          {PUBLISH_TO_SHARE_REASON}
-        </Typography>
-      )}
-    </>
+  // docs/specs/114: Share is a filled primary button like Edit, offered on a published result only (as Publish is on a draft).
+  const sharePair = draft ? null : (
+    <MuiButton variant="contained" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+      Share
+    </MuiButton>
   )
 
   return (

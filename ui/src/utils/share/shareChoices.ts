@@ -50,7 +50,7 @@ export type ShareChoices = {
   footerLine: boolean
   // At most MAX_SHARE_SPONSORS ids of the sponsors to show.
   sponsorIds: string[]
-  // The user's own Initials only choice for non-junior matches; null means never chosen (the club default applies).
+  // The user's own First names as initials choice for non-junior matches; null means never chosen (the club default applies).
   initialsOnly: boolean | null
 }
 

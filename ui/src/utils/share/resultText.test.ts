@@ -3,8 +3,8 @@ import { generateResultFacebookText } from './resultTextFacebook'
 import { generateResultWhatsAppText } from './resultTextWhatsApp'
 import type { ShareBattingRow, ShareBowlingRow, ShareInnings, ShareResultModel } from './shareResultData'
 
-const bat: ShareBattingRow = { name: 'M. N.', runs: 60, balls: 40, fours: 6, sixes: 1, strikeRate: 150, howOut: 'c P. B. b T. M.', didNotBat: false, notOut: false }
-const ball: ShareBowlingRow = { name: 'S. W.', overs: '4.0', balls: 24, maidens: 1, runs: 20, wickets: 3, economy: 5 }
+const bat: ShareBattingRow = { name: 'M. Naidoo', runs: 60, balls: 40, fours: 6, sixes: 1, strikeRate: 150, howOut: 'c P. Botha b T. Mokoena', didNotBat: false, notOut: false }
+const ball: ShareBowlingRow = { name: 'S. Khumalo', overs: '4.0', balls: 24, maidens: 1, runs: 20, wickets: 3, economy: 5 }
 const innings = (side: 'HOME' | 'AWAY', own: string, opp: string, score: string): ShareInnings => ({
   battingSide: side,
   battingTeam: own,
@@ -35,7 +35,7 @@ const model: ShareResultModel = {
   dateIso: '2026-10-17',
   dateLabel: 'Saturday, 17 October 2026',
   innings: [innings('HOME', 'Riverside 1', 'Pretoria CC', '150/6 (40.0)'), innings('AWAY', 'Pretoria CC', 'Riverside 1', '126/10 (38.2)')],
-  playerOfTheMatch: { name: 'M. N.', ours: true },
+  playerOfTheMatch: { name: 'M. Naidoo', ours: true },
   hasScorecard: true,
   teams: 'both',
   teamsChoiceDisabledReason: null,
@@ -50,9 +50,9 @@ describe('generateResultWhatsAppText', () => {
     const short = generateResultWhatsAppText(model, { template: 'SHORT', emoji: true })
     expect(short).toContain('🏏 *Riverside 1 v Pretoria CC*')
     expect(short).toContain('Pretoria CC: 126/10 (38.2)')
-    expect(short).not.toContain('Bat M. N.')
-    expect(generateResultWhatsAppText(model, { template: 'PERFORMERS', emoji: true })).toContain('Bat M. N. 60 (40) | Ball S. W. 3/20 (4.0)')
-    expect(generateResultWhatsAppText(model, { template: 'SCORECARD', emoji: true })).toContain('S. W. 4.0-1-20-3')
+    expect(short).not.toContain('Bat M. Naidoo')
+    expect(generateResultWhatsAppText(model, { template: 'PERFORMERS', emoji: true })).toContain('Bat M. Naidoo 60 (40) | Ball S. Khumalo 3/20 (4.0)')
+    expect(generateResultWhatsAppText(model, { template: 'SCORECARD', emoji: true })).toContain('S. Khumalo 4.0-1-20-3')
     for (const template of ['SHORT', 'PERFORMERS', 'SCORECARD'] as const) {
       const plain = generateResultWhatsAppText(model, { template, emoji: false })
       expect(EMOJI.test(plain)).toBe(false)
@@ -76,7 +76,7 @@ describe('generateResultFacebookText', () => {
     const text = generateResultFacebookText(model, { ...options, template: 'CELEBRATION' })
     expect(text).toContain('Congratulations to Riverside 1!')
     expect(text).toContain('an outstanding strike rate of 150')
-    expect(text).toContain('Player of the match: M. N.\n')
+    expect(text).toContain('Player of the match: M. Naidoo.\n')
     expect(text).toContain('a fine spell')
   })
 

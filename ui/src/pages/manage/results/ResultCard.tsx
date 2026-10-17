@@ -25,7 +25,6 @@ import { TeamLogo } from '../matches/TeamLogo'
 import {
   ownSidesOf,
   PERSPECTIVE_COLOR,
-  PUBLISH_TO_SHARE_REASON,
   resultEditTo,
   resultSides,
   resultViewTo,
@@ -40,7 +39,7 @@ export interface ResultCardProps {
   seasonsById: Map<string, Season>
   // Publishes the draft (validation and warnings are the caller's job); only drafts show the button.
   onPublish: (item: ResultListItem) => void
-  // docs/specs/114: opens the Share dialog for this result; Share is off on a draft.
+  // docs/specs/114: opens the Share dialog for this result; Share is offered on a published result only.
   onShare: (item: ResultListItem) => void
 }
 
@@ -74,13 +73,8 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
     ...(draft
       ? [{ label: 'Publish', icon: <CloudUploadOutlinedIcon fontSize="small" />, onClick: () => onPublish(item) }]
       : []),
-    {
-      label: 'Share',
-      icon: <ShareOutlinedIcon fontSize="small" />,
-      onClick: () => onShare(item),
-      disabled: draft,
-      title: draft ? PUBLISH_TO_SHARE_REASON : undefined,
-    },
+    // Like Publish (draft only), Share appears only where it applies: on a published result.
+    ...(draft ? [] : [{ label: 'Share', icon: <ShareOutlinedIcon fontSize="small" />, onClick: () => onShare(item) }]),
   ]
 
   return (

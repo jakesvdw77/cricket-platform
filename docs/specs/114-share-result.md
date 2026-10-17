@@ -13,7 +13,7 @@ Goals:
 - **B. One dialog, five formats:** PDF scorecard, Image, TV summary, WhatsApp, Facebook, each with templates, include switches, a live preview and actions.
 - **C. Generated in the browser** with libraries already approved (jsPDF, Canvas2D, plain text builders). No new dependency.
 - **D. Delivery that works everywhere:** the browser's share sheet with files where it exists, otherwise Download plus Copy text.
-- **E. Initials only privacy option** that applies to every format and to every generated text, locked on for junior leagues, with a club default.
+- **E. First names as initials privacy option** (the setting's code name remains Initials only) that applies to every format and to every generated text, locked on for junior leagues, with a club default.
 - **F. Remembered choices** per club in the browser.
 - **G. Send in WhatsApp everywhere:** one shared action (wa.me link, native share, copy) used by the Result WhatsApp screen and by the existing team announcement, poll, playing conditions and section availability dialogs.
 
@@ -33,14 +33,14 @@ Goals:
 ## User Stories
 
 - As a club manager, I can choose **Share** on a published result and pick PDF, Image, TV summary, WhatsApp or Facebook, so that I can tell people the result in the form each place needs.
-- As a club manager, I see Share disabled with the reason "Publish the result to share it" on a draft, so that I know it exists and what to do.
+- As a club manager, I find Share only on a published result (a draft shows no Share button, just as a published result shows no Publish button), so that the actions on a card and on the page are always the ones that apply.
 - As a club manager, I can choose a template, what to include and (for PDF, WhatsApp and Facebook) both teams or our team only, and see a live preview change as I do, so that I know what will be sent.
 - As a club manager on a phone, I tap **Share** and hand the image or PDF and the text to WhatsApp, Facebook or any app through the phone's share sheet in one step.
 - As a club manager on a computer, I tap **Download** and **Copy text**, so that nothing is lost where the browser cannot share files.
 - As a club manager, I can edit the WhatsApp and Facebook text before sending, so that I can add my own words.
 - As a club manager (on a phone or a computer), I can tap **Send in WhatsApp** on a result message, the team announcement, a poll message, the playing conditions message or the section availability message, and have WhatsApp open with the text already filled in, so that I do not copy and paste it.
-- As a club manager, I can switch on **Initials only** so that player names read "M. N." instead of "M. Naidoo", and I can set what the club's default is, so that children's names are not published by habit.
-- As a club manager of a junior league match, I find Initials only locked on with the reason shown, so that I cannot publish children's full names by accident.
+- As a club manager, I can switch on **First names as initials** (the setting's code name remains Initials only) so that player names read "M. Naidoo" instead of "Mpho Naidoo", and I can set what the club's default is, so that children's names are not published by habit.
+- As a club manager of a junior league match, I find First names as initials locked on with the reason shown, so that I cannot publish children's full names by accident.
 - As a club manager, my last choices come back next time on this device, so that I do not set the same things for every result.
 - As a club manager, I see my club's colours on the templates, so that the output looks like ours.
 
@@ -71,7 +71,7 @@ No new read is needed for the result data: everything comes from endpoints the R
 |---|---|---|
 | Teams, scores, overs, result line, toss, venue, date, league | `ResultListItem.match` and `MatchResult` (`innings[]` with balls, `oversDisplay`, extras; `resultLine.ts`) | Present |
 | Batting, bowling, extras per innings, both sides | `getScorecard` (`Scorecard.batting`, `bowling`, `innings[]` extras breakdown) | Present at detail level `OUR_SIDE` (ours) and `FULL` (opposition, free-text names). A result with no scorecard shares the summary only; see acceptance criteria |
-| Official player of the match | `Scorecard.awards` (`PLAYER_OF_MATCH`, with `resultPlayerId` and `playerName`) and `ResultListItem.playerOfTheMatch` (a resolved name string) | Present. For Initials only the structured first and last name is needed, so the share reads the award's `resultPlayerId` and resolves it against `Scorecard.players` (`firstName`, `lastName`, or the guest's `displayName` split by `splitName`), never the pre-formatted string |
+| Official player of the match | `Scorecard.awards` (`PLAYER_OF_MATCH`, with `resultPlayerId` and `playerName`) and `ResultListItem.playerOfTheMatch` (a resolved name string) | Present. For First names as initials the structured first and last name is needed, so the share reads the award's `resultPlayerId` and resolves it against `Scorecard.players` (`firstName`, `lastName`, or the guest's `displayName` split by `splitName`), never the pre-formatted string |
 | Which players are the opposition's | `ResultPlayer.opposition` | Present |
 | Team logos | `Match.homeTeamLogoUrl` and `awayTeamLogoUrl` | Present (null for a free-text opponent: initial tile drawn instead) |
 | Club logo | `ClubProfile.logoUrl` via `GET /api/v1/manage/clubs/{id}/profile` | Present, but that endpoint is `canAdministerClub`; a section-scoped manager (`035`) may not be allowed to read it. See Open questions 5 |
@@ -88,8 +88,8 @@ Compose from existing shared components (`design-system.md`); mockups are the ap
 
 ### Entry points
 
-- **Result page (`ResultDetailPage`):** a **Share** button, filled primary like Add and Edit, with a share icon, placed with the page actions. On a draft it is **disabled and the reason "Publish the result to share it" is visible next to or under it** (not only a tooltip, so it works on a phone), never hidden.
-- **Results card (`RecordCard` footer):** a share **icon button** beside Delete (aria-label "Share result", 44 px target on a phone); disabled on a draft with the reason as its tooltip and accessible description.
+- **Result page (`ResultDetailPage`):** a **Share** button, filled primary like Add and Edit, with a share icon, placed with the page actions, **shown only on a published result** (a draft has no Share button, as a published result has no Publish button; decided by the product owner 2026-10-17 for consistency).
+- **Results card (`RecordCard` footer):** a labelled **Share** footer button after View, Edit and Publish (the footer has no icon-only variant), **shown only on a published result**, with the same rule as the page.
 - Both open the same `ShareResultDialog`.
 
 ### `ShareResultDialog` (new shared component)
@@ -98,7 +98,7 @@ A dialog on a desktop, **full screen on a phone** (`BottomSheet`-style behaviour
 
 ### Format screen anatomy (shared)
 
-Controls on the left (stacked above the preview on a phone), preview on the right, actions under the controls. A **control strip** per format uses `CompactToggleGroup` for template and size chips, `CompactSwitch` for the include switches, and the shared preview stage. The **Initials only** switch sits at the top of the Include group on every format and is the same one value across formats within a visit.
+Controls on the left (stacked above the preview on a phone), preview on the right, actions under the controls. A **control strip** per format uses `CompactToggleGroup` for template and size chips, `CompactSwitch` for the include switches, and the shared preview stage. The **First names as initials** switch sits at the top of the Include group on every format and is the same one value across formats within a visit.
 
 | Format | Templates | Other controls | Include switches |
 |---|---|---|---|
@@ -135,19 +135,21 @@ Added at the product owner's request (2026-10-17). Each of these three formats h
 - **A derby (both teams ours, `100`):** both sides are ours, so the choice changes nothing; the Teams control is disabled with the note "Both teams are ours".
 - A result at summary level (no scorecard) has no player rows at all: the Teams control is disabled with "No scorecard recorded".
 
-### Initials only
+### First names as initials (the setting's code name remains Initials only)
 
-Two name forms, applied by one pure function (`shareName`, below) to **every player name in every format and every generated text**, including the player of the match, performers, batting and bowling tables, dismissal text ("c M. N. b S. K."), the Celebration prose and hashtags that could carry a name:
+Two name forms, applied by one pure function (`shareName`, below) to **every player name in every format and every generated text**, including the player of the match, performers, batting and bowling tables, dismissal text ("c M. Naidoo b S. Khumalo"), the Celebration prose and hashtags that could carry a name:
 
 | Setting | Form | Example for Mpho Naidoo |
 |---|---|---|
-| Off | Initial plus surname | `M. Naidoo` |
-| On | Initials only | `M. N.` |
+| Off | The full name as stored (first name(s) and surname) | `Mpho Naidoo` |
+| On | First initial plus surname | `M. Naidoo` |
+
+The "M. N." form (initials only) does not exist: a manager would never choose it, as it defeats the purpose of a result post.
 
 Rules:
 
-- Initial letters come from the first name(s) and the surname's **main part** (particles like "van der" are dropped from the initial: "Sam van der Westhuizen" is `S. W.` with the setting on, `S. van der Westhuizen` off). A hyphenated or double first name contributes its first letter only (`J. M.`), so a name stays short. A one-word guest name (no surname) shows its first letter and a full stop (`S.`) with the setting on, and as typed with it off.
-- **Collisions:** two different players in the result whose initials collide (two "S. K.") are **not** given an invented disambiguator (such as a numeral suffix). Both are shown as written, with a small amber note under the switch ("2 players share the initials S. K."). This is deliberate: the privacy rule outranks clarity, and outside a junior match the manager can choose to turn the option off.
+- The first initial comes from the first name(s) only; the surname is always shown in full, **particles stay in the surname** ("Sam van der Westhuizen" is `S. van der Westhuizen` with the setting on, `Sam van der Westhuizen` off). A hyphenated or double first name contributes its first letter only (`J. Smith`). A one-word guest name (no surname) shows its first letter and a full stop (`S.`) with the setting on, and as typed with it off.
+- **Collisions:** two different players in the result whose shortened names are identical with the setting on (two "M. Naidoo") are **not** given an invented disambiguator (such as a numeral suffix). Both are shown as written, with a small amber note under the switch ("Two or more players show as M. Naidoo."). This is deliberate: the privacy rule outranks clarity, and outside a junior match the manager can choose to turn the option off.
 - The form applies to **generated text and graphics only**. Stored data, the result page and the existing scorecard Full name | First name toggle (`usePlayerNameMode`) are unchanged and independent.
 - The toggle never shows team names, club names or venue, only player names.
 - **Edited text:** the editable WhatsApp and Facebook text is built with the setting applied, but once the manager types in it, names they type are theirs. A short caption under the box says "Names you type yourself are not changed." Switching the setting or the template rebuilds the text and replaces edits after a confirm ("Replace your edits?") only when the text has been edited.
@@ -155,8 +157,8 @@ Rules:
 ### Default and junior lock
 
 - **Default for opening a dialog:** for a non-junior match, the value is the user's remembered choice on this device if one exists, otherwise the club default (`initialsOnlyDefault`, from the endpoint above), otherwise off.
-- **Club default control:** a small **"Initials only by default"** switch in the dialog's footer area on the Initials only row ("Make this the club default"), writing through `PUT share-settings`. Chosen here rather than in Club profile because it is used from this dialog and avoids touching the profile form; the platform admin's profile screen does not change. Every club manager may change it (Open questions 1).
-- **Junior lock:** when the match is a junior match, the Initials only switch is **on and disabled**, with the reason shown as visible helper text, not only a tooltip: "Always on for junior leagues". It cannot be turned off by any means in the UI, and the remembered choice and the club default are ignored for it (they continue to apply to non-junior matches). The club-default switch remains usable but its helper reads "Does not apply to junior leagues". The lock is client-side only (no server enforcement: nothing leaves the browser through our servers; a manager can always type a name into the editable text, which is the caption above).
+- **Club default control:** a small **"First names as initials by default"** switch in the dialog's footer area on the First names as initials row ("Make this the club default"), writing through `PUT share-settings`. Chosen here rather than in Club profile because it is used from this dialog and avoids touching the profile form; the platform admin's profile screen does not change. Every club manager may change it (Open questions 1).
+- **Junior lock:** when the match is a junior match, the First names as initials switch is **on and disabled**, with the reason shown as visible helper text, not only a tooltip: "Always on for junior leagues". It cannot be turned off by any means in the UI, and the remembered choice and the club default are ignored for it (they continue to apply to non-junior matches). The club-default switch remains usable but its helper reads "Does not apply to junior leagues". The lock is client-side only (no server enforcement: nothing leaves the browser through our servers; a manager can always type a name into the editable text, which is the caption above).
 
 **Rule: how "junior" is determined (proposed from existing data; Open question 3).** A match is junior when **any** of the following is true, evaluated by the pure function `isJuniorMatch(match, league, sectionPaths)`:
 
@@ -171,7 +173,7 @@ The threshold `18` is a named constant, `JUNIOR_MAX_AGE`, in one file. Rule 1 be
 - **Live preview** renders from the same data and the same builder the output uses, so what is shown is what is made (the Image and TV previews draw to a `<canvas>`; the PDF preview renders the first page of the generated document to an image through the same generator; text previews are the editable box). Preview redraws are debounced.
 - **Primary action label is chosen by capability, not by a setting.** If `navigator.canShare({ files })` is true for the generated file, the main button reads **Share** and calls `navigator.share({ files, text })`; otherwise it reads **Download** and a **Copy text** button sits beside it (clipboard write with a select-and-copy fallback, as the mockup toast shows). A user cancelling the share sheet is not an error. Secure context is required for sharing; where it is missing the Download path is used.
 - **PDF:** Share or Download, plus Print (opens the PDF in a new tab). **Image and TV:** Share or Download PNG, plus Copy image where `ClipboardItem` is supported. **WhatsApp:** Share (image plus text) or Copy text and Download image; **Facebook:** the same (Facebook cannot be posted to from a web page, so the screen says so in an info note, as the mockup does).
-- File names: `<home> v <away> <yyyy-mm-dd>` with names sanitised for file systems; with Initials only on, **file names, PDF document titles and metadata never contain a player name** (only team names), and the share sheet title the same.
+- File names: `<home> v <away> <yyyy-mm-dd>` with names sanitised for file systems; with First names as initials on, **file names, PDF document titles and metadata never contain a player name** (only team names), and the share sheet title the same.
 - Generation failures (a logo that will not load, an oversized canvas) never block: a missing logo becomes the initial tile; a failed generation shows an inline error and keeps the dialog open.
 
 ### Send to WhatsApp (shared, used by every WhatsApp text in the product)
@@ -185,7 +187,7 @@ Added at the product owner's request (2026-10-17): the same one-tap WhatsApp del
 - **Copy message** stays beside them in every dialog (unchanged behaviour, shared hook `useCopyToClipboard`), so nothing that works today is lost.
 - **Length guard.** `wa.me` links over roughly 2,000 characters are unreliable. Above `WHATSAPP_LINK_MAX_CHARS` (a named constant, 1,800 encoded characters) the Send button is replaced by Copy message with a short explanation, never a silently truncated message.
 - **Editing first.** The manager can still edit the text in the box before sending; Send in WhatsApp always sends the box's current text.
-- **Initials only** applies to the Result messages only. The team announcement, poll and conditions messages go to players of the same club and are unchanged; this is stated so nobody expects it there.
+- **First names as initials** applies to the Result messages only. The team announcement, poll and conditions messages go to players of the same club and are unchanged; this is stated so nobody expects it there.
 - No tracking and no WhatsApp Business API: only the public `wa.me` link and the browser's own share sheet.
 
 ### New shared pieces
@@ -209,25 +211,25 @@ Per `docs/standards/testing.md`. Following the user's working rule ("build first
 
 **Unit (Vitest), the bulk of the weight:**
 
-- `shareName`: initial plus surname and initials only for plain, particle, hyphenated and double-barrelled first names, one-word guest, accents, empty first name, and the identical results for registered players and guests split by `splitName`.
+- `shareName`: full name (off) and first initial plus surname (on) for plain, particle, hyphenated and double-barrelled first names, one-word guest, accents, empty first name, and the identical results for registered players and guests split by `splitName`.
 - `isJuniorMatch`: every rule and their order (league `maxAge` 17 and 18 junior, 19 adult, 40 adult even under Juniors; a friendly under a Juniors section junior by section `maxAge`; Juniors name fallback only when no age data; derby where one side qualifies; unavailable data fails safe to junior).
 - `shareResultData`: both teams and Our team only (opposition names and tables gone, totals kept), derby, summary-only result, player of the match from our side and from the opposition (dropped when ours only), no player of the match.
 - The WhatsApp and Facebook builders: every template with every switch combination, Emoji off has no emoji code points, Hashtags never contain a name, Celebration wording per outcome and thresholds, win, loss, tie and no-result fallbacks.
 - `shareChoices`: round trip, corrupt JSON, unavailable storage (`localStorage` throwing), per-club keys.
 - **Logos and footer (unit and component):** the layout helper places club, league, team and sponsor logos without overlap for every template and size (fixed-slot arithmetic tested as pure functions); a missing league logo hides its switch; a logo that fails to load collapses its slot; the sponsor chooser caps at four; Footer line off removes the web address and the platform credit from the PDF, Image and TV output and from their previews; the web address line never appears when the club has no website; the choices are remembered per club.
 - **WhatsApp send (unit and component):** the link builder encodes emoji, newlines, `*bold*`, `&`, `#` and accented names correctly and round-trips through `decodeURIComponent`; the length guard switches to Copy at the limit; `WhatsAppSendActions` renders Send, Copy and (with a stubbed `navigator.share` and `canShare`) Share; each of the four existing dialogs shows Send in WhatsApp with its current text and its existing copy tests still pass; a Storybook story for the component.
-- **Privacy test (required):** for a fixed fixture with distinctive full given names (a name list including accented and particle names), with Initials only on, assert that **no full given name appears** anywhere in: the WhatsApp text (all three templates), the Facebook text (all three templates, including Celebration prose), the PDF text content (extracted from the generated jsPDF document through its text-capture mock, all three templates, both team scopes), every `fillText` call recorded by a mocked Canvas2D for the Image (three templates, three sizes) and the TV summary, the file names, the PDF metadata title and the share title. The same fixture with the setting off asserts the surname form appears, so the test cannot pass vacuously. Names are matched case-insensitively and accent-folded, as `108`'s privacy test is.
-- **Locked-state test:** `ShareResultDialog` for a junior-league match renders the Initials only switch checked and `disabled` with the visible text "Always on for junior leagues"; clicking it changes nothing; the output (privacy fixture above) has no full given name even when the remembered choice is off and the club default is off; for a non-junior match the same switch is enabled and honours the remembered choice, then the club default.
+- **Privacy test (required):** for a fixed fixture with distinctive full given names (a name list including accented and particle names), with First names as initials on, assert that **no full given name appears** anywhere in: the WhatsApp text (all three templates), the Facebook text (all three templates, including Celebration prose), the PDF text content (extracted from the generated jsPDF document through its text-capture mock, all three templates, both team scopes), every `fillText` call recorded by a mocked Canvas2D for the Image (three templates, three sizes) and the TV summary, the file names, the PDF metadata title and the share title. The same fixture asserts the shortened form ("M. Naidoo") appears with the setting on and the full name ("Mpho Naidoo") with it off, so the test cannot pass vacuously. Names are matched case-insensitively and accent-folded, as `108`'s privacy test is.
+- **Locked-state test:** `ShareResultDialog` for a junior-league match renders the First names as initials switch checked and `disabled` with the visible text "Always on for junior leagues"; clicking it changes nothing; the output (privacy fixture above) has no full given name even when the remembered choice is off and the club default is off; for a non-junior match the same switch is enabled and honours the remembered choice, then the club default.
 
 **Component (Testing Library):** `ShareResultDialog`: tiles open each format and Back returns, Share disabled on a draft with the visible reason (result page and Results card); Share label versus Download label by `navigator.canShare` mocked both ways; Copy text writes the (possibly edited) text; editing text then switching template asks before replacing; localStorage restore of the last choices; the collision note; Teams control disabled for a derby and for a summary-only result. Storybook stories (`ShareResultDialog`, `SharePreviewStage`, `ShareFormatScreen`) at 375, 768 and 1280, including the locked and the draft states.
 
 **Integration (Testcontainers) and contract:** the migration applies (default false for existing clubs); `share-settings` read and write round trip; a manager of another club cannot read or write (tenancy); a profile `PUT` does not reset the value. OpenAPI diff, additions only. A backend unit test for the service where the setting is defaulted for a club with no profile row (the profile row is created on first write, as `012` does for the other fields).
 
-**End-to-end (Playwright, mobile and desktop viewport), one golden path:** manager opens Results, finds a published result with a scorecard, Share, picks Image, switches template and size, sees the preview change, Downloads the PNG (download event, correct 1080 x 1080 dimensions); opens WhatsApp, switches Initials only on, copies the text, asserts the clipboard has initials only; then opens a draft result and sees Share disabled with the reason. A second short test: a junior-league result opens with Initials only locked on.
+**End-to-end (Playwright, mobile and desktop viewport), one golden path:** manager opens Results, finds a published result with a scorecard, Share, picks Image, switches template and size, sees the preview change, Downloads the PNG (download event, correct 1080 x 1080 dimensions); opens WhatsApp, switches First names as initials on, copies the text, asserts the clipboard has first initials and no full first names; then opens a draft result and sees Share disabled with the reason. A second short test: a junior-league result opens with First names as initials locked on.
 
 ## Acceptance Criteria
 
-- A **Share** button on the result page and a share icon button on the Results card are enabled for a published result and disabled, with the visible reason "Publish the result to share it", for a draft.
+- A **Share** button on the result page and a Share footer button on the Results card appear for a published result and are absent on a draft.
 - **Send in WhatsApp** appears in the Result WhatsApp screen, the team announcement dialog, the poll dialog, the playing conditions dialog and the section availability dialog. It opens `https://wa.me/?text=` with the current (edited) message in a new tab; Copy message still works in each; a message too long for a link shows Copy only, with the reason. Where the browser supports it, Share (native) is also offered.
 - Share opens one dialog (full screen at 375 px) with five tiles; each opens its format screen with a control strip, a live preview and actions; Back returns to the tiles.
 - PDF offers Club colours, Classic and Compact; Image offers Club green, Night, Daylight and Square 1080, Portrait 4:5, Story 9:16; TV offers Broadcast, Club colour, Light and is always 1920 x 1080; WhatsApp offers Short, With top performers, Scorecard text; Facebook offers Match report, Celebration, Brief. Include switches are as in the table above.
@@ -237,7 +239,7 @@ Per `docs/standards/testing.md`. Following the user's working rule ("build first
 - WhatsApp and Facebook texts are built from the result data, can be edited before sending, and a switch or template change that would lose edits asks first.
 - Facebook screen states that the platform cannot post for the manager and offers Copy text and Download image.
 - Templates use the theme's primary colour (the platform green `#2f6e4f` when the club has none); text stays readable on a light colour.
-- **Initials only** renders every player name as initials and surname's initial ("M. N.") with it on and as initial plus surname ("M. Naidoo") with it off, across all five formats, the generated text, file names and document titles; a test proves that no full given name appears with it on.
+- **First names as initials** (code name Initials only) renders every player name as first initial plus surname ("M. Naidoo") with it on and as the full name ("Mpho Naidoo") with it off, across all five formats, the generated text, file names and document titles; a test proves that no full first name appears with it on.
 - For a junior match (rule above) the switch is on, disabled and carries the visible reason "Always on for junior leagues", whatever the remembered choice or club default; for any other match the choice is the remembered one, then the club default, then off.
 - A manager can set the club default; it is stored per club, any club manager can change it, another club's manager cannot, and a profile save does not reset it.
 - Last choices (format, templates, switches, teams, size, own Initials only choice) return per club on the same browser; unavailable or corrupt storage falls back to defaults with no error.
@@ -272,5 +274,5 @@ Per `docs/standards/testing.md`. Following the user's working rule ("build first
 5. **Club logo for section-scoped managers.** The club profile read is club-admin only. Either the share uses the logo already on each team (and the club logo only when readable), or a minimal read of the club logo and name is exposed to any club manager. Proposed: the second, a read-only field on an existing manager endpoint.
 6. **Which sponsors to show.** Resolved by the product owner's request: the manager ticks up to four sponsors in the control strip; nothing else is decided by data. Open: the maximum of four, and whether the club wants a fixed order.
 7. **Celebration for a non-win.** Proposed: neutral wording (no "What a win"), never celebratory for a loss. Confirm, and whether the club wants a "commiserations" tone later.
-8. **Name collisions under Initials only.** Two players with the same initials show as written with a note. Confirm that a clear note is preferred over inventing a disambiguator.
+8. **Name collisions under First names as initials.** Two players with the same shortened name (two "M. Naidoo") show as written with a note. Confirm that a clear note is preferred over inventing a disambiguator.
 9. **Child safety of images and logos.** Team and club logos are shown; photos of players are never used. Confirm no player photo is ever wanted on a card.

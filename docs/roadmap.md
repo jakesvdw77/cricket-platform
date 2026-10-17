@@ -261,7 +261,7 @@ Spec approved, planned and built on branch `feat/099-fields-directory` (`plans/0
 
 - Public result link and public page (then the "link to the match page" switch).
 - Fall of wickets capture (not stored today, so not shown on the PDF).
-- Per-team or per-section Initials only default.
+- Per-team or per-section First names as initials default.
 - A section "kind" or junior flag, to replace the age and name rules for the junior lock.
 - A "main sponsor" marker.
 - Club primary colour persistence (templates stay platform green until then).

@@ -72,15 +72,17 @@ describe('buildShareResultModel', () => {
     expect(model.home.scoreText).toBe('150/6 (40.0)')
     expect(model.toss).toBe('Riverside 1 won the toss and chose to bat')
     expect(model.innings).toHaveLength(2)
-    expect(model.innings[0].batting[0]).toMatchObject({ name: 'M. Naidoo', howOut: 'c P. Botha b T. Mokoena' })
+    expect(model.innings[0].batting[0]).toMatchObject({ name: 'Mpho Naidoo', howOut: 'c Pieter Botha b Thabo Mokoena' })
     expect(model.innings[0].extras?.text).toBe('Extras 8 (b 3, w 5)')
-    expect(model.playerOfTheMatch).toEqual({ name: 'M. Naidoo', ours: true })
+    expect(model.playerOfTheMatch).toEqual({ name: 'Mpho Naidoo', ours: true })
   })
 
-  it('never leaks a full given name with Initials only on', () => {
+  it('never leaks a full given name with First names as initials on', () => {
     const text = JSON.stringify(build({ initialsOnly: true }))
     for (const given of ['Mpho', 'Sam ', 'Thabo', 'Pieter']) expect(text).not.toContain(given)
-    expect(text).toContain('c P. B. b T. M.')
+    expect(text).toContain('c P. Botha b T. Mokoena')
+    expect(text).toContain('M. Naidoo')
+    expect(JSON.stringify(build({ initialsOnly: false }))).toContain('Mpho Naidoo')
   })
 
   it('omits the opposition rows, names and player of the match with Our team only but keeps the totals', () => {
@@ -91,7 +93,7 @@ describe('buildShareResultModel', () => {
     const text = JSON.stringify(model)
     expect(text).not.toContain('Botha')
     expect(text).not.toContain('Mokoena')
-    expect(text).not.toContain('T. Mokoena')
+    expect(text).not.toContain('Thabo Mokoena')
     const awayInnings = model.innings.find((item) => item.battingSide === 'AWAY')
     expect(awayInnings?.batting).toEqual([])
     expect(awayInnings?.extras).toBeNull()
@@ -108,7 +110,7 @@ describe('buildShareResultModel', () => {
       initialsOnly: true,
       scorecard: { ...scorecard, awards: [{ awardType: 'PLAYER_OF_MATCH', side: 'AWAY', displayName: 'Pieter Botha' }] } as Scorecard,
     })
-    expect(model.playerOfTheMatch).toEqual({ name: 'P. B.', ours: false })
+    expect(model.playerOfTheMatch).toEqual({ name: 'P. Botha', ours: false })
   })
 
   it('flags a derby and a summary-only result and still builds the summary', () => {
@@ -122,23 +124,23 @@ describe('buildShareResultModel', () => {
     expect(summary.playerOfTheMatch).toBeNull()
   })
 
-  it('reports shared initials without keeping any full name', () => {
+  it('reports two different players who share the same shortened name', () => {
     const twins = {
       ...scorecard,
-      players: [...scorecard.players, player('p3', 'HOME', { playerProfileId: 'x3', firstName: 'Mike', lastName: 'Nel', opposition: false })],
+      players: [...scorecard.players, player('p3', 'HOME', { playerProfileId: 'x3', firstName: 'Mandla', lastName: 'Naidoo', opposition: false })],
       batting: [
         ...scorecard.batting,
         { battingSide: 'HOME', resultPlayerId: 'p3', position: 3, howOut: 'NOT_OUT', runs: 1, balls: 1, fours: 0, sixes: 0, featuredOverride: null },
       ],
     } as Scorecard
-    expect(build({ initialsOnly: true, scorecard: twins }).initialsCollisions).toEqual(['M. N.'])
+    expect(build({ initialsOnly: true, scorecard: twins }).initialsCollisions).toEqual(['M. Naidoo'])
     expect(build({ initialsOnly: false, scorecard: twins }).initialsCollisions).toEqual([])
   })
 
   it('ranks the top performers', () => {
     const model = build()
-    expect(model.innings[0].topBatters.map((row) => row.name)).toEqual(['M. Naidoo', 'S. van der Westhuizen'])
-    expect(model.innings[0].topBowlers.map((row) => row.name)).toEqual(['T. Mokoena'])
-    expect(model.innings[1].topBowlers[0]).toMatchObject({ name: 'S. van der Westhuizen', wickets: 3, economy: 5 })
+    expect(model.innings[0].topBatters.map((row) => row.name)).toEqual(['Mpho Naidoo', 'Sam van der Westhuizen'])
+    expect(model.innings[0].topBowlers.map((row) => row.name)).toEqual(['Thabo Mokoena'])
+    expect(model.innings[1].topBowlers[0]).toMatchObject({ name: 'Sam van der Westhuizen', wickets: 3, economy: 5 })
   })
 })

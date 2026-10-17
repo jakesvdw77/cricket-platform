@@ -203,16 +203,14 @@ describe('ResultList', () => {
   })
 
   describe('share from a card', () => {
-    it('enables Share on a published result and opens the dialog; a draft has it disabled with the reason as its title', async () => {
+    it('offers Share on a published result only, and it opens the dialog', async () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findAllByRole('heading', { name: /vs/ })
 
       const shares = screen.getAllByRole('button', { name: 'Share' })
-      expect(shares).toHaveLength(2)
+      expect(shares).toHaveLength(1)
       expect(shares[0]).toBeEnabled()
-      expect(shares[1]).toBeDisabled()
-      expect(shares[1].closest('[title]')).toHaveAttribute('title', 'Publish the result to share it')
 
       await user.click(shares[0])
       expect(await screen.findByRole('dialog', { name: 'Share result' })).toBeInTheDocument()

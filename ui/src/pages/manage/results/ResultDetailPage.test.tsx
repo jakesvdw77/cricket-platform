@@ -150,14 +150,11 @@ describe('ResultDetailPage', () => {
       expect(within(actions).queryByRole('button', { name: 'Unpublish' })).not.toBeInTheDocument()
     })
 
-    it('has Share disabled with the visible reason "Publish the result to share it"', async () => {
+    it('has no Share button on a draft (it appears once published)', async () => {
       renderPage()
       const actions = await screen.findByTestId('result-actions')
 
-      const share = within(actions).getByRole('button', { name: 'Share' })
-      expect(share).toBeDisabled()
-      expect(share).toHaveAccessibleDescription('Publish the result to share it')
-      expect(within(actions).getByText('Publish the result to share it')).toBeVisible()
+      expect(within(actions).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     })
 
     it('publishes after validation', async () => {

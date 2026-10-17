@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Box, ToggleButton, Typography } from '@mui/material'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
@@ -32,9 +32,13 @@ export function PdfShareScreen(props: ShareScreenProps) {
   const template = choices.templates.pdf
   const options = useSharePdfOptions(props)
   const fileName = useMemo(() => shareFileName(model, 'pdf'), [model])
-  const { canvasRef, file, pageCount, pageIndex, setPageIndex, error } = useResultPdfOutput(model, options, fileName)
+  // The preview is redrawn at the zoomed size (the file never changes), so the zoom value reaches the hook through state.
+  const [pixelWidth, setPixelWidth] = useState<number | undefined>(undefined)
+  const { canvasRef, file, pageCount, pageIndex, setPageIndex, error } = useResultPdfOutput(model, options, fileName, pixelWidth)
   const setInclude = (patch: Partial<typeof include>) =>
-    updateChoices({ include: { ...choices.include, pdf: { ...include, ...patch } } })
+    updateChoices({
+      include: { ...choices.include, pdf: { ...include, ...patch } },
+    })
 
   return (
     <ShareFormatScreen
@@ -46,7 +50,11 @@ export function PdfShareScreen(props: ShareScreenProps) {
               value={template}
               ariaLabel="Template"
               fullWidthOnPhone
-              onChange={(next: PdfTemplate) => updateChoices({ templates: { ...choices.templates, pdf: next } })}
+              onChange={(next: PdfTemplate) =>
+                updateChoices({
+                  templates: { ...choices.templates, pdf: next },
+                })
+              }
             >
               {TEMPLATES.map((item) => (
                 <ToggleButton key={item.value} value={item.value}>
@@ -80,25 +88,51 @@ export function PdfShareScreen(props: ShareScreenProps) {
       preview={
         <SharePreviewStage
           ariaLabel="PDF preview"
+          zoomable
+          baseWidth={794}
+          fitMaxWidth={720}
+          onViewChange={(view) => setPixelWidth(view.pixelWidth)}
+          footer={
+            pageCount > 1 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  mt: 1,
+                }}
+              >
+                <Button variant="ghost" size="sm" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}>
+                  Previous page
+                </Button>
+                <Typography variant="caption" color="text.secondary" role="status">
+                  Page {pageIndex + 1} of {pageCount}
+                </Typography>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pageIndex >= pageCount - 1}
+                  onClick={() => setPageIndex(pageIndex + 1)}
+                >
+                  Next page
+                </Button>
+              </Box>
+            ) : undefined
+          }
           caption={
             pageCount > 1
               ? 'A4 page preview. This is the file you will share. A long scorecard runs to more than one page.'
               : 'A4 page preview. This is the file you will share.'
           }
         >
-          <ShareResultCanvas canvasRef={canvasRef} ariaLabel={`PDF scorecard, page ${pageIndex + 1}: ${model.resultLine}`} />
-          {pageCount > 1 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 1 }}>
-              <Button variant="ghost" size="sm" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}>
-                Previous page
-              </Button>
-              <Typography variant="caption" color="text.secondary" role="status">
-                Page {pageIndex + 1} of {pageCount}
-              </Typography>
-              <Button variant="ghost" size="sm" disabled={pageIndex >= pageCount - 1} onClick={() => setPageIndex(pageIndex + 1)}>
-                Next page
-              </Button>
-            </Box>
+          {(view) => (
+            <ShareResultCanvas
+              canvasRef={canvasRef}
+              ariaLabel={`PDF scorecard, page ${pageIndex + 1}: ${model.resultLine}`}
+              width={view.width}
+            />
           )}
         </SharePreviewStage>
       }

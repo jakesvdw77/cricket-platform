@@ -134,7 +134,7 @@ afterEach(() => {
 describe('generateResultPdf privacy', () => {
   for (const template of TEMPLATES) {
     for (const teams of ['both', 'ours'] as const) {
-      it(`with Initials only on, no full given name is drawn or stored (${template}, ${teams})`, async () => {
+      it(`with First names as initials on, no full given name is drawn or stored (${template}, ${teams})`, async () => {
         const built = model(true, teams)
         const output = await generateResultPdf(built, options({ template }))
 
@@ -143,16 +143,17 @@ describe('generateResultPdf privacy', () => {
         const metadata = JSON.stringify(propertiesSpy.mock.calls).toLowerCase()
         for (const given of GIVEN_NAMES) expect(metadata).not.toContain(given.toLowerCase())
         expect(metadata).not.toContain('naidoo')
+        expect(text).toContain('naidoo')
         expect(shareFileName(built, 'pdf')).toBe('Riverside 1 v Pretoria CC 2026-10-17.pdf')
         expect(output.pageCount).toBeGreaterThan(0)
-        expect(drawnText().some((value) => value.includes('M. N.'))).toBe(true)
+        expect(drawnText().some((value) => value.includes('M. Naidoo'))).toBe(true)
       })
 
-      it(`with Initials only off the surname form is drawn, so the privacy check is not vacuous (${template}, ${teams})`, async () => {
+      it(`with First names as initials off the full name is drawn, so the privacy check is not vacuous (${template}, ${teams})`, async () => {
         await generateResultPdf(model(false, teams), options({ template }))
 
-        expect(allText()).toContain('naidoo')
-        expect(drawnText().some((value) => value.includes('M. N.'))).toBe(false)
+        expect(allText()).toContain('mpho naidoo')
+        expect(drawnText().some((value) => value.includes('M. Naidoo'))).toBe(false)
       })
     }
   }

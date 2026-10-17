@@ -21,7 +21,7 @@ describe('TvShareScreen', () => {
     for (const name of ['Broadcast', 'Club colour', 'Light', 'Top 2', 'Top 3']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
-    for (const name of ['Initials only', 'Batters', 'Bowlers', 'Player of the match bar', 'Club logo', 'Team logos', 'Footer line']) {
+    for (const name of ['First names as initials', 'Batters', 'Bowlers', 'Player of the match bar', 'Club logo', 'Team logos', 'Footer line']) {
       expect(screen.getByRole('checkbox', { name })).toBeInTheDocument()
     }
     expect(screen.queryByText('Teams')).not.toBeInTheDocument()

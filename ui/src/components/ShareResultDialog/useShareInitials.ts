@@ -2,7 +2,7 @@ import type { ShareSettings } from '../../api/shareSettingsApi'
 import type { JuniorMatchResult } from '../../utils/share/isJuniorMatch'
 import type { ShareChoices } from '../../utils/share/shareChoices'
 
-// docs/specs/114-share-result.md (Default and junior lock): the ONE Initials only value every format reads.
+// docs/specs/114-share-result.md (Default and junior lock): the ONE First names as initials value every format reads.
 export const JUNIOR_LOCK_REASON = 'Always on for junior leagues'
 export const UNAVAILABLE_LOCK_REASON = 'Could not check the league, so Initials only is on'
 

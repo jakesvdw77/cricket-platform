@@ -25,7 +25,7 @@ describe('ImageShareScreen', () => {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
     for (const name of [
-      'Initials only',
+      'First names as initials',
       'Top performers',
       'Player of the match',
       'Venue and date line',
@@ -62,7 +62,7 @@ describe('ImageShareScreen', () => {
     })
     await userEvent.click(screen.getByRole('checkbox', { name: 'Footer line' }))
     expect(updateChoices).toHaveBeenLastCalledWith({ footerLine: false })
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Initials only' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'First names as initials' }))
     expect(setInitials).toHaveBeenCalledWith(true)
   })
 

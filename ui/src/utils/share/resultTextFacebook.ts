@@ -54,7 +54,7 @@ export const CELEBRATION_WORDING = {
   closeWinByWickets: 2,
 }
 
-// A sentence ending in a name that already ends in a full stop ("M. N.") does not get a second one.
+// A sentence ending in a name that already ends in a full stop ("S.") does not get a second one.
 const sentence = (text: string): string => (text.endsWith('.') ? text : `${text}.`)
 
 function describe(table: { min: number; words: string }[], value: number): string | null {

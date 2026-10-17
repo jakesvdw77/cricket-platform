@@ -17,8 +17,6 @@ export const resultEditTo = resultCaptureTo
 export const resultImportTo = (matchId?: string) => `/manage/results/import${matchId ? `?matchId=${encodeURIComponent(matchId)}` : ''}`
 
 export const UNPUBLISH_TO_EDIT_REASON = 'Unpublish to edit'
-// docs/specs/114: why Share is off on a draft.
-export const PUBLISH_TO_SHARE_REASON = 'Publish the result to share it'
 
 // A side is the club's own when it is one of the club's teams (the Teams list holds only the club's teams).
 export function ownSidesOf(match: Pick<Match, 'homeTeamId' | 'awayTeamId'>, teamsById: Map<string, Team>): OwnSides {
