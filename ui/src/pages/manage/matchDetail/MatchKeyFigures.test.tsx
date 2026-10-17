@@ -118,7 +118,7 @@ describe('MatchKeyFigures', () => {
       expect(onOpenAvailability).toHaveBeenCalledTimes(1)
     })
 
-    it('is absent without a handler, and disabled with the reason on its wrapper when told so', () => {
+    it('is absent without a handler, and disabled with the reason as a tooltip and visible caption when told so', () => {
       const { unmount } = render(<MatchKeyFigures {...base} matchDate="2026-10-15T07:15:00" />)
       expect(screen.queryByRole('button', { name: 'Open availability' })).not.toBeInTheDocument()
       unmount()
@@ -129,6 +129,8 @@ describe('MatchKeyFigures', () => {
       const button = screen.getByRole('button', { name: 'Open availability' })
       expect(button).toBeDisabled()
       expect(button.closest('span[title]')).toHaveAttribute('title', 'No team')
+      expect(screen.getByText('No team')).toBeVisible()
+      expect(button).toHaveAccessibleDescription('No team')
     })
 
     it('is on the poll tile only', () => {

@@ -99,6 +99,12 @@ A detail page for a person opens with a large header (80 px avatar with a soft r
 
 There is no season control on any availability view: Players and Coverage always use the default season. `ListToolbar` is unchanged and stays for other list pages.
 
+**Date, time and league date components (`docs/specs/110`, `111`).**
+- `DateTimeField` (`components/DateTimeField`): a date box plus a typed 24-hour time box with a 15-minute stepper (ArrowUp and ArrowDown, and small arrows), floating labels, both boxes the standard 40 px input height. Its value is `'YYYY-MM-DDTHH:mm'` local time or `''`, the same string a `datetime-local` input held. Keyboard stepping and typing are the accessible route; the arrows are a convenience.
+- `LeagueAgeReferenceLine` (`components/LeagueAgeReferenceLine`): the line "Ages are judged on 31 Dec 2026 (current season)" with its source, from the age-reference-date endpoint; shown on the league page when the league has an age limit.
+- `LeagueSeasonDatesBlock` (`pages/manage/leagueEdit`): the league's start and end date for one season, with a Season picker, a warning when none is set and Save season dates. Its date inputs are the standard 40 px.
+- `KeyFigureTile` `action` slot: an optional node (for example a button) rendered inside the tile under the caption. It is ignored when the tile is itself a button or link (`onClick` or `to`), because a control cannot sit inside another.
+
 ## Team selection hub (`docs/specs/093-team-selection-hub.md`)
 
 - **Hub switch as navigation.** `TeamSelectionHubLayout` is a four-way switch (Matches | Time slots | Players | Batting order) styled with `segmentedSwitchSx` (`utils/segmentedSwitch.ts`), the same as the Availability hub. Each option is a real route (`/manage/team-selection/<view>`), not local state, so links, back and reload work and filters survive a switch.

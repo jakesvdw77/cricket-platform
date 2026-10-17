@@ -128,7 +128,7 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
           helperText={startError ?? orderError ?? undefined}
           disabled={!loaded}
           InputLabelProps={{ shrink: true }}
-          sx={{ '& .MuiInputBase-root': { minHeight: 44 }, maxWidth: { sm: 220 } }}
+          sx={{ maxWidth: { sm: 220 } }}
         />
         <Input
           label="End date"
@@ -140,7 +140,7 @@ export function LeagueSeasonDatesBlock({ clubId, leagueId, seasonId, seasonLabel
           helperText={endError ?? undefined}
           disabled={!loaded}
           InputLabelProps={{ shrink: true }}
-          sx={{ '& .MuiInputBase-root': { minHeight: 44 }, maxWidth: { sm: 220 } }}
+          sx={{ maxWidth: { sm: 220 } }}
         />
         <Button type="submit" disabled={!loaded || save.isPending} sx={{ minHeight: 44 }}>
           {save.isPending ? 'Saving…' : 'Save season dates'}

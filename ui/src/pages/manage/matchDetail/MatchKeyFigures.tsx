@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { Box, Button as MuiButton } from '@mui/material'
+import { Box, Button as MuiButton, Typography } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
@@ -31,7 +31,7 @@ export interface MatchKeyFiguresProps {
   // docs/specs/089 (Match page actions, 2026-10-16): the poll tile carries Open availability. Omitted, the tile has no button.
   onOpenAvailability?: (event: MouseEvent<HTMLElement>) => void
   availabilityDisabled?: boolean
-  // Why Open availability is disabled, shown as a tooltip on its wrapper (a disabled button swallows pointer events).
+  // Why Open availability is disabled, shown as a tooltip on its wrapper (a disabled button swallows pointer events) and as visible caption text under the button.
   availabilityDisabledReason?: string
 }
 
@@ -102,17 +102,25 @@ export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVe
         textValue
         action={
           onOpenAvailability && (
-            <Box component="span" title={availabilityDisabled ? availabilityDisabledReason : undefined} sx={{ display: 'inline-flex' }}>
-              <MuiButton
-                variant="outlined"
-                size="small"
-                disabled={availabilityDisabled}
-                onClick={onOpenAvailability}
-                startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-                sx={{ minHeight: 44 }}
-              >
-                Open availability
-              </MuiButton>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+              <Box component="span" title={availabilityDisabled ? availabilityDisabledReason : undefined} sx={{ display: 'inline-flex' }}>
+                <MuiButton
+                  variant="outlined"
+                  size="small"
+                  disabled={availabilityDisabled}
+                  onClick={onOpenAvailability}
+                  startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
+                  sx={{ minHeight: 44 }}
+                  aria-describedby={availabilityDisabled && availabilityDisabledReason ? 'match-availability-disabled-reason' : undefined}
+                >
+                  Open availability
+                </MuiButton>
+              </Box>
+              {availabilityDisabled && availabilityDisabledReason && (
+                <Typography id="match-availability-disabled-reason" variant="caption" color="text.secondary">
+                  {availabilityDisabledReason}
+                </Typography>
+              )}
             </Box>
           )
         }
