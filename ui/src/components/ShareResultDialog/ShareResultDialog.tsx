@@ -21,6 +21,8 @@ import { buildShareResultModel } from '../../utils/share/shareResultData'
 import { Button } from '../Button'
 import { TileChoiceGroup } from '../TileChoiceGroup'
 import { FacebookShareScreen } from './FacebookShareScreen'
+import { ImageShareScreen } from './ImageShareScreen'
+import { TvShareScreen } from './TvShareScreen'
 import { WhatsAppShareScreen } from './WhatsAppShareScreen'
 import { resolveShareInitials } from './useShareInitials'
 
@@ -38,14 +40,14 @@ interface FormatTile {
   title: string
   subtitle: string
   icon: ReactNode
-  // PDF, Image and TV arrive in later slices: shown, but not yet choosable.
+  // PDF arrives in a later slice: shown, but not yet choosable.
   ready: boolean
 }
 
 const TILES: FormatTile[] = [
   { value: 'PDF', title: 'PDF scorecard', subtitle: 'Full scorecard, A4, to print or send', icon: <PictureAsPdfOutlinedIcon />, ready: false },
-  { value: 'IMAGE', title: 'Image', subtitle: 'Result card for feeds and chats', icon: <ImageOutlinedIcon />, ready: false },
-  { value: 'TV', title: 'TV summary', subtitle: 'Widescreen match summary', icon: <LiveTvOutlinedIcon />, ready: false },
+  { value: 'IMAGE', title: 'Image', subtitle: 'Result card for feeds and chats', icon: <ImageOutlinedIcon />, ready: true },
+  { value: 'TV', title: 'TV summary', subtitle: 'Widescreen match summary', icon: <LiveTvOutlinedIcon />, ready: true },
   { value: 'WHATSAPP', title: 'WhatsApp', subtitle: 'Message text plus image', icon: <WhatsAppIcon />, ready: true },
   { value: 'FACEBOOK', title: 'Facebook', subtitle: 'Post text plus image', icon: <FacebookIcon />, ready: true },
 ]
@@ -99,6 +101,21 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
       }),
     [match, result, data.scorecard, teams, data.clubProfile, data.league, choices.teams, initials.value],
   )
+  // The Image and TV cards and the attached image always show both teams (they never offer Our team only).
+  const cardModel = useMemo(
+    () =>
+      buildShareResultModel({
+        match,
+        result,
+        scorecard: data.scorecard,
+        teams,
+        clubName: data.clubProfile?.name ?? null,
+        leagueName: data.league?.name ?? null,
+        teamsChoice: 'both',
+        initialsOnly: initials.value,
+      }),
+    [match, result, data.scorecard, teams, data.clubProfile, data.league, initials.value],
+  )
   // Team names only: with Initials only on, no title or file name ever carries a player's name.
   const shareTitle = `${model.home.name} v ${model.away.name}`
 
@@ -119,6 +136,10 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
 
   const screenProps = {
     model,
+    cardModel,
+    clubLogoUrl: data.clubProfile?.logoUrl ?? null,
+    leagueLogoUrl: data.league?.logoUrl ?? null,
+    clubWebsite: data.clubProfile?.website ?? null,
     choices,
     updateChoices,
     initials,
@@ -188,6 +209,10 @@ export function ShareResultDialog({ open, onClose, clubId, match, result, teamsB
               <WhatsAppShareScreen {...screenProps} />
             ) : screen === 'FACEBOOK' ? (
               <FacebookShareScreen {...screenProps} />
+            ) : screen === 'IMAGE' ? (
+              <ImageShareScreen {...screenProps} />
+            ) : screen === 'TV' ? (
+              <TvShareScreen {...screenProps} />
             ) : null}
           </Box>
         )}

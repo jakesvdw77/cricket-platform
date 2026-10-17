@@ -1,25 +1,34 @@
-import { Typography, ToggleButton } from '@mui/material'
+import { Box, ToggleButton, Typography } from '@mui/material'
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
 import { Input } from '../Input'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
+import { Button } from '../Button'
 import { WhatsAppSendActions } from '../WhatsAppSendActions'
 import { generateResultWhatsAppText, WHATSAPP_RESULT_TEMPLATES } from '../../utils/share/resultTextWhatsApp'
 import type { WhatsAppTemplate } from '../../utils/share/shareChoices'
+import { useShareCapability } from '../../utils/share/useShareCapability'
+import { downloadFile } from '../../utils/share/downloadFile'
 import { ShareControlGroup } from './ShareControlGroup'
 import { ShareInitialsControl } from './ShareInitialsControl'
 import { ShareTeamsControl } from './ShareTeamsControl'
+import { useAttachedResultImage } from './shareImageOptions'
 import type { ShareScreenProps } from './shareScreenTypes'
 import { useEditableShareText } from './useEditableShareText'
 
 // docs/specs/114-share-result.md (Format screen anatomy, Text content): the WhatsApp text, built from the model, editable,
-// delivered through the shared WhatsAppSendActions. The image is a later slice (the switch is shown, disabled).
-export function WhatsAppShareScreen({ model, choices, updateChoices, initials, shareTitle }: ShareScreenProps) {
+// delivered through the shared WhatsAppSendActions. With Attach the result image on, the SQUARE Club green card travels with
+// the text through the share sheet; where files cannot be shared the screen says to attach the downloaded image.
+export function WhatsAppShareScreen(props: ShareScreenProps) {
+  const { model, choices, updateChoices, initials, shareTitle } = props
+  const capability = useShareCapability()
   const options = choices.include.whatsapp
   const template = choices.templates.whatsapp
   const generated = generateResultWhatsAppText(model, { template, emoji: options.emoji })
   const { text, setText, guard, confirmDialog } = useEditableShareText(generated)
+  const image = useAttachedResultImage(props, options.attachImage)
 
   return (
     <>
@@ -55,10 +64,11 @@ export function WhatsAppShareScreen({ model, choices, updateChoices, initials, s
                 checked={options.emoji}
                 onChange={(next) => guard(() => updateChoices({ include: { ...choices.include, whatsapp: { ...options, emoji: next } } }))}
               />
-              <CompactSwitch label="Attach the result image" checked={false} disabled describedBy="share-wa-image-reason" onChange={() => {}} />
-              <Typography id="share-wa-image-reason" variant="caption" color="text.secondary">
-                Image comes next
-              </Typography>
+              <CompactSwitch
+                label="Attach the result image"
+                checked={options.attachImage}
+                onChange={(next) => updateChoices({ include: { ...choices.include, whatsapp: { ...options, attachImage: next } } })}
+              />
             </ShareControlGroup>
           </>
         }
@@ -67,7 +77,21 @@ export function WhatsAppShareScreen({ model, choices, updateChoices, initials, s
             <Input label="Message text" multiline minRows={10} maxRows={22} value={text} onChange={(event) => setText(event.target.value)} />
           </SharePreviewStage>
         }
-        actions={<WhatsAppSendActions text={text} shareTitle={shareTitle} copyLabel="Copy text" />}
+        actions={
+          <>
+            <WhatsAppSendActions text={text} file={image ?? undefined} shareTitle={shareTitle} copyLabel="Copy text" />
+            {image && !capability.canShareFiles(image) && (
+              <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Attach the downloaded image in WhatsApp
+                </Typography>
+                <Button variant="secondary" startIcon={<FileDownloadOutlinedIcon />} onClick={() => downloadFile(image)} sx={{ minHeight: { xs: 44, sm: 'auto' } }}>
+                  Download image
+                </Button>
+              </Box>
+            )}
+          </>
+        }
       />
       {confirmDialog}
     </>

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShareResultDialog } from './ShareResultDialog'
 import { baseTheme } from '../../theme'
 import { makeMatch, makeResult } from '../../pages/manage/results/resultTestUtils'
+import { mockCanvas } from './shareScreenTestUtils'
 
 const getShareSettings = vi.fn()
 const updateShareSettings = vi.fn()
@@ -45,7 +46,9 @@ function renderDialog(matchOverrides = {}) {
 
 beforeEach(() => {
   localStorage.clear()
+  vi.restoreAllMocks()
   vi.clearAllMocks()
+  mockCanvas()
   getShareSettings.mockResolvedValue({ initialsOnlyDefault: false })
   updateShareSettings.mockImplementation((_club: string, settings: unknown) => Promise.resolve(settings))
   listLeagues.mockResolvedValue([])
@@ -53,14 +56,16 @@ beforeEach(() => {
 })
 
 describe('ShareResultDialog', () => {
-  it('shows the five tiles, with PDF, Image and TV marked as coming next', () => {
+  it('shows the five tiles, with only PDF marked as coming next', () => {
     renderDialog()
 
     expect(screen.getByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
     expect(screen.getAllByRole('radio')).toHaveLength(5)
-    expect(screen.getAllByText('Coming next')).toHaveLength(3)
+    expect(screen.getAllByText('Coming next')).toHaveLength(1)
     expect(screen.getByRole('radio', { name: /PDF scorecard/ })).toBeDisabled()
     expect(screen.getByRole('radio', { name: /WhatsApp/ })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: /Image/ })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: /TV summary/ })).toBeEnabled()
   })
 
   it('opens the WhatsApp screen and Back returns to the tiles', async () => {
@@ -105,5 +110,37 @@ describe('ShareResultDialog', () => {
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Make this the club default' }))
 
     await waitFor(() => expect(updateShareSettings).toHaveBeenCalledWith('club-1', { initialsOnlyDefault: true }))
+  })
+
+  it('opens the Image and TV screens from their tiles', async () => {
+    renderDialog()
+
+    await userEvent.click(screen.getByRole('radio', { name: /Image/ }))
+    expect(await screen.findByRole('img', { name: /Result card:/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    await userEvent.click(screen.getByRole('radio', { name: /TV summary/ }))
+    expect(await screen.findByRole('img', { name: /Match summary:/ })).toBeInTheDocument()
+  })
+
+  it('attaches the result image on WhatsApp and says to attach the downloaded one where files cannot be shared', async () => {
+    renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+
+    expect(await screen.findByRole('checkbox', { name: 'Attach the result image' })).toBeChecked()
+    expect(await screen.findByText('Attach the downloaded image in WhatsApp')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send in WhatsApp' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Attach the result image' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Download image' })).not.toBeInTheDocument())
+  })
+
+  it('offers Download image beside Copy text on Facebook', async () => {
+    renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /Facebook/ }))
+
+    expect(await screen.findByRole('button', { name: 'Download image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy text' })).toBeInTheDocument()
   })
 })
