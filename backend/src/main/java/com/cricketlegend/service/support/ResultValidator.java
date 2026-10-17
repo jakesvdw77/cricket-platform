@@ -310,7 +310,10 @@ public class ResultValidator {
         DISMISSAL_DETAIL_NOT_ALLOWED,
         DISMISSAL_PLAYER_WRONG_SIDE,
         // imported results (docs/specs/104): a rule-based player guess the manager has not confirmed yet
-        IMPORTED_NAME_UNCONFIRMED
+        IMPORTED_NAME_UNCONFIRMED,
+        // registered players of our sides (docs/specs/113): not in the team's section, or outside the league's age rule
+        PLAYER_NOT_IN_SECTION,
+        PLAYER_AGE_INELIGIBLE
     }
 
     /** Regular win (not DLS, not super over): level scores, the wrong winner, then the margin, each reported once. */

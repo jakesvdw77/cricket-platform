@@ -5739,7 +5739,7 @@ paths:
       tags:
       - match-result-controller
       operationId: saveResultDraft
-      description: "Creates or replaces the draft (docs/specs/100). Enforces structural validity only (400 with errors if malformed). The field defaults from the match and the scheduled length from the league's playing conditions. 409 when the result is published or the match is inactive."
+      description: "Creates or replaces the draft (docs/specs/100). Enforces structural validity only (400 with errors if malformed). The field defaults from the match and the scheduled length from the league's playing conditions. docs/specs/113: 400 also when a newly added registered player of one of our sides is not in the team's section (or a descendant) or fails the league's age rule (issue codes PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE); players already stored are not re-checked. 409 when the result is published or the match is inactive."
       parameters:
       - name: clubId
         in: path
@@ -5934,7 +5934,7 @@ paths:
       tags:
       - match-result-controller
       operationId: linkPlayer
-      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable); 409 when the profile is already on that side's list."
+      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable), or a registered player outside the team's section or the league's age rule (docs/specs/113: PLAYER_NOT_IN_SECTION, PLAYER_AGE_INELIGIBLE); 409 when the profile is already on that side's list."
       parameters:
       - name: clubId
         in: path
@@ -11201,7 +11201,7 @@ components:
           type: boolean
     ResultIssueDto:
       type: object
-      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
+      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed; docs/specs/113 adds the errors PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE, step TEAMS with the side, one per registered player of our side outside the team's section or outside the league's age rule), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
       properties:
         code:
           type: string

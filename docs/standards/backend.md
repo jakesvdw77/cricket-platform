@@ -87,6 +87,10 @@ Import rules (spec 104):
 
 - **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create, update and reactivate, and a future bulk or schedule-import path must call it per fixture; it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
 
+## Registered players on a result (spec 113)
+
+- **A registered player of one of our sides is checked only by `ResultPlayerEligibility`** (`service.support`): in the side's team's section or a descendant, and inside the league's age rule (`SelectionEligibility.ageProblems`). The save refusal (`ScorecardServiceImpl` replace, replaceImported and link, newly added players only), the validation errors `PLAYER_NOT_IN_SECTION` and `PLAYER_AGE_INELIGIBLE` and the import candidate filter all call it; never re-implement the rule or query per player.
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:
