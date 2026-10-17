@@ -494,7 +494,7 @@ describe('NewPollPage', () => {
       expect(screen.getByText('Every fixture here is already in a poll.')).toBeInTheDocument()
       expect(screen.queryByLabelText('Description')).toBeNull()
       expect(screen.queryByLabelText('Autoclose')).toBeNull()
-      expect(screen.queryByLabelText('Closes at')).toBeNull()
+      expect(screen.queryByRole('group', { name: 'Closes at' })).toBeNull()
       expect(screen.queryByText(/A closing time is required/)).toBeNull()
       expect(screen.queryByRole('button', { name: /Open poll for/ })).toBeNull()
     })
@@ -528,10 +528,10 @@ describe('NewPollPage', () => {
       renderPage(GROUP_PATH)
 
       await screen.findByText('U13 Boys A vs Rivals CC')
-      expect(screen.getByLabelText('Closes at')).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Closes at' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('checkbox', { name: 'Autoclose' }))
-      expect(screen.queryByLabelText('Closes at')).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'Closes at' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Open poll for 2 selected fixtures' }))
       await waitFor(() => expect(createRound).toHaveBeenCalledTimes(1))
