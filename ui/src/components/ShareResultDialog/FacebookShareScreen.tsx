@@ -4,7 +4,6 @@ import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import { Button } from '../Button'
 import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
-import { Input } from '../Input'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
@@ -18,6 +17,7 @@ import { ShareSponsorChooser } from './ShareSponsorChooser'
 import { ShareTeamsControl } from './ShareTeamsControl'
 import { useAttachedResultImage } from './shareImageOptions'
 import type { ShareScreenProps } from './shareScreenTypes'
+import { FacebookPostPreview } from './FacebookPostPreview'
 import { useEditableShareText } from './useEditableShareText'
 
 // docs/specs/114-share-result.md (Format screen anatomy, Text content): the Facebook post text, built from the model and
@@ -88,7 +88,7 @@ export function FacebookShareScreen(props: ShareScreenProps) {
         }
         preview={
           <SharePreviewStage ariaLabel="Facebook post" caption="Names you type yourself are not changed.">
-            <Input label="Post text" multiline minRows={10} maxRows={22} value={text} onChange={(event) => setText(event.target.value)} />
+            <FacebookPostPreview clubName={model.clubName} text={text} onTextChange={setText} attachImage={options.attachImage} image={image} />
           </SharePreviewStage>
         }
         actions={

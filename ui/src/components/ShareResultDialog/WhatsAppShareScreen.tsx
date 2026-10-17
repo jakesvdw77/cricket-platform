@@ -2,7 +2,6 @@ import { Box, ToggleButton, Typography } from '@mui/material'
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import { CompactSwitch } from '../CompactSwitch'
 import { CompactToggleGroup } from '../CompactToggleGroup'
-import { Input } from '../Input'
 import { ShareFormatScreen } from '../ShareFormatScreen'
 import { SharePreviewStage } from '../SharePreviewStage'
 import { Button } from '../Button'
@@ -16,6 +15,7 @@ import { ShareInitialsControl } from './ShareInitialsControl'
 import { ShareTeamsControl } from './ShareTeamsControl'
 import { useAttachedResultImage } from './shareImageOptions'
 import type { ShareScreenProps } from './shareScreenTypes'
+import { WhatsAppPhonePreview } from './WhatsAppPhonePreview'
 import { useEditableShareText } from './useEditableShareText'
 
 // docs/specs/114-share-result.md (Format screen anatomy, Text content): the WhatsApp text, built from the model, editable,
@@ -74,7 +74,7 @@ export function WhatsAppShareScreen(props: ShareScreenProps) {
         }
         preview={
           <SharePreviewStage ariaLabel="WhatsApp message" caption="Names you type yourself are not changed.">
-            <Input label="Message text" multiline minRows={10} maxRows={22} value={text} onChange={(event) => setText(event.target.value)} />
+            <WhatsAppPhonePreview clubName={model.clubName} text={text} onTextChange={setText} attachImage={options.attachImage} image={image} />
           </SharePreviewStage>
         }
         actions={
