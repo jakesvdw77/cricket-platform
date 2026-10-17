@@ -99,13 +99,21 @@ What the design does, regardless of the legal answer:
 - The call needs an explicit consent tick, enforced by the server.
 - A prompt-injection line inside a scorecard cannot do anything: the only use of the answer is to parse it as data and validate it.
 
+**Option to put to the lawyer: replace names with tokens before sending (not designed in, not built).** Initials plus surname ("M. Naidoo") does not anonymise: with the club, date and scores it still identifies a child, so it is pseudonymised data at best and the POPIA questions below still apply. A stronger approach is to send "Player 1", "Player 2" and so on, keep the mapping on our server for the length of the one request, and put the real names back when the answer returns. The AI then never sees a name.
+
+- **Where it works.** Input that already arrives as structured data or that we can parse locally first. Our own club's players are known to us, so they can be tokenised reliably.
+- **Where it does not work.** Free text or a PDF the AI has to read: we cannot find the names before the AI reads the document, and the opposition's players are not in our data. Only a named-entity step or a restricted scope would help.
+- **Narrower scopes to ask about.** Adult leagues only (the juniors rule from `114` and the league age limits of `110` can say which leagues are junior), or our own side's names only with the opposition tokenised.
+- **If the lawyer prefers it,** it becomes a requirement of this spec: a tokenise step before the call, a de-tokenise step after, the mapping never stored or logged, and a test that no name from the input appears in the outgoing request.
+
 **Questions for the user's lawyer (not answered by this spec, and I am not a lawyer):**
 
 1. The platform's server transmits children's names (a scorecard) to a third party, Anthropic, on the manager's instruction. Does that make the platform an operator or a responsible party for that transfer under POPIA, even with the manager's own key and consent? Does it need an operator agreement, a notice to parents, or a lawful basis recorded?
 2. Cross-border transfer: the content leaves South Africa. Is the manager's consent tick enough, or is a contract or an adequacy basis needed?
 3. Anthropic's own terms and retention for API traffic: which apply to the manager's key, and what must we tell the manager?
 4. Wording of the consent tick and of the notice on the Source step, and whether a club-level acknowledgement is needed before the option appears.
-5. Whether a short privacy-policy and terms-of-use update is needed before any club outside the two testers can see it.
+5. Whether tokenising names before sending (above) would take the transfer outside POPIA's special rules for children's information, or whether a restricted scope (adult leagues only) is the safer line.
+6. Whether a short privacy-policy and terms-of-use update is needed before any club outside the two testers can see it.
 
 ## Test Plan
 
