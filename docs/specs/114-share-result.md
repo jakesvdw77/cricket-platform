@@ -1,7 +1,7 @@
 # 114: Share a Published Result
 
 **Depends on:** `100-match-results-core.md` (the Results page, the result page, the draft / publish gate, `MatchResult`, `Innings`), `101-match-results-our-side-scorecard.md` (the scorecard read, `ResultPlayer`, batting and bowling entries, the official player of the match, the opposition's names), `104-match-results-import-adaptors.md` (how our side and the opposition appear in a scorecard), `029-league-management.md` and `110-league-age-cutoff-day-and-month.md` (a league's optional `minAge` and `maxAge`), `012-club-profile.md` (club logo), `030-team-sheet-communication.md` and `051-league-schedule-sharing.md` (the browser-side PDF and PNG precedents this copies), `039-team-sheet-whatsapp-text.md` (the text builder precedent), `docs/standards/*.md`.
-**Status:** draft, written 2026-10-17 from the approved mockups (`share-result-mockups.html`, published as a Claude artifact) and the product owner's decisions. Part of finishing the Results section, before statistics (`103`). No code is written by this spec.
+**Status:** built and in review (2026-10-17); written 2026-10-17 from the approved mockups (`share-result-mockups.html`, published as a Claude artifact) and the product owner's decisions. Part of finishing the Results section, before statistics (`103`). No code is written by this spec.
 
 ## Problem & Goals
 
@@ -50,7 +50,7 @@ Only one persisted item, the club-level default for Initials only.
 
 **Where club settings live today.** `Club` is tenancy only (a deliberate stub); there is no generic club settings table, and `docs/roadmap.md` records that `101` chose not to add a `club_result_settings`. The closest existing mechanism is `club_profile` (`012`, 1:1 with `Club`, own audit trail, edited at `PUT /api/v1/manage/clubs/{id}/profile`, which is a **full-resource replace**).
 
-**Proposal (flagged as Open question 1):** add one column to `club_profile`, `share_initials_only boolean not null default false`, in `backend/src/main/resources/db/changelog/v1/NNN-club-share-initials-only.sql` (next sequential number, confirm at plan time). It is **not** added to `UpdateClubProfileRequest`, because that endpoint nulls anything omitted and the field is not part of the profile form. It has its own small endpoint (below), so a profile save never resets it. No other table changes.
+**Proposal (flagged as Open question 1):** add one column to `club_profile`, `share_initials_only boolean not null default false`, in `backend/src/main/resources/db/changelog/v1/051-club-share-initials-only.sql` (built as 051; originally: next sequential number, confirm at plan time). It is **not** added to `UpdateClubProfileRequest`, because that endpoint nulls anything omitted and the field is not part of the profile form. It has its own small endpoint (below), so a profile save never resets it. No other table changes.
 
 **Browser storage (no database):** `share:choices:<clubId>` in `localStorage` (one JSON object: last format, per-format template, include switches, teams, size, and the user's own Initials only choice for non-junior matches), read and written inside `try/catch`, falling back to defaults on a missing key, corrupt JSON or unavailable storage, in the manner of `usePersistedListFilters`. Edited WhatsApp and Facebook text is never remembered.
 
@@ -98,7 +98,7 @@ A dialog on a desktop, **full screen on a phone** (`BottomSheet`-style behaviour
 
 ### Format screen anatomy (shared)
 
-Controls on the left (stacked above the preview on a phone), preview on the right, actions under the controls. A **control strip** per format uses `CompactToggleGroup` for template and size chips, `CompactSwitch` for the include switches, and the shared preview stage. The **First names as initials** switch sits at the top of the Include group on every format and is the same one value across formats within a visit.
+Controls on the left (stacked above the preview on a phone), preview on the right, actions in the dialog's pinned footer bar (rendered there through `ShareFooterContext`, always visible without scrolling, on desktop and phone). A **control strip** per format uses `CompactToggleGroup` for template and size chips, `CompactSwitch` for the include switches, and the shared preview stage. The **First names as initials** switch sits at the top of the Include group on every format and is the same one value across formats within a visit.
 
 | Format | Templates | Other controls | Include switches |
 |---|---|---|---|
@@ -157,10 +157,10 @@ Rules:
 ### Default and junior lock
 
 - **Default for opening a dialog:** for a non-junior match, the value is the user's remembered choice on this device if one exists, otherwise the club default (`initialsOnlyDefault`, from the endpoint above), otherwise off.
-- **Club default control:** a small **"First names as initials by default"** switch in the dialog's footer area on the First names as initials row ("Make this the club default"), writing through `PUT share-settings`. Chosen here rather than in Club profile because it is used from this dialog and avoids touching the profile form; the platform admin's profile screen does not change. Every club manager may change it (Open questions 1).
+- **Club default control:** a small **"Make this the club default"** switch beside the First names as initials switch (in `ShareInitialsControl`), writing through `PUT share-settings`. Chosen here rather than in Club profile because it is used from this dialog and avoids touching the profile form; the platform admin's profile screen does not change. Every club manager may change it (Open questions 1).
 - **Junior lock:** when the match is a junior match, the First names as initials switch is **on and disabled**, with the reason shown as visible helper text, not only a tooltip: "Always on for junior leagues". It cannot be turned off by any means in the UI, and the remembered choice and the club default are ignored for it (they continue to apply to non-junior matches). The club-default switch remains usable but its helper reads "Does not apply to junior leagues". The lock is client-side only (no server enforcement: nothing leaves the browser through our servers; a manager can always type a name into the editable text, which is the caption above).
 
-**Rule: how "junior" is determined (proposed from existing data; Open question 3).** A match is junior when **any** of the following is true, evaluated by the pure function `isJuniorMatch(match, league, sectionPaths)`:
+**Rule: how "junior" is determined (proposed from existing data; Open question 3).** A match is junior when **any** of the following is true, evaluated by the pure function `isJuniorMatch({ league, sections, teams })`, which returns `{ junior, reason }` with reason `LEAGUE_MAX_AGE`, `SECTION_MAX_AGE`, `SECTION_NAME`, `UNAVAILABLE` or null (a null league means a friendly; an undefined league or sections means the data could not be loaded and the result is junior with `UNAVAILABLE`):
 
 1. its **league** has a `maxAge` and `maxAge <= 18` (a league's `maxAge` is its own enforced age cap, `029`, `110`; "U19" and above are treated as adult), or
 2. the match has **no league** (a friendly) or its league has **no `maxAge`**, and the **section** of either of the match's own teams, or any ancestor of that section in the club structure, has a `maxAge` set with `maxAge <= 18` (a section's age range is unenforced metadata, `094`), or
@@ -186,7 +186,7 @@ Added at the product owner's request (2026-10-17): the same one-tap WhatsApp del
 - **Desktop Copy image route.** A WhatsApp link carries text only, so where the browser cannot share the image file (a computer) the screen shows no Attach switch and no image in the phone bubble. It shows the image as a separate "Result image" card, with Copy image (where `ClipboardItem` exists) and Download image beside Send in WhatsApp, WhatsApp Web and Copy text, and a line saying to paste the copied image into the chat before sending. Facebook follows the same rule with an "Image to upload" card.
 - **Links stay clickable.** Any link a message contains (the poll response link, the availability link) is part of the message text itself, in both the `wa.me` link and the native share call, and is never passed as a separate `url` field (some apps drop it when a file is attached). WhatsApp makes it tappable and shows a preview card only if the target page provides the preview tags; that is a property of the target page, not of this spec.
 - **Copy message** stays beside them in every dialog (unchanged behaviour, shared hook `useCopyToClipboard`), so nothing that works today is lost.
-- **Length guard.** `wa.me` links over roughly 2,000 characters are unreliable. Above `WHATSAPP_LINK_MAX_CHARS` (a named constant, 1,800 encoded characters) the Send button is replaced by Copy message with a short explanation, never a silently truncated message.
+- **Length guard.** `wa.me` links over roughly 2,000 characters are unreliable. Above `WHATSAPP_LINK_MAX_CHARS` (a named constant, 1,800 encoded characters) the Send buttons are hidden and Copy message becomes the primary button with a short explanation, never a silently truncated message.
 - **Editing first.** The manager can still edit the text in the box before sending; Send in WhatsApp always sends the box's current text.
 - **First names as initials** applies to the Result messages only. The team announcement, poll and conditions messages go to players of the same club and are unchanged; this is stated so nobody expects it there.
 - No tracking and no WhatsApp Business API: only the public `wa.me` link and the browser's own share sheet.
@@ -205,6 +205,15 @@ Builders are pure and take the `ShareResultModel`; none uses a fixed template st
 - **WhatsApp Short:** result line and both score lines. **With top performers:** the above plus top bat and ball for each side shown, and the player of the match. **Scorecard text:** the full compact scorecard text as in the mockup.
 - **Facebook Match report:** a structured paragraph set; **Brief:** one paragraph; **Celebration:** descriptive prose built by rules from the scores, for example chasing and balls remaining, a top score with its strike rate described in words (the descriptive phrasing the previous system had, such as "a very good strike rate of 160"), bowling figures, closing thanks. It only describes what is in the data, never invents a fact, and every wording threshold (what counts as "very good") sits in one table in `resultTextFacebook.ts` for later tuning. Celebration is offered when the result is a win for our side; for a loss, tie or other outcome it falls back to a neutral wording rather than celebrating (Open questions 7).
 - **Emoji** switch removes all emoji. **Hashtags:** `#<ClubName without spaces>`, `#<LeagueName without spaces>` and `#CricketLegend`; never a player name. **Mention the sponsor:** "Thanks to our sponsor, <name>" using the sponsor chosen per Open questions 6.
+
+### Built differently from the first draft (recorded 2026-10-17)
+
+- **Desktop WhatsApp.** The WhatsApp desktop app was seen keeping only a link and dropping the rest of a message, so desktop also gets a **WhatsApp Web** button (`https://web.whatsapp.com/send?text=...`) beside Send in WhatsApp. The native **Share** button for text only appears on touch devices; with a file it appears wherever the browser can share it.
+- **Image with the text.** Only the native share sheet on a touch device can send the image together with the text, so the WhatsApp bubble and the "Attach the result image" switch show the image only there. On a computer the preview is the text alone and the image sits in a separate card with **Copy image** and **Download image** ("paste it into the chat"); Facebook shows an "Image to upload" card.
+- **Preview zoom.** The PDF, Image and TV previews have Zoom out, Zoom in, Fit and 100% (steps of 25 percent between 50 and 300, per visit). The PDF preview redraws at the zoomed size; the Image and TV previews are scaled on screen.
+- **Download always.** The Image, TV and PDF screens always offer Download beside Share.
+- **Share only when published.** The Share button is absent on a draft (card and page), as Publish is absent on a published result.
+- **Section-scoped managers** cannot read leagues, sections, club sponsors or the club profile (403), so for them the junior check fails safe, the club and league logos are omitted and the club name is missing from hashtags.
 
 ## Test Plan
 
