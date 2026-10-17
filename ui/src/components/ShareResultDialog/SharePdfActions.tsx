@@ -19,7 +19,7 @@ const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
 // How long a Print tab keeps its object URL before it is released.
 const PRINT_URL_LIFETIME_MS = 60_000
 
-// docs/specs/114-share-result.md (Preview and delivery): Share where the browser can share this file, otherwise Download
+// docs/specs/114-share-result.md (Preview and delivery): Share where the browser can share this file, and Download always
 // PDF; Print opens the PDF in a new tab. Cancelling the share sheet is not an error.
 export function SharePdfActions({ file, shareTitle, error }: SharePdfActionsProps) {
   const capability = useShareCapability()
@@ -47,15 +47,14 @@ export function SharePdfActions({ file, shareTitle, error }: SharePdfActionsProp
   return (
     <Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {canShare ? (
+        {canShare && (
           <Button startIcon={<ShareOutlinedIcon />} onClick={() => void share()} sx={TOUCH_TARGET_SX}>
             Share
           </Button>
-        ) : (
-          <Button startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
-            Download PDF
-          </Button>
         )}
+        <Button variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
+          Download PDF
+        </Button>
         <Button variant="secondary" startIcon={<PrintOutlinedIcon />} disabled={!file} onClick={print} sx={TOUCH_TARGET_SX}>
           Print
         </Button>

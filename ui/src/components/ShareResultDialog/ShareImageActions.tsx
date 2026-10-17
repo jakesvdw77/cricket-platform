@@ -54,15 +54,14 @@ export function ShareImageActions({ file, shareTitle, error }: ShareImageActions
   return (
     <Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {canShare ? (
+        {canShare && (
           <Button startIcon={<ShareOutlinedIcon />} onClick={() => void share()} sx={TOUCH_TARGET_SX}>
             Share
           </Button>
-        ) : (
-          <Button startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
-            Download PNG
-          </Button>
         )}
+        <Button variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
+          Download PNG
+        </Button>
         {canCopyImage() && (
           <Button
             variant="secondary"
