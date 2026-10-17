@@ -202,11 +202,12 @@ public class SelectionEligibility {
             return info.fullName() + " has no recorded date of birth; required for this league's age rule";
         }
         int age = Period.between(dateOfBirth, referenceDate).getYears();
+        String asAt = " as at " + LeagueSeasonDates.format(referenceDate);
         if (league.getMinAge() != null && age < league.getMinAge()) {
-            return info.fullName() + " is " + age + ", below this league's minAge of " + league.getMinAge();
+            return info.fullName() + " is " + age + ", below this league's minAge of " + league.getMinAge() + asAt;
         }
         if (league.getMaxAge() != null && age > league.getMaxAge()) {
-            return info.fullName() + " is " + age + ", above this league's maxAge of " + league.getMaxAge();
+            return info.fullName() + " is " + age + ", above this league's maxAge of " + league.getMaxAge() + asAt;
         }
         return null;
     }

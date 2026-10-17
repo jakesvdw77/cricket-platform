@@ -10,9 +10,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The one place a match date is checked against a league season's dates (docs/specs/111-league-season-dates.md). Every
- * path that creates or moves a match (create, update, and the schedule import's batch create) calls
- * {@link #assertWithin}, so the rule cannot drift. A league season with no dates, or a match with no league, is not
+ * The one place a match date is checked against a league season's dates (docs/specs/111-league-season-dates.md). Match
+ * create, update and reactivate call {@link #assertWithin}, and a future bulk or schedule-import path must call it per
+ * fixture, so the rule cannot drift. A league season with no dates, or a match with no league, is not
  * checked. The comparison is on the local calendar day (see {@link ServerClock}).
  */
 @Component
