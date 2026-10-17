@@ -136,6 +136,7 @@ class CricClubsImportIntegrationTest {
                     PlayerProfile.builder().personId(person.getId()).clubId(clubId).active(true).build());
             squadRepository.save(TeamSquadMember.builder().teamId(club.world().seniors1().getId())
                     .seasonId(club.world().season().getId()).playerProfileId(profile.getId()).build());
+            fixtures.shared().makeEligible(club.world().seniors1(), profile); // docs/specs/113
             squad.put(full, profile);
         }
         return new Scenario(match, squad);

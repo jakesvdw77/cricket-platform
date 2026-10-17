@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -141,5 +142,17 @@ public class MatchController {
     public ResponseEntity<MatchDto> reactivate(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
         return ResponseEntity.ok(matchService.reactivate(authentication, clubId, matchId));
+    }
+
+    /** docs/specs/109-delete-empty-match.md: deletes a match with nothing recorded against it. */
+    @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
+    @DeleteMapping("/api/v1/manage/clubs/{clubId}/matches/{matchId}")
+    @ApiResponse(responseCode = "204", description = "Match deleted")
+    @ApiResponse(responseCode = "404", description = "Not this club's match")
+    @ApiResponse(responseCode = "409", description = "The match has a result, poll, squad, team selection or availability window")
+    public ResponseEntity<Void> delete(
+            Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID matchId) {
+        matchService.delete(authentication, clubId, matchId);
+        return ResponseEntity.noContent().build();
     }
 }

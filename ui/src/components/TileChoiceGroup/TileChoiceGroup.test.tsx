@@ -85,4 +85,18 @@ describe('TileChoiceGroup', () => {
       expect(screen.getAllByRole('radio').map((tile) => tile.tabIndex)).toEqual([-1, 0])
     })
   })
+
+  // docs/specs/109-delete-empty-match.md: an adornment sits beside the tile, not inside it.
+  it('draws an adornment outside the radio: not in its name, and pressing it never chooses the tile', async () => {
+    const onChange = vi.fn()
+    const onAdorn = vi.fn()
+    const withAdornment = [{ value: 'a', content: 'Alpha', adornment: <button onClick={onAdorn}>Remove Alpha</button> }, { value: 'b', content: 'Beta' }]
+    render(<TileChoiceGroup label="Pick" options={withAdornment} value={null} onChange={onChange} columns="1fr" />)
+
+    expect(screen.getByRole('radio', { name: 'Alpha' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Alpha' }))
+    expect(onAdorn).toHaveBeenCalledTimes(1)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
+  })
 })

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,9 +18,15 @@ const listMatchSides = vi.fn()
 const listPolls = vi.fn()
 const getMatchSquad = vi.fn()
 const generateTeamSheetPdf = vi.fn()
+const deactivateMatch = vi.fn()
+const reactivateMatch = vi.fn()
+const deleteMatch = vi.fn()
 
 vi.mock('../../api/matchApi', () => ({
   getMatch: (clubId: string, matchId: string) => getMatch(clubId, matchId),
+  deactivateMatch: (clubId: string, matchId: string) => deactivateMatch(clubId, matchId),
+  reactivateMatch: (clubId: string, matchId: string) => reactivateMatch(clubId, matchId),
+  deleteMatch: (clubId: string, matchId: string) => deleteMatch(clubId, matchId),
 }))
 
 vi.mock('../../api/teamApi', () => ({
@@ -183,11 +189,20 @@ beforeEach(() => {
   listPolls.mockResolvedValue([])
   getMatchSquad.mockResolvedValue(UNCOVERED)
   generateTeamSheetPdf.mockResolvedValue('blob:team-sheet')
+  deactivateMatch.mockResolvedValue(makeMatch({ active: false }))
+  reactivateMatch.mockResolvedValue(makeMatch())
+  deleteMatch.mockResolvedValue(undefined)
 })
 
 function LocationProbe() {
   const location = useLocation()
-  return <div>At: {location.pathname + location.search}</div>
+  const notice = (location.state as { notice?: string } | null)?.notice
+  return (
+    <div>
+      At: {location.pathname + location.search}
+      {notice && <span>Notice: {notice}</span>}
+    </div>
+  )
 }
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -201,7 +216,7 @@ function renderPage(initialPath: string, clubId?: string) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/manage/fixtures" element={<OutletContextWrapper clubId={clubId} />}>
-            <Route path="matches" element={<div>Match List Page</div>} />
+            <Route path="matches" element={<LocationProbe />} />
             <Route path="matches/:matchId" element={<MatchDetailPage />} />
           </Route>
           <Route path="*" element={<LocationProbe />} />
@@ -221,7 +236,7 @@ async function renderLoaded(match = makeMatch()) {
 
 // The Availability button waits for the polls and coverage queries to settle.
 async function availabilityButton() {
-  const button = await screen.findByRole('button', { name: 'Availability' })
+  const button = await screen.findByRole('button', { name: 'Open availability' })
   await waitFor(() => expect(button).toBeEnabled())
   return button
 }
@@ -243,20 +258,20 @@ describe('MatchDetailPage', () => {
   })
 
   describe('header rows', () => {
-    it('lays out the Back row with the page actions, the title row with the workflow buttons, the key figures and the team cards in DOM order', async () => {
+    it('lays out the Back row with the header controls, the title row, the key figures and the team cards in DOM order', async () => {
       await renderLoaded()
 
       const back = screen.getByRole('link', { name: /back to matches/i })
       const topRow = screen.getByTestId('match-header-top-row')
       const titleRow = screen.getByTestId('match-header-title-row')
-      const actions = screen.getByTestId('match-header-actions')
+      const actions = screen.getByTestId('match-header-buttons')
       const figures = screen.getByTestId('match-key-figures')
       const cards = screen.getByTestId('match-team-cards')
 
       expect(back).toHaveAttribute('href', '/manage/fixtures/matches')
       expect(topRow).toContainElement(back)
-      expect(titleRow).toContainElement(actions)
-      expect(topRow).not.toContainElement(actions)
+      expect(topRow).toContainElement(actions)
+      expect(titleRow).not.toContainElement(actions)
       const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
       expect(follows(topRow, titleRow)).toBe(true)
       expect(follows(titleRow, figures)).toBe(true)
@@ -326,7 +341,7 @@ describe('MatchDetailPage', () => {
       await renderLoaded()
 
       expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
-      expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
 
       resolvePolls([])
       await waitFor(() => expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('None'))
@@ -387,7 +402,7 @@ describe('MatchDetailPage', () => {
       await renderLoaded()
 
       await waitFor(() => expect(listPolls).toHaveBeenCalled())
-      expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
       expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
     })
 
@@ -396,7 +411,7 @@ describe('MatchDetailPage', () => {
       await renderLoaded()
 
       await waitFor(() => expect(getMatchSquad).toHaveBeenCalled())
-      expect(screen.getByRole('button', { name: 'Availability' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Open availability' })).toBeDisabled()
       expect(screen.getByTestId('match-figure-poll-value')).toHaveTextContent('–')
     })
   })
@@ -504,15 +519,7 @@ describe('MatchDetailPage', () => {
     })
   })
 
-  describe('actions', () => {
-    it('Select team links to the Select team page', async () => {
-      await renderLoaded()
-      expect(within(screen.getByTestId('match-header-actions')).getByRole('link', { name: 'Select team' })).toHaveAttribute(
-        'href',
-        '/manage/team-selection/matches/match-1/sides/home',
-      )
-    })
-
+  describe('team actions and availability', () => {
     it('Availability opens the prefilled New poll flow with no poll', async () => {
       const user = userEvent.setup()
       await renderLoaded()
@@ -550,7 +557,68 @@ describe('MatchDetailPage', () => {
       expect(await screen.findByText('At: /manage/availability/squad/match-1/p2')).toBeInTheDocument()
     })
 
-    it('Share team sheet opens the dialog and prints through the shared hook', async () => {
+    it('Select team on each own side card links to that side\'s Select team page', async () => {
+      listMatchSides.mockResolvedValue([makeSide({ id: 'side-away', teamId: 'team-2' })])
+      await renderLoaded()
+
+      const home = await screen.findByTestId('match-team-card-home')
+      const away = screen.getByTestId('match-team-card-away')
+      expect(within(home).getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/manage/team-selection/matches/match-1/sides/home')
+      await waitFor(() =>
+        expect(within(away).getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/manage/team-selection/matches/match-1/sides/side-away'),
+      )
+      expect(within(screen.getByTestId('match-header-buttons')).queryByRole('link', { name: 'Select team' })).not.toBeInTheDocument()
+    })
+
+    it('has no Select team, Share team sheet or Availability button in the header any more', async () => {
+      await renderLoaded()
+      const header = screen.getByTestId('match-header-top-row')
+      for (const name of [/select team/i, /share/i, /availability/i]) {
+        expect(within(header).queryByRole('button', { name })).not.toBeInTheDocument()
+        expect(within(header).queryByRole('link', { name })).not.toBeInTheDocument()
+      }
+    })
+
+    it('Open availability on the poll tile opens the prefilled New poll flow with no poll', async () => {
+      const user = userEvent.setup()
+      await renderLoaded()
+
+      const button = await availabilityButton()
+      expect(screen.getByTestId('match-figure-poll')).toContainElement(button)
+      await user.click(button)
+
+      expect(
+        await screen.findByText('At: /manage/availability/new?type=group&sectionId=section-1&matchId=match-1'),
+      ).toBeInTheDocument()
+    })
+
+    it('Open availability opens the squad Responses page for one squad poll', async () => {
+      const user = userEvent.setup()
+      listPolls.mockResolvedValue([makePoll({ id: 'poll-7' })])
+      await renderLoaded()
+
+      await user.click(await availabilityButton())
+
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/poll-7')).toBeInTheDocument()
+    })
+
+    it('Open availability opens a menu for two polls, each option opening its Responses page', async () => {
+      const user = userEvent.setup()
+      listPolls.mockResolvedValue([makePoll({ id: 'p1', teamId: 'team-1' }), makePoll({ id: 'p2', teamId: 'team-2' })])
+      await renderLoaded()
+
+      await user.click(await availabilityButton())
+
+      const menu = await screen.findByRole('menu', { name: 'Availability polls' })
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+        '1st XI · Home poll',
+        '2nd XI · Away poll',
+      ])
+      await user.click(within(menu).getByRole('menuitem', { name: '2nd XI · Away poll' }))
+      expect(await screen.findByText('At: /manage/availability/squad/match-1/p2')).toBeInTheDocument()
+    })
+
+    it('Share team sheet on a card opens the dialog on that side and prints through the shared hook', async () => {
       const user = userEvent.setup()
       const open = vi.spyOn(window, 'open').mockReturnValue(null)
       listMatchSides.mockResolvedValue([
@@ -558,37 +626,226 @@ describe('MatchDetailPage', () => {
       ])
       await renderLoaded()
 
-      await user.click(screen.getByRole('button', { name: 'Share team sheet' }))
+      const home = await screen.findByTestId('match-team-card-home')
+      await user.click(within(home).getByRole('button', { name: 'Share team sheet for 1st XI' }))
 
       expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
-      await user.click(await screen.findByRole('button', { name: 'Print Both Teams' }))
+      await user.click(await screen.findByRole('button', { name: 'Print 1st XI' }))
       await waitFor(() => expect(generateTeamSheetPdf).toHaveBeenCalled())
       await waitFor(() => expect(open).toHaveBeenCalledWith('blob:team-sheet', '_blank'))
+      // scoped to the home side only
+      expect(generateTeamSheetPdf.mock.calls[0][1]).toHaveLength(1)
       open.mockRestore()
     })
 
-    it('disables all three actions with the reason when neither side is a club team', async () => {
+    it('Share team sheet on the away card is scoped to the away side', async () => {
+      const user = userEvent.setup()
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      listMatchSides.mockResolvedValue([
+        makeSide({ id: 'side-away', teamId: 'team-2', players: [{ playerProfileId: 'player-2', battingOrder: 1, role: 'BATSMAN' }] }),
+      ])
+      await renderLoaded()
+
+      const away = await screen.findByTestId('match-team-card-away')
+      expect(within(screen.getByTestId('match-team-card-home')).getByRole('button', { name: 'Share team sheet for 1st XI' })).toBeInTheDocument()
+      await user.click(within(away).getByRole('button', { name: 'Share team sheet for 2nd XI' }))
+
+      expect(await screen.findByText('Communicate Team Sheet')).toBeInTheDocument()
+      await user.click(await screen.findByRole('button', { name: 'Print 2nd XI' }))
+      await waitFor(() => expect(generateTeamSheetPdf).toHaveBeenCalled())
+      const sides = generateTeamSheetPdf.mock.calls[0][1] as { teamName: string }[]
+      expect(sides.map((side) => side.teamName)).toEqual(['2nd XI'])
+      open.mockRestore()
+    })
+
+    it('puts the team actions only on the own side when the opponent is not the club\'s', async () => {
+      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside' }))
+      renderPage(PATH, 'test-club-id')
+
+      const home = await screen.findByTestId('match-team-card-home')
+      expect(within(home).getByRole('link', { name: 'Select team' })).toBeInTheDocument()
+      expect(within(home).getByRole('button', { name: /Share team sheet/ })).toBeEnabled()
+      expect(screen.queryByTestId('match-team-card-away')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: 'Select team' })).toHaveLength(1)
+    })
+
+    it('disables Open availability with the reason when neither side is a club team, and shows no team actions', async () => {
       getMatch.mockResolvedValueOnce(
         makeMatch({ homeTeamId: null, homeTeamName: 'A', awayTeamId: null, awayTeamName: 'B' }),
       )
       renderPage(PATH, 'test-club-id')
       await screen.findByRole('heading', { level: 1 })
 
-      for (const name of ['Select team', 'Availability', 'Share team sheet']) {
-        const button = screen.getByRole('button', { name })
-        expect(button).toBeDisabled()
-        expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
-      }
+      const button = screen.getByRole('button', { name: 'Open availability' })
+      expect(button).toBeDisabled()
+      expect(button.closest('span[title]')).toHaveAttribute('title', 'None of your teams is playing in this match')
+      expect(screen.queryByRole('link', { name: 'Select team' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Share team sheet/ })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('header: Result menu', () => {
+    const PAST = '2020-06-01T14:30:00Z'
+    const FUTURE = '2099-06-01T14:30:00Z'
+
+    it('opens a Result menu with Capture result and Import result for a started match with no result', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ matchDate: PAST }))
+
+      const header = screen.getByTestId('match-header-buttons')
+      expect(screen.queryByRole('link', { name: 'Capture result' })).not.toBeInTheDocument()
+      await user.click(within(header).getByRole('button', { name: /^Result/ }))
+
+      const menu = await screen.findByRole('menu', { name: 'Result actions' })
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Capture result', 'Import result'])
+      await user.click(within(menu).getByRole('menuitem', { name: 'Import result' }))
+      expect(await screen.findByText('At: /manage/results/import?matchId=match-1')).toBeInTheDocument()
     })
 
-    it('enables the actions when one club team is playing', async () => {
-      getMatch.mockResolvedValueOnce(makeMatch({ awayTeamId: null, awayTeamName: 'Riverside' }))
-      renderPage(PATH, 'test-club-id')
-      await screen.findByRole('heading', { level: 1 })
+    it('Capture result in the menu goes to the capture page', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ matchDate: PAST }))
 
-      expect(within(screen.getByTestId('match-header-actions')).getByRole('link', { name: 'Select team' })).toBeInTheDocument()
-      expect(await availabilityButton()).toBeEnabled()
-      expect(screen.getByRole('button', { name: 'Share team sheet' })).toBeEnabled()
+      await user.click(within(screen.getByTestId('match-header-buttons')).getByRole('button', { name: /^Result/ }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Capture result' }))
+      expect(await screen.findByText('At: /manage/results/match-1/capture')).toBeInTheDocument()
+    })
+
+    it('shows Continue result and Import result in the menu for a draft', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ matchDate: PAST, resultStatus: 'DRAFT' }))
+
+      await user.click(within(screen.getByTestId('match-header-buttons')).getByRole('button', { name: /^Result/ }))
+      const menu = await screen.findByRole('menu', { name: 'Result actions' })
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Continue result', 'Import result'])
+    })
+
+    it('replaces the menu with a plain View result button once a result is published', async () => {
+      await renderLoaded(makeMatch({ matchDate: PAST, resultStatus: 'PUBLISHED' }))
+
+      const header = screen.getByTestId('match-header-buttons')
+      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
+      expect(within(header).getByRole('link', { name: 'View result' })).toHaveAttribute('href', '/manage/results/match-1')
+    })
+
+    it('shows just a plain Capture result button before the match has started (no import yet)', async () => {
+      await renderLoaded(makeMatch({ matchDate: FUTURE }))
+
+      const header = screen.getByTestId('match-header-buttons')
+      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
+      expect(within(header).getByRole('link', { name: 'Capture result' })).toHaveAttribute('href', '/manage/results/match-1/capture')
+    })
+
+    it('offers no result action at all for an inactive match without a result', async () => {
+      await renderLoaded(makeMatch({ matchDate: PAST, active: false }))
+
+      const header = screen.getByTestId('match-header-buttons')
+      expect(within(header).queryByRole('button', { name: /^Result/ })).not.toBeInTheDocument()
+      expect(within(header).queryByRole('link', { name: /result/i })).not.toBeInTheDocument()
+      expect(within(header).getByRole('link', { name: 'Edit' })).toBeInTheDocument()
+    })
+  })
+
+  describe('header: More menu', () => {
+    const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'More actions' }))
+      return screen.findByRole('menu', { name: 'More actions' })
+    }
+
+    it('offers Deactivate and Delete for an active match', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ deletable: true }))
+
+      const menu = await openMore(user)
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Deactivate', 'Delete'])
+    })
+
+    it('Deactivate asks for confirmation, then deactivates and refreshes the match', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch())
+      getMatch.mockResolvedValue(makeMatch({ active: false }))
+
+      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
+      expect(deactivateMatch).not.toHaveBeenCalled()
+      await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
+
+      await waitFor(() => expect(deactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
+      expect(await screen.findByTestId('match-inactive-badge')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('cancelling the Deactivate confirmation changes nothing', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch())
+
+      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+      expect(deactivateMatch).not.toHaveBeenCalled()
+    })
+
+    it('shows Reactivate for an inactive match and reactivates after confirmation', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ active: false }))
+
+      const menu = await openMore(user)
+      expect(within(menu).queryByRole('menuitem', { name: 'Deactivate' })).not.toBeInTheDocument()
+      await user.click(within(menu).getByRole('menuitem', { name: 'Reactivate' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Reactivate this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Reactivate' }))
+
+      await waitFor(() => expect(reactivateMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
+    })
+
+    it('keeps the dialog open with the reason when the call fails', async () => {
+      const user = userEvent.setup()
+      deactivateMatch.mockRejectedValueOnce(new Error('boom'))
+      await renderLoaded(makeMatch())
+
+      await user.click(within(await openMore(user)).getByRole('menuitem', { name: 'Deactivate' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Deactivate this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Something went wrong')
+    })
+
+    it('Delete is enabled for a deletable match: confirms, deletes and goes to the Matches list with the notice', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ deletable: true }))
+
+      const item = within(await openMore(user)).getByRole('menuitem', { name: 'Delete' })
+      expect(item).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(item)
+      const dialog = await screen.findByRole('dialog', { name: 'Delete this match?' })
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(deleteMatch).toHaveBeenCalledWith('test-club-id', 'match-1'))
+      expect(await screen.findByText(/At: \/manage\/fixtures\/matches/)).toHaveTextContent('Notice: Match deleted.')
+    })
+
+    it('Delete is disabled with the explanation when something is recorded against the match', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch({ deletable: false }))
+
+      const item = within(await openMore(user)).getByRole('menuitem', { name: /^Delete/ })
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(item).not.toHaveClass('Mui-disabled')
+      expect(item).toHaveAttribute('tabindex')
+      const reason = 'A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.'
+      expect(item).toHaveAccessibleDescription(reason)
+      expect(screen.getByText(reason)).toBeVisible()
+      expect(window.getComputedStyle(screen.getByText(reason)).opacity).not.toBe('0.38')
+      fireEvent.click(item)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(deleteMatch).not.toHaveBeenCalled()
+    })
+
+    it('treats a match with no deletable flag as not deletable', async () => {
+      const user = userEvent.setup()
+      await renderLoaded(makeMatch())
+      expect(within(await openMore(user)).getByRole('menuitem', { name: /^Delete/ })).toHaveAttribute('aria-disabled', 'true')
     })
   })
 

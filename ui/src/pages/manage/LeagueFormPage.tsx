@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button as MuiButton, Stack, Typography } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { useTheme } from '@mui/material/styles'
 import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LeagueForm, LEAGUE_FORM_ID } from '../../components/LeagueForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
 import { HeaderSeasonSelect } from '../../components/HeaderSeasonSelect'
+import { LeagueAgeReferenceLine } from '../../components/LeagueAgeReferenceLine'
 import { Button } from '../../components/Button'
 import { RecordStatusToggle } from '../../components/RecordStatusToggle'
 import { EmptyState } from '../../components/EmptyState'
@@ -19,6 +20,7 @@ import { LeagueEditTabs } from './leagueEdit/LeagueEditTabs'
 import { resolveLeagueEditTab } from './leagueEdit/leagueEditTabConfig'
 import { LeagueEditTeamsTab } from './leagueEdit/LeagueEditTeamsTab'
 import { LeagueEditScheduleTab } from './leagueEdit/LeagueEditScheduleTab'
+import { LeagueSeasonDatesBlock } from './leagueEdit/LeagueSeasonDatesBlock'
 import { LeagueEditConditionsTab } from './leagueEdit/LeagueEditConditionsTab'
 import { LeagueEditContactsTab } from './leagueEdit/LeagueEditContactsTab'
 import { listLeagues, createLeague, updateLeague, deactivateLeague, reactivateLeague } from '../../api/leagueApi'
@@ -367,6 +369,30 @@ export default function LeagueFormPage() {
           ) : undefined
         }
       >
+        {/* docs/specs/110: the date ages are judged on this season, from the server. Sits above the form it describes. */}
+        {isEdit && activeTab === 'details' && league && (
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <LeagueAgeReferenceLine
+              clubId={clubId}
+              leagueId={league.id}
+              seasonId={selectedSeasonId}
+              hasAgeLimit={league.minAge != null || league.maxAge != null}
+            />
+          </Box>
+        )}
+
+        {/* docs/specs/111: Details has no header pill, so the block carries its own Season select, sharing the page's selected season. */}
+        {isEdit && activeTab === 'details' && seasons.length > 0 && selectedSeasonId && (
+          <LeagueSeasonDatesBlock
+            clubId={clubId}
+            leagueId={leagueId as string}
+            seasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
+            seasons={seasons}
+            onSeasonChange={setSelectedSeasonId}
+          />
+        )}
+
         {activeTab === 'details' && (
           <LeagueForm
             initialValues={
@@ -376,7 +402,8 @@ export default function LeagueFormPage() {
                     maxPlayingXiSize: league.maxPlayingXiSize,
                     minAge: league.minAge,
                     maxAge: league.maxAge,
-                    ageCutoffDate: league.ageCutoffDate,
+                    ageCutoffMonth: league.ageCutoffMonth,
+                    ageCutoffDay: league.ageCutoffDay,
                     format: league.format,
                     logoUrl: league.logoUrl,
                     phone: league.phone,
@@ -387,6 +414,16 @@ export default function LeagueFormPage() {
                 : undefined
             }
             onSubmit={(payload) => saveMutation.mutate(payload)}
+          />
+        )}
+
+        {/* docs/specs/111: when the league runs in the chosen season, above the season-scoped tabs (the header pill picks the season). */}
+        {isEdit && SEASON_TABS.includes(activeTab) && seasons.length > 0 && selectedSeasonId && (
+          <LeagueSeasonDatesBlock
+            clubId={clubId}
+            leagueId={leagueId as string}
+            seasonId={selectedSeasonId}
+            seasonLabel={seasonLabel}
           />
         )}
 

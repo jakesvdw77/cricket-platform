@@ -6,7 +6,6 @@ import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.Person;
 import com.cricketlegend.domain.PlayerProfile;
 import com.cricketlegend.domain.PlayerSection;
-import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Team;
 import com.cricketlegend.domain.TeamSquadMember;
 import com.cricketlegend.exception.NotFoundException;
@@ -14,7 +13,6 @@ import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.PersonRepository;
 import com.cricketlegend.repository.PlayerProfileRepository;
 import com.cricketlegend.repository.PlayerSectionRepository;
-import com.cricketlegend.repository.SeasonRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import java.time.LocalDate;
 import java.time.Period;
@@ -34,7 +32,7 @@ import org.springframework.stereotype.Component;
  * team is its roster for the match's season plus, for a team of the match's own club, every player
  * tagged to the team's section or any descendant; a player must also be an active profile of the
  * match's club. The age rule is the {@code 029} rule unchanged (the league's {@code minAge}/{@code
- * maxAge} against the cutoff date or season start, a missing date of birth failing where an age
+ * maxAge} against the date {@link LeagueAgeReference} gives (spec 110), a missing date of birth failing where an age
  * rule exists).
  */
 @Component
@@ -60,7 +58,7 @@ public class SelectionEligibility {
     private final TeamSquadMemberRepository teamSquadMemberRepository;
     private final PlayerSectionRepository playerSectionRepository;
     private final LeagueRepository leagueRepository;
-    private final SeasonRepository seasonRepository;
+    private final LeagueAgeReference ageReference;
     private final AccessService accessService;
 
     public SelectionEligibility(
@@ -69,14 +67,14 @@ public class SelectionEligibility {
             TeamSquadMemberRepository teamSquadMemberRepository,
             PlayerSectionRepository playerSectionRepository,
             LeagueRepository leagueRepository,
-            SeasonRepository seasonRepository,
+            LeagueAgeReference ageReference,
             AccessService accessService) {
         this.playerProfileRepository = playerProfileRepository;
         this.personRepository = personRepository;
         this.teamSquadMemberRepository = teamSquadMemberRepository;
         this.playerSectionRepository = playerSectionRepository;
         this.leagueRepository = leagueRepository;
-        this.seasonRepository = seasonRepository;
+        this.ageReference = ageReference;
         this.accessService = accessService;
     }
 
@@ -171,30 +169,26 @@ public class SelectionEligibility {
         if (league.getMinAge() == null && league.getMaxAge() == null) {
             return problems;
         }
-        Season season = league.getAgeCutoffDate() != null ? null : seasonRepository
-                .findById(match.getSeasonId())
-                .orElseThrow(() -> new NotFoundException("Season not found: " + match.getSeasonId()));
-        return ageProblems(league, season, playerIds, players);
+        return ageProblems(league, ageReference.of(league, match.getSeasonId()).referenceDate(), playerIds, players);
     }
 
     /**
-     * The age rule for already loaded rows: {@code season} is only read (for its start date) when
-     * the league has no cutoff date of its own, so the caller may pass null otherwise. Shared with
-     * the batch overview, which loads every league and season in one query each.
+     * The age rule for already loaded rows, judged on {@code referenceDate} as computed by {@link LeagueAgeReference}
+     * (docs/specs/110-league-age-cutoff-day-and-month.md). Shared with the batch overview, which computes the dates
+     * for every league and season at once.
      */
     public Map<UUID, String> ageProblems(
-            League league, Season season, Collection<UUID> playerIds, Map<UUID, PlayerInfo> players) {
+            League league, LocalDate referenceDate, Collection<UUID> playerIds, Map<UUID, PlayerInfo> players) {
         Map<UUID, String> problems = new HashMap<>();
         if (league.getMinAge() == null && league.getMaxAge() == null) {
             return problems;
         }
-        LocalDate cutoffDate = league.getAgeCutoffDate() != null ? league.getAgeCutoffDate() : season.getStartDate();
         for (UUID playerId : playerIds) {
             PlayerInfo info = players.get(playerId);
             if (info == null) {
                 continue;
             }
-            String problem = ageProblem(league, cutoffDate, info);
+            String problem = ageProblem(league, referenceDate, info);
             if (problem != null) {
                 problems.put(playerId, problem);
             }
@@ -202,17 +196,18 @@ public class SelectionEligibility {
         return problems;
     }
 
-    private String ageProblem(League league, LocalDate cutoffDate, PlayerInfo info) {
+    private String ageProblem(League league, LocalDate referenceDate, PlayerInfo info) {
         LocalDate dateOfBirth = info.dateOfBirth();
         if (dateOfBirth == null) {
             return info.fullName() + " has no recorded date of birth; required for this league's age rule";
         }
-        int age = Period.between(dateOfBirth, cutoffDate).getYears();
+        int age = Period.between(dateOfBirth, referenceDate).getYears();
+        String asAt = " as at " + LeagueSeasonDates.format(referenceDate);
         if (league.getMinAge() != null && age < league.getMinAge()) {
-            return info.fullName() + " is " + age + ", below this league's minAge of " + league.getMinAge();
+            return info.fullName() + " is " + age + ", below this league's minAge of " + league.getMinAge() + asAt;
         }
         if (league.getMaxAge() != null && age > league.getMaxAge()) {
-            return info.fullName() + " is " + age + ", above this league's maxAge of " + league.getMaxAge();
+            return info.fullName() + " is " + age + ", above this league's maxAge of " + league.getMaxAge() + asAt;
         }
         return null;
     }

@@ -26,8 +26,11 @@ export interface PlayerQuickFormProps {
   // The guest's section: its age limits narrow the date of birth box (min and max, a helper line, an amber note for a date
   // outside them). Guidance only; nothing is prefilled and nothing is blocked.
   section?: Pick<Section, 'name' | 'minAge' | 'maxAge'> | null
-  // The match's league: its age cut-off date and limits take over from the section's.
-  league?: Pick<League, 'minAge' | 'maxAge' | 'ageCutoffDate'> | null
+  // The match's league: its age limits take over from the section's.
+  league?: Pick<League, 'minAge' | 'maxAge'> | null
+  // docs/specs/110: the day ages are judged on (yyyy-MM-dd), as the server worked it out for the league and season. Empty
+  // means today.
+  referenceDate?: string | null
   // Called with trimmed values once the required fields pass the same checks as PlayerForm.
   onSubmit: (values: PlayerQuickValues) => void
 }
@@ -35,10 +38,10 @@ export interface PlayerQuickFormProps {
 // docs/specs/104-match-results-import-adaptors.md: the few fields the server requires to create a player (first name,
 // last name, date of birth), for creating one from inside another dialog. The rest is added later from the player's page.
 // Date of birth is left empty on purpose: the manager has to enter it.
-export function PlayerQuickForm({ initialFirstName = '', initialLastName = '', submitLabel, pending = false, error = null, section = null, league = null, onSubmit }: PlayerQuickFormProps) {
+export function PlayerQuickForm({ initialFirstName = '', initialLastName = '', submitLabel, pending = false, error = null, section = null, league = null, referenceDate = null, onSubmit }: PlayerQuickFormProps) {
   const [values, setValues] = useState<PlayerQuickValues>({ firstName: initialFirstName, lastName: initialLastName, dateOfBirth: '' })
   const [errors, setErrors] = useState<PlayerBasicsErrors>({})
-  const window = birthDateWindow({ section, league })
+  const window = birthDateWindow({ section, league, referenceDate })
   const outside = window !== null && isOutsideWindow(window, values.dateOfBirth)
   const change = (key: keyof PlayerQuickValues) => (event: { target: { value: string } }) => setValues((prev) => ({ ...prev, [key]: event.target.value }))
 

@@ -224,6 +224,14 @@ public interface MatchService {
     MatchDto reactivate(Authentication authentication, UUID clubId, UUID matchId);
 
     /**
+     * docs/specs/109-delete-empty-match.md: hard-deletes a match with nothing recorded against it. Same access rule as
+     * edit and deactivate; 404 for an unknown or another club's match; throws {@link
+     * com.cricketlegend.exception.MatchNotEmptyException} (409) naming what exists when it has a result, poll, squad,
+     * team selection or availability window.
+     */
+    void delete(Authentication authentication, UUID clubId, UUID matchId);
+
+    /**
      * Item 9's "Re-select from Previous Match" picker — see
      * docs/specs/037-match-improvements.md. 404s if {@code teamId}/{@code seasonId} don't belong
      * to {@code clubId} (same access-control shape as {@code TeamSquadServiceImpl}). Lists this

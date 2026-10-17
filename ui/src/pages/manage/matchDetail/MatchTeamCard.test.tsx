@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MatchTeamCard } from './MatchTeamCard'
 import type { MatchSide } from '../../../api/matchSideApi'
 
@@ -38,13 +39,31 @@ function renderCard(props: Partial<Parameters<typeof MatchTeamCard>[0]> = {}) {
 }
 
 describe('MatchTeamCard', () => {
-  it('shows the heading, the announced chip and the empty selection with a Select team link', () => {
+  it('shows the heading, the announced chip and the empty selection', () => {
     renderCard()
     expect(screen.getByRole('heading', { name: '1st XI · Home' })).toBeInTheDocument()
     expect(screen.getByText('Not announced')).toBeInTheDocument()
     expect(screen.getByText('No players selected yet.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/edit?tab=playing-xi')
     expect(screen.getByText('0 of 12 picked')).toBeInTheDocument()
+  })
+
+  // docs/specs/089 (Match page actions, 2026-10-16): the team actions sit at the foot of the card, whatever the selection.
+  it('has one Select team link in the action row, empty selection or not', () => {
+    renderCard()
+    expect(screen.getAllByRole('link', { name: 'Select team' })).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Select team' })).toHaveAttribute('href', '/edit?tab=playing-xi')
+    expect(screen.getByRole('group', { name: 'Team actions' })).toContainElement(screen.getByRole('link', { name: 'Select team' }))
+  })
+
+  it('shows Share team sheet only when it is given a handler, and calls it', async () => {
+    const onShare = vi.fn()
+    const { unmount } = renderCard()
+    expect(screen.queryByRole('button', { name: /share team sheet/i })).not.toBeInTheDocument()
+    unmount()
+
+    renderCard({ onShare })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Share team sheet for 1st XI' }))
+    expect(onShare).toHaveBeenCalledTimes(1)
   })
 
   it('shows the picked count and no bar for a match with no league', () => {

@@ -86,6 +86,14 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
+    /** docs/specs/111-league-season-dates.md: a 400 carrying the stable {@code code}. Wins over the generic handler. */
+    @ExceptionHandler(MatchOutsideLeagueDatesException.class)
+    ProblemDetail handleMatchOutsideLeagueDates(MatchOutsideLeagueDatesException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setProperty("code", MatchOutsideLeagueDatesException.CODE);
+        return problem;
+    }
+
     @ExceptionHandler(ValidationException.class)
     ProblemDetail handleValidation(ValidationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

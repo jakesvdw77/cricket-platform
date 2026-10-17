@@ -7,7 +7,7 @@ import { useCreateMatch, useMatchFormData } from '../../hooks/useMatchFormData'
 import type { Match, MatchPayload } from '../../api/matchApi'
 import type { Season } from '../../api/seasonApi'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
-import { errorDetail } from '../../utils/errorDetail'
+import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { teamNameKey } from '../../utils/teamNameKey'
 import type { Team } from '../../api/teamApi'
 
@@ -83,10 +83,16 @@ function DialogBody({ clubId, onClose, onCreated, initialValues, inferSeason, hi
           </Typography>
         ) : (
           <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
-            <MatchForm clubId={clubId} initialValues={values} {...formProps} onSubmit={(payload) => create.mutate(payload)} />
+            <MatchForm
+              clubId={clubId}
+              initialValues={values}
+              {...formProps}
+              onSubmit={(payload) => create.mutate(payload)}
+              matchDateServerError={matchOutsideLeagueDatesMessage(create.error)}
+            />
           </Box>
         )}
-        {create.isError && (
+        {create.isError && !matchOutsideLeagueDatesMessage(create.error) && (
           <Typography variant="body2" color="error.main" sx={{ mt: 2 }}>
             {errorDetail(create.error, 'Something went wrong saving this match. Please try again.')}
           </Typography>

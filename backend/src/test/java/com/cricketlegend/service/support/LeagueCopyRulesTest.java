@@ -23,7 +23,7 @@ class LeagueCopyRulesTest {
 
     private League source() {
         return League.builder().id(UUID.randomUUID()).clubId(clubId).name("Division 1").source(LeagueSource.EXTERNAL)
-                .maxPlayingXiSize(9).minAge(12).maxAge(15).ageCutoffDate(LocalDate.of(2031, 9, 1))
+                .maxPlayingXiSize(9).minAge(12).maxAge(15).ageCutoffMonth(12).ageCutoffDay(31)
                 .format(LeagueFormat.T20).logoUrl("/media/l.png").phone("0123").website("https://l.example")
                 .email("a@l.example")
                 .socialLinks(new ArrayList<>(List.of(SocialLink.builder().platform("facebook").url("https://fb").build())))
@@ -60,7 +60,8 @@ class LeagueCopyRulesTest {
         assertThat(copy.getMaxPlayingXiSize()).isEqualTo(9);
         assertThat(copy.getMinAge()).isEqualTo(12);
         assertThat(copy.getMaxAge()).isEqualTo(15);
-        assertThat(copy.getAgeCutoffDate()).isEqualTo(LocalDate.of(2031, 9, 1));
+        assertThat(copy.getAgeCutoffMonth()).isEqualTo(12);
+        assertThat(copy.getAgeCutoffDay()).isEqualTo(31);
         assertThat(copy.getFormat()).isEqualTo(LeagueFormat.T20);
         assertThat(copy.getLogoUrl()).isEqualTo("/media/l.png");
         assertThat(copy.getPhone()).isEqualTo("0123");

@@ -22,6 +22,7 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import { avatarSx, badgeSx } from '../../../components/RecordCard'
 import { EmptyState } from '../../../components/EmptyState'
 import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
+import { LeagueAgeReferenceLine } from '../../../components/LeagueAgeReferenceLine'
 import { ShareScheduleDialog } from '../../../components/ShareScheduleDialog'
 import type { ShareScheduleTeamOption } from '../../../components/ShareScheduleDialog'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
@@ -445,6 +446,14 @@ export default function LeagueViewLayout() {
         maxPlayingXiSize={league.maxPlayingXiSize}
         minAge={league.minAge}
         maxAge={league.maxAge}
+      />
+
+      {/* docs/specs/110: which date ages are judged on in the selected season (quiet while loading or on error). */}
+      <LeagueAgeReferenceLine
+        clubId={clubId}
+        leagueId={leagueId}
+        seasonId={selectedSeasonId}
+        hasAgeLimit={league.minAge != null || league.maxAge != null}
       />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>

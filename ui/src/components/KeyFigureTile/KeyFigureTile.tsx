@@ -23,11 +23,14 @@ export interface KeyFigureTileProps {
   // docs/specs/099-fields-directory.md: makes the tile a link to this route (the match page's Field tile opens the field
   // page). It has no dropdown arrow; `onClick` wins if both are passed.
   to?: string
+  // A button drawn under the caption (the match page's poll tile: Open availability). Only for a tile that is not itself a
+  // button or link, so the two never nest.
+  action?: ReactNode
 }
 
 // docs/specs/088 (Player page) and docs/specs/089 (match page): one non-clickable tile of a key-figure strip - a tinted
 // icon tile, a large value and a caption. The strip itself (a 4-up / 2-up grid) belongs to the page.
-export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to }: KeyFigureTileProps) {
+export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue = false, testId, onClick, ariaLabel, expanded, disabled = false, to, action }: KeyFigureTileProps) {
   const warn = tone === 'warning'
   const asLink = Boolean(to) && !onClick
   const interactive = Boolean(onClick) || asLink
@@ -101,6 +104,7 @@ export function KeyFigureTile({ icon, value, label, tone = 'neutral', textValue 
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.8125rem' } }}>
           {label}
         </Typography>
+        {action && !interactive && <Box sx={{ mt: 1 }}>{action}</Box>}
       </Box>
       {onClick && <ArrowDropDownIcon aria-hidden sx={{ flex: 'none', color: 'text.secondary' }} />}
     </Box>

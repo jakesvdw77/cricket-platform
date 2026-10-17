@@ -164,7 +164,7 @@ public final class ManagerOverviewFixtures {
     public League leagueWithProfile(World w, String name, boolean active) {
         return leagueRepository.save(League.builder().clubId(w.club().getId()).name(name)
                 .source(LeagueSource.INTERNAL).maxPlayingXiSize(9).minAge(12).maxAge(15)
-                .ageCutoffDate(LocalDate.of(2031, 9, 1)).format(LeagueFormat.T20).logoUrl("/media/league.png")
+                .ageCutoffMonth(12).ageCutoffDay(31).format(LeagueFormat.T20).logoUrl("/media/league.png")
                 .phone("0123456789").website("https://league.example").email("info@league.example")
                 .socialLinks(new ArrayList<>(List.of(
                         SocialLink.builder().platform("facebook").url("https://facebook.com/league").build(),
@@ -236,8 +236,12 @@ public final class ManagerOverviewFixtures {
     }
 
     public PlayerProfile player(World w, String firstName, boolean active) {
+        return player(w, firstName, active, LocalDate.of(1995, 1, 1));
+    }
+
+    public PlayerProfile player(World w, String firstName, boolean active, LocalDate dateOfBirth) {
         Person person = personRepository.save(Person.builder().firstName(firstName).lastName("Player")
-                .dateOfBirth(LocalDate.of(1995, 1, 1)).build());
+                .dateOfBirth(dateOfBirth).build());
         personIds.add(person.getId());
         return playerProfileRepository.save(
                 PlayerProfile.builder().personId(person.getId()).clubId(w.club().getId()).active(active).build());
@@ -248,6 +252,47 @@ public final class ManagerOverviewFixtures {
         teamSquadMemberRepository.save(TeamSquadMember.builder().teamId(team.getId())
                 .seasonId(w.season().getId()).playerProfileId(profile.getId()).build());
         return profile;
+    }
+
+    /** An active player born on {@code dateOfBirth} on {@code team}'s roster for the world's season (spec 110). */
+    public PlayerProfile rosterPlayerBorn(World w, Team team, String firstName, LocalDate dateOfBirth) {
+        PlayerProfile profile = player(w, firstName, true, dateOfBirth);
+        teamSquadMemberRepository.save(TeamSquadMember.builder().teamId(team.getId())
+                .seasonId(w.season().getId()).playerProfileId(profile.getId()).build());
+        return profile;
+    }
+
+    /**
+     * docs/specs/113: a player a result may carry for {@code team}: active, on its roster for the world's season and
+     * tagged to the team's section, born 1 Jan 1995 (so under no league's age rule that a test sets up for adults).
+     */
+    public PlayerProfile eligiblePlayer(World w, Team team, String firstName) {
+        return eligiblePlayer(w, team, firstName, LocalDate.of(1995, 1, 1));
+    }
+
+    /** As {@link #eligiblePlayer(World, Team, String)} with a chosen date of birth. */
+    public PlayerProfile eligiblePlayer(World w, Team team, String firstName, LocalDate dateOfBirth) {
+        PlayerProfile profile = rosterPlayerBorn(w, team, firstName, dateOfBirth);
+        tagToSection(team.getSectionId(), profile);
+        return profile;
+    }
+
+    /**
+     * docs/specs/113: an active player tagged to the team's section but NOT on its roster, so a result may carry them
+     * for that team without the squad notice ever applying.
+     */
+    public PlayerProfile sectionPlayer(World w, Team team, String firstName) {
+        return makeEligible(team, player(w, firstName, true));
+    }
+
+    /** Tags an existing player to the team's section (spec 113), so a result may carry them for that team. */
+    public PlayerProfile makeEligible(Team team, PlayerProfile profile) {
+        tagToSection(team.getSectionId(), profile);
+        return profile;
+    }
+
+    private void tagToSection(UUID sectionId, PlayerProfile profile) {
+        playerSectionRepository.save(PlayerSection.builder().playerProfileId(profile.getId()).sectionId(sectionId).build());
     }
 
     public void tag(Section section, PlayerProfile profile) {
@@ -365,6 +410,7 @@ public final class ManagerOverviewFixtures {
                 "delete from section_availability_window_match where window_id in (" + windows + ")",
                 "delete from match where club_id in (" + clubs + ")",
                 "delete from league_social_link where league_id in (select id from league where club_id in (" + clubs + "))",
+                "delete from league_season where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_playing_conditions where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_contact where league_id in (select id from league where club_id in (" + clubs + "))",
                 "delete from league_team where league_id in (select id from league where club_id in (" + clubs + "))",

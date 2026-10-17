@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Link, Stack, Typography } from '@mui/material'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Alert, Box, Link, Stack, Typography } from '@mui/material'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/Button'
 import { CompactSwitch } from '../../components/CompactSwitch'
@@ -24,6 +24,7 @@ import { listSections } from '../../api/sectionApi'
 import { listPlayingAreas, playingAreasKey } from '../../api/playingAreaApi'
 import { MatchCard } from './matches/MatchCard'
 import { MatchTable } from './matches/MatchTable'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useListViewPreference } from '../../hooks/useListViewPreference'
 import { cardGridSx } from '../../utils/cardGrid'
 import { scopeFilterText } from '../../utils/availabilityScope'
@@ -85,6 +86,20 @@ export default function MatchList({
 }: MatchListProps) {
   const { clubId } = useOutletContext<{ clubId?: string }>()
   const navigate = useNavigate()
+  // docs/specs/109-delete-empty-match.md: the success notice a navigation carries in router state (same convention as the
+  // league page, 096). Read once, shown until dismissed, then the router state is cleared so a reload does not repeat it.
+  const location = useLocation()
+  const [notice, setNotice] = useState<string | null>(() => {
+    const carried = (location.state as { notice?: unknown } | null)?.notice
+    return typeof carried === 'string' ? carried : null
+  })
+  useEffect(() => {
+    if ((location.state as { notice?: unknown } | null)?.notice) {
+      navigate(location.pathname + location.search, { replace: true, state: null })
+    }
+  }, [location, navigate])
+  // docs/specs/109: one confirm dialog for Delete on a card or a row; success shows the same notice the Match page's delete does.
+  const { request: requestDelete, dialog: deleteDialog } = useDeleteMatchDialog(clubId ?? '', () => setNotice('Match deleted.'))
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -425,6 +440,12 @@ export default function MatchList({
         }
       />
 
+      {notice && (
+        <Alert severity="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
+
       {/* docs/specs/087-matches-polls-alignment.md (B): the Polls toolbar - the shared FilterBar (League,
           Section, Team and search; Season is the pill in the header, 089; Team arrives with its backend param in the counters slice) and a content
           line with the scope text, the sort link and the Show past matches switch. On a phone the switch and
@@ -507,6 +528,7 @@ export default function MatchList({
           leaguesById={leaguesById}
           seasonsById={seasonsById}
           viewTo={viewTo ? (match) => viewTo(match.id) : undefined}
+          onDelete={requestDelete}
         />
       )}
 
@@ -522,6 +544,7 @@ export default function MatchList({
               seasonsById={seasonsById}
               editTo={editTo(match.id)}
               viewTo={viewTo ? viewTo(match.id) : undefined}
+              onDelete={requestDelete}
             />
           ))}
         </Box>
@@ -563,6 +586,7 @@ export default function MatchList({
           </Button>
         </Stack>
       )}
+      {deleteDialog}
     </Box>
   )
 }

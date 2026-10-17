@@ -79,6 +79,18 @@ Import rules (spec 104):
 - **PDFBox is imported by one class.** Apache PDFBox (approved for spec 108) is used only by `service.adaptor.StumpsPdfText`, which turns a PDF into numbered lines; the parser and every other class see only those lines (ArchUnit `onlyStumpsPdfTextImportsPdfBox`, proven non-vacuous). It reads text only: no JavaScript, no embedded files, no network, at most 30 pages, and a corrupt, protected or text-less PDF is refused with a plain message. A name or a line of a report is never logged or put in an error message.
 - **The preview is stateless.** The document goes to the browser and comes back with `resolve`; the server re-validates it and recomputes every match level. The raw payload is not stored (`source_payload` stays null).
 
+## Age reference date (spec 110)
+
+- **The date a league judges ages on is computed only by `LeagueAgeReference`** (`service.support`): the league's cut-off day and month in the calendar year the league starts in that season (the league season start date if set (spec 111), else the first active match, else the season start), or the league start itself when there is no cut-off. `SelectionEligibility`, `TeamSelectionBatchRules` and the age-reference-date endpoint all call it; never recompute the date elsewhere, and use its batch method (`ofAll`) rather than one query per match.
+
+## League season dates (spec 111)
+
+- **A match in a league season that has dates must fall within them.** The check lives only in `LeagueSeasonDates.assertWithin` (`service.support`), called by `MatchServiceImpl` create, update and reactivate, and a future bulk or schedule-import path must call it per fixture; it refuses with `MatchOutsideLeagueDatesException` (400, problem property `code` = `MATCH_OUTSIDE_LEAGUE_DATES`). A league season with no `league_season` row, a friendly and a deactivate are not checked. The dates themselves may not exclude an active match (`LeagueDatesExcludeMatchesException`, 409).
+
+## Registered players on a result (spec 113)
+
+- **A registered player of one of our sides is checked only by `ResultPlayerEligibility`** (`service.support`): in the side's team's section or a descendant, and inside the league's age rule (`SelectionEligibility.ageProblems`). The save refusal (`ScorecardServiceImpl` replace, replaceImported and link, newly added players only), the validation errors `PLAYER_NOT_IN_SECTION` and `PLAYER_AGE_INELIGIBLE` and the import candidate filter all call it; never re-implement the rule or query per player.
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:
@@ -105,6 +117,10 @@ A platform admin's own actions (`/api/v1/platform/**`, gated by URL in `Security
 - **Derived credits are recomputed server-side on every save** (`DismissalCredits`): `DERIVED` bowling wickets and fielding credits follow the dismissals; **`MANUAL` rows are never touched**.
 - **Validation issue shape:** `ResultIssueDto` with `code`, `step`, `side`, `severity` (and message), built on `WarningCode`/`ErrorCode`; clients read `code`, never message text.
 - **Migrations:** `044-match-results-our-side-scorecard` (result_player, batting/bowling/fielding entries, match_award, extras, deferrable sequence), `045-match-results-opposition-scorecard` (opposition flag, dismissal bowler/fielder, credit sources, dots, award keeps its name), `046-match-innings-partial-figures` (nullable runs/wickets/balls), `047-batting-entry-how-out-nullable`.
+
+## Deleting records (spec 109)
+
+- **A delete is allowed only on an empty record.** The service checks, in one place (e.g. `MatchEmptiness`), that nothing is attached (a structural row with nothing chosen in it, such as an empty unannounced `match_side`, is not an attachment and is removed with the record), and refuses otherwise with a `ConflictException` (409) whose message names what exists and the alternative (Deactivate). No cascading deletes. Expose a batched `deletable` flag on the read DTO so screens never need a call per row.
 
 ## Enforcement
 

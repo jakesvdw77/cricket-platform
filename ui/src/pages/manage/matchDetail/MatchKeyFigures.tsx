@@ -1,4 +1,5 @@
-import { Box } from '@mui/material'
+import type { MouseEvent } from 'react'
+import { Box, Button as MuiButton, Typography } from '@mui/material'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
@@ -27,6 +28,11 @@ export interface MatchKeyFiguresProps {
   pollClosesAt: string | null
   // docs/specs/100: the match's real result state; "Played" now means a published result.
   resultStatus?: MatchResultStatus | null
+  // docs/specs/089 (Match page actions, 2026-10-16): the poll tile carries Open availability. Omitted, the tile has no button.
+  onOpenAvailability?: (event: MouseEvent<HTMLElement>) => void
+  availabilityDisabled?: boolean
+  // Why Open availability is disabled, shown as a tooltip on its wrapper (a disabled button swallows pointer events) and as visible caption text under the button.
+  availabilityDisabledReason?: string
 }
 
 const NOT_KNOWN = '–'
@@ -50,7 +56,7 @@ function pollCaption(polls: MatchPoll[], closesAt: string | null): string {
 
 // docs/specs/089 (A): the four things a manager reads first on the match page - when it starts (with the card's live
 // countdown, amber within 24 hours, "Played" once it has started), where, in which league and season, and the poll.
-export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus }: MatchKeyFiguresProps) {
+export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVerificationStatus, leagueName, seasonLabel, pollsReady, polls, pollClosesAt, resultStatus, onOpenAvailability, availabilityDisabled = false, availabilityDisabledReason }: MatchKeyFiguresProps) {
   const kickoff = useCountdown(matchDate)
   const started = kickoff.stage === 'expired'
   const played = resultStatus === 'PUBLISHED'
@@ -94,6 +100,30 @@ export function MatchKeyFigures({ matchDate, venue, playingAreaId, playingAreaVe
         value={pollsReady ? pollValue(polls) : NOT_KNOWN}
         label={pollsReady ? pollCaption(polls, pollClosesAt) : 'Poll'}
         textValue
+        action={
+          onOpenAvailability && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+              <Box component="span" title={availabilityDisabled ? availabilityDisabledReason : undefined} sx={{ display: 'inline-flex' }}>
+                <MuiButton
+                  variant="outlined"
+                  size="small"
+                  disabled={availabilityDisabled}
+                  onClick={onOpenAvailability}
+                  startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
+                  sx={{ minHeight: 44 }}
+                  aria-describedby={availabilityDisabled && availabilityDisabledReason ? 'match-availability-disabled-reason' : undefined}
+                >
+                  Open availability
+                </MuiButton>
+              </Box>
+              {availabilityDisabled && availabilityDisabledReason && (
+                <Typography id="match-availability-disabled-reason" variant="caption" color="text.secondary">
+                  {availabilityDisabledReason}
+                </Typography>
+              )}
+            </Box>
+          )
+        }
       />
     </Box>
   )

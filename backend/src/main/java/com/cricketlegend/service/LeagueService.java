@@ -1,6 +1,7 @@
 package com.cricketlegend.service;
 
 import com.cricketlegend.domain.LeagueListFocus;
+import com.cricketlegend.dto.AgeReferenceDto;
 import com.cricketlegend.dto.CreateLeagueRequest;
 import com.cricketlegend.dto.DuplicateLeagueRequest;
 import com.cricketlegend.dto.DuplicateLeagueResponse;
@@ -33,6 +34,12 @@ public interface LeagueService {
 
     /** Full-resource update. Same {@code minAge <= maxAge} validation as {@link #create}. */
     LeagueDto update(UUID clubId, UUID leagueId, UpdateLeagueRequest request);
+
+    /**
+     * docs/specs/110-league-age-cutoff-day-and-month.md: the date ages are judged on for the league in the season.
+     * Throws {@link com.cricketlegend.exception.NotFoundException} for another club's league or season.
+     */
+    AgeReferenceDto ageReferenceDate(UUID clubId, UUID leagueId, UUID seasonId);
 
     /** Throws {@link com.cricketlegend.exception.InvalidStatusTransitionException} if already inactive. */
     LeagueDto deactivate(UUID clubId, UUID leagueId);

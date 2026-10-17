@@ -1,6 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button as MuiButton, Card as MuiCard, Chip, Stack, Typography } from '@mui/material'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { badgeSx } from '../../../components/RecordCard'
 import { SelectionGauge } from '../../../components/SelectionGauge'
@@ -22,6 +23,8 @@ export interface MatchTeamCardProps {
   playingXiSize: number | null
   // The Edit page's Playing XI tab for this match.
   selectTo: string
+  // Opens the team sheet dialog on this side. Omitted, the card has no Share button.
+  onShare?: () => void
 }
 
 // docs/specs/089 (A): one own side on the match page - a solid-green icon-tile heading, the announced chip, the selection
@@ -37,6 +40,7 @@ export function MatchTeamCard({
   sidesReady,
   playingXiSize,
   selectTo,
+  onShare,
 }: MatchTeamCardProps) {
   const players = side?.players ?? []
   const picked = players.length
@@ -108,9 +112,6 @@ export function MatchTeamCard({
             <Typography variant="body2" color="text.secondary">
               No players selected yet.
             </Typography>
-            <MuiButton component={RouterLink} to={selectTo} variant="outlined" size="small" startIcon={<GroupsOutlinedIcon fontSize="small" />}>
-              Select team
-            </MuiButton>
           </Stack>
         ) : (
           <PlayingXiSummary
@@ -121,6 +122,30 @@ export function MatchTeamCard({
             wicketKeeperPlayerId={side?.wicketKeeperPlayerId ?? null}
             twelfthManPlayerId={side?.twelfthManPlayerId ?? null}
           />
+        )}
+      </Box>
+
+      {/* docs/specs/089 (Match page actions, 2026-10-16): the team actions act on this side, at the foot of its card. */}
+      <Box role="group" aria-label="Team actions" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 'auto' }}>
+        <MuiButton
+          component={RouterLink}
+          to={selectTo}
+          variant="outlined"
+          startIcon={<GroupsOutlinedIcon fontSize="small" />}
+          sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, justifyContent: 'center' }}
+        >
+          Select team
+        </MuiButton>
+        {onShare && (
+          <MuiButton
+            variant="outlined"
+            onClick={onShare}
+            aria-label={`Share team sheet for ${teamName}`}
+            startIcon={<ShareOutlinedIcon fontSize="small" />}
+            sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, justifyContent: 'center' }}
+          >
+            Share team sheet
+          </MuiButton>
         )}
       </Box>
     </MuiCard>

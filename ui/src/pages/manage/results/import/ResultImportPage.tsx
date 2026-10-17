@@ -178,6 +178,7 @@ export default function ResultImportPage() {
       venue: match.venue,
       reasons: [],
       existingResult: null,
+      deletable: match.deletable === true,
     }
     const choose = (data: ImportPreview | null) => {
       const ranked = data?.matchCandidates ?? preview.matchCandidates
@@ -191,6 +192,23 @@ export default function ResultImportPage() {
       if (data) setMapping(mappingFrom(data))
     }
     previewMutation.mutate({ forMatchId: match.id }, { onSuccess: choose, onError: () => choose(null) })
+  }
+
+  // docs/specs/109-delete-empty-match.md: a match deleted from the Match step leaves the candidates (the server's list is the
+  // same minus it, so it is removed here rather than asking again). If it was the chosen one the choice is cleared, so Next is
+  // disabled until another is chosen; if the proposed mapping was made for it, the basis is voided ('' matches no match) so
+  // choosing another asks the server for that match's mapping.
+  const onMatchDeleted = (deletedId: string) => {
+    void queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+    if (!preview) return
+    setPreview({ ...preview, matchCandidates: preview.matchCandidates.filter((item) => item.matchId !== deletedId) })
+    if (matchId === deletedId) {
+      setMatchId(null)
+      setReplaceAck(false)
+      setDateAck(false)
+      setMatchProblem(null)
+    }
+    if ((basisMatchId ?? preview.matchCandidates[0]?.matchId) === deletedId) setBasisMatchId('')
   }
 
   const onCreate = () => {
@@ -237,6 +255,7 @@ export default function ResultImportPage() {
       setMatchProblem(null)
     },
     onMatchCreated,
+    onMatchDeleted,
     onMatchFound: onMatchCreated,
     matchPending: previewMutation.isPending && stepId === 'match',
     matchProblem,

@@ -112,7 +112,7 @@ class ScorecardQueriesIntegrationTest {
             assertThat(s.players()).isEmpty();
         });
 
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
         Match unannounced = match(2);
         fixtures.side(unannounced, w.seniors1(), false, ann);
         assertThat(scorecardService.prefill(admin, clubId, unannounced.getId()).sides().get(0).selectionState())
@@ -132,10 +132,10 @@ class ScorecardQueriesIntegrationTest {
 
     @Test
     void prefillListsPlayersInBattingOrderWithTheTwelfthManOnceAndLastAsASubstitute() {
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
-        PlayerProfile bob = fixtures.player(w, "Bob", true);
-        PlayerProfile cal = fixtures.player(w, "Cal", true);
-        PlayerProfile twelfth = fixtures.player(w, "Tim", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
+        PlayerProfile bob = fixtures.sectionPlayer(w, w.seniors1(), "Bob");
+        PlayerProfile cal = fixtures.sectionPlayer(w, w.seniors1(), "Cal");
+        PlayerProfile twelfth = fixtures.sectionPlayer(w, w.seniors1(), "Tim");
         Match match = match(1);
         MatchSide side = fixtures.side(match, w.seniors1(), true, ann, bob, cal);
         side.setTwelfthManPlayerId(twelfth.getId());
@@ -163,8 +163,8 @@ class ScorecardQueriesIntegrationTest {
 
     @Test
     void prefillInADerbyGivesEachSideItsOwnPlayersAndState() {
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
-        PlayerProfile bob = fixtures.player(w, "Bob", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
+        PlayerProfile bob = fixtures.sectionPlayer(w, w.seniors1(), "Bob");
         Match derby = fixtures.match(w, w.seniors1(), w.seniors2(), Instant.now().minus(Duration.ofDays(1)));
         fixtures.side(derby, w.seniors1(), true, ann);
         fixtures.side(derby, w.seniors2(), false, bob);
@@ -185,7 +185,7 @@ class ScorecardQueriesIntegrationTest {
         Match older = match(5);
         Match newer = match(1);
         saveList(older, guest(H, "g1", "Sam Guest"), guest(H, "g2", "Tim Guest"), opposition(A, "o1", "Opp Guest"));
-        saveList(newer, guest(H, "g1", "sam guest"), guest(H, "g3", "Zed Guest"), registered(H, "p1", fixtures.player(w, "Ann", true).getId()));
+        saveList(newer, guest(H, "g1", "sam guest"), guest(H, "g3", "Zed Guest"), registered(H, "p1", fixtures.sectionPlayer(w, w.seniors1(), "Ann").getId()));
 
         Page<GuestNameDto> all = scorecardService.guestNames(admin, clubId, null, null, PageRequest.of(0, 10));
 
@@ -279,7 +279,7 @@ class ScorecardQueriesIntegrationTest {
         Match ours = against(w, null, "Hillside CC", 15);
         resultService.upsertDraft(admin, clubId, ours.getId(), new ResultDraft(null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, new ScorecardDto(
-                        List.of(guest(H, "g1", "Our Guest"), registered(H, "p1", fixtures.player(w, "Ann", true).getId())),
+                        List.of(guest(H, "g1", "Our Guest"), registered(H, "p1", fixtures.sectionPlayer(w, w.seniors1(), "Ann").getId())),
                         null, null, null, null, null, null)));
         World other = fixtures.world();
         saveOpposition(against(other, null, "Hillside CC", 10), "Spy Opp");

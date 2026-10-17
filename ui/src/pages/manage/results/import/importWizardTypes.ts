@@ -34,6 +34,8 @@ export interface ImportStepContext {
   onMatchChange: (matchId: string) => void
   // A match was added from the Match step's dialog: it joins the candidates, is chosen, and the wizard stays on this step.
   onMatchCreated: (match: Match) => void
+  // docs/specs/109-delete-empty-match.md: an empty match was deleted from the Match step; it leaves the candidates and, if it was chosen, the choice is cleared.
+  onMatchDeleted: (matchId: string) => void
   // A match found by search was chosen: handled like an added one (preview again for it, add it to the candidates, choose it).
   onMatchFound: (match: Match) => void
   matchPending: boolean

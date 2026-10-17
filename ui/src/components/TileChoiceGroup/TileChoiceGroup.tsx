@@ -11,6 +11,10 @@ export interface TileChoiceOption<T extends string> {
   // docs/specs/104: this one tile cannot be chosen (a match that is already published): drawn quiet, skipped by the arrow
   // keys. The rest of the group works as usual.
   disabled?: boolean
+  // docs/specs/109-delete-empty-match.md: a control drawn over the tile's bottom-right corner but outside the radio (so it
+  // is not part of the radio's accessible name, a click on it never chooses the tile, and a button never nests in a button).
+  // The tile gets extra bottom padding to make room for it.
+  adornment?: ReactNode
 }
 
 export interface TileChoiceGroupProps<T extends string> {
@@ -59,7 +63,7 @@ export function TileChoiceGroup<T extends string>({ label, options, value, onCha
     <Box role="radiogroup" aria-label={label} sx={{ display: 'grid', gridTemplateColumns: columns, gap: 1 }}>
       {options.map((option, index) => {
         const selected = index === selectedIndex
-        return (
+        const tile = (
           <ButtonBase
             key={option.value}
             ref={(node: HTMLButtonElement | null) => {
@@ -72,6 +76,7 @@ export function TileChoiceGroup<T extends string>({ label, options, value, onCha
             onClick={() => onChange(option.value)}
             onKeyDown={(event) => onKeyDown(event, index)}
             sx={[
+              option.adornment ? { width: '100%' } : {},
               (theme) => ({
                 display: 'flex',
                 px: 1.5,
@@ -84,10 +89,22 @@ export function TileChoiceGroup<T extends string>({ label, options, value, onCha
                 ...(option.disabled ? { opacity: 0.6, bgcolor: theme.palette.action.hover } : {}),
               }),
               ...(Array.isArray(tileSx) ? tileSx : tileSx ? [tileSx] : []),
+              // Room under the content for the adornment (a 44 px target), applied last so it wins over tileSx.
+              option.adornment ? { pb: 6.5 } : {},
             ]}
           >
             {option.content}
           </ButtonBase>
+        )
+        if (!option.adornment) return tile
+        return (
+          <Box key={option.value} sx={{ position: 'relative', display: 'grid' }}>
+            {tile}
+            {/* Each adornment adds one Tab stop between the radios (they are not part of the roving tab stop). */}
+            <Box role="presentation" sx={{ position: 'absolute', right: 8, bottom: 4 }}>
+              {option.adornment}
+            </Box>
+          </Box>
         )
       })}
     </Box>

@@ -164,7 +164,8 @@ class LeagueDuplicateIntegrationTest {
         assertThat(copy.getMaxPlayingXiSize()).isEqualTo(9);
         assertThat(copy.getMinAge()).isEqualTo(12);
         assertThat(copy.getMaxAge()).isEqualTo(15);
-        assertThat(copy.getAgeCutoffDate()).isEqualTo(LocalDate.of(2031, 9, 1));
+        assertThat(copy.getAgeCutoffMonth()).isEqualTo(12);
+        assertThat(copy.getAgeCutoffDay()).isEqualTo(31);
         assertThat(copy.getFormat()).isEqualTo(LeagueFormat.T20);
         assertThat(copy.getLogoUrl()).isEqualTo("/media/league.png");
         assertThat(copy.getPhone()).isEqualTo("0123456789");

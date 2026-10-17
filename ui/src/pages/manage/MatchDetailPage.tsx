@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import type { ReactNode } from 'react'
-import { Link as RouterLink, useOutletContext, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Box,
   Button as MuiButton,
@@ -10,18 +9,12 @@ import {
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import ScoreboardOutlinedIcon from '@mui/icons-material/ScoreboardOutlined'
 import LiveTvOutlinedIcon from '@mui/icons-material/LiveTvOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import { badgeSx } from '../../components/RecordCard'
 import { EmptyState } from '../../components/EmptyState'
 import { PageHeaderBand } from '../../components/PageHeaderBand'
-import { getMatch } from '../../api/matchApi'
+import { deactivateMatch, getMatch, reactivateMatch } from '../../api/matchApi'
 import type { Match } from '../../api/matchApi'
 import { listTeamsForClub } from '../../api/teamApi'
 import type { Team } from '../../api/teamApi'
@@ -37,6 +30,8 @@ import { getMatchSquad } from '../../api/matchSquadApi'
 import { resultActionFor, resultBadgeFor, resultImportActionFor } from './matches/matchResultHelpers'
 import { MatchKeyFigures } from './matchDetail/MatchKeyFigures'
 import { MatchTeamCard } from './matchDetail/MatchTeamCard'
+import { MatchHeaderActions } from './matchDetail/MatchHeaderActions'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useAvailabilityNavigation } from './matches/useAvailabilityNavigation'
 import { useTeamSheetShare } from './matches/useTeamSheetShare'
 import { TeamLogo } from './matches/TeamLogo'
@@ -47,7 +42,7 @@ import {
   matchPollsFrom,
   NO_CLUB_TEAM_REASON,
   ownSides,
-    pollDestination,
+  pollDestination,
   sideName,
 } from './matches/matchCardHelpers'
 import type { MatchSquadCoverage, OwnSide } from './matches/matchCardHelpers'
@@ -210,7 +205,19 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
     ),
   }
 
-  const { openShare, shareDialog } = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById })
+  // docs/specs/089 (Match page actions, 2026-10-16): Share team sheet sits on each own side's card and opens the dialog on that side.
+  const homeShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'home' })
+  const awayShare = useTeamSheetShare({ clubId, match: overlay, teamsById, leaguesById, seasonsById, initialScope: 'away' })
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const invalidateMatches = () => queryClient.invalidateQueries({ queryKey: ['managed-club', clubId, 'matches'] })
+  // The same calls and invalidation as the Edit page's Deactivate / Reactivate (MatchFormPage).
+  const deactivate = useMutation({ mutationFn: () => deactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
+  const reactivate = useMutation({ mutationFn: () => reactivateMatch(clubId, match.id), onSuccess: invalidateMatches })
+  const deleteFlow = useDeleteMatchDialog(clubId, () => {
+    queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', match.id] })
+    navigate(MATCHES_PATH, { state: { notice: 'Match deleted.' } })
+  })
   const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(overlay, teamsById))
 
   const homeName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
@@ -219,8 +226,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
 
   const inactive = badgeFor(match)
   const resultBadge = resultBadgeFor(match)
-  const resultAction = resultActionFor(match)
-  const importAction = resultImportActionFor(match)
+  const resultActions = [resultActionFor(match), resultImportActionFor(match)].filter((action) => action !== null)
 
   const logos = [
     logoFor(match.homeTeamId, match.homeTeamLogoUrl, homeName, teamsById),
@@ -232,18 +238,15 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
   // limits.maxSelected (a 12th man counts); a match with no league keeps 075's rule (no bar).
   const hasLeague = Boolean(match.leagueId)
   const editTo = `${MATCHES_PATH}/${match.id}/edit`
-  // docs/specs/093: Select team opens the Select team page of the first own side (home when it is ours).
-  const selectTo = selectTeamPath(match.id, (homeOwn ? homeSide : awaySide)?.id ?? null, Boolean(homeOwn))
-
   // The one open squad poll's scheduled close, when there is exactly one (group polls carry none): the Poll tile's caption.
   const openScheduled = (pollsQuery.data ?? []).filter((poll) => poll.open && poll.scheduledCloseAt)
   const pollClosesAt = openScheduled.length === 1 ? openScheduled[0].scheduledCloseAt : null
   const leagueName = match.leagueId ? (leaguesById.get(match.leagueId)?.name ?? null) : null
   const seasonLabel = seasonsById.get(match.seasonId)?.label ?? null
 
-  // docs/specs/089 (A, revised): the poll page's header. Top row: Back on the left, the page-level actions (Scoring, Watch
-  // live, Edit) on the right. Title row: the title (a logo before each team that has one) and the match workflow buttons
-  // right-aligned. No header badges: each team card shows its own Announced chip and the strip shows the poll; only
+  // docs/specs/089 (A, revised; Match page actions, 2026-10-16): Top row: Back on the left, Scoring and Watch live (when set)
+  // and the three header controls (Result menu, Edit, More) on the right. Title row: the title (a logo before each team that
+  // has one). Select team and Share team sheet sit on the team cards, Open availability on the poll tile. No header badges: each team card shows its own Announced chip and the strip shows the poll; only
   // Inactive stays. Then the key-figure strip and one team card per own side.
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
@@ -266,7 +269,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
             </MuiButton>
 
             {/* Scoring and Watch live (only when the match has the link; below the actions on a phone) and the primary Edit. */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, flex: '0 1 auto' }} data-testid="match-header-links">
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1, flex: '0 1 auto', width: { xs: '100%', md: 'auto' } }} data-testid="match-header-links">
               {match.scoringUrl && (
                 <MuiButton
                   component="a"
@@ -295,19 +298,14 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                   Watch live
                 </MuiButton>
               )}
-              {resultAction && (
-                <MuiButton component={RouterLink} to={resultAction.to} variant="outlined" startIcon={<SportsScoreOutlinedIcon fontSize="small" />}>
-                  {resultAction.label}
-                </MuiButton>
-              )}
-              {importAction && (
-                <MuiButton component={RouterLink} to={importAction.to} variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />}>
-                  {importAction.label}
-                </MuiButton>
-              )}
-              <MuiButton component={RouterLink} to={editTo} variant="contained" startIcon={<EditOutlinedIcon fontSize="small" />}>
-                Edit
-              </MuiButton>
+              <MatchHeaderActions
+                resultActions={resultActions}
+                editTo={editTo}
+                active={match.active}
+                onToggleActive={() => (match.active ? deactivate : reactivate).mutateAsync()}
+                deletable={match.deletable === true}
+                onDelete={() => deleteFlow.request({ id: match.id, name: `${homeName} v ${awayName}` })}
+              />
             </Box>
           </Box>
 
@@ -343,67 +341,6 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
               {inactive && <Chip size="small" label={inactive.label} sx={badgeSx(inactive.tone)} data-testid="match-inactive-badge" />}
               {resultBadge && <Chip size="small" label={resultBadge.label} sx={badgeSx(resultBadge.tone)} data-testid="match-result-badge" />}
             </Typography>
-
-            {/* The match workflow, right-aligned like the poll page's actions; all disabled with a reason when none of
-                the club's teams plays. A phone shows Select team and Availability as two full-width halves. */}
-            <Box
-              data-testid="match-header-actions"
-              sx={{
-                display: 'grid',
-                gap: 1,
-                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, auto)' },
-                width: { xs: '100%', md: 'auto' },
-                justifyContent: { md: 'end' },
-              }}
-            >
-              <ActionSlot disabled={noOwnTeam}>
-                {noOwnTeam ? (
-                  <MuiButton variant="outlined" disabled startIcon={<GroupsOutlinedIcon fontSize="small" />} sx={ACTION_SX}>
-                    Select team
-                  </MuiButton>
-                ) : (
-                  <MuiButton
-                    component={RouterLink}
-                    to={selectTo}
-                    variant="outlined"
-                    startIcon={<GroupsOutlinedIcon fontSize="small" />}
-                    sx={ACTION_SX}
-                  >
-                    Select team
-                  </MuiButton>
-                )}
-              </ActionSlot>
-              <ActionSlot disabled={noOwnTeam}>
-                <MuiButton
-                  variant="outlined"
-                  disabled={noOwnTeam || !pollsReady}
-                  onClick={openAvailability}
-                  startIcon={<EventAvailableOutlinedIcon fontSize="small" />}
-                  sx={ACTION_SX}
-                >
-                  Availability
-                </MuiButton>
-              </ActionSlot>
-              <Box sx={{ gridColumn: { xs: '1 / -1', md: 'auto' }, display: 'flex' }}>
-                <ActionSlot disabled={noOwnTeam}>
-                  <MuiButton
-                    variant="outlined"
-                    disabled={noOwnTeam}
-                    onClick={openShare}
-                    aria-label="Share team sheet"
-                    startIcon={<ShareOutlinedIcon fontSize="small" />}
-                    sx={ACTION_SX}
-                  >
-                    <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                      Share
-                    </Box>
-                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                      Share team sheet
-                    </Box>
-                  </MuiButton>
-                </ActionSlot>
-              </Box>
-            </Box>
           </Box>
 
           {/* A phone has no room for the links beside Edit: they follow the actions. */}
@@ -435,6 +372,9 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
         polls={overlay.polls}
         pollClosesAt={pollClosesAt}
         resultStatus={match.resultStatus}
+        onOpenAvailability={openAvailability}
+        availabilityDisabled={noOwnTeam || !pollsReady}
+        availabilityDisabledReason={noOwnTeam ? NO_CLUB_TEAM_REASON : undefined}
       />
 
       {own.length === 0 ? (
@@ -468,6 +408,7 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
                 sidesReady={sidesReady}
                 playingXiSize={hasLeague ? (side?.limits?.maxSelected ?? null) : null}
                 selectTo={selectTeamPath(match.id, side?.id ?? null, entry.side === 'home')}
+                onShare={entry.side === 'home' ? homeShare.openShare : awayShare.openShare}
               />
             )
           })}
@@ -475,23 +416,9 @@ function MatchView({ clubId, match, teamsById, leaguesById, seasonsById }: Match
       )}
 
       {menu}
-      {shareDialog}
-    </Box>
-  )
-}
-
-const ACTION_SX = { flex: { xs: 1, sm: 'none' }, justifyContent: 'center', minWidth: 0 } as const
-
-// A disabled control is wrapped in a titled span so the reason shows (a disabled button swallows
-// pointer events), as RecordCard's footer buttons are.
-function ActionSlot({ disabled, children }: { disabled: boolean; children: ReactNode }) {
-  return (
-    <Box
-      component="span"
-      title={disabled ? NO_CLUB_TEAM_REASON : undefined}
-      sx={{ display: 'flex', flex: { xs: 1, sm: 'none' }, minWidth: 0 }}
-    >
-      {children}
+      {homeShare.shareDialog}
+      {awayShare.shareDialog}
+      {deleteFlow.dialog}
     </Box>
   )
 }

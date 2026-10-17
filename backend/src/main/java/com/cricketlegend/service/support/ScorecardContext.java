@@ -2,6 +2,7 @@ package com.cricketlegend.service.support;
 
 import com.cricketlegend.domain.ResultSide;
 import com.cricketlegend.domain.ScorecardSelectionState;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -12,7 +13,8 @@ import java.util.UUID;
  * the club's registered players by normalised name (for {@code GUEST_NAME_MATCHES_PLAYER}) and display names of the
  * linked players (for messages), and the selection state of each ours side (for the not-selected notice; a side absent
  * from {@code selectionBySide} is not checked). {@code leagueName} names the league whose limits apply, so a message about a
- * limit can say which league it is (null when there is none).
+ * limit can say which league it is (null when there is none). {@code eligibilityProblems} (docs/specs/113) holds, per
+ * side, the registered players of our side who are not in the team's section or fail the league's age rule.
  */
 public record ScorecardContext(
         Integer maxBallsPerBowler,
@@ -20,7 +22,22 @@ public record ScorecardContext(
         Map<String, UUID> registeredPlayersByName,
         Map<UUID, String> playerNames,
         Map<ResultSide, ScorecardSelectionState> selectionBySide,
-        String leagueName) {
+        String leagueName,
+        Map<ResultSide, Map<UUID, List<ResultPlayerEligibility.Problem>>> eligibilityProblems) {
+
+    /**
+     * The context without eligibility problems (docs/specs/113: the section and age problems of the registered players
+     * of our sides, per side; empty means none found or none computed).
+     */
+    public ScorecardContext(
+            Integer maxBallsPerBowler,
+            Map<ResultSide, Set<UUID>> squadBySide,
+            Map<String, UUID> registeredPlayersByName,
+            Map<UUID, String> playerNames,
+            Map<ResultSide, ScorecardSelectionState> selectionBySide,
+            String leagueName) {
+        this(maxBallsPerBowler, squadBySide, registeredPlayersByName, playerNames, selectionBySide, leagueName, Map.of());
+    }
 
     /** The context without a league name (the league's name is only used to word a message). */
     public ScorecardContext(

@@ -99,3 +99,9 @@ export const LongTitle: Story = {
     }),
   },
 }
+
+// docs/specs/109-delete-empty-match.md: a match with nothing recorded against it (`deletable`) shows a Delete icon top right,
+// in the error colour, when the page passes a handler.
+export const Deletable: Story = {
+  args: { match: makeMatch({ matchDate: fromNow(120 * HOUR), deletable: true }), onDelete: () => undefined },
+}

@@ -298,6 +298,34 @@ class ResultImportServiceIntegrationTest {
         assertThat(dara.importMatch()).isNull();
     }
 
+    // ---- docs/specs/113: only players of the team's section are ever linked ----
+
+    @Test
+    void aSquadMemberOutsideTheTeamsSectionBecomesAGuestWithANoteAndAnEligibleOneStillLinks() {
+        fixtures.shared().rosterPlayer(club.world(), club.world().seniors1(), "Eli"); // squad, but not in the Seniors section
+
+        ImportResolveDto resolved = importDoc(fullDocument(null, "Eli Player"), match, false);
+
+        ResultPlayerDto eliRow = row(read(match), "Eli Player");
+        assertThat(eliRow.playerProfileId()).isNull();
+        assertThat(eliRow.guest()).isTrue();
+        assertThat(resolved.notes()).filteredOn(n -> "Eli Player".equals(n.fileText()))
+                .singleElement().satisfies(n -> assertThat(n.level()).isEqualTo(ImportExactness.UNRESOLVED));
+        assertThat(rowOf(read(match), club.anna().getId()).playerProfileId()).isEqualTo(club.anna().getId());
+    }
+
+    @Test
+    void aRememberedNameWhoseTargetIsOutsideTheTeamsSectionIsIgnoredAndTheNameIsAGuest() {
+        var eli = fixtures.shared().rosterPlayer(club.world(), club.world().seniors1(), "Eli");
+        jdbc.update("insert into result_name_alias (club_id, kind, alias_normalised, alias_original, target_player_profile_id) values (?, 'PLAYER', 'zed stranger', 'Zed Stranger', ?)",
+                clubId, eli.getId());
+
+        ImportResolveDto resolved = importDoc(fullDocument("ext-1", "Bela Player"), match, false);
+
+        assertThat(row(read(match), "Zed Stranger").playerProfileId()).isNull();
+        assertThat(resolved.notes()).extracting(ImportNoteDto::code).contains("ALIAS_IGNORED");
+    }
+
     // ---- idempotent re-import ----
 
     @Test

@@ -14,13 +14,16 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
  * docs/specs/104-match-results-import-adaptors.md, stage 3 and D4: the registered players a name of ours may be matched to.
  * For each of the match's sides that is one of the club's teams: that match's selection for the team (including the
- * 12th man) plus the team's squad for the match's season. Never the whole club: a name outside both is a guest the
+ * 12th man) plus the team's squad for the match's season, kept only when they pass {@link ResultPlayerEligibility}
+ * (section and age, spec 113). Never the whole club: a name outside both is a guest the
  * manager can link with the normal picker. Read only.
  */
 @Component
@@ -45,16 +48,19 @@ public class ImportCandidateLoader {
     private final MatchSidePlayerRepository matchSidePlayerRepository;
     private final TeamSquadMemberRepository squadRepository;
     private final SelectionEligibility eligibility;
+    private final ResultPlayerEligibility resultEligibility;
 
     public ImportCandidateLoader(
             MatchSideRepository matchSideRepository,
             MatchSidePlayerRepository matchSidePlayerRepository,
             TeamSquadMemberRepository squadRepository,
-            SelectionEligibility eligibility) {
+            SelectionEligibility eligibility,
+            ResultPlayerEligibility resultEligibility) {
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
         this.squadRepository = squadRepository;
         this.eligibility = eligibility;
+        this.resultEligibility = resultEligibility;
     }
 
     /** The candidates for each side of the match that is one of the club's teams; the opposition has none. */
@@ -86,10 +92,16 @@ public class ImportCandidateLoader {
             }
         }
         Map<UUID, PlayerInfo> infos = eligibility.loadPlayers(orderById.keySet());
+        Set<UUID> clubPlayers = orderById.keySet().stream()
+                .filter(id -> infos.get(id) != null && clubId.equals(infos.get(id).clubId()))
+                .collect(Collectors.toSet());
+        // docs/specs/113: a player outside the team's section or the league's age rule is never offered, so the name
+        // stays a guest for the manager to resolve
+        Set<UUID> eligible = resultEligibility.eligibleIds(match, side, clubPlayers, infos);
         List<OurCandidate> candidates = new ArrayList<>();
         orderById.forEach((id, order) -> {
             PlayerInfo info = infos.get(id);
-            if (info != null && clubId.equals(info.clubId())) {
+            if (info != null && eligible.contains(id)) {
                 candidates.add(new OurCandidate(new NameCandidate(id, info.firstName(), info.lastName()), order));
             }
         });

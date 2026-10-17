@@ -81,6 +81,8 @@ export interface MatchCandidate {
   venue: string | null
   reasons: ImportMatchReason[]
   existingResult: ExistingResult | null
+  // docs/specs/109-delete-empty-match.md: nothing is recorded against this match, so it can be deleted from the Match step.
+  deletable: boolean
 }
 
 export interface TeamMapping {

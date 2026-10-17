@@ -4,7 +4,6 @@ import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeagueSource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -34,7 +33,8 @@ public record CreateLeagueRequest(
         Integer maxPlayingXiSize,
         Integer minAge,
         Integer maxAge,
-        LocalDate ageCutoffDate,
+        Integer ageCutoffMonth,
+        Integer ageCutoffDay,
         LeagueFormat format,
         String logoUrl,
         String phone,

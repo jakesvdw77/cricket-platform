@@ -8,7 +8,9 @@ import java.util.UUID;
  * docs/specs/104-match-results-import-adaptors.md: a match of the club the import could belong to, with the evidence for
  * it ({@code reasons}, strongest first) and, when the match already has a result, what that result is. Nothing is ever
  * chosen for the manager. {@code homeIsClubTeam} / {@code awayIsClubTeam} say whether that side is one of the club's own
- * teams (a typed outside name is not), because an import needs one such side.
+ * teams (a typed outside name is not), because an import needs one such side. {@code deletable}
+ * (docs/specs/109-delete-empty-match.md) is true when nothing is recorded against the match, so the Match step can offer
+ * Delete.
  */
 public record MatchCandidateDto(
         UUID matchId,
@@ -21,5 +23,6 @@ public record MatchCandidateDto(
         String leagueName,
         String venue,
         List<ImportMatchReason> reasons,
-        ExistingResultDto existingResult) {
+        ExistingResultDto existingResult,
+        boolean deletable) {
 }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Alert, Box, MenuItem, Typography } from '@mui/material'
+import { useQuery } from '@tanstack/react-query'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import { FormSectionHeading } from '../FormSectionHeading'
@@ -18,6 +19,10 @@ import type { Team } from '../../api/teamApi'
 import type { Section } from '../../api/sectionApi'
 import type { LeagueAffiliation } from '../../api/leagueAffiliationApi'
 import type { LeagueTeam } from '../../api/leagueTeamApi'
+import { getLeagueSeasonDates, leagueSeasonDatesKey } from '../../api/leagueSeasonDatesApi'
+import type { LeagueSeasonDates } from '../../api/leagueSeasonDatesApi'
+import { formatReferenceDate } from '../../utils/ageCutoff'
+import { currentSeasonId } from '../../utils/currentSeason'
 
 // Stable id the <form> element renders with — RecordFormScreen's actions bar lives outside this
 // component (see MatchFormPage), same pattern as LEAGUE_FORM_ID/SEASON_FORM_ID.
@@ -53,6 +58,11 @@ export interface MatchFormProps {
   // Called on mount and whenever the chosen league or season changes (either id may be '').
   onScopeChange?: (leagueId: string, seasonId: string) => void
   onSubmit: (payload: MatchPayload) => void
+  // docs/specs/111: the server's refusal of a date outside the league's dates, shown under the date field until the date is
+  // changed. The league's dates themselves are looked up here once a league and season are chosen.
+  matchDateServerError?: string | null
+  // A new match (no season in initialValues) starts in the current season; injectable for tests.
+  today?: Date
 }
 
 interface FormState {
@@ -145,6 +155,17 @@ export function validateMatchLink(value: string): string | null {
   return null
 }
 
+// docs/specs/111: "This league runs from 1 Sep 2026 to 31 Jul 2027." (the same wording the server uses).
+function leagueDatesMessage(range: LeagueSeasonDates): string {
+  return `This league runs from ${formatReferenceDate(range.startDate)} to ${formatReferenceDate(range.endDate)}.`
+}
+
+// The entered local date is outside the range (yyyy-MM-dd compares as text); a blank date is not "outside".
+function isOutsideRange(matchDate: string, range: LeagueSeasonDates | null): boolean {
+  const day = matchDate.slice(0, 10)
+  return Boolean(range && day && (day < range.startDate || day > range.endDate))
+}
+
 function validate(values: FormState): FormErrors {
   const errors: FormErrors = {}
 
@@ -217,6 +238,8 @@ export function MatchForm({
   canUseLeagueTeams = false,
   onScopeChange,
   onSubmit,
+  matchDateServerError = null,
+  today,
 }: MatchFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues, initialField))
   const [errors, setErrors] = useState<FormErrors>({})
@@ -226,6 +249,41 @@ export function MatchForm({
   const legacyVenue = initialField ? '' : (initialValues?.venue ?? '').trim()
 
   const hasScope = Boolean(values.leagueId && values.seasonId)
+
+  // docs/specs/111: the league's dates in the chosen season, looked up only once both are chosen. No dates, or a failed
+  // lookup, leaves the date field unrestricted (the server still checks).
+  const datesQuery = useQuery({
+    queryKey: leagueSeasonDatesKey(clubId, values.leagueId, values.seasonId),
+    queryFn: () => getLeagueSeasonDates(clubId, values.leagueId, values.seasonId),
+    enabled: hasScope,
+    retry: false,
+  })
+  const leagueDates = hasScope ? (datesQuery.data ?? null) : null
+
+  // Shown as soon as the chosen date is outside the range, and it blocks the submit.
+  const dateOutsideLeague = leagueDates !== null && isOutsideRange(values.matchDate, leagueDates)
+  const leagueRangeMessage = dateOutsideLeague && leagueDates ? leagueDatesMessage(leagueDates) : undefined
+
+  // A refusal from the server stays under the date until the date is edited; a fresh submit (which clears the prop) re-arms it.
+  const [dismissedServerError, setDismissedServerError] = useState<string | null>(null)
+  if (!matchDateServerError && dismissedServerError) {
+    setDismissedServerError(null)
+  }
+  const serverDateError = matchDateServerError && matchDateServerError !== dismissedServerError ? matchDateServerError : null
+
+  // A new match starts in the current season once the seasons are known, only while the season is still empty and the
+  // manager has not touched it (an edit, a prefill and the import's inferred season all arrive with one already).
+  const seasonTouched = useRef(false)
+  const hadInitialSeason = Boolean(initialValues?.seasonId)
+  useEffect(() => {
+    if (hadInitialSeason || seasonTouched.current) {
+      return
+    }
+    const current = currentSeasonId(seasons, today)
+    if (current) {
+      setValues((prev) => (prev.seasonId || seasonTouched.current ? prev : { ...prev, seasonId: current }))
+    }
+  }, [seasons, today, hadInitialSeason])
 
   useEffect(() => {
     onScopeChange?.(values.leagueId, values.seasonId)
@@ -238,6 +296,9 @@ export function MatchForm({
   // A league team belongs to one league and season, so changing either clears a league-team side
   // (the server would 400 otherwise) and tells the user.
   const changeScope = (patch: Partial<Pick<FormState, 'leagueId' | 'seasonId'>>) => {
+    if (patch.seasonId !== undefined) {
+      seasonTouched.current = true
+    }
     const clears = (side: SideState) => side.mode === 'leagueTeam' && side.leagueTeamId !== ''
     setValues((prev) => {
       const cleared = (side: SideState): SideState =>
@@ -286,7 +347,7 @@ export function MatchForm({
     const validationErrors = validate(values)
     setErrors(validationErrors)
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (Object.keys(validationErrors).length > 0 || dateOutsideLeague) {
       return
     }
 
@@ -353,9 +414,14 @@ export function MatchForm({
           <DateTimeField
             label="Match date & time"
             value={values.matchDate}
-            onChange={(matchDate) => setValues((prev) => ({ ...prev, matchDate }))}
-            error={Boolean(errors.matchDate)}
-            helperText={errors.matchDate}
+            onChange={(matchDate) => {
+              setValues((prev) => ({ ...prev, matchDate }))
+              if (matchDateServerError) setDismissedServerError(matchDateServerError)
+            }}
+            min={leagueDates?.startDate}
+            max={leagueDates?.endDate}
+            error={Boolean(errors.matchDate || leagueRangeMessage || serverDateError)}
+            helperText={errors.matchDate ?? leagueRangeMessage ?? serverDateError ?? undefined}
           />
 
           <Box>

@@ -28,11 +28,13 @@ const mocks = vi.hoisted(() => ({
   listLeagueTeams: vi.fn(),
   getPlayingConditions: vi.fn(),
   listMatches: vi.fn(),
+  getLeagueAgeReference: vi.fn(),
 }))
 
 vi.mock('../../../api/leagueApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/leagueApi')>()),
   listLeagues: (clubId: string, params?: unknown) => mocks.listLeagues(clubId, params),
+  getLeagueAgeReference: (...args: unknown[]) => mocks.getLeagueAgeReference(...args),
 }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: (clubId: string) => mocks.listSeasons(clubId) }))
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => mocks.listTeamsForClub(clubId) }))
@@ -68,6 +70,7 @@ beforeEach(() => {
   mocks.listLeagueTeams.mockResolvedValue([])
   mocks.getPlayingConditions.mockResolvedValue(null)
   mocks.listMatches.mockResolvedValue(emptyPage())
+  mocks.getLeagueAgeReference.mockRejectedValue(new Error('no reference'))
 })
 
 const LEAGUE_PATH = '/manage/fixtures/leagues/league-1'
@@ -99,6 +102,64 @@ describe('LeagueViewLayout', () => {
       renderLeagueView(`${LEAGUE_PATH}/schedule`)
 
       expect(await screen.findByText("Couldn't load this league")).toBeInTheDocument()
+    })
+  })
+
+  // docs/specs/110: the date ages are judged on, from the server, for a league that has an age limit.
+  describe('age reference line', () => {
+    beforeEach(() => {
+      mocks.listSeasons.mockResolvedValue([makeSeason()])
+    })
+
+    it('shows the cut-off date for a league with an age limit', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ maxAge: 15, ageCutoffMonth: 12, ageCutoffDay: 31 })])
+      mocks.getLeagueAgeReference.mockResolvedValue({
+        referenceDate: '2026-12-31',
+        source: 'CUTOFF',
+        leagueStart: '2026-09-05',
+        leagueStartSource: 'FIRST_MATCH',
+      })
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      expect(await screen.findByTestId('league-age-reference')).toHaveTextContent('Ages are judged on 31 Dec 2026 (the cut-off)')
+      expect(mocks.getLeagueAgeReference).toHaveBeenCalledWith('test-club-id', 'league-1', expect.any(String))
+    })
+
+    it('shows the league start day when the league has no cut-off', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ minAge: 12 })])
+      mocks.getLeagueAgeReference.mockResolvedValue({
+        referenceDate: '2027-07-14',
+        source: 'LEAGUE_START',
+        leagueStart: '2027-07-14',
+        leagueStartSource: 'FIRST_MATCH',
+      })
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      expect(await screen.findByTestId('league-age-reference')).toHaveTextContent(
+        'Ages are judged on 14 Jul 2027 (the day the league starts)',
+      )
+    })
+
+    it('shows no line, and makes no lookup, for a league with no age limit', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague()])
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await screen.findByTestId('league-key-figures')
+      expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
+      expect(mocks.getLeagueAgeReference).not.toHaveBeenCalled()
+    })
+
+    it('shows no line when the lookup fails', async () => {
+      mocks.listLeagues.mockResolvedValue([makeLeague({ maxAge: 15 })])
+
+      renderLeagueView(`${LEAGUE_PATH}/schedule`)
+
+      await screen.findByTestId('league-key-figures')
+      await waitFor(() => expect(mocks.getLeagueAgeReference).toHaveBeenCalled())
+      expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
     })
   })
 

@@ -68,6 +68,7 @@ import com.cricketlegend.service.support.DismissalCredits.Credit;
 import com.cricketlegend.service.support.DismissalCredits.Dismissal;
 import com.cricketlegend.service.support.NameAliases;
 import com.cricketlegend.service.support.PlayerNameMatcher;
+import com.cricketlegend.service.support.ResultPlayerEligibility;
 import com.cricketlegend.service.support.ResultValidator.ErrorCode;
 import com.cricketlegend.service.support.ScorecardRows;
 import com.cricketlegend.service.support.SelectionEligibility;
@@ -78,6 +79,7 @@ import com.cricketlegend.service.support.StandoutRules;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -126,6 +128,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     private final AccessService accessService;
     private final NameAliases nameAliases;
     private final LeagueRepository leagueRepository;
+    private final ResultPlayerEligibility playerEligibility;
 
     public ScorecardServiceImpl(
             MatchService matchService,
@@ -146,7 +149,8 @@ public class ScorecardServiceImpl implements ScorecardService {
             ScorecardMapper mapper,
             AccessService accessService,
             NameAliases nameAliases,
-            LeagueRepository leagueRepository) {
+            LeagueRepository leagueRepository,
+            ResultPlayerEligibility playerEligibility) {
         this.matchService = matchService;
         this.resultRepository = resultRepository;
         this.inningsRepository = inningsRepository;
@@ -166,6 +170,7 @@ public class ScorecardServiceImpl implements ScorecardService {
         this.accessService = accessService;
         this.nameAliases = nameAliases;
         this.leagueRepository = leagueRepository;
+        this.playerEligibility = playerEligibility;
     }
 
     // ---- prefill ----
@@ -374,6 +379,10 @@ public class ScorecardServiceImpl implements ScorecardService {
         Map<ResultSide, UUID> ours = oursSides(match);
         checkSides(scorecard, ours);
         checkProfilesBelongToClub(scorecard, clubId);
+        Map<UUID, ResultPlayer> existing = playerRepository
+                .findByMatchResultIdOrderByCreatedAtAscIdAsc(matchResultId).stream()
+                .collect(Collectors.toMap(ResultPlayer::getId, p -> p));
+        checkNewPlayersEligible(match, ours, scorecard, existing.values());
 
         List<MatchInnings> innings = inningsRepository.findByMatchResultIdOrderBySequence(matchResultId);
         Map<ResultSide, UUID> regularBySide = new HashMap<>();
@@ -389,9 +398,6 @@ public class ScorecardServiceImpl implements ScorecardService {
             fieldingRepository.deleteByMatchInningsIdIn(inningsIds);
         }
 
-        Map<UUID, ResultPlayer> existing = playerRepository
-                .findByMatchResultIdOrderByCreatedAtAscIdAsc(matchResultId).stream()
-                .collect(Collectors.toMap(ResultPlayer::getId, p -> p));
         Set<UUID> keptIds = scorecard.players().stream()
                 .map(ResultPlayerDto::id).filter(Objects::nonNull).collect(Collectors.toSet());
         List<ResultPlayer> removed = existing.values().stream().filter(p -> !keptIds.contains(p.getId())).toList();
@@ -621,7 +627,7 @@ public class ScorecardServiceImpl implements ScorecardService {
     @Transactional
     public ResultPlayerDto link(
             Authentication authentication, UUID clubId, UUID matchId, UUID resultPlayerId, UUID playerProfileId) {
-        matchService.requireAdministrableMatch(authentication, clubId, matchId);
+        Match match = matchService.requireAdministrableMatch(authentication, clubId, matchId);
         MatchResult result = resultRepository
                 .findByMatchId(matchId)
                 .orElseThrow(() -> new NotFoundException("No result for match: " + matchId));
@@ -644,6 +650,14 @@ public class ScorecardServiceImpl implements ScorecardService {
                 .anyMatch(p -> p.getSide() == player.getSide() && profile.getId().equals(p.getPlayerProfileId()));
         if (alreadyOnSide) {
             throw new PlayerAlreadyInResultException("That player is already on the scorecard for this side.");
+        }
+        if (oursSides(match).containsKey(player.getSide())) {
+            // docs/specs/113: a guest on one of our sides can only become a player of the team's section and the age rule
+            List<ResultIssueDto> issues = eligibilityIssues(
+                    match, Map.of(player.getSide(), Set.of(profile.getId())));
+            if (!issues.isEmpty()) {
+                throw rejectAll(issues);
+            }
         }
         UUID person = accessService.resolveCurrentPersonId(authentication);
         player.setPlayerProfileId(profile.getId());
@@ -728,12 +742,23 @@ public class ScorecardServiceImpl implements ScorecardService {
         Set<UUID> linked = scorecard.players().stream()
                 .map(ResultPlayerDto::playerProfileId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<UUID, String> names = new HashMap<>();
+        Map<UUID, PlayerInfo> clubPlayers = new HashMap<>();
         // only this club's players are named: a posted scorecard may carry any profile id
         eligibility.loadPlayers(linked).forEach((id, info) -> {
             if (match.getClubId().equals(info.clubId())) {
                 names.put(id, info.fullName());
+                clubPlayers.put(id, info);
             }
         });
+        // docs/specs/113: every registered player of our sides, stored or not, is checked here
+        Map<ResultSide, Set<UUID>> registeredBySide = new EnumMap<>(ResultSide.class);
+        Map<ResultSide, UUID> ours = oursSides(match);
+        scorecard.players().stream()
+                .filter(p -> !p.opposition() && p.playerProfileId() != null && ours.containsKey(p.side())
+                        && clubPlayers.containsKey(p.playerProfileId()))
+                .forEach(p -> registeredBySide.computeIfAbsent(p.side(), k -> new HashSet<>()).add(p.playerProfileId()));
+        Map<ResultSide, Map<UUID, List<ResultPlayerEligibility.Problem>>> eligibilityProblems =
+                playerEligibility.check(match, registeredBySide, clubPlayers);
         Map<ResultSide, ScorecardSelectionState> selection = new HashMap<>();
         Map<UUID, MatchSide> sidesByTeam = matchSideRepository.findByMatchId(match.getId()).stream()
                 .collect(Collectors.toMap(MatchSide::getTeamId, side -> side, (a, b) -> a));
@@ -744,7 +769,7 @@ public class ScorecardServiceImpl implements ScorecardService {
                         matchSide, matchSide != null && matchSidePlayerRepository.countByMatchSideId(matchSide.getId()) > 0));
             }
         });
-        return new ScorecardContext(maxBalls, squads, registered, names, selection, leagueName);
+        return new ScorecardContext(maxBalls, squads, registered, names, selection, leagueName, eligibilityProblems);
     }
 
     // ---- building the read model ----
@@ -943,6 +968,46 @@ public class ScorecardServiceImpl implements ScorecardService {
         }
     }
 
+    /**
+     * docs/specs/113: refuses a save when a NEWLY ADDED registered player of one of our sides (a profile not already on
+     * that side of the stored result) is outside the team's section or the league's age rule. Players already stored
+     * are not re-checked, so an old draft stays editable; validation still reports them. Guests, the opposition and
+     * rows without a profile are never checked.
+     */
+    private void checkNewPlayersEligible(
+            Match match, Map<ResultSide, UUID> ours, ScorecardDto scorecard, Collection<ResultPlayer> stored) {
+        Map<ResultSide, Set<UUID>> added = new EnumMap<>(ResultSide.class);
+        for (ResultPlayerDto dto : scorecard.players()) {
+            if (dto.opposition() || dto.playerProfileId() == null || !ours.containsKey(dto.side())) {
+                continue;
+            }
+            boolean alreadyStored = stored.stream().anyMatch(p -> !p.isOpposition() && p.getSide() == dto.side()
+                    && dto.playerProfileId().equals(p.getPlayerProfileId()));
+            if (!alreadyStored) {
+                added.computeIfAbsent(dto.side(), k -> new HashSet<>()).add(dto.playerProfileId());
+            }
+        }
+        List<ResultIssueDto> issues = eligibilityIssues(match, added);
+        if (!issues.isEmpty()) {
+            throw rejectAll(issues);
+        }
+    }
+
+    /** The section and age problems of the given registered players per side, as TEAMS errors in side order. */
+    private List<ResultIssueDto> eligibilityIssues(Match match, Map<ResultSide, Set<UUID>> idsBySide) {
+        if (idsBySide.isEmpty()) {
+            return List.of();
+        }
+        Map<ResultSide, Map<UUID, List<ResultPlayerEligibility.Problem>>> problems = playerEligibility.check(match, idsBySide);
+        List<ResultIssueDto> issues = new ArrayList<>();
+        for (ResultSide side : ResultSide.values()) {
+            problems.getOrDefault(side, Map.of()).values().forEach(list -> list.forEach(problem -> issues.add(
+                    new ResultIssueDto(problem.code().name(), ResultWizardStep.TEAMS, side,
+                            ResultIssueSeverity.ERROR, problem.message()))));
+        }
+        return issues;
+    }
+
     private static Set<UUID> oppositionPlayerIds(ScorecardRows loaded) {
         return loaded.players().stream().filter(ResultPlayer::isOpposition).map(ResultPlayer::getId)
                 .collect(Collectors.toSet());
@@ -1005,6 +1070,11 @@ public class ScorecardServiceImpl implements ScorecardService {
     private static String nameOf(ResultPlayer player, Map<UUID, PlayerInfo> names) {
         PlayerInfo info = player.getPlayerProfileId() == null ? null : names.get(player.getPlayerProfileId());
         return info != null ? info.fullName() : player.getDisplayName();
+    }
+
+    private static InvalidResultException rejectAll(List<ResultIssueDto> issues) {
+        return new InvalidResultException("The scorecard cannot be saved as entered.",
+                issues.stream().map(ResultIssueDto::message).toList(), List.of(), issues);
     }
 
     private static InvalidResultException reject(

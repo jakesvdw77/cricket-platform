@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,6 +22,12 @@ vi.mock('../../api/playingAreaApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/playingAreaApi')>()
   return { ...actual, listPlayingAreas: (clubId: string, params: unknown) => listPlayingAreas(clubId, params) }
 })
+
+const getLeagueSeasonDates = vi.fn()
+vi.mock('../../api/leagueSeasonDatesApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/leagueSeasonDatesApi')>()),
+  getLeagueSeasonDates: (...args: unknown[]) => getLeagueSeasonDates(...args),
+}))
 
 const uploadMedia = vi.fn()
 const uploadManagedMedia = vi.fn()
@@ -73,7 +79,8 @@ function makeLeague(overrides: Partial<League> = {}): League {
     maxPlayingXiSize: 11,
     minAge: null,
     maxAge: null,
-    ageCutoffDate: null,
+    ageCutoffMonth: null,
+    ageCutoffDay: null,
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -114,11 +121,13 @@ const TEAMS: Team[] = [
   makeTeam({ id: 'team-2', name: '2nd XI' }),
   makeTeam({ id: 'team-3', name: 'O/13A' }),
 ]
-const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026' })]
+// Inactive, so the form does not default to it (the default-season tests below use their own active seasons).
+const SEASONS: Season[] = [makeSeason({ id: 'season-1', label: '2026', active: false })]
 const LEAGUES: League[] = [makeLeague({ id: 'league-1', name: 'Internal League' })]
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getLeagueSeasonDates.mockResolvedValue(null)
   listPlayingAreas.mockResolvedValue(fieldPage([makeField({ id: 'field-1', name: 'Riverside Oval' }), makeField({ id: 'field-2', name: 'Away Park', verificationStatus: 'UNVERIFIED' })]))
 })
 
@@ -146,6 +155,65 @@ function renderMatchForm(props: Partial<MatchFormProps> = {}, submitLabel = 'Sub
 }
 
 describe('MatchForm', () => {
+  describe('default season on a new match', () => {
+    const TODAY = new Date(2026, 9, 16)
+    const ACTIVE: Season[] = [
+      makeSeason({ id: 'season-old', label: '2025/26', startDate: '2025-09-01', endDate: '2026-07-31' }),
+      makeSeason({ id: 'season-now', label: '2026/27', startDate: '2026-09-01', endDate: '2027-07-31' }),
+    ]
+
+    it('starts on the current season', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27')
+    })
+
+    it('applies it once the seasons arrive after the first render', () => {
+      const props: MatchFormProps = { clubId: 'club-1', teams: TEAMS, seasons: [], leagues: LEAGUES, affiliations: [], onSubmit: vi.fn(), today: TODAY }
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const ui = (p: MatchFormProps) => (
+        <QueryClientProvider client={queryClient}>
+          <MatchForm {...p} />
+        </QueryClientProvider>
+      )
+      const { rerender } = render(ui(props))
+      rerender(ui({ ...props, seasons: ACTIVE }))
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2026/27')
+    })
+
+    it('lets an explicit initial season win', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY, initialValues: { seasonId: 'season-old' } })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('keeps the season an edit already has', () => {
+      renderMatchForm({ seasons: ACTIVE, today: TODAY, initialValues: { seasonId: 'season-old', matchDate: '2026-01-10T10:00:00Z' } })
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('never overwrites a season the manager chose', async () => {
+      const user = userEvent.setup()
+      const props: MatchFormProps = { clubId: 'club-1', teams: TEAMS, seasons: ACTIVE, leagues: LEAGUES, affiliations: [], onSubmit: vi.fn(), today: TODAY }
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const ui = (p: MatchFormProps) => (
+        <QueryClientProvider client={queryClient}>
+          <MatchForm {...p} />
+        </QueryClientProvider>
+      )
+      const { rerender } = render(ui(props))
+      await user.click(screen.getByLabelText('Season'))
+      await user.click(await screen.findByRole('option', { name: '2025/26' }))
+      rerender(ui({ ...props, seasons: [...ACTIVE] }))
+      expect(screen.getByLabelText('Season')).toHaveTextContent('2025/26')
+    })
+
+    it('leaves the season empty with no active seasons, and the required error still shows', async () => {
+      const user = userEvent.setup()
+      renderMatchForm({ seasons: [makeSeason({ active: false })], today: TODAY })
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(await screen.findByText('Season is required')).toBeInTheDocument()
+    })
+  })
+
   it('renders a required Season select and an optional League select', () => {
     renderMatchForm()
     expect(screen.getByLabelText('Season')).toBeInTheDocument()
@@ -785,5 +853,66 @@ describe('MatchForm Field box', () => {
     await user.click(screen.getByLabelText('Field (optional)'))
     await user.click(await screen.findByRole('option', { name: /Riverside Oval/ }))
     expect(screen.queryByTestId('legacy-venue')).not.toBeInTheDocument()
+  })
+})
+
+// docs/specs/111-league-season-dates.md: a match in a league season with dates must fall inside them.
+describe('MatchForm league season dates', () => {
+  const base = { homeTeamId: 'team-1', awayTeamId: 'team-2', seasonId: 'season-1', leagueId: 'league-1' }
+  const RANGE = { startDate: '2026-09-01', endDate: '2027-07-31' }
+  const MESSAGE = 'This league runs from 1 Sep 2026 to 31 Jul 2027.'
+
+  it('passes the dates as the date input range and looks them up for the chosen league and season', async () => {
+    getLeagueSeasonDates.mockResolvedValue(RANGE)
+    renderMatchForm({ initialValues: { ...base, matchDate: '2026-10-10T12:00:00Z' } })
+
+    await waitFor(() => expect(screen.getByLabelText('Match date & time (date)')).toHaveAttribute('min', '2026-09-01'))
+    expect(screen.getByLabelText('Match date & time (date)')).toHaveAttribute('max', '2027-07-31')
+    expect(getLeagueSeasonDates).toHaveBeenCalledWith('club-1', 'league-1', 'season-1')
+    expect(screen.queryByText(MESSAGE)).not.toBeInTheDocument()
+  })
+
+  it('does not look up the dates without both a league and a season', () => {
+    renderMatchForm({ initialValues: { ...base, leagueId: undefined } })
+    renderMatchForm({ initialValues: { homeTeamId: 'team-1', leagueId: 'league-1' } })
+    expect(getLeagueSeasonDates).not.toHaveBeenCalled()
+  })
+
+  it('shows the message under the field when the date is outside, and does not submit', async () => {
+    const user = userEvent.setup()
+    getLeagueSeasonDates.mockResolvedValue(RANGE)
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit, initialValues: base })
+    await waitFor(() => expect(screen.getByLabelText('Match date & time (date)')).toHaveAttribute('min', '2026-09-01'))
+
+    setDateTime('Match date & time', '2027-08-01T14:00')
+    expect(await screen.findByText(MESSAGE)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    setDateTime('Match date & time', '2027-07-31T14:00')
+    await waitFor(() => expect(screen.queryByText(MESSAGE)).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('changes nothing when the lookup fails or the league season has no dates', async () => {
+    const user = userEvent.setup()
+    getLeagueSeasonDates.mockRejectedValue(new Error('boom'))
+    const onSubmit = vi.fn()
+    renderMatchForm({ onSubmit, initialValues: { ...base, matchDate: '2031-01-01T12:00:00Z' } })
+    await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalled())
+
+    expect(screen.getByLabelText('Match date & time (date)')).not.toHaveAttribute('min')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the server refusal under the date until the date is edited', async () => {
+    renderMatchForm({ initialValues: { ...base, matchDate: '2026-10-10T12:00:00Z' }, matchDateServerError: MESSAGE })
+    expect(screen.getByText(MESSAGE)).toBeInTheDocument()
+
+    setDateTime('Match date & time', '2026-10-11T12:00')
+    await waitFor(() => expect(screen.queryByText(MESSAGE)).not.toBeInTheDocument())
   })
 })

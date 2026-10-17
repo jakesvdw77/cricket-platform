@@ -8,11 +8,16 @@ import com.cricketlegend.domain.Club;
 import com.cricketlegend.domain.ClubStatus;
 import com.cricketlegend.domain.Match;
 import com.cricketlegend.domain.MatchSide;
+import com.cricketlegend.domain.MatchSidePlayer;
+import com.cricketlegend.domain.Person;
+import com.cricketlegend.domain.PlayerProfile;
+import com.cricketlegend.domain.PlayingRole;
 import com.cricketlegend.domain.Season;
 import com.cricketlegend.domain.Section;
 import com.cricketlegend.domain.Team;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +53,72 @@ class MatchSideRepositoryTest {
 
     @Autowired
     private MatchSideRepository matchSideRepository;
+
+    @Autowired
+    private MatchSidePlayerRepository matchSidePlayerRepository;
+
+    @Autowired
+    private PersonRepository personRepository;
+
+    @Autowired
+    private PlayerProfileRepository playerProfileRepository;
+
+    private PlayerProfile savedProfile(UUID clubId) {
+        Person person = personRepository.save(Person.builder().firstName("Alex").lastName("Player").build());
+        return playerProfileRepository.save(
+                PlayerProfile.builder().personId(person.getId()).clubId(clubId).active(true).build());
+    }
+
+    private List<UUID> withContent(Match match) {
+        return matchSideRepository.findMatchIdsWithSideByMatchIdIn(List.of(match.getId()));
+    }
+
+    private Match matchWithSide(Club club, Team team, Season season, MatchSide.MatchSideBuilder side) {
+        Match match = savedMatch(club.getId(), team.getId(), season.getId());
+        matchSideRepository.save(side.matchId(match.getId()).teamId(team.getId()).build());
+        return match;
+    }
+
+    @Test
+    void anEmptyUnannouncedSideIsNotContent() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Match match = matchWithSide(club, team, savedSeason(club.getId()), MatchSide.builder());
+
+        assertThat(withContent(match)).isEmpty();
+    }
+
+    @Test
+    void aSideWithASelectedPlayerIsContent() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Season season = savedSeason(club.getId());
+        Match match = savedMatch(club.getId(), team.getId(), season.getId());
+        MatchSide side = matchSideRepository.save(MatchSide.builder().matchId(match.getId()).teamId(team.getId()).build());
+        matchSidePlayerRepository.save(MatchSidePlayer.builder().matchSideId(side.getId())
+                .playerProfileId(savedProfile(club.getId()).getId()).battingOrder(1).role(PlayingRole.BATSMAN).build());
+
+        assertThat(withContent(match)).containsExactly(match.getId());
+    }
+
+    @Test
+    void anAnnouncedSideIsContent() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Match match = matchWithSide(club, team, savedSeason(club.getId()), MatchSide.builder().announced(true));
+
+        assertThat(withContent(match)).containsExactly(match.getId());
+    }
+
+    @Test
+    void aSideWithOnlyACaptainIsContent() {
+        Club club = savedClub("riverside-cc");
+        Team team = savedTeam(club.getId());
+        Match match = matchWithSide(club, team, savedSeason(club.getId()),
+                MatchSide.builder().captainPlayerId(savedProfile(club.getId()).getId()));
+
+        assertThat(withContent(match)).containsExactly(match.getId());
+    }
 
     private Club savedClub(String slug) {
         return clubRepository.save(Club.builder().name("Riverside CC").slug(slug).status(ClubStatus.ACTIVE).build());
