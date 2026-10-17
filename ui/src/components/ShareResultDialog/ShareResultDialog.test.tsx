@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShareResultDialog } from './ShareResultDialog'
 import { baseTheme } from '../../theme'
 import { makeMatch, makeResult } from '../../pages/manage/results/resultTestUtils'
@@ -53,6 +53,11 @@ beforeEach(() => {
   updateShareSettings.mockImplementation((_club: string, settings: unknown) => Promise.resolve(settings))
   listLeagues.mockResolvedValue([])
   listSections.mockResolvedValue([{ id: 'sec-1', parentSectionId: null, name: 'Seniors', maxAge: null }])
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  for (const key of ['share', 'canShare', 'clipboard']) Reflect.deleteProperty(navigator, key)
 })
 
 describe('ShareResultDialog', () => {
@@ -123,17 +128,59 @@ describe('ShareResultDialog', () => {
     expect(await screen.findByRole('img', { name: /Match summary:/ })).toBeInTheDocument()
   })
 
-  it('attaches the result image on WhatsApp and says to attach the downloaded one where files cannot be shared', async () => {
+  it('on a computer shows no Attach switch, no image in the bubble, and a separate image card with Copy and Download image', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem { constructor(public items: Record<string, Blob>) {} })
+    Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true })
+    renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Result image' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Attach the result image' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Result image attached to the message' })).not.toBeInTheDocument()
+    expect(screen.getByText('Paste or attach this image in the chat. WhatsApp links carry text only.')).toBeInTheDocument()
+    expect(screen.getByText(/On a computer, paste the copied image into the chat/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send in WhatsApp' })).toBeInTheDocument()
+
+    const copy = screen.getByRole('button', { name: 'Copy image' })
+    await waitFor(() => expect(copy).toBeEnabled())
+    await userEvent.click(copy)
+    const item = write.mock.calls[0][0][0] as { items: Record<string, File> }
+    expect(item.items['image/png']).toBeInstanceOf(File)
+    expect(item.items['image/png'].type).toBe('image/png')
+    expect(await screen.findByText('Image copied.')).toBeInTheDocument()
+  })
+
+  it('where the share sheet can send the file offers the Attach switch and shows the image in the bubble while on', async () => {
+    Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true })
+    Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:file'), revokeObjectURL: vi.fn() }))
+    // A touch device: only there is the image promised together with the text.
+    const originalMatchMedia = window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes('pointer: coarse'),
+        media: query,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    })
     renderDialog()
     await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
 
     expect(await screen.findByRole('checkbox', { name: 'Attach the result image' })).toBeChecked()
-    expect(await screen.findByText('Attach the downloaded image in WhatsApp')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Download image' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Send in WhatsApp' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: 'Result image attached to the message' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Result image' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Copy image' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Attach the result image' }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Download image' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('img', { name: 'Result image attached to the message' })).not.toBeInTheDocument())
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
   })
 
   it('offers Download image beside Copy text on Facebook', async () => {
@@ -142,5 +189,8 @@ describe('ShareResultDialog', () => {
 
     expect(await screen.findByRole('button', { name: 'Download image' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy text' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Image to upload' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Result image attached to the post' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Attach the result image' })).not.toBeInTheDocument()
   })
 })

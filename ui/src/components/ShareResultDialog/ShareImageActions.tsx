@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useCopyImage } from '../../hooks/useCopyImage'
 import { Box, Typography } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
@@ -17,15 +18,12 @@ export interface ShareImageActionsProps {
 
 const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
 
-const canCopyImage = (): boolean =>
-  typeof ClipboardItem !== 'undefined' && typeof navigator !== 'undefined' && typeof navigator.clipboard?.write === 'function'
-
 // docs/specs/114-share-result.md (Preview and delivery): the main button is chosen by capability. Share where the browser can
 // share this file, otherwise Download PNG; Copy image where ClipboardItem exists. Cancelling the share sheet is not an error.
 export function ShareImageActions({ file, shareTitle, error }: ShareImageActionsProps) {
   const capability = useShareCapability()
-  const [status, setStatus] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  const clipboardImage = useCopyImage()
   const canShare = file !== null && capability.canShareFiles(file)
 
   const share = async () => {
@@ -40,15 +38,8 @@ export function ShareImageActions({ file, shareTitle, error }: ShareImageActions
   }
 
   const copyImage = async () => {
-    if (!file) return
     setFailure(null)
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': file })])
-      setStatus('Image copied.')
-    } catch {
-      setStatus(null)
-      setFailure("Couldn't copy the image. Download it instead.")
-    }
+    await clipboardImage.copyImage(file)
   }
 
   return (
@@ -62,7 +53,7 @@ export function ShareImageActions({ file, shareTitle, error }: ShareImageActions
         <Button variant={canShare ? 'secondary' : 'primary'} startIcon={<FileDownloadOutlinedIcon />} disabled={!file} onClick={() => file && downloadFile(file)} sx={TOUCH_TARGET_SX}>
           Download PNG
         </Button>
-        {canCopyImage() && (
+        {clipboardImage.canCopyImage && (
           <Button
             variant="secondary"
             startIcon={<ContentCopyOutlinedIcon />}
@@ -86,7 +77,7 @@ export function ShareImageActions({ file, shareTitle, error }: ShareImageActions
         aria-live="polite"
         sx={{ display: 'block', mt: 0.5 }}
       >
-        {failure ?? status}
+        {failure ?? clipboardImage.message}
       </Typography>
     </Box>
   )

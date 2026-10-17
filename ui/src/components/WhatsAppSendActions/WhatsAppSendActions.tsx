@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
@@ -22,6 +23,10 @@ export interface WhatsAppSendActionsProps {
   disabled?: boolean
   // Called after every Copy message attempt (true when it worked).
   onCopyResult?: (ok: boolean) => void
+  // Extra buttons shown after Copy text (for example Copy image and Download image), and their status text, announced in the
+  // same status region.
+  extraActions?: ReactNode
+  extraStatus?: string | null
 }
 
 const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
@@ -46,6 +51,8 @@ export function WhatsAppSendActions({
   copyFailureText = "Couldn't copy automatically - select the text and copy it manually.",
   disabled = false,
   onCopyResult,
+  extraActions,
+  extraStatus,
 }: WhatsAppSendActionsProps) {
   const ownClipboard = useCopyToClipboard()
   const { copy, copiedKey, failed } = clipboard ?? ownClipboard
@@ -102,6 +109,7 @@ export function WhatsAppSendActions({
         >
           {copiedKey === copyKey ? 'Copied' : copyLabel}
         </Button>
+        {extraActions}
       </Box>
       {!fits && (
         <Typography variant="body2" color="text.secondary">
@@ -113,6 +121,7 @@ export function WhatsAppSendActions({
         {copiedKey === copyKey && 'Message copied.'}
         {copiedKey === 'link' && 'Link copied.'}
         {failed && copyFailureText}
+        {extraStatus}
       </Typography>
     </Stack>
   )
