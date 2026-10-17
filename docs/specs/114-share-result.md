@@ -15,6 +15,7 @@ Goals:
 - **D. Delivery that works everywhere:** the browser's share sheet with files where it exists, otherwise Download plus Copy text.
 - **E. Initials only privacy option** that applies to every format and to every generated text, locked on for junior leagues, with a club default.
 - **F. Remembered choices** per club in the browser.
+- **G. Send in WhatsApp everywhere:** one shared action (wa.me link, native share, copy) used by the Result WhatsApp screen and by the existing team announcement, poll, playing conditions and section availability dialogs.
 
 ## Non-goals
 
@@ -37,6 +38,7 @@ Goals:
 - As a club manager on a phone, I tap **Share** and hand the image or PDF and the text to WhatsApp, Facebook or any app through the phone's share sheet in one step.
 - As a club manager on a computer, I tap **Download** and **Copy text**, so that nothing is lost where the browser cannot share files.
 - As a club manager, I can edit the WhatsApp and Facebook text before sending, so that I can add my own words.
+- As a club manager (on a phone or a computer), I can tap **Send in WhatsApp** on a result message, the team announcement, a poll message, the playing conditions message or the section availability message, and have WhatsApp open with the text already filled in, so that I do not copy and paste it.
 - As a club manager, I can switch on **Initials only** so that player names read "M. N." instead of "M. Naidoo", and I can set what the club's default is, so that children's names are not published by habit.
 - As a club manager of a junior league match, I find Initials only locked on with the reason shown, so that I cannot publish children's full names by accident.
 - As a club manager, my last choices come back next time on this device, so that I do not set the same things for every result.
@@ -157,9 +159,22 @@ The threshold `18` is a named constant, `JUNIOR_MAX_AGE`, in one file. Rule 1 be
 - File names: `<home> v <away> <yyyy-mm-dd>` with names sanitised for file systems; with Initials only on, **file names, PDF document titles and metadata never contain a player name** (only team names), and the share sheet title the same.
 - Generation failures (a logo that will not load, an oversized canvas) never block: a missing logo becomes the initial tile; a failed generation shows an inline error and keeps the dialog open.
 
+### Send to WhatsApp (shared, used by every WhatsApp text in the product)
+
+Added at the product owner's request (2026-10-17): the same one-tap WhatsApp delivery for **every** WhatsApp message the platform builds, not only results. Today the team announcement (`TeamSheetCommunicationDialog`, `039`/`040`), the poll message (`PollShareDialog`, `064`), the playing conditions message (`PlayingConditionsShareDialog`) and the section availability message (`SectionAvailabilityShareDialog`) only offer Copy, and the manager pastes the text into WhatsApp by hand.
+
+- **One shared component, `components/WhatsAppSendActions`,** takes the message text (and optionally a file, for the result image) and renders the buttons. The four existing dialogs and the new Result WhatsApp screen all use it, so the behaviour is identical and lives in one place.
+- **Send in WhatsApp** (the primary button): opens `https://wa.me/?text=<URL-encoded message>` in a new tab. On a phone this opens the WhatsApp app at its chat picker with the text filled in; on a desktop it opens WhatsApp Web (or the installed desktop app) with the text filled in. The manager picks the group or contact and presses send. A web page cannot choose the recipient or press send, and this spec does not pretend otherwise.
+- **Share** (shown only where `navigator.share` exists, and for results where `navigator.canShare({ files })` is true): the native share sheet with the text and the image together. This is the best phone path for the Result image, because the image travels with the text. Where the browser cannot share files, Send in WhatsApp sends the text only and the screen says "Attach the downloaded image in WhatsApp", with Download image beside it.
+- **Copy message** stays beside them in every dialog (unchanged behaviour, shared hook `useCopyToClipboard`), so nothing that works today is lost.
+- **Length guard.** `wa.me` links over roughly 2,000 characters are unreliable. Above `WHATSAPP_LINK_MAX_CHARS` (a named constant, 1,800 encoded characters) the Send button is replaced by Copy message with a short explanation, never a silently truncated message.
+- **Editing first.** The manager can still edit the text in the box before sending; Send in WhatsApp always sends the box's current text.
+- **Initials only** applies to the Result messages only. The team announcement, poll and conditions messages go to players of the same club and are unchanged; this is stated so nobody expects it there.
+- No tracking and no WhatsApp Business API: only the public `wa.me` link and the browser's own share sheet.
+
 ### New shared pieces
 
-- `components/ShareResultDialog`, `components/SharePreviewStage` (the checkerboard stage with a caption), `components/ShareFormatScreen` (the control-strip plus preview layout used by all five formats).
+- `components/WhatsAppSendActions` (above), `components/ShareResultDialog`, `components/SharePreviewStage` (the checkerboard stage with a caption), `components/ShareFormatScreen` (the control-strip plus preview layout used by all five formats).
 - Pure helpers in `ui/src/utils/share/`: `shareName.ts` (name forms), `isJuniorMatch.ts`, `shareResultData.ts` (assembles one `ShareResultModel` from `ResultListItem`, `Scorecard`, our-team filter and name form, so every format reads one shape), `resultTextWhatsApp.ts` and `resultTextFacebook.ts` (text builders, mirroring `teamSheetWhatsAppText.ts`; WhatsApp bold is `*...*`), `resultPdf.ts` (jsPDF, mirroring `teamSheetPdf.ts`, A4 portrait, page breaks, footer "Generated by Cricket Legend"), `resultImage.ts` (Canvas2D, mirroring `leagueSchedulePoster.ts`; one drawing function with size and template parameters, also used for TV at 1920 x 1080), `shareChoices.ts` (localStorage, try/catch), `useShareCapability.ts`.
 - Hooks: `hooks/useShareSettings.ts` (React Query over `api/shareSettingsApi.ts`).
 - **No raw hex values outside `theme.ts`** for the app UI; the generator files' fixed template colours (Night `#1b1f24`, Daylight, PDF ink) are declared once at the top of each generator file as `teamSheetPdf.ts` already does, with the club colour always taken from the theme.
@@ -183,6 +198,7 @@ Per `docs/standards/testing.md`. Following the user's working rule ("build first
 - `shareResultData`: both teams and Our team only (opposition names and tables gone, totals kept), derby, summary-only result, player of the match from our side and from the opposition (dropped when ours only), no player of the match.
 - The WhatsApp and Facebook builders: every template with every switch combination, Emoji off has no emoji code points, Hashtags never contain a name, Celebration wording per outcome and thresholds, win, loss, tie and no-result fallbacks.
 - `shareChoices`: round trip, corrupt JSON, unavailable storage (`localStorage` throwing), per-club keys.
+- **WhatsApp send (unit and component):** the link builder encodes emoji, newlines, `*bold*`, `&`, `#` and accented names correctly and round-trips through `decodeURIComponent`; the length guard switches to Copy at the limit; `WhatsAppSendActions` renders Send, Copy and (with a stubbed `navigator.share` and `canShare`) Share; each of the four existing dialogs shows Send in WhatsApp with its current text and its existing copy tests still pass; a Storybook story for the component.
 - **Privacy test (required):** for a fixed fixture with distinctive full given names (a name list including accented and particle names), with Initials only on, assert that **no full given name appears** anywhere in: the WhatsApp text (all three templates), the Facebook text (all three templates, including Celebration prose), the PDF text content (extracted from the generated jsPDF document through its text-capture mock, all three templates, both team scopes), every `fillText` call recorded by a mocked Canvas2D for the Image (three templates, three sizes) and the TV summary, the file names, the PDF metadata title and the share title. The same fixture with the setting off asserts the surname form appears, so the test cannot pass vacuously. Names are matched case-insensitively and accent-folded, as `108`'s privacy test is.
 - **Locked-state test:** `ShareResultDialog` for a junior-league match renders the Initials only switch checked and `disabled` with the visible text "Always on for junior leagues"; clicking it changes nothing; the output (privacy fixture above) has no full given name even when the remembered choice is off and the club default is off; for a non-junior match the same switch is enabled and honours the remembered choice, then the club default.
 
@@ -195,6 +211,7 @@ Per `docs/standards/testing.md`. Following the user's working rule ("build first
 ## Acceptance Criteria
 
 - A **Share** button on the result page and a share icon button on the Results card are enabled for a published result and disabled, with the visible reason "Publish the result to share it", for a draft.
+- **Send in WhatsApp** appears in the Result WhatsApp screen, the team announcement dialog, the poll dialog, the playing conditions dialog and the section availability dialog. It opens `https://wa.me/?text=` with the current (edited) message in a new tab; Copy message still works in each; a message too long for a link shows Copy only, with the reason. Where the browser supports it, Share (native) is also offered.
 - Share opens one dialog (full screen at 375 px) with five tiles; each opens its format screen with a control strip, a live preview and actions; Back returns to the tiles.
 - PDF offers Club colours, Classic and Compact; Image offers Club green, Night, Daylight and Square 1080, Portrait 4:5, Story 9:16; TV offers Broadcast, Club colour, Light and is always 1920 x 1080; WhatsApp offers Short, With top performers, Scorecard text; Facebook offers Match report, Celebration, Brief. Include switches are as in the table above.
 - Changing a template, size, switch or the Teams choice updates the preview without a page reload, and the produced file equals the preview.
