@@ -5,6 +5,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { BrandIcon } from '../../../components/BrandIcon'
@@ -24,6 +25,7 @@ import { TeamLogo } from '../matches/TeamLogo'
 import {
   ownSidesOf,
   PERSPECTIVE_COLOR,
+  PUBLISH_TO_SHARE_REASON,
   resultEditTo,
   resultSides,
   resultViewTo,
@@ -38,12 +40,14 @@ export interface ResultCardProps {
   seasonsById: Map<string, Season>
   // Publishes the draft (validation and warnings are the caller's job); only drafts show the button.
   onPublish: (item: ResultListItem) => void
+  // docs/specs/114: opens the Share dialog for this result; Share is off on a draft.
+  onShare: (item: ResultListItem) => void
 }
 
 // docs/specs/100-match-results-core.md: one RecordCard per result - both teams with logos and a score line each, the
 // result line coloured from the club team's side, the toss, the date and the field, an amber Draft chip while
-// unpublished and a green Published chip once published (so the cards line up), and View / Edit / Publish in the footer (Publish on a draft only; Edit is off while published).
-export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublish }: ResultCardProps) {
+// unpublished and a green Published chip once published (so the cards line up), and View / Edit / Publish / Share in the footer (Publish on a draft only; Edit is off while published; Share is off on a draft).
+export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublish, onShare }: ResultCardProps) {
   const navigate = useNavigate()
   const { match, result } = item
   const sides = resultSides(match, teamsById)
@@ -70,6 +74,13 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
     ...(draft
       ? [{ label: 'Publish', icon: <CloudUploadOutlinedIcon fontSize="small" />, onClick: () => onPublish(item) }]
       : []),
+    {
+      label: 'Share',
+      icon: <ShareOutlinedIcon fontSize="small" />,
+      onClick: () => onShare(item),
+      disabled: draft,
+      title: draft ? PUBLISH_TO_SHARE_REASON : undefined,
+    },
   ]
 
   return (

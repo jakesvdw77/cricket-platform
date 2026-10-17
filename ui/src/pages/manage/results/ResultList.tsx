@@ -11,6 +11,7 @@ import { HeaderSeasonSelect } from '../../../components/HeaderSeasonSelect'
 import { ListViewToggle } from '../../../components/ListViewToggle'
 import { ManageScreenHeader } from '../../../components/ManageScreenHeader'
 import { PageCounters } from '../../../components/PageCounters'
+import { ShareResultDialog } from '../../../components/ShareResultDialog'
 import type { PageCounterItem } from '../../../components/PageCounters'
 import {
   getResultsSummary,
@@ -20,6 +21,7 @@ import {
 } from '../../../api/matchResultApi'
 import type {
   ResultFilters,
+  ResultListItem,
   ResultListFocus,
   ResultOutcomeType,
   ResultStatus,
@@ -92,6 +94,8 @@ export default function ResultList() {
   const [focus, setFocus] = useState<ResultListFocus | null>(null)
   const [view, setView] = useListViewPreference('resultList:view')
   const [pickerOpen, setPickerOpen] = useState(false)
+  // docs/specs/114: the result whose Share dialog is open.
+  const [shareItem, setShareItem] = useState<ResultListItem | null>(null)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS)
@@ -388,6 +392,7 @@ export default function ResultList() {
               leaguesById={leaguesById}
               seasonsById={seasonsById}
               onPublish={(picked) => publish(picked.match.id)}
+              onShare={setShareItem}
             />
           ))}
         </Box>
@@ -447,6 +452,16 @@ export default function ResultList() {
       )}
 
       {dialogs}
+      {shareItem && (
+        <ShareResultDialog
+          open
+          onClose={() => setShareItem(null)}
+          clubId={clubId}
+          match={shareItem.match}
+          result={shareItem.result}
+          teamsById={teamsById}
+        />
+      )}
       <CaptureResultDialog
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
