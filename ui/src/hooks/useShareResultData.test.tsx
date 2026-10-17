@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useShareResultData } from './useShareResultData'
-import { makeMatch, makeResult } from '../pages/manage/results/resultTestUtils'
+import { makeMatch, makeResult } from '../test/resultFixtures'
 
 const listLeagues = vi.fn()
 const listSections = vi.fn()
@@ -53,5 +53,18 @@ describe('useShareResultData', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.league).toBeNull()
     expect(result.current.junior.junior).toBe(false)
+  })
+
+  it('fails safe to junior when the own team section is not in the loaded sections, and when the match has no own team', async () => {
+    listSections.mockResolvedValue([{ id: 'other-section', parentSectionId: null, name: 'Seniors', maxAge: null }])
+    const own = makeMatch({ id: 'match-1', homeTeamId: 'team-1', leagueId: null })
+    const removed = renderHook(() => useShareResultData('club-1', own, makeResult(), teams, true), { wrapper })
+    await waitFor(() => expect(removed.result.current.isLoading).toBe(false))
+    expect(removed.result.current.junior).toEqual({ junior: true, reason: 'UNAVAILABLE' })
+
+    const none = makeMatch({ id: 'match-2', homeTeamId: null, awayTeamId: null, leagueId: null })
+    const noTeam = renderHook(() => useShareResultData('club-1', none, makeResult(), teams, true), { wrapper })
+    await waitFor(() => expect(noTeam.result.current.isLoading).toBe(false))
+    expect(noTeam.result.current.junior).toEqual({ junior: true, reason: 'UNAVAILABLE' })
   })
 })

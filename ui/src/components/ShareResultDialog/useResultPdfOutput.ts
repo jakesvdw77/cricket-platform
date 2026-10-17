@@ -11,15 +11,18 @@ export const PDF_ERROR = 'The PDF could not be created. Try again, or choose ano
 // canvas, so what is shown is what is shared. `model` and `options` must be memoised by the caller.
 export function useResultPdfOutput(model: ShareResultModel, options: ResultPdfOptions, fileName: string, pixelWidth?: number) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [file, setFile] = useState<File | null>(null)
+  // The file with the exact input it was made from; only handed out while that is the current input (see useResultImageOutput).
+  const [made, setMade] = useState<{ input: object; file: File } | null>(null)
   const [pages, setPages] = useState<PdfOp[][]>([])
   const [pageIndex, setPageIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const input = useMemo(() => ({ model, options }), [model, options])
   const debounced = useDebouncedValue(input, 250)
+  const file = made && made.input === input ? made.file : null
 
   useEffect(() => {
     let cancelled = false
+    setMade(null)
     generateResultPdf(debounced.model, debounced.options)
       .then((output) => {
         // The screen keeps its own File; the generator's object URL is not needed here.
@@ -27,12 +30,11 @@ export function useResultPdfOutput(model: ShareResultModel, options: ResultPdfOp
         if (cancelled) return
         setError(null)
         setPages(output.pages)
-        setFile(new File([output.blob], fileName, { type: 'application/pdf' }))
+        setMade({ input: debounced, file: new File([output.blob], fileName, { type: 'application/pdf' }) })
       })
       .catch(() => {
         if (cancelled) return
         setError(PDF_ERROR)
-        setFile(null)
         setPages([])
       })
     return () => {

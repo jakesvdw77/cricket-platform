@@ -110,10 +110,10 @@ describe('isJuniorMatch rules in detail', () => {
     expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: 's' }, { sectionId: 's' }] }).junior).toBe(false)
   })
 
-  it('is adult when the team has no section or the section is unknown and nothing else says junior', () => {
-    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: null }] }).junior).toBe(false)
-    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: 'nope' }] }).junior).toBe(false)
-    expect(isJuniorMatch({ league: null, sections, teams: [] }).junior).toBe(false)
+  it('is unknown (junior, UNAVAILABLE), not adult, when the team has no section or the section is unknown and nothing else says junior', () => {
+    for (const teams of [[{ sectionId: null }], [{ sectionId: 'nope' }], []]) {
+      expect(isJuniorMatch({ league: null, sections, teams })).toEqual({ junior: true, reason: 'UNAVAILABLE' })
+    }
   })
 
   it('cannot hang on a loop in the section tree', () => {
@@ -130,5 +130,32 @@ describe('isJuniorMatch rules in detail', () => {
   it('keeps null (a friendly) distinct from undefined (could not load)', () => {
     expect(isJuniorMatch({ league: null, sections, teams: adultTeams }).junior).toBe(false)
     expect(isJuniorMatch({ league: undefined, sections, teams: adultTeams }).junior).toBe(true)
+  })
+})
+
+describe('isJuniorMatch fails safe when the own team section cannot be resolved', () => {
+  const unavailable = { junior: true, reason: 'UNAVAILABLE' }
+
+  it('is unknown, not adult, when the team section is not in the loaded list (inactive or removed)', () => {
+    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: 'gone' }] })).toEqual(unavailable)
+    expect(isJuniorMatch({ league: { maxAge: null }, sections, teams: [{ sectionId: 'gone' }] })).toEqual(unavailable)
+  })
+
+  it('is unknown when a team has no section and the league gives no age, even beside a resolved adult team', () => {
+    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: null }] })).toEqual(unavailable)
+    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: 's' }, { sectionId: undefined }] })).toEqual(unavailable)
+  })
+
+  it('is unknown when a parent section of the team is missing from the list', () => {
+    expect(isJuniorMatch({ league: null, sections: [section('orphan', 'Orphan', 'missing-parent')], teams: [{ sectionId: 'orphan' }] })).toEqual(unavailable)
+  })
+
+  it('is unknown when the match has no own team and the league gives no age', () => {
+    expect(isJuniorMatch({ league: null, sections, teams: [] })).toEqual(unavailable)
+  })
+
+  it('still lets the league age decide, and a resolved junior section win, without the missing section', () => {
+    expect(isJuniorMatch({ league: { maxAge: 40 }, sections, teams: [{ sectionId: 'gone' }] }).junior).toBe(false)
+    expect(isJuniorMatch({ league: null, sections, teams: [{ sectionId: 'gone' }, { sectionId: 'u15' }] })).toEqual({ junior: true, reason: 'SECTION_MAX_AGE' })
   })
 })

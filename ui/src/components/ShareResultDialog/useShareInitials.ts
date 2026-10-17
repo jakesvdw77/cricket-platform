@@ -1,10 +1,10 @@
 import type { ShareSettings } from '../../api/shareSettingsApi'
 import type { JuniorMatchResult } from '../../utils/share/isJuniorMatch'
-import type { ShareChoices } from '../../utils/share/shareChoices'
+import type { ShareChoices, ShareChoicesPatch } from '../../utils/share/shareChoices'
 
 // docs/specs/114-share-result.md (Default and junior lock): the ONE First names as initials value every format reads.
 export const JUNIOR_LOCK_REASON = 'Always on for junior leagues'
-export const UNAVAILABLE_LOCK_REASON = 'Could not check the league, so Initials only is on'
+export const UNAVAILABLE_LOCK_REASON = 'Could not check the league, so first names as initials is on'
 
 export interface ShareInitialsState {
   value: boolean
@@ -12,6 +12,9 @@ export interface ShareInitialsState {
   // The visible reason when locked.
   lockReason: string | null
   setValue: (next: boolean) => void
+  // The value comes from the club default (the user never chose their own, and it is not locked), so changing the club default
+  // changes what is shown and anything typed would keep the old names.
+  followsClubDefault: boolean
   // The club-wide default and how to change it.
   clubDefault: boolean
   setClubDefault: (next: boolean) => void
@@ -21,7 +24,7 @@ export interface ShareInitialsState {
 
 interface Input {
   choices: ShareChoices
-  updateChoices: (next: Partial<ShareChoices>) => void
+  updateChoices: (next: ShareChoicesPatch) => void
   junior: JuniorMatchResult
   settings: ShareSettings | undefined
   setClubDefault: (next: boolean) => void
@@ -37,6 +40,7 @@ export function resolveShareInitials({ choices, updateChoices, junior, settings,
     value: locked ? true : (choices.initialsOnly ?? settings?.initialsOnlyDefault ?? false),
     locked,
     lockReason: locked ? (junior.reason === 'UNAVAILABLE' ? UNAVAILABLE_LOCK_REASON : JUNIOR_LOCK_REASON) : null,
+    followsClubDefault: !locked && (choices.initialsOnly ?? null) === null,
     setValue: (next) => {
       if (!locked) updateChoices({ initialsOnly: next })
     },

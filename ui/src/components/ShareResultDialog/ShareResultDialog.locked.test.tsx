@@ -37,7 +37,7 @@ vi.mock('../../api/teamSponsorApi', () => ({ listTeamSponsors: () => Promise.res
 const team = { id: 't1', sectionId: 'sec-1', name: 'Riverside 1', logoUrl: null }
 const ADULT_SECTIONS = [{ id: 'sec-1', parentSectionId: null, name: 'Seniors', maxAge: null }]
 const JUNIOR_REASON = 'Always on for junior leagues'
-const UNAVAILABLE_REASON = 'Could not check the league, so Initials only is on'
+const UNAVAILABLE_REASON = 'Could not check the league, so first names as initials is on'
 
 function renderDialog(matchOverrides: Record<string, unknown> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -200,7 +200,7 @@ describe('ShareResultDialog junior lock', () => {
     await openWhatsApp()
 
     expect(screen.getByText('Does not apply to junior leagues')).toBeVisible()
-    const clubDefault = screen.getByRole('checkbox', { name: 'Make this the club default' })
+    const clubDefault = screen.getByRole('checkbox', { name: 'Make first names as initials the club default' })
     expect(clubDefault).toBeEnabled()
     await userEvent.click(clubDefault)
     await waitFor(() => expect(updateShareSettings).toHaveBeenCalledWith('club-1', { initialsOnlyDefault: true }))

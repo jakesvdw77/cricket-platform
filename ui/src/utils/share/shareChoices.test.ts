@@ -5,6 +5,7 @@ import {
   IMAGE_SIZES,
   IMAGE_TEMPLATES,
   PDF_TEMPLATES,
+  mergeShareChoices,
   sanitiseShareChoices,
   SHARE_FORMATS,
   shareChoicesKey,
@@ -128,5 +129,22 @@ describe('sanitiseShareChoices in detail', () => {
 
   it('keeps the key of one club apart from another', () => {
     expect(shareChoicesKey('a')).not.toBe(shareChoicesKey('b'))
+  })
+})
+
+describe('mergeShareChoices', () => {
+  it('merges nested objects key by key onto the latest value and replaces arrays and primitives', () => {
+    const merged = mergeShareChoices(DEFAULT_SHARE_CHOICES, {
+      include: { whatsapp: { emoji: false } },
+      templates: { tv: 'LIGHT' },
+      sponsorIds: ['a'],
+      initialsOnly: true,
+    })
+    expect(merged.include.whatsapp).toEqual({ attachImage: true, emoji: false })
+    expect(merged.include.facebook).toEqual(DEFAULT_SHARE_CHOICES.include.facebook)
+    expect(merged.templates).toEqual({ ...DEFAULT_SHARE_CHOICES.templates, tv: 'LIGHT' })
+    expect(merged.sponsorIds).toEqual(['a'])
+    expect(merged.initialsOnly).toBe(true)
+    expect(DEFAULT_SHARE_CHOICES.include.whatsapp.emoji).toBe(true)
   })
 })

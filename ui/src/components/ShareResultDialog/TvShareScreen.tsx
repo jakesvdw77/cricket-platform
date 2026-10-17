@@ -39,7 +39,7 @@ export function TvShareScreen(props: ShareScreenProps) {
   const { canvasRef, file, error } = useResultImageOutput(model, options, fileName)
   const setInclude = (patch: Partial<typeof include>) =>
     updateChoices({
-      include: { ...choices.include, tv: { ...include, ...patch } },
+      include: { tv: patch },
     })
 
   return (
@@ -52,7 +52,7 @@ export function TvShareScreen(props: ShareScreenProps) {
               value={template}
               ariaLabel="Template"
               fullWidthOnPhone
-              onChange={(next: TvTemplate) => updateChoices({ templates: { ...choices.templates, tv: next } })}
+              onChange={(next: TvTemplate) => updateChoices({ templates: { tv: next } })}
             >
               {TEMPLATES.map((item) => (
                 <ToggleButton key={item.value} value={item.value}>

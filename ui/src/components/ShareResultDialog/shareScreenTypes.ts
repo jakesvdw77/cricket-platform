@@ -1,5 +1,5 @@
 import type { Sponsor } from '../../api/sponsorApi'
-import type { ShareChoices } from '../../utils/share/shareChoices'
+import type { ShareChoices, ShareChoicesPatch } from '../../utils/share/shareChoices'
 import type { ShareResultModel } from '../../utils/share/shareResultData'
 import type { ShareInitialsState } from './useShareInitials'
 
@@ -10,7 +10,7 @@ export interface ShareScreenProps {
   // The same result with BOTH teams always, for the Image and TV cards and the attached image: they never offer Our team only.
   cardModel: ShareResultModel
   choices: ShareChoices
-  updateChoices: (next: Partial<ShareChoices>) => void
+  updateChoices: (next: ShareChoicesPatch) => void
   initials: ShareInitialsState
   // Candidate sponsors (active, with a logo) and the ids ticked (remembered, else the default).
   sponsors: Sponsor[]

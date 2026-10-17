@@ -25,6 +25,9 @@ const MUTED: Rgb = [82, 101, 92] // theme.palette.text.secondary (#52655c)
 const RULE: Rgb = [229, 235, 231]
 const RULE_STRONG: Rgb = [154, 169, 161]
 const BACKING: Rgb = [255, 255, 255]
+// The candidates for text on the club colour band, after the theme's own contrast text.
+const ON_CLUB_WHITE = '#ffffff'
+const ON_CLUB_INK = '#14231c'
 
 export const PDF_PAGE_WIDTH = 210
 export const PDF_PAGE_HEIGHT = 297
@@ -128,7 +131,7 @@ export async function generateResultPdf(model: ShareResultModel, options: Result
   const type = SCALE[options.template]
   const compact = options.template === 'COMPACT'
   const club = hexToRgb(options.colour.main, INK)
-  const onClub = hexToRgb(readableOn([options.colour.main], [options.colour.contrastText, '#ffffff', '#14231c']), WHITE)
+  const onClub = hexToRgb(readableOn([options.colour.main], [options.colour.contrastText, ON_CLUB_WHITE, ON_CLUB_INK]), WHITE)
 
   // Every logo is fetched once; a logo that fails collapses its slot.
   const sponsorUrls = options.logos.sponsorUrls.slice(0, MAX_SHARE_SPONSORS)

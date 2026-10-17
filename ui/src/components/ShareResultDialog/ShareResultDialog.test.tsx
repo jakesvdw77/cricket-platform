@@ -5,7 +5,7 @@ import { ThemeProvider } from '@mui/material'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShareResultDialog } from './ShareResultDialog'
 import { baseTheme } from '../../theme'
-import { makeMatch, makeResult } from '../../pages/manage/results/resultTestUtils'
+import { makeMatch, makeResult } from '../../test/resultFixtures'
 import { mockCanvas } from './shareScreenTestUtils'
 
 const getShareSettings = vi.fn()
@@ -112,7 +112,7 @@ describe('ShareResultDialog', () => {
     renderDialog()
     await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
 
-    await userEvent.click(await screen.findByRole('checkbox', { name: 'Make this the club default' }))
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Make first names as initials the club default' }))
 
     await waitFor(() => expect(updateShareSettings).toHaveBeenCalledWith('club-1', { initialsOnlyDefault: true }))
   })

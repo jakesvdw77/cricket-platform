@@ -37,7 +37,7 @@ export function PdfShareScreen(props: ShareScreenProps) {
   const { canvasRef, file, pageCount, pageIndex, setPageIndex, error } = useResultPdfOutput(model, options, fileName, pixelWidth)
   const setInclude = (patch: Partial<typeof include>) =>
     updateChoices({
-      include: { ...choices.include, pdf: { ...include, ...patch } },
+      include: { pdf: patch },
     })
 
   return (
@@ -52,7 +52,7 @@ export function PdfShareScreen(props: ShareScreenProps) {
               fullWidthOnPhone
               onChange={(next: PdfTemplate) =>
                 updateChoices({
-                  templates: { ...choices.templates, pdf: next },
+                  templates: { pdf: next },
                 })
               }
             >

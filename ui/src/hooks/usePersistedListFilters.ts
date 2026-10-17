@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 export function usePersistedListFilters<T extends Record<string, unknown>>(
   storageKey: string,
   defaults: T,
-): [T, (next: Partial<T>) => void] {
+): [T, (next: Partial<T> | ((previous: T) => Partial<T>)) => void] {
   const [state, setState] = useState<T>(defaults)
 
   // Loaded once per storageKey (e.g. when clubId, and therefore the key, changes) — falls back
@@ -46,9 +46,10 @@ export function usePersistedListFilters<T extends Record<string, unknown>>(
   // Functional, so several updates in one tick (and an update made in the same commit as the load
   // effect above, e.g. docs/specs/083's URL-over-storage hydration) merge onto the latest state
   // rather than a stale closure.
-  const update = (next: Partial<T>) => {
+  // A function receives the latest state, for a change that depends on it (e.g. one switch inside a nested object).
+  const update = (next: Partial<T> | ((previous: T) => Partial<T>)) => {
     dirty.current = true
-    setState((previous) => ({ ...previous, ...next }))
+    setState((previous) => ({ ...previous, ...(typeof next === 'function' ? next(previous) : next) }))
   }
 
   return [state, update]

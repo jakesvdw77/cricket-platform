@@ -73,6 +73,10 @@ export const DEFAULT_SHARE_CHOICES: ShareChoices = {
   initialsOnly: null,
 }
 
+// A change to the choices: any nested object may carry just the keys that changed (arrays and primitives replace).
+export type ShareChoicesPatch = DeepPartial<ShareChoices>
+type DeepPartial<T> = T extends unknown[] ? T : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
@@ -87,6 +91,20 @@ function pickBooleans<T extends Record<string, boolean>>(value: unknown, default
     if (typeof source[key] === 'boolean') (result as Record<string, boolean>)[key] = source[key]
   }
   return result
+}
+
+// Applies a patch onto the LATEST choices, merging nested objects key by key, so two quick changes to different switches
+// of the same format cannot overwrite each other with a stale copy of the whole object.
+export function mergeShareChoices(previous: ShareChoices, patch: ShareChoicesPatch): ShareChoices {
+  const merge = (base: unknown, change: unknown): unknown => {
+    if (!isRecord(base) || !isRecord(change)) return change
+    const merged: Record<string, unknown> = { ...base }
+    for (const key of Object.keys(change)) {
+      if (change[key] !== undefined) merged[key] = merge(base[key], change[key])
+    }
+    return merged
+  }
+  return merge(previous, patch) as ShareChoices
 }
 
 // Anything that came out of storage, made into a valid ShareChoices: a value that is missing or invalid falls back to

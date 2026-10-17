@@ -39,6 +39,13 @@ function sectionChain(sections: SectionLike[], sectionId: string | null | undefi
   return chain
 }
 
+// True when the section is missing from the list (inactive, removed, or never set), or a parent it names is: its age cannot be known.
+function pathUnresolved(sections: SectionLike[], chain: SectionLike[], sectionId: string | null | undefined): boolean {
+  if (!sectionId || chain.length === 0) return true
+  const last = chain[chain.length - 1]
+  return Boolean(last.parentSectionId) && !sections.some((section) => section.id === last.parentSectionId)
+}
+
 const hasAge = (maxAge: number | null | undefined): maxAge is number => maxAge !== null && maxAge !== undefined
 
 export function isJuniorMatch(input: JuniorMatchInput): JuniorMatchResult {
@@ -50,12 +57,19 @@ export function isJuniorMatch(input: JuniorMatchInput): JuniorMatchResult {
     return leagueMax <= JUNIOR_MAX_AGE ? { junior: true, reason: 'LEAGUE_MAX_AGE' } : { junior: false, reason: null }
   }
 
-  const chains = input.teams.map((team) => sectionChain(input.sections as SectionLike[], team.sectionId))
+  const all = input.sections as SectionLike[]
+  const chains = input.teams.map((team) => sectionChain(all, team.sectionId))
   const sections = chains.flat()
 
   // Rule 2: a section on either own team's path with an age cap at or below the threshold.
   if (sections.some((section) => hasAge(section.maxAge) && section.maxAge <= JUNIOR_MAX_AGE)) {
     return { junior: true, reason: 'SECTION_MAX_AGE' }
+  }
+
+  // No age settled it. A match with no own team, or an own team whose section (or a parent of it) cannot be found, is unknown,
+  // not adult: fail safe to junior.
+  if (input.teams.length === 0 || chains.some((chain, index) => pathUnresolved(all, chain, input.teams[index].sectionId))) {
+    return { junior: true, reason: 'UNAVAILABLE' }
   }
 
   // Rule 3, only when there is no age data anywhere: a section named "Juniors" on the path.

@@ -457,3 +457,67 @@ describe('ShareResultDialog layout', () => {
     expect(screen.getByRole('dialog', { name: 'Share result' }).className).toMatch(/paperFullScreen/)
   })
 })
+
+describe('ShareResultDialog club default and the edit guard', () => {
+  it('asks "Replace your edits?" before the club default changes what is shown, and only saves once confirmed', async () => {
+    renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await screen.findByRole('textbox', { name: 'Message text' })
+    await userEvent.type(messageBox(), ' EDITED')
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Make first names as initials the club default' }))
+    const confirm = await screen.findByRole('dialog', { name: 'Replace your edits?' })
+    expect(updateShareSettings).not.toHaveBeenCalled()
+
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByText('Replace your edits?')).not.toBeInTheDocument())
+    expect(updateShareSettings).not.toHaveBeenCalled()
+    expect(messageBox().value).toContain('EDITED')
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Make first names as initials the club default' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Replace your edits?' })).getByRole('button', { name: 'Replace' }))
+    await waitFor(() => expect(updateShareSettings).toHaveBeenCalledWith('club-1', { initialsOnlyDefault: true }))
+    await waitFor(() => expect(messageBox().value).not.toContain('EDITED'))
+  })
+
+  it('does not ask when the user chose their own value, because the club default changes nothing they see', async () => {
+    remember({ initialsOnly: false })
+    renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await screen.findByRole('textbox', { name: 'Message text' })
+    await userEvent.type(messageBox(), ' EDITED')
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Make first names as initials the club default' }))
+
+    expect(screen.queryByText('Replace your edits?')).not.toBeInTheDocument()
+    await waitFor(() => expect(updateShareSettings).toHaveBeenCalledWith('club-1', { initialsOnlyDefault: true }))
+    expect(messageBox().value).toContain('EDITED')
+  })
+})
+
+describe('ShareResultDialog image attached to the text and the Teams choice', () => {
+  const OPPOSITION = /Thabo|Mokoena|Pieter|Botha|Nomvula|Dlamini|Johan|van Zyl/
+  const drawnText = (context: ReturnType<typeof mockCanvas>) => context.fillText.mock.calls.map((call) => String(call[0])).join('\n')
+
+  async function drawnForAttachedImage(teams: 'both' | 'ours') {
+    remember({ teams, initialsOnly: false })
+    getScorecard.mockResolvedValue(privacyScorecard('o1'))
+    const context = mockCanvas()
+    const view = renderDialog()
+    await userEvent.click(screen.getByRole('radio', { name: /WhatsApp/ }))
+    await screen.findByRole('textbox', { name: 'Message text' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Download image' })).toBeEnabled())
+    const text = drawnText(context)
+    view.unmount()
+    return text
+  }
+
+  it('shows opposition players on the attached image with both teams, and none with Our team only (both scores stay)', async () => {
+    expect(await drawnForAttachedImage('both')).toMatch(OPPOSITION)
+
+    const ours = await drawnForAttachedImage('ours')
+    expect(ours).not.toMatch(OPPOSITION)
+    expect(ours).toContain('150/6')
+    expect(ours).toContain('126/10')
+  })
+})

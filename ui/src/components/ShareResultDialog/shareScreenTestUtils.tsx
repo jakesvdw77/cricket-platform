@@ -50,6 +50,7 @@ export function makeScreenProps(overrides: Partial<ShareScreenProps> = {}, choic
       locked: false,
       lockReason: null,
       setValue: setInitials,
+      followsClubDefault: true,
       clubDefault: false,
       setClubDefault: vi.fn(),
       clubDefaultSaving: false,

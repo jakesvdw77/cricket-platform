@@ -45,7 +45,7 @@ export function ImageShareScreen(props: ShareScreenProps) {
   const { canvasRef, file, error } = useResultImageOutput(model, options, fileName)
   const setInclude = (patch: Partial<typeof include>) =>
     updateChoices({
-      include: { ...choices.include, image: { ...include, ...patch } },
+      include: { image: patch },
     })
   const pixels = SIZES.find((item) => item.value === size)?.pixels
 
@@ -61,7 +61,7 @@ export function ImageShareScreen(props: ShareScreenProps) {
               fullWidthOnPhone
               onChange={(next: ImageTemplate) =>
                 updateChoices({
-                  templates: { ...choices.templates, image: next },
+                  templates: { image: next },
                 })
               }
             >

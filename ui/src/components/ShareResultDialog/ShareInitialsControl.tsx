@@ -8,11 +8,14 @@ export interface ShareInitialsControlProps {
   collisions: string[]
   // Called with the new value; a screen wraps it to confirm replacing typed edits first.
   onChange: (next: boolean) => void
+  // Runs a change after the "Replace your edits?" check; used for the club default when it changes what is shown. Defaults to
+  // running it straight away (the Image, PDF and TV screens have no typed text).
+  guard?: (change: () => void) => void
 }
 
 // docs/specs/114-share-result.md (First names as initials, Default and junior lock): the switch at the top of every format's Include
 // group, with its visible lock reason, the collision note and the club default switch. Internal to ShareResultDialog.
-export function ShareInitialsControl({ initials, collisions, onChange }: ShareInitialsControlProps) {
+export function ShareInitialsControl({ initials, collisions, onChange, guard = (change) => change() }: ShareInitialsControlProps) {
   const reasonId = 'share-initials-reason'
   const defaultHelpId = 'share-initials-default-help'
   return (
@@ -35,11 +38,11 @@ export function ShareInitialsControl({ initials, collisions, onChange }: ShareIn
         </Alert>
       )}
       <CompactSwitch
-        label="Make this the club default"
+        label="Make first names as initials the club default"
         checked={initials.clubDefault}
         disabled={initials.clubDefaultSaving}
         describedBy={initials.locked ? defaultHelpId : undefined}
-        onChange={initials.setClubDefault}
+        onChange={(next) => (initials.followsClubDefault ? guard(() => initials.setClubDefault(next)) : initials.setClubDefault(next))}
       />
       {initials.locked && (
         <Typography id={defaultHelpId} variant="caption" color="text.secondary">

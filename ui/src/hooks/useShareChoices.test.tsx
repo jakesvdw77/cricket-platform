@@ -104,3 +104,20 @@ describe('useShareChoices storage behaviour', () => {
     expect(result.current[0].sponsorIds).toEqual(['1', '2', '3', '4'])
   })
 })
+
+describe('useShareChoices quick changes', () => {
+  it('keeps both of two quick toggles in different formats (no stale snapshot overwrites the other)', async () => {
+    const { result } = renderHook(() => useShareChoices('club-1'))
+    const update = result.current[1]
+
+    act(() => {
+      update({ include: { whatsapp: { emoji: false } } })
+      update({ include: { facebook: { hashtags: false } } })
+      update({ include: { whatsapp: { attachImage: false } } })
+    })
+
+    expect(result.current[0].include.whatsapp).toEqual({ emoji: false, attachImage: false })
+    expect(result.current[0].include.facebook.hashtags).toBe(false)
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(shareChoicesKey('club-1')) as string).include.facebook.hashtags).toBe(false))
+  })
+})

@@ -41,7 +41,7 @@ export function FacebookShareScreen(props: ShareScreenProps) {
   const showImageInPost = canShareImageWithText && options.attachImage
   const copyImage = useCopyImage()
   const setInclude = (patch: Partial<typeof options>) =>
-    guard(() => updateChoices({ include: { ...choices.include, facebook: { ...options, ...patch } } }))
+    guard(() => updateChoices({ include: { facebook: patch } }))
 
   return (
     <>
@@ -54,7 +54,7 @@ export function FacebookShareScreen(props: ShareScreenProps) {
                 value={template}
                 ariaLabel="Tone"
                 fullWidthOnPhone
-                onChange={(next: FacebookTemplate) => guard(() => updateChoices({ templates: { ...choices.templates, facebook: next } }))}
+                onChange={(next: FacebookTemplate) => guard(() => updateChoices({ templates: { facebook: next } }))}
               >
                 {FACEBOOK_RESULT_TEMPLATES.map((item) => (
                   <ToggleButton key={item.value} value={item.value}>
@@ -71,7 +71,7 @@ export function FacebookShareScreen(props: ShareScreenProps) {
               />
             </ShareControlGroup>
             <ShareControlGroup label="Include">
-              <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={(next) => guard(() => initials.setValue(next))} />
+              <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={(next) => guard(() => initials.setValue(next))} guard={guard} />
               <CompactSwitch label="Hashtags" checked={options.hashtags} onChange={(next) => setInclude({ hashtags: next })} />
               <CompactSwitch label="Mention the sponsor" checked={options.mentionSponsor} onChange={(next) => setInclude({ mentionSponsor: next })} />
               {options.mentionSponsor && (
@@ -86,7 +86,7 @@ export function FacebookShareScreen(props: ShareScreenProps) {
                 <CompactSwitch
                   label="Attach the result image"
                   checked={options.attachImage}
-                  onChange={(next) => updateChoices({ include: { ...choices.include, facebook: { ...options, attachImage: next } } })}
+                  onChange={(next) => updateChoices({ include: { facebook: { attachImage: next } } })}
                 />
               )}
             </ShareControlGroup>

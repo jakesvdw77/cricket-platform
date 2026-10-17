@@ -96,4 +96,13 @@ describe('usePersistedListFilters', () => {
     expect(result.current[0]).toEqual({ a: 'one', b: 'two' })
     expect(JSON.parse(localStorage.getItem('multi:filters') as string)).toEqual({ a: 'one', b: 'two' })
   })
+
+  it('accepts a function that receives the latest state, so two updates in one tick both apply', () => {
+    const { result } = renderHook(() => usePersistedListFilters<{ a: number; b: number }>('fn:filters', { a: 0, b: 0 }))
+    act(() => {
+      result.current[1]((previous) => ({ a: previous.a + 1 }))
+      result.current[1]((previous) => ({ a: previous.a + 1, b: previous.a }))
+    })
+    expect(result.current[0]).toEqual({ a: 2, b: 1 })
+  })
 })

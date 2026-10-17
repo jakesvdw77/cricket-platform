@@ -21,7 +21,7 @@ export function ShareLogoControls({
   leagueLogoUrl,
   clubWebsite,
 }: Props) {
-  const setLogo = (patch: Partial<typeof choices.logos>) => updateChoices({ logos: { ...choices.logos, ...patch } })
+  const setLogo = (patch: Partial<typeof choices.logos>) => updateChoices({ logos: patch })
   return (
     <>
       <ShareControlGroup label="Logos">

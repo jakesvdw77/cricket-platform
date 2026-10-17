@@ -3,6 +3,7 @@ import { useTheme } from '@mui/material/styles'
 import { generateResultImage } from '../../utils/share/resultImage'
 import type { ResultImageLogos, ResultImageOptions } from '../../utils/share/resultImage'
 import { shareFileName } from '../../utils/share/shareFileName'
+import type { ShareResultModel } from '../../utils/share/shareResultData'
 import type { ShareScreenProps } from './shareScreenTypes'
 import { useShareLogoImages } from './useShareLogoImages'
 
@@ -60,7 +61,8 @@ export function useShareImageOptions(source: OptionSource, specifics: ShareImage
 // The SQUARE Club green image attached to the WhatsApp and Facebook texts, with the current First names as initials value and the
 // remembered logo and footer choices. Null until generated, while off, or when generation fails (the text still works).
 export function useAttachedResultImage(props: ShareScreenProps, enabled: boolean): File | null {
-  const { cardModel } = props
+  // The model with the Teams choice in force: with Our team only, no opposition player is named on the attached image either.
+  const { model } = props
   const options = useShareImageOptions(
     props,
     {
@@ -73,30 +75,30 @@ export function useAttachedResultImage(props: ShareScreenProps, enabled: boolean
     },
     enabled,
   )
-  const [file, setFile] = useState<File | null>(null)
-  const fileName = shareFileName(cardModel, 'png')
+  // The file with the exact model and options it was made from; only handed out while those are the current ones, so a file made
+  // with an old First names as initials value is never shareable while the new one is being generated.
+  const [made, setMade] = useState<{ model: ShareResultModel; options: ResultImageOptions; file: File } | null>(null)
+  const fileName = shareFileName(model, 'png')
 
   useEffect(() => {
-    if (!enabled) {
-      setFile(null)
-      return
-    }
+    setMade(null)
+    if (!enabled) return
     let cancelled = false
     try {
-      void generateResultImage(cardModel, options)
+      void generateResultImage(model, options)
         .then((blob) => {
-          if (!cancelled) setFile(new File([blob], fileName, { type: 'image/png' }))
+          if (!cancelled) setMade({ model, options, file: new File([blob], fileName, { type: 'image/png' }) })
         })
         .catch(() => {
-          if (!cancelled) setFile(null)
+          if (!cancelled) setMade(null)
         })
     } catch {
-      setFile(null)
+      setMade(null)
     }
     return () => {
       cancelled = true
     }
-  }, [enabled, cardModel, options, fileName])
+  }, [enabled, model, options, fileName])
 
-  return enabled ? file : null
+  return enabled && made && made.model === model && made.options === options ? made.file : null
 }

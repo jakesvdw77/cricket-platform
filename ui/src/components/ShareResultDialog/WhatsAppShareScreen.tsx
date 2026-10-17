@@ -47,7 +47,7 @@ export function WhatsAppShareScreen(props: ShareScreenProps) {
                 value={template}
                 ariaLabel="Message style"
                 fullWidthOnPhone
-                onChange={(next: WhatsAppTemplate) => guard(() => updateChoices({ templates: { ...choices.templates, whatsapp: next } }))}
+                onChange={(next: WhatsAppTemplate) => guard(() => updateChoices({ templates: { whatsapp: next } }))}
               >
                 {WHATSAPP_RESULT_TEMPLATES.map((item) => (
                   <ToggleButton key={item.value} value={item.value}>
@@ -64,17 +64,17 @@ export function WhatsAppShareScreen(props: ShareScreenProps) {
               />
             </ShareControlGroup>
             <ShareControlGroup label="Include">
-              <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={(next) => guard(() => initials.setValue(next))} />
+              <ShareInitialsControl initials={initials} collisions={model.initialsCollisions} onChange={(next) => guard(() => initials.setValue(next))} guard={guard} />
               <CompactSwitch
                 label="Emoji"
                 checked={options.emoji}
-                onChange={(next) => guard(() => updateChoices({ include: { ...choices.include, whatsapp: { ...options, emoji: next } } }))}
+                onChange={(next) => guard(() => updateChoices({ include: { whatsapp: { emoji: next } } }))}
               />
               {canShareImageWithText && (
                 <CompactSwitch
                   label="Attach the result image"
                   checked={options.attachImage}
-                  onChange={(next) => updateChoices({ include: { ...choices.include, whatsapp: { ...options, attachImage: next } } })}
+                  onChange={(next) => updateChoices({ include: { whatsapp: { attachImage: next } } })}
                 />
               )}
             </ShareControlGroup>

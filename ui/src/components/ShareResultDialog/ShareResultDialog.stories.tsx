@@ -4,7 +4,7 @@ import { userEvent, within } from 'storybook/test'
 import { ShareResultDialog } from './ShareResultDialog'
 import { resultKeys } from '../../api/matchResultApi'
 import { shareSettingsKey } from '../../api/shareSettingsApi'
-import { makeMatch, makeResult } from '../../pages/manage/results/resultTestUtils'
+import { makeMatch, makeResult } from '../../test/resultFixtures'
 import { privacyMatch, privacyResult, privacyScorecard } from '../../utils/share/sharePrivacyFixture'
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
