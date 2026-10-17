@@ -50,6 +50,13 @@ describe('WhatsAppSendActions', () => {
 
     const share = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    // A desktop browser (fine pointer): text-only native share is not offered, Send in WhatsApp covers it.
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: false }), configurable: true })
+    const desktop = render(<WhatsAppSendActions text="Hello" />)
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
+    desktop.unmount()
+
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: true }), configurable: true })
     render(<WhatsAppSendActions text="Hello" />)
     await userEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(share).toHaveBeenCalledWith({ text: 'Hello' })

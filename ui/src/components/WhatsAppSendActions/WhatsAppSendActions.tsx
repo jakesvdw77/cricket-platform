@@ -28,7 +28,9 @@ const TOUCH_TARGET_SX = { minHeight: { xs: 44, sm: 'auto' } }
 
 function canNativeShare(file?: File): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false
-  if (!file) return true
+  // Text only: the native share sheet of a desktop browser drops the text and keeps just a link (seen sharing a poll from a Mac
+  // to WhatsApp Desktop), so it is offered for text only on a touch device. Send in WhatsApp covers the desktop.
+  if (!file) return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
   return typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
 }
 
