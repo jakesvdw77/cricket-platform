@@ -262,6 +262,39 @@ public final class ManagerOverviewFixtures {
         return profile;
     }
 
+    /**
+     * docs/specs/113: a player a result may carry for {@code team}: active, on its roster for the world's season and
+     * tagged to the team's section, born 1 Jan 1995 (so under no league's age rule that a test sets up for adults).
+     */
+    public PlayerProfile eligiblePlayer(World w, Team team, String firstName) {
+        return eligiblePlayer(w, team, firstName, LocalDate.of(1995, 1, 1));
+    }
+
+    /** As {@link #eligiblePlayer(World, Team, String)} with a chosen date of birth. */
+    public PlayerProfile eligiblePlayer(World w, Team team, String firstName, LocalDate dateOfBirth) {
+        PlayerProfile profile = rosterPlayerBorn(w, team, firstName, dateOfBirth);
+        tagToSection(team.getSectionId(), profile);
+        return profile;
+    }
+
+    /**
+     * docs/specs/113: an active player tagged to the team's section but NOT on its roster, so a result may carry them
+     * for that team without the squad notice ever applying.
+     */
+    public PlayerProfile sectionPlayer(World w, Team team, String firstName) {
+        return makeEligible(team, player(w, firstName, true));
+    }
+
+    /** Tags an existing player to the team's section (spec 113), so a result may carry them for that team. */
+    public PlayerProfile makeEligible(Team team, PlayerProfile profile) {
+        tagToSection(team.getSectionId(), profile);
+        return profile;
+    }
+
+    private void tagToSection(UUID sectionId, PlayerProfile profile) {
+        playerSectionRepository.save(PlayerSection.builder().playerProfileId(profile.getId()).sectionId(sectionId).build());
+    }
+
     public void tag(Section section, PlayerProfile profile) {
         playerSectionRepository.save(
                 PlayerSection.builder().playerProfileId(profile.getId()).sectionId(section.getId()).build());

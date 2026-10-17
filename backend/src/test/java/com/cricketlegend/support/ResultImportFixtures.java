@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Seeds for the docs/specs/104 import integration tests on top of {@link ManagerOverviewFixtures}: a club whose first
- * Seniors team ("Villagers 1") has a squad of three registered players, one further registered player who is in the
+ * Seniors team ("Villagers 1") has a squad of three registered players (all tagged to the Seniors section, spec 113), one further registered player who is in the
  * club but in no squad, and an import document written as JSON text. Invented names only. {@link #cleanUp} removes the
  * remembered name aliases (which reference the club and are not known to the shared fixtures) before the shared clean up.
  */
@@ -54,9 +54,9 @@ public final class ResultImportFixtures {
         clubIds.add(w.club().getId());
         return new Club(
                 w,
-                shared.rosterPlayer(w, w.seniors1(), "Anna"),
-                shared.rosterPlayer(w, w.seniors1(), "Bela"),
-                shared.rosterPlayer(w, w.seniors1(), "Cato"),
+                shared.eligiblePlayer(w, w.seniors1(), "Anna"),
+                shared.eligiblePlayer(w, w.seniors1(), "Bela"),
+                shared.eligiblePlayer(w, w.seniors1(), "Cato"),
                 shared.player(w, "Dara", true));
     }
 

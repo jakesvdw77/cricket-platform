@@ -120,7 +120,7 @@ class ScorecardResultIntegrationTest {
     }
 
     private ScorecardCard realise(ScorecardCard card) {
-        return card.realise(key -> fixtures.player(w, key, true).getId());
+        return card.realise(key -> fixtures.sectionPlayer(w, w.seniors1(), key).getId());
     }
 
     private MatchResultDto save(Match match, ScorecardCard card) {
@@ -173,7 +173,7 @@ class ScorecardResultIntegrationTest {
     @Test
     void aTeamListWithNoInningsAndNoOutcomeSavesReadsBackAndShowsInTheResultsList() {
         Match match = vsOpposition();
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
 
         MatchResultDto saved = resultService.upsertDraft(admin, clubId, match.getId(),
                 listOnly(registered(H, "p1", ann.getId()), opposition(A, "o1", "Smith")));
@@ -201,7 +201,7 @@ class ScorecardResultIntegrationTest {
                 new ResultDraft(null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertThat(summary.detailLevel()).isEqualTo(ResultDetailLevel.SUMMARY);
 
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
         assertThat(resultService.upsertDraft(admin, clubId, match.getId(), listOnly(registered(H, "p1", ann.getId())))
                 .detailLevel()).isEqualTo(ResultDetailLevel.OUR_SIDE);
         assertThat(resultService.upsertDraft(admin, clubId, match.getId(),
@@ -216,7 +216,7 @@ class ScorecardResultIntegrationTest {
                 .detailLevel()).isEqualTo(ResultDetailLevel.FULL);
 
         Match derby = derbyMatch();
-        PlayerProfile bob = fixtures.player(w, "Bob", true);
+        PlayerProfile bob = fixtures.sectionPlayer(w, w.seniors1(), "Bob");
         assertThat(resultService.upsertDraft(admin, clubId, derby.getId(),
                 listOnly(registered(H, "p1", ann.getId()), registered(A, "p2", bob.getId()))).detailLevel())
                 .isEqualTo(ResultDetailLevel.OUR_SIDE);
@@ -224,7 +224,7 @@ class ScorecardResultIntegrationTest {
 
     @Test
     void anOppositionRowIsRefusedWhereTheSideIsOursAndAnOursRowWhereItIsNot() {
-        PlayerProfile ann = fixtures.player(w, "Ann", true);
+        PlayerProfile ann = fixtures.sectionPlayer(w, w.seniors1(), "Ann");
         Match derby = derbyMatch();
         assertThat(codes(invalid(() -> resultService.upsertDraft(admin, clubId, derby.getId(),
                 listOnly(opposition(A, "o1", "Smith")))))).containsExactly("OPPOSITION_NOT_ALLOWED");
@@ -530,7 +530,7 @@ class ScorecardResultIntegrationTest {
     @Test
     void aPlayerOnBothSidesOfADerbyNeedsAnAcknowledgementToPublish() {
         Match match = derbyMatch();
-        PlayerProfile shared = fixtures.player(w, "Shared", true);
+        PlayerProfile shared = fixtures.sectionPlayer(w, w.seniors1(), "Shared");
         ScorecardCard card = realise(ScorecardCard.derby());
         card.player("b11", p -> registered(H, "b11", shared.getId()));
         card.player("w11", p -> registered(A, "w11", shared.getId()));
@@ -632,8 +632,8 @@ class ScorecardResultIntegrationTest {
         String subject = managerSubject();
         Authentication manager = new TestingAuthenticationToken(subject, "n/a");
         UUID person = jdbc.queryForObject("select id from person where keycloak_user_id = ?", UUID.class, subject);
-        PlayerProfile sam = fixtures.player(w, "Sam", true);
-        PlayerProfile tim = fixtures.player(w, "Tim", true);
+        PlayerProfile sam = fixtures.sectionPlayer(w, w.seniors1(), "Sam");
+        PlayerProfile tim = fixtures.sectionPlayer(w, w.seniors1(), "Tim");
         ScorecardDto stored = read(match);
 
         ResultPlayerDto linked = scorecardService.link(manager, clubId, match.getId(), playerId(stored, "Sam Guest"),
@@ -662,7 +662,7 @@ class ScorecardResultIntegrationTest {
         save(match, card);
         ScorecardDto stored = read(match);
         UUID guestId = playerId(stored, "Sam Guest");
-        PlayerProfile sam = fixtures.player(w, "Sam", true);
+        PlayerProfile sam = fixtures.sectionPlayer(w, w.seniors1(), "Sam");
         World other = fixtures.world();
         PlayerProfile stranger = fixtures.player(other, "Stranger", true);
 
@@ -687,7 +687,7 @@ class ScorecardResultIntegrationTest {
         card.player("b11", p -> guest(H, "b11", "Sam Guest"));
         save(match, card);
         UUID guestId = playerId(read(match), "Sam Guest");
-        PlayerProfile sam = fixtures.player(w, "Sam", true);
+        PlayerProfile sam = fixtures.sectionPlayer(w, w.seniors1(), "Sam");
         World other = fixtures.world();
         Authentication otherClub = new TestingAuthenticationToken(fixtures.sectionManagerSubject(other.seniors()), "n/a");
         Authentication juniors = new TestingAuthenticationToken(fixtures.sectionManagerSubject(w.juniors()), "n/a");
@@ -716,5 +716,94 @@ class ScorecardResultIntegrationTest {
         assertThatThrownBy(() -> resultService.upsertDraft(juniors, clubId, match.getId(), listOnly()))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         assertThat(scorecardService.read(seniors, clubId, match.getId()).players()).hasSize(22);
+    }
+
+    // ---- docs/specs/113: section and age of the registered players of our sides ----
+
+    private Match vsOppositionInLeagueWithMaxAge(int maxAge) {
+        com.cricketlegend.domain.League league = fixtures.league(w, 11);
+        jdbc.update("update league set max_age = ? where id = ?", maxAge, league.getId());
+        return fixtures.match(w, w.seniors1(), null, Instant.now().minus(Duration.ofDays(1)), true, league);
+    }
+
+    @Test
+    void theWizardSaveRefusesAPlayerOfAnotherSectionAndAcceptsOneOfTheTeamsSectionOrADescendant() {
+        Match match = vsOpposition();
+        PlayerProfile junior = fixtures.sectionPlayer(w, w.juniorsTeam(), "Jo");
+        com.cricketlegend.domain.Section colts = fixtures.childSection(w.club(), w.seniors(), "Colts");
+        PlayerProfile colt = fixtures.player(w, "Cal", true);
+        fixtures.tag(colts, colt);
+
+        InvalidResultException refused = invalid(() -> resultService.upsertDraft(admin, clubId, match.getId(),
+                listOnly(registered(H, "p1", junior.getId()))));
+
+        assertThat(codes(refused)).containsExactly("PLAYER_NOT_IN_SECTION");
+        assertThat(refused.getIssues()).singleElement().satisfies(i -> {
+            assertThat(i.step()).isEqualTo(com.cricketlegend.domain.ResultWizardStep.TEAMS);
+            assertThat(i.side()).isEqualTo(H);
+            assertThat(i.message()).isEqualTo("Jo Player is not in the Seniors section.");
+        });
+        assertThat(jdbc.queryForObject("select count(*) from result_player rp join match_result mr on mr.id = rp.match_result_id"
+                + " where mr.match_id = ?", Integer.class, match.getId())).isZero();
+
+        resultService.upsertDraft(admin, clubId, match.getId(), listOnly(registered(H, "p1", colt.getId())));
+        assertThat(read(match).players()).singleElement().satisfies(p -> assertThat(p.playerProfileId()).isEqualTo(colt.getId()));
+    }
+
+    @Test
+    void theWizardSaveRefusesAPlayerOutsideTheLeaguesAgeRule() {
+        Match match = vsOppositionInLeagueWithMaxAge(18);
+        PlayerProfile adult = fixtures.eligiblePlayer(w, w.seniors1(), "Ada");
+        PlayerProfile kid = fixtures.eligiblePlayer(w, w.seniors1(), "Kit", java.time.LocalDate.of(2020, 1, 1));
+
+        InvalidResultException refused = invalid(() -> resultService.upsertDraft(admin, clubId, match.getId(),
+                listOnly(registered(H, "p1", adult.getId()))));
+
+        assertThat(codes(refused)).containsExactly("PLAYER_AGE_INELIGIBLE");
+        resultService.upsertDraft(admin, clubId, match.getId(), listOnly(registered(H, "p1", kid.getId())));
+        assertThat(read(match).players()).hasSize(1);
+    }
+
+    @Test
+    void aStoredPlayerWhoNoLongerQualifiesStaysEditableButValidationReportsAnErrorAndPublishingIsBlocked() {
+        Match match = vsOpposition();
+        ScorecardCard card = realise(ScorecardCard.oursBat());
+        save(match, card);
+        ScorecardDto stored = read(match);
+        UUID leaver = stored.players().stream().filter(p -> "b1".equals(p.clientKey()) || p.side() == H)
+                .findFirst().orElseThrow().playerProfileId();
+        jdbc.update("delete from player_section where player_profile_id = ?", leaver);
+
+        // the draft is saved again as it is: the stored player is not re-checked
+        resultService.upsertDraft(admin, clubId, match.getId(), card.draft().copyWithScorecard(stored));
+
+        var validation = resultService.validate(admin, clubId, match.getId(), null);
+        assertThat(validation.issues()).filteredOn(i -> "PLAYER_NOT_IN_SECTION".equals(i.code())).singleElement()
+                .satisfies(i -> {
+                    assertThat(i.severity()).isEqualTo(com.cricketlegend.domain.ResultIssueSeverity.ERROR);
+                    assertThat(i.side()).isEqualTo(H);
+                });
+        assertThat(validation.canPublish()).isFalse();
+        assertThat(codes(invalid(() -> resultService.publish(admin, clubId, match.getId(), true))))
+                .contains("PLAYER_NOT_IN_SECTION");
+    }
+
+    @Test
+    void guestsAndTheOppositionAreNeverCheckedAndALinkOfAnIneligiblePlayerIsRefused() {
+        Match match = vsOpposition();
+        resultService.upsertDraft(admin, clubId, match.getId(),
+                listOnly(guest(H, "g1", "Sam Guest"), opposition(A, "o1", "Rob Brown")));
+        ScorecardDto stored = read(match);
+        PlayerProfile junior = fixtures.sectionPlayer(w, w.juniorsTeam(), "Jo");
+        PlayerProfile senior = fixtures.sectionPlayer(w, w.seniors1(), "Sid");
+        UUID guestRow = playerId(stored, "Sam Guest");
+
+        InvalidResultException refused = invalid(() -> scorecardService.link(admin, clubId, match.getId(), guestRow, junior.getId()));
+
+        assertThat(codes(refused)).containsExactly("PLAYER_NOT_IN_SECTION");
+        assertThat(read(match).players()).filteredOn(p -> p.id().equals(guestRow))
+                .singleElement().satisfies(p -> assertThat(p.playerProfileId()).isNull());
+        assertThat(scorecardService.link(admin, clubId, match.getId(), guestRow, senior.getId()).playerProfileId())
+                .isEqualTo(senior.getId());
     }
 }

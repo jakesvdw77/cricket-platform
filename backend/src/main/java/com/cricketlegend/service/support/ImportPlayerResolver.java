@@ -208,7 +208,7 @@ public class ImportPlayerResolver {
                     out.notes.add(new ImportNoteDto(
                             "ALIAS_IGNORED", ImportNoteSeverity.WARNING, "players",
                             "A remembered match for '" + rep + "' was ignored because that player is not in this match's"
-                                    + " selection or squad.", rep, null, ImportExactness.UNRESOLVED, List.of()));
+                                    + " selection or squad, or is outside the team's section or the league's age rule.", rep, null, ImportExactness.UNRESOLVED, List.of()));
                 }
             }
             placed.put(rep, placement != null ? placement : new Placement(NameResolver.resolve(rep, pool), false));
