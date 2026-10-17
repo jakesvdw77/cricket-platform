@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PlayingConditionsShareDialog } from './PlayingConditionsShareDialog'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 
@@ -281,5 +281,60 @@ describe('PlayingConditionsShareDialog', () => {
 
     expect(screen.queryByRole('textbox', { name: /whatsapp message/i })).not.toBeInTheDocument()
     expect(screen.getByText('PDF Summary')).toBeInTheDocument()
+  })
+})
+
+// docs/specs/114-share-result.md (Send to WhatsApp): the shared Send in WhatsApp action, with the dialog's current text.
+describe('PlayingConditionsShareDialog Send in WhatsApp', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const renderOpen = (overrides: { hasStructuredFields?: boolean } = {}) =>
+    render(
+      <PlayingConditionsShareDialog
+        open
+        onClose={vi.fn()}
+        hasStructuredFields={overrides.hasStructuredFields ?? true}
+        leagueName="Riverside T20 League"
+        seasonLabel="2026"
+        conditions={conditions}
+        onSharePdf={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+  it('shows Send in WhatsApp with the generated text once WhatsApp is chosen, and not under the PDF option', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderOpen()
+    expect(screen.queryByRole('button', { name: 'Send in WhatsApp' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('WhatsApp'))
+    const textbox = (await screen.findByRole('textbox', { name: /whatsapp message/i })) as HTMLTextAreaElement
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(textbox.value)}`, '_blank', 'noopener')
+    expect(textbox.value).toContain('Overs per innings: 20')
+  })
+
+  it('sends the edited text', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderOpen()
+
+    await user.click(screen.getByText('WhatsApp'))
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    await user.clear(textbox)
+    await user.type(textbox, 'my own words')
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent('my own words')}`, '_blank', 'noopener')
+  })
+
+  it('keeps Copy to Clipboard beside it', async () => {
+    const user = userEvent.setup()
+    renderOpen()
+
+    await user.click(screen.getByText('WhatsApp'))
+
+    expect(await screen.findByRole('button', { name: /copy to clipboard/i })).toBeInTheDocument()
   })
 })

@@ -144,3 +144,206 @@ describe('buildShareResultModel', () => {
     expect(model.innings[1].topBowlers[0]).toMatchObject({ name: 'Sam van der Westhuizen', wickets: 3, economy: 5 })
   })
 })
+
+describe('buildShareResultModel team names (regression: "Home team")', () => {
+  const teams = [
+    { id: 't1', name: 'Riverside 1st XI', logoUrl: 'https://x/t1.png' },
+    { id: 't2', name: 'Riverside 2nd XI', logoUrl: null },
+  ]
+  // The match carries NO name for one of the club's own teams; it lives on the Team.
+  const ownMatch = { ...match, homeTeamName: null } as unknown as Match
+
+  it('reads the club team name from the Team, not the fallback', () => {
+    const model = buildShareResultModel({ match: ownMatch, result, scorecard, teams, teamsChoice: 'both', initialsOnly: false })
+    expect(model.home.name).toBe('Riverside 1st XI')
+    expect(model.resultLine).toBe('Riverside 1st XI won by 24 runs')
+    expect(model.toss).toBe('Riverside 1st XI won the toss and chose to bat')
+    expect(model.innings[0].battingTeam).toBe('Riverside 1st XI')
+    expect(model.innings[1].bowlingTeam).toBe('Riverside 1st XI')
+    expect(JSON.stringify(model)).not.toContain('Home team')
+  })
+
+  it('prefers the Team name over the name on the match, and falls back to the match name for a free-text opponent', () => {
+    const model = buildShareResultModel({ match, result, scorecard, teams, teamsChoice: 'both', initialsOnly: false })
+    expect(model.home.name).toBe('Riverside 1st XI')
+    expect(model.away.name).toBe('Pretoria CC')
+  })
+
+  it('falls back to "Home team" and "Away team" only when nothing names the side', () => {
+    const bare = { ...match, homeTeamName: null, awayTeamName: null } as unknown as Match
+    const model = buildShareResultModel({ match: bare, result, scorecard, teamsChoice: 'both', initialsOnly: false })
+    expect(model.home.name).toBe('Home team')
+    expect(model.away.name).toBe('Away team')
+  })
+
+  it("falls back to the team's own logo when the match carries none", () => {
+    const model = buildShareResultModel({ match: ownMatch, result, scorecard, teams, teamsChoice: 'both', initialsOnly: false })
+    expect(model.home.logoUrl).toBe('https://x/t1.png')
+    expect(model.away.logoUrl).toBeNull()
+  })
+
+  it('names both sides of a derby from the Teams', () => {
+    const derbyMatch = { ...match, homeTeamName: null, awayTeamId: 't2', awayTeamName: null } as unknown as Match
+    const model = buildShareResultModel({ match: derbyMatch, result, scorecard, teams, teamsChoice: 'both', initialsOnly: false })
+    expect(model.home.name).toBe('Riverside 1st XI')
+    expect(model.away.name).toBe('Riverside 2nd XI')
+  })
+})
+
+describe('buildShareResultModel Our team only in detail', () => {
+  it('drops the opposition tables, extras and performers and keeps ours, the totals and the result line', () => {
+    const model = build({ teamsChoice: 'ours' })
+    const ours = model.innings.find((item) => item.battingSide === 'HOME')
+    const theirs = model.innings.find((item) => item.battingSide === 'AWAY')
+    expect(ours?.batting.map((row) => row.name)).toEqual(['Mpho Naidoo', 'Sam van der Westhuizen'])
+    expect(ours?.extras?.text).toBe('Extras 8 (b 3, w 5)')
+    // Their bowling of OUR innings is not ours; ours bowl in THEIR innings.
+    expect(ours?.bowling.map((row) => row.name)).toEqual([])
+    expect(theirs?.bowling.map((row) => row.name)).toEqual(['Sam van der Westhuizen'])
+    expect(theirs?.batting).toEqual([])
+    expect(theirs?.topBatters).toEqual([])
+    expect(theirs?.extras).toBeNull()
+    expect(model.resultLine).toBe('Riverside 1 won by 24 runs')
+    expect(model.home.scoreText).toBe('150/6 (40.0)')
+    expect(model.away.scoreText).toBe('126/10 (38.2)')
+  })
+
+  it('shows both teams in full for the same data', () => {
+    const model = build({ teamsChoice: 'both' })
+    const theirs = model.innings.find((item) => item.battingSide === 'AWAY')
+    expect(theirs?.batting.map((row) => row.name)).toEqual(['Thabo Mokoena'])
+    expect(model.innings.find((item) => item.battingSide === 'HOME')?.bowling.map((row) => row.name)).toEqual(['Thabo Mokoena'])
+  })
+
+  it('keeps a dismissal with only our people named, and a plain word where the other name is the opposition', () => {
+    const allOurs = {
+      ...scorecard,
+      batting: [
+        { battingSide: 'HOME', resultPlayerId: 'p1', position: 1, howOut: 'CAUGHT', runs: 60, balls: 40, bowlerPlayerId: 'p2', fielderPlayerId: 'p2', featuredOverride: null },
+        { battingSide: 'HOME', resultPlayerId: 'p2', position: 2, howOut: 'BOWLED', runs: 5, balls: 9, bowlerPlayerId: 'o1', featuredOverride: null },
+        { battingSide: 'HOME', resultPlayerId: 'p1', position: 3, howOut: 'RUN_OUT', runs: 1, balls: 1, fielderPlayerId: 'o2', featuredOverride: null },
+      ],
+    } as unknown as Scorecard
+    const rows = build({ teamsChoice: 'ours', initialsOnly: true, scorecard: allOurs }).innings[0].batting
+    expect(rows[0].howOut).toBe('c S. van der Westhuizen b S. van der Westhuizen')
+    expect(rows[1].howOut).toBe('bowled')
+    expect(rows[2].howOut).toBe('run out')
+    expect(JSON.stringify(rows)).not.toMatch(/Botha|Mokoena|Thabo|Pieter/)
+  })
+
+  it('writes every dismissal kind in the shared form with both names', () => {
+    const kinds = ['BOWLED', 'LBW', 'STUMPED', 'RUN_OUT', 'CAUGHT_AND_BOWLED', 'HIT_WICKET', 'CAUGHT'] as const
+    const withKind = (howOut: string) =>
+      ({
+        ...scorecard,
+        batting: [{ battingSide: 'HOME', resultPlayerId: 'p1', position: 1, howOut, runs: 1, balls: 1, bowlerPlayerId: 'o1', fielderPlayerId: 'o2', featuredOverride: null }],
+      }) as unknown as Scorecard
+    const out = Object.fromEntries(kinds.map((kind) => [kind, build({ initialsOnly: true, scorecard: withKind(kind) }).innings[0].batting[0].howOut]))
+    expect(out).toEqual({
+      BOWLED: 'b T. Mokoena',
+      LBW: 'lbw b T. Mokoena',
+      STUMPED: 'st P. Botha b T. Mokoena',
+      RUN_OUT: 'run out (P. Botha)',
+      CAUGHT_AND_BOWLED: 'c & b T. Mokoena',
+      HIT_WICKET: 'hit wicket b T. Mokoena',
+      CAUGHT: 'c P. Botha b T. Mokoena',
+    })
+  })
+})
+
+describe('buildShareResultModel derby and summary-only', () => {
+  const derbyMatch = { ...match, awayTeamId: 't2' } as unknown as Match
+  const derbyCard = {
+    ...scorecard,
+    players: scorecard.players.map((item) => ({ ...item, opposition: false })),
+  } as unknown as Scorecard
+
+  it('keeps everything in a derby whatever is chosen, because both sides are ours', () => {
+    const both = buildShareResultModel({ match: derbyMatch, result, scorecard: derbyCard, teamsChoice: 'both', initialsOnly: false })
+    const ours = buildShareResultModel({ match: derbyMatch, result, scorecard: derbyCard, teamsChoice: 'ours', initialsOnly: false })
+    expect(ours.teamsChoiceDisabledReason).toBe('DERBY')
+    expect(ours.teams).toBe('both')
+    expect(ours).toEqual(both)
+    expect(ours.innings).toHaveLength(2)
+    expect(ours.home.ours && ours.away.ours).toBe(true)
+  })
+
+  it('builds a summary-only result with scores, line, toss and venue but no rows, whatever is chosen', () => {
+    for (const scorecardValue of [null, undefined, { ...scorecard, players: [] } as unknown as Scorecard]) {
+      const model = build({ scorecard: scorecardValue, teamsChoice: 'ours' })
+      expect(model.hasScorecard).toBe(false)
+      expect(model.teamsChoiceDisabledReason).toBe('NO_SCORECARD')
+      expect(model.teams).toBe('both')
+      expect(model.innings).toEqual([])
+      expect(model.playerOfTheMatch).toBeNull()
+      expect(model.initialsCollisions).toEqual([])
+      expect(model.home.scoreText).toBe('150/6 (40.0)')
+      expect(model.away.scoreText).toBe('126/10 (38.2)')
+      expect(model.resultLine).toBe('Riverside 1 won by 24 runs')
+      expect(model.toss).toBe('Riverside 1 won the toss and chose to bat')
+      expect(model.venue).toBe('Main Oval')
+    }
+  })
+
+  it('reports a derby before a missing scorecard', () => {
+    const model = buildShareResultModel({ match: derbyMatch, result, scorecard: null, teamsChoice: 'ours', initialsOnly: false })
+    expect(model.teamsChoiceDisabledReason).toBe('DERBY')
+  })
+})
+
+describe('buildShareResultModel player of the match', () => {
+  const award = (patch: object) => ({ ...scorecard, awards: [{ awardType: 'PLAYER_OF_MATCH', ...patch }] }) as unknown as Scorecard
+
+  it('names one of ours, in the shared form, under Both teams and Our team only', () => {
+    for (const teamsChoice of ['both', 'ours'] as const) {
+      expect(build({ teamsChoice, initialsOnly: true, scorecard: award({ side: 'HOME', resultPlayerId: 'p2' }) }).playerOfTheMatch).toEqual({
+        name: 'S. van der Westhuizen',
+        ours: true,
+      })
+    }
+  })
+
+  it("names the opposition's player under Both teams and drops it under Our team only", () => {
+    const opposition = award({ side: 'AWAY', resultPlayerId: 'o1' })
+    expect(build({ initialsOnly: false, scorecard: opposition }).playerOfTheMatch).toEqual({ name: 'Thabo Mokoena', ours: false })
+    expect(build({ initialsOnly: true, scorecard: opposition }).playerOfTheMatch).toEqual({ name: 'T. Mokoena', ours: false })
+    expect(build({ teamsChoice: 'ours', scorecard: opposition }).playerOfTheMatch).toBeNull()
+  })
+
+  it('has none when there is no award, or the award names nobody known', () => {
+    expect(build({ scorecard: { ...scorecard, awards: [] } as unknown as Scorecard }).playerOfTheMatch).toBeNull()
+    expect(build({ scorecard: award({ side: 'HOME' }) }).playerOfTheMatch).toBeNull()
+    expect(build({ scorecard: { ...scorecard, awards: [{ awardType: 'BEST_FIELDER', resultPlayerId: 'p1' }] } as unknown as Scorecard }).playerOfTheMatch).toBeNull()
+  })
+
+  it('reads the structured player, never the pre-formatted award name', () => {
+    const model = build({ initialsOnly: true, scorecard: award({ side: 'HOME', resultPlayerId: 'p1', playerName: 'Mpho Naidoo', displayName: null }) })
+    expect(model.playerOfTheMatch?.name).toBe('M. Naidoo')
+  })
+})
+
+describe('buildShareResultModel other result shapes', () => {
+  it('has no overs to spare for a win by runs and never invents a batting order for no innings', () => {
+    const model = build()
+    expect(model.oversRemaining).toBeNull()
+    expect(model.battingFirst).toBe('HOME')
+    const none = build({ result: { ...result, innings: [] } as unknown as MatchResult, scorecard: null })
+    expect(none.battingFirst).toBeNull()
+    expect(none.home.scoreText).toBe('')
+  })
+
+  it('works out the overs to spare for a chase won by wickets', () => {
+    const chase = {
+      ...result,
+      winningSide: 'AWAY',
+      marginType: 'WICKETS',
+      marginValue: 4,
+      scheduledBalls: 240,
+      innings: [
+        { sequence: 1, kind: 'REGULAR', battingSide: 'HOME', runs: 100, wickets: 10, balls: 200 },
+        { sequence: 2, kind: 'REGULAR', battingSide: 'AWAY', runs: 101, wickets: 6, balls: 214 },
+      ],
+    } as unknown as MatchResult
+    expect(build({ result: chase, scorecard: null }).oversRemaining).toBe('4.2')
+  })
+})

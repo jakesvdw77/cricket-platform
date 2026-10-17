@@ -20,3 +20,8 @@ export const TooLongForTheLink: Story = {
 export const Disabled: Story = {
   args: { text: 'Hello', disabled: true },
 }
+
+export const Mobile: Story = { ...Default, parameters: { viewport: { defaultViewport: 'mobile' } } }
+export const Tablet: Story = { ...Default, parameters: { viewport: { defaultViewport: 'tablet' } } }
+export const Desktop: Story = { ...Default, parameters: { viewport: { defaultViewport: 'desktop' } } }
+export const TooLongForTheLinkMobile: Story = { ...TooLongForTheLink, parameters: { viewport: { defaultViewport: 'mobile' } } }
