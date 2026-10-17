@@ -42,7 +42,7 @@ export interface ResultCardProps {
 
 // docs/specs/100-match-results-core.md: one RecordCard per result - both teams with logos and a score line each, the
 // result line coloured from the club team's side, the toss, the date and the field, an amber Draft chip while
-// unpublished, and View / Edit / Publish in the footer (Publish on a draft only; Edit is off while published).
+// unpublished and a green Published chip once published (so the cards line up), and View / Edit / Publish in the footer (Publish on a draft only; Edit is off while published).
 export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublish }: ResultCardProps) {
   const navigate = useNavigate()
   const { match, result } = item
@@ -54,7 +54,9 @@ export function ResultCard({ item, teamsById, leaguesById, seasonsById, onPublis
   const field = result.playingAreaName ?? match.playingAreaName ?? match.venue
   const leagueValue = matchLeagueValue(match, leaguesById, seasonsById)
   const inactive = badgeFor(match)
-  const badges: RecordCardBadge[] = [...(draft ? [{ label: 'Draft', tone: 'warning' as const }] : []), ...(inactive ? [inactive] : [])]
+  // Every card carries a status chip in the same place, so a draft and a published result line up in the grid.
+  const statusBadge: RecordCardBadge = draft ? { label: 'Draft', tone: 'warning' } : { label: 'Published', tone: 'positive' }
+  const badges: RecordCardBadge[] = [statusBadge, ...(inactive ? [inactive] : [])]
 
   const footerButtons: RecordCardFooterButton[] = [
     { label: 'View', icon: <VisibilityOutlinedIcon fontSize="small" />, onClick: () => navigate(resultViewTo(match.id)) },
