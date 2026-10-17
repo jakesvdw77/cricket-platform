@@ -11,6 +11,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { ResultPlayer, Scorecard, ScorecardPrefillSide } from '../../../../api/matchResultApi'
 import { listSquad } from '../../../../api/teamSquadApi'
 import { Button } from '../../../../components/Button'
+import { LinkButton } from '../../../../components/LinkButton'
 import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { FormSectionHeading } from '../../../../components/FormSectionHeading'
 import { badgeSx } from '../../../../components/RecordCard'
@@ -332,6 +333,17 @@ function OurSideTeam({
     </Box>
   )
 
+  // A guest of our side gets the compact Link button (the Type column says Guest, so the name carries no chip). An unresolved
+  // import name keeps its old tap target: the button opens the import picker (ranked suggestions) and is what "Next one to check"
+  // finds. A guess row keeps its Guess chip, whose popover already offers Change.
+  const linkOf = (player: ResultPlayer): ReactNode => {
+    if (player.playerProfileId || player.opposition || disabled) return null
+    const guess = guesses.guessOf(player)
+    if (guess && guess.level !== 'UNRESOLVED') return null
+    if (guess) return <LinkButton onClick={guess.onChange} ariaLabel={`Choose the player for ${guess.importedName}`} data-guess-key={guess.key} />
+    return <LinkButton onClick={() => actions.openLink(playerRowKey(player))} />
+  }
+
   const nameCell = (player: ResultPlayer) => (
     <ScorecardPlayerCell
       person={scorecardPersonName(player)}
@@ -343,6 +355,8 @@ function OurSideTeam({
       disabled={disabled}
       guess={guesses.guessOf(player)}
       useClosestInCell={false}
+      showGuestChip={false}
+      trailing={linkOf(player)}
     />
   )
 

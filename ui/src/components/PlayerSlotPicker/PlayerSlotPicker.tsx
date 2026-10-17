@@ -22,11 +22,13 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listGuestNames, resultKeys } from '../../api/matchResultApi'
 import { createPlayer, linkPlayerSection, listPlayers } from '../../api/playerApi'
-import { listLeagues } from '../../api/leagueApi'
+import { ageReferenceKey, getLeagueAgeReference, listLeagues } from '../../api/leagueApi'
 import { listSections } from '../../api/sectionApi'
 import { listSquad } from '../../api/teamSquadApi'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { errorDetail } from '../../utils/errorDetail'
+import { ageProblemOf, ageWords, effectiveAgeLimits, todayIso, writtenDate } from '../../utils/ageEligibility'
+import { sectionPath } from '../../utils/sectionPath'
 import { splitGuestName } from '../../utils/guestNameSplit'
 import { PlayerQuickForm } from '../PlayerQuickForm'
 import { fullName } from '../../utils/playerDisplayName'
@@ -90,9 +92,16 @@ export interface PlayerSlotPickerProps {
   // docs/specs/104: the closest registered players for that name, best first, offered as one-tap picks above the scopes.
   suggestions?: PickerSuggestion[]
   // docs/specs/104: adds a "New player" tab that creates a registered player inside the dialog and picks them in one step
-  // (the guest becomes that player). `name` is the guest's written name, split into first name and surname to prefill the
+  // (the guest becomes that player). With `leagueId` and `seasonId` the date of birth window uses the server's age reference
+  // date for that league and season (docs/specs/110). `name` is the guest's written name, split into first name and surname to prefill the
   // form; `sectionId` is the section of the guest's club team, which the new player is linked to. Omitted, no tab.
-  newPlayer?: { name: string; sectionId?: string | null; leagueId?: string | null }
+  newPlayer?: { name: string; sectionId?: string | null; leagueId?: string | null; seasonId?: string | null }
+  // The Club tab for one of OUR sides: only players in the section of the side's team (and its sub-sections), and, when the
+  // match's league (or else the section) has an age limit, only those whose age on the league's reference date fits it
+  // (the server's rule: both limits inclusive, no date of birth cannot be judged). `sectionId` null means the match has no
+  // club team for this side, so no club list is shown; `sectionPending` while the team's section is still being looked up.
+  // Omitted, the Club tab lists every active player in the club and nothing else changes. The Guest tab is never filtered.
+  clubScope?: { sectionId: string | null; leagueId?: string | null; sectionPending?: boolean }
 }
 
 const SCOPE_LABEL: Record<PlayerSlotScope, string> = {
@@ -205,6 +214,21 @@ function ImportedName({
   )
 }
 
+// "Showing players in Under 15 who are eligible for Diamond League U15 T20 (aged 13 to 15 on 31 Dec 2026)."
+function scopeCaption(
+  view: { limits: { minAge: number | null; maxAge: number | null } | null; referenceDate: string; leagueSets: boolean },
+  sections: Parameters<typeof sectionPath>[0],
+  sectionId: string,
+  sectionName: string | undefined,
+  leagueName: string | undefined,
+): string {
+  const where = sectionPath(sections, sectionId) || sectionName || "this team's section"
+  if (!view.limits) return `Showing players in ${where}.`
+  const range = `${ageWords(view.limits)} on ${writtenDate(view.referenceDate)}`
+  const who = view.leagueSets && leagueName ? `eligible for ${leagueName}` : "within the section's age range"
+  return `Showing players in ${where} who are ${who} (${range}).`
+}
+
 function PickerBody({
   clubId,
   teamId,
@@ -225,6 +249,7 @@ function PickerBody({
   importedName,
   suggestions = [],
   newPlayer,
+  clubScope,
 }: Omit<PlayerSlotPickerProps, 'open' | 'onClose' | 'title'>) {
   const hasSquad = Boolean(teamId && seasonId)
   const hasMatch = matchSquad !== undefined
@@ -270,20 +295,31 @@ function PickerBody({
     },
   })
   const guessedName = splitGuestName(newPlayer?.name)
-  // The section's age limits guide the date of birth; a failed lookup just means no guidance.
+  // The section's age limits guide the date of birth of a new player and filter the Club tab; a failed lookup just means no
+  // guidance. The league's limits win when it sets either; the day ages are judged on comes from the server, else today.
+  const clubScoped = scope === 'club' && clubScope !== undefined
+  const needsContext = scope === 'new' || clubScoped
+  const contextSectionId = clubScope?.sectionId ?? newPlayer?.sectionId ?? null
+  const contextLeagueId = clubScope?.leagueId ?? newPlayer?.leagueId ?? null
+  const contextSeasonId = newPlayer?.seasonId ?? (clubScope ? seasonId : null)
   const sectionsQuery = useQuery({
     queryKey: ['managed-club', clubId, 'sections'],
     queryFn: () => listSections(clubId),
-    enabled: scope === 'new' && Boolean(newPlayer?.sectionId),
+    enabled: needsContext && Boolean(contextSectionId),
   })
-  // The league's age cut-off and limits, when the match is in one; a failed lookup just means section and today are used.
   const leaguesQuery = useQuery({
     queryKey: ['managed-club', clubId, 'leagues'],
     queryFn: () => listLeagues(clubId),
-    enabled: scope === 'new' && Boolean(newPlayer?.leagueId),
+    enabled: needsContext && Boolean(contextLeagueId),
   })
-  const newPlayerLeague = leaguesQuery.data?.find((candidate) => candidate.id === newPlayer?.leagueId) ?? null
-  const newPlayerSection = sectionsQuery.data?.find((candidate) => candidate.id === newPlayer?.sectionId) ?? null
+  const referenceQuery = useQuery({
+    queryKey: ageReferenceKey(clubId, contextLeagueId ?? '', contextSeasonId ?? ''),
+    queryFn: () => getLeagueAgeReference(clubId, contextLeagueId as string, contextSeasonId as string),
+    enabled: needsContext && Boolean(contextLeagueId) && Boolean(contextSeasonId),
+    retry: false,
+  })
+  const newPlayerLeague = leaguesQuery.data?.find((candidate) => candidate.id === contextLeagueId) ?? null
+  const newPlayerSection = sectionsQuery.data?.find((candidate) => candidate.id === contextSectionId) ?? null
 
   const squadQuery = useQuery({
     queryKey: ['managed-club', clubId, 'teams', teamId, 'seasons', seasonId, 'squad'],
@@ -295,6 +331,13 @@ function PickerBody({
     queryKey: ['managed-club', clubId, 'players', { includeInactive: false }],
     queryFn: () => listPlayers(clubId, { includeInactive: false }),
     enabled: scope === 'club' || scope === 'guest',
+  })
+  // The Club tab of one of our sides: the side's section only (the server includes its sub-sections).
+  const scopedSectionId = clubScoped ? (clubScope?.sectionId ?? null) : null
+  const scopedQuery = useQuery({
+    queryKey: ['managed-club', clubId, 'players', { includeInactive: false, sectionId: scopedSectionId }],
+    queryFn: () => listPlayers(clubId, { includeInactive: false, sectionId: scopedSectionId as string }),
+    enabled: scopedSectionId !== null,
   })
   const guestQuery = useQuery({
     queryKey: resultKeys.guestNames(clubId, { teamId: teamId ?? undefined, q: debouncedGuest || undefined }),
@@ -316,6 +359,22 @@ function PickerBody({
         .sort((a, b) => fullName(a).localeCompare(fullName(b))),
     [clubQuery.data],
   )
+
+  const contextLoading = clubScoped && (sectionsQuery.isLoading || leaguesQuery.isLoading || referenceQuery.isLoading)
+  const scopedView = useMemo(() => {
+    if (!clubScoped) return null
+    const limits = effectiveAgeLimits(newPlayerSection, newPlayerLeague)
+    const referenceDate = referenceQuery.data?.referenceDate ?? todayIso()
+    const section = scopedQuery.data ?? []
+    const eligible = limits ? section.filter((p) => ageProblemOf(p.dateOfBirth, limits, referenceDate) === null) : section
+    const people = eligible
+      .map((p) => ({ playerProfileId: p.id, firstName: p.firstName, lastName: p.lastName }))
+      .sort((a, b) => fullName(a).localeCompare(fullName(b)))
+    // Everyone in the club who is not shown: other sections, outside the age range, or without a date of birth.
+    const clubTotal = Math.max(clubQuery.data?.length ?? 0, section.length)
+    const leagueSets = newPlayerLeague != null && (newPlayerLeague.minAge != null || newPlayerLeague.maxAge != null)
+    return { people, limits, referenceDate, hidden: clubTotal - people.length, leagueSets }
+  }, [clubScoped, newPlayerSection, newPlayerLeague, referenceQuery.data, scopedQuery.data, clubQuery.data])
 
   const needle = norm(search)
   const matching = (people: PickedPlayer[]) => (needle ? people.filter((p) => norm(fullName(p)).includes(needle)) : people)
@@ -390,6 +449,7 @@ function PickerBody({
           initialLastName={guessedName.lastName}
           section={newPlayerSection}
           league={newPlayerLeague}
+          referenceDate={referenceQuery.data?.referenceDate ?? null}
           submitLabel="Create and link"
           pending={createMutation.isPending}
           error={createMutation.isError ? errorDetail(createMutation.error, 'The player could not be created. Please try again.') : null}
@@ -397,7 +457,44 @@ function PickerBody({
         />
       )}
 
-      {scope !== 'guest' && scope !== 'new' && (
+      {clubScoped && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {scopedSectionId === null ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              {clubScope?.sectionPending ? 'Loading players...' : 'Choose the team for this match first.'}
+            </Typography>
+          ) : scopedQuery.isError ? (
+            <Alert severity="error">We couldn't load the players.</Alert>
+          ) : scopedQuery.isLoading || contextLoading || !scopedView ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Loading players...
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="caption" color="text.secondary" data-testid="club-scope-caption">
+                {scopeCaption(scopedView, sectionsQuery.data ?? [], scopedSectionId, newPlayerSection?.name, newPlayerLeague?.name)}
+              </Typography>
+              <TextField size="small" label="Search players" value={search} onChange={(event) => setSearch(event.target.value)} inputProps={{ 'aria-label': 'Search players' }} autoFocus />
+              <Box sx={{ maxHeight: { xs: '50vh', sm: 360 }, overflowY: 'auto' }}>
+                <PlayerRows
+                  people={matching(scopedView.people)}
+                  takenPlayers={takenPlayers}
+                  hints={{}}
+                  onPick={onPickPlayer}
+                  emptyText={needle ? 'No player matches that search.' : 'No eligible players. Create a new player or add them as a guest.'}
+                />
+              </Box>
+              {scopedView.hidden > 0 && (
+                <Typography variant="caption" color="text.secondary" data-testid="club-scope-hidden">
+                  {scopedView.hidden === 1 ? '1 player is hidden' : `${scopedView.hidden} players are hidden`}: other sections, outside the age range or without a date of birth.
+                </Typography>
+              )}
+            </>
+          )}
+        </Box>
+      )}
+
+      {scope !== 'guest' && scope !== 'new' && !clubScoped && (
         <>
           <TextField
             size="small"

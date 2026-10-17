@@ -570,6 +570,46 @@ class ResultValidatorScorecardPublishRulesTest {
         assertNoIssue(validate(noSquad), WarningCode.PLAYER_NOT_IN_SQUAD);
     }
 
+    // ---- docs/specs/113: section and age of the registered players of our sides ----
+
+    private static ScorecardContext withEligibilityProblems(
+            Map<ResultSide, Map<UUID, List<ResultPlayerEligibility.Problem>>> problems) {
+        return new ScorecardContext(null, Map.of(), Map.of(), Map.of(), Map.of(), null, problems);
+    }
+
+    @Test
+    void aPlayerOutsideTheSectionAndAPlayerOutsideTheAgeRuleAreErrorsOnTheTeamsStepAndBlockPublishing() {
+        ScorecardCard x = ScorecardCard.oursBat();
+        UUID inAnotherSection = x.players.stream().filter(p -> "b1".equals(p.clientKey())).findFirst().orElseThrow().playerProfileId();
+        UUID tooYoung = x.players.stream().filter(p -> "b2".equals(p.clientKey())).findFirst().orElseThrow().playerProfileId();
+        x.context(withEligibilityProblems(Map.of(H, Map.of(
+                inAnotherSection, List.of(new ResultPlayerEligibility.Problem(
+                        ErrorCode.PLAYER_NOT_IN_SECTION, "Ann Player is not in the Seniors section.")),
+                tooYoung, List.of(new ResultPlayerEligibility.Problem(
+                        ErrorCode.PLAYER_AGE_INELIGIBLE, "Bob Player is 12, below this league's minAge of 14 as at 1 Sep 2026"))))));
+
+        ResultValidationDto dto = validate(x);
+
+        assertIssue(dto, ErrorCode.PLAYER_NOT_IN_SECTION, ResultWizardStep.TEAMS, H, ResultIssueSeverity.ERROR);
+        assertIssue(dto, ErrorCode.PLAYER_AGE_INELIGIBLE, ResultWizardStep.TEAMS, H, ResultIssueSeverity.ERROR);
+        assertThat(withCode(dto, ErrorCode.PLAYER_NOT_IN_SECTION)).singleElement()
+                .satisfies(i -> assertThat(i.message()).isEqualTo("Ann Player is not in the Seniors section."));
+        assertThat(dto.canPublish()).isFalse();
+        assertThat(dto.errors()).hasSize(2);
+    }
+
+    @Test
+    void noEligibilityProblemsRaiseNothingAndTheOppositionIsNeverReported() {
+        ScorecardCard x = ScorecardCard.oursBat();
+        assertNoIssue(validate(x), ErrorCode.PLAYER_NOT_IN_SECTION);
+        assertNoIssue(validate(x), ErrorCode.PLAYER_AGE_INELIGIBLE);
+
+        // a problem keyed to an id that is not a registered player of our side on the card changes nothing
+        x.context(withEligibilityProblems(Map.of(A, Map.of(UUID.randomUUID(), List.of(
+                new ResultPlayerEligibility.Problem(ErrorCode.PLAYER_NOT_IN_SECTION, "x"))))));
+        assertNoIssue(validate(x), ErrorCode.PLAYER_NOT_IN_SECTION);
+    }
+
     @Test
     void aGuestWhoSharesARegisteredPlayersNameIsWarnedAboutButAnOppositionNameIsNot() {
         UUID registered = UUID.randomUUID();

@@ -26,3 +26,17 @@ export const Default: Story = { render: () => <Demo /> }
 export const Disabled: Story = {
   args: { label: 'Who won?', options, value: 'away', onChange: () => {}, disabled: true, columns: '1fr 1fr' },
 }
+
+// docs/specs/109-delete-empty-match.md: a control outside the radio, in the tile's corner.
+export const WithAdornment: Story = {
+  args: {
+    label: 'Which match?',
+    options: [
+      { value: 'a', content: 'Home v Away', adornment: <button type="button">Delete</button> },
+      { value: 'b', content: 'Other v Another' },
+    ],
+    value: 'b',
+    onChange: () => {},
+    columns: '1fr',
+  },
+}

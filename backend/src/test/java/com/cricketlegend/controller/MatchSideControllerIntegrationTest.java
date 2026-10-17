@@ -526,7 +526,7 @@ class MatchSideControllerIntegrationTest {
      */
     @Test
     void addPlayerReturns400WhenPlayerHasNoRecordedDateOfBirth() throws Exception {
-        AgeRestrictedFixture fixture = setUpAgeRestrictedMatch(LocalDate.of(2026, 12, 31));
+        AgeRestrictedFixture fixture = setUpAgeRestrictedMatch(12, 31);
         PlayerProfile player = addSquadMemberWithDob(
                 fixture.club().getId(), fixture.team().getId(), fixture.season().getId(), "NoDob", null);
         JwtRequestPostProcessor admin = grantClubAdmin("club-admin-sub", fixture.club().getId());
@@ -545,12 +545,12 @@ class MatchSideControllerIntegrationTest {
 
     /**
      * {@link com.cricketlegend.exception.PlayerAgeIneligibleException} — a player whose age (as of
-     * the league's own {@code ageCutoffDate}) falls outside {@code minAge}/{@code maxAge} is
+     * the league's own cut-off day and month, spec 110) falls outside {@code minAge}/{@code maxAge} is
      * rejected.
      */
     @Test
     void addPlayerReturns400WhenPlayersAgeIsOutsideTheLeaguesRange() throws Exception {
-        AgeRestrictedFixture fixture = setUpAgeRestrictedMatch(LocalDate.of(2026, 12, 31));
+        AgeRestrictedFixture fixture = setUpAgeRestrictedMatch(12, 31);
         // 21 years old as of the 2026-12-31 cutoff — above the league's own maxAge of 15.
         PlayerProfile tooOld = addSquadMemberWithDob(
                 fixture.club().getId(), fixture.team().getId(), fixture.season().getId(), "TooOld",
@@ -664,7 +664,7 @@ class MatchSideControllerIntegrationTest {
     private record AgeRestrictedFixture(Club club, Team team, Season season, League league, Match match) {
     }
 
-    private AgeRestrictedFixture setUpAgeRestrictedMatch(LocalDate ageCutoffDate) {
+    private AgeRestrictedFixture setUpAgeRestrictedMatch(int cutoffMonth, int cutoffDay) {
         Club club = clubRepository.save(newClub("Riverside CC", "riverside-cc"));
         Section section = sectionRepository.save(newSection(club.getId(), "Men"));
         Team team = teamRepository.save(newTeam(club.getId(), section.getId(), "1st XI"));
@@ -676,7 +676,8 @@ class MatchSideControllerIntegrationTest {
                 .maxPlayingXiSize(11)
                 .minAge(13)
                 .maxAge(15)
-                .ageCutoffDate(ageCutoffDate)
+                .ageCutoffMonth(cutoffMonth)
+                .ageCutoffDay(cutoffDay)
                 .active(true)
                 .build());
         Match match = matchRepository.save(Match.builder()
@@ -685,7 +686,7 @@ class MatchSideControllerIntegrationTest {
                 .awayTeamName("Occasionals")
                 .leagueId(league.getId())
                 .seasonId(season.getId())
-                .matchDate(Instant.now().plus(7, ChronoUnit.DAYS))
+                .matchDate(LocalDate.of(2026, 10, 23).atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant())
                 .active(true)
                 .build());
         return new AgeRestrictedFixture(club, team, season, league, match);

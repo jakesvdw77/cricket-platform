@@ -21,6 +21,7 @@ import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.MatchesSummaryDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.MatchNotEmptyException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
 import com.cricketlegend.mapper.MatchMapper;
@@ -38,6 +39,8 @@ import com.cricketlegend.service.MatchPollCoverageService;
 import com.cricketlegend.service.MatchService;
 import com.cricketlegend.service.support.SelectionLimitsResolver;
 import com.cricketlegend.service.support.LeagueSeasonAccessValidation;
+import com.cricketlegend.service.support.LeagueSeasonDates;
+import com.cricketlegend.service.support.MatchEmptiness;
 import com.cricketlegend.service.support.PlayingAreaMatchResolver;
 import com.cricketlegend.service.support.ResultStatusResolver;
 import com.cricketlegend.service.support.ServerClock;
@@ -53,6 +56,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -97,6 +101,8 @@ public class MatchServiceImpl implements MatchService {
     private final PlayingAreaRepository playingAreaRepository;
     private final PlayingAreaMatchResolver playingAreaMatchResolver;
     private final ResultStatusResolver resultStatusResolver;
+    private final LeagueSeasonDates leagueSeasonDates;
+    private final MatchEmptiness matchEmptiness;
 
     public MatchServiceImpl(
             MatchRepository matchRepository,
@@ -113,7 +119,9 @@ public class MatchServiceImpl implements MatchService {
             AccessService accessService,
             PlayingAreaRepository playingAreaRepository,
             PlayingAreaMatchResolver playingAreaMatchResolver,
-            ResultStatusResolver resultStatusResolver) {
+            ResultStatusResolver resultStatusResolver,
+            LeagueSeasonDates leagueSeasonDates,
+            MatchEmptiness matchEmptiness) {
         this.matchRepository = matchRepository;
         this.matchSideRepository = matchSideRepository;
         this.matchSidePlayerRepository = matchSidePlayerRepository;
@@ -129,6 +137,8 @@ public class MatchServiceImpl implements MatchService {
         this.playingAreaRepository = playingAreaRepository;
         this.playingAreaMatchResolver = playingAreaMatchResolver;
         this.resultStatusResolver = resultStatusResolver;
+        this.leagueSeasonDates = leagueSeasonDates;
+        this.matchEmptiness = matchEmptiness;
     }
 
     @Override
@@ -445,6 +455,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         Map<UUID, MatchResultStatus> resultStatusByMatchId = resultStatusResolver.statusesFor(matchIds);
+        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matchIds, resultStatusByMatchId); // docs/specs/109
 
         Map<UUID, PlayingArea> fieldsById = playingAreasById(
                 content.stream().map(MatchDto::playingAreaId).filter(Objects::nonNull).collect(Collectors.toSet()));
@@ -494,7 +505,8 @@ public class MatchServiceImpl implements MatchService {
                     dto.playingAreaId(),
                     fieldName(fieldsById, dto.playingAreaId()),
                     fieldStatus(fieldsById, dto.playingAreaId()),
-                    resultStatusByMatchId.get(dto.id()));
+                    resultStatusByMatchId.get(dto.id()),
+                    emptyMatchIds.contains(dto.id()));
         });
     }
 
@@ -544,6 +556,8 @@ public class MatchServiceImpl implements MatchService {
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
                 request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
+        // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
+        leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
         LeagueTeam homeLeagueTeam = resolveLeagueTeam(
                 clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
@@ -595,6 +609,8 @@ public class MatchServiceImpl implements MatchService {
                 request.homeTeamName(), request.homeTeamLogoUrl(), request.homeLeagueTeamId(),
                 request.awayTeamName(), request.awayTeamLogoUrl(), request.awayLeagueTeamId());
         validateLeagueAndSeason(clubId, request.leagueId(), request.seasonId());
+        // docs/specs/111-league-season-dates.md: a match must fall within its league season's dates, when it has them.
+        leagueSeasonDates.assertWithin(request.leagueId(), request.seasonId(), request.matchDate());
         validateTeamReferences(request.homeTeamId(), request.awayTeamId());
         LeagueTeam homeLeagueTeam = resolveLeagueTeam(
                 clubId, request.leagueId(), request.seasonId(), request.homeLeagueTeamId(),
@@ -644,8 +660,36 @@ public class MatchServiceImpl implements MatchService {
         if (match.isActive()) {
             throw new InvalidStatusTransitionException("Match is already active: " + matchId);
         }
+        // docs/specs/111: a match left outside its league's dates (deactivated before they were set) cannot come back.
+        leagueSeasonDates.assertWithin(match.getLeagueId(), match.getSeasonId(), match.getMatchDate());
         match.setActive(true);
         return toDto(matchRepository.save(match));
+    }
+
+    /**
+     * docs/specs/109-delete-empty-match.md: deletes a match with nothing recorded against it (the same access rule as
+     * edit and deactivate); refuses, naming what exists, otherwise.
+     */
+    @Override
+    @Transactional
+    public void delete(Authentication authentication, UUID clubId, UUID matchId) {
+        Match match = findOrThrowForClub(clubId, matchId);
+        assertCanAdministerMatch(authentication, clubId, match);
+        Set<MatchEmptiness.Attachment> attached =
+                matchEmptiness.attachmentsFor(List.of(matchId)).getOrDefault(matchId, Set.of());
+        if (!attached.isEmpty()) {
+            MatchEmptiness.Attachment first = attached.stream().sorted().findFirst().orElseThrow();
+            throw new MatchNotEmptyException("This match has " + first.description()
+                    + (attached.size() > 1 ? " and other records" : "") + ". Deactivate it instead.");
+        }
+        try {
+            // sides with nobody chosen are not content (spec 109); they go with the match
+            matchSideRepository.deleteAll(matchSideRepository.findByMatchId(matchId));
+            matchRepository.delete(match);
+            matchRepository.flush(); // a poll or squad row inserted since the check fails on its foreign key here
+        } catch (DataIntegrityViolationException e) {
+            throw new MatchNotEmptyException("This match has other records. Deactivate it instead.");
+        }
     }
 
     /**
@@ -676,9 +720,12 @@ public class MatchServiceImpl implements MatchService {
                 .collect(Collectors.toSet()));
         Map<UUID, MatchResultStatus> resultStatusByMatchId =
                 resultStatusResolver.statusesFor(matches.stream().map(Match::getId).toList());
+        Set<UUID> emptyMatchIds = matchEmptiness.emptyAmong(matches.stream().map(Match::getId).toList(), resultStatusByMatchId);
         return matches.stream()
                 .map(match -> {
-                    MatchDto dto = matchMapper.toDto(match).withResultStatus(resultStatusByMatchId.get(match.getId()));
+                    MatchDto dto = matchMapper.toDto(match)
+                            .withResultStatus(resultStatusByMatchId.get(match.getId()))
+                            .withDeletable(emptyMatchIds.contains(match.getId()));
                     return match.getPlayingAreaId() == null
                             ? dto
                             : dto.withPlayingArea(

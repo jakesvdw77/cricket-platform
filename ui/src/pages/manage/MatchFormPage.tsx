@@ -1,6 +1,7 @@
-import { Box, Button as MuiButton, Stack, Typography } from '@mui/material'
+import { Box, Button as MuiButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link as RouterLink, Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import { MatchForm, MATCH_FORM_ID } from '../../components/MatchForm'
 import { RecordFormScreen } from '../../components/RecordFormScreen'
@@ -15,8 +16,9 @@ import {
   reactivateMatch,
 } from '../../api/matchApi'
 import type { Match, MatchPayload } from '../../api/matchApi'
+import { useDeleteMatchDialog } from '../../hooks/useDeleteMatchDialog'
 import { useMatchFormData } from '../../hooks/useMatchFormData'
-import { errorDetail } from '../../utils/errorDetail'
+import { errorDetail, matchOutsideLeagueDatesMessage } from '../../utils/errorDetail'
 import { NO_CLUB_TEAM_REASON } from './matches/matchCardHelpers'
 import { selectTeamPath } from './teamSelection/selectionLinks'
 
@@ -75,6 +77,13 @@ export default function MatchFormPage() {
   const deactivate = useMutation({
     mutationFn: () => deactivateMatch(clubId as string, matchId as string),
     onSuccess: invalidateMatches,
+  })
+
+  // docs/specs/109-delete-empty-match.md: Delete is offered only when the server says nothing is recorded against the match.
+  // The confirm-and-delete flow is shared with the result import (hooks/useDeleteMatchDialog).
+  const deleteFlow = useDeleteMatchDialog(clubId ?? '', () => {
+    queryClient.removeQueries({ queryKey: ['managed-club', clubId, 'matches', matchId] })
+    navigate('/manage/fixtures/matches', { state: { notice: 'Match deleted.' } })
   })
 
   const reactivate = useMutation({
@@ -146,7 +155,7 @@ export default function MatchFormPage() {
       }
       actions={
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-          {saveMutation.isError && (
+          {saveMutation.isError && !matchOutsideLeagueDatesMessage(saveMutation.error) && (
             <Typography variant="body2" color="error.main">
               {errorDetail(saveMutation.error, 'Something went wrong saving this match. Please try again.')}
             </Typography>
@@ -165,9 +174,31 @@ export default function MatchFormPage() {
           {isEdit && match && (
             <RecordStatusToggle active={match.active} pending={toggle.isPending} onClick={() => toggle.mutate()} />
           )}
+
+          {isEdit && match && (
+            // docs/specs/109: always visible on the edit page; disabled, with the reason, when something is recorded against the match.
+            <Tooltip
+              title={match.deletable ? '' : 'A match can only be deleted when nothing is recorded against it: no result, availability poll, squad or team selection. Deactivate it instead.'}
+              enterTouchDelay={0}
+            >
+              <span>
+                <MuiButton
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineIcon fontSize="small" />}
+                  sx={{ minHeight: 44 }}
+                  disabled={!match.deletable}
+                  onClick={() => deleteFlow.request({ id: match.id, name: `${match.homeTeamName ?? ''} v ${match.awayTeamName ?? ''}` })}
+                >
+                  Delete
+                </MuiButton>
+              </span>
+            </Tooltip>
+          )}
         </Stack>
       }
     >
+      {deleteFlow.dialog}
       <MatchForm
         clubId={clubId}
         initialField={
@@ -203,6 +234,7 @@ export default function MatchFormPage() {
         }
         {...formProps}
         onSubmit={(payload) => saveMutation.mutate(payload)}
+        matchDateServerError={matchOutsideLeagueDatesMessage(saveMutation.error)}
       />
     </RecordFormScreen>
   )

@@ -87,7 +87,11 @@ describe('MatchFormDialog', () => {
   })
 
   it('never guesses between seasons: with two that contain the date none is chosen', async () => {
-    listSeasons.mockResolvedValue([season('season-1', '2026/27', '2026-09-01', '2027-04-30'), season('season-2', 'Summer 2026', '2026-10-01', '2026-12-31')])
+    // Inactive, so the current-season default does not fill the season in either.
+    listSeasons.mockResolvedValue([
+      { ...season('season-1', '2026/27', '2026-09-01', '2027-04-30'), active: false },
+      { ...season('season-2', 'Summer 2026', '2026-10-01', '2026-12-31'), active: false },
+    ])
     renderDialog({ inferSeason: true, initialValues: { matchDate: new Date(2026, 9, 11, 13, 0).toISOString() } })
 
     await screen.findByLabelText('Match date & time (date)')

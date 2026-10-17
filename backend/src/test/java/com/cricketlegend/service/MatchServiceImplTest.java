@@ -26,8 +26,10 @@ import com.cricketlegend.dto.MatchFilterOptionsDto;
 import com.cricketlegend.dto.MatchPollDto;
 import com.cricketlegend.dto.UpdateMatchRequest;
 import com.cricketlegend.exception.InvalidStatusTransitionException;
+import com.cricketlegend.exception.MatchNotEmptyException;
 import com.cricketlegend.exception.NotFoundException;
 import com.cricketlegend.exception.ValidationException;
+import com.cricketlegend.service.support.MatchEmptiness;
 import com.cricketlegend.mapper.MatchMapper;
 import com.cricketlegend.repository.LeagueRepository;
 import com.cricketlegend.repository.MatchRepository;
@@ -109,6 +111,12 @@ class MatchServiceImplTest {
     @Mock
     private com.cricketlegend.service.support.ResultStatusResolver resultStatusResolver;
 
+    @Mock
+    private com.cricketlegend.repository.LeagueSeasonRepository leagueSeasonRepository;
+
+    @Mock
+    private com.cricketlegend.service.support.MatchEmptiness matchEmptiness;
+
     private MatchServiceImpl matchService;
     private final UUID clubIdForLinks = UUID.randomUUID();
     private final Authentication authentication = new TestingAuthenticationToken(
@@ -121,13 +129,14 @@ class MatchServiceImplTest {
                 new com.cricketlegend.service.support.SelectionLimitsResolver(
                         leagueRepository, leaguePlayingConditionsRepository),
                 leagueRepository, seasonRepository, leagueTeamRepository, teamRepository, sectionRepository, matchMapper,
-                accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver);
+                accessService, playingAreaRepository, playingAreaMatchResolver, resultStatusResolver,
+                new com.cricketlegend.service.support.LeagueSeasonDates(leagueSeasonRepository), matchEmptiness);
     }
 
     private MatchDto dummyDto() {
         return new MatchDto(
                 UUID.randomUUID(), UUID.randomUUID(), null, "Home XI", null, "Away XI", null, null, null,
-                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                UUID.randomUUID(), Instant.now(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private Season season(UUID id, UUID clubId) {
@@ -402,6 +411,138 @@ class MatchServiceImplTest {
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
+    // --- 109: delete an empty match ---
+
+    @Test
+    void deleteRemovesAMatchWithNothingAttached() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+
+        matchService.delete(authentication, clubId, matchId);
+
+        verify(matchRepository).delete(existing);
+    }
+
+    @Test
+    void deleteRemovesTheMatchsEmptySidesBeforeTheMatch() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        com.cricketlegend.domain.MatchSide emptySide = com.cricketlegend.domain.MatchSide.builder()
+                .id(UUID.randomUUID()).matchId(matchId).teamId(UUID.randomUUID()).build();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+        when(matchSideRepository.findByMatchId(matchId)).thenReturn(List.of(emptySide));
+
+        matchService.delete(authentication, clubId, matchId);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(matchSideRepository, matchRepository);
+        order.verify(matchSideRepository).deleteAll(List.of(emptySide));
+        order.verify(matchRepository).delete(existing);
+    }
+
+    @Test
+    void deleteRefusesAndKeepsTheSidesWhenASideHoldsContent() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(
+                Map.of(matchId, java.util.EnumSet.of(MatchEmptiness.Attachment.TEAM_SELECTION)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has a team selection. Deactivate it instead.");
+
+        verify(matchSideRepository, never()).deleteAll(any());
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteReportsARecordInsertedSinceTheCheckAsMatchNotEmpty() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of());
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("fk"))
+                .when(matchRepository).flush();
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has other records. Deactivate it instead.");
+    }
+
+    @Test
+    void deleteRefusesNamingEachKindOfAttachmentAndDeletesNothing() {
+        Map<MatchEmptiness.Attachment, String> expected = Map.of(
+                MatchEmptiness.Attachment.DRAFT_RESULT, "This match has a draft result. Deactivate it instead.",
+                MatchEmptiness.Attachment.PUBLISHED_RESULT, "This match has a published result. Deactivate it instead.",
+                MatchEmptiness.Attachment.POLL, "This match has an availability poll. Deactivate it instead.",
+                MatchEmptiness.Attachment.SQUAD, "This match has a squad. Deactivate it instead.",
+                MatchEmptiness.Attachment.TEAM_SELECTION, "This match has a team selection. Deactivate it instead.",
+                MatchEmptiness.Attachment.AVAILABILITY_WINDOW,
+                "This match has an availability window. Deactivate it instead.");
+        expected.forEach((attachment, message) -> {
+            UUID clubId = UUID.randomUUID();
+            UUID matchId = UUID.randomUUID();
+            when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+            when(matchEmptiness.attachmentsFor(List.of(matchId)))
+                    .thenReturn(Map.of(matchId, java.util.EnumSet.of(attachment)));
+
+            assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                    .isInstanceOf(MatchNotEmptyException.class)
+                    .hasMessage(message);
+        });
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteNamesTheFirstAttachmentAndMentionsTheOthersWhenSeveralExist() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+        when(matchEmptiness.attachmentsFor(List.of(matchId))).thenReturn(Map.of(matchId, java.util.EnumSet.of(
+                MatchEmptiness.Attachment.SQUAD, MatchEmptiness.Attachment.DRAFT_RESULT)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(MatchNotEmptyException.class)
+                .hasMessage("This match has a draft result and other records. Deactivate it instead.");
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteOfAnotherClubsOrUnknownMatchIsNotFound() {
+        UUID matchId = UUID.randomUUID();
+        when(matchRepository.findById(matchId))
+                .thenReturn(Optional.of(existingMatch(matchId, UUID.randomUUID(), true)));
+
+        assertThatThrownBy(() -> matchService.delete(authentication, UUID.randomUUID(), matchId))
+                .isInstanceOf(NotFoundException.class);
+        verify(matchRepository, never()).delete(any(Match.class));
+    }
+
+    @Test
+    void deleteThrowsAccessDeniedWhenCallerCannotAdministerTheMatchAndChecksNothingElse() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match existing = existingMatch(matchId, clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existing));
+        java.util.Set<UUID> resolvedSections = java.util.Set.of(UUID.randomUUID());
+        when(accessService.resolveMatchSectionIds(clubId, existing.getHomeTeamId(), existing.getAwayTeamId()))
+                .thenReturn(resolvedSections);
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("denied"))
+                .when(accessService)
+                .assertCanAdministerAnySection(authentication, clubId, resolvedSections);
+
+        assertThatThrownBy(() -> matchService.delete(authentication, clubId, matchId))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(matchRepository, never()).delete(any(Match.class));
+        verify(matchEmptiness, never()).attachmentsFor(any());
+    }
+
     @Test
     void reactivateOnInactiveMatchTransitionsToActive() {
         UUID clubId = UUID.randomUUID();
@@ -563,9 +704,9 @@ class MatchServiceImplTest {
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(matchA, matchB)));
 
         MatchDto dtoA = new MatchDto(matchAId, clubId, teamAHome, "Home A", teamAAway, "Away A", null, null, null,
-                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchA.getSeasonId(), matchA.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         MatchDto dtoB = new MatchDto(matchBId, clubId, teamBHome, "Home B", null, "Occasionals", null, null, null,
-                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                matchB.getSeasonId(), matchB.getMatchDate(), null, true, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
         when(matchMapper.toDto(matchA)).thenReturn(dtoA);
         when(matchMapper.toDto(matchB)).thenReturn(dtoB);
 
@@ -606,7 +747,7 @@ class MatchServiceImplTest {
     private MatchDto cardDto(Match m) {
         return new MatchDto(m.getId(), m.getClubId(), m.getHomeTeamId(), m.getHomeTeamName(), m.getAwayTeamId(),
                 m.getAwayTeamName(), null, null, m.getLeagueId(), m.getSeasonId(), m.getMatchDate(), null, true,
-                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false);
     }
 
     private List<MatchDto> listCard(Match... matches) {
@@ -1629,7 +1770,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, homeLtId, awayLtId, null, null, null, null, null, null));
+                null, null, homeLtId, awayLtId, null, null, null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1842,7 +1983,7 @@ class MatchServiceImplTest {
         when(matchMapper.toDto(match)).thenReturn(new MatchDto(
                 match.getId(), clubId, null, "Riverside CC", null, "Hillside CC", null, null, null,
                 match.getSeasonId(), match.getMatchDate(), null, true, false, false, null, null, null, null, null,
-                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null));
+                null, null, null, null, "https://cricclubs.com/matches/1", "https://pv.example/live", null, null, null, null, false));
         when(matchSideRepository.findByMatchIdIn(List.of(match.getId()))).thenReturn(List.of());
 
         MatchDto result = matchService
@@ -1871,6 +2012,9 @@ class MatchServiceImplTest {
         assertThat(byId(result, draft).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.DRAFT);
         assertThat(byId(result, none).resultStatus()).isEqualTo(com.cricketlegend.domain.MatchResultStatus.NONE);
         verify(resultStatusResolver, times(1)).statusesFor(any());
+        // the emptiness check reuses those statuses rather than asking again
+        verify(matchEmptiness, never()).emptyAmong(any());
+        verify(matchEmptiness, times(1)).emptyAmong(any(), any());
     }
 
     @Test
@@ -1968,5 +2112,187 @@ class MatchServiceImplTest {
         assertThatThrownBy(() -> matchService.requireAdministrableMatch(authentication, cardClubId, matchId))
                 .isInstanceOf(NotFoundException.class);
         verify(accessService, never()).assertCanAdministerAnySection(any(), any(), any());
+    }
+
+    // --- docs/specs/111-league-season-dates.md: a match honours its league season's dates ---
+
+    private static Instant at(int year, int month, int day) {
+        return LocalDate.of(year, month, day).atTime(15, 30).atZone(java.time.ZoneId.systemDefault()).toInstant();
+    }
+
+    /** A league and season of one club, with dates 1 Sep 2026 to 31 Jul 2027 when {@code withDates}. */
+    private UUID[] leagueSeasonFixture(UUID clubId, boolean withDates) {
+        return leagueSeasonFixture(clubId, withDates, true);
+    }
+
+    private UUID[] leagueSeasonFixture(UUID clubId, boolean withDates, boolean stubLeagueAndSeason) {
+        UUID leagueId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        if (stubLeagueAndSeason) {
+            when(leagueRepository.findById(leagueId)).thenReturn(Optional.of(league(leagueId, clubId)));
+            when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        }
+        when(leagueSeasonRepository.findByLeagueIdAndSeasonId(leagueId, seasonId)).thenReturn(withDates
+                ? Optional.of(com.cricketlegend.domain.LeagueSeason.builder().leagueId(leagueId).seasonId(seasonId)
+                        .startDate(LocalDate.of(2026, 9, 1)).endDate(LocalDate.of(2027, 7, 31)).build())
+                : Optional.empty());
+        return new UUID[] {leagueId, seasonId};
+    }
+
+    private CreateMatchRequest leagueMatch(UUID[] ids, Instant when) {
+        return new CreateMatchRequest(
+                null, "Home Occasionals", null, "Away Occasionals", null, null, ids[0], ids[1], when, null, null, null,
+                null, null, null);
+    }
+
+    private void stubSave() {
+        ArgumentCaptor<Match> captor = ArgumentCaptor.forClass(Match.class);
+        when(matchRepository.save(captor.capture())).thenAnswer(invocation -> captor.getValue());
+        when(matchMapper.toDto(any(Match.class))).thenReturn(dummyDto());
+    }
+
+    @Test
+    void createInsideTheLeagueSeasonDatesSucceedsIncludingBothBoundaryDays() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+        stubSave();
+
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 12, 5)));
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 9, 1)));
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2027, 7, 31)));
+
+        verify(matchRepository, times(3)).save(any());
+    }
+
+    @Test
+    void createTheDayBeforeTheStartOrAfterTheEndIsRefusedNamingTheDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, leagueMatch(ids, at(2026, 8, 31))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+        assertThatThrownBy(() -> matchService.create(authentication, clubId, leagueMatch(ids, at(2027, 8, 1))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithNoDatesForTheLeagueSeasonIsNotChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, false);
+        stubSave();
+
+        matchService.create(authentication, clubId, leagueMatch(ids, at(2020, 1, 1)));
+
+        verify(matchRepository).save(any());
+    }
+
+    @Test
+    void createAFriendlyWithNoLeagueIsNeverChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID seasonId = UUID.randomUUID();
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season(seasonId, clubId)));
+        stubSave();
+
+        matchService.create(authentication, clubId, new CreateMatchRequest(
+                null, "Home", null, "Away", null, null, null, seasonId, at(2020, 1, 1), null, null, null, null, null,
+                null));
+
+        verify(matchRepository).save(any());
+        verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
+    }
+
+    private UpdateMatchRequest updateTo(UUID[] ids, Instant when) {
+        return new UpdateMatchRequest(
+                null, "Home Occasionals", null, "Away Occasionals", null, null, ids[0], ids[1], when, null, null, null,
+                null, null, null);
+    }
+
+    @Test
+    void updateMovingAMatchOutsideTheDatesIsRefusedAndInsideIsAccepted() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(existingMatch(matchId, clubId, true)));
+
+        assertThatThrownBy(() -> matchService.update(authentication, clubId, matchId, updateTo(ids, at(2027, 8, 1))))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class);
+        verify(matchRepository, never()).save(any());
+
+        stubSave();
+        matchService.update(authentication, clubId, matchId, updateTo(ids, at(2027, 7, 31)));
+        verify(matchRepository).save(any());
+    }
+
+    private Match inactiveLeagueMatch(UUID matchId, UUID clubId, UUID[] ids, Instant when) {
+        Match match = existingMatch(matchId, clubId, false);
+        match.setLeagueId(ids[0]);
+        match.setSeasonId(ids[1]);
+        match.setMatchDate(when);
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        return match;
+    }
+
+    @Test
+    void deactivatingNeverChecksTheDates() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        Match match = existingMatch(matchId, clubId, true);
+        match.setLeagueId(UUID.randomUUID());
+        when(matchRepository.findById(matchId)).thenReturn(Optional.of(match));
+        stubSave();
+
+        matchService.deactivate(authentication, clubId, matchId);
+
+        verify(leagueSeasonRepository, never()).findByLeagueIdAndSeasonId(any(), any());
+    }
+
+    @Test
+    void reactivatingInsideTheLeagueSeasonDatesWorks() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = inactiveLeagueMatch(matchId, clubId, ids, at(2026, 12, 5));
+        stubSave();
+
+        matchService.reactivate(authentication, clubId, matchId);
+
+        assertThat(match.isActive()).isTrue();
+    }
+
+    @Test
+    void reactivatingOutsideTheLeagueSeasonDatesIsRefusedAndTheMatchStaysInactive() {
+        UUID clubId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, true, false);
+        Match match = inactiveLeagueMatch(matchId, clubId, ids, at(2027, 8, 1));
+
+        assertThatThrownBy(() -> matchService.reactivate(authentication, clubId, matchId))
+                .isInstanceOf(com.cricketlegend.exception.MatchOutsideLeagueDatesException.class)
+                .hasMessage("This league runs from 1 Sep 2026 to 31 Jul 2027.");
+
+        assertThat(match.isActive()).isFalse();
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void reactivatingWithNoDatesRowOrNoLeagueIsNotChecked() {
+        UUID clubId = UUID.randomUUID();
+        UUID noRowId = UUID.randomUUID();
+        UUID[] ids = leagueSeasonFixture(clubId, false, false);
+        Match noRow = inactiveLeagueMatch(noRowId, clubId, ids, at(2020, 1, 1));
+        UUID friendlyId = UUID.randomUUID();
+        Match friendly = existingMatch(friendlyId, clubId, false);
+        friendly.setMatchDate(at(2020, 1, 1));
+        when(matchRepository.findById(friendlyId)).thenReturn(Optional.of(friendly));
+        stubSave();
+
+        matchService.reactivate(authentication, clubId, noRowId);
+        matchService.reactivate(authentication, clubId, friendlyId);
+
+        assertThat(noRow.isActive()).isTrue();
+        assertThat(friendly.isActive()).isTrue();
     }
 }

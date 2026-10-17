@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Box, ButtonBase, Chip, Typography } from '@mui/material'
 import { badgeSx } from '../../../../components/RecordCard'
 import { GuessChip } from '../../../../components/GuessChip'
@@ -23,12 +24,17 @@ export interface ScorecardPlayerCellProps {
   guess?: GuessInfo
   // False when the page shows the closest player itself (the Teams list, in its status column): no button and no Closest caption here.
   useClosestInCell?: boolean
+  // False where a separate Type column already says Guest (the Teams list): no Guest chip, and no tappable Guest chip for an
+  // unresolved import name either (`trailing` carries its control instead). The Guess chip is unaffected. Default true.
+  showGuestChip?: boolean
+  // Shown on the name's line after the chips, for example a compact Link button.
+  trailing?: ReactNode
 }
 
 // docs/specs/101-match-results-our-side-scorecard.md (Our batting item 6): the player in a scorecard row. The name is a
 // button that opens the row's popup menu (the route to reorder, swap, link and remove on a phone and for the keyboard);
 // a Guest chip marks a name-only player; a small caption says "planned 3" or "replaced A. Smith".
-export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess, useClosestInCell = true }: ScorecardPlayerCellProps) {
+export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, duplicate = false, disabled = false, guess, useClosestInCell = true, showGuestChip = true, trailing }: ScorecardPlayerCellProps) {
   const guessCaption = guess ? (guess.level === 'UNRESOLVED' ? (guess.closest && useClosestInCell && !guess.onUseClosest ? `Closest: ${guess.closest.displayName}` : null) : `File said '${guess.importedName}'`) : null
   const captionText = [caption, guessCaption].filter(Boolean).join(' · ') || null
   return (
@@ -56,7 +62,7 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
           </span>
         </ButtonBase>
         {duplicate && <Chip size="small" color="error" variant="outlined" label="Duplicate" sx={{ height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />}
-        {guess ? (
+        {guess && (showGuestChip || guess.level !== 'UNRESOLVED') ? (
           <GuessChip
             importedName={guess.importedName}
             level={guess.level}
@@ -68,8 +74,9 @@ export function ScorecardPlayerCell({ person, view, guest, caption, onOpen, dupl
             disabled={disabled}
           />
         ) : (
-          guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
+          showGuestChip && guest && <Chip size="small" label="Guest" sx={{ ...badgeSx('neutral'), height: { xs: 20, sm: 18 }, fontSize: '0.75rem', flex: 'none' }} />
         )}
+        {trailing}
       </Box>
       {useClosestInCell && guess?.onUseClosest && guess.closest && <UseClosestButton guess={guess} disabled={disabled} />}
       {captionText && (

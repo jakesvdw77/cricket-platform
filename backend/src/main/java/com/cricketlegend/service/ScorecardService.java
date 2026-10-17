@@ -37,7 +37,8 @@ public interface ScorecardService {
     /**
      * Links an unlinked scorecard player to a registered player of this club. Allowed on a draft or a published
      * result; records who linked and when. 409 when the profile is already on that side's list, 400 for another club's
-     * profile or a player that is already linked.
+     * profile, a player that is already linked, or (docs/specs/113) a player outside the side's team's section or the
+     * league's age rule.
      */
     ResultPlayerDto link(
             Authentication authentication, UUID clubId, UUID matchId, UUID resultPlayerId, UUID playerProfileId);

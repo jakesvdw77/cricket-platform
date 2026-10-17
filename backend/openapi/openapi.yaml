@@ -1014,12 +1014,51 @@ paths:
               $ref: "#/components/schemas/UpdateMatchRequest"
         required: true
       responses:
+        "400":
+          description: "Validation failed. A match outside its league season's dates is a ProblemDetail whose property code is MATCH_OUTSIDE_LEAGUE_DATES (docs/specs/111)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "200":
           description: OK
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/MatchDto"
+    delete:
+      tags:
+      - match-controller
+      description: "Deletes a match with nothing recorded against it (docs/specs/109). Refused with 409 naming what exists when it has a result, an availability poll, a squad, a team selection or an availability window."
+      operationId: delete
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Match deleted
+        "404":
+          description: Not this club's match
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: The match has a result, poll, squad, team selection or availability window
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/matches/{matchId}/teams/{teamId}/squad/{playerId}:
     put:
       tags:
@@ -1334,6 +1373,130 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LeagueDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/age-reference-date:
+    get:
+      tags:
+      - league-controller
+      operationId: ageReferenceDate
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgeReferenceDto"
+  /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/dates:
+    get:
+      tags:
+      - league-season-dates-controller
+      summary: The start and end date of the league in the season (docs/specs/111).
+      operationId: leagueSeasonDates
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueSeasonDatesDto"
+        "404":
+          description: Another club's league or season, or no dates set yet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+      - league-season-dates-controller
+      summary: Create or replace the dates (docs/specs/111). 409 when an active match of the league in the season would fall outside them.
+      operationId: updateLeagueSeasonDates
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueSeasonDatesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeagueSeasonDatesDto"
+        "400":
+          description: A date is missing or the start is after the end
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Another club's league or season
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: An active match of this league in this season would fall outside the new dates
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/leagues/{leagueId}/seasons/{seasonId}/playing-conditions:
     get:
       tags:
@@ -3118,6 +3281,12 @@ paths:
               $ref: "#/components/schemas/CreateMatchRequest"
         required: true
       responses:
+        "400":
+          description: "Validation failed. A match outside its league season's dates is a ProblemDetail whose property code is MATCH_OUTSIDE_LEAGUE_DATES (docs/specs/111)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "201":
           description: Match created
           content:
@@ -5570,7 +5739,7 @@ paths:
       tags:
       - match-result-controller
       operationId: saveResultDraft
-      description: "Creates or replaces the draft (docs/specs/100). Enforces structural validity only (400 with errors if malformed). The field defaults from the match and the scheduled length from the league's playing conditions. 409 when the result is published or the match is inactive."
+      description: "Creates or replaces the draft (docs/specs/100). Enforces structural validity only (400 with errors if malformed). The field defaults from the match and the scheduled length from the league's playing conditions. docs/specs/113: 400 also when a newly added registered player of one of our sides is not in the team's section (or a descendant) or fails the league's age rule (issue codes PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE); players already stored are not re-checked. 409 when the result is published or the match is inactive."
       parameters:
       - name: clubId
         in: path
@@ -5765,7 +5934,7 @@ paths:
       tags:
       - match-result-controller
       operationId: linkPlayer
-      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable); 409 when the profile is already on that side's list."
+      description: "Links an unlinked scorecard player to a registered player of this club (docs/specs/101). Allowed on a draft or a published result (the only write allowed on a published result); records linkedBy and linkedAt. 400 for another club's profile, a player already linked or an opposition row (never linkable), or a registered player outside the team's section or the league's age rule (docs/specs/113: PLAYER_NOT_IN_SECTION, PLAYER_AGE_INELIGIBLE); 409 when the profile is already on that side's list."
       parameters:
       - name: clubId
         in: path
@@ -6831,6 +7000,9 @@ components:
         instance:
           type: string
           format: uri
+        code:
+          type: string
+          description: "On a 400 for a match outside its league season's dates (docs/specs/111): MATCH_OUTSIDE_LEAGUE_DATES."
         triesLeft:
           type: integer
           format: int32
@@ -7268,6 +7440,46 @@ components:
           type: string
         postalCode:
           type: string
+    AgeReferenceDto:
+      type: object
+      properties:
+        referenceDate:
+          type: string
+          format: date
+        source:
+          type: string
+        leagueStart:
+          type: string
+          format: date
+        leagueStartSource:
+          type: string
+          description: "LEAGUE_SEASON_DATES (docs/specs/111), FIRST_MATCH or SEASON_START."
+          enum:
+          - LEAGUE_SEASON_DATES
+          - FIRST_MATCH
+          - SEASON_START
+    LeagueSeasonDatesDto:
+      type: object
+      description: The start and end date of a league in a season (docs/specs/111).
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+    UpdateLeagueSeasonDatesRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+      - endDate
+      - startDate
     SocialLinkDto:
       type: object
       properties:
@@ -8217,6 +8429,9 @@ components:
           - NONE
           - DRAFT
           - PUBLISHED
+        deletable:
+          type: boolean
+          description: "True when nothing is recorded against the match (no result, poll, squad, team selection or availability window), so it can be deleted (docs/specs/109)."
     MatchPollDto:
       type: object
       properties:
@@ -8791,9 +9006,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:
@@ -8843,9 +9061,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:
@@ -9616,9 +9837,12 @@ components:
         maxAge:
           type: integer
           format: int32
-        ageCutoffDate:
-          type: string
-          format: date
+        ageCutoffMonth:
+          type: integer
+          format: int32
+        ageCutoffDay:
+          type: integer
+          format: int32
         format:
           type: string
           enum:
@@ -10977,7 +11201,7 @@ components:
           type: boolean
     ResultIssueDto:
       type: object
-      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
+      description: "One validation issue (docs/specs/101): a stable code (a ResultValidator ErrorCode or WarningCode name; docs/specs/104 adds the error IMPORTED_NAME_UNCONFIRMED, step TEAMS, one per imported player link not yet confirmed; docs/specs/113 adds the errors PLAYER_NOT_IN_SECTION and PLAYER_AGE_INELIGIBLE, step TEAMS with the side, one per registered player of our side outside the team's section or outside the league's age rule), the wizard step to fix it on, the scorecard side it belongs to (null for match-level issues) and its severity. INFO never blocks and needs no acknowledgement."
       properties:
         code:
           type: string
@@ -11831,6 +12055,9 @@ components:
             - COMPETITION
         existingResult:
           $ref: "#/components/schemas/ExistingResultDto"
+        deletable:
+          type: boolean
+          description: "True when nothing is recorded against the match, so the Match step can offer Delete (docs/specs/109)."
     TeamMappingDto:
       type: object
       description: "Which side of the chosen match a file team is (docs/specs/104). In a preview the server proposes it (side null when the team cannot be placed). In a resolve request only fileKey and side are read; the two teams must map to HOME and AWAY once each."

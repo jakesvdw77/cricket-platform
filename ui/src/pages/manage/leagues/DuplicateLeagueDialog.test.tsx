@@ -96,7 +96,7 @@ describe('DuplicateLeagueDialog', () => {
       screen.getByText('Creates a new league with the same setup. Its teams and matches start empty, so you can add them next.'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Always copied: format, playing XI size, age rules and cutoff date, logo, phone, email, website and social links.'),
+      screen.getByText('Always copied: format, playing XI size, age rules and cut-off day and month, logo, phone, email, website and social links.'),
     ).toBeInTheDocument()
     expect(screen.getByText(/Not copied: the club's team entries, opponent teams, matches and results/)).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /affiliation/i })).not.toBeInTheDocument()

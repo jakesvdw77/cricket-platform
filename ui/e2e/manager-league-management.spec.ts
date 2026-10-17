@@ -140,11 +140,10 @@ test.describe('League Management golden path (029-league-management.md)', () => 
 
     // Every "eligible" DOB uses 1 January so the birthday has always already passed by the time
     // this test runs later in the year — a clean, unambiguous age as of the league's own age
-    // cutoff date (set to today, below), regardless of exactly which September/October/etc. day
+    // cut-off (31 December of this year, the form's default, below), regardless of exactly which September/October/etc. day
     // this actually runs on.
     const today = new Date();
     const currentYear = today.getFullYear();
-    const todayIso = today.toISOString().slice(0, 10);
     const seasonStart = `${currentYear}-01-01`;
     const seasonEnd = `${currentYear}-12-31`;
     const eligible1Dob = `${currentYear - 30}-01-01`;
@@ -170,7 +169,7 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await page.getByRole('button', { name: 'Create team' }).click();
     await expect(page.locator('.MuiCard-root').filter({ hasText: teamName })).toBeVisible();
 
-    // --- League: create with enforced age restrictions (minAge/maxAge/ageCutoffDate) ---
+    // --- League: create with enforced age restrictions (minAge/maxAge and the cut-off day and month) ---
 
     await page.goto(`http://${ROOT_DOMAIN}/manage`);
     await page.getByRole('link', { name: 'Fixtures & Results' }).click();
@@ -183,7 +182,10 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await page.getByLabel('Playing XI size').fill('2');
     await page.getByLabel('Min age').fill('18');
     await page.getByLabel('Max age').fill('60');
-    await page.getByLabel('Age cutoff date').fill(todayIso);
+    // Entering an age limit fills the cut-off with the default, 31 December (docs/specs/110); the reference date is that day in the
+    // year the league starts, so ages below are judged as at 31 December of the current year.
+    await expect(page.getByRole('combobox', { name: 'Cut-off month (optional)' })).toContainText('December');
+    await expect(page.getByRole('combobox', { name: 'Cut-off day (optional)' })).toContainText('31');
     await page.getByRole('button', { name: 'Create league' }).click();
     await expect(page).toHaveURL(/\/manage\/fixtures\/leagues$/);
     const leagueCard = page.locator('.MuiCard-root').filter({ hasText: leagueName });
@@ -383,12 +385,12 @@ test.describe('League Management golden path (029-league-management.md)', () => 
     await expect(page.getByText('1 / 2')).toBeVisible();
 
     // Attempt to add the age-ineligible player — blocked server-side (below the league's own
-    // minAge as of its ageCutoffDate), surfaced inline rather than silently failing. The XI count
+    // minAge as at the cut-off), surfaced inline rather than silently failing. The XI count
     // stays unchanged.
     await page.getByRole('combobox', { name: 'Add player' }).click();
     await page.getByRole('option', { name: ineligibleFullName, exact: true }).click();
     await page.getByRole('button', { name: 'Add player' }).click();
-    await expect(page.getByRole('alert')).toContainText('minAge');
+    await expect(page.getByRole('alert')).toContainText(/below this league's minAge of 18 as at \d{1,2} \w{3} \d{4}/);
     await expect(page.getByText('1 / 2')).toBeVisible();
 
     // Add the second eligible player — reaches the league's own configured cap of 2.

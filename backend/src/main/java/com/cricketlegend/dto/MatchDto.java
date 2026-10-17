@@ -35,6 +35,10 @@ import java.util.UUID;
  * <p>{@code resultStatus} (docs/specs/100-match-results-core.md) is {@code NONE}, {@code DRAFT} or {@code PUBLISHED}:
  * a match is completed when its result is published. Computed in batch on the list and single-match paths; normalised
  * here to {@code NONE} when not set.
+ *
+ * <p>{@code deletable} (docs/specs/109-delete-empty-match.md) is true when nothing is recorded against the match (no
+ * result, poll, squad, team selection or availability window), so the screens can offer Delete. Batched like the result
+ * status; false where not computed.
  */
 public record MatchDto(
         UUID id,
@@ -66,7 +70,8 @@ public record MatchDto(
         UUID playingAreaId,
         String playingAreaName,
         PlayingAreaVerificationStatus playingAreaVerificationStatus,
-        MatchResultStatus resultStatus) {
+        MatchResultStatus resultStatus,
+        boolean deletable) {
 
     public MatchDto {
         polls = polls == null ? List.of() : polls;
@@ -79,7 +84,7 @@ public record MatchDto(
                 id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
-                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, resultStatus);
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, name, status, resultStatus, deletable);
     }
 
     /** A copy carrying the match's result status (docs/specs/100-match-results-core.md). */
@@ -89,6 +94,16 @@ public record MatchDto(
                 leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
                 updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
                 awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
-                playingAreaVerificationStatus, status);
+                playingAreaVerificationStatus, status, deletable);
+    }
+
+    /** A copy carrying whether the match is deletable (docs/specs/109-delete-empty-match.md). */
+    public MatchDto withDeletable(boolean deletable) {
+        return new MatchDto(
+                id, clubId, homeTeamId, homeTeamName, awayTeamId, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl,
+                leagueId, seasonId, matchDate, venue, active, homeSideAnnounced, awaySideAnnounced, createdAt,
+                updatedAt, updatedBy, homePickedCount, awayPickedCount, playingXiSize, polls, homeLeagueTeamId,
+                awayLeagueTeamId, scoringUrl, streamingUrl, playingAreaId, playingAreaName,
+                playingAreaVerificationStatus, resultStatus, deletable);
     }
 }

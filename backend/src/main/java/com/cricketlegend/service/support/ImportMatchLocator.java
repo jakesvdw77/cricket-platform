@@ -156,7 +156,8 @@ public class ImportMatchLocator {
                             match.id(), homeName + " v " + awayName, match.matchDate(), homeName, awayName,
                             match.homeTeamId() != null, match.awayTeamId() != null,
                             league == null ? null : league.getName(), match.venue(),
-                            reasons.stream().sorted().toList(), existing.get(match.id())),
+                            reasons.stream().sorted().toList(), existing.get(match.id()),
+                            match.deletable()), // docs/specs/109: batched by MatchService.listMatching
                     mapping));
         }
         located.sort(Comparator

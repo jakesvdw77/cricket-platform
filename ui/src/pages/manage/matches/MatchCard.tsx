@@ -2,6 +2,7 @@ import { Box, Chip, IconButton } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
 import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined'
@@ -47,6 +48,9 @@ export interface MatchCardProps {
   // docs/specs/036: when present the whole card links to the match view. SquadPicker.tsx
   // deliberately passes `undefined` (via MatchList's own `viewTo={null}`).
   viewTo?: string
+  // docs/specs/109-delete-empty-match.md: when given, a match the server marks `deletable` shows Delete top right.
+  // Optional so every other use of the card (the Overview page) is unchanged.
+  onDelete?: (target: { id: string; name: string }) => void
 }
 
 // docs/specs/069-match-card-redesign.md: one RecordCard per match, built like the availability poll
@@ -57,12 +61,13 @@ export interface MatchCardProps {
 // docs/specs/087: aligned with the poll card - the brand match icon on its tile, badges in a row under the
 // header, "League · Season" as the subtitle, a "Starts" strip with a live countdown (amber within 24 hours of
 // kickoff; "Played" once it has started), one Venue line, and zebra Selection rows.
-export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, editTo, viewTo }: MatchCardProps) {
+export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, editTo, viewTo, onDelete }: MatchCardProps) {
   const navigate = useNavigate()
 
   const homeTeamName = sideName(match.homeTeamId, match.homeTeamName, teamsById)
   const awayTeamName = sideName(match.awayTeamId, match.awayTeamName, teamsById)
   const title = `${homeTeamName} vs ${awayTeamName}`
+  const canDelete = Boolean(onDelete) && match.deletable === true
 
   const { openShare, shareDialog } = useTeamSheetShare({ clubId, match, teamsById, leaguesById, seasonsById })
   const { openAvailability, menu } = useAvailabilityNavigation(pollDestination(match, teamsById))
@@ -101,9 +106,10 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
         titleLines={3}
         badgesBelow
         description={leagueValue || undefined}
+        // docs/specs/109: Delete sits top right, beside the scoring/streaming links, only on a deletable match.
         headerActions={
-          match.scoringUrl || match.streamingUrl ? (
-            <Box data-testid="match-links-row" sx={{ display: 'flex', gap: 0.25 }}>
+          match.scoringUrl || match.streamingUrl || canDelete ? (
+            <Box data-testid="match-links-row" sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
               {match.scoringUrl && (
                 <IconButton
                   component="a"
@@ -130,6 +136,16 @@ export function MatchCard({ clubId, match, teamsById, leaguesById, seasonsById, 
                   sx={{ color: 'primary.dark' }}
                 >
                   <LiveTvOutlinedIcon fontSize="small" />
+                </IconButton>
+              )}
+              {canDelete && (
+                <IconButton
+                  aria-label={`Delete match ${homeTeamName} v ${awayTeamName}`}
+                  title="Delete match"
+                  onClick={() => onDelete?.({ id: match.id, name: `${homeTeamName} v ${awayTeamName}` })}
+                  sx={{ width: 44, height: 44, color: 'error.main' }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
               )}
             </Box>

@@ -60,4 +60,13 @@ describe('KeyFigureTile', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('draws an action under the caption, but not inside a tile that is itself a button', () => {
+    const { unmount } = render(<KeyFigureTile icon={<span />} value="None" label="No poll yet" action={<button type="button">Open availability</button>} />)
+    expect(screen.getByRole('button', { name: 'Open availability' })).toBeInTheDocument()
+    unmount()
+
+    render(<KeyFigureTile icon={<span />} value="Ann" label="Captain" ariaLabel="Captain" onClick={() => {}} action={<button type="button">Nested</button>} />)
+    expect(screen.queryByRole('button', { name: 'Nested' })).not.toBeInTheDocument()
+  })
 })

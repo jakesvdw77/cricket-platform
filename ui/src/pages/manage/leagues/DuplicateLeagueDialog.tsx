@@ -241,7 +241,7 @@ export function DuplicateLeagueDialog({ open, clubId, league, seasons, defaultSe
 
             <Stack spacing={0.5}>
               <Typography variant="caption" color="text.secondary">
-                Always copied: format, playing XI size, age rules and cutoff date, logo, phone, email, website and social links.
+                Always copied: format, playing XI size, age rules and cut-off day and month, logo, phone, email, website and social links.
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Not copied: the club&apos;s team entries, opponent teams, matches and results. Add this league&apos;s teams on its Teams

@@ -183,6 +183,23 @@ class ResultImportRoutesIntegrationTest {
     }
 
     @Test
+    void aCandidateIsDeletableOnlyWhileNothingIsRecordedAgainstItsMatch() throws Exception {
+        // docs/specs/109: the flag is batched with the candidates, never a query per row
+        JsonNode before = body(previewPaste(admin, clubId, document("ext-1", "B Player"), match.getId())
+                .andExpect(status().isOk()));
+        assertThat(before.path("matchCandidates").get(0).path("deletable").asBoolean()).isTrue();
+
+        context.getBean(com.cricketlegend.repository.MatchAvailabilityPollRepository.class).save(
+                com.cricketlegend.domain.MatchAvailabilityPoll.builder()
+                        .matchId(match.getId()).teamId(club.world().seniors1().getId()).open(true).build());
+
+        JsonNode after = body(previewPaste(admin, clubId, document("ext-1", "B Player"), match.getId())
+                .andExpect(status().isOk()));
+        assertThat(after.path("matchCandidates").get(0).path("deletable").asBoolean()).isFalse();
+        jdbc.update("delete from match_availability_poll where match_id = ?", match.getId());
+    }
+
+    @Test
     void anUploadedFileIsPreviewedThroughTheFilePart() throws Exception {
         JsonNode preview = body(previewFile(admin, clubId, document("ext-1", "B Player"), null)
                 .andExpect(status().isOk()));

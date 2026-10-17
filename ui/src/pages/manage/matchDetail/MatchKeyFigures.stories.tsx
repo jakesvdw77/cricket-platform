@@ -27,3 +27,10 @@ export const DaysAway: Story = { args: { ...base, matchDate: inDays(6) } }
 export const StartsSoon: Story = { args: { ...base, matchDate: new Date(Date.now() + 5 * 3_600_000).toISOString() } }
 
 export const FriendlyWithNoPoll: Story = { args: { ...base, venue: null, leagueName: null, polls: [], pollClosesAt: null, matchDate: inDays(3) } }
+
+// docs/specs/089 (Match page actions, 2026-10-16): the poll tile carries Open availability.
+export const WithOpenAvailability: Story = { args: { ...base, matchDate: inDays(3), onOpenAvailability: () => {} } }
+
+export const OpenAvailabilityDisabled: Story = {
+  args: { ...base, polls: [], pollClosesAt: null, matchDate: inDays(3), onOpenAvailability: () => {}, availabilityDisabled: true, availabilityDisabledReason: 'None of your teams is playing in this match' },
+}

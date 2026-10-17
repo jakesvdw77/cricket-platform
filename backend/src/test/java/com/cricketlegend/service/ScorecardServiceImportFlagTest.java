@@ -36,6 +36,7 @@ import com.cricketlegend.repository.TeamRepository;
 import com.cricketlegend.repository.TeamSquadMemberRepository;
 import com.cricketlegend.service.impl.ScorecardServiceImpl;
 import com.cricketlegend.service.support.NameAliases;
+import com.cricketlegend.service.support.ResultPlayerEligibility;
 import com.cricketlegend.service.support.SelectionEligibility;
 import com.cricketlegend.service.support.SelectionEligibility.PlayerInfo;
 import java.util.ArrayList;
@@ -85,7 +86,7 @@ class ScorecardServiceImportFlagTest {
                 mock(MatchAwardRepository.class), mock(MatchSideRepository.class), mock(MatchSidePlayerRepository.class),
                 mock(TeamRepository.class), mock(TeamSquadMemberRepository.class), playerProfileRepository,
                 mock(LeaguePlayingConditionsRepository.class), eligibility, Mappers.getMapper(ScorecardMapper.class),
-                accessService, nameAliases, mock(LeagueRepository.class));
+                accessService, nameAliases, mock(LeagueRepository.class), mock(ResultPlayerEligibility.class));
         result = MatchResult.builder().id(resultId).clubId(clubId).matchId(matchId).source("IMPORT:EXAMPLE").build();
         when(resultRepository.findById(resultId)).thenReturn(Optional.of(result));
         when(resultRepository.findByMatchId(matchId)).thenReturn(Optional.of(result));
@@ -110,6 +111,7 @@ class ScorecardServiceImportFlagTest {
                 abelId, new PlayerInfo(abelId, clubId, true, "Abel", "Nazar", null, null),
                 ceesId, new PlayerInfo(ceesId, clubId, true, "Cees", "Meyer", null, null)));
         when(accessService.resolveCurrentPersonId(auth)).thenReturn(personId);
+        when(matchService.requireAdministrableMatch(any(), any(), any())).thenReturn(match);
     }
 
     private static ResultPlayerDto dto(UUID id, UUID profile, String displayName, ImportMatchLevel flag) {

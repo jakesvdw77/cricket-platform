@@ -458,7 +458,15 @@ final class ScorecardRules {
                                 + ". Mark the extra ones as substitutes if they only fielded.");
             }
             Set<UUID> squad = context.squadBySide().get(side);
+            Map<UUID, List<ResultPlayerEligibility.Problem>> ineligible =
+                    context.eligibilityProblems().getOrDefault(side, Map.of());
             for (ResultPlayerDto p : onSide) {
+                if (p.playerProfileId() != null) {
+                    // docs/specs/113: a registered player outside the team's section or the league's age rule is an error
+                    for (ResultPlayerEligibility.Problem problem : ineligible.getOrDefault(p.playerProfileId(), List.of())) {
+                        issues.error(problem.code(), ResultWizardStep.TEAMS, side, problem.message());
+                    }
+                }
                 if (p.playerProfileId() != null && squad != null && !squad.contains(p.playerProfileId())) {
                     issues.warning(WarningCode.PLAYER_NOT_IN_SQUAD, ResultWizardStep.TEAMS, side,
                             label(p, context) + " is not in the squad of " + names.of(side) + " this season.");

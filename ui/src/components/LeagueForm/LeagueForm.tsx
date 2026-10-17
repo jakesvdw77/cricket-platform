@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Box, MenuItem } from '@mui/material'
+import { Box, FormHelperText, MenuItem, Typography } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
@@ -10,6 +10,7 @@ import { WebsiteInput } from '../WebsiteInput'
 import { MediaUpload } from '../MediaUpload'
 import { SocialLinksFields } from '../SocialLinksFields'
 import type { SocialLink } from '../marketing/SocialLinksRow'
+import { cutoffError, DEFAULT_CUTOFF, MONTH_NAMES, maxDayInMonth } from '../../utils/ageCutoff'
 import { LEAGUE_FORMAT_LABELS } from '../../api/leagueApi'
 import type { LeagueFormat, LeaguePayload } from '../../api/leagueApi'
 
@@ -27,7 +28,9 @@ interface FormState {
   maxPlayingXiSize: string
   minAge: string
   maxAge: string
-  ageCutoffDate: string
+  // docs/specs/110: the cut-off is a month and a day (select values; '' = not chosen).
+  ageCutoffMonth: string
+  ageCutoffDay: string
   format: LeagueFormat | ''
   phone: string
   website: string
@@ -36,7 +39,7 @@ interface FormState {
   socialLinks: SocialLink[]
 }
 
-type FormErrors = Partial<Record<'name' | 'maxPlayingXiSize' | 'ageRange' | 'website' | 'email', string>>
+type FormErrors = Partial<Record<'name' | 'maxPlayingXiSize' | 'ageRange' | 'cutoff' | 'website' | 'email', string>>
 
 // Mirrors SponsorForm's own client-side-only checks — League.website/email have no backend
 // @Pattern beyond basic type (docs/specs/053-league-extended-profile.md's Acceptance Criteria),
@@ -50,7 +53,14 @@ function toFormState(initialValues?: Partial<LeaguePayload>): FormState {
     maxPlayingXiSize: String(initialValues?.maxPlayingXiSize ?? 11),
     minAge: initialValues?.minAge != null ? String(initialValues.minAge) : '',
     maxAge: initialValues?.maxAge != null ? String(initialValues.maxAge) : '',
-    ageCutoffDate: initialValues?.ageCutoffDate ?? '',
+    // docs/specs/110: 31 December is the standing default. The Add form (no initialValues) opens with it; an edited
+    // league shows exactly what is stored, so a league with no cut-off stays empty (a winter league).
+    ageCutoffMonth: initialValues
+      ? initialValues.ageCutoffMonth != null ? String(initialValues.ageCutoffMonth) : ''
+      : String(DEFAULT_CUTOFF.month),
+    ageCutoffDay: initialValues
+      ? initialValues.ageCutoffDay != null ? String(initialValues.ageCutoffDay) : ''
+      : String(DEFAULT_CUTOFF.day),
     format: initialValues?.format ?? '',
     phone: initialValues?.phone ?? '',
     website: initialValues?.website ?? '',
@@ -76,6 +86,16 @@ function validate(values: FormState): FormErrors {
   // obviously-invalid range never round-trips to the backend just to be rejected.
   if (values.minAge.trim() && values.maxAge.trim() && Number(values.minAge) > Number(values.maxAge)) {
     errors.ageRange = 'Min age must be less than or equal to max age'
+  }
+
+  // docs/specs/110: both or neither, and the day must exist in the month (29 February is allowed).
+  const month = values.ageCutoffMonth ? Number(values.ageCutoffMonth) : null
+  const day = values.ageCutoffDay ? Number(values.ageCutoffDay) : null
+  const cutoff = cutoffError(month, day)
+  if (cutoff === 'pair') {
+    errors.cutoff = month == null ? 'Choose the month as well as the day' : 'Choose the day as well as the month'
+  } else if (cutoff === 'day' && month != null) {
+    errors.cutoff = `${MONTH_NAMES[month - 1]} has no day ${day}. Choose a day from 1 to ${maxDayInMonth(month)}.`
   }
 
   if (values.website.trim() && !WEBSITE_PATTERN.test(values.website.trim())) {
@@ -108,12 +128,36 @@ function blankToNull(value: string): string | null {
 export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
   const [values, setValues] = useState<FormState>(() => toFormState(initialValues))
   const [errors, setErrors] = useState<FormErrors>({})
+  // docs/specs/110: true once the manager has chosen or cleared either cut-off field. Until then the form may fill
+  // 31 December itself; afterwards it never touches the cut-off.
+  const [cutoffTouched, setCutoffTouched] = useState(false)
 
   const handleChange =
-    (field: 'name' | 'maxPlayingXiSize' | 'minAge' | 'maxAge' | 'ageCutoffDate' | 'phone' | 'email') =>
+    (field: 'name' | 'maxPlayingXiSize' | 'phone' | 'email') =>
     (event: ChangeEvent<HTMLInputElement>) => {
       setValues((prev) => ({ ...prev, [field]: event.target.value }))
     }
+
+  // docs/specs/110: the first age limit entered (none before, one now) fills an empty, untouched cut-off with
+  // 31 December. A league loaded with a limit and no cut-off is a deliberate winter league, so it is never filled.
+  const handleAgeChange = (field: 'minAge' | 'maxAge') => (event: ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.value
+    setValues((prev) => {
+      const firstLimit = !prev.minAge.trim() && !prev.maxAge.trim() && next.trim() !== ''
+      const cutoffEmpty = !prev.ageCutoffMonth && !prev.ageCutoffDay
+      const fill = firstLimit && cutoffEmpty && !cutoffTouched
+      return {
+        ...prev,
+        [field]: next,
+        ...(fill ? { ageCutoffMonth: String(DEFAULT_CUTOFF.month), ageCutoffDay: String(DEFAULT_CUTOFF.day) } : {}),
+      }
+    })
+  }
+
+  const handleCutoffChange = (field: 'ageCutoffMonth' | 'ageCutoffDay') => (event: ChangeEvent<HTMLInputElement>) => {
+    setCutoffTouched(true)
+    setValues((prev) => ({ ...prev, [field]: event.target.value }))
+  }
 
   const handleFormatChange = (event: ChangeEvent<HTMLInputElement>) =>
     setValues((prev) => ({ ...prev, format: event.target.value as LeagueFormat | '' }))
@@ -136,7 +180,8 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
       maxPlayingXiSize: Number(values.maxPlayingXiSize),
       minAge: values.minAge.trim() ? Number(values.minAge) : null,
       maxAge: values.maxAge.trim() ? Number(values.maxAge) : null,
-      ageCutoffDate: values.ageCutoffDate.trim() ? values.ageCutoffDate : null,
+      ageCutoffMonth: values.ageCutoffMonth ? Number(values.ageCutoffMonth) : null,
+      ageCutoffDay: values.ageCutoffDay ? Number(values.ageCutoffDay) : null,
       format: values.format || null,
       phone: blankToNull(values.phone),
       website: blankToNull(values.website),
@@ -146,6 +191,11 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
     }
     onSubmit(payload)
   }
+
+  // The note stays hidden while an Add form still shows its untouched 31 December default.
+  const untouchedDefault = initialValues === undefined && !cutoffTouched
+  const noEffect =
+    Boolean(values.ageCutoffMonth && values.ageCutoffDay) && !values.minAge.trim() && !values.maxAge.trim() && !untouchedDefault
 
   return (
     // docs/specs/091 (D): one full-width form of three sections - Basic info, Contact and Branding and social - in place of
@@ -184,7 +234,7 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
           label="Min age (optional)"
           type="number"
           value={values.minAge}
-          onChange={handleChange('minAge')}
+          onChange={handleAgeChange('minAge')}
           error={Boolean(errors.ageRange)}
           helperText={errors.ageRange}
           inputProps={{ min: 0 }}
@@ -194,18 +244,64 @@ export function LeagueForm({ initialValues, onSubmit }: LeagueFormProps) {
           label="Max age (optional)"
           type="number"
           value={values.maxAge}
-          onChange={handleChange('maxAge')}
+          onChange={handleAgeChange('maxAge')}
           error={Boolean(errors.ageRange)}
           inputProps={{ min: 0 }}
         />
 
-        <Input
-          label="Age cutoff date (optional)"
-          type="date"
-          value={values.ageCutoffDate}
-          onChange={handleChange('ageCutoffDate')}
-          InputLabelProps={{ shrink: true }}
-        />
+        {/* docs/specs/110: the cut-off is a day and a month; the year is the one the league starts in. */}
+        <Box
+          role="group"
+          aria-labelledby="league-cutoff-heading"
+          sx={{ gridColumn: { xs: '1', md: '1 / -1' }, display: 'flex', flexDirection: 'column', gap: 1 }}
+        >
+          <Typography id="league-cutoff-heading" variant="subtitle2" component="p">
+            Age cut-off (day and month)
+          </Typography>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
+            <Input
+              select
+              label="Cut-off month (optional)"
+              value={values.ageCutoffMonth}
+              onChange={handleCutoffChange('ageCutoffMonth')}
+              error={Boolean(errors.cutoff)}
+            >
+              <MenuItem value="">Not set</MenuItem>
+              {MONTH_NAMES.map((name, index) => (
+                <MenuItem key={name} value={String(index + 1)}>
+                  {name}
+                </MenuItem>
+              ))}
+            </Input>
+            <Input
+              select
+              label="Cut-off day (optional)"
+              value={values.ageCutoffDay}
+              onChange={handleCutoffChange('ageCutoffDay')}
+              error={Boolean(errors.cutoff)}
+            >
+              <MenuItem value="">Not set</MenuItem>
+              {Array.from({ length: 31 }, (_, index) => (
+                <MenuItem key={index + 1} value={String(index + 1)}>
+                  {index + 1}
+                </MenuItem>
+              ))}
+            </Input>
+          </Box>
+          {errors.cutoff && (
+            <FormHelperText error role="alert" sx={{ mx: 0 }}>
+              {errors.cutoff}
+            </FormHelperText>
+          )}
+          <FormHelperText sx={{ mx: 0 }}>
+            Ages are judged on this day in the year the league starts. Leave empty to judge ages on the day the league starts (for example a winter league).
+          </FormHelperText>
+          {noEffect && (
+            <FormHelperText sx={{ mx: 0 }} data-testid="cutoff-no-effect">
+              This cut-off has no effect until an age limit is set.
+            </FormHelperText>
+          )}
+        </Box>
       </Box>
 
       <FormSectionHeading icon={<AlternateEmailIcon />} title="Contact" />

@@ -189,6 +189,49 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             @Param("weekStart") Instant weekStart,
             @Param("weekEnd") Instant weekEnd);
 
+    /**
+     * docs/specs/110-league-age-cutoff-day-and-month.md: the date of the earliest active match of each (league, season)
+     * pair among the given leagues and seasons, in one query. Pairs with no active match are absent; the caller keeps
+     * only the pairs it asked for.
+     */
+    @Query("select m.leagueId as leagueId, m.seasonId as seasonId, min(m.matchDate) as firstMatchDate "
+            + "from Match m where m.leagueId in :leagueIds and m.seasonId in :seasonIds and m.active = true "
+            + "group by m.leagueId, m.seasonId")
+    List<LeagueSeasonFirstMatch> findFirstMatchDates(
+            @Param("leagueIds") Collection<UUID> leagueIds, @Param("seasonIds") Collection<UUID> seasonIds);
+
+    /**
+     * docs/specs/111-league-season-dates.md: how many active matches of the league in the season have a date before
+     * {@code from} or at or after {@code until} (the bounds of the new dates as instants), with the earliest and latest
+     * of those dates, in one query. The count is 0 and the dates null when none fall outside.
+     */
+    @Query("select count(m) as matchCount, min(m.matchDate) as earliest, max(m.matchDate) as latest "
+            + "from Match m where m.leagueId = :leagueId and m.seasonId = :seasonId and m.active = true "
+            + "and (m.matchDate < :from or m.matchDate >= :until)")
+    OutsideDatesSummary summariseOutsideDates(
+            @Param("leagueId") UUID leagueId,
+            @Param("seasonId") UUID seasonId,
+            @Param("from") Instant from,
+            @Param("until") Instant until);
+
+    /** Projection backing {@link #summariseOutsideDates}. */
+    interface OutsideDatesSummary {
+        long getMatchCount();
+
+        Instant getEarliest();
+
+        Instant getLatest();
+    }
+
+    /** Projection backing {@link #findFirstMatchDates}. */
+    interface LeagueSeasonFirstMatch {
+        UUID getLeagueId();
+
+        UUID getSeasonId();
+
+        Instant getFirstMatchDate();
+    }
+
     /** Projection backing {@link #countMatchesInWindowByLeague}. */
     interface LeagueWeekMatchCount {
         UUID getLeagueId();

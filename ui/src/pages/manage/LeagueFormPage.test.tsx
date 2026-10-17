@@ -28,12 +28,21 @@ const getPlayingConditions = vi.fn()
 const uploadPlayingConditions = vi.fn()
 const updatePlayingConditions = vi.fn()
 const listLeagueContacts = vi.fn()
+const getLeagueAgeReference = vi.fn()
+const getLeagueSeasonDates = vi.fn()
+const putLeagueSeasonDates = vi.fn()
+vi.mock('../../api/leagueSeasonDatesApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/leagueSeasonDatesApi')>()),
+  getLeagueSeasonDates: (...args: unknown[]) => getLeagueSeasonDates(...args),
+  putLeagueSeasonDates: (...args: unknown[]) => putLeagueSeasonDates(...args),
+}))
 
 vi.mock('../../api/leagueApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/leagueApi')>()
   return {
     ...actual,
     listLeagues: (clubId: string) => listLeagues(clubId),
+    getLeagueAgeReference: (...args: unknown[]) => getLeagueAgeReference(...args),
     createLeague: (clubId: string, payload: unknown) => createLeague(clubId, payload),
     updateLeague: (clubId: string, leagueId: string, payload: unknown) => updateLeague(clubId, leagueId, payload),
     deactivateLeague: (clubId: string, leagueId: string) => deactivateLeague(clubId, leagueId),
@@ -108,7 +117,8 @@ function makeLeague(overrides: Partial<League> = {}): League {
     maxPlayingXiSize: 11,
     minAge: null,
     maxAge: null,
-    ageCutoffDate: null,
+    ageCutoffMonth: null,
+    ageCutoffDay: null,
     active: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -222,6 +232,8 @@ beforeEach(() => {
   listMatches.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
   getPlayingConditions.mockResolvedValue(null)
   listLeagueContacts.mockResolvedValue([])
+  getLeagueAgeReference.mockRejectedValue(new Error('no reference'))
+  getLeagueSeasonDates.mockResolvedValue({ startDate: '2025-02-01', endDate: '2025-10-31' })
 })
 
 function OutletContextWrapper({ clubId }: { clubId?: string }) {
@@ -301,6 +313,76 @@ describe('LeagueFormPage', () => {
   // through to the form on the edit path, LeagueForm.test.tsx's own "prefills the Basic Info tab
   // from initialValues" test already proves LeagueForm renders these correctly given the right
   // props; this proves LeagueFormPage actually passes them.
+  // docs/specs/110: the age cut-off day and month round trip, and the page shows the date ages are judged on.
+  it('edit mode: prefills the cut-off month and day, and shows the date ages are judged on', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', maxAge: 15, ageCutoffMonth: 12, ageCutoffDay: 31 })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+    getLeagueAgeReference.mockResolvedValue({
+      referenceDate: '2026-12-31',
+      source: 'CUTOFF',
+      leagueStart: '2026-09-05',
+      leagueStartSource: 'FIRST_MATCH',
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.getByLabelText('Cut-off month (optional)')).toHaveTextContent('December')
+    expect(screen.getByLabelText('Cut-off day (optional)')).toHaveTextContent('31')
+    expect(await screen.findByTestId('league-age-reference')).toHaveTextContent('Ages are judged on 31 Dec 2026 (the cut-off)')
+    expect(getLeagueAgeReference).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1')
+  })
+
+  it('add mode: opens with 31 December and saves it with no age limits', async () => {
+    const user = userEvent.setup()
+    createLeague.mockResolvedValue(makeLeague({ id: 'new-league' }))
+    renderPage('/manage/fixtures/leagues/new', 'test-club-id')
+
+    expect(await screen.findByLabelText('Cut-off month (optional)')).toHaveTextContent('December')
+    expect(screen.getByLabelText('Cut-off day (optional)')).toHaveTextContent('31')
+    await user.type(screen.getByLabelText('Name'), 'Fresh League')
+    await user.click(screen.getByRole('button', { name: /save|create/i }))
+
+    await waitFor(() => expect(createLeague).toHaveBeenCalled())
+    expect(createLeague.mock.calls[0][1]).toMatchObject({ ageCutoffMonth: 12, ageCutoffDay: 31, minAge: null, maxAge: null })
+  })
+
+  it('edit mode: a league with no stored cut-off stays empty', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.getByLabelText('Cut-off month (optional)')).toHaveTextContent(/^\u200b?$/)
+  })
+
+  it('edit mode: the day the league starts is named when there is no cut-off', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1', minAge: 12 })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+    getLeagueAgeReference.mockResolvedValue({
+      referenceDate: '2027-07-14',
+      source: 'LEAGUE_START',
+      leagueStart: '2027-07-14',
+      leagueStartSource: 'SEASON_START',
+    })
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    expect(await screen.findByTestId('league-age-reference')).toHaveTextContent(
+      'Ages are judged on 14 Jul 2027 (the day the league starts)',
+    )
+  })
+
+  it('edit mode: no age line for a league without an age limit', async () => {
+    listLeagues.mockResolvedValue([makeLeague({ id: 'league-1' })])
+    listSeasons.mockResolvedValue([makeSeason({ id: 'season-1' })])
+
+    renderPage('/manage/fixtures/leagues/league-1/edit', 'test-club-id')
+
+    await screen.findByText('Edit League')
+    expect(screen.queryByTestId('league-age-reference')).not.toBeInTheDocument()
+    expect(getLeagueAgeReference).not.toHaveBeenCalled()
+  })
+
   it('edit mode: prefills the form with the fetched league\'s format/logoUrl/phone/website/email/socialLinks', async () => {
     listLeagues.mockResolvedValue([
       makeLeague({
@@ -385,6 +467,39 @@ describe('LeagueFormPage', () => {
 
       renderAt('/manage/fixtures/leagues/league-1/edit?tab=conditions')
       expect(await screen.findByText(/^Playing conditions for /)).toBeInTheDocument()
+    })
+
+    // docs/specs/111: the Season dates block on Details, with its own Season select tied to the page's season.
+    it('Details shows the Season dates block with a Season select, loads another season and saves from there', async () => {
+      const user = userEvent.setup()
+      putLeagueSeasonDates.mockResolvedValue({ startDate: '2024-03-01', endDate: '2024-09-30' })
+      renderAt('/manage/fixtures/leagues/league-1/edit?tab=details')
+
+      expect(await screen.findByTestId('league-season-dates')).toBeInTheDocument()
+      await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-2'))
+      expect(screen.getByRole('combobox', { name: 'Season' })).toHaveTextContent('2025')
+
+      await user.click(screen.getByRole('combobox', { name: 'Season' }))
+      await user.click(await screen.findByRole('option', { name: '2024' }))
+      await waitFor(() => expect(getLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1'))
+
+      await user.click(screen.getByRole('button', { name: 'Save season dates' }))
+      await waitFor(() =>
+        expect(putLeagueSeasonDates).toHaveBeenCalledWith('test-club-id', 'league-1', 'season-1', {
+          startDate: '2025-02-01',
+          endDate: '2025-10-31',
+        }),
+      )
+
+      // The page's season follows, so the Teams tab pill shows the same one.
+      await user.click(screen.getByRole('tab', { name: 'Teams' }))
+      expect(await screen.findByRole('button', { name: 'Season' })).toHaveTextContent('2024')
+    })
+
+    it('Add page has no Season dates block', async () => {
+      renderAt('/manage/fixtures/leagues/new')
+      await screen.findByLabelText('Name')
+      expect(screen.queryByTestId('league-season-dates')).not.toBeInTheDocument()
     })
 
     it('falls back to Details for an unknown ?tab= value', async () => {

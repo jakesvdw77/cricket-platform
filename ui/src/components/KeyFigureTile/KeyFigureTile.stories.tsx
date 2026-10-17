@@ -32,3 +32,8 @@ export const Picker: Story = {
 export const AsLink: Story = {
   args: { icon: <EventAvailableOutlinedIcon />, value: 'Riverside Oval', label: 'Field · Unverified', textValue: true, tone: 'warning', to: '/manage/fixtures/fields/field-1' },
 }
+
+// docs/specs/089 (Match page actions, 2026-10-16): a button under the caption (the match page's poll tile).
+export const WithAction: Story = {
+  args: { icon: <EventAvailableOutlinedIcon />, value: 'None', label: 'No poll yet', textValue: true, action: <button type="button">Open availability</button> },
+}

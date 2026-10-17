@@ -3,7 +3,6 @@ package com.cricketlegend.dto;
 import com.cricketlegend.domain.LeagueFormat;
 import com.cricketlegend.domain.LeagueSource;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,7 +32,8 @@ public record LeagueDto(
         int maxPlayingXiSize,
         Integer minAge,
         Integer maxAge,
-        LocalDate ageCutoffDate,
+        Integer ageCutoffMonth,
+        Integer ageCutoffDay,
         LeagueFormat format,
         String logoUrl,
         String phone,
