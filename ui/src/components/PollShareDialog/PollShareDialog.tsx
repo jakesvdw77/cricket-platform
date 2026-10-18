@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
 import { Button } from '../Button'
 import { Input } from '../Input'
+import { WhatsAppSendActions } from '../WhatsAppSendActions'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import type { Match } from '../../api/matchApi'
 import { closeTimeLine } from '../../utils/pollShareText'
@@ -77,7 +77,8 @@ function buildInviteText(
 // text field.
 export function PollShareDialog({ open, onClose, match, teamName, pollId, autoClose, scheduledCloseAt }: PollShareDialogProps) {
   const [text, setText] = useState('')
-  const { copy, copiedKey, failed } = useCopyToClipboard()
+  const clipboard = useCopyToClipboard()
+  const { copy, copiedKey } = clipboard
   const link = `${window.location.origin}/poll/${pollId}`
 
   // Regenerates fresh invite text every time the dialog opens, so a previous edit never leaks
@@ -99,8 +100,8 @@ export function PollShareDialog({ open, onClose, match, teamName, pollId, autoCl
       <DialogContent>
         <Stack spacing={1.5}>
           <Typography variant="body2" color="text.secondary">
-            Copy this text into WhatsApp, SMS, email, or a team group chat — no automated send
-            happens from here.
+            Send it in WhatsApp, or copy it into SMS, email or a team group chat. You choose who
+            receives it and press send yourself.
           </Typography>
           <Input
             label="Invite text"
@@ -109,18 +110,10 @@ export function PollShareDialog({ open, onClose, match, teamName, pollId, autoCl
             multiline
             minRows={8}
           />
-          {/* Polite live region announcing the copy outcome; visible text is the button label. */}
-          <Typography variant="caption" color={failed ? 'error.main' : 'text.secondary'} role="status" aria-live="polite">
-            {copiedKey === 'message' && 'Message copied.'}
-            {copiedKey === 'link' && 'Link copied.'}
-            {failed && "Couldn't copy automatically - select the text and copy it manually."}
-          </Typography>
+          <WhatsAppSendActions text={text} shareTitle="Availability" clipboard={clipboard} />
         </Stack>
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2, '& > :not(:first-of-type)': { ml: 0 } }}>
-        <Button startIcon={<ContentCopyOutlinedIcon />} onClick={() => copy(text, 'message')}>
-          {copiedKey === 'message' ? 'Copied' : 'Copy message'}
-        </Button>
         <Button variant="secondary" startIcon={<LinkOutlinedIcon />} onClick={() => copy(link, 'link')}>
           {copiedKey === 'link' ? 'Copied' : 'Copy link'}
         </Button>

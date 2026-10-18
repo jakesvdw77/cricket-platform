@@ -15,9 +15,9 @@ import {
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { Button } from '../Button'
 import { Input } from '../Input'
+import { WhatsAppSendActions } from '../WhatsAppSendActions'
 import type { PlayingConditionsPayload } from '../../api/leaguePlayingConditionsApi'
 import { generatePlayingConditionsWhatsAppText } from '../../utils/playingConditionsWhatsAppText'
 
@@ -82,16 +82,14 @@ export function PlayingConditionsShareDialog({
     }
   }
 
-  // Mirrors TeamSheetCommunicationDialog's own handleCopyWhatsApp shape exactly.
-  const handleCopyWhatsApp = async () => {
-    setError(null)
-    try {
-      await navigator.clipboard.writeText(whatsappText)
+  // The shared WhatsAppSendActions copies; on success the dialog closes, on failure its own
+  // retryable message is shown beside the buttons.
+  const handleCopyResult = (ok: boolean) => {
+    if (ok) {
       onClose()
-    } catch {
-      setError("Couldn't copy to clipboard. Please try again.")
     }
   }
+
 
   const handleSharePdf = async () => {
     setIsGenerating(true)
@@ -157,6 +155,13 @@ export function PlayingConditionsShareDialog({
                 >
                   Regenerate
                 </Button>
+                <WhatsAppSendActions
+                  text={whatsappText}
+                  copyLabel="Copy to Clipboard"
+                  copyFailureText="Couldn't copy to clipboard. Please try again."
+                  disabled={!hasStructuredFields}
+                  onCopyResult={handleCopyResult}
+                />
               </Stack>
             )}
           </>
@@ -176,11 +181,7 @@ export function PlayingConditionsShareDialog({
           <Button onClick={handleSharePdf} disabled={!hasStructuredFields || isGenerating}>
             {isGenerating ? 'Generating…' : 'Open PDF'}
           </Button>
-        ) : (
-          <Button onClick={handleCopyWhatsApp} startIcon={<ContentCopyOutlinedIcon />} disabled={!hasStructuredFields}>
-            Copy to Clipboard
-          </Button>
-        )}
+        ) : null}
       </DialogActions>
     </Dialog>
   )

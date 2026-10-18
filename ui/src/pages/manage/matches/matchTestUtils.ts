@@ -1,36 +1,8 @@
-import type { Match, MatchPoll } from '../../../api/matchApi'
+import type { MatchPoll } from '../../../api/matchApi'
 import type { Team } from '../../../api/teamApi'
 
 // Shared fixtures for the 069 match card tests (not production code).
-export function makeMatch(overrides: Partial<Match> = {}): Match {
-  return {
-    id: 'match-1',
-    clubId: 'club-1',
-    homeTeamId: 'team-1',
-    homeTeamName: null,
-    awayTeamId: null,
-    awayTeamName: 'Riverside Occasionals',
-    leagueId: null,
-    seasonId: 'season-1',
-    matchDate: '2026-10-03T10:00:00Z',
-    venue: 'Riverside Oval',
-    active: true,
-    homeSideAnnounced: false,
-    awaySideAnnounced: false,
-    homePickedCount: 0,
-    awayPickedCount: null,
-    playingXiSize: 11,
-    polls: [],
-    homeTeamLogoUrl: null,
-    awayTeamLogoUrl: null,
-    homeLeagueTeamId: null,
-    awayLeagueTeamId: null,
-    createdAt: '',
-    updatedAt: '',
-    updatedBy: null,
-    ...overrides,
-  }
-}
+export { makeMatch } from '../../../test/resultFixtures'
 
 export function makeTeam(id: string, name: string, sectionId = `section-${id}`): Team {
   return {

@@ -91,6 +91,10 @@ Import rules (spec 104):
 
 - **A registered player of one of our sides is checked only by `ResultPlayerEligibility`** (`service.support`): in the side's team's section or a descendant, and inside the league's age rule (`SelectionEligibility.ageProblems`). The save refusal (`ScorecardServiceImpl` replace, replaceImported and link, newly added players only), the validation errors `PLAYER_NOT_IN_SECTION` and `PLAYER_AGE_INELIGIBLE` and the import candidate filter all call it; never re-implement the rule or query per player.
 
+## Share settings (spec 114)
+
+- **The club default for "First names as initials" is the `club_profile.share_initials_only` column** (`boolean not null default false`, migration `051-club-share-initials-only.sql`), read and written only through `ClubShareSettingsController` and `ClubShareSettingsService`: `GET` and `PUT /api/v1/manage/clubs/{clubId}/share-settings`, body `ShareSettingsDto { initialsOnlyDefault }`, both guarded by `@access.canAccessClub` (any manager of the club, not only the club admin). The club profile `PUT` never resets it, and a club with no profile row reads as false.
+
 ## Authorization (see `docs/specs/002-realm-subdomain-auth.md`)
 
 Once auth is implemented, permission checks are **not** `@PreAuthorize("hasRole(...))")` against flat Keycloak roles — they resolve against the scoped `RoleAssignment` model from `docs/specs/001-tenancy-identity-model.md`:

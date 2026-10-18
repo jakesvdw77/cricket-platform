@@ -56,3 +56,16 @@ describe('CompactSwitch', () => {
     expect(css).toMatch(/@media \(min-width:\s*600px\)[^]*min-height:\s*28px/)
   })
 })
+
+describe('CompactSwitch description', () => {
+  it('points the switch at the text that explains it', () => {
+    render(
+      <ThemeProvider theme={baseTheme}>
+        <CompactSwitch checked disabled onChange={() => {}} label="Initials only" describedBy="why" />
+        <span id="why">Always on for junior leagues</span>
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByRole('checkbox', { name: 'Initials only' })).toHaveAccessibleDescription('Always on for junior leagues')
+  })
+})

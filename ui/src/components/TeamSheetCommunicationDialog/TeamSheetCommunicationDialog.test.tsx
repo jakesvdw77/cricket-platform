@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TeamSheetCommunicationDialog } from './TeamSheetCommunicationDialog'
 import type { TeamSheetSide } from '../../utils/teamSheetPdf'
 import type { Match } from '../../api/matchApi'
@@ -455,5 +455,74 @@ describe('TeamSheetCommunicationDialog', () => {
 
     expect(await screen.findByText("Couldn't copy to clipboard. Please try again.")).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+// docs/specs/114-share-result.md (Send to WhatsApp): the shared Send in WhatsApp action, with the dialog's current text.
+describe('TeamSheetCommunicationDialog Send in WhatsApp', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const renderOpen = () =>
+    render(
+      <TeamSheetCommunicationDialog
+        open
+        onClose={vi.fn()}
+        match={match}
+        sides={[printableSide(homeTeam), printableSide(awayTeam)]}
+        sidesLoading={false}
+        onPrint={vi.fn().mockResolvedValue(undefined)}
+        subtitle="1 March 2026 · Riverside Oval · Premier League — 2026"
+      />,
+    )
+
+  it('opens wa.me with the text as shown once WhatsApp is chosen, and not under the PDF option', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderOpen()
+    expect(screen.queryByRole('button', { name: 'Send in WhatsApp' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    const textbox = (await screen.findByRole('textbox', { name: /whatsapp message/i })) as HTMLTextAreaElement
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(textbox.value)}`, '_blank', 'noopener')
+    expect(textbox.value).toContain('🏏')
+  })
+
+  it('follows the scope: the link carries the text of the chosen team only', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderOpen()
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    await user.click(screen.getByRole('button', { name: 'Riverside 1st XI' }))
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    const sent = decodeURIComponent((open.mock.calls[0][0] as string).split('text=')[1])
+    expect(sent).toContain('Riverside 1st XI')
+    expect(sent).not.toContain('Coastal CC')
+  })
+
+  it('sends the edited text', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderOpen()
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+    const textbox = await screen.findByRole('textbox', { name: /whatsapp message/i })
+    await user.clear(textbox)
+    await user.type(textbox, 'edited team sheet')
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent('edited team sheet')}`, '_blank', 'noopener')
+  })
+
+  it('keeps the Copy button beside it', async () => {
+    const user = userEvent.setup()
+    renderOpen()
+
+    await user.click(screen.getByRole('button', { name: /whatsapp/i }))
+
+    expect(await screen.findByRole('button', { name: /copy/i })).toBeInTheDocument()
   })
 })
