@@ -34,7 +34,7 @@ Other open items, in no order:
 | 009 | [Subscriptions](specs/009-subscriptions.md) | Built, on `feature/009-subscriptions`, pending review/PR — links `Club` to `Product`, admin-driven, `CLUB`-owner-only this pass. |
 | 014 | [Subscription Responsible Contact](specs/014-subscription-responsible-contact.md) | Rewritten draft — amends `009`'s `Subscription`/endpoints with a required-on-create `responsiblePersonId`, resolved via a new `PersonService` find-or-create-by-email against `001`'s `Person` (grown from a bare stub into a real `first_name`/`last_name`/`email`/`phone?` identity shape). Replaces an earlier, partially-implemented draft that embedded a bespoke `Contact` directly on `Subscription` — see `014`'s own Rollout Notes for exactly what's superseded. Not yet (re)built against this version. |
 | 100 | [Match Results: core capture and publish gate](specs/100-match-results-core.md) | Built on `feature/100-match-results`, in review (browser-approved 2026-10-14) — Results page, capture wizard, outcomes, toss, scores, draft/publish gate, import-ready model. Slices 101 (our-side scorecard, standouts, player of the match), 102 (full scorecard), 103 (stats), 104 (import adapters) outlined inside it, each to get its own spec. |
-| 103 | [Player statistics (Part 1)](specs/103-player-stats.md) | Draft (2026-10-18) on feature/103-player-stats. Player statistics (batting, bowling, fielding) computed on read from published results by one pure PlayerStatsCalculator; no migration; the Player page Stats card goes live and a full breakdown page (Batting, Bowling, Fielding tabs) with Season, League, Team and Competition filters; statistics the data cannot support (batting dot ball percentage, boundaries conceded) are listed under "Not captured yet". Team statistics are Part 2. Needs the owner's answers to the open questions and approved mockups before the build. |
+| 103 | [Player statistics and leaderboards (Part 1)](specs/103-player-stats.md) | Draft (2026-10-18, revised with the owner's decisions) on feature/103-player-stats. Player statistics (batting, bowling, fielding) computed on read from published results by one pure PlayerStatsCalculator, no migration. The Player page Stats card goes live with recent-form strips, and a breakdown page has Batting, Bowling and Fielding tabs. A Leaderboards page (Schedule menu, after Results) shows everyone by default with optional minimums and filters by Season, League, Team and Section, with an Awards view that has default minimums and a browser-made PDF and copy-as-text. Hauls are exclusive bands of 3, 4 and 5 or more. Missing statistics show as "Not captured yet", results capture is unchanged, and the spec is manager-only (the player view comes later). Team statistics are Part 2. Needs approved mockups and the owner's answers to the open questions before the build. |
 | 101 | [Match Results: scorecard, both teams](specs/101-match-results-our-side-scorecard.md) | Built, in final review (2026-10-15) on `feature/101-our-side-scorecard` — the full scorecard flow incl. the opposition: Teams first (savable before the game, optional), side toggle for both teams, inline names, dismissals with bowler and fielder and derived credits, standouts (ours), one official player of the match plus team awards, partial drafts. Migrations 044 to 047. Super overs split out into 105. |
 | 102 | [Match Results: opposition scorecard](specs/102-match-results-opposition-scorecard.md) | **Merged into 101 (2026-10-14)**; kept for history. |
 | 104 | [Match Results: import adaptors and the Result Processor](specs/104-match-results-import-adaptors.md) | Built on `feature/104-import-adaptors` (hand-tested by the user, tests green, in review): adaptor framework and discovery, JSON adaptor (fence tolerant, with a copyable conversion prompt for the user's own AI), one common format, one Result Processor with deterministic name matching only (no AI), unconfirmed guesses block publish, import wizard into the capture wizard, migration 048. The STUMPS PDF adaptor was built in `108` and the CricClubs CSV adaptor in `107`; built BEFORE `103`. |
@@ -258,19 +258,18 @@ Spec approved, planned and built on branch `feat/099-fields-directory` (`plans/0
 - Follow-up: drop message-text dedupe (`ReviewStep` `dedupeWarnings`) now that the UI can read `code`.
 - Done in 101 (kept for the record): stable warning codes for results (`code`, `step`, `side`, `severity` on every issue); `102` merged in (opposition scorecard, dismissals with bowler and fielder, derived `non_bowler_wickets`, migration `045`); dot balls captured (`bowling_entry.dots`); captain/keeper flags on the scorecard dropped.
 
-## Deferred by `103`: Player statistics
+## Deferred by `103`: Player statistics and leaderboards
 
-- Part 2 team statistics. It works from `match_result` and `match_innings` alone, so it covers summary results. Net Run Rate needs a per-competition rule, and Partnerships needs fall of wickets.
-- Leaderboards and rankings (qualification minimums, ties, ranking children), reusing the calculator.
-- Capture changes, each its own scorecard spec: batter dot balls (`batting_entry.dots`), per-bowler boundaries conceded, fall of wickets and partnerships, wicketkeeper and captain markers on the result.
+- Part 2: team statistics (they work from `match_result` and `match_innings` alone, with a per-competition Net Run Rate rule; partnerships are blocked on fall-of-wickets capture; team tables can reuse the leaderboard machinery).
+- **Scorecard capture, round 2** (a future, separately numbered spec): batter dot balls, boundaries conceded per bowler, fall of wickets and partnerships, wicketkeeper and captain markers.
+- The player view of statistics and leaderboards (with the player login flow): its own access rule, section narrowing for players, and 114's `shareName` and junior-lock treatment; public and shared boards the same.
 - Format-aware milestones and all-round performances.
-- A league-format split of the Competition filter (`League.format` is only an optional tag).
-- A player's own view of their statistics, with the player login flow.
+- A finer league-format split of the Competition filter.
 - Player-recorded own games as a second scope, shown side by side and labelled unverified.
 - Cross-club career statistics, with the person-linking spec.
-- Public or shared statistics lines, through 114's initials rule and junior lock.
-- Section narrowing for section-scoped managers.
-- Materialised statistics, only if a measured run of a large club is slow.
+- Configurable awards categories.
+- A player's rank shown on the Player page.
+- Materialised statistics, only if a measured run exceeds the budget.
 - Super-over statistics, with 105.
 
 ## Deferred by `114`: Share a result
