@@ -66,6 +66,17 @@ export const MANAGER_NAV: NavGroup[] = [
         icon: 'nav/upcoming-matches',
       },
       {
+        id: 'availability',
+        label: 'Availability',
+        description: 'Polls, player availability and match-day cover',
+        to: '/manage/availability',
+        icon: 'nav/availability-polls',
+        // Every Availability page (the hub's Polls, Players and Match-day cover tabs, and the poll,
+        // response and new-poll pages) keeps it highlighted.
+        match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability', '/manage/player-availability'],
+      },
+      { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads' },
+      {
         id: 'results',
         label: 'Results',
         description: 'Capture and review match results',
@@ -93,17 +104,6 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/players',
         icon: 'nav/cricket-players',
       },
-      {
-        id: 'availability',
-        label: 'Availability',
-        description: 'Polls, player availability and match-day cover',
-        to: '/manage/availability',
-        icon: 'nav/availability-polls',
-        // Every Availability page (the hub's Polls, Players and Match-day cover tabs, and the poll,
-        // response and new-poll pages) keeps it highlighted.
-        match: ['/manage/availability/new', '/manage/availability/group', '/manage/availability/squad', '/manage/section-availability', '/manage/player-availability'],
-      },
-      { id: 'squads', label: 'Team selection', description: 'Pick the team for each match', to: '/manage/team-selection', icon: 'nav/squads' },
       {
         id: 'communication',
         label: 'Communication',
