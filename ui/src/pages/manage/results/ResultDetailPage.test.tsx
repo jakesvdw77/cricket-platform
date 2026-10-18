@@ -30,6 +30,10 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
   }
 })
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: () => Promise.resolve([{ id: 'team-1', name: '1st XI', logoUrl: null }]) }))
+vi.mock('../../../api/shareSettingsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../api/shareSettingsApi')>()),
+  getShareSettings: () => Promise.resolve({ initialsOnlyDefault: false }),
+}))
 vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
 
 function Where() {
@@ -87,6 +91,17 @@ describe('ResultDetailPage', () => {
       expect(within(actions).queryByRole('button', { name: 'Delete draft' })).not.toBeInTheDocument()
     })
 
+    it('has an enabled Share button that opens the Share dialog', async () => {
+      const user = userEvent.setup()
+      renderPage()
+
+      const share = within(await screen.findByTestId('result-actions')).getByRole('button', { name: 'Share' })
+      expect(share).toBeEnabled()
+      await user.click(share)
+
+      expect(await screen.findByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
+    })
+
     it('unpublishes only after the confirmation', async () => {
       const user = userEvent.setup()
       unpublishResult.mockResolvedValue(makeResult({ status: 'DRAFT' }))
@@ -133,6 +148,13 @@ describe('ResultDetailPage', () => {
       expect(within(actions).getByRole('button', { name: 'Publish' })).toBeEnabled()
       expect(within(actions).getByRole('button', { name: 'Delete draft' })).toBeEnabled()
       expect(within(actions).queryByRole('button', { name: 'Unpublish' })).not.toBeInTheDocument()
+    })
+
+    it('has no Share button on a draft (it appears once published)', async () => {
+      renderPage()
+      const actions = await screen.findByTestId('result-actions')
+
+      expect(within(actions).queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
     })
 
     it('publishes after validation', async () => {

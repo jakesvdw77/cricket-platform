@@ -27,6 +27,10 @@ vi.mock('../../../api/matchResultApi', async (importOriginal) => {
   }
 })
 vi.mock('../../../api/teamApi', () => ({ listTeamsForClub: (clubId: string) => listTeamsForClub(clubId) }))
+vi.mock('../../../api/shareSettingsApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../api/shareSettingsApi')>()),
+  getShareSettings: () => Promise.resolve({ initialsOnlyDefault: false }),
+}))
 vi.mock('../../../api/leagueApi', () => ({ listLeagues: () => Promise.resolve([]) }))
 vi.mock('../../../api/seasonApi', () => ({ listSeasons: () => Promise.resolve([]) }))
 vi.mock('../../../api/sectionApi', () => ({ listSections: () => Promise.resolve([]) }))
@@ -196,6 +200,21 @@ describe('ResultList', () => {
     expect(await screen.findByText('Capture a result')).toBeInTheDocument()
     await waitFor(() => expect(listAwaitingResults).toHaveBeenCalled())
     expect(listResults).not.toHaveBeenCalled()
+  })
+
+  describe('share from a card', () => {
+    it('offers Share on a published result only, and it opens the dialog', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findAllByRole('heading', { name: /vs/ })
+
+      const shares = screen.getAllByRole('button', { name: 'Share' })
+      expect(shares).toHaveLength(1)
+      expect(shares[0]).toBeEnabled()
+
+      await user.click(shares[0])
+      expect(await screen.findByRole('dialog', { name: 'Share result' })).toBeInTheDocument()
+    })
   })
 
   describe('publish from a card', () => {

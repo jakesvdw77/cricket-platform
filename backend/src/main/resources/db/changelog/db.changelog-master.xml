@@ -55,5 +55,6 @@
     <include file="db/changelog/v1/048-result-import-aliases-and-guess-flag.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/049-league-age-cutoff-day-month.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/v1/050-league-season-dates.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/v1/051-club-share-initials-only.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

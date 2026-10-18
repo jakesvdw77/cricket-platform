@@ -6,10 +6,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import UnpublishedOutlinedIcon from '@mui/icons-material/UnpublishedOutlined'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { EmptyState } from '../../../components/EmptyState'
 import { PageHeaderBand } from '../../../components/PageHeaderBand'
+import { ShareResultDialog } from '../../../components/ShareResultDialog'
 import { badgeSx } from '../../../components/RecordCard'
 import { getMatch } from '../../../api/matchApi'
 import { deleteResultDraft, getMatchResult, resultKeys, resultsKey, unpublishResult } from '../../../api/matchResultApi'
@@ -85,6 +87,7 @@ export default function ResultDetailPage() {
   const { publish, dialogs: publishDialogs } = usePublishResult(clubId ?? '')
   const [confirm, setConfirm] = useState<'unpublish' | 'delete' | null>(null)
   const [failed, setFailed] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   const unpublishMutation = useMutation({
     mutationFn: () => unpublishResult(clubId as string, matchId as string),
@@ -161,6 +164,12 @@ export default function ResultDetailPage() {
   const field = result.playingAreaName ?? match.playingAreaName ?? match.venue
   const leagueName = match.leagueId ? (leaguesQuery.data?.find((league) => league.id === match.leagueId)?.name ?? null) : null
   const statusLabel = draft ? 'Draft' : 'Published'
+  // docs/specs/114: Share is a filled primary button like Edit, offered on a published result only (as Publish is on a draft).
+  const sharePair = draft ? null : (
+    <MuiButton variant="contained" startIcon={<ShareOutlinedIcon fontSize="small" />} onClick={() => setShareOpen(true)}>
+      Share
+    </MuiButton>
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 } }}>
@@ -229,7 +238,7 @@ export default function ResultDetailPage() {
 
           <Box
             data-testid="result-actions"
-            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, auto)' }, justifyContent: { sm: 'start' }, alignItems: 'start' }}
+            sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(4, auto)' }, justifyContent: { sm: 'start' }, alignItems: 'start' }}
           >
             {draft ? (
               <>
@@ -254,6 +263,7 @@ export default function ResultDetailPage() {
                 >
                   Delete draft
                 </MuiButton>
+                {sharePair}
               </>
             ) : (
               <>
@@ -275,7 +285,8 @@ export default function ResultDetailPage() {
                 >
                   Unpublish
                 </MuiButton>
-                {/* One line under both buttons, so neither button is stretched to hold it. */}
+                {sharePair}
+                {/* One line under the buttons, so none is stretched to hold it. */}
                 <Typography id="unpublish-to-edit-reason" variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
                   {UNPUBLISH_TO_EDIT_REASON}
                 </Typography>
@@ -309,6 +320,7 @@ export default function ResultDetailPage() {
         onClose={() => setConfirm(null)}
       />
       {publishDialogs}
+      <ShareResultDialog open={shareOpen} onClose={() => setShareOpen(false)} clubId={clubId} match={match} result={result} teamsById={teamsById} />
     </Box>
   )
 }

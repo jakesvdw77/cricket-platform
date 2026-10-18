@@ -158,3 +158,38 @@ describe('SectionAvailabilityShareDialog', () => {
     })
   })
 })
+
+// docs/specs/114-share-result.md (Send to WhatsApp): the shared Send in WhatsApp action, with the dialog's current text.
+describe('SectionAvailabilityShareDialog Send in WhatsApp', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('opens wa.me in a new tab with the text exactly as shown, link included', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+    const textarea = screen.getByLabelText('Invite text') as HTMLTextAreaElement
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(textarea.value)}`, '_blank', 'noopener')
+    expect(decodeURIComponent((open.mock.calls[0][0] as string).split('text=')[1])).toContain(`${window.location.origin}/section-availability/round-1`)
+  })
+
+  it('sends the edited text, not the generated one', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+    await user.type(screen.getByLabelText('Invite text'), ' EDITED NOTE')
+    await user.click(screen.getByRole('button', { name: 'Send in WhatsApp' }))
+
+    expect(decodeURIComponent((open.mock.calls[0][0] as string).split('text=')[1])).toContain('EDITED NOTE')
+  })
+
+  it('keeps Copy message and Copy link beside it', () => {
+    render(<SectionAvailabilityShareDialog open onClose={vi.fn()} round={makeRound()} />)
+
+    expect(screen.getByRole('button', { name: 'Copy message' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+  })
+})

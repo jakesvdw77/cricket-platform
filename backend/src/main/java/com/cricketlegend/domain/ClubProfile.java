@@ -69,6 +69,11 @@ public class ClubProfile {
     @Builder.Default
     private List<SocialLink> socialLinks = new ArrayList<>();
 
+    /** docs/specs/114-share-result.md: club-wide default for sharing a result with initials only. Not part of the profile form. */
+    @Column(name = "share_initials_only", nullable = false)
+    @Builder.Default
+    private boolean shareInitialsOnly = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

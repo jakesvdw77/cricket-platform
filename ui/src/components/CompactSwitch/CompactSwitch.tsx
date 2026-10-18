@@ -8,14 +8,16 @@ export interface CompactSwitchProps {
   disabled?: boolean
   // Keep the label on one line (the default: toggles sit in a wrapping row of controls).
   noWrap?: boolean
+  // docs/specs/114: id of the visible text that explains a disabled or locked switch (read with the switch's name).
+  describedBy?: string
 }
 
 // docs/specs/085: the one small toggle of the Availability pages - a small Switch with a caption-size label.
 // On a phone the label row is 44 px high (padding on the row, not a bigger switch) so the touch target is large enough.
-export function CompactSwitch({ checked, onChange, label, disabled = false, noWrap = true }: CompactSwitchProps) {
+export function CompactSwitch({ checked, onChange, label, disabled = false, noWrap = true, describedBy }: CompactSwitchProps) {
   return (
     <FormControlLabel
-      control={<Switch size="small" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />}
+      control={<Switch size="small" checked={checked} disabled={disabled} inputProps={describedBy ? { 'aria-describedby': describedBy } : undefined} onChange={(event) => onChange(event.target.checked)} />}
       label={
         <Typography component="span" sx={{ fontSize: '0.8rem', lineHeight: 1.3 }}>
           {label}
