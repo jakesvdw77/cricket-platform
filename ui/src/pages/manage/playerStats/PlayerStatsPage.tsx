@@ -17,6 +17,7 @@ import { listTeamsForClub } from '../../../api/teamApi'
 import { useAvailabilitySeason } from '../../../hooks/useAvailabilitySeason'
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle'
 import { usePersistedListFilters } from '../../../hooks/usePersistedListFilters'
+import { sectionsWithAncestors } from '../../../utils/sectionAncestors'
 import { playerStatusBadge, playerStatusOf } from '../../../utils/playerStatus'
 import { fullName } from '../PlayerList'
 import { PlayerStatsTabs } from './PlayerStatsTabs'
@@ -54,8 +55,19 @@ export default function PlayerStatsPage() {
     `playerStats:filters:${clubId}`,
     { seasonId: null, leagueId: null },
   )
-  const [teamId, setTeamId] = useState<string | null>(null)
-  const [sectionId, setSectionId] = useState<string | null>(null)
+  // docs/specs/103: a leaderboard row links here carrying its Season, League, Team and Section (an empty value means none, so
+  // an All seasons board opens on All seasons). Read once on load; after that the bar's own choices rule. Season and League
+  // start from the link instead of the saved choice WITHOUT overwriting it.
+  const [linked] = useState(() => ({
+    seasonId: searchParams.has('seasonId') ? searchParams.get('seasonId') || null : undefined,
+    leagueId: searchParams.has('leagueId') ? searchParams.get('leagueId') || null : undefined,
+    teamId: searchParams.get('teamId') || null,
+    sectionId: searchParams.get('sectionId') || null,
+  }))
+  const [seasonOverride, setSeasonOverride] = useState<string | null | undefined>(linked.seasonId)
+  const [leagueOverride, setLeagueOverride] = useState<string | null | undefined>(linked.leagueId)
+  const [teamId, setTeamId] = useState<string | null>(linked.teamId)
+  const [sectionId, setSectionId] = useState<string | null>(linked.sectionId)
   const [competition, setCompetition] = useState<StatsCompetition | null>(null)
 
   // The player's name and status come from the roster read the Player page uses (same cache entry).
@@ -93,24 +105,14 @@ export default function PlayerStatsPage() {
     return (teamsQuery.data ?? []).filter((team) => ids.has(team.id)).map((team) => ({ id: team.id, name: team.name }))
   }, [teamsQuery.data, available])
   // The player's sections plus every ancestor, so the tree select stays connected.
-  const sectionOptions = useMemo(() => {
-    const all = sectionsQuery.data ?? []
-    const byId = new Map(all.map((section) => [section.id, section]))
-    const keep = new Set<string>()
-    for (const id of available?.sectionIds ?? []) {
-      let current = byId.get(id)
-      while (current && !keep.has(current.id)) {
-        keep.add(current.id)
-        current = current.parentSectionId ? byId.get(current.parentSectionId) : undefined
-      }
-    }
-    return all.filter((section) => keep.has(section.id))
-  }, [sectionsQuery.data, available])
+  const sectionOptions = useMemo(() => sectionsWithAncestors(sectionsQuery.data ?? [], available?.sectionIds ?? []), [sectionsQuery.data, available])
   const competitionOptions = COMPETITION_OPTIONS.filter((option) => available?.competitions.includes(option.value as StatsCompetition))
 
   // A saved choice that is not offered (gone, or no data for this player) falls back to none (All seasons / All leagues).
-  const seasonId = saved.seasonId && (!available || !seasonsQuery.data || seasonOptions.some((option) => option.id === saved.seasonId)) ? saved.seasonId : null
-  const leagueId = saved.leagueId && (!available || !leaguesQuery.data || leagueOptions.some((option) => option.id === saved.leagueId)) ? saved.leagueId : null
+  const wantedSeason = seasonOverride !== undefined ? seasonOverride : saved.seasonId
+  const wantedLeague = leagueOverride !== undefined ? leagueOverride : saved.leagueId
+  const seasonId = wantedSeason && (!available || !seasonsQuery.data || seasonOptions.some((option) => option.id === wantedSeason)) ? wantedSeason : null
+  const leagueId = wantedLeague && (!available || !leaguesQuery.data || leagueOptions.some((option) => option.id === wantedLeague)) ? wantedLeague : null
 
   const filters = { seasonId, leagueId, teamId, sectionId, competition }
   const hasFilters = Boolean(seasonId || leagueId || teamId || sectionId || competition)
@@ -119,6 +121,8 @@ export default function PlayerStatsPage() {
 
   const clearFilters = () => {
     updateSaved({ seasonId: null, leagueId: null })
+    setSeasonOverride(undefined)
+    setLeagueOverride(undefined)
     setTeamId(null)
     setSectionId(null)
     setCompetition(null)
@@ -227,8 +231,14 @@ export default function PlayerStatsPage() {
           leagueId={leagueId}
           sectionId={sectionId}
           teamId={teamId}
-          onSeasonChange={(value) => updateSaved({ seasonId: value })}
-          onLeagueChange={(value) => updateSaved({ leagueId: value })}
+          onSeasonChange={(value) => {
+            setSeasonOverride(undefined)
+            updateSaved({ seasonId: value })
+          }}
+          onLeagueChange={(value) => {
+            setLeagueOverride(undefined)
+            updateSaved({ leagueId: value })
+          }}
           onSectionChange={setSectionId}
           onTeamChange={setTeamId}
           extraSelects={

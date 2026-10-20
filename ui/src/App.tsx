@@ -30,6 +30,7 @@ import TeamList from './pages/manage/TeamList'
 import PlayerList from './pages/manage/PlayerList'
 import PlayerFormPage from './pages/manage/PlayerFormPage'
 import PlayerDetailPage from './pages/manage/PlayerDetailPage'
+import LeaderboardsPage from './pages/manage/leaderboards/LeaderboardsPage'
 import PlayerStatsPage from './pages/manage/playerStats/PlayerStatsPage'
 import LeagueList from './pages/manage/LeagueList'
 import LeagueFormPage from './pages/manage/LeagueFormPage'
@@ -254,6 +255,8 @@ function App() {
               <Route path="results/import" element={<ResultImportPage />} />
               <Route path="results/:matchId" element={<ResultDetailPage />} />
               <Route path="results/:matchId/capture" element={<ResultCapturePage />} />
+              {/* docs/specs/103-player-stats.md: season standings and the awards view. */}
+              <Route path="leaderboards" element={<LeaderboardsPage />} />
               <Route
                 path="permissions"
                 element={<EmptyState title="Team Managers & Permissions" description="Coming soon." />}

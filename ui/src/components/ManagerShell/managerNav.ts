@@ -83,6 +83,15 @@ export const MANAGER_NAV: NavGroup[] = [
         to: '/manage/results',
         icon: 'nav/result-scorecard',
       },
+      {
+        id: 'leaderboards',
+        label: 'Leaderboards',
+        description: 'Season standings and awards',
+        to: '/manage/leaderboards',
+        // Interim: an existing stats icon. docs/specs/103 asks for a new nav/leaderboard brand icon; replace this with it
+        // once the owner has generated it (npm run icons:strip, then add 'nav/leaderboard' to BRAND_ICON_NAMES).
+        icon: 'stats/stats-player',
+      },
     ],
   },
   {

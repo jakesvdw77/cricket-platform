@@ -73,9 +73,9 @@ describe('managerNav', () => {
     expect(activeNavId(MANAGER_NAV, path)).toBe(id)
   })
 
-  it('orders Schedule as Seasons, Leagues, Matches, Availability, Team selection, Results and People as Teams, Players, Communication', () => {
+  it('orders Schedule as Seasons, Leagues, Matches, Availability, Team selection, Results, Leaderboards and People as Teams, Players, Communication', () => {
     const labels = (name: string) => MANAGER_NAV.find((group) => group.label === name)?.items.map((item) => item.label)
-    expect(labels('Schedule')).toEqual(['Seasons', 'Leagues', 'Matches', 'Availability', 'Team selection', 'Results'])
+    expect(labels('Schedule')).toEqual(['Seasons', 'Leagues', 'Matches', 'Availability', 'Team selection', 'Results', 'Leaderboards'])
     expect(labels('People')).toEqual(['Teams', 'Players', 'Communication'])
     expect(MANAGER_NAV.map((group) => group.label)).toEqual([null, 'Schedule', 'People', 'Club'])
   })

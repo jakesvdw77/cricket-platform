@@ -303,6 +303,9 @@ export default function ResultList() {
         action={
           // docs/specs/104: Import result sits beside Capture result; the capture picker also offers it.
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => navigate('/manage/leaderboards')}>
+              Leaderboards
+            </Button>
             <Button variant="secondary" onClick={() => navigate(resultImportTo())}>
               Import result
             </Button>
