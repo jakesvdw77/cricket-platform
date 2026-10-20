@@ -126,9 +126,13 @@ class LayeringRulesTest {
     private static final String STATS_REPOSITORIES =
             "com\\.cricketlegend\\.repository\\.(PlayerStatsAggregateRepository|PlayerStatsFactsRepository)(\\$.*)?";
 
-    /** The statistics services: the only classes that may use the stats repositories. */
+    /**
+     * The statistics services and their two helpers that read a stats repository row type: the only classes that may
+     * use the stats repositories.
+     */
     private static final String STATS_SERVICES =
-            "com\\.cricketlegend\\.service\\.impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl)(\\$.*)?";
+            "com\\.cricketlegend\\.service\\.(impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl)"
+                    + "|support\\.(PlayerStatsCountersReader|StatsFilterOptionLists))(\\$.*)?";
 
     @Test
     void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
@@ -151,14 +155,18 @@ class LayeringRulesTest {
                 .filter(n -> !n.matches(STATS_REPOSITORIES))
                 .collect(java.util.stream.Collectors.toSet());
         org.assertj.core.api.Assertions.assertThat(users)
-                .containsExactlyInAnyOrder("com.cricketlegend.service.impl.PlayerStatsServiceImpl");
+                .containsExactlyInAnyOrder(
+                        "com.cricketlegend.service.impl.PlayerStatsServiceImpl",
+                        "com.cricketlegend.service.impl.LeaderboardServiceImpl",
+                        "com.cricketlegend.service.support.PlayerStatsCountersReader",
+                        "com.cricketlegend.service.support.StatsFilterOptionLists");
     }
 
     /** The pure statistics classes: definitions and ranking that a player-facing route must be able to reuse. */
     private static final String PURE_STATS_CLASSES =
             "com\\.cricketlegend\\.service\\.support\\."
                     + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
-                    + "|LeaderboardRanker|LeaderboardQualification|LeaderboardBoard)(\\$.*)?";
+                    + "|LeaderboardRanker|LeaderboardQualification|LeaderboardBoard|LeaderboardInningsFact|LeaderboardPlayers)(\\$.*)?";
 
     @Test
     void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {

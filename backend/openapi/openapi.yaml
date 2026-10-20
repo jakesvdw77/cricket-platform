@@ -7005,6 +7005,239 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerStatsFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/leaderboards:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboardCatalogue
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardCatalogueDto"
+  /api/v1/manage/clubs/{clubId}/leaderboards/{board}:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboard
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: board
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: minimum
+        in: query
+        required: false
+        description: Optional minimum (innings or overs by the board); absent means none; ignored on a board without a minimum
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        description: Default 10, capped at 100
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardPageDto"
+        "400":
+          description: Invalid minimum, page or size, or too many players in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown board, season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/leaderboards/awards:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getAwardsView
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: minimumInnings
+        in: query
+        required: false
+        description: Absent means the filter-aware default
+        schema:
+          type: string
+      - name: minimumOvers
+        in: query
+        required: false
+        description: Absent means the filter-aware default
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AwardsViewDto"
+        "400":
+          description: Invalid minimum, page or size, or too many players in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown board, season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/manage/clubs/{clubId}/leaderboards/filter-options:
+    get:
+      tags:
+      - leaderboard-controller
+      operationId: getLeaderboardFilterOptions
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardFilterOptionsDto"
+  /api/v1/manage/clubs/{clubId}/leaderboard-settings:
+    get:
+      tags:
+      - club-leaderboard-settings-controller
+      operationId: getLeaderboardSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardSettingsDto"
+    put:
+      tags:
+      - club-leaderboard-settings-controller
+      operationId: updateLeaderboardSettings
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaderboardSettingsDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LeaderboardSettingsDto"
+        "400":
+          description: Unknown or non-award category, or an empty list
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -13194,3 +13427,306 @@ components:
           type: string
         reason:
           type: string
+    LeaderboardCatalogueDto:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardCatalogueGroup"
+    LeaderboardCatalogueGroup:
+      type: object
+      properties:
+        group:
+          type: string
+        label:
+          type: string
+        boards:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardBoardInfo"
+    LeaderboardBoardInfo:
+      type: object
+      properties:
+        code:
+          type: string
+        group:
+          type: string
+        label:
+          type: string
+        figureLabel:
+          type: string
+        direction:
+          type: string
+        minimumKind:
+          type: string
+        help:
+          type: string
+        awardEligible:
+          type: boolean
+        awardDefault:
+          type: boolean
+    LeaderboardPageDto:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        scope:
+          $ref: "#/components/schemas/LeaderboardScope"
+        minimum:
+          $ref: "#/components/schemas/LeaderboardMinimum"
+        basis:
+          $ref: "#/components/schemas/LeaderboardBasis"
+        page:
+          $ref: "#/components/schemas/LeaderboardPageInfo"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardRow"
+    LeaderboardScope:
+      type: object
+      properties:
+        kind:
+          type: string
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+    LeaderboardMinimum:
+      type: object
+      properties:
+        applies:
+          type: boolean
+        value:
+          type: integer
+          format: int32
+        suggestedDefault:
+          type: integer
+          format: int32
+        unit:
+          type: string
+    LeaderboardBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        playersListed:
+          type: integer
+          format: int64
+        playersRanked:
+          type: integer
+          format: int64
+        belowMinimum:
+          type: integer
+          format: int64
+        coverage:
+          $ref: "#/components/schemas/LeaderboardCoverage"
+    LeaderboardCoverage:
+      type: object
+      properties:
+        used:
+          type: integer
+          format: int64
+        counted:
+          type: integer
+          format: int64
+    LeaderboardPageInfo:
+      type: object
+      properties:
+        number:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        hasMore:
+          type: boolean
+    LeaderboardWicketsRuns:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+    LeaderboardRunsNotOut:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+    LeaderboardSample:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        overs:
+          type: number
+        ballsPerOver:
+          type: integer
+          format: int32
+        wickets:
+          type: integer
+          format: int64
+    LeaderboardDetail:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        opponent:
+          type: string
+    LeaderboardRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          format: int32
+        playerId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        active:
+          type: boolean
+        figure:
+          description: A number, a wickets/runs object (best bowling), a runs/notOut object (highest score), or null
+          nullable: true
+          oneOf:
+          - type: number
+          - $ref: "#/components/schemas/LeaderboardWicketsRuns"
+          - $ref: "#/components/schemas/LeaderboardRunsNotOut"
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        sample:
+          $ref: "#/components/schemas/LeaderboardSample"
+        smallSample:
+          type: boolean
+        detail:
+          $ref: "#/components/schemas/LeaderboardDetail"
+    AwardsViewDto:
+      type: object
+      properties:
+        scope:
+          $ref: "#/components/schemas/LeaderboardScope"
+        basis:
+          $ref: "#/components/schemas/AwardsBasis"
+        minimums:
+          $ref: "#/components/schemas/AwardsMinimums"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsCategory"
+        omitted:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwardsOmittedCategory"
+    AwardsBasis:
+      type: object
+      properties:
+        resultsCounted:
+          type: integer
+          format: int64
+        playersConsidered:
+          type: integer
+          format: int64
+    AwardsMinimums:
+      type: object
+      properties:
+        innings:
+          type: integer
+          format: int32
+        overs:
+          type: integer
+          format: int32
+        defaultInnings:
+          type: integer
+          format: int32
+        defaultOvers:
+          type: integer
+          format: int32
+    AwardsCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        leaders:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardRow"
+    AwardsOmittedCategory:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/LeaderboardBoardInfo"
+        reason:
+          type: string
+    LeaderboardFilterOptionsDto:
+      type: object
+      properties:
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        leagueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        teamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        competitions:
+          type: array
+          items:
+            type: string
+    LeaderboardSettingsDto:
+      type: object
+      properties:
+        awardCategories:
+          type: array
+          items:
+            type: string
+        selectableCategories:
+          type: array
+          items:
+            type: string

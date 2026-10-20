@@ -11,7 +11,8 @@ import org.springframework.data.repository.query.Param;
 /**
  * docs/specs/103-player-stats.md, "Shape of the read" point 4: the few small per-player queries that are not additive
  * counters (recent form, innings by batting position, dismissal modes). Same counted appearances and the same eight
- * parameters as {@link PlayerStatsAggregateRepository} (see {@link PlayerStatsSql}); always for one {@code playerId}.
+ * parameters as {@link PlayerStatsAggregateRepository} (see {@link PlayerStatsSql}); the per-player queries are for one
+ * {@code playerId}, the leaderboard queries (results counted, roster, best innings and spells, filter options) take the club.
  * Touched only by the statistics services (ArchUnit). Dates are epoch milliseconds so the JDBC temporal mapping never
  * matters.
  */
@@ -152,6 +153,133 @@ public interface PlayerStatsFactsRepository extends Repository<MatchResult, UUID
             @Param("competition") String competition,
             @Param("sectionRestricted") boolean sectionRestricted,
             @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    /**
+     * The number of distinct published results with at least one counted appearance in the scope: the "based on N
+     * results" line of the leaderboards. Pass null {@code playerId} for the whole club.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select count(distinct ap.mrid) from ap
+            """, nativeQuery = true)
+    long countResults(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds);
+
+    /**
+     * Every player profile of the club with the name and status the leaderboards show (one bounded roster read; the
+     * aggregate rows are matched to it by id).
+     */
+    @Query(value = """
+            select pp.id as "playerId", p.first_name as "firstName", p.last_name as "lastName", pp.active as "active"
+            from player_profile pp
+            join person p on p.id = pp.person_id
+            where pp.club_id = :clubId
+            """, nativeQuery = true)
+    List<PlayerNameView> clubPlayers(@Param("clubId") UUID clubId);
+
+    /**
+     * For each listed player, their highest-scoring innings in the scope (same counted appearances and key as the
+     * aggregate's highest score: more runs, a not-out innings first, then the most recent match), with the match, the
+     * opponent and the balls faced when recorded. One row per player; {@code playerIds} must not be empty.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select distinct on (ap.pid)
+                   ap.pid as "playerId",
+                   ap.match_id as "matchId",
+                   cast(extract(epoch from ap.match_date) * 1000 as bigint) as "matchEpochMillis",
+                   case when ap.side = 'HOME' then coalesce(oat.name, om.away_team_name)
+                        else coalesce(hot.name, om.home_team_name) end as "opponent",
+                   case when be.balls is not null and not (be.balls = 0 and coalesce(be.runs, 0) > 0)
+                        then be.balls end as "balls"
+            from ap
+            join match om on om.id = ap.match_id
+            left join team hot on hot.id = om.home_team_id
+            left join team oat on oat.id = om.away_team_id
+            join batting_entry be on be.result_player_id = ap.rpid
+            join match_innings i on i.id = be.match_innings_id and i.kind = 'REGULAR'
+            where be.how_out is not null and be.how_out <> 'DID_NOT_BAT'
+              and ap.pid in (:playerIds)
+            order by ap.pid,
+                     (cast(be.runs as bigint) * 2 + case when be.how_out in ('NOT_OUT', 'RETIRED_NOT_OUT') then 1 else 0 end)
+                         desc nulls last,
+                     ap.match_date desc, i.sequence desc
+            """, nativeQuery = true)
+    List<BestInningsView> bestInnings(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerIds") Collection<UUID> playerIds);
+
+    /**
+     * For each listed player, their best bowling innings in the scope (same key as the aggregate's best bowling: most
+     * wickets, fewest runs, most balls, then the most recent match), with the match and the opponent; {@code balls} is
+     * the balls bowled. One row per player; {@code playerIds} must not be empty.
+     */
+    @Query(value = PlayerStatsSql.APPEARANCES + """
+            select distinct on (ap.pid)
+                   ap.pid as "playerId",
+                   ap.match_id as "matchId",
+                   cast(extract(epoch from ap.match_date) * 1000 as bigint) as "matchEpochMillis",
+                   case when ap.side = 'HOME' then coalesce(oat.name, om.away_team_name)
+                        else coalesce(hot.name, om.home_team_name) end as "opponent",
+                   bw.balls as "balls"
+            from ap
+            join match om on om.id = ap.match_id
+            left join team hot on hot.id = om.home_team_id
+            left join team oat on oat.id = om.away_team_id
+            join bowling_entry bw on bw.result_player_id = ap.rpid
+            join match_innings i on i.id = bw.match_innings_id and i.kind = 'REGULAR'
+            where (bw.balls > 0 or bw.runs > 0)
+              and ap.pid in (:playerIds)
+            order by ap.pid,
+                     (cast(bw.wickets as bigint) * 10000000000
+                      + cast(99999 - least(bw.runs, 99999) as bigint) * 100000
+                      + least(bw.balls, 99999)) desc,
+                     ap.match_date desc, i.sequence desc
+            """, nativeQuery = true)
+    List<BestInningsView> bestSpells(
+            @Param("clubId") UUID clubId,
+            @Param("playerId") UUID playerId,
+            @Param("seasonId") UUID seasonId,
+            @Param("leagueId") UUID leagueId,
+            @Param("teamId") UUID teamId,
+            @Param("competition") String competition,
+            @Param("sectionRestricted") boolean sectionRestricted,
+            @Param("sectionTeamIds") Collection<UUID> sectionTeamIds,
+            @Param("playerIds") Collection<UUID> playerIds);
+
+    interface PlayerNameView {
+        UUID getPlayerId();
+
+        String getFirstName();
+
+        String getLastName();
+
+        Boolean getActive();
+    }
+
+    interface BestInningsView {
+        UUID getPlayerId();
+
+        UUID getMatchId();
+
+        Long getMatchEpochMillis();
+
+        String getOpponent();
+
+        Integer getBalls();
+    }
 
     interface FilterOptionView {
         UUID getSeasonId();
