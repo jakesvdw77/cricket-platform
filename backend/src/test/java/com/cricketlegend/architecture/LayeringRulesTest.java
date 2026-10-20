@@ -116,7 +116,66 @@ class LayeringRulesTest {
                 + "|domain\\.(MatchResult|MatchInnings|ResultPlayer|BattingEntry|BowlingEntry|FieldingEntry|MatchAward)"
                 + "|repository\\.(MatchResultRepository|MatchInningsRepository|ResultPlayerRepository"
                 + "|BattingEntryRepository|BowlingEntryRepository|FieldingEntryRepository|MatchAwardRepository"
+                + "|PlayerStatsAggregateRepository|PlayerStatsFactsRepository"
                 + "|MatchSpecifications|ResultVisibility))"
                 + "(\\$.*)?";
+    }
+
+    // ---- docs/specs/103-player-stats.md: statistics are computed from published results by one set of classes ----
+
+    private static final String STATS_REPOSITORIES =
+            "com\\.cricketlegend\\.repository\\.(PlayerStatsAggregateRepository|PlayerStatsFactsRepository)(\\$.*)?";
+
+    /** The statistics services: the only classes that may use the stats repositories. */
+    private static final String STATS_SERVICES =
+            "com\\.cricketlegend\\.service\\.impl\\.(PlayerStatsServiceImpl|LeaderboardServiceImpl)(\\$.*)?";
+
+    @Test
+    void theStatsRepositoriesAreTouchedOnlyByTheStatsServices() {
+        ArchRule rule = noClasses()
+                .that(DescribedPredicate.not(HasName.Predicates.nameMatching(
+                        STATS_SERVICES + "|" + STATS_REPOSITORIES + "|com\\.cricketlegend\\.repository\\.PlayerStatsSql")))
+                .should().dependOnClassesThat().haveNameMatching(STATS_REPOSITORIES)
+                .because("the stats repositories read published results with their own copy of the publish gate (spec 103)")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void theStatsRepositoryUsersAreExactlyWhoWeExpect() {
+        // proves the rule above is not vacuous: the statistics service really is a user of both repositories
+        java.util.Set<String> users = CLASSES.stream()
+                .filter(c -> c.getDirectDependenciesFromSelf().stream()
+                        .anyMatch(d -> d.getTargetClass().getName().matches(STATS_REPOSITORIES)))
+                .map(c -> c.getName())
+                .filter(n -> !n.matches(STATS_REPOSITORIES))
+                .collect(java.util.stream.Collectors.toSet());
+        org.assertj.core.api.Assertions.assertThat(users)
+                .containsExactlyInAnyOrder("com.cricketlegend.service.impl.PlayerStatsServiceImpl");
+    }
+
+    /** The pure statistics classes: definitions and ranking that a player-facing route must be able to reuse. */
+    private static final String PURE_STATS_CLASSES =
+            "com\\.cricketlegend\\.service\\.support\\."
+                    + "(PlayerStatsCalculator|PlayerStatsCounters|PlayerStatsFacts|StatsScope"
+                    + "|LeaderboardRanker|LeaderboardQualification|LeaderboardBoard)(\\$.*)?";
+
+    @Test
+    void thePureStatsClassesDependOnNoSpringRepositoryOrEntity() {
+        ArchRule rule = noClasses().that().haveNameMatching(PURE_STATS_CLASSES)
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..", "..repository..", "..config..", "..service.impl..", "..controller..",
+                        "jakarta.persistence..")
+                .orShould().dependOnClassesThat().areAnnotatedWith(jakarta.persistence.Entity.class)
+                .because("a figure is defined without any caller, access or storage information (spec 103)")
+                .allowEmptyShould(true);
+        rule.check(CLASSES);
+    }
+
+    @Test
+    void thePureStatsClassesExist() {
+        // proves the rule above is not vacuous
+        long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
+        org.assertj.core.api.Assertions.assertThat(count).isGreaterThanOrEqualTo(4);
     }
 }

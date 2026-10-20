@@ -6923,6 +6923,88 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ShareSettingsDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/stats:
+    get:
+      tags:
+      - player-stats-controller
+      operationId: get_7
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: seasonId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: leagueId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: sectionId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: competition
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - LEAGUE
+          - FRIENDLY
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerStatsDto"
+  /api/v1/manage/clubs/{clubId}/players/{playerId}/stats/filter-options:
+    get:
+      tags:
+      - player-stats-controller
+      operationId: filterOptions
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlayerStatsFilterOptionsDto"
 components:
   schemas:
     SetSectionAvailabilityRoundPlayerRequest:
@@ -12731,3 +12813,384 @@ components:
       properties:
         initialsOnlyDefault:
           type: boolean
+    PlayerStatsDto:
+      type: object
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        scope:
+          $ref: "#/components/schemas/PlayerStatsScope"
+        basis:
+          $ref: "#/components/schemas/PlayerStatsBasis"
+        batting:
+          $ref: "#/components/schemas/PlayerBatting"
+        bowling:
+          $ref: "#/components/schemas/PlayerBowling"
+        fielding:
+          $ref: "#/components/schemas/PlayerFielding"
+        awards:
+          $ref: "#/components/schemas/PlayerAwards"
+        record:
+          $ref: "#/components/schemas/PlayerRecord"
+        form:
+          $ref: "#/components/schemas/PlayerForm"
+        notCaptured:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerNotCaptured"
+    PlayerStatsFilterOptionsDto:
+      type: object
+      properties:
+        seasonIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        leagueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        teamIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sectionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        competitions:
+          type: array
+          items:
+            type: string
+    PlayerStatsScope:
+      type: object
+      properties:
+        kind:
+          type: string
+        seasonId:
+          type: string
+          format: uuid
+        leagueId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        competition:
+          type: string
+    PlayerStatsBasis:
+      type: object
+      properties:
+        matchesCounted:
+          type: integer
+          format: int64
+        resultsWithBattingCard:
+          type: integer
+          format: int64
+        resultsWithBowlingCard:
+          type: integer
+          format: int64
+    PlayerHighestScore:
+      type: object
+      properties:
+        runs:
+          type: integer
+          format: int64
+        notOut:
+          type: boolean
+    PlayerBattingPosition:
+      type: object
+      properties:
+        position:
+          type: integer
+          format: int32
+        innings:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        average:
+          type: number
+    PlayerBattingCoverage:
+      type: object
+      properties:
+        inningsWithBalls:
+          type: integer
+          format: int64
+        inningsWithBoundaries:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    PlayerBatting:
+      type: object
+      properties:
+        matches:
+          type: integer
+          format: int64
+        innings:
+          type: integer
+          format: int64
+        notOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        ballsFaced:
+          type: integer
+          format: int64
+        fours:
+          type: integer
+          format: int64
+        sixes:
+          type: integer
+          format: int64
+        ducks:
+          type: integer
+          format: int64
+        goldenDucks:
+          type: integer
+          format: int64
+        thirtyPlus:
+          type: integer
+          format: int64
+        fiftyPlus:
+          type: integer
+          format: int64
+        hundredPlus:
+          type: integer
+          format: int64
+        centuries:
+          type: integer
+          format: int64
+        halfCenturies:
+          type: integer
+          format: int64
+        highestScore:
+          $ref: "#/components/schemas/PlayerHighestScore"
+        dismissalModes:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBattingPosition"
+        average:
+          type: number
+        strikeRate:
+          type: number
+        boundaryPercentage:
+          type: number
+        ballsPerBoundary:
+          type: number
+        coverage:
+          $ref: "#/components/schemas/PlayerBattingCoverage"
+    PlayerBestBowling:
+      type: object
+      properties:
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+    PlayerBowlingCoverage:
+      type: object
+      properties:
+        inningsWithWides:
+          type: integer
+          format: int64
+        inningsWithNoBalls:
+          type: integer
+          format: int64
+        inningsWithDots:
+          type: integer
+          format: int64
+        inningsCounted:
+          type: integer
+          format: int64
+    PlayerBowling:
+      type: object
+      properties:
+        inningsBowled:
+          type: integer
+          format: int64
+        ballsBowled:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: array
+          items:
+            type: integer
+            format: int32
+        mixedOverLengths:
+          type: boolean
+        runsConceded:
+          type: integer
+          format: int64
+        wickets:
+          type: integer
+          format: int64
+        maidens:
+          type: integer
+          format: int64
+        wides:
+          type: integer
+          format: int64
+        noBalls:
+          type: integer
+          format: int64
+        dots:
+          type: integer
+          format: int64
+        threeWicketHauls:
+          type: integer
+          format: int64
+        fourWicketHauls:
+          type: integer
+          format: int64
+        fiveWicketHauls:
+          type: integer
+          format: int64
+        best:
+          $ref: "#/components/schemas/PlayerBestBowling"
+        dismissalModes:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        dismissalsNotRecorded:
+          type: integer
+          format: int64
+        average:
+          type: number
+        economy:
+          type: number
+        strikeRate:
+          type: number
+        dotBallPercentage:
+          type: number
+        coverage:
+          $ref: "#/components/schemas/PlayerBowlingCoverage"
+    PlayerFielding:
+      type: object
+      properties:
+        catches:
+          type: integer
+          format: int64
+        stumpings:
+          type: integer
+          format: int64
+        runOuts:
+          type: integer
+          format: int64
+        dismissals:
+          type: integer
+          format: int64
+        dismissalsPerMatch:
+          type: number
+    PlayerAwards:
+      type: object
+      properties:
+        playerOfTheMatch:
+          type: integer
+          format: int64
+        teamPlayerOfTheMatch:
+          type: integer
+          format: int64
+    PlayerRecord:
+      type: object
+      properties:
+        won:
+          type: integer
+          format: int64
+        lost:
+          type: integer
+          format: int64
+        tied:
+          type: integer
+          format: int64
+        drawn:
+          type: integer
+          format: int64
+        internal:
+          type: integer
+          format: int64
+    PlayerBattingInnings:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        runs:
+          type: integer
+          format: int32
+        notOut:
+          type: boolean
+        balls:
+          type: integer
+          format: int32
+    PlayerBowlingSpell:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchDate:
+          type: string
+          format: date-time
+        wickets:
+          type: integer
+          format: int64
+        runs:
+          type: integer
+          format: int64
+        balls:
+          type: integer
+          format: int64
+        ballsPerOver:
+          type: integer
+          format: int32
+    PlayerForm:
+      type: object
+      properties:
+        batting:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBattingInnings"
+        bowling:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerBowlingSpell"
+    PlayerNotCaptured:
+      type: object
+      properties:
+        code:
+          type: string
+        tab:
+          type: string
+        label:
+          type: string
+        reason:
+          type: string
