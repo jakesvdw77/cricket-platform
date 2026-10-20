@@ -20,50 +20,52 @@ import java.util.Optional;
 public enum LeaderboardColumn {
 
     // ---- batting ----
-    BAT_MATCHES(Group.BATTING, "matches", "Mat", null),
-    BAT_INNINGS(Group.BATTING, "innings", "Inns", null),
-    BAT_RUNS(Group.BATTING, "runs", "Runs", LeaderboardBoard.MOST_RUNS),
-    BAT_BALLS(Group.BATTING, "balls", "Balls", null),
-    BAT_HIGHEST_SCORE(Group.BATTING, "highestScore", "HS", LeaderboardBoard.HIGHEST_SCORE),
-    BAT_AVERAGE(Group.BATTING, "average", "Avg", LeaderboardBoard.BATTING_AVERAGE),
-    BAT_STRIKE_RATE(Group.BATTING, "strikeRate", "SR", LeaderboardBoard.STRIKE_RATE),
-    BAT_OUTS(Group.BATTING, "outs", "Outs", null),
-    BAT_FOURS(Group.BATTING, "fours", "4s", LeaderboardBoard.MOST_FOURS),
-    BAT_SIXES(Group.BATTING, "sixes", "6s", LeaderboardBoard.MOST_SIXES),
-    BAT_FIFTY_PLUS(Group.BATTING, "fiftyPlus", "50+", LeaderboardBoard.MOST_50S),
-    BAT_HUNDRED_PLUS(Group.BATTING, "hundredPlus", "100+", LeaderboardBoard.MOST_100S),
+    BAT_MATCHES(Group.BATTING, "matches", "Mat", "Matches", null),
+    BAT_INNINGS(Group.BATTING, "innings", "Inns", "Innings", null),
+    BAT_RUNS(Group.BATTING, "runs", "Runs", "Runs", LeaderboardBoard.MOST_RUNS),
+    BAT_BALLS(Group.BATTING, "balls", "Balls", "Balls faced", null),
+    BAT_HIGHEST_SCORE(Group.BATTING, "highestScore", "HS", "Highest score", LeaderboardBoard.HIGHEST_SCORE),
+    BAT_AVERAGE(Group.BATTING, "average", "Avg", "Batting average", LeaderboardBoard.BATTING_AVERAGE),
+    BAT_STRIKE_RATE(Group.BATTING, "strikeRate", "SR", "Strike rate", LeaderboardBoard.STRIKE_RATE),
+    BAT_OUTS(Group.BATTING, "outs", "Outs", "Times out", null),
+    BAT_FOURS(Group.BATTING, "fours", "4s", "Fours", LeaderboardBoard.MOST_FOURS),
+    BAT_SIXES(Group.BATTING, "sixes", "6s", "Sixes", LeaderboardBoard.MOST_SIXES),
+    BAT_FIFTY_PLUS(Group.BATTING, "fiftyPlus", "50+", "50+ scores", LeaderboardBoard.MOST_50S),
+    BAT_HUNDRED_PLUS(Group.BATTING, "hundredPlus", "100+", "100+ scores", LeaderboardBoard.MOST_100S),
 
     // ---- bowling ----
-    BOWL_MATCHES(Group.BOWLING, "matches", "Mat", null),
-    BOWL_OVERS(Group.BOWLING, "overs", "Overs", null),
-    BOWL_MAIDENS(Group.BOWLING, "maidens", "Mdn", LeaderboardBoard.MOST_MAIDENS),
-    BOWL_DOTS(Group.BOWLING, "dots", "Dots", LeaderboardBoard.MOST_DOT_BALLS),
-    BOWL_RUNS(Group.BOWLING, "runs", "Runs", null),
-    BOWL_WICKETS(Group.BOWLING, "wickets", "Wkts", LeaderboardBoard.MOST_WICKETS),
-    BOWL_AVERAGE(Group.BOWLING, "average", "Avg", LeaderboardBoard.BOWLING_AVERAGE),
-    BOWL_ECONOMY(Group.BOWLING, "economy", "Econ", LeaderboardBoard.ECONOMY_RATE),
-    BOWL_STRIKE_RATE(Group.BOWLING, "strikeRate", "SR", LeaderboardBoard.BOWLING_STRIKE_RATE),
-    BOWL_BEST(Group.BOWLING, "best", "Best", LeaderboardBoard.BEST_BOWLING),
-    BOWL_THREE_W(Group.BOWLING, "threeW", "3W", LeaderboardBoard.MOST_3W),
-    BOWL_FOUR_W(Group.BOWLING, "fourW", "4W", LeaderboardBoard.MOST_4W),
-    BOWL_FIVE_W(Group.BOWLING, "fiveW", "5W", LeaderboardBoard.MOST_5W),
+    BOWL_MATCHES(Group.BOWLING, "matches", "Mat", "Matches", null),
+    BOWL_OVERS(Group.BOWLING, "overs", "Overs", "Overs", null),
+    BOWL_MAIDENS(Group.BOWLING, "maidens", "Mdn", "Maidens", LeaderboardBoard.MOST_MAIDENS),
+    BOWL_DOTS(Group.BOWLING, "dots", "Dots", "Dot balls", LeaderboardBoard.MOST_DOT_BALLS),
+    BOWL_RUNS(Group.BOWLING, "runs", "Runs", "Runs conceded", null),
+    BOWL_WICKETS(Group.BOWLING, "wickets", "Wkts", "Wickets", LeaderboardBoard.MOST_WICKETS),
+    BOWL_AVERAGE(Group.BOWLING, "average", "Avg", "Bowling average", LeaderboardBoard.BOWLING_AVERAGE),
+    BOWL_ECONOMY(Group.BOWLING, "economy", "Econ", "Economy rate", LeaderboardBoard.ECONOMY_RATE),
+    BOWL_STRIKE_RATE(Group.BOWLING, "strikeRate", "SR", "Bowling strike rate", LeaderboardBoard.BOWLING_STRIKE_RATE),
+    BOWL_BEST(Group.BOWLING, "best", "Best", "Best bowling", LeaderboardBoard.BEST_BOWLING),
+    BOWL_THREE_W(Group.BOWLING, "threeW", "3W", "3-wicket hauls", LeaderboardBoard.MOST_3W),
+    BOWL_FOUR_W(Group.BOWLING, "fourW", "4W", "4-wicket hauls", LeaderboardBoard.MOST_4W),
+    BOWL_FIVE_W(Group.BOWLING, "fiveW", "5W", "5-wicket hauls", LeaderboardBoard.MOST_5W),
 
     // ---- fielding ----
-    FIELD_MATCHES(Group.FIELDING, "matches", "Mat", null),
-    FIELD_CATCHES(Group.FIELDING, "catches", "Catches", LeaderboardBoard.MOST_CATCHES),
-    FIELD_STUMPINGS(Group.FIELDING, "stumpings", "Stumpings", LeaderboardBoard.MOST_STUMPINGS),
-    FIELD_RUN_OUTS(Group.FIELDING, "runOuts", "Run-outs", LeaderboardBoard.MOST_RUN_OUTS),
-    FIELD_TOTAL(Group.FIELDING, "total", "Total", LeaderboardBoard.MOST_FIELDING_DISMISSALS);
+    FIELD_MATCHES(Group.FIELDING, "matches", "Mat", "Matches", null),
+    FIELD_CATCHES(Group.FIELDING, "catches", "Catches", "Catches", LeaderboardBoard.MOST_CATCHES),
+    FIELD_STUMPINGS(Group.FIELDING, "stumpings", "Stumpings", "Stumpings", LeaderboardBoard.MOST_STUMPINGS),
+    FIELD_RUN_OUTS(Group.FIELDING, "runOuts", "Run-outs", "Run-outs", LeaderboardBoard.MOST_RUN_OUTS),
+    FIELD_TOTAL(Group.FIELDING, "total", "Total", "Total dismissals", LeaderboardBoard.MOST_FIELDING_DISMISSALS);
 
     private final Group group;
     private final String code;
     private final String label;
+    private final String longLabel;
     private final LeaderboardBoard board;
 
-    LeaderboardColumn(Group group, String code, String label, LeaderboardBoard board) {
+    LeaderboardColumn(Group group, String code, String label, String longLabel, LeaderboardBoard board) {
         this.group = group;
         this.code = code;
         this.label = label;
+        this.longLabel = longLabel;
         this.board = board;
     }
 
@@ -76,8 +78,14 @@ public enum LeaderboardColumn {
         return code;
     }
 
+    /** The short table heading (Mat, Inns, SR...). */
     public String getLabel() {
         return label;
+    }
+
+    /** The full name shown where there is room, such as the Sort by dropdown. */
+    public String getLongLabel() {
+        return longLabel;
     }
 
     /** The board that defines this column's ordering and tie-breaks, or null when the generic rule applies. */

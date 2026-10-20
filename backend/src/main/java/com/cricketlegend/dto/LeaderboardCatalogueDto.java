@@ -25,11 +25,11 @@ public record LeaderboardCatalogueDto(List<LeaderboardCatalogueGroup> groups) {
     }
 
     /**
-     * One standings column: {@code code} is also the {@code sort} value; {@code direction} is HIGHEST or LOWEST (which end
+     * One standings column: {@code code} is also the {@code sort} value; {@code label} is the short table heading and {@code longLabel} the full name; {@code direction} is HIGHEST or LOWEST (which end
      * ranks first); {@code minimumKind} is NONE, INNINGS or OVERS (the optional minimum available when sorting by it).
      */
     public record LeaderboardColumnInfo(
-            String code, String label, boolean sortable, String direction, String minimumKind) {
+            String code, String label, String longLabel, boolean sortable, String direction, String minimumKind) {
     }
 
     /** One board's definition, also echoed on every board page and awards category. */
