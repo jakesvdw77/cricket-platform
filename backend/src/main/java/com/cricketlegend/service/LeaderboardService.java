@@ -27,7 +27,8 @@ public interface LeaderboardService {
      * direction; anything else a {@code ValidationException}) and reverses the sort column only. {@code minimum} (text, so a bad value is a 400, not a type error) is absent for none
      * and is ignored unless the sort is a rate. A negative or non-numeric {@code minimum}, a negative {@code page} or a
      * {@code size} below 1 is a {@code ValidationException}; {@code size} above 100 is capped at 100. More than 5,000
-     * players in scope is a {@code ValidationException}.
+     * players in scope is a {@code ValidationException} (the bounded server-side ranking exception to the LIMIT/OFFSET
+     * rule: spec 103 "Architecture proposal" point 5, backend.md Statistics section).
      */
     LeaderboardTableDto table(
             Authentication authentication,

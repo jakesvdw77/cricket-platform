@@ -182,8 +182,9 @@ class LayeringRulesTest {
 
     @Test
     void thePureStatsClassesExist() {
-        // proves the rule above is not vacuous
+        // proves the rule above is not vacuous: exactly the 11 named top-level classes plus their nested types (32 in all).
+        // A new pure stats class (or nested type) must be added to PURE_STATS_CLASSES and to this count on purpose.
         long count = CLASSES.stream().filter(c -> c.getName().matches(PURE_STATS_CLASSES)).count();
-        org.assertj.core.api.Assertions.assertThat(count).isGreaterThanOrEqualTo(4);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(32);
     }
 }

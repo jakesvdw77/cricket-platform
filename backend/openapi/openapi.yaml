@@ -6980,11 +6980,29 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerStatsDto"
+        "400":
+          description: Unknown competition
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown player, season, league, team or section
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/players/{playerId}/stats/filter-options:
     get:
       tags:
       - player-stats-controller
-      operationId: filterOptions
+      operationId: getPlayerStatsFilterOptions
       parameters:
       - name: clubId
         in: path
@@ -7005,6 +7023,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PlayerStatsFilterOptionsDto"
+        "403":
+          description: The player is outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Unknown player
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/manage/clubs/{clubId}/leaderboards:
     get:
       tags:
@@ -7117,6 +7147,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: Unknown group, season, league, team or section
           content:
@@ -7179,13 +7215,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/AwardsViewDto"
         "400":
-          description: Invalid minimum, page or size, or too many players in scope
+          description: Invalid minimum, or too many players in scope
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: A section or team outside the caller's reach
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
-          description: Unknown board, season, league, team or section
+          description: Unknown season, league, team or section
           content:
             application/problem+json:
               schema:

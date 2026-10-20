@@ -42,7 +42,7 @@ public class PlayerStatsController {
 
     @PreAuthorize("@access.canAccessClub(authentication, #clubId)")
     @GetMapping("/api/v1/manage/clubs/{clubId}/players/{playerId}/stats/filter-options")
-    public ResponseEntity<PlayerStatsFilterOptionsDto> filterOptions(
+    public ResponseEntity<PlayerStatsFilterOptionsDto> getPlayerStatsFilterOptions(
             Authentication authentication, @PathVariable UUID clubId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(playerStatsService.filterOptions(authentication, clubId, playerId));
     }

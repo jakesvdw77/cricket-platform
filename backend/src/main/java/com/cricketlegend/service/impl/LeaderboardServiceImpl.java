@@ -64,6 +64,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
     private static final Logger log = LoggerFactory.getLogger(LeaderboardServiceImpl.class);
 
+    // The bounded server-side ranking exception to the LIMIT/OFFSET rule (spec 103 "Architecture proposal" point 5; backend.md, Statistics).
     static final int MAX_PLAYERS = 5_000;
     static final int DEFAULT_PAGE_SIZE = 10;
     static final int MAX_PAGE_SIZE = 100;
@@ -89,6 +90,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LeaderboardCatalogueDto catalogue() {
         List<LeaderboardCatalogueGroup> groups = new ArrayList<>();
         for (LeaderboardBoard.Group group : LeaderboardBoard.Group.values()) {
