@@ -59,6 +59,29 @@ public final class PlayerStatsSeed {
     /** The other club's player, with a 500-run innings in the other club. */
     public final PlayerProfile xavier;
 
+    // ---- docs/specs/115 match-list scenarios: created only by seedMatchList(), so the 103 tests' club is unchanged ----
+
+    /** A batting card and no bowling card in one match, a team-list-only-on-a-captured-card match, a loss, a club opponent. */
+    public PlayerProfile hank;
+    /** A multi-innings DRAW in which the same player bats and bowls in two REGULAR innings. */
+    public PlayerProfile ivy;
+    /** Hank's captured card: batted 25 and bowled in the match where Hank did not play a part. */
+    public PlayerProfile jill;
+    /** Innings with balls = 0 and runs > 0, blank fours and sixes, a DID_NOT_BAT entry. */
+    public PlayerProfile kim;
+    /** A NO_RESULT and an ABANDONED match with a ball bowled, and the ones with no ball and a forfeit that never count. */
+    public PlayerProfile leo;
+    /** A bowling row with 0 balls, 0 runs and 1 wicket (spec 115 gap, see seedMona). */
+    public PlayerProfile mona;
+    /** Five matches, three of them on exactly the same date (the match-id tie-break and stable paging). */
+    public PlayerProfile nina;
+    /** A second derby with the player on both sides, awards and fielding on both. */
+    public PlayerProfile pia;
+    /** A team of the other club, the club-team opponent of Hank's matches. */
+    public Team rivals;
+    /** Nina's matches in creation order; the first three share one date. */
+    public final List<Match> ninaMatches = new java.util.ArrayList<>();
+
     /** The match whose result is a DRAFT (Bob, 200 runs). */
     public Match draftMatch;
     /** The match whose published result is unpublished by the unpublish scenario (Bob, 77). */
@@ -255,6 +278,157 @@ public final class PlayerStatsSeed {
         r.bat(r.ours("HOME", xavier), 1, "NOT_OUT", 500, 300, 40, 10);
     }
 
+    // ---- docs/specs/115 match-list scenarios (opt-in) ----
+
+    /**
+     * Adds the spec 115 players and results to the club. NOT called by the constructor: the 103 tests assert club-wide
+     * figures (players listed, results counted, filter options) that these extra players would change.
+     *
+     * <pre>
+     * Hank  H1 s1/l1 seniors1 WON: 40 (30b 4x4 1x6), batting card only (no bowling entry anywhere)
+     *       H2 s1/l1 seniors1 WON: on the list only, Jill batted and bowled (DID_NOT_BAT, DID_NOT_BOWL, fielding 0)
+     *       H3 s1/l1 seniors2 (AWAY) v Rivals CC (HOME, other club's team) LOST: 12 (10b 1x4), 1 catch
+     *       H4 s1 friendly seniors1 v Rivals CC TIE: 5 not out (4b); a club team opponent, friendly
+     * Ivy   one DRAW s2 friendly seniors2, four REGULAR innings: bats 30 (20b 3x4) and 15* (12b 1x4), bowls 12b 1m 14r 2w
+     *       (5 dots, 1 wide) and 18b 0m 20r 1w; catches 1 + 2, stumping 1
+     * Jill  H2 only: 25 (20b), bowls 12b 1m 10r 1w
+     * Kim   K1 s1/l1 22 off 0 balls (3 fours, 0 sixes); K2 s1/l2 5 off 8 balls (fours, sixes blank);
+     *       K3 s1/l1 a DID_NOT_BAT entry
+     * Leo   L1 NO_RESULT 8 (10b); L2 ABANDONED, bowling entry only (12b 1m 9r 1w); never: a NO_RESULT with no ball
+     *       bowled (3), a FORFEIT (50)
+     * Mona  M1 WON 10 (8b 1x4) and a bowling row of 0 balls 0 runs 1 wicket; M2 WON bowling 12b 8r 2w, no batting card
+     * Nina  N1..N3 on 2031-12-01T10:00Z (11, 12, 13), N4 earlier (14), N5 later (15), all s1/l1 seniors1 WON
+     * Pia   one derby (seniors2 v seniors1): home 20 (15b 2x4), away 30 (25b 3x4 1x6); catches 1 + 2, run out 1;
+     *       player of the match 1 and the team award on both sides
+     * </pre>
+     */
+    public void seedMatchList() {
+        hank = fixtures.player(w, "Hank", true);
+        ivy = fixtures.player(w, "Ivy", true);
+        jill = fixtures.player(w, "Jill", true);
+        kim = fixtures.player(w, "Kim", true);
+        leo = fixtures.player(w, "Leo", true);
+        mona = fixtures.player(w, "Mona", true);
+        nina = fixtures.player(w, "Nina", true);
+        pia = fixtures.player(w, "Pia", true);
+        rivals = fixtures.team(other.club(), other.seniors(), "Rivals CC");
+        seedHank();
+        seedIvy();
+        seedKim();
+        seedLeo();
+        seedMona();
+        seedNina();
+        seedPia();
+    }
+
+    private void seedHank() {
+        Res h1 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        h1.bat(h1.ours("HOME", hank), 1, "BOWLED", 40, 30, 4, 1);
+
+        Res h2 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        h2.ours("HOME", hank);
+        UUID jillRow = h2.ours("HOME", jill);
+        h2.bat(jillRow, 1, "CAUGHT", 25, 20, 2, 0);
+        h2.bowl(jillRow, 12, 1, 10, 1, null, null, null);
+
+        Res h3 = published(match(rivals, w.seniors2(), s1, l1, true), "WON", "HOME");
+        UUID hankAway = h3.ours("AWAY", hank);
+        h3.bat(hankAway, 1, "BOWLED", 12, 10, 1, 0);
+        h3.field(hankAway, 1, 0, 0);
+
+        // the match table allows a team OR a free-text name on a side (ck_match_away_side), never both
+        Res h4 = published(match(w.seniors1(), rivals, s1, null, true), "TIE", null);
+        h4.bat(h4.ours("HOME", hank), 1, "NOT_OUT", 5, 4, 0, 0);
+    }
+
+    private void seedIvy() {
+        Res r = published(match(w.seniors2(), null, s2, null, true), "DRAW", null);
+        UUID i = r.ours("HOME", ivy);
+        UUID inn3 = r.innings(3, "REGULAR", "HOME", 90, 3, 90);
+        UUID inn4 = r.innings(4, "REGULAR", "AWAY", 80, 4, 90);
+        r.bat(i, 1, "CAUGHT", 30, 20, 3, 0);
+        r.batIn(inn3, i, 1, "NOT_OUT", 15, 12, 1, 0);
+        r.bowl(i, 12, 1, 14, 2, 1, 0, 5);
+        r.bowlIn(inn4, i, 18, 0, 20, 1, null, null, null);
+        r.field(i, 1, 0, 0);
+        r.fieldIn(inn4, i, 2, 1, 0);
+    }
+
+    private void seedKim() {
+        Res k1 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        k1.bat(k1.ours("HOME", kim), 1, "BOWLED", 22, 0, 3, 0);
+        Res k2 = published(match(w.seniors1(), null, s1, l2, true), "WON", "HOME");
+        k2.bat(k2.ours("HOME", kim), 1, "CAUGHT", 5, 8, null, null);
+        Res k3 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        k3.bat(k3.ours("HOME", kim), null, "DID_NOT_BAT", null, null, null, null);
+    }
+
+    private void seedLeo() {
+        Res l1r = published(match(w.seniors1(), null, s1, l1, true), "NO_RESULT", null);
+        l1r.inningsBalls(30, 0);
+        l1r.bat(l1r.ours("HOME", leo), 1, "BOWLED", 8, 10, 1, 0);
+
+        Res l2r = published(match(w.seniors1(), null, s1, l1, true), "ABANDONED", null);
+        l2r.inningsBalls(0, 0);
+        l2r.bowl(l2r.ours("HOME", leo), 12, 1, 9, 1, null, null, null);
+
+        Res l3 = published(match(w.seniors1(), null, s1, l1, true), "NO_RESULT", null);
+        l3.inningsBalls(0, 0);
+        l3.bat(l3.ours("HOME", leo), 1, "NOT_OUT", 3, null, 0, 0);
+
+        Res l4 = published(match(w.seniors1(), null, s1, l1, true), "FORFEIT", "HOME");
+        l4.bat(l4.ours("HOME", leo), 1, "NOT_OUT", 50, 30, 0, 0);
+    }
+
+    /**
+     * Mona's first match holds a bowling row with 0 balls, 0 runs and 1 wicket (a run-out style credit). The aggregate
+     * ({@code PlayerStatsSql}) sums its wicket; the row builder does not count it as a spell.
+     */
+    private void seedMona() {
+        Res m1 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        UUID mona1 = m1.ours("HOME", mona);
+        m1.bat(mona1, 1, "BOWLED", 10, 8, 1, 0);
+        m1.bowl(mona1, 0, 0, 0, 1, null, null, null);
+        Res m2 = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+        m2.bowl(m2.ours("HOME", mona), 12, 0, 8, 2, null, null, null);
+    }
+
+    private void seedNina() {
+        Instant sameDay = Instant.parse("2031-12-01T10:00:00Z");
+        for (int i = 0; i < 5; i++) {
+            Match m = match(w.seniors1(), null, s1, l1, true);
+            Instant when = i < 3 ? sameDay : i == 3 ? Instant.parse("2031-11-01T10:00:00Z") : Instant.parse("2032-01-01T10:00:00Z");
+            jdbc.update("update match set match_date = ? where id = ?", Timestamp.from(when), m.getId());
+            Res r = published(m, "WON", "HOME");
+            r.bat(r.ours("HOME", nina), 1, "BOWLED", 11 + i, 10, 1, 0);
+            ninaMatches.add(m);
+        }
+    }
+
+    private void seedPia() {
+        Res d = published(match(w.seniors2(), w.seniors1(), s1, l1, true), "WON", "AWAY");
+        UUID home = d.ours("HOME", pia);
+        UUID away = d.ours("AWAY", pia);
+        d.bat(home, 1, "BOWLED", 20, 15, 2, 0);
+        d.bat(away, 1, "CAUGHT", 30, 25, 3, 1);
+        d.field(home, 1, 0, 0);
+        d.field(away, 2, 0, 1);
+        d.award("PLAYER_OF_MATCH", "HOME", home);
+        d.award("TEAM_PLAYER_OF_MATCH", "HOME", home);
+        d.award("TEAM_PLAYER_OF_MATCH", "AWAY", away);
+    }
+
+    /** {@code n} more published results of the club in which the player bats, bowls and takes a catch. */
+    public void addMatchesFor(PlayerProfile player, int n) {
+        for (int i = 0; i < n; i++) {
+            Res r = published(match(w.seniors1(), null, s1, l1, true), "WON", "HOME");
+            UUID rp = r.ours("HOME", player);
+            r.bat(rp, 1, "BOWLED", 10 + i % 5, 10, 1, 0);
+            r.bowl(rp, 12, 0, 20, i % 4, null, null, null);
+            r.field(rp, 1, 0, 0);
+        }
+    }
+
     // ---- scaling (query-count guard) ----
 
     /** {@code n} more published results of the world's club, each with three new players batting and bowling. */
@@ -395,6 +569,13 @@ public final class PlayerStatsSeed {
             jdbc.update("insert into fielding_entry (id, match_innings_id, result_player_id, catches, stumpings, run_outs)"
                             + " values (?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID(), "HOME".equals(sides.get(rp)) ? inn2 : inn1, rp, catches, stumpings, runOuts);
+        }
+
+        /** A fielding row in a given innings (the one the player's side fielded in). */
+        public void fieldIn(UUID innings, UUID rp, int catches, int stumpings, int runOuts) {
+            jdbc.update("insert into fielding_entry (id, match_innings_id, result_player_id, catches, stumpings, run_outs)"
+                            + " values (?, ?, ?, ?, ?, ?)",
+                    UUID.randomUUID(), innings, rp, catches, stumpings, runOuts);
         }
 
         public void award(String type, String side, UUID rp) {
