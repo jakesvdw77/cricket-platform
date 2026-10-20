@@ -22,6 +22,19 @@ describe('InfoCard', () => {
     expect(within(fields[2]).getByText('–')).toBeInTheDocument()
   })
 
+  it('shows a field caption under its value and lays the fields out in the requested columns', () => {
+    render(
+      <InfoCard
+        title="Stats"
+        icon={<span />}
+        columns={3}
+        fields={[{ label: 'Strike rate', value: '96.30', caption: 'from 9 of 14 innings' }]}
+      />,
+    )
+    expect(screen.getByText('from 9 of 14 innings')).toBeInTheDocument()
+    expect(screen.getByTestId('player-info-field').parentElement).toHaveStyle({ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' })
+  })
+
   it('renders chips marking those not on file', () => {
     render(
       <InfoCard

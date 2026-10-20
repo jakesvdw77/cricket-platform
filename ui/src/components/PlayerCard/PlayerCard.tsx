@@ -15,6 +15,7 @@ import {
 import { Link as RouterLink } from 'react-router-dom'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import SportsBaseballOutlinedIcon from '@mui/icons-material/SportsBaseballOutlined'
@@ -40,6 +41,8 @@ export interface PlayerCardProps {
   sectionNames: string[]
   viewTo: string
   editTo: string
+  // docs/specs/103 (decision 20): the fourth footer button, straight to the player's statistics page.
+  statsTo: string
   // docs/specs/088: called when the manager picks a change in the Status menu; the caller does the work and the
   // confirmations (usePlayerStatusActions).
   onStatusAction: (action: PlayerStatusAction) => void
@@ -85,9 +88,9 @@ const footerCaptionSx = { fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.
 // has the same parts and the same height whatever is on file or what the player's status is: the avatar and a title
 // clamped to two lines; one badge row (the status first, then the first section and a +N, or a dashed "No section");
 // two games-played chips in the header's corner; five zebra rows (Number, Born, Phone, Bat, Bowl) that show "–" when
-// empty; and the same three footer columns, Status,
-// Edit and View. Nothing appears or disappears with the status; the Status button's menu offers only the valid changes.
-export function PlayerCard({ player, sectionNames, viewTo, editTo, onStatusAction }: PlayerCardProps) {
+// empty; and the same four footer columns, Status,
+// Edit, View and Stats (docs/specs/103). Nothing appears or disappears with the status; the Status button's menu offers only the valid changes.
+export function PlayerCard({ player, sectionNames, viewTo, editTo, statsTo, onStatusAction }: PlayerCardProps) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null)
   const name = `${player.firstName} ${player.lastName}`
   const status = playerStatusOf(player)
@@ -214,7 +217,7 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, onStatusActio
       <CardActions
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
           gap: 0.5,
           px: 1,
           pb: 1,
@@ -247,6 +250,12 @@ export function PlayerCard({ player, sectionNames, viewTo, editTo, onStatusActio
           <VisibilityOutlinedIcon fontSize="small" />
           <Box component="span" sx={footerCaptionSx}>
             View
+          </Box>
+        </ButtonBase>
+        <ButtonBase component={RouterLink} to={statsTo} aria-label="Stats" sx={footerButtonSx}>
+          <EqualizerOutlinedIcon fontSize="small" />
+          <Box component="span" sx={footerCaptionSx}>
+            Stats
           </Box>
         </ButtonBase>
       </CardActions>

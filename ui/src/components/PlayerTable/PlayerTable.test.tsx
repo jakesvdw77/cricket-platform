@@ -61,6 +61,7 @@ function renderTable(players: Player[], sections: Record<string, string[]> = {})
                 players={players}
                 sectionNamesFor={(player) => sections[player.id] ?? []}
                 viewTo={(player) => `/manage/players/${player.id}`}
+                statsTo={(player) => `/manage/players/${player.id}/stats`}
                 onStatusAction={onStatusAction}
               />
             }
@@ -79,7 +80,7 @@ describe('PlayerTable', () => {
     renderTable([makePlayer({ id: 'p1' }), makePlayer({ id: 'p2', firstName: 'Amy', lastName: 'Ansell' })])
 
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Player', 'Status', 'Section', 'No.', 'Phone', 'Bat', 'Bowl', 'Season', 'Overall', '',
+      'Player', 'Status', 'Section', 'No.', 'Phone', 'Bat', 'Bowl', 'Season', 'Overall', '', '',
     ])
     expect(screen.getAllByTestId('player-row')).toHaveLength(2)
     expect(screen.getByRole('table', { name: 'Players' })).toBeInTheDocument()
@@ -92,7 +93,7 @@ describe('PlayerTable', () => {
     const desktopOnly = headers.filter((header) => header.hasAttribute('data-desktop-only')).map((header) => header.textContent)
     const kept = headers.filter((header) => !header.hasAttribute('data-desktop-only')).map((header) => header.textContent)
     expect(desktopOnly).toEqual(['Status', 'Section', 'No.', 'Bat', 'Bowl', 'Overall'])
-    expect(kept).toEqual(['Player', 'Phone', 'Season', ''])
+    expect(kept).toEqual(['Player', 'Phone', 'Season', '', ''])
 
     // the cells follow the same split, and Season is ordered before Phone on a phone
     const [row] = screen.getAllByTestId('player-row')
@@ -104,12 +105,12 @@ describe('PlayerTable', () => {
     expect(cells[8]).toHaveAttribute('data-desktop-only') // Overall
   })
 
-  it('keeps the header sticky and every row the same height with the same ten cells', () => {
+  it('keeps the header sticky and every row the same height with the same eleven cells', () => {
     renderTable([makePlayer({ id: 'p1' }), makePlayer({ id: 'p2', phone: '082', jerseyNumber: 4 })])
 
     expect(screen.getAllByRole('columnheader')[0].parentElement).toHaveStyle({ position: 'sticky', top: '0px' })
     for (const row of screen.getAllByTestId('player-row')) {
-      expect(within(row).getAllByRole('cell')).toHaveLength(10)
+      expect(within(row).getAllByRole('cell')).toHaveLength(11)
     }
   })
 
@@ -125,10 +126,10 @@ describe('PlayerTable', () => {
     const [full, empty] = screen.getAllByTestId('player-row')
     expect(within(full).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
       // the first cell also holds the badge a phone shows under the name (hidden from `sm` up by CSS)
-      'Sipho NdlovuVerified', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', '',
+      'Sipho NdlovuVerified', 'Verified', 'Vets +1', '#7', '083 555 0177', 'Left-handed', 'Right-arm, Medium', '12', '48', '', '',
     ])
     expect(within(empty).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Sam PetersVerified', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', '',
+      'Sam PetersVerified', 'Verified', 'No section', '–', '–', '–', '–', '0', '0', '', '',
     ])
   })
 
