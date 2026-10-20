@@ -7,6 +7,8 @@ import { test, expect } from '@playwright/test';
  *       basis line;
  *   (2) Leaderboards: open it from the menu (Schedule group), see the Batting table, sort by another column and reverse
  *       it, open a row (it lands on that player's stats carrying the filters), then the Awards tab and its minimums.
+ *   (3) docs/specs/115-player-match-list.md: a player's Matches tab: open it, change Season, press Show more when offered, open a
+ *       match, and Back to Matches lands on the same filtered list.
  * (PDF and text output of the Awards sheet are deferred, spec decision 10, so they are not part of this spec.)
  * Runs at the desktop and the mobile viewport (the two projects in playwright.config.ts).
  *
@@ -82,7 +84,8 @@ async function firstBoardPlayerId(page: Page): Promise<string | null> {
   if (!(await rows.first().isVisible())) {
     return null;
   }
-  const href = await rows.first().getAttribute('href');
+  // The row (role=row) is no longer a link itself: the player's name inside it is the real link.
+  const href = await rows.first().getByRole('link').first().getAttribute('href');
   return /\/manage\/players\/([^/]+)\/stats/.exec(href ?? '')?.[1] ?? null;
 }
 
@@ -183,7 +186,7 @@ test.describe('Player statistics and leaderboards golden paths (103-player-stats
     await expect(page).not.toHaveURL(/dir=/);
 
     // --- A row opens that player's stats, carrying the board's filters. ---
-    const href = await rows.first().getAttribute('href');
+    const href = await rows.first().getByRole('link').first().getAttribute('href');
     expect(href).toMatch(/^\/manage\/players\/[^/]+\/stats\?.*seasonId=/);
     await rows.first().click();
     await expect(page).toHaveURL(/\/manage\/players\/[^/]+\/stats\?/);
@@ -212,5 +215,68 @@ test.describe('Player statistics and leaderboards golden paths (103-player-stats
     await expect(page.getByRole('button', { name: 'Reset to default' })).toBeEnabled();
     await page.getByRole('button', { name: 'Reset to default' }).click();
     await expect(minimumInnings).toHaveValue(defaultInnings);
+  });
+
+  test('Matches tab -> change Season -> Show more -> open a match -> Back to Matches returns to the same list (115-player-match-list.md)', async ({ page }) => {
+    await login(page, CLUB_ADMIN_USERNAME as string, CLUB_ADMIN_PASSWORD as string);
+    const playerId = await firstBoardPlayerId(page);
+    test.skip(playerId === null, 'the club has no published result with a batting card; capture and publish one first');
+
+    // --- Open the player's stats and switch to Matches; All seasons so a result of any date is listed. ---
+    await page.goto(`http://${ROOT_DOMAIN}/manage/players/${playerId}/stats`);
+    await expect(page.getByTestId('stats-basis')).toBeVisible({ timeout: 15_000 });
+    await chooseSeason(page, 'All seasons');
+    await page.getByRole('tab', { name: 'Matches' }).click();
+    await expect(page).toHaveURL(/tab=matches/);
+    await expect(page.getByRole('tab', { name: 'Matches', selected: true })).toBeVisible();
+
+    // A table row on a desktop, a card on a phone; either way the footer counts the matches.
+    const items = page.locator('[data-testid="match-row"], [data-testid="match-card"]');
+    const footer = page.getByTestId('matches-footer');
+    await expect(items.first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('tile-matches')).toBeVisible();
+    await expect(footer).toContainText(/Showing \d+ of \d+ match(es)?/);
+    await expect(page.getByText(/^Total/)).toHaveCount(0);
+
+    // --- Change the Season to one the player has data for (only those are offered). ---
+    const filtersButton = page.getByRole('button', { name: /^Filters/ });
+    const onPhone = await filtersButton.isVisible();
+    if (onPhone) {
+      await filtersButton.click();
+    }
+    await page.getByRole('combobox', { name: 'Season' }).click();
+    const seasonOptions = page.getByRole('option');
+    if ((await seasonOptions.count()) > 1) {
+      await seasonOptions.nth(1).click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+    if (onPhone) {
+      await page.keyboard.press('Escape');
+    }
+    await expect(items.first()).toBeVisible({ timeout: 15_000 });
+    await expect(footer).toContainText(/Showing \d+ of \d+ match(es)?/);
+
+    // --- Show more, when the server has another page. ---
+    const showMore = page.getByRole('button', { name: 'Show more' });
+    if (await showMore.isVisible()) {
+      const before = await items.count();
+      await showMore.click();
+      await expect.poll(() => items.count()).toBeGreaterThan(before);
+    }
+
+    // --- Open a match: the result page offers Back to Matches, which lands on the same filtered list. ---
+    const firstText = await items.first().innerText();
+    await page.getByRole('link', { name: /open result/ }).first().click();
+    await expect(page).toHaveURL(/\/manage\/results\/[^/?]+$/);
+    const back = page.getByRole('link', { name: 'Back to Matches' });
+    await expect(back).toBeVisible({ timeout: 15_000 });
+    await back.click();
+    await expect(page).toHaveURL(new RegExp(`/manage/players/${playerId}/stats\\?.*tab=matches`));
+    await expect(page).toHaveURL(/seasonId=/);
+    await expect(page.getByRole('tab', { name: 'Matches', selected: true })).toBeVisible();
+    await expect(items.first()).toBeVisible({ timeout: 15_000 });
+    // The same filters bring back the same newest match at the top (Show more progress is not restored).
+    expect(await items.first().innerText()).toBe(firstText);
   });
 });
