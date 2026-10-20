@@ -1,4 +1,4 @@
-import { Alert } from '@mui/material'
+import { Alert, Box } from '@mui/material'
 import SportsCricketOutlinedIcon from '@mui/icons-material/SportsCricketOutlined'
 import SpeedOutlinedIcon from '@mui/icons-material/SpeedOutlined'
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined'
@@ -38,6 +38,8 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
   const dismissed = dismissalRows(batting.dismissalModes).map((row) => ({ key: row.key, label: row.label, value: String(row.count) }))
   const dismissalList = batting.notOuts > 0 || dismissed.length > 0 ? [...dismissed, { key: 'NOT_OUT', label: 'Not out', value: String(batting.notOuts) }] : []
 
+  const hasForm = stats.form.batting.length > 0
+
   return (
     <>
       <StatTileStrip>
@@ -66,18 +68,30 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
             { label: 'Balls per boundary', value: decimals(batting.ballsPerBoundary, 1), caption: boundaryCaption },
           ]}
         />
-        <InfoCard fieldSize="large"
-          title="Milestones"
-          icon={<FlagOutlinedIcon />}
-          fields={[
-            { label: '30+ scores', value: String(batting.thirtyPlus) },
-            { label: '50+ scores', value: String(batting.fiftyPlus) },
-            { label: '100+ scores', value: String(batting.hundredPlus) },
-            { label: 'Half-centuries (50 to 99)', value: String(batting.halfCenturies) },
-            { label: 'Ducks', value: String(batting.ducks) },
-            { label: 'Golden ducks', value: String(batting.goldenDucks), caption: batting.goldenDucks > 0 || batting.ducks > 0 ? 'from innings with balls' : undefined },
-          ]}
-        />
+        {/* Right column: Milestones at its natural height, Recent form grows to fill, so together they match Scoring's height. */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.75, md: 2 }, minWidth: 0 }}>
+          <Box sx={{ flex: hasForm ? 'none' : 1, display: 'flex', flexDirection: 'column' }}>
+            <InfoCard fieldSize="large"
+              title="Milestones"
+              icon={<FlagOutlinedIcon />}
+              fields={[
+                { label: '30+ scores', value: String(batting.thirtyPlus) },
+                { label: '50+ scores', value: String(batting.fiftyPlus) },
+                { label: '100+ scores', value: String(batting.hundredPlus) },
+                { label: 'Half-centuries (50 to 99)', value: String(batting.halfCenturies) },
+                { label: 'Ducks', value: String(batting.ducks) },
+                { label: 'Golden ducks', value: String(batting.goldenDucks), caption: batting.goldenDucks > 0 || batting.ducks > 0 ? 'from innings with balls' : undefined },
+              ]}
+            />
+          </Box>
+          {hasForm && (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
+                <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
+              </InfoCard>
+            </Box>
+          )}
+        </Box>
         <InfoCard fieldSize="large" title="How dismissed" icon={<ExitToAppOutlinedIcon />}>
           <CountRows rows={dismissalList} empty="No innings yet." />
         </InfoCard>
@@ -92,12 +106,6 @@ export function BattingTab({ stats }: { stats: PlayerStats }) {
           />
         </InfoCard>
       </CardGrid>
-
-      {stats.form.batting.length > 0 && (
-        <InfoCard fieldSize="large" title="Recent form" icon={<ShowChartOutlinedIcon />} note="Last 5 innings, newest first">
-          <FormStrip title="Batting, last 5 innings" items={battingFormItems(stats.form.batting)} hideTitle />
-        </InfoCard>
-      )}
 
       <NotCapturedPanel items={notCapturedFor(stats.notCaptured, 'batting')} />
     </>
